@@ -1,0 +1,15 @@
+[{
+  "_class": "it.eng.catalog.entity.CatalogEntity",
+  "id": "5a9f7901-f978-47e6-93b4-d308e40bd4e8",
+  "title" : "Test catalog title",
+  "description" : "Description title example",
+  "publisher" : "Publisher of the catalog",
+  "keywords" : ["abc", "123"]
+},
+{
+  "_class": "it.eng.catalog.entity.CatalogEntity",
+  "id": "db36b40c-465b-11ee-be56-0242ac120002",
+  "title" : "Test catalog title second one",
+  "description" : "Description title for second catalog example",
+  "publisher" : "Publisher of the second catalog"
+}]

@@ -1,0 +1,26 @@
+[{
+  "_class": "it.eng.catalog.entity.DatasetEntity",
+  "id": "3f051304-28f4-4885-9ae3-14de89aa1aaa",
+  "title" : "Test dataset title",
+  "description" : "Description Dataset title example",
+  "keywords" : ["abc", "123"],
+  "distributionFormat" : "dspace:s3+push",
+  "distributionService" : "d847eafe-4665-11ee-be56-0242ac120002"
+},
+{
+  "_class": "it.eng.catalog.entity.DatasetEntity",
+  "id": "eef3e9d4-57d4-45ff-95ea-efc0f35b4be7",
+  "title" : "Test dataset title second one",
+  "description" : "Description Dataset title for second catalog example"
+},
+{
+  "_class": "it.eng.catalog.entity.DatasetToCatalogEntity",
+  "id": "131b5d0c-6484-4af9-805e-4bb5a9df4b02",
+  "catalogId" : "5a9f7901-f978-47e6-93b4-d308e40bd4e8",
+  "datasetId" : "3f051304-28f4-4885-9ae3-14de89aa1aaa"
+}
+]
+
+INSERT INTO DATASET_ENTITY  (id,title,description,keywords,distributionFormat,distributionService) VALUES
+  ('3f051304-28f4-4885-9ae3-14de89aa1aaa','Test dataset title','Description Dataset title example',['abc', '123'], 'dspace:s3+push','d847eafe-4665-11ee-be56-0242ac120002'),
+  ('cab7b27b-f810-457d-b900-368994f6a640',true,'orkestarzasvadbeisahrane@krajina.rs','Stevan', 'Mokranjac','$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q','ADMIN');

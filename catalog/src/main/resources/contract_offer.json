@@ -1,0 +1,19 @@
+[
+{
+  "_class": "it.eng.catalog.entity.LiteralExpressionEntity",
+  "id": "ab60ad80-3380-4b9c-b4a4-365c76544100",
+  "expression" : "https://w3id.org/edc/v0.0.1/ns/inForceDate"
+},
+{
+  "_class": "it.eng.catalog.entity.LiteralExpressionEntity",
+  "id": "fdc45797-e957-4955-8baf-ab7fd66ac4d6",
+  "expression" : "2023-09-08T14:01:51.043Z"
+},
+{
+  "_class": "it.eng.catalog.entity.ActionEntity",
+  "id": "36faedce-a2aa-4b84-843c-216bd4f2dc04",
+  "type" : "USE",
+  "includedIn" : "included somewhere"
+}
+]
+

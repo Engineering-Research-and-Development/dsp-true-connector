@@ -1,0 +1,114 @@
+@startuml
+
+Catalog "1" o-- "*" Dataset : dataset
+Catalog "1" o-- "*" DataService : service
+Catalog "1" o-- "*" Distribution
+Catalog "0" *-- "*" Multilanguage
+
+DataService "0" *-- "*" Multilanguage
+DataService "1" o-- "*" Dataset
+
+Dataset "0" *-- "*" Multilanguage
+Dataset "1" *-- "*" Distribution : accessService
+Dataset "1" *-- "*" Offer : hasPolicy
+
+Offer "1" *-- "*" Permission : hasPermission
+
+Permission "1" *-- "*" Constraint
+
+Distribution "0" *-- "*" Multilanguage
+Distribution "0" *-- "*" DataService
+
+class Catalog {
+	- String id
+	- List<String> keyword
+	- List<String> theme
+	- String conformsTo
+	- String creator
+	- List<Multilanguage> description
+	- String identifier
+	- String issued
+	- String modified
+	- String title
+	- List<Distribution> distribution
+	- List<Dataset> dataset
+	- List<DataService> service
+	- String participantId
+	- String homepage
+}
+
+class DataService {
+	- String id;
+	- List<String> keyword;
+	- List<String> theme;
+	- String conformsTo;
+	- String creator;
+	- List<Multilanguage> description;
+	- String identifier;
+	- String issued;
+	- String modified;
+	- String title;
+	- String endpointDescription;
+	- String endpointURL;
+	- List<Dataset> servesDataset;
+
+}
+
+class Dataset {
+	- String id
+	- List<String> keyword
+	- List<String> theme
+	- String conformsTo
+	- String creator
+	- List<Multilanguage> description
+	- String identifier
+	- String issued
+	- String modified
+	- String title
+	- List<Offer> hasPolicy
+	- List<Distribution> distribution
+}
+
+class Offer {
+	- String id
+	- String target
+	- String assigner
+	- String assignee
+	- List<Permission> permission
+}
+
+class Permission {
+	- String id
+	- String assigner
+	- String assignee
+	- String target
+	- Action action
+	- List<Constraint> constraint
+}
+
+class Constraint {
+	- String id
+	- LeftOperand leftOperand
+	- Operator operator
+	- String rightOperand
+	
+}
+
+class Multilanguage {
+	- String id
+	- String value
+	- String language
+}
+
+class Distribution {
+	- String id
+	- String title
+	- List<Multilanguage> description
+	- String issued
+	- String modified
+	- List<Offer> hasPolicy
+	- Reference format
+	- List<DataService> dataservice
+}
+
+@enduml

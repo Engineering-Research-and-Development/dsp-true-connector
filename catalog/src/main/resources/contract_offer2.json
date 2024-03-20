@@ -1,0 +1,35 @@
+[{
+  "_class": "it.eng.catalog.entity.BasicConstraintEntity",
+  "id": "fdc45797-e957-4955-8baf-ab7fd66ac4d5",
+  "leftExpression" : "ab60ad80-3380-4b9c-b4a4-365c76544100",
+  "rightExpression" : "fdc45797-e957-4955-8baf-ab7fd66ac4d6",
+  "operator" : "1"
+},
+{
+  "_class": "it.eng.catalog.entity.PermissionEntity",
+  "id": "9bf53ac3-e98a-4576-a821-429ef10b066e",
+  "assigner" : "http://trueconnector/assigner",
+  "assignee" : "http://trueconnector/assignee",
+  "target" : "http://trueconnector/artifact/1",
+  "actionId" : "36faedce-a2aa-4b84-843c-216bd4f2dc04"
+},
+{
+  "_class": "it.eng.catalog.entity.PolicyEntity",
+  "id": "803f5181-f6c9-4ca2-b9b6-5919547ac27a",
+  "assigner" : "http://trueconnector/assigner",
+  "assignee" : "http://trueconnector/assignee",
+  "target" : "http://trueconnector/artifact/1"
+},
+
+{
+  "_class": "it.eng.catalog.entity.ContractOfferEntity",
+  "id": "4dff15c2-6552-4d47-a301-900041b16997",
+  "assetId" : "Some Asset ID not sure what",
+  "policyId" : "803f5181-f6c9-4ca2-b9b6-5919547ac27a"
+},
+{
+  "_class": "it.eng.catalog.entity.ContractOfferToCatalogEntity",
+  "id": "f70314dc-2a9f-4383-840c-f68113549f47",
+  "catalogId" : "5a9f7901-f978-47e6-93b4-d308e40bd4e8",
+  "contractOfferId" : "4dff15c2-6552-4d47-a301-900041b16997"
+}]

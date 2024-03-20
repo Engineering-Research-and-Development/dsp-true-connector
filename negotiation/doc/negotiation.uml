@@ -1,0 +1,39 @@
+@startuml
+
+class AgreementEntity {
+    -assigner : String
+    -assignee : String
+    -target : String
+    -timestamp : String
+    -permissions: Set<PermissionEntity>
+}
+
+class PermissionEntity {
+    -assigner : String
+    -assignee : String
+    -target : String
+    -action : Action
+    -constraints: <Set>ConstraintEntity
+}
+
+class ConstraintEntity {
+    -leftOperand : LeftOperand
+    -operator : Operator
+    -rightOperand : String
+}
+
+class OfferEntity {
+    -target : String
+    -assigner : String
+    -assignee : String
+    -permissions: <Set>PermissionEntity
+}
+
+
+
+AgreementEntity "1" -- "0..*" PermissionEntity
+OfferEntity "1" -- "0..*" PermissionEntity
+PermissionEntity "1" -- "0..*" ConstraintEntity
+
+@enduml
+

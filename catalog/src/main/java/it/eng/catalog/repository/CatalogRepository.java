@@ -1,0 +1,11 @@
+package it.eng.catalog.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import it.eng.catalog.entity.CatalogEntity;
+
+@Repository
+public interface CatalogRepository extends JpaRepository<CatalogEntity, String> {
+
+}

@@ -1,0 +1,18 @@
+[{
+  "_class": "it.eng.catalog.entity.DataServiceEntity",
+  "id": "d847eafe-4665-11ee-be56-0242ac120002",
+  "terms" : "DataService term 1",
+  "endpointUrl" : "https://dataservice1.url"
+},
+{
+  "_class": "it.eng.catalog.entity.DataServiceEntity",
+  "id": "e6b0683c-4665-11ee-be56-0242ac120002",
+  "terms" : "DataService term 2",
+  "endpointUrl" : "https://dataservice2.url"
+},
+{
+  "_class": "it.eng.catalog.entity.DataServiceToCatalogEntity",
+  "id": "0b660820-466c-11ee-be56-0242ac120002",
+  "catalogId" : "5a9f7901-f978-47e6-93b4-d308e40bd4e8",
+  "dataServiceId" : "d847eafe-4665-11ee-be56-0242ac120002"
+}]
