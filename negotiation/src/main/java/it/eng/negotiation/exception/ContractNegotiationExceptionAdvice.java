@@ -1,7 +1,9 @@
 package it.eng.negotiation.exception;
 
 import java.util.Arrays;
+import java.util.Collections;
 
+import it.eng.negotiation.model.Serializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -20,27 +22,23 @@ import it.eng.negotiation.transformer.from.JsonFromContractNegotiationErrorMessa
 
 @RestControllerAdvice
 public class ContractNegotiationExceptionAdvice extends ResponseEntityExceptionHandler {
-	
-	@Value("${application.connectorid}")
-	private String connectroId;
-	
-	@Value("${application.isconsumer}")
-	private boolean isConsumer;
 
-	@ExceptionHandler(value = { ContractNegotiationNotFoundException.class })
-	protected ResponseEntity<Object> handleContractNotFound(RuntimeException ex, WebRequest request) {
-		JsonFromContractNegotiationErrorMessageTrasformer transformer = new JsonFromContractNegotiationErrorMessageTrasformer();
-		ContractNegotiationErrorMessage.Builder errorMessageBuilder = ContractNegotiationErrorMessage.Builder.newInstance()
-			.code(HttpStatus.NOT_FOUND.getReasonPhrase())
-			.reason(Arrays.asList(Reason.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()))
-			.description(Arrays.asList(Description.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()));
-		if(isConsumer) {
-			errorMessageBuilder.consumerPid(connectroId);
-		} else {
-			errorMessageBuilder.providerPid(connectroId);
-		}
-		JsonNode bodyOfResponse = transformer.transform(errorMessageBuilder.build());
+    @Value("${application.connectorid}")
+    private String connectroId;
 
-		return handleExceptionInternal(ex, bodyOfResponse, new HttpHeaders(), HttpStatus.NOT_FOUND, request);
-	}
+    @Value("${application.isconsumer}")
+    private boolean isConsumer;
+
+    @ExceptionHandler(value = {ContractNegotiationNotFoundException.class})
+    protected ResponseEntity<Object> handleContractNotFound(ContractNegotiationNotFoundException ex, WebRequest request) {
+
+        ContractNegotiationErrorMessage errorMessage = ContractNegotiationErrorMessage.Builder.newInstance()
+                .providerPid(ex.getProviderId())
+                .code(HttpStatus.NOT_FOUND.getReasonPhrase())
+                .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()))
+                .description(Collections.singletonList(Description.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build())).build();
+        String response = Serializer.serializeProtocol(errorMessage);
+
+        return handleExceptionInternal(ex, response, new HttpHeaders(), HttpStatus.NOT_FOUND, request);
+    }
 }
