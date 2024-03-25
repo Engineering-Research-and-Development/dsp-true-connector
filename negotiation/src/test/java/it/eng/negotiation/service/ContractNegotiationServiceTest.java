@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import it.eng.negotiation.model.ContractNegotiation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -71,4 +72,33 @@ public class ContractNegotiationServiceTest {
 		assertNotNull(result.get());
 		assertEquals(result.get().get("@type").asText(), "dspace:ContractNegotiationErrorMessage");
 	}
+
+
+	@Test
+	public void getNegotiationByProviderPid() throws InterruptedException, ExecutionException {
+		ContractNegotiationEntity cne = new ContractNegotiationEntity();
+		cne.setConsumerPid(ModelUtil.CONSUMER_PID);
+		cne.setProviderPid(ModelUtil.PROVIDER_PID);
+		cne.setState(ModelUtil.STATE);
+		when(repository.findByProviderPid(anyString())).thenReturn(Optional.of(cne));
+		CompletableFuture<ContractNegotiation> result = service.getNegotiationByProviderPid(ModelUtil.PROVIDER_PID);
+		assertNotNull(result);
+		assertNotNull(result.get());
+		assertEquals(result.get().getConsumerPid(), ModelUtil.CONSUMER_PID);
+		assertEquals(result.get().getProviderPid(), ModelUtil.PROVIDER_PID);
+		assertEquals(result.get().getState().toString(), ModelUtil.STATE);
+	}
+
+	@Test
+	public void getNegotiationByProviderPid_notFound() {
+		when(repository.findByProviderPid(anyString())).thenReturn(Optional.ofNullable(null));
+		CompletableFuture<ContractNegotiation> result = service.getNegotiationByProviderPid(ModelUtil.PROVIDER_PID);
+		assertNotNull(result);
+		try {
+			result.get();
+		} catch (InterruptedException | ExecutionException e) {
+			assertEquals(e.getCause().getMessage(), "Contract negotiation with provider pid " + ModelUtil.PROVIDER_PID + " not found");
+		}
+	}
+
 }

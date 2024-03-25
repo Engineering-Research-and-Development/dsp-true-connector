@@ -12,4 +12,6 @@ public class ModelUtil {
 	public static final String TARGET = "urn:uuid:TARGET";
 	
 	public static final Offer OFFER = Offer.Builder.newInstance().build();
+
+	public static final String STATE = "urn:uuid:STATE";
 }
