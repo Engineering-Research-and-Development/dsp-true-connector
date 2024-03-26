@@ -29,7 +29,7 @@ public class JsonToContractNegotiationEventMessageTransformer implements Transfo
 
 		JsonNode eventType = input.get(DSpaceConstants.DSPACE_EVENT_TYPE);
 		if(eventType != null) {
-			builder.eventType(ContractNegotiationEventType.valueOf(eventType.asText()));		
+			builder.eventType(ContractNegotiationEventType.fromEventType(eventType.asText()));		
 		}
 				
 		return builder.build();

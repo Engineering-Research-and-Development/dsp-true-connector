@@ -1,5 +1,9 @@
 package it.eng.negotiation.model;
 
+import java.util.Collections;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum LeftOperand {
@@ -41,9 +45,22 @@ public enum LeftOperand {
 	
 	private final String operand;
 
+	private static final Map<String,LeftOperand> ENUM_MAP;
+	static {
+        Map<String,LeftOperand> map = new ConcurrentHashMap<String, LeftOperand>();
+        for (LeftOperand instance : LeftOperand.values()) {
+            map.put(instance.toString().toLowerCase(), instance);
+        }
+        ENUM_MAP = Collections.unmodifiableMap(map);
+    }
+	
+	public static LeftOperand fromLeftOperand(String leftOperand) {
+		return ENUM_MAP.get(leftOperand.toLowerCase());
+	}
+	
 	LeftOperand(final String operand) {
-	        this.operand = operand;
-	    }
+        this.operand = operand;
+    }
 
 	@Override
 	@JsonValue

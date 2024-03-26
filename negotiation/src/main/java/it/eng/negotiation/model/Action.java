@@ -1,5 +1,9 @@
 package it.eng.negotiation.model;
 
+import java.util.Collections;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum Action {
@@ -53,12 +57,25 @@ public enum Action {
 	COMMERICAL_USE_CC("cc:CommericalUse"),
 	PRESENT("odrl:present"),
 	USE("odrl:use");
-
+	
 	private final String action;
+	private static final Map<String, Action> BY_LABEL;
+
+	static {
+		 Map<String,Action> map = new ConcurrentHashMap<String, Action>();
+	        for (Action instance : Action.values()) {
+	            map.put(instance.toString().toLowerCase(), instance);
+	        }
+	        BY_LABEL = Collections.unmodifiableMap(map);
+	}
+	
+	public static Action fromAction(String action) {
+		return BY_LABEL.get(action);
+	}
 
 	Action(final String action) {
-	        this.action = action;
-	    }
+        this.action = action;
+    }
 
 	@Override
 	@JsonValue
