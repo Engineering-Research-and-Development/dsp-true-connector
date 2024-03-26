@@ -8,6 +8,13 @@ public class ContactNegotiationCallback {
 	private static final String CONSUMER_EVENTS = ":callback:/negotiations/:consumerPid:/events";
 	private static final String CONSUMER_TERMINATION = ":callback:/negotiations/:consumerPid:/termination";
 	
+	/*
+	 * Provider 
+	 */
+	private static final String PROVIDER_NEGOTIATION_OFFER = "callback:/negotiations/offers/cb";
+	private static final String PROVIDER_NEGOTIATION_OFFER_CONSUMER = "callback:/negotiations/offers/cb";
+	private static final String PROVIDER_HANDLE_AGREEMENT = "callback:/negotiations/agreement/cb";
+	
 	public static String getOffersCallback() {
 		return OFFERS;
 	}
@@ -28,4 +35,18 @@ public class ContactNegotiationCallback {
 		return CONSUMER_TERMINATION.replace(":callback:", callback).replace(":consumerPid:", consumerPid);
 	}
 
+	/*
+	 * Provider
+	 */
+	public static String getProviderNegotiationOfferCallback(String callback) {
+		return PROVIDER_NEGOTIATION_OFFER.replace(":callback:", callback);
+	}
+	
+	public static String getNegotiationOfferConsumer(String callback) {
+		return PROVIDER_NEGOTIATION_OFFER_CONSUMER.replace(":callback:", callback);
+	}
+	
+	public static String getProviderHandleAgreementCallback(String callback) {
+		return PROVIDER_HANDLE_AGREEMENT.replace(":callback:", callback);
+	}
 }

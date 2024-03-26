@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.negotiation.model.ContractNegotiationEventMessage;
+import it.eng.negotiation.model.ContractNegotiationEventType;
 import it.eng.negotiation.transformer.TransformInterface;
 import it.eng.tools.model.DSpaceConstants;
 
@@ -28,7 +29,7 @@ public class JsonToContractNegotiationEventMessageTransformer implements Transfo
 
 		JsonNode eventType = input.get(DSpaceConstants.DSPACE_EVENT_TYPE);
 		if(eventType != null) {
-			builder.eventType(eventType.asText());		
+			builder.eventType(ContractNegotiationEventType.valueOf(eventType.asText()));		
 		}
 				
 		return builder.build();
