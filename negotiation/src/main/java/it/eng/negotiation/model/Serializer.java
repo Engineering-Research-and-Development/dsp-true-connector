@@ -104,6 +104,7 @@ public class Serializer {
 	 */
 	public static <T> T deserializeProtocol(String jsonStringProtocol, Class<T> clazz) {
 		try {
+			// TODO add validation for @context and @type with values
 			T obj = jsonMapper.readValue(jsonStringProtocol, clazz);
 			 Set<ConstraintViolation<T>> violations = validator.validate(obj);
 			if(violations.isEmpty()) {

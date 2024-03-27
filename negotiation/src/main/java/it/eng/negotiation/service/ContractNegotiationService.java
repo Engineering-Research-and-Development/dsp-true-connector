@@ -167,7 +167,7 @@ public class ContractNegotiationService {
 
     private ContractNegotiation entityToModel(ContractNegotiationEntity entity) {
         return ContractNegotiation.Builder.newInstance()
-                .state(ContractNegotiationState.valueOf(entity.getState()))
+                .state(ContractNegotiationState.fromContractNegotiationState(entity.getState()))
                 .consumerPid(entity.getConsumerPid())
                 .providerPid(entity.getProviderPid())
                 .build();
