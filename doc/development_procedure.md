@@ -11,12 +11,13 @@ This dashboard is used to keep track of backlog, current set of tasks that will 
  - Once ticket is estimated, refined and there is description and scope of the task defined, it can be put into Todo column. Estimation should be set from 8 to max 16 hours. If estimation is more than 16 hours, then consider to split task into multiple smaller tasks. Usually if task is bigger than 16 hours means that it is not understand correctly or that scope is bigger than initially set.
  - Make sure to include testing (junit/integration/GHA/manual) and documentation update in estimation
  - Some general rules for describing tasks: why this task is created, what it solves, possible solution or ideas how to solve it, some pseudo code, links to some pages that can be used as starting point; if it is a bug, steps to reproduce are required
+ - Pull request review should not be put aside; each day, if there are pending PR's, some time should be dedicated to addressing PR's
  - If during development of current task something is noticed, that require developers attention (effort to fix/implement) and that cannot be done within the scope of the current task, create new task in Backlog, add description that will be used to do estimation.
  - Be sure NOT TO extend the scope of the current task. This will lead to estimation break an impact development process.
  - Tasks can have dependency on other tasks (those dependencies MUST be linked in the description), be sure to notice those dependencies and not work on dependent tasks in same time frame
  - Output of the task should be:
     * value added through code implementation, test coverage or documentation update
-    * new task, that can will be of first type
+    * new task, that can be of first type
  
 ## Definition of ready (DoR)
 
@@ -36,7 +37,7 @@ Task can be considered *DONE* when following criteria's are fulfilled:
  - all tests are pass
  - documentation is updated
  - changelog is updated (if applicable)
- - pull request review is done (resolved all conversation comments from RP) -> code is merged to develop branch
+ - pull request review is done (resolved all conversation comments from RP) -> code is squash merged to develop branch (one commit to develop branch)
  - feature branch deleted
  - task in Project Dashboard is closed (should be done automatically if linked with branch); if not, close it manually
 
