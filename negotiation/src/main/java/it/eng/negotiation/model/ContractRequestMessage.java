@@ -57,7 +57,6 @@ public class ContractRequestMessage {
 	@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
 	private String consumerPid;
 
-
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_CALLBACK_ADDRESS)
 	private String callbackAddress;
@@ -79,7 +78,6 @@ public class ContractRequestMessage {
 		public static Builder newInstance() {
 			return new Builder();
 		}
-
 
 		@JsonSetter(DSpaceConstants.DSPACE_CONSUMER_PID)
 		public Builder consumerPid(String consumerPid) {
@@ -111,13 +109,12 @@ public class ContractRequestMessage {
 			if(violations.isEmpty()) {
 				return message;
 			}
-			throw new ValidationException(
+			throw new ValidationException("ContractRequestMessage - " +
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())
-						.collect(Collectors.joining(",")));
+						.collect(Collectors.joining(", ")));
 			}
-			
 	}
 
 	@JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)

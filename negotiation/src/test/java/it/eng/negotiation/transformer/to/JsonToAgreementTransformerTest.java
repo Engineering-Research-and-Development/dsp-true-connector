@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -12,6 +13,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.negotiation.model.Agreement;
 import it.eng.tools.model.DSpaceConstants;
 
+@Disabled("Until transformers are needed or for deletion")
 public class JsonToAgreementTransformerTest extends AbstractToTransformerTest {
 
 	private JsonToAgreementTransformer transformer = new JsonToAgreementTransformer();

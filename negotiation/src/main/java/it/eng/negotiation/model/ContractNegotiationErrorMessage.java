@@ -53,15 +53,16 @@ import lombok.NoArgsConstructor;
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic = true)
 public class ContractNegotiationErrorMessage extends AbstractNegotiationModel {
 
-
     @NotNull
     @JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
     private String consumerPid;
 
     @JsonProperty(DSpaceConstants.DSPACE_CODE)
     private String code;
+    
     @JsonProperty(DSpaceConstants.DSPACE_REASON)
     private List<Reason> reason;
+    
     @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
     private List<Description> description;
 
@@ -102,29 +103,12 @@ public class ContractNegotiationErrorMessage extends AbstractNegotiationModel {
             message.reason = reason;
             return this;
         }
-//		@JsonProperty(DSpaceConstants.DSPACE + "reason")
-//		public Builder reason(Reason reason) {
-//			if (message.reasons == null) {
-//				message.reasons = new ArrayList<Reason>();
-//			}
-//			message.reasons.add(reason);
-//			return this;
-//		}
 
         @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
         public Builder description(List<Description> description) {
             message.description = description;
             return this;
         }
-
-//		@JsonProperty(DSpaceConstants.DCT + "description")
-//		public Builder description(Description description) {
-//			if (message.descriptions == null) {
-//				message.descriptions = new ArrayList<Description>();
-//			}
-//			message.descriptions.add(description);
-//			return this;
-//		}
 
         public ContractNegotiationErrorMessage build() {
             if (message.consumerPid == null) {
@@ -135,11 +119,11 @@ public class ContractNegotiationErrorMessage extends AbstractNegotiationModel {
             if (violations.isEmpty()) {
                 return message;
             }
-            throw new ValidationException(
+            throw new ValidationException("ContractNegotiationErrorMessage - " +
                     violations
                             .stream()
                             .map(v -> v.getPropertyPath() + " " + v.getMessage())
-                            .collect(Collectors.joining(",")));
+                            .collect(Collectors.joining(", ")));
         }
     }
 

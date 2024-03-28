@@ -23,14 +23,12 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.ContractAgreementMessage;
 import it.eng.negotiation.model.ContractNegotiationEventMessage;
 import it.eng.negotiation.model.ContractNegotiationEventType;
 import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
 import it.eng.negotiation.model.ContractOfferMessage;
 import it.eng.negotiation.model.ModelUtil;
-import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.model.Serializer;
 import it.eng.negotiation.service.CallbackHandler;
 import it.eng.negotiation.service.ContractNegotiationConsumerService;
@@ -136,8 +134,7 @@ public class ContractNegotiationConsumerCallbackControllerTest {
 				.providerPid(ModelUtil.PROVIDER_PID)
 				.consumerPid(ModelUtil.CONSUMER_PID)
 				.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
-				.agreement(Agreement.Builder.newInstance()
-					.build())
+				.agreement(ModelUtil.AGREEMENT)
 				.build();
 	}
 	
@@ -160,11 +157,7 @@ public class ContractNegotiationConsumerCallbackControllerTest {
 		return ContractOfferMessage.Builder.newInstance()
 //				.consumerPid(ModelUtil.CONSUMER_PID) // optional; If the message includes a consumerPid property, the request will be associated with an existing CN.
 				.providerPid(ModelUtil.PROVIDER_PID) 
-				.offer(Offer.Builder.newInstance()
-						.assignee(ModelUtil.ASSIGNEE)
-						.assigner(ModelUtil.ASSIGNER)
-						.target(ModelUtil.TARGET)
-						.build())
+				.offer(ModelUtil.OFFER)
 				.callbackAddress(ModelUtil.CALLBACK_ADDRESS)   // mandatory???
 				.build();
 	}

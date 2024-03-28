@@ -89,11 +89,11 @@ public class ContractNegotiation extends AbstractNegotiationModel {
             if (violations.isEmpty()) {
                 return message;
             }
-            throw new ValidationException(
+            throw new ValidationException("ContractNegotiation - " + 
                     violations
                             .stream()
                             .map(v -> v.getPropertyPath() + " " + v.getMessage())
-                            .collect(Collectors.joining(",")));
+                            .collect(Collectors.joining(", ")));
         }
     }
 

@@ -51,7 +51,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true) 
 public class ContractAgreementMessage extends AbstractNegotiationModel {
-
 	
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
@@ -60,6 +59,7 @@ public class ContractAgreementMessage extends AbstractNegotiationModel {
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_CALLBACK_ADDRESS)
 	private String callbackAddress;
+	
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_AGREEMENT)
 	private Agreement agreement;
@@ -107,11 +107,11 @@ public class ContractAgreementMessage extends AbstractNegotiationModel {
 			if(violations.isEmpty()) {
 				return message;
 			}
-			throw new ValidationException(
+			throw new ValidationException("ContractAgreementMessage - " + 
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())
-						.collect(Collectors.joining(",")));
+						.collect(Collectors.joining(", ")));
 		}
 	}
 

@@ -57,9 +57,11 @@ public class ContractOfferMessage extends AbstractNegotiationModel {
 	// not mandatory in initial offer message
 	@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
 	private String consumerPid;
+	
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_OFFER)
 	private Offer offer;
+	
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_CALLBACK_ADDRESS)
 	private String callbackAddress;
@@ -83,16 +85,19 @@ public class ContractOfferMessage extends AbstractNegotiationModel {
 			message.consumerPid = consumerPid;
 			return this;
 		}
+		
 		@JsonSetter((DSpaceConstants.DSPACE_PROVIDER_PID))
 		public Builder providerPid(String providerPid) {
 			message.providerPid = providerPid;
 			return this;
 		}
+		
 		@JsonProperty(DSpaceConstants.DSPACE_CALLBACK_ADDRESS)
 		public Builder callbackAddress(String callbackAddress) {
 			message.callbackAddress = callbackAddress;
 			return this;
 		}
+		
 		@JsonProperty(DSpaceConstants.DSPACE_OFFER)
 		public Builder offer(Offer offer) {
 			message.offer = offer;
@@ -105,11 +110,11 @@ public class ContractOfferMessage extends AbstractNegotiationModel {
 			if(violations.isEmpty()) {
 				return message;
 			}
-			throw new ValidationException(
+			throw new ValidationException("ContractOfferMessage - " +
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())
-						.collect(Collectors.joining(",")));
+						.collect(Collectors.joining(", ")));
 			}
 	}
 

@@ -6,8 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.UUID;
-
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -21,7 +19,7 @@ public class ContractRequestMessageTest {
 			.consumerPid(ModelUtil.CONSUMER_PID)
 			.providerPid(ModelUtil.PROVIDER_PID)
 			.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
-			.offer(Offer.Builder.newInstance().build())
+			.offer(ModelUtil.OFFER)
 			.build();
 	
 	@Test
@@ -43,7 +41,7 @@ public class ContractRequestMessageTest {
 		ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
 				.consumerPid(ModelUtil.CONSUMER_PID)
 				.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
-				.offer(Offer.Builder.newInstance().build())
+				.offer(ModelUtil.OFFER)
 				.build();
 		String result = Serializer.serializePlain(contractRequestMessage);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
@@ -56,14 +54,11 @@ public class ContractRequestMessageTest {
 	
 	@Test
 	public void testPlain_offer() throws JsonProcessingException {
-		Offer offer = Offer.Builder.newInstance()
-				.target(ModelUtil.TARGET)
-				.build();
 		ContractRequestMessage contractRequestMessageOffer = ContractRequestMessage.Builder.newInstance()
 				.consumerPid(ModelUtil.CONSUMER_PID)
 				.providerPid(ModelUtil.PROVIDER_PID)
 				.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
-				.offer(offer)
+				.offer(ModelUtil.OFFER)
 				.build();
 		String result = Serializer.serializePlain(contractRequestMessageOffer);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
@@ -94,14 +89,11 @@ public class ContractRequestMessageTest {
 	
 	@Test
 	public void testProtocol_offer() throws JsonProcessingException {
-		Offer offer = Offer.Builder.newInstance()
-				.target(UUID.randomUUID().toString())
-				.build();
 		ContractRequestMessage contractRequestMessageOffer = ContractRequestMessage.Builder.newInstance()
 				.consumerPid(ModelUtil.CONSUMER_PID)
 				.providerPid(ModelUtil.PROVIDER_PID)
 				.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
-				.offer(offer)
+				.offer(ModelUtil.OFFER)
 				.build();
 		String result = Serializer.serializeProtocol(contractRequestMessageOffer);
 		assertTrue(result.contains(DSpaceConstants.CONTEXT));

@@ -43,7 +43,6 @@ public class ContractNegotiationEventMessage extends AbstractNegotiationModel {
 	
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_EVENT_TYPE)
-	@JsonIgnoreProperties(ignoreUnknown = true)
 	private ContractNegotiationEventType eventType;
 	
 	@JsonPOJOBuilder(withPrefix = "")
@@ -84,11 +83,11 @@ public class ContractNegotiationEventMessage extends AbstractNegotiationModel {
 			if(violations.isEmpty()) {
 				return message;
 			}
-			throw new ValidationException(
+			throw new ValidationException("ContractNegotiationEventMessage - " +
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())
-						.collect(Collectors.joining(",")));
+						.collect(Collectors.joining(", ")));
 			}
 	}
 

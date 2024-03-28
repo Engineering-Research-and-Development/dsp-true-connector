@@ -48,6 +48,7 @@ public class ContractNegotiationTerminationMessage extends AbstractNegotiationMo
 	
 	@JsonProperty(DSpaceConstants.DSPACE_CODE)
 	private String code;
+	
 	@JsonProperty(DSpaceConstants.DSPACE_REASON)
 	private List<Reason> reason;
 	
@@ -91,11 +92,11 @@ public class ContractNegotiationTerminationMessage extends AbstractNegotiationMo
 			if(violations.isEmpty()) {
 				return message;
 			}
-			throw new ValidationException(
+			throw new ValidationException("ContractNegotiationTerminationMessage - " +
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())
-						.collect(Collectors.joining(",")));
+						.collect(Collectors.joining(", ")));
 			}
 		
 	}
