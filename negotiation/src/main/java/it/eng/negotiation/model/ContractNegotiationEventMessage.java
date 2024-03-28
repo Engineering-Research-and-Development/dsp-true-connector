@@ -43,7 +43,6 @@ public class ContractNegotiationEventMessage extends AbstractNegotiationModel {
 	
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_EVENT_TYPE)
-	@JsonIgnoreProperties(ignoreUnknown = true)
 	private ContractNegotiationEventType eventType;
 	
 	@JsonPOJOBuilder(withPrefix = "")

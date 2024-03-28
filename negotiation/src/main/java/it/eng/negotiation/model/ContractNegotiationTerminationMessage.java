@@ -48,6 +48,7 @@ public class ContractNegotiationTerminationMessage extends AbstractNegotiationMo
 	
 	@JsonProperty(DSpaceConstants.DSPACE_CODE)
 	private String code;
+	
 	@JsonProperty(DSpaceConstants.DSPACE_REASON)
 	private List<Reason> reason;
 	

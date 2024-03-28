@@ -1,5 +1,8 @@
 package it.eng.negotiation.model;
 
+import java.util.Arrays;
+import java.util.UUID;
+
 public class ModelUtil {
 
 	public static final String CONSUMER_PID = "urn:uuid:CONSUMER_PID";
@@ -11,6 +14,35 @@ public class ModelUtil {
 	
 	public static final String TARGET = "urn:uuid:TARGET";
 	
-	public static final Offer OFFER = Offer.Builder.newInstance().build();
+	public static String generateUUID() {
+		return "urn:uuid:" + UUID.randomUUID().toString();
+	}
+	
+	
+	public static Constraint CONSTRAINT = Constraint.Builder.newInstance()
+			.leftOperand(LeftOperand.DATE_TIME)
+			.operator(Operator.GT)
+			.rightOperand("2024-02-29T00:00:01+01:00")
+			.build();
+	
+	public static Permission PERMISSION = Permission.Builder.newInstance()
+			.action(Action.USE)
+			.target(ModelUtil.TARGET)
+			.constraint(Arrays.asList(ModelUtil.CONSTRAINT))
+			.build();
+	
+	public static Offer OFFER = Offer.Builder.newInstance()
+			.target(ModelUtil.TARGET)
+			.assignee(ModelUtil.ASSIGNEE)
+			.assigner(ModelUtil.ASSIGNER)
+			.permission(Arrays.asList(ModelUtil.PERMISSION))
+			.build();
+
+	public static ContractOfferMessage CONTRACT_OFFER_MESSAGE = ContractOfferMessage.Builder.newInstance()
+			.consumerPid(ModelUtil.CONSUMER_PID)
+			.providerPid(ModelUtil.PROVIDER_PID)
+			.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
+			.offer(ModelUtil.OFFER)
+			.build();
 
 }

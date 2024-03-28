@@ -6,8 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.Arrays;
-
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -17,35 +15,9 @@ import jakarta.validation.ValidationException;
 
 public class ContractOfferMessageTest {
 	
-	private Constraint constraint = Constraint.Builder.newInstance()
-			.leftOperand(LeftOperand.DATE_TIME)
-			.operator(Operator.GT)
-			.rightOperand("2024-02-29T00:00:01+01:00")
-			.build();
-	
-	private Permission permission = Permission.Builder.newInstance()
-			.action(Action.USE)
-			.target(ModelUtil.TARGET)
-			.constraint(Arrays.asList(constraint))
-			.build();
-	
-	private Offer offer = Offer.Builder.newInstance()
-			.target(ModelUtil.TARGET)
-			.assignee(ModelUtil.ASSIGNEE)
-			.assigner(ModelUtil.ASSIGNER)
-			.permission(Arrays.asList(permission))
-			.build();
-
-	private ContractOfferMessage contractOfferMessage = ContractOfferMessage.Builder.newInstance()
-			.consumerPid(ModelUtil.CONSUMER_PID)
-			.providerPid(ModelUtil.PROVIDER_PID)
-			.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
-			.offer(offer)
-			.build();
-	
 	@Test
 	public void testPlain() throws JsonProcessingException {
-		String result = Serializer.serializePlain(contractOfferMessage);
+		String result = Serializer.serializePlain(ModelUtil.CONTRACT_OFFER_MESSAGE);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
 		assertFalse(result.contains(DSpaceConstants.ID));
@@ -59,7 +31,7 @@ public class ContractOfferMessageTest {
 
 	@Test
 	public void testProtocol() throws JsonProcessingException {
-		String result = Serializer.serializeProtocol(contractOfferMessage);
+		String result = Serializer.serializeProtocol(ModelUtil.CONTRACT_OFFER_MESSAGE);
 		assertTrue(result.contains(DSpaceConstants.CONTEXT));
 		assertTrue(result.contains(DSpaceConstants.TYPE));
 		assertTrue(result.contains(DSpaceConstants.ID));
