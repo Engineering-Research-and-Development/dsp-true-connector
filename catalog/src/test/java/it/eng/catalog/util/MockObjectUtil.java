@@ -84,28 +84,10 @@ public class MockObjectUtil {
 				.hasPolicy(Arrays.asList(offer))
 				.build();
 		
-		Catalog cat = Catalog.Builder.newInstance()
-				.id(UUID.randomUUID().toString())
-				.keyword(Arrays.asList("ABC", "123"))
-				.service(Arrays.asList(service))
-				.dataset(Arrays.asList(dataset))
-				.description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Catalog description").build()))
-				.title("Catalog title")
-				.build();
-		
-		 Catalog catalog = Catalog.Builder.newInstance()
+		 return Catalog.Builder.newInstance()
 					.conformsTo(CONFORMSTO)
 					.creator(CREATOR)
-					.description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Catalog test").build(),
-							Multilanguage.Builder.newInstance().language("it").value("Catalog test but in Italian").build()))
-					.distribution(Arrays.asList(Distribution.Builder.newInstance()
-							.dataService(null)
-//							.description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("DS descr for test").build()))
-//							.issued(CatalogUtil.ISSUED)
-//							.modified(CatalogUtil.MODIFIED)
-//							.title("Distribution title for tests")
-							.format(Reference.Builder.newInstance().id("dspace:s3+push").build())
-							.build()))
+					.description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Catalog description").build()))
 					.identifier(IDENTIFIER)
 					.issued(ISSUED)
 					.keyword(Arrays.asList("keyword1", "keyword2"))
@@ -117,7 +99,6 @@ public class MockObjectUtil {
 					.dataset(Arrays.asList(dataset))
 					.distribution(Arrays.asList(distribution))
 					.build();
-		return cat;
 	}
 
 

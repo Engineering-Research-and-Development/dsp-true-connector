@@ -97,7 +97,7 @@ public class CatalogProtocolController {
 		log.info("Preparing dataset");
 		verifyAuthorization(authorization);
 		try {
-			DatasetRequestMessage d = verifyDatasetRequestMessage(body);
+			verifyDatasetRequestMessage(body);
 			Dataset dataset = datasetService.findById(id);
 
 			// @formatter:off
