@@ -113,7 +113,7 @@ public class ContractRequestMessage {
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())
-						.collect(Collectors.joining(",")));
+						.collect(Collectors.joining(", ")));
 			}
 	}
 

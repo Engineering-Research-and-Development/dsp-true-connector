@@ -93,7 +93,7 @@ public class ContractNegotiation extends AbstractNegotiationModel {
                     violations
                             .stream()
                             .map(v -> v.getPropertyPath() + " " + v.getMessage())
-                            .collect(Collectors.joining(",")));
+                            .collect(Collectors.joining(", ")));
         }
     }
 

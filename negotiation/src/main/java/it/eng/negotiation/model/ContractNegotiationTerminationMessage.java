@@ -96,7 +96,7 @@ public class ContractNegotiationTerminationMessage extends AbstractNegotiationMo
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())
-						.collect(Collectors.joining(",")));
+						.collect(Collectors.joining(", ")));
 			}
 		
 	}
