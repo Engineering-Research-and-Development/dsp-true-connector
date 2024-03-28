@@ -45,4 +45,18 @@ public class ModelUtil {
 			.offer(ModelUtil.OFFER)
 			.build();
 
+	public static Agreement AGREEMENT = Agreement.Builder.newInstance()
+			.id(ModelUtil.generateUUID())
+			.assignee(ModelUtil.ASSIGNEE)
+			.assigner(ModelUtil.ASSIGNER)
+			.target(ModelUtil.TARGET)
+			.permission(Arrays.asList(Permission.Builder.newInstance()
+					.action(Action.USE)
+					.constraint(Arrays.asList(Constraint.Builder.newInstance()
+							.leftOperand(LeftOperand.COUNT)
+							.operator(Operator.EQ)
+							.rightOperand("5")
+							.build()))
+					.build()))
+			.build();
 }

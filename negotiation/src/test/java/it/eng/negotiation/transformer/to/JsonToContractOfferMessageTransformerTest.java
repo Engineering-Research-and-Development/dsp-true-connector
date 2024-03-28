@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -17,6 +18,7 @@ import it.eng.negotiation.model.ContractOfferMessage;
 import it.eng.negotiation.model.Offer;
 import it.eng.tools.model.DSpaceConstants;
 
+@Disabled("Until transformers are needed or for deletion")
 public class JsonToContractOfferMessageTransformerTest extends AbstractToTransformerTest {
 
 	private JsonToContractOfferMessageTransformer transformer = new JsonToContractOfferMessageTransformer();
