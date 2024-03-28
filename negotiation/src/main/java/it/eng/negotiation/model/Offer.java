@@ -132,7 +132,7 @@ public class Offer {
 			if(violations.isEmpty()) {
 				return offer;
 			}
-			throw new ValidationException(
+			throw new ValidationException("Offer - " + 
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())

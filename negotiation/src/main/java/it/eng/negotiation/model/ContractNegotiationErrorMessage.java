@@ -119,7 +119,7 @@ public class ContractNegotiationErrorMessage extends AbstractNegotiationModel {
             if (violations.isEmpty()) {
                 return message;
             }
-            throw new ValidationException(
+            throw new ValidationException("ContractNegotiationErrorMessage - " +
                     violations
                             .stream()
                             .map(v -> v.getPropertyPath() + " " + v.getMessage())

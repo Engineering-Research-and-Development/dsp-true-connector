@@ -97,7 +97,7 @@ public class Permission {
 			if(violations.isEmpty()) {
 				return permission;
 			}
-			throw new ValidationException(
+			throw new ValidationException("Permission - " +
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())

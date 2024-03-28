@@ -71,7 +71,7 @@ public class ContractAgreementVerificationMessage extends AbstractNegotiationMod
 			if(violations.isEmpty()) {
 				return message;
 			}
-			throw new ValidationException(
+			throw new ValidationException("ContractAgreementVerificationMessage - " +
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())

@@ -92,7 +92,7 @@ public class ContractNegotiationTerminationMessage extends AbstractNegotiationMo
 			if(violations.isEmpty()) {
 				return message;
 			}
-			throw new ValidationException(
+			throw new ValidationException("ContractNegotiationTerminationMessage - " +
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())

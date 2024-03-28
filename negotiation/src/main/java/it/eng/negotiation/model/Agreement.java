@@ -127,7 +127,7 @@ public class Agreement {
 			if(violations.isEmpty()) {
 				return agreement;
 			}
-			throw new ValidationException(
+			throw new ValidationException("Agreement - " + 
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())
