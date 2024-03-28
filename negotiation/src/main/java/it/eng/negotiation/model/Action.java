@@ -56,7 +56,7 @@ public enum Action {
 	STREAM(DSpaceConstants.ODRL + "stream"),
 	SHARE_ALIKE_CC("cc:ShareAlike"),
 	ACCEPT_TRACKING(DSpaceConstants.ODRL + "acceptTracking"),
-	COMMERICAL_USE_CC("cc:CommericalUse"),
+	COMMERCIAL_USE_CC("cc:CommercialUse"),
 	PRESENT(DSpaceConstants.ODRL + "present"),
 	USE(DSpaceConstants.ODRL + "use");
 	
