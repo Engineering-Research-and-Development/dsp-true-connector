@@ -124,6 +124,7 @@ public interface DSpaceConstants {
 	public static final String LEFT_OPERAND = "leftOperand";
 	public static final String OFFER = "offer";
 	public static final String DSPACE_OFFER = DSPACE + OFFER;
+	public static final String ODRL_OFFER = ODRL + OFFER;
 	public static final String OFFER_ID = "offerId";
 	public static final String DSPACE_OFFER_ID = DSPACE + OFFER_ID;
 	public static final String OPERAND = "operand";

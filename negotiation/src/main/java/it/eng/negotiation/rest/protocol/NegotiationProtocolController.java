@@ -10,6 +10,7 @@ import it.eng.negotiation.transformer.from.JsonFromContractNegotiationErrorMessa
 import it.eng.negotiation.transformer.to.*;
 import it.eng.tools.model.DSpaceConstants;
 import lombok.extern.java.Log;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -29,55 +30,16 @@ public class NegotiationProtocolController {
 
     private ContractNegotiationService contractNegotiationService;
     private CallbackHandler callbackHandler;
-
-
-    /*
-     * private final JsonFromContractNegotiationTransformer
-     * jsonFromContractNegotiationTransformer; private final
-     * JsonToContractRequestMessageTransformer
-     * jsonToContractRequestMessageTransformer; private final
-     * JsonToContractNegotiationEventMessageTransformer
-     * jsonToContractNegotiationEventMessageTransformer; private final
-     * JsonFromContractNegotiationErrorMessageTrasformer
-     * jsonFromContractNegotiationErrorMessageTrasformer; private final
-     * JsonToContractAgreementMessageTransformer
-     * jsonToContractAgreementMessageTransformer;
-     */
-    private boolean provider = true;
-    private boolean consumer = false;
+    private boolean isConsumer;
 
     public NegotiationProtocolController(ContractNegotiationService contractNegotiationService,
                                          CallbackHandler callbackHandler,
                                          @Value("${application.connectorid}") String connectroId,
-                                         @Value("${application.isconsumer}") boolean isConsumer
-            /*
-             * JsonFromContractNegotiationTransformer
-             * jsonFromContractNegotiationTransformer,
-             * JsonToContractRequestMessageTransformer
-             * jsonToContractRequestMessageTransformer,
-             * JsonToContractNegotiationEventMessageTransformer
-             * jsonToContractNegotiationEventMessageTransformer,
-             * JsonFromContractNegotiationErrorMessageTrasformer
-             * jsonFromContractNegotiationErrorMessageTrasformer,
-             * JsonToContractAgreementMessageTransformer
-             * jsonToContractAgreementMessageTransformer
-             */) {
+                                         @Value("${application.isconsumer}") boolean isConsumer) {
         super();
         this.contractNegotiationService = contractNegotiationService;
         this.callbackHandler = callbackHandler;
-        /*
-         * this.jsonFromContractNegotiationTransformer =
-         * jsonFromContractNegotiationTransformer;
-         * this.jsonToContractRequestMessageTransformer =
-         * jsonToContractRequestMessageTransformer;
-         * this.jsonToContractNegotiationEventMessageTransformer =
-         * jsonToContractNegotiationEventMessageTransformer;
-         * this.jsonFromContractNegotiationErrorMessageTrasformer =
-         * jsonFromContractNegotiationErrorMessageTrasformer;
-         * this.jsonToContractAgreementMessageTransformer =
-         * jsonToContractAgreementMessageTransformer
-         */
-        ;
+        this.isConsumer = isConsumer;
     }
 
 // 2.1 The negotiation endpoint (Provider side)
@@ -159,9 +121,9 @@ public class NegotiationProtocolController {
 
     @PostMapping(path = "/{providerPid}/events")
     public ResponseEntity<JsonNode> switchConsumerOrProvider(@PathVariable String providerPid, @RequestBody JsonNode object) {
-        if (provider) {
+        if (!isConsumer) {
             return acceptCurrentProviderContractOffer(providerPid, object);
-        } else if (consumer) {
+        } else if (isConsumer) {
             return providerCanFinalizeContract(providerPid, object);
         }
         return ResponseEntity.internalServerError().contentType(MediaType.APPLICATION_JSON).body(object);
@@ -198,8 +160,7 @@ public class NegotiationProtocolController {
     public ResponseEntity<JsonNode> providerCanFinalizeContract(
             /* @PathVariable */ String id,
             /* @RequestBody */ JsonNode object) {
-        JsonToContractNegotiationEventMessageTransformer jsonToContractNegotiationEventMessageTransformer = new JsonToContractNegotiationEventMessageTransformer();
-        ContractNegotiationEventMessage cam = jsonToContractNegotiationEventMessageTransformer.transform(object);
+        ContractNegotiationEventMessage cam = Serializer.deserializeProtocol(object.toString(), ContractNegotiationEventMessage.class);
 
         // If the negotiation state is successfully transitioned, the consumer must return HTTP code 200 (OK).
         // The response body is not specified and clients are not required to process it.
@@ -216,17 +177,15 @@ public class NegotiationProtocolController {
     @PostMapping(path = "/{id}/agreement/verification")
     public ResponseEntity<JsonNode> consumerCanVerifyAgreement(@PathVariable String id,
                                                                @RequestBody JsonNode object) {
-        JsonToContractAgreementVerificationMessageTransformer jsonToContractAgreementVerificationMessageTransformer = new JsonToContractAgreementVerificationMessageTransformer();
-        ContractAgreementVerificationMessage cavm = jsonToContractAgreementVerificationMessageTransformer.transform(object);
-
+        ContractAgreementVerificationMessage cavm = Serializer.deserializeProtocol(object.toString(), ContractAgreementVerificationMessage.class);
         return null;
     }
 
     @PostMapping(path = "/{id}/termination")
     public ResponseEntity<JsonNode> switchConsumerOrProviderTermination(@PathVariable String id, @RequestBody JsonNode object) {
-        if (provider) {
+        if (!isConsumer) {
             return providerCanTerminateNegotiation(id, object);
-        } else if (consumer) {
+        } else if (isConsumer) {
             return consumerCanTerminateNegotiation(id, object);
         }
         return ResponseEntity.internalServerError().contentType(MediaType.APPLICATION_JSON).body(object);
@@ -239,9 +198,7 @@ public class NegotiationProtocolController {
     public ResponseEntity<JsonNode> consumerCanTerminateNegotiation(/*@PathVariable*/ String id,
             /*@RequestBody*/ JsonNode object) {
 
-        JsonToContractNegotiationTerminationMessageTransformer jsonToContractNegotiationTerminationMessageTransformer = new JsonToContractNegotiationTerminationMessageTransformer();
-        ContractNegotiationTerminationMessage cntm = jsonToContractNegotiationTerminationMessageTransformer.transform(object);
-
+        ContractNegotiationTerminationMessage cntm = Serializer.deserializeProtocol(object.toString(), ContractNegotiationTerminationMessage.class);
         return null;
     }
 
@@ -252,9 +209,7 @@ public class NegotiationProtocolController {
     public ResponseEntity<JsonNode> providerCanTerminateNegotiation(/*@PathVariable*/ String id,
             /*@RequestBody*/ JsonNode object) {
 
-        JsonToContractNegotiationTerminationMessageTransformer jsonToContractNegotiationTerminationMessageTransformer = new JsonToContractNegotiationTerminationMessageTransformer();
-        ContractNegotiationTerminationMessage cntm = jsonToContractNegotiationTerminationMessageTransformer.transform(object);
-
+        ContractNegotiationTerminationMessage cntm = Serializer.deserializeProtocol(object.toString(), ContractNegotiationTerminationMessage.class);
         return null;
     }
 
@@ -277,9 +232,7 @@ public class NegotiationProtocolController {
     public ResponseEntity<JsonNode> providerMayMakeOffer(@PathVariable String id,
                                                          @RequestBody JsonNode object) {
 
-        JsonToContractOfferMessageTransformer jsonToContractOfferMessageTransformer = new JsonToContractOfferMessageTransformer();
-        ContractOfferMessage com = jsonToContractOfferMessageTransformer.transform(object);
-
+        ContractOfferMessage com = Serializer.deserializeProtocol(object.toString(), ContractOfferMessage.class);
         return null;
     }
 
@@ -290,9 +243,7 @@ public class NegotiationProtocolController {
     public ResponseEntity<JsonNode> providerCanPostAContractAgreement(@PathVariable String id,
                                                                       @RequestBody JsonNode object) {
 
-        JsonToContractAgreementMessageTransformer jsonToContractAgreementMessageTransformer = new JsonToContractAgreementMessageTransformer();
-        ContractAgreementMessage com = jsonToContractAgreementMessageTransformer.transform(object);
-
+        ContractAgreementMessage com = Serializer.deserializeProtocol(object.toString(), ContractAgreementMessage.class);
         return null;
     }
 
