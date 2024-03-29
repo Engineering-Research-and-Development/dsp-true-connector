@@ -15,7 +15,7 @@ public class ContractNegotiationEventMessageTest {
 	private ContractNegotiationEventMessage contractNegotiationEventMessage = ContractNegotiationEventMessage.Builder.newInstance()
 			.consumerPid(ModelUtil.CONSUMER_PID)
 			.providerPid(ModelUtil.PROVIDER_PID)
-			.eventType("Something nice has happened")
+			.eventType(ContractNegotiationEventType.ACCEPTED)
 			.build();
 	
 	@Test

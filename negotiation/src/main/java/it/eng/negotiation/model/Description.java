@@ -21,6 +21,7 @@ public class Description {
 	
 	@JsonProperty(DSpaceConstants.VALUE)
 	private String value;
+	
 	@JsonProperty(DSpaceConstants.LANGUAGE)
 	private String language;
 	

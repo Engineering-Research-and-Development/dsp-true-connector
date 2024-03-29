@@ -50,98 +50,86 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = ContractNegotiationErrorMessage.Builder.class)
-@JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true) 
+@JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic = true)
 public class ContractNegotiationErrorMessage extends AbstractNegotiationModel {
-	
-	
-	@NotNull
-	@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
-	private String consumerPid;
-	
-	@JsonProperty(DSpaceConstants.DSPACE_CODE)
-	private String code;
-	@JsonProperty(DSpaceConstants.DSPACE_REASON)
-	private List<Reason> reason;
-	@JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
-	private List<Description> description;
-	
-	@JsonPOJOBuilder(withPrefix = "")
-	@JsonIgnoreProperties(ignoreUnknown = true)
-	public static class Builder {
 
-		private ContractNegotiationErrorMessage message;
-		
-		private Builder() {
-			message = new ContractNegotiationErrorMessage();
-		}
-		
-		public static Builder newInstance() {
-			return new Builder();
-		}
-		
-		@JsonSetter((DSpaceConstants.DSPACE_PROVIDER_PID))
-		public Builder providerPid(String providerPid) {
-			message.providerPid = providerPid;
-			return this;
-		}
-		
-		@JsonSetter(DSpaceConstants.DSPACE_CONSUMER_PID)
-		public Builder consumerPid(String consumerPid) {
-			message.consumerPid = consumerPid;
-			return this;
-		}
-		
-		@JsonProperty(DSpaceConstants.DSPACE_CODE)
-		public Builder code(String code) {
-			message.code = code;
-			return this;
-		}
-		@JsonProperty(DSpaceConstants.DSPACE_REASON)
-		public Builder reason(List<Reason> reason) {
-			message.reason = reason;
-			return this;
-		}
-//		@JsonProperty(DSpaceConstants.DSPACE + "reason")
-//		public Builder reason(Reason reason) {
-//			if (message.reasons == null) {
-//				message.reasons = new ArrayList<Reason>();
-//			}
-//			message.reasons.add(reason);
-//			return this;
-//		}
-		
-		@JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
-		public Builder description(List<Description> description) {
-			message.description = description;
-			return this;
-		}
-		
-//		@JsonProperty(DSpaceConstants.DCT + "description")
-//		public Builder description(Description description) {
-//			if (message.descriptions == null) {
-//				message.descriptions = new ArrayList<Description>();
-//			}
-//			message.descriptions.add(description);
-//			return this;
-//		}
-		
-		public ContractNegotiationErrorMessage build() {
-			Set<ConstraintViolation<ContractNegotiationErrorMessage>> violations 
-				= Validation.buildDefaultValidatorFactory().getValidator().validate(message);
-			if(violations.isEmpty()) {
-				return message;
-			}
-			throw new ValidationException(
-					violations
-						.stream()
-						.map(v -> v.getPropertyPath() + " " + v.getMessage())
-						.collect(Collectors.joining(",")));
-			}
-	}
+    @NotNull
+    @JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
+    private String consumerPid;
 
-	@Override
-	public String getType() {
-		return DSpaceConstants.DSPACE + ContractNegotiationErrorMessage.class.getSimpleName();
-	}
+    @JsonProperty(DSpaceConstants.DSPACE_CODE)
+    private String code;
+    
+    @JsonProperty(DSpaceConstants.DSPACE_REASON)
+    private List<Reason> reason;
+    
+    @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
+    private List<Description> description;
+
+    @JsonPOJOBuilder(withPrefix = "")
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Builder {
+
+        private ContractNegotiationErrorMessage message;
+
+        private Builder() {
+            message = new ContractNegotiationErrorMessage();
+        }
+
+        public static Builder newInstance() {
+            return new Builder();
+        }
+
+        @JsonSetter((DSpaceConstants.DSPACE_PROVIDER_PID))
+        public Builder providerPid(String providerPid) {
+            message.providerPid = providerPid;
+            return this;
+        }
+
+        @JsonSetter(DSpaceConstants.DSPACE_CONSUMER_PID)
+        public Builder consumerPid(String consumerPid) {
+            message.consumerPid = consumerPid;
+            return this;
+        }
+
+        @JsonProperty(DSpaceConstants.DSPACE_CODE)
+        public Builder code(String code) {
+            message.code = code;
+            return this;
+        }
+
+        @JsonProperty(DSpaceConstants.DSPACE_REASON)
+        public Builder reason(List<Reason> reason) {
+            message.reason = reason;
+            return this;
+        }
+
+        @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
+        public Builder description(List<Description> description) {
+            message.description = description;
+            return this;
+        }
+
+        public ContractNegotiationErrorMessage build() {
+            if (message.consumerPid == null) {
+                message.consumerPid = message.createNewId();
+            }
+            Set<ConstraintViolation<ContractNegotiationErrorMessage>> violations
+                    = Validation.buildDefaultValidatorFactory().getValidator().validate(message);
+            if (violations.isEmpty()) {
+                return message;
+            }
+            throw new ValidationException("ContractNegotiationErrorMessage - " +
+                    violations
+                            .stream()
+                            .map(v -> v.getPropertyPath() + " " + v.getMessage())
+                            .collect(Collectors.joining(", ")));
+        }
+    }
+
+    @Override
+    public String getType() {
+        return DSpaceConstants.DSPACE + ContractNegotiationErrorMessage.class.getSimpleName();
+    }
 
 }

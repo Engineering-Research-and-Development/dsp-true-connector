@@ -24,6 +24,7 @@ public class Reason {
 
 	@JsonProperty(DSpaceConstants.VALUE)
 	private String value;
+	
 	@JsonProperty(DSpaceConstants.LANGUAGE)
 	private String language;
 	

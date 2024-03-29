@@ -3,8 +3,8 @@ package it.eng.negotiation.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.eq;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -20,6 +20,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.negotiation.entity.ContractNegotiationEntity;
 import it.eng.negotiation.listener.ContractNegotiationPublisher;
+import it.eng.negotiation.model.ContractNegotiation;
+import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.ModelUtil;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
@@ -71,4 +73,34 @@ public class ContractNegotiationServiceTest {
 		assertNotNull(result.get());
 		assertEquals(result.get().get("@type").asText(), "dspace:ContractNegotiationErrorMessage");
 	}
+
+	@Test
+	public void getNegotiationByProviderPid() throws InterruptedException, ExecutionException {
+		ContractNegotiationEntity cne = new ContractNegotiationEntity();
+		cne.setConsumerPid(ModelUtil.CONSUMER_PID);
+		cne.setProviderPid(ModelUtil.PROVIDER_PID);
+		cne.setState(ContractNegotiationState.ACCEPTED.toString());
+		when(repository.findByProviderPid(anyString())).thenReturn(Optional.of(cne));
+		
+		CompletableFuture<ContractNegotiation> result = service.getNegotiationByProviderPid(ModelUtil.PROVIDER_PID);
+		
+		assertNotNull(result);
+		assertNotNull(result.get());
+		assertEquals(result.get().getConsumerPid(), ModelUtil.CONSUMER_PID);
+		assertEquals(result.get().getProviderPid(), ModelUtil.PROVIDER_PID);
+		assertEquals(result.get().getState(), ContractNegotiationState.ACCEPTED);
+	}
+
+	@Test
+	public void getNegotiationByProviderPid_notFound() {
+		when(repository.findByProviderPid(anyString())).thenReturn(Optional.ofNullable(null));
+		CompletableFuture<ContractNegotiation> result = service.getNegotiationByProviderPid(ModelUtil.PROVIDER_PID);
+		assertNotNull(result);
+		try {
+			result.get();
+		} catch (InterruptedException | ExecutionException e) {
+			assertEquals(e.getCause().getMessage(), "Contract negotiation with provider pid " + ModelUtil.PROVIDER_PID + " not found");
+		}
+	}
+
 }

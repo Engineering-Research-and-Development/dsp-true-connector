@@ -5,6 +5,14 @@ public interface DSpaceConstants {
 	public static enum ContractNegotiationStates {
 		REQUESTED, OFFERED, ACCEPTED, AGREED, VERIFIED, FINALIZED, TERMINATED
 	}
+	
+	public static enum ContractNegotiationEvent {
+		ACCEPTED, FINALIZED;
+	}
+	
+	public static enum Operators {
+		EQ, GT, GTEQ, HAS_PARENT, IS_A, IS_ALL_OF, IS_ANY_OF, IS_NONE_OF, IS_PART_OF, LT, TERM_LTEQ, NEQ;
+	}
 
 	public static final String DSPACE = "dspace:";
 	public static final String DCAT = "dcat:";
@@ -124,6 +132,7 @@ public interface DSpaceConstants {
 	public static final String LEFT_OPERAND = "leftOperand";
 	public static final String OFFER = "offer";
 	public static final String DSPACE_OFFER = DSPACE + OFFER;
+	public static final String ODRL_OFFER = ODRL + OFFER;
 	public static final String OFFER_ID = "offerId";
 	public static final String DSPACE_OFFER_ID = DSPACE + OFFER_ID;
 	public static final String OPERAND = "operand";

@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.negotiation.model.ContractNegotiationEventMessage;
+import it.eng.negotiation.model.ContractNegotiationEventType;
 import it.eng.tools.model.DSpaceConstants;
 
 public class JsonToContractNegotiationEventMessageTransformerTest extends AbstractToTransformerTest {
@@ -33,7 +34,7 @@ public class JsonToContractNegotiationEventMessageTransformerTest extends Abstra
 		in.put(DSpaceConstants.TYPE, DSpaceConstants.DSPACE + transformer.getOutputType().getSimpleName());
 		in.put(DSpaceConstants.DSPACE_CONSUMER_PID, "urn:uuid:" + UUID.randomUUID());
 		in.put(DSpaceConstants.DSPACE_PROVIDER_PID, "urn:uuid:" + UUID.randomUUID());
-		in.put(DSpaceConstants.DSPACE_EVENT_TYPE, "dspace:ACCEPTED");
+		in.put(DSpaceConstants.DSPACE_EVENT_TYPE, ContractNegotiationEventType.FINALIZED.toString());
 		return mapper.convertValue(in, JsonNode.class);
 	}
 }

@@ -36,73 +36,76 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = ContractNegotiation.Builder.class)
-@JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true) 
+@JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic = true)
 public class ContractNegotiation extends AbstractNegotiationModel {
 
-	@NotNull
-	@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
-	private String consumerPid;
-	
-	@NotNull
-	@JsonProperty(DSpaceConstants.DSPACE_STATE)
-	private ContractNegotiationState state;
+    @NotNull
+    @JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
+    private String consumerPid;
 
-	@JsonPOJOBuilder(withPrefix = "")	
-	@JsonIgnoreProperties(ignoreUnknown = true)
-	public static class Builder {
+    @NotNull
+    @JsonProperty(DSpaceConstants.DSPACE_STATE)
+    private ContractNegotiationState state;
 
-		private final ContractNegotiation message;
+    @JsonPOJOBuilder(withPrefix = "")
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Builder {
 
-		private Builder() {
-			message = new ContractNegotiation();
-		}
+        private final ContractNegotiation message;
 
-		@JsonCreator
-		public static ContractNegotiation.Builder newInstance() {
-			return new ContractNegotiation.Builder();
-		}
-		
-		@JsonProperty(DSpaceConstants.DSPACE_STATE)
-		public Builder state(ContractNegotiationState state) {
-			message.state = state;
-			return this;
-		}
-		
-		@JsonSetter(DSpaceConstants.DSPACE_PROVIDER_PID)
-		public Builder providerPid(String providerPid) {
-			message.providerPid = providerPid;
-			return this;
-		}
-		
-		@JsonSetter(DSpaceConstants.DSPACE_CONSUMER_PID)
-		public Builder consumerPid(String consumerPid) {
-			message.consumerPid = consumerPid;
-			return this;
-		}
-		
-		public ContractNegotiation build() {
-			Set<ConstraintViolation<ContractNegotiation>> violations 
-				= Validation.buildDefaultValidatorFactory().getValidator().validate(message);
-			if(violations.isEmpty()) {
-				return message;
-			}
-			throw new ValidationException(
-					violations
-						.stream()
-						.map(v -> v.getPropertyPath() + " " + v.getMessage())
-						.collect(Collectors.joining(",")));
-			}
-	}
+        private Builder() {
+            message = new ContractNegotiation();
+        }
 
-	@Override
-	public String toString() {
-		return ToStringBuilder.getDefaultStyle().toString();
-	}
+        @JsonCreator
+        public static ContractNegotiation.Builder newInstance() {
+            return new ContractNegotiation.Builder();
+        }
 
-	@Override
-	@JsonIgnoreProperties(value={ "type" }, allowGetters=true)
-	public String getType() {
-		return DSpaceConstants.DSPACE + ContractNegotiation.class.getSimpleName();
-	}
+        @JsonProperty(DSpaceConstants.DSPACE_STATE)
+        public Builder state(ContractNegotiationState state) {
+            message.state = state;
+            return this;
+        }
+
+        @JsonSetter(DSpaceConstants.DSPACE_PROVIDER_PID)
+        public Builder providerPid(String providerPid) {
+            message.providerPid = providerPid;
+            return this;
+        }
+
+        @JsonSetter(DSpaceConstants.DSPACE_CONSUMER_PID)
+        public Builder consumerPid(String consumerPid) {
+            message.consumerPid = consumerPid;
+            return this;
+        }
+
+        public ContractNegotiation build() {
+            if (message.providerPid == null) {
+                message.providerPid = message.createNewId();
+            }
+            Set<ConstraintViolation<ContractNegotiation>> violations
+                    = Validation.buildDefaultValidatorFactory().getValidator().validate(message);
+            if (violations.isEmpty()) {
+                return message;
+            }
+            throw new ValidationException("ContractNegotiation - " + 
+                    violations
+                            .stream()
+                            .map(v -> v.getPropertyPath() + " " + v.getMessage())
+                            .collect(Collectors.joining(", ")));
+        }
+    }
+
+    @Override
+    public String toString() {
+        return ToStringBuilder.getDefaultStyle().toString();
+    }
+
+    @Override
+    @JsonIgnoreProperties(value = {"type"}, allowGetters = true)
+    public String getType() {
+        return DSpaceConstants.DSPACE + ContractNegotiation.class.getSimpleName();
+    }
 }
 
