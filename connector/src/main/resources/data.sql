@@ -1,6 +1,6 @@
 INSERT INTO USERS (id, enabled, email, first_name, last_name, password, role)
 VALUES ('59d54e6d-a3f3-4a03-a093-d276e3068eef', true, 'milisav@mail.com', 'Veljko', 'Petrovic',
-        'glavudajemkrajinunedajem1', 'ROLE_USER'),
+        '$2a$12$sCEB6Ns0iLlT3JWoek4Cw.S4ZyOMn4uBaPHFKN9NGpm9/ILHhshuS', 'ROLE_CONNECTOR'),
        ('cab7b27b-f810-457d-b900-368994f6a640', true, 'petar@mail.com', 'Stevan', 'Mokranjac',
         '$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q', 'ROLE_ADMIN');
 
