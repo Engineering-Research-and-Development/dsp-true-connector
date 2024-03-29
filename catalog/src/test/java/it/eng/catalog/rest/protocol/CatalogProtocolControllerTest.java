@@ -9,7 +9,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -29,6 +32,9 @@ public class CatalogProtocolControllerTest {
 	@Autowired 
 	private MockMvc mvc;
 	
+	@InjectMocks
+	private CatalogProtocolController catalogProtocolController;
+	
 	@MockBean
 	private CatalogService catalogService;
 	@MockBean
@@ -37,6 +43,11 @@ public class CatalogProtocolControllerTest {
 	private Catalog mockCatalog = MockObjectUtil.createCatalog();
 	
 	private CatalogError catalogError = CatalogError.Builder.newInstance().build();
+	
+	@BeforeEach
+	public void init() {
+		MockitoAnnotations.openMocks(this);
+	}
 	
 	@Test
 	public void getCatalogSuccessfulTest() throws Exception {
