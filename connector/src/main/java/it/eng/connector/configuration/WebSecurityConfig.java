@@ -3,7 +3,6 @@ package it.eng.connector.configuration;
 import java.io.IOException;
 import java.util.Arrays;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -107,9 +106,8 @@ public class WebSecurityConfig {
 	        .anonymous(anonymus -> anonymus.disable())
 	        .authorizeHttpRequests((authorize) -> {
 	        	authorize
-		        	.requestMatchers(new AntPathRequestMatcher("/connector/**")).permitAll()
 	        		.requestMatchers(new AntPathRequestMatcher("/env"), new AntPathRequestMatcher("/actuator/**")).hasRole("ADMIN")
-	        		.requestMatchers(new AntPathRequestMatcher("/connector/**"), new AntPathRequestMatcher("/negotiations")).hasRole("CONNECTOR")
+	        		.requestMatchers(new AntPathRequestMatcher("/connector/**"), new AntPathRequestMatcher("/negotiations/**"), new AntPathRequestMatcher("/catalog/**")).hasRole("CONNECTOR")
 	        		.requestMatchers(new AntPathRequestMatcher("/api/**")).hasRole("ADMIN")
 	        		.anyRequest().permitAll();
 	        })
