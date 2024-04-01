@@ -1,141 +1,83 @@
 package it.eng.catalog.service;
 
-import java.util.Arrays;
-import java.util.UUID;
-
+import it.eng.catalog.exceptions.CatalogErrorException;
+import it.eng.catalog.model.Catalog;
+import it.eng.catalog.model.Dataset;
+import it.eng.catalog.repository.CatalogRepository;
 import org.springframework.stereotype.Service;
 
-import it.eng.catalog.entity.CatalogEntity;
-import it.eng.catalog.mapper.CatalogMapper;
-import it.eng.catalog.model.Action;
-import it.eng.catalog.model.Catalog;
-import it.eng.catalog.model.Constraint;
-import it.eng.catalog.model.DataService;
-import it.eng.catalog.model.Dataset;
-import it.eng.catalog.model.Distribution;
-import it.eng.catalog.model.LeftOperand;
-import it.eng.catalog.model.Multilanguage;
-import it.eng.catalog.model.Offer;
-import it.eng.catalog.model.Operator;
-import it.eng.catalog.model.Permission;
-import it.eng.catalog.model.Reference;
-import it.eng.catalog.model.Serializer;
-import it.eng.catalog.repository.CatalogRepository;
+import java.util.List;
+import java.util.Optional;
 
+/**
+ * The CatalogService class provides methods to interact with catalog data, including saving, retrieving, and deleting catalogs.
+ */
 @Service
 public class CatalogService {
-	
-	private CatalogRepository catalogRepository;
-	
-	public CatalogService(CatalogRepository catalogRepository) {
-		super();
-		this.catalogRepository = catalogRepository;
-	}
 
-	public Catalog findAll() {
-		return new CatalogMapper().entityToModel(catalogRepository.findAll().get(0));
-	}
+    private final CatalogRepository repository;
 
-	public Catalog findById(String id) {
-		return getDemoCatalog();
-	}
+    public CatalogService(CatalogRepository repository) {
+        this.repository = repository;
+    }
 
-	public void save(Catalog catalog) {
-		// TODO Auto-generated method stub
-		
-	}
+    /**
+     * Saves the given catalog.
+     *
+     * @param catalog The catalog to be saved.
+     */
+    public void saveCatalog(Catalog catalog) {
+        repository.save(catalog);
+    }
 
-	private Catalog getDemoCatalog() {
-		final String CONFORMSTO = "conformsToSomething";
-		final String CREATOR = "Chuck Norris";
-		final String IDENTIFIER = "Uniwue identifier for tests";
-		final String ISSUED = "yesterday";
-		final String MODIFIED = "today";
-		final String TITLE = "Title for test";
-		final String ENDPOINT_URL = "https://provider-a.com/connector";
-		
-		CatalogEntity cc = catalogRepository.findById("1dc45797-3333-4955-8baf-ab7fd66ac4d5").get();
-		System.out.println(Serializer.serializePlain(cc));
-		System.out.println("---------------------");
-//		System.out.println(Serializer.serializeProtocol(cc));
-		
-		String dataServiceId = UUID.randomUUID().toString();
-		 DataService dataService = DataService.Builder.newInstance()
-				.id(dataServiceId)
-				.endpointURL(ENDPOINT_URL)
-				.endpointDescription("endpoint description")
-				.build();
-		
-		 Constraint constraint = Constraint.Builder.newInstance()
-				.leftOperand(LeftOperand.COUNT)
-				.operator(Operator.EQ)
-				.rightOperand("5")
-				.build();
-		
-		 Permission permission = Permission.Builder.newInstance()
-				.action(Action.USE)
-				.constraint(Arrays.asList(constraint))
-				.build();
-		
-		 Offer offer = Offer.Builder.newInstance()
-//				.target(TARGET)
-//				.assignee(CatalogUtil.ASSIGNEE)
-//				.assigner(CatalogUtil.ASSIGNER)
-				.permission(Arrays.asList(permission))
-				.build();
-		
-		 Dataset dataset = Dataset.Builder.newInstance()
-				.conformsTo(CONFORMSTO)
-				.creator(CREATOR)
-				.description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("For test").build(),
-						Multilanguage.Builder.newInstance().language("it").value("For test but in Italian").build()))
-				.distribution(Arrays.asList(Distribution.Builder.newInstance()
-						.dataService(null)
-//						.description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("DS descr for test").build()))
-//						.issued(CatalogUtil.ISSUED)
-//						.modified(CatalogUtil.MODIFIED)
-//						.title("Distribution title for tests")
-						.format(Reference.Builder.newInstance().id("dspace:s3+push").build())
-						.build()))
-				.identifier(IDENTIFIER)
-				.issued(ISSUED)
-				.keyword(Arrays.asList("keyword1", "keyword2"))
-				.modified(MODIFIED)
-				.theme(Arrays.asList("white", "blue", "aqua"))
-				.title(TITLE)
-				.hasPolicy(Arrays.asList(offer))
-				.build();
-		
-		Distribution distribution = Distribution.Builder.newInstance()
-			.dataService(null)
-			.format(Reference.Builder.newInstance().id("dspace:s3+push").build())
-			.dataService(Arrays.asList(dataService))
-			.build();
-		
-		 Catalog catalog = Catalog.Builder.newInstance()
-				.conformsTo(CONFORMSTO)
-				.creator(CREATOR)
-				.description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Catalog test").build(),
-						Multilanguage.Builder.newInstance().language("it").value("Catalog test but in Italian").build()))
-				.distribution(Arrays.asList(Distribution.Builder.newInstance()
-						.dataService(null)
-//						.description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("DS descr for test").build()))
-//						.issued(CatalogUtil.ISSUED)
-//						.modified(CatalogUtil.MODIFIED)
-//						.title("Distribution title for tests")
-						.format(Reference.Builder.newInstance().id("dspace:s3+push").build())
-						.build()))
-				.identifier(IDENTIFIER)
-				.issued(ISSUED)
-				.keyword(Arrays.asList("keyword1", "keyword2"))
-				.modified(MODIFIED)
-				.theme(Arrays.asList("white", "blue", "aqua"))
-				.title(TITLE)
-				.participantId("urn:example:DataProviderA")
-				.service(Arrays.asList(dataService))
-				.dataset(Arrays.asList(dataset))
-				.distribution(Arrays.asList(distribution))
-				.build();
-		 return catalog;
-	}
+    /**
+     * Retrieves the catalog.
+     *
+     * @return The retrieved catalog.
+     * @throws CatalogErrorException Thrown if the catalog is not found.
+     */
+    public Catalog getCatalog() {
+        List<Catalog> allCatalogs = repository.findAll();
+
+        if (allCatalogs.isEmpty()) {
+            throw new CatalogErrorException("Catalog not found");
+        } else {
+            return allCatalogs.get(0);
+        }
+    }
+
+    /**
+     * Retrieves the catalog by its ID.
+     *
+     * @param id The ID of the catalog to retrieve.
+     * @return An optional containing the retrieved catalog, or empty if not found.
+     */
+    public Optional<Catalog> getCatalogById(String id) {
+        return repository.findById(id);
+    }
+
+    //TODO implement this with aggregations and move to DataSet repository/service
+
+    /**
+     * Retrieves a dataset by its ID.
+     *
+     * @param id The ID of the dataset to retrieve.
+     * @return An optional containing the retrieved dataset, or empty if not found.
+     */
+    public Optional<Dataset> getDataSetById(String id) {
+        Optional<Catalog> catalog = repository.findCatalogByDatasetId(id);
+        return catalog.flatMap(c -> c.getDataset().stream().filter(d -> d.getId().equals(id)).findFirst());
+    }
+
+
+    /**
+     * Deletes the catalog with the specified ID.
+     *
+     * @param id The ID of the catalog to delete.
+     */
+    public void deleteCatalog(String id) {
+        repository.deleteById(id);
+    }
+
+    //TODO implement update of catalog
 }
