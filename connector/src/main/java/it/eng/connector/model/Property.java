@@ -2,23 +2,22 @@ package it.eng.connector.model;
 
 import java.time.Instant;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name="PROPERTIES")
+@Document(collection = "properties")
 public class Property {
 	
 	@Id
-	@Column(name = "id")
+	@Field(name = "id")
 	private int idsss;
 	
 	private Instant CREATED_ON;

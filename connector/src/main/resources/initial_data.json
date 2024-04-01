@@ -1,0 +1,136 @@
+{
+  "users": [
+    {
+      "_class": "it.eng.connector.model.User",
+      "_id": "59d54e6d-a3f3-4a03-a093-d276e3068eef",
+      "firstName": "Petar",
+      "lastName": "Cvetkovic",
+      "email": "petar@mail.com",
+      "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
+      "enabled": "true",
+      "role": "ROLE_ADMIN"
+    },
+    {
+      "_class": "it.eng.connector.model.User",
+      "_id": "cab7b27b-f810-457d-b900-368994f6a640",
+      "firstName": "Milisav",
+      "lastName": "Petrovic",
+      "email": "milisav@mail.com",
+      "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
+      "enabled": "true",
+      "role": "ROLE_CONNECTOR"
+    }
+  ],
+  "catalogs": [
+    {
+      "_class": "it.eng.catalog.model.Catalog",
+      "_id": "1dc45797-3333-4955-8baf-ab7fd66ac4d5",
+      "context": "https://w3id.org/dspace/2024/1/context.json",
+      "keyword": [
+        "keyword1",
+        "keyword2",
+        "keyword3"
+      ],
+      "theme": [
+        "dark theme",
+        "light theme"
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Chuck Norris",
+      "description": [
+        {
+          "value": "Some text for multi language",
+          "language": "en"
+        }
+      ],
+      "identifier": "Unique identifier for tests",
+      "issued": "yesterday",
+      "modified": "today",
+      "title": "Title for test",
+      "distribution": [
+        {
+          "title": "Flash lightning distribution",
+          "format": {
+            "_id": "dspace:s3+push"
+          },
+          "dataservice": [
+            {
+              "_id": "1dc45797-4444-4955-8baf-ab7fd66ac4d5",
+              "endpointDescription": "endpoint description",
+              "endpointURL": "https://provider-a.com/connector",
+              "type": "dcat:DataService"
+            }
+          ],
+          "type": "dspace:Distribution"
+        }
+      ],
+      "dataset": [
+        {
+          "context": "https://w3id.org/dspace/2024/1/context.json",
+          "_id": "fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+          "keyword": [
+            "keyword1",
+            "keyword2",
+            "keyword3"
+          ],
+          "theme": [
+            "dark theme",
+            "light theme"
+          ],
+          "conformsTo": "conformsToSomething",
+          "creator": "Chuck Norris",
+          "identifier": "Unique identifier for tests",
+          "issued": "yesterday",
+          "modified": "today",
+          "title": "Title for test",
+          "hasPolicy": [
+            {
+              "_id": "fdc45798-a123-4955-8baf-ab7fd66ac4d5",
+              "permission": [
+                {
+                  "action": "USE",
+                  "constraint": [
+                    {
+                      "leftOperand": "COUNT",
+                      "operator": "EQ",
+                      "rightOperand": "5"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "distribution": [
+            {
+              "title": "Flash lightning distribution",
+              "format": {
+                "_id": "dspace:s3+push"
+              },
+              "dataservice": [
+                {
+                  "_id": "1dc45797-4444-4955-8baf-ab7fd66ac4d5",
+                  "endpointDescription": "endpoint description",
+                  "endpointURL": "https://provider-a.com/connector",
+                  "type": "dcat:DataService"
+                }
+              ],
+              "type": "dspace:Distribution"
+            }
+          ],
+          "type": "dcat:Dataset"
+        }
+      ],
+      "service": [
+        {
+          "_id": "1234",
+          "endpointDescription": "endpoint description",
+          "endpointURL": "https://provider-a.com/connector",
+          "type": "dcat:DataService"
+        }
+      ],
+      "participantId": "urn:example:DataProviderA",
+      "homepage": "https://www.homepage.com/test",
+      "type": "dcat:Catalog"
+    }
+  ]
+}
