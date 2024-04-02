@@ -1,6 +1,7 @@
 package it.eng.catalog.service;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -137,5 +138,10 @@ public class CatalogService {
 				.distribution(Arrays.asList(distribution))
 				.build();
 		 return catalog;
+	}
+
+	public Catalog findByFilter(List<String> filter) {
+		//if not catalog found(no options from filter found) throw ResourceNotFoundException
+		return findAll();
 	}
 }
