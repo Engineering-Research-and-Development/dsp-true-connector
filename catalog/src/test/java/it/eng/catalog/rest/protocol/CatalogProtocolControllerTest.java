@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -27,7 +28,8 @@ import it.eng.catalog.service.DatasetService;
 import it.eng.catalog.util.MockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
 
-@WebMvcTest(controllers = {CatalogProtocolController.class})
+@WebMvcTest(controllers = CatalogProtocolController.class)
+@ContextConfiguration(classes = CatalogProtocolController.class)
 public class CatalogProtocolControllerTest {
 	@Autowired 
 	private MockMvc mvc;
