@@ -3,6 +3,7 @@ package it.eng.connector.configuration;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.java.Log;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,7 +12,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 
 import java.io.InputStream;
 import java.util.Map;
-
+@Log
 @Configuration
 public class MongoDataLoader {
 
@@ -37,7 +38,7 @@ public class MongoDataLoader {
                     });
                     mongoTemplate.save(documentMap, collectionName);
                 });
-                System.out.println("Loaded " + documents.size() + " documents into the '" + collectionName + "' collection.");
+                log.info("Loaded " + documents.size() + " documents into the '" + collectionName + "' collection.");
             });
         };
     }
