@@ -62,6 +62,6 @@ public class CatalogRequestMessage extends AbstractCatalogMessage {
 
 	@Override
 	public String getType() {
-		return DSpaceConstants.DSPACE + CatalogError.class.getSimpleName();
+		return DSpaceConstants.DSPACE + CatalogRequestMessage.class.getSimpleName();
 	}
 }

@@ -43,51 +43,10 @@ public class MockObjectUtil {
 	
 	public static Catalog createCatalog() {
 		
-		DataService service = DataService.Builder.newInstance()
-				.id(UUID.randomUUID().toString())
-				.endpointURL("http://dataservice.com")
-				.endpointDescription("endpoint description")
-				.build();
-		
-		Distribution distribution = Distribution.Builder.newInstance()
-				.dataService(Arrays.asList(service))
-				.format(Reference.Builder.newInstance().id("pdf").build())
-				.build();
-		
-		Permission permission = Permission.Builder.newInstance()
-				.action(Action.USE)
-				.constraint(Arrays.asList(createConstraint()))
-				.build();
-		
-		Offer offer = Offer.Builder.newInstance()
-				.assignee(ASSIGNEE)
-				.assigner(ASSIGNER)
-				.target(TARGET)
-				.permission(Arrays.asList(permission))
-				.build();
-		
-		Multilanguage multilanguage = Multilanguage.Builder.newInstance()
-				.language("en")
-				.value("For test")
-				.build();
-		
-		Dataset dataset = Dataset.Builder.newInstance()
-				.conformsTo(CONFORMSTO)
-				.creator(CREATOR)
-				.distribution(Arrays.asList(distribution))
-				.description(Arrays.asList(multilanguage))
-				.issued(ISSUED)
-				.keyword(Arrays.asList("keyword1", "keyword2"))
-				.modified(MODIFIED)
-				.theme(Arrays.asList("white", "blue", "aqua"))
-				.title(TITLE)
-				.hasPolicy(Arrays.asList(offer))
-				.build();
-		
 		 return Catalog.Builder.newInstance()
 					.conformsTo(CONFORMSTO)
 					.creator(CREATOR)
-					.description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Catalog description").build()))
+					.description(Arrays.asList(createMultilanguage()))
 					.identifier(IDENTIFIER)
 					.issued(ISSUED)
 					.keyword(Arrays.asList("keyword1", "keyword2"))
@@ -95,22 +54,77 @@ public class MockObjectUtil {
 					.theme(Arrays.asList("white", "blue", "aqua"))
 					.title(TITLE)
 					.participantId("urn:example:DataProviderA")
-					.service(Arrays.asList(service))
-					.dataset(Arrays.asList(dataset))
-					.distribution(Arrays.asList(distribution))
+					.service(Arrays.asList(createDataService()))
+					.dataset(Arrays.asList(createDataset()))
+					.distribution(Arrays.asList(createDistribution()))
 					.build();
 	}
 
 
-//	public static Constraint createConstraint(LiteralExpression leftExpression, LiteralExpression rightExpression) {
-//		Constraint constraint = Constraint.Builder.newInstance()
-//				.leftOperand(LeftOperand.ABSOLUTE_POSITION)
-//				.rightOperand(RIGHT_EXPRESSION)
-//				.operator(Operator.EQ)
-//				.build();
-//		return constraint;
-//	}
-	
+	public static Dataset createDataset() {
+		Dataset dataset = Dataset.Builder.newInstance()
+				.conformsTo(CONFORMSTO)
+				.creator(CREATOR)
+				.distribution(Arrays.asList(createDistribution()))
+				.description(Arrays.asList(createMultilanguage()))
+				.issued(ISSUED)
+				.keyword(Arrays.asList("keyword1", "keyword2"))
+				.modified(MODIFIED)
+				.theme(Arrays.asList("white", "blue", "aqua"))
+				.title(TITLE)
+				.hasPolicy(Arrays.asList(createOffer()))
+				.build();
+		return dataset;
+	}
+
+
+	public static Multilanguage createMultilanguage() {
+		Multilanguage multilanguage = Multilanguage.Builder.newInstance()
+				.language("en")
+				.value("For test")
+				.build();
+		return multilanguage;
+	}
+
+
+	public static Offer createOffer() {
+		Offer offer = Offer.Builder.newInstance()
+				.assignee(ASSIGNEE)
+				.assigner(ASSIGNER)
+				.target(TARGET)
+				.permission(Arrays.asList(createPermission()))
+				.build();
+		return offer;
+	}
+
+
+	public static Permission createPermission() {
+		Permission permission = Permission.Builder.newInstance()
+				.action(Action.USE)
+				.constraint(Arrays.asList(createConstraint()))
+				.build();
+		return permission;
+	}
+
+
+	public static Distribution createDistribution() {
+		Distribution distribution = Distribution.Builder.newInstance()
+				.dataService(Arrays.asList(createDataService()))
+				.format(Reference.Builder.newInstance().id("pdf").build())
+				.build();
+		return distribution;
+	}
+
+
+	public static DataService createDataService() {
+		return DataService.Builder.newInstance()
+				.id(UUID.randomUUID().toString())
+				.endpointURL("http://dataservice.com")
+				.endpointDescription("endpoint description")
+				.build();
+	}
+
+
 	public static Constraint createConstraint() {
 		Constraint constraint = Constraint.Builder.newInstance()
 				.leftOperand(LeftOperand.ABSOLUTE_POSITION)

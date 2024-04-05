@@ -1,13 +1,14 @@
 package it.eng.catalog.service;
 
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+
 import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.repository.CatalogRepository;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.Optional;
 
 /**
  * The CatalogService class provides methods to interact with catalog data, including saving, retrieving, and deleting catalogs.
@@ -79,5 +80,14 @@ public class CatalogService {
         repository.deleteById(id);
     }
 
-    //TODO implement update of catalog
+    //TODO implement proper filter logic
+    /**
+     * 
+     * @param filter
+     * @return
+     */
+	public Catalog findByFilter(List<String> filter) {
+		//if not catalog found(no options from filter found) throw ResourceNotFoundException
+		return getCatalog();
+	}
 }
