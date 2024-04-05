@@ -1,0 +1,27 @@
+{
+	"id": "b7146cd2-94f3-4e66-bc55-f3033220bdcc",
+	"name": "TC_V2_ENV",
+	"values": [
+		{
+			"key": "SERVER_API_CATALOG",
+			"value": "http://localhost:8080/api/catalog",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "SERVER_PROTOCOL_CATALOG",
+			"value": "http://localhost:8080/catalog",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "SERVER_PROTOCOL_NEGOTIATION",
+			"value": "http://localhost:8080/negotiations",
+			"type": "default",
+			"enabled": true
+		}
+	],
+	"_postman_variable_scope": "environment",
+	"_postman_exported_at": "2024-04-01T14:51:53.162Z",
+	"_postman_exported_using": "Postman/10.24.2"
+}

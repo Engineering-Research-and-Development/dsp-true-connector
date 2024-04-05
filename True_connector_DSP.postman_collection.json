@@ -1,0 +1,471 @@
+{
+	"info": {
+		"_postman_id": "36899ce7-405d-4052-ad6b-78036e603062",
+		"name": "TC_V2",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "2326106",
+		"_collection_link": "https://martian-water-684810.postman.co/workspace/New-Connector~493beb9b-a916-4f81-afb2-851668940079/collection/2326106-36899ce7-405d-4052-ad6b-78036e603062?action=share&source=collection_link&creator=2326106"
+	},
+	"item": [
+		{
+			"name": "API_FE",
+			"item": [
+				{
+					"name": "Catalog",
+					"item": [
+						{
+							"name": "Get All Catalogs",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{SERVER_API_CATALOG}}/",
+									"host": [
+										"{{SERVER_API_CATALOG}}"
+									],
+									"path": [
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Catalog by ID",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{SERVER_API_CATALOG}}/{$ID}",
+									"host": [
+										"{{SERVER_API_CATALOG}}"
+									],
+									"path": [
+										"{$ID}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Add Catalog",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n\n    \"@type\": \"dcat:Catalog\",\n    \"dct:title\": \"Title for test\",\n    \"dct:description\": [\n        {\n            \"@value\": \"Some text for multi language\",\n            \"@language\": \"en\"\n        }\n    ],\n    \"dspace:participantId\": \"urn:example:DataProviderA\",\n    \"dcat:keyword\": [\n        \"keyword1\",\n        \"keyword2\",\n        \"keyword3\"\n    ],\n    \"dcat:service\": [\n        {\n            \"@type\": \"dcat:DataService\",\n            \"dcat:endpointDescription\": \"endpoint description\",\n            \"dcat:endpointURL\": \"https://provider-a.com/connector\"\n        }\n    ],\n    \"dcat:dataset\": [\n        {\n            \"@context\": \"https://w3id.org/dspace/2024/1/context.json\",\n            \"@type\": \"dcat:Dataset\",\n            \"dct:title\": \"Title for test\",\n            \"dcat:keyword\": [\n                \"keyword1\",\n                \"keyword2\",\n                \"keyword3\"\n            ],\n            \"odrl:hasPolicy\": [\n                {\n                    \"@type\": \"odrl:Offer\",\n                    \"odrl:permission\": [\n                        {\n                            \"odrl:action\": \"odrl:use\",\n                            \"odrl:constraint\": [\n                                {\n                                    \"odrl:leftOperand\": \"odrl:count\",\n                                    \"odrl:operator\": \"odrl:eq\",\n                                    \"odrl:rightOperand\": \"5\"\n                                }\n                            ]\n                        }\n                    ]\n                }\n            ],\n            \"dcat:distribution\": [\n                {\n                    \"@type\": \"dspace:Distribution\",\n                    \"dct:format\": {},\n                    \"dcat:accessService\": [\n                        {\n                            \"@type\": \"dcat:DataService\",\n                            \"dcat:endpointDescription\": \"endpoint description\",\n                            \"dcat:endpointURL\": \"https://provider-a.com/connector\"\n                        }\n                    ],\n                    \"dct:title\": \"Flash lightning distribution\"\n                }\n            ],\n            \"dcat:creator\": \"Chuck Norris\",\n            \"dcat:identifier\": \"Unique identifier for tests\",\n            \"dcat:issued\": \"yesterday\",\n            \"dcat:theme\": [\n                \"dark theme\",\n                \"light theme\"\n            ],\n            \"dct:conformsTo\": \"conformsToSomething\",\n            \"dct:modified\": \"today\"\n        }\n    ],\n    \"dcat:creator\": \"Chuck Norris\",\n    \"dcat:distribution\": [\n        {\n            \"@type\": \"dspace:Distribution\",\n            \"dct:format\": {},\n            \"dcat:accessService\": [\n                {\n                    \"@type\": \"dcat:DataService\",\n                    \"dcat:endpointDescription\": \"endpoint description\",\n                    \"dcat:endpointURL\": \"https://provider-a.com/connector\"\n                }\n            ],\n            \"dct:title\": \"Flash lightning distribution\"\n        }\n    ],\n    \"dcat:identifier\": \"Unique identifier for tests\",\n    \"dcat:issued\": \"yesterday\",\n    \"dcat:theme\": [\n        \"dark theme\",\n        \"light theme\"\n    ],\n    \"dct:conformsTo\": \"conformsToSomething\",\n    \"dct:modified\": \"today\",\n    \"foaf:homepage\": \"https://www.homepage.com/test\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{SERVER_API_CATALOG}}",
+									"host": [
+										"{{SERVER_API_CATALOG}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Catalog",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{SERVER_API_CATALOG}}/{$ID}",
+									"host": [
+										"{{SERVER_API_CATALOG}}"
+									],
+									"path": [
+										"{$ID}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "DataService",
+					"item": [
+						{
+							"name": "Get All DataServices",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{SERVER_API_URL}}/dataservice/",
+									"host": [
+										"{{SERVER_API_URL}}"
+									],
+									"path": [
+										"dataservice",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get All DataServices by Catalog ID",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{SERVER_API_URL}}/dataservice/catalog/$catalogID",
+									"host": [
+										"{{SERVER_API_URL}}"
+									],
+									"path": [
+										"dataservice",
+										"catalog",
+										"$catalogID"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get DataService by ID",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{SERVER_API_URL}}/dataservice/$ID",
+									"host": [
+										"{{SERVER_API_URL}}"
+									],
+									"path": [
+										"dataservice",
+										"$ID"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Add DataService to Catalog",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{SERVER_API_URL}}/dataservicetocatalog",
+									"host": [
+										"{{SERVER_API_URL}}"
+									],
+									"path": [
+										"dataservicetocatalog"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "DataSet",
+					"item": [
+						{
+							"name": "Get All DataSets",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{SERVER_API_URL}}/dataset/",
+									"host": [
+										"{{SERVER_API_URL}}"
+									],
+									"path": [
+										"dataset",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get DataSet by ID",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{SERVER_API_URL}}/dataset/$ID",
+									"host": [
+										"{{SERVER_API_URL}}"
+									],
+									"path": [
+										"dataset",
+										"$ID"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			],
+			"auth": {
+				"type": "basic",
+				"basic": [
+					{
+						"key": "username",
+						"value": "petar@mail.com",
+						"type": "string"
+					},
+					{
+						"key": "password",
+						"value": "password",
+						"type": "string"
+					}
+				]
+			},
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Protocol_API",
+			"item": [
+				{
+					"name": "Negotiation_API",
+					"item": [
+						{
+							"name": "Negotiation",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{SERVER_PROTOCOL_NEGOTIATION}}/{$ID}",
+									"host": [
+										"{{SERVER_PROTOCOL_NEGOTIATION}}"
+									],
+									"path": [
+										"{$ID}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Catalog_API",
+					"item": [
+						{
+							"name": "Get Catalog",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\n  \"@type\": \"dspace:CatalogRequestMessage\",\n  \"dspace:filter\": {}\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{SERVER_PROTOCOL_CATALOG}}/request",
+									"host": [
+										"{{SERVER_PROTOCOL_CATALOG}}"
+									],
+									"path": [
+										"request"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Catalog by Dataset ID",
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\n  \"@type\": \"dspace:DatasetRequestMessage\",\n  \"dspace:dataset\": \"fdc45798-a222-4955-8baf-ab7fd66ac4d5\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{SERVER_PROTOCOL_CATALOG}}/datasets/fdc45798-a222-4955-8baf-ab7fd66ac4d",
+									"host": [
+										"{{SERVER_PROTOCOL_CATALOG}}"
+									],
+									"path": [
+										"datasets",
+										"fdc45798-a222-4955-8baf-ab7fd66ac4d"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			],
+			"auth": {
+				"type": "basic",
+				"basic": [
+					{
+						"key": "password",
+						"value": "password",
+						"type": "string"
+					},
+					{
+						"key": "username",
+						"value": "milisav@mail.com",
+						"type": "string"
+					}
+				]
+			},
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"packages": {},
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"packages": {},
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		}
+	]
+}
