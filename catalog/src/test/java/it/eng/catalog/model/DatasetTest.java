@@ -8,7 +8,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
@@ -57,6 +60,7 @@ public class DatasetTest {
 	
 	
 	@Test
+	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() {
 		String result = Serializer.serializePlain(dataset);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
@@ -79,27 +83,36 @@ public class DatasetTest {
 	}
 
 	@Test
+	@DisplayName("Verify valid protocol object serialization")
 	public void testProtocol() {
-		String result = Serializer.serializeProtocol(dataset);
-		assertTrue(result.contains(DSpaceConstants.CONTEXT));
-		assertTrue(result.contains(DSpaceConstants.TYPE));
-		assertTrue(result.contains(DSpaceConstants.DCAT_KEYWORD));
-		assertTrue(result.contains(DSpaceConstants.DCAT_THEME));
-		assertTrue(result.contains(DSpaceConstants.DCT_CONFORMSTO));
+		JsonNode result = Serializer.serializeProtocolJsonNode(dataset);
+		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
+		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
+		assertNotNull(result.get(DSpaceConstants.DCAT_KEYWORD).asText());
+		assertNotNull(result.get(DSpaceConstants.DCAT_THEME).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_CONFORMSTO).asText());
 		
-		assertTrue(result.contains(DSpaceConstants.DCT_CREATOR));
-		assertTrue(result.contains(DSpaceConstants.DCT_DESCRIPTION));
-		assertTrue(result.contains(DSpaceConstants.DCT_IDENTIFIER));
-		assertTrue(result.contains(DSpaceConstants.DCT_ISSUED));
-		assertTrue(result.contains(DSpaceConstants.DCT_MODIFIED));
-		assertTrue(result.contains(DSpaceConstants.DCT_MODIFIED));
-		assertTrue(result.contains(DSpaceConstants.DCAT_DISTRIBUTION));
+		assertNotNull(result.get(DSpaceConstants.DCT_CREATOR).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_DESCRIPTION).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_IDENTIFIER).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_ISSUED).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_MODIFIED).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_MODIFIED).asText());
+		assertNotNull(result.get(DSpaceConstants.DCAT_DISTRIBUTION).asText());
 		
 		Dataset javaObj = Serializer.deserializeProtocol(result, Dataset.class);
 		validateDataset(javaObj);
 	}
+
+	@Test
+	@DisplayName("Missing @ontext and @ype")
+	public void missingContextAndType() {
+		JsonNode result = Serializer.serializePlainJsonNode(dataset);
+		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, Dataset.class));
+	}
 	
 	@Test
+	@DisplayName("No required fields")
 	public void validateInvalid() {
 		assertThrows(ValidationException.class,
 				() -> Dataset.Builder.newInstance()

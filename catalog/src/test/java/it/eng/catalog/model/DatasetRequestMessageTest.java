@@ -5,7 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
@@ -17,6 +20,7 @@ public class DatasetRequestMessageTest {
 			.build();
 
 	@Test
+	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() {
 		String result = Serializer.serializePlain(datasetRequestMessage);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
@@ -28,17 +32,26 @@ public class DatasetRequestMessageTest {
 	}
 	
 	@Test
+	@DisplayName("Verify valid protocol object serialization")
 	public void testPlain_protocol() {
-		String result = Serializer.serializeProtocol(datasetRequestMessage);
-		assertTrue(result.contains(DSpaceConstants.CONTEXT));
-		assertTrue(result.contains(DSpaceConstants.TYPE));
-		assertTrue(result.contains(DSpaceConstants.DSPACE_DATASET));
+		JsonNode result = Serializer.serializeProtocolJsonNode(datasetRequestMessage);
+		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
+		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
+		assertNotNull(result.get(DSpaceConstants.DSPACE_DATASET));
 		
 		DatasetRequestMessage javaObj = Serializer.deserializeProtocol(result, DatasetRequestMessage.class);
 		validateJavaObj(javaObj);
 	}
 
 	@Test
+	@DisplayName("Missing @ontext and @ype")
+	public void missingContextAndType() {
+		JsonNode result = Serializer.serializePlainJsonNode(datasetRequestMessage);
+		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, DatasetRequestMessage.class));
+	}
+	
+	@Test
+	@DisplayName("No required fields")
 	public void validateInvalid() {
 		assertThrows(ValidationException.class,
 				() -> DatasetRequestMessage.Builder.newInstance()

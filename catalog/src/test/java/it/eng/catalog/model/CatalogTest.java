@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
@@ -12,7 +13,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 import it.eng.tools.model.DSpaceConstants;
+import jakarta.validation.ValidationException;
 
 public class CatalogTest {
 
@@ -96,6 +100,7 @@ public class CatalogTest {
 	
 	
 	@Test
+	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() {
 		String result = Serializer.serializePlain(catalog);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
@@ -118,29 +123,36 @@ public class CatalogTest {
 	}
 	
 	@Test
+	@DisplayName("Verify valid protocol object serialization")
 	public void testProtocol() {
-		String result = Serializer.serializeProtocol(catalog);
-		System.out.println(result);
-		assertTrue(result.contains(DSpaceConstants.CONTEXT));
-		assertTrue(result.contains(DSpaceConstants.TYPE));
-		assertTrue(result.contains(DSpaceConstants.DCAT_KEYWORD));
-		assertTrue(result.contains(DSpaceConstants.DCAT_THEME));
-		assertTrue(result.contains(DSpaceConstants.DCT_CONFORMSTO));
+		JsonNode result = Serializer.serializeProtocolJsonNode(catalog);
+		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
+		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
+		assertNotNull(result.get(DSpaceConstants.DCAT_KEYWORD).asText());
+		assertNotNull(result.get(DSpaceConstants.DCAT_THEME).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_CONFORMSTO).asText());
 		
-		assertTrue(result.contains(DSpaceConstants.DCT_CREATOR));
-		assertTrue(result.contains(DSpaceConstants.DCT_DESCRIPTION));
-		assertTrue(result.contains(DSpaceConstants.DCT_IDENTIFIER));
-		assertTrue(result.contains(DSpaceConstants.DCT_ISSUED));
-		assertTrue(result.contains(DSpaceConstants.DCT_MODIFIED));
-		assertTrue(result.contains(DSpaceConstants.DCT_MODIFIED));
-		assertTrue(result.contains(DSpaceConstants.DCAT_DISTRIBUTION));
+		assertNotNull(result.get(DSpaceConstants.DCT_CREATOR).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_DESCRIPTION).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_IDENTIFIER).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_ISSUED).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_MODIFIED).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_MODIFIED).asText());
+		assertNotNull(result.get(DSpaceConstants.DCAT_DISTRIBUTION).asText());
 		
 		Catalog javaObj = Serializer.deserializeProtocol(result, Catalog.class);
 		validateDataset(javaObj.getDataset().get(0));
 	}
 	
 	@Test
-	@DisplayName("no required fields")
+	@DisplayName("Missing @ontext and @ype")
+	public void missingContextAndType() {
+		JsonNode result = Serializer.serializePlainJsonNode(catalog);
+		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, Catalog.class));
+	}
+	
+	@Test
+	@DisplayName("No required fields")
 	public void validateInvalid() {
 		assertDoesNotThrow(() -> Catalog.Builder.newInstance()
 					.build());

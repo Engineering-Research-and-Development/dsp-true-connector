@@ -1,6 +1,8 @@
 package it.eng.catalog.exceptions;
 
 import it.eng.catalog.model.*;
+import jakarta.validation.ValidationException;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -25,5 +27,10 @@ public class CatalogExceptionAdvice extends ResponseEntityExceptionHandler {
     protected ResponseEntity<?> handleCatalogNotFoundException(CatalogNotFoundException ex) {
 
         return new ResponseEntity<>(GenericApiResponse.error(ex.getLocalizedMessage()), HttpStatus.NOT_FOUND);
+    }
+    
+    @ExceptionHandler(value = {ValidationException.class})
+    protected ResponseEntity<?> handleValidationException(CatalogNotFoundException ex) {
+        return new ResponseEntity<>(GenericApiResponse.error(ex.getLocalizedMessage()), HttpStatus.BAD_REQUEST);
     }
 }
