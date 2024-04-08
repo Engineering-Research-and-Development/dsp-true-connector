@@ -145,7 +145,7 @@ public class CatalogTest {
 	}
 	
 	@Test
-	@DisplayName("Missing @ontext and @ype")
+	@DisplayName("Missing @context and @ype")
 	public void missingContextAndType() {
 		JsonNode result = Serializer.serializePlainJsonNode(catalog);
 		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, Catalog.class));

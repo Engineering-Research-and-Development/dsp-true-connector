@@ -59,6 +59,11 @@ public class Serializer {
 		return null;
 	}
 	
+	/**
+	 * Convert object to jsonNode, without annotations. Used in tests
+	 * @param toSerialize
+	 * @return JsonNode
+	 */
 	public static JsonNode serializePlainJsonNode(Object toSerialize) {
 		return jsonMapperPlain.convertValue(toSerialize, JsonNode.class);
 	}
@@ -102,6 +107,11 @@ public class Serializer {
 		return null;
 	}
 	
+	/**
+	 * Convert object to JsonNode with prefixes. Used in tests
+	 * @param toSerialize
+	 * @return
+	 */
 	public static JsonNode serializeProtocolJsonNode(Object toSerialize) {
 		return jsonMapper.convertValue(toSerialize, JsonNode.class);
 	}

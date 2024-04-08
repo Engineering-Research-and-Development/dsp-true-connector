@@ -47,7 +47,7 @@ public class CatalogRequestMessageTest {
 	}
 	
 	@Test
-	@DisplayName("Missing @ontext and @ype")
+	@DisplayName("Missing @context and @ype")
 	public void missingContextAndType() {
 		JsonNode result = Serializer.serializePlainJsonNode(catalogRequestMessage);
 		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, CatalogRequestMessage.class));
