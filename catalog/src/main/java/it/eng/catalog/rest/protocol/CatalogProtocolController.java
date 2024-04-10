@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.Serializer;
@@ -39,7 +38,9 @@ public class CatalogProtocolController {
         verifyAuthorization(authorization);
         Serializer.deserializeProtocol(jsonBody, Catalog.class);
         var catalog = catalogService.getCatalog();
-        return ResponseEntity.ok().header("foo", "bar").contentType(MediaType.APPLICATION_JSON)
+        return ResponseEntity.ok()
+        		.header("foo", "bar")
+        		.contentType(MediaType.APPLICATION_JSON)
                 .body(Serializer.serializeProtocol(catalog));
 
     }
@@ -47,9 +48,10 @@ public class CatalogProtocolController {
     @GetMapping(path = "datasets/{id}")
     public ResponseEntity<String> getDataset(@PathVariable String id) {
         log.info("Preparing dataset");
-
-        Dataset dataSet = catalogService.getDataSetById(id).orElseThrow(() -> new CatalogErrorException("Data Set with id: " + id + " not found"));
-        return ResponseEntity.ok().header("id", "bar").contentType(MediaType.APPLICATION_JSON)
+        Dataset dataSet = catalogService.getDataSetById(id);
+        return ResponseEntity.ok()
+        		.header("foo", "bar")
+        		.contentType(MediaType.APPLICATION_JSON)
                 .body(Serializer.serializeProtocol(dataSet));
     }
 

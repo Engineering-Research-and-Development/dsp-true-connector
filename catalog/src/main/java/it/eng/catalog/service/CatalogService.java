@@ -1,13 +1,14 @@
 package it.eng.catalog.service;
 
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+
 import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.repository.CatalogRepository;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.Optional;
 
 /**
  * The CatalogService class provides methods to interact with catalog data, including saving, retrieving, and deleting catalogs.
@@ -64,9 +65,13 @@ public class CatalogService {
      * @param id The ID of the dataset to retrieve.
      * @return An optional containing the retrieved dataset, or empty if not found.
      */
-    public Optional<Dataset> getDataSetById(String id) {
+    public Dataset getDataSetById(String id) {
         Optional<Catalog> catalog = repository.findCatalogByDatasetId(id);
-        return catalog.flatMap(c -> c.getDataset().stream().filter(d -> d.getId().equals(id)).findFirst());
+        return catalog.flatMap(c -> c.getDataset()
+	        		.stream()
+	        		.filter(d -> d.getId().equals(id))
+	        		.findFirst())
+        		.orElseThrow(() -> new CatalogErrorException("Data Set with id: " + id + " not found"));
     }
 
 
@@ -78,6 +83,4 @@ public class CatalogService {
     public void deleteCatalog(String id) {
         repository.deleteById(id);
     }
-
-    //TODO implement update of catalog
 }
