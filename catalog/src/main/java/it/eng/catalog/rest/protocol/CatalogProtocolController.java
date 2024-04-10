@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import it.eng.catalog.model.Catalog;
+import it.eng.catalog.model.CatalogRequestMessage;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.Serializer;
 import it.eng.catalog.service.CatalogService;
@@ -36,7 +36,7 @@ public class CatalogProtocolController {
                                                 @RequestBody JsonNode jsonBody) {
         log.info("Handling get catalog");
         verifyAuthorization(authorization);
-        Serializer.deserializeProtocol(jsonBody, Catalog.class);
+        Serializer.deserializeProtocol(jsonBody, CatalogRequestMessage.class);
         var catalog = catalogService.getCatalog();
         return ResponseEntity.ok()
         		.header("foo", "bar")
