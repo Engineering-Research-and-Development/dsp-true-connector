@@ -1,6 +1,8 @@
 package it.eng.negotiation.model;
 
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -11,16 +13,52 @@ import it.eng.tools.model.DSpaceConstants.ContractNegotiationStates;
 
 public enum ContractNegotiationState {
 
-	REQUESTED(DSpaceConstants.DSPACE + ContractNegotiationStates.REQUESTED),
-	OFFERED(DSpaceConstants.DSPACE + ContractNegotiationStates.OFFERED),
-	ACCEPTED(DSpaceConstants.DSPACE + ContractNegotiationStates.ACCEPTED),
-	AGREED(DSpaceConstants.DSPACE + ContractNegotiationStates.AGREED),
-	VERIFIED(DSpaceConstants.DSPACE + ContractNegotiationStates.VERIFIED),
-	FINALIZED(DSpaceConstants.DSPACE + ContractNegotiationStates.FINALIZED),
-	TERMINATED(DSpaceConstants.DSPACE + ContractNegotiationStates.TERMINATED);
+	REQUESTED(DSpaceConstants.DSPACE + ContractNegotiationStates.REQUESTED) {
+		@Override
+		public List<ContractNegotiationState> nextState() {
+			return Arrays.asList(OFFERED, AGREED, TERMINATED);
+		}
+	},
+	OFFERED(DSpaceConstants.DSPACE + ContractNegotiationStates.OFFERED) {
+		@Override
+		public List<ContractNegotiationState> nextState() {
+			return Arrays.asList(REQUESTED, ACCEPTED, TERMINATED);
+		}
+	},
+	ACCEPTED(DSpaceConstants.DSPACE + ContractNegotiationStates.ACCEPTED) {
+		@Override
+		public List<ContractNegotiationState> nextState() {
+			return Arrays.asList(AGREED, TERMINATED);
+		}
+	},
+	AGREED(DSpaceConstants.DSPACE + ContractNegotiationStates.AGREED) {
+		@Override
+		public List<ContractNegotiationState> nextState() {
+			return Arrays.asList(VERIFIED, TERMINATED);
+		}
+	},
+	VERIFIED(DSpaceConstants.DSPACE + ContractNegotiationStates.VERIFIED) {
+		@Override
+		public List<ContractNegotiationState> nextState() {
+			return Arrays.asList(FINALIZED, TERMINATED);
+		}
+	},
+	FINALIZED(DSpaceConstants.DSPACE + ContractNegotiationStates.FINALIZED) {
+		@Override
+		public List<ContractNegotiationState> nextState() {
+			return null;
+		}
+	},
+	TERMINATED(DSpaceConstants.DSPACE + ContractNegotiationStates.TERMINATED) {
+		@Override
+		public List<ContractNegotiationState> nextState() {
+			return null;
+		}
+	};
 	
 	private final String state;
 	private static final Map<String,ContractNegotiationState> ENUM_MAP;
+	public abstract List<ContractNegotiationState> nextState(); 
 	
 	static {
         Map<String,ContractNegotiationState> map = new ConcurrentHashMap<String, ContractNegotiationState>();

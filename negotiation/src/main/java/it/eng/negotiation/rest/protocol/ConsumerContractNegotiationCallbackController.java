@@ -26,12 +26,12 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 @Slf4j
-public class ContractNegotiationConsumerCallbackController {
+public class ConsumerContractNegotiationCallbackController {
 	
 	private ContractNegotiationConsumerService contractNegotiationConsumerService;
 	private CallbackHandler callbackHandler;
 	
-	public ContractNegotiationConsumerCallbackController(ContractNegotiationConsumerService contractNegotiationConsumerService,
+	public ConsumerContractNegotiationCallbackController(ContractNegotiationConsumerService contractNegotiationConsumerService,
 			CallbackHandler callbackHandler) {
 		super();
 		this.contractNegotiationConsumerService = contractNegotiationConsumerService;
@@ -39,11 +39,11 @@ public class ContractNegotiationConsumerCallbackController {
 	}
 
 	//	https://consumer.com/negotiations/offers	POST	ContractOfferMessage
-	// returns 201 with body ContractNegotiation
+	// returns 201 with body ContractNegotiation - OFFERED
 	@PostMapping("/negotiations/offers")
-	public ResponseEntity<JsonNode> handleNegotiationOffers(@RequestBody JsonNode contractOfferMessageJson) 
+	public ResponseEntity<JsonNode> handleNegotiationOffers(@RequestBody JsonNode contractOfferMessageJsonNode) 
 			throws InterruptedException, ExecutionException { 
-		ContractOfferMessage contractOfferMessage = Serializer.deserializeProtocol(contractOfferMessageJson, 
+		ContractOfferMessage contractOfferMessage = Serializer.deserializeProtocol(contractOfferMessageJsonNode, 
 				ContractOfferMessage.class);
 		
 		String callbackAddress = contractOfferMessage.getCallbackAddress();
@@ -62,8 +62,8 @@ public class ContractNegotiationConsumerCallbackController {
 	// process message - if OK return 200; The response body is not specified and clients are not required to process it.
 	@PostMapping("/negotiations/{consumerPid}/offers")
 	public ResponseEntity<JsonNode> handleNegotiationOfferConsumerPid(@PathVariable String consumerPid,
-			 @RequestBody JsonNode contractOfferMessageJson) throws InterruptedException, ExecutionException { 
-		ContractOfferMessage contractOfferMessage = Serializer.deserializeProtocol(contractOfferMessageJson, 
+			 @RequestBody JsonNode contractOfferMessageJsonNode) throws InterruptedException, ExecutionException { 
+		ContractOfferMessage contractOfferMessage = Serializer.deserializeProtocol(contractOfferMessageJsonNode, 
 				ContractOfferMessage.class);
 
 		String callbackAddress = contractOfferMessage.getCallbackAddress();
@@ -82,9 +82,9 @@ public class ContractNegotiationConsumerCallbackController {
 	// after successful processing - 200 ok; body not specified
 	@PostMapping("/negotiations/{consumerPid}/agreement")
 	public ResponseEntity<JsonNode> handleAgreement(@PathVariable String consumerPid,
-			@RequestBody JsonNode contractAgreementMessageJson) throws InterruptedException, ExecutionException { 
+			@RequestBody JsonNode contractAgreementMessageJsonNode) throws InterruptedException, ExecutionException { 
 		
-		ContractAgreementMessage contractAgreementMessage = Serializer.deserializeProtocol(contractAgreementMessageJson, 
+		ContractAgreementMessage contractAgreementMessage = Serializer.deserializeProtocol(contractAgreementMessageJsonNode, 
 				ContractAgreementMessage.class);
 		
 		String callbackAddress = contractAgreementMessage.getCallbackAddress();
@@ -103,10 +103,10 @@ public class ContractNegotiationConsumerCallbackController {
 	// No callbackAddress
 	@PostMapping("/negotiations/{consumerPid}/events")
 	public ResponseEntity<JsonNode> handleEventsResponse(@PathVariable String consumerPid,
-			@RequestBody JsonNode contractNegotiationEventMessageJson) throws InterruptedException, ExecutionException {
+			@RequestBody JsonNode contractNegotiationEventMessageJsonNode) throws InterruptedException, ExecutionException {
 		
 		ContractNegotiationEventMessage contractNegotiationEventMessage = 
-				Serializer.deserializeProtocol(contractNegotiationEventMessageJson, ContractNegotiationEventMessage.class);
+				Serializer.deserializeProtocol(contractNegotiationEventMessageJsonNode, ContractNegotiationEventMessage.class);
 
 		CompletableFuture<JsonNode> responseNode = 
 				contractNegotiationConsumerService.handleEventsResponse(consumerPid, contractNegotiationEventMessage);
@@ -123,10 +123,10 @@ public class ContractNegotiationConsumerCallbackController {
 	// No callbackAddress
 	@PostMapping("/negotiations/{consumerPid}/termination")
 	public ResponseEntity<JsonNode> handleTerminationResponse(@PathVariable String consumerPid, 
-			@RequestBody JsonNode contractNegotiationTerminationMessageJson) throws InterruptedException, ExecutionException { 
+			@RequestBody JsonNode contractNegotiationTerminationMessageJsonNode) throws InterruptedException, ExecutionException { 
 		
 		ContractNegotiationTerminationMessage contractNegotiationTerminationMessage = 
-				Serializer.deserializeProtocol(contractNegotiationTerminationMessageJson, ContractNegotiationTerminationMessage.class);
+				Serializer.deserializeProtocol(contractNegotiationTerminationMessageJsonNode, ContractNegotiationTerminationMessage.class);
 		
 		CompletableFuture<JsonNode> responseNode = 
 				contractNegotiationConsumerService.handleTerminationResponse(consumerPid, contractNegotiationTerminationMessage);
