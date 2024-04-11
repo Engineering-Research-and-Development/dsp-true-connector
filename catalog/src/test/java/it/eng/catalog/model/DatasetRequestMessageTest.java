@@ -44,7 +44,7 @@ public class DatasetRequestMessageTest {
 	}
 
 	@Test
-	@DisplayName("Missing @context and @ype")
+	@DisplayName("Missing @context and @type")
 	public void missingContextAndType() {
 		JsonNode result = Serializer.serializePlainJsonNode(datasetRequestMessage);
 		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, DatasetRequestMessage.class));

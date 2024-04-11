@@ -58,7 +58,7 @@ public class ContractNegotiationEventMessageTest {
 	}
 	
 	@Test
-	@DisplayName("Missing @context and @ype")
+	@DisplayName("Missing @context and @type")
 	public void missingContextAndType() {
 		JsonNode result = Serializer.serializePlainJsonNode(contractNegotiationEventMessage);
 		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, ContractNegotiationEventMessage.class));

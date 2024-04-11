@@ -59,7 +59,7 @@ public class ContractOfferMessageTest {
 	}
 	
 	@Test
-	@DisplayName("Missing @context and @ype")
+	@DisplayName("Missing @context and @type")
 	public void missingContextAndType() {
 		JsonNode result = Serializer.serializePlainJsonNode(ModelUtil.CONTRACT_OFFER_MESSAGE);
 		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, ContractOfferMessage.class));

@@ -105,7 +105,7 @@ public class DatasetTest {
 	}
 
 	@Test
-	@DisplayName("Missing @context and @ype")
+	@DisplayName("Missing @context and @type")
 	public void missingContextAndType() {
 		JsonNode result = Serializer.serializePlainJsonNode(dataset);
 		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, Dataset.class));
