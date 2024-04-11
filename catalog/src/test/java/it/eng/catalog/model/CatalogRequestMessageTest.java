@@ -3,6 +3,7 @@ package it.eng.catalog.model;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
@@ -10,7 +11,10 @@ import java.util.Arrays;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 import it.eng.tools.model.DSpaceConstants;
+import jakarta.validation.ValidationException;
 
 public class CatalogRequestMessageTest {
 
@@ -19,6 +23,7 @@ public class CatalogRequestMessageTest {
 			.build();
 	
 	@Test
+	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() {
 		String result = Serializer.serializePlain(catalogRequestMessage);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
@@ -30,18 +35,26 @@ public class CatalogRequestMessageTest {
 	}
 
 	@Test
+	@DisplayName("Verify valid protocol object serialization")
 	public void testPlain_protocol() {
-		String result = Serializer.serializeProtocol(catalogRequestMessage);
-		assertTrue(result.contains(DSpaceConstants.CONTEXT));
-		assertTrue(result.contains(DSpaceConstants.TYPE));
-		assertTrue(result.contains(DSpaceConstants.DSPACE_FILTER));
+		JsonNode result = Serializer.serializeProtocolJsonNode(catalogRequestMessage);
+		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
+		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
+		assertNotNull(result.get(DSpaceConstants.DSPACE_FILTER).asText());
 		
 		CatalogRequestMessage javaObj = Serializer.deserializeProtocol(result, CatalogRequestMessage.class);
 		validateJavaObj(javaObj);
 	}
 	
 	@Test
-	@DisplayName("no required fields")
+	@DisplayName("Missing @context and @type")
+	public void missingContextAndType() {
+		JsonNode result = Serializer.serializePlainJsonNode(catalogRequestMessage);
+		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, CatalogRequestMessage.class));
+	}
+	
+	@Test
+	@DisplayName("No required fields")
 	public void validateInvalid() {
 		assertDoesNotThrow(() -> CatalogRequestMessage.Builder.newInstance()
 					.build());

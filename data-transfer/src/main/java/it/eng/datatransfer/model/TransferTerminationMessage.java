@@ -101,7 +101,7 @@ public class TransferTerminationMessage extends AbstractTransferMessage {
 	
 	@Override
 	public String getType() {
-		return DSpaceConstants.DSPACE + TransferSuspensionMessage.class.getSimpleName();
+		return DSpaceConstants.DSPACE + TransferTerminationMessage.class.getSimpleName();
 	}
 
 }
