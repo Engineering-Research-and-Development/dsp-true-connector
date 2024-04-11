@@ -117,32 +117,6 @@ public class Serializer {
 	}
 	
 	/**
-	 * Convert Dataspace json (with prefixes) to java object
-	 * @param <T> Type of class
-	 * @param jsonStringProtocol
-	 * @param clazz Type of class
-	 * @return Java object converted from json
-	 */
-	@Deprecated(forRemoval = true)
-	public static <T> T deserializeProtocol(String jsonStringProtocol, Class<T> clazz) {
-		try {
-			T obj = jsonMapper.readValue(jsonStringProtocol, clazz);
-			 Set<ConstraintViolation<T>> violations = validator.validate(obj);
-			if(violations.isEmpty()) {
-				return obj;
-			}
-			throw new ValidationException(
-					violations
-						.stream()
-						.map(v -> v.getPropertyPath() + " " + v.getMessage())
-						.collect(Collectors.joining(",")));
-		} catch (JsonProcessingException e) {
-			e.printStackTrace();
-		}
-		return null;
-	}
-	
-	/**
 	 * Convert Dataspace json (with prefixes) to java object, performs validation for @context and @type before converting to java
 	 * Enforce validation for mandatory fields
 	 * @param <T>
