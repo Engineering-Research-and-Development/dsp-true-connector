@@ -1,0 +1,70 @@
+@startuml
+
+participant CONSUMER as c
+participant PROVIDER as p
+
+== ContractRequestMessage ==
+
+c->p : https://provider.com/negotiations/request
+note left
+	ContractRequestMessage
+	consumerPid
+	callbackAddress: https://consumer.com/
+end note
+
+p->p: create ContractNegotiation, uses consumePid, generates providerPid;\nstatus **REQUESTED**
+p->c: ContractNegotiation
+note left
+	ContractNegotiation - status **REQUESTED**
+end note
+
+
+== ContractOfferMessage ==
+alt Provider
+p->p: create ContractOfferMessage; callbackAddress https://provider.com
+p->c: https://consumer.com/negotiations/offers
+c->p: 201 Created with body ContractNegotiation state **OFFERED**
+
+	alt accepts
+		c<-c: ContractNegotiationEventMessage,\nstatus **ACCEPTED**
+		c->p: callbackAddress + negotiations/:providerPid/events
+		p->c: 200 OK
+	else provider - current offer created by consumer?
+		p->c : 400, ContractNegotiationError
+	end alt accepts
+end alt provider
+
+alt Consumer
+	c<-c: ContractRequestMessage,\ncalbackAddress https://consumer.com/
+	c->p: https://provider.com/negotiations/:providerPid/request
+	p->c: 200 OK
+end alt consumer
+
+== Provider decide what to do with offer ==
+note over p
+	Provider decide what to do 
+	with requested offer -> accepts it
+end note
+
+== ContractAgreementMessage ==
+p->p: ContractAgreementMessage \ncallbackAddress: https://provider.com
+p->c: callbackAddress + /negotiations/:consumerPid/agreement
+
+c<-c: status: **AGREED**
+c->p : 200 OK
+
+== ContractAgreementVerificationMessage ==
+c<-c: ContractAgreementVerificationMessage
+c->p: callbackAddress + /negotiations/:providerPid/agreement/verification
+
+p->p: status: **VERIFIED**??
+p->c: 200 OK
+
+== ContractNegotiationEventMessage ==
+p->p: ContractNegotiationEventMessage, eventType **FINALIZED**
+
+p->c: callback + /negotiations/:consumerPid/events
+c<-c: status: FINALIZED
+c->p: 200 OK
+
+@enduml
