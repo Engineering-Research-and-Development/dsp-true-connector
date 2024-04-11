@@ -41,17 +41,19 @@ public class CatalogProtocolControllerTest {
 	private Catalog mockCatalog = MockObjectUtil.createCatalog();
 	
 	private Dataset mockDataset = MockObjectUtil.createDataset();
-	
+			
 	private CatalogError catalogError = CatalogError.Builder.newInstance().build();
 	
 	private CatalogRequestMessage catalogRequestMessage = CatalogRequestMessage.Builder.newInstance().build();
 	
-	private DatasetRequestMessage datasetRequestMessage = DatasetRequestMessage.Builder.newInstance().dataset("someDataset").build();
+	private DatasetRequestMessage datasetRequestMessage = DatasetRequestMessage.Builder.newInstance().dataset(Serializer.serializeProtocol(mockDataset)).build();
 	
 	@BeforeEach
 	public void init() {
 		catalogProtocolController = new CatalogProtocolController(catalogService, datasetService);
 	}
+	
+	//TODO add junit test to cover Validation exception
 	
 	@Test
 	public void getCatalogSuccessfulTest() throws Exception {
