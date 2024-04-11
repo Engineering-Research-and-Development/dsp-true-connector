@@ -127,7 +127,7 @@ public class TransferRequestMessage extends AbstractTransferMessage {
 	
 	@Override
 	public String getType() {
-		return DSpaceConstants.DSPACE + TransferProcess.class.getSimpleName();
+		return DSpaceConstants.DSPACE + TransferRequestMessage.class.getSimpleName();
 	}
 	
 }

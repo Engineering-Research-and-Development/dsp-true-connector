@@ -1,5 +1,6 @@
 package it.eng.connector.integration;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -19,7 +20,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.CatalogError;
@@ -37,8 +37,6 @@ class CatalogIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
     
-    private ObjectMapper mapper = new ObjectMapper(); 
-	
 	private Catalog mockCatalog = MockObjectUtil.createCatalog();
 	
 	private Dataset mockDataset = MockObjectUtil.createDataset();
@@ -56,8 +54,7 @@ class CatalogIntegrationTest {
     @WithUserDetails("milisav@mail.com")
     public void getCatalogSuccessfulTest() throws Exception {
     	
-    	String json = Serializer.serializeProtocol(catalogRequestMessage);
-		JsonNode jsonNode = mapper.readTree(json);
+    	JsonNode jsonNode = Serializer.serializeProtocolJsonNode(catalogRequestMessage);
     	
     	final ResultActions result =
     			mockMvc.perform(
@@ -73,43 +70,24 @@ class CatalogIntegrationTest {
     @WithUserDetails("milisav@mail.com")
 	public void notValidCatalogRequestMessageTest() throws Exception {
     	
-    	String json = Serializer.serializeProtocol(datasetRequestMessage);
-		JsonNode jsonNode = mapper.readTree(json);
+    	JsonNode jsonNode = Serializer.serializeProtocolJsonNode(datasetRequestMessage);
 		
 		final ResultActions result =
 				mockMvc.perform(
 		            post("/catalog/request")
 					.content(jsonNode.toPrettyString())
 		            .contentType(MediaType.APPLICATION_JSON));
-		    result.andExpect(status().isOk())
+		    result.andExpect(status().is4xxClientError())
 		        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
 		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(catalogError.getType())))
-		        .andExpect(jsonPath("['"+DSpaceConstants.DSPACE_REASON+"'][0]['"+DSpaceConstants.VALUE+"']", is("Not valid catalog request message")));
-	}
-	
-	@Test
-	@WithUserDetails("milisav@mail.com")
-	public void catalogRequestMessageNotPresentTest() throws Exception {
-		
-		JsonNode jsonNode = mapper.readTree("{\"some\":\"json\"}");
-		
-		final ResultActions result =
-		        mockMvc.perform(
-		            post("/catalog/request")
-					.content(jsonNode.toPrettyString())
-		            .contentType(MediaType.APPLICATION_JSON));
-		    result.andExpect(status().isOk())
-		        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(catalogError.getType())))
-		        .andExpect(jsonPath("['"+DSpaceConstants.DSPACE_REASON+"'][0]['"+DSpaceConstants.VALUE+"']", is("Catalog request message not present")));
+		        .andExpect(jsonPath("['"+DSpaceConstants.DSPACE_REASON+"'][0]['"+DSpaceConstants.VALUE+"']", containsString("@type field not correct, expected dspace:CatalogRequestMessage")));
 	}
 	
 	@Test
 	@WithUserDetails("milisav@mail.com")
 	public void getDatasetSuccessfulTest() throws Exception {
 		
-		String json = Serializer.serializeProtocol(datasetRequestMessage);
-		JsonNode jsonNode = mapper.readTree(json);
+		JsonNode jsonNode = Serializer.serializeProtocolJsonNode(datasetRequestMessage);
 		
 		final ResultActions result =
 		        mockMvc.perform(
@@ -126,35 +104,16 @@ class CatalogIntegrationTest {
 	@WithUserDetails("milisav@mail.com")
 	public void notValidDatasetRequestMessageTest() throws Exception {
 		
-		String json = Serializer.serializeProtocol(catalogRequestMessage);
-		JsonNode jsonNode = mapper.readTree(json);
+		JsonNode jsonNode = Serializer.serializeProtocolJsonNode(catalogRequestMessage);
 		
 		final ResultActions result =
 		        mockMvc.perform(
 		            get("/catalog/datasets/" + DATASET_ID)
 					.content(jsonNode.toPrettyString())
 		            .contentType(MediaType.APPLICATION_JSON));
-		    result.andExpect(status().isOk())
+		    result.andExpect(status().is4xxClientError())
 		        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
 		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(catalogError.getType())))
-		        .andExpect(jsonPath("['"+DSpaceConstants.DSPACE_REASON+"'][0]['"+DSpaceConstants.VALUE+"']", is("Not valid dataset request message")));
-	}
+		        .andExpect(jsonPath("['"+DSpaceConstants.DSPACE_REASON+"'][0]['"+DSpaceConstants.VALUE+"']", containsString("@type field not correct, expected dspace:DatasetRequestMessage")));	}
 	
-	@Test
-	@WithUserDetails("milisav@mail.com")
-	public void datasetRequestMessageNotPresentTest() throws Exception {
-		
-		JsonNode jsonNode = mapper.readTree("{\"some\":\"json\"}");
-		
-		final ResultActions result =
-		        mockMvc.perform(
-		            get("/catalog/datasets/" + DATASET_ID)
-		                .content(jsonNode.toPrettyString())
-		                .contentType(MediaType.APPLICATION_JSON));
-		    result.andExpect(status().isOk())
-		        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(catalogError.getType())))
-		        .andExpect(jsonPath("['"+DSpaceConstants.DSPACE_REASON+"'][0]['"+DSpaceConstants.VALUE+"']", is("Dataset request message not present")));
-	}
-
 }

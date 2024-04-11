@@ -11,7 +11,10 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
@@ -47,6 +50,7 @@ public class ContractAgreementMessageTest {
 			.build();
 		
 	@Test
+	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() {
 		String result = Serializer.serializePlain(contractAgreementMessage);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
@@ -61,27 +65,22 @@ public class ContractAgreementMessageTest {
 	}
 
 	@Test
+	@DisplayName("Verify valid protocol object serialization")
 	public void testProtocol() {
-		String result = Serializer.serializeProtocol(contractAgreementMessage);
-		assertTrue(result.contains(DSpaceConstants.CONTEXT));
-		assertTrue(result.contains(DSpaceConstants.TYPE));
-		assertTrue(result.contains(DSpaceConstants.ID));
-		assertTrue(result.contains(DSpaceConstants.DSPACE_CONSUMER_PID));
-		assertTrue(result.contains(DSpaceConstants.DSPACE_PROVIDER_PID));
-		assertTrue(result.contains(DSpaceConstants.DSPACE_AGREEMENT));
-		
-		assertTrue(result.contains(DSpaceConstants.ODRL_ASSIGNEE));
-		assertTrue(result.contains(DSpaceConstants.ODRL_ASSIGNER));
-		assertTrue(result.contains(DSpaceConstants.ODRL_ACTION));
-		assertTrue(result.contains(DSpaceConstants.ODRL_LEFT_OPERAND));
-		assertTrue(result.contains(DSpaceConstants.ODRL_OPERATOR));
-		assertTrue(result.contains(DSpaceConstants.ODRL_RIGHT_OPERAND));
+		JsonNode result = Serializer.serializeProtocolJsonNode(contractAgreementMessage);
+		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
+		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
+		assertNotNull(result.get(DSpaceConstants.DSPACE_CONSUMER_PID).asText());
+		assertNotNull(result.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText());
+		assertNotNull(result.get(DSpaceConstants.DSPACE_AGREEMENT).asText());
+		validateAgreementProtocol(result.get(DSpaceConstants.DSPACE_AGREEMENT));
 		
 		ContractAgreementMessage javaObj = Serializer.deserializeProtocol(result, ContractAgreementMessage.class);
 		validateJavaObj(javaObj);
 	}
 	
 	@Test
+	@DisplayName("No required fields")
 	public void validateInvalid() {
 		assertThrows(ValidationException.class, 
 				() -> ContractAgreementMessage.Builder.newInstance()
@@ -89,6 +88,24 @@ public class ContractAgreementMessageTest {
 					.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
 					.agreement(agreement)
 					.build());
+	}
+	
+	@Test
+	@DisplayName("Missing @context and @type")
+	public void missingContextAndType() {
+		JsonNode result = Serializer.serializePlainJsonNode(contractAgreementMessage);
+		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, ContractAgreementMessage.class));
+	}
+	
+	private void validateAgreementProtocol(JsonNode agreement) {
+		assertNotNull(agreement.get(DSpaceConstants.ODRL_ASSIGNEE).asText());
+		assertNotNull(agreement.get(DSpaceConstants.ODRL_ASSIGNER).asText());
+		JsonNode permission = agreement.get(DSpaceConstants.ODRL_PERMISSION).get(0);
+		assertNotNull(permission.get(DSpaceConstants.ODRL_ACTION).asText());
+		JsonNode constraint = permission.get(DSpaceConstants.ODRL_CONSTRAINT).get(0);
+		assertNotNull(constraint.get(DSpaceConstants.ODRL_LEFT_OPERAND).asText());
+		assertNotNull(constraint.get(DSpaceConstants.ODRL_OPERATOR).asText());
+		assertNotNull(constraint.get(DSpaceConstants.ODRL_RIGHT_OPERAND).asText());
 	}
 	
 	private void validateJavaObj(ContractAgreementMessage javaObj) {

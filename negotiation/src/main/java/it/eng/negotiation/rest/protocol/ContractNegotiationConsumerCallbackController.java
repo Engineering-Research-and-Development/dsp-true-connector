@@ -43,7 +43,7 @@ public class ContractNegotiationConsumerCallbackController {
 	@PostMapping("/negotiations/offers")
 	public ResponseEntity<JsonNode> handleNegotiationOffers(@RequestBody JsonNode contractOfferMessageJson) 
 			throws InterruptedException, ExecutionException { 
-		ContractOfferMessage contractOfferMessage = Serializer.deserializeProtocol(contractOfferMessageJson.toString(), 
+		ContractOfferMessage contractOfferMessage = Serializer.deserializeProtocol(contractOfferMessageJson, 
 				ContractOfferMessage.class);
 		
 		String callbackAddress = contractOfferMessage.getCallbackAddress();
@@ -63,7 +63,7 @@ public class ContractNegotiationConsumerCallbackController {
 	@PostMapping("/negotiations/{consumerPid}/offers")
 	public ResponseEntity<JsonNode> handleNegotiationOfferConsumerPid(@PathVariable String consumerPid,
 			 @RequestBody JsonNode contractOfferMessageJson) throws InterruptedException, ExecutionException { 
-		ContractOfferMessage contractOfferMessage = Serializer.deserializeProtocol(contractOfferMessageJson.toString(), 
+		ContractOfferMessage contractOfferMessage = Serializer.deserializeProtocol(contractOfferMessageJson, 
 				ContractOfferMessage.class);
 
 		String callbackAddress = contractOfferMessage.getCallbackAddress();
@@ -84,7 +84,7 @@ public class ContractNegotiationConsumerCallbackController {
 	public ResponseEntity<JsonNode> handleAgreement(@PathVariable String consumerPid,
 			@RequestBody JsonNode contractAgreementMessageJson) throws InterruptedException, ExecutionException { 
 		
-		ContractAgreementMessage contractAgreementMessage = Serializer.deserializeProtocol(contractAgreementMessageJson.toString(), 
+		ContractAgreementMessage contractAgreementMessage = Serializer.deserializeProtocol(contractAgreementMessageJson, 
 				ContractAgreementMessage.class);
 		
 		String callbackAddress = contractAgreementMessage.getCallbackAddress();
@@ -106,7 +106,7 @@ public class ContractNegotiationConsumerCallbackController {
 			@RequestBody JsonNode contractNegotiationEventMessageJson) throws InterruptedException, ExecutionException {
 		
 		ContractNegotiationEventMessage contractNegotiationEventMessage = 
-				Serializer.deserializeProtocol(contractNegotiationEventMessageJson.toString(), ContractNegotiationEventMessage.class);
+				Serializer.deserializeProtocol(contractNegotiationEventMessageJson, ContractNegotiationEventMessage.class);
 
 		CompletableFuture<JsonNode> responseNode = 
 				contractNegotiationConsumerService.handleEventsResponse(consumerPid, contractNegotiationEventMessage);
@@ -126,7 +126,7 @@ public class ContractNegotiationConsumerCallbackController {
 			@RequestBody JsonNode contractNegotiationTerminationMessageJson) throws InterruptedException, ExecutionException { 
 		
 		ContractNegotiationTerminationMessage contractNegotiationTerminationMessage = 
-				Serializer.deserializeProtocol(contractNegotiationTerminationMessageJson.toString(), ContractNegotiationTerminationMessage.class);
+				Serializer.deserializeProtocol(contractNegotiationTerminationMessageJson, ContractNegotiationTerminationMessage.class);
 		
 		CompletableFuture<JsonNode> responseNode = 
 				contractNegotiationConsumerService.handleTerminationResponse(consumerPid, contractNegotiationTerminationMessage);

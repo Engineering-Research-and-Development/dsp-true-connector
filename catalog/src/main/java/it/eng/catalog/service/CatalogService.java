@@ -65,9 +65,13 @@ public class CatalogService {
      * @param id The ID of the dataset to retrieve.
      * @return An optional containing the retrieved dataset, or empty if not found.
      */
-    public Optional<Dataset> getDataSetById(String id) {
+    public Dataset getDataSetById(String id) {
         Optional<Catalog> catalog = repository.findCatalogByDatasetId(id);
-        return catalog.flatMap(c -> c.getDataset().stream().filter(d -> d.getId().equals(id)).findFirst());
+        return catalog.flatMap(c -> c.getDataset()
+	        		.stream()
+	        		.filter(d -> d.getId().equals(id))
+	        		.findFirst())
+        		.orElseThrow(() -> new CatalogErrorException("Data Set with id: " + id + " not found"));
     }
 
 
@@ -79,15 +83,4 @@ public class CatalogService {
     public void deleteCatalog(String id) {
         repository.deleteById(id);
     }
-
-    //TODO implement proper filter logic
-    /**
-     * 
-     * @param filter
-     * @return
-     */
-	public Catalog findByFilter(List<String> filter) {
-		//if not catalog found(no options from filter found) throw ResourceNotFoundException
-		return getCatalog();
-	}
 }
