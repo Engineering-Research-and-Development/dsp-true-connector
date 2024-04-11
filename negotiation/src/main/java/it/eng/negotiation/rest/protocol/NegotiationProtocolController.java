@@ -1,27 +1,41 @@
 package it.eng.negotiation.rest.protocol;
 
-import ch.qos.logback.core.testUtil.RandomUtil;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import it.eng.negotiation.model.*;
-import it.eng.negotiation.service.CallbackHandler;
-import it.eng.negotiation.service.ContractNegotiationService;
-import it.eng.negotiation.transformer.from.JsonFromContractNegotiationErrorMessageTrasformer;
-import it.eng.negotiation.transformer.to.*;
-import it.eng.tools.model.DSpaceConstants;
-import lombok.extern.java.Log;
-
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.util.ObjectUtils;
-import org.springframework.web.bind.annotation.*;
-
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.ObjectUtils;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import ch.qos.logback.core.testUtil.RandomUtil;
+import it.eng.negotiation.model.ContractAgreementMessage;
+import it.eng.negotiation.model.ContractAgreementVerificationMessage;
+import it.eng.negotiation.model.ContractNegotiationErrorMessage;
+import it.eng.negotiation.model.ContractNegotiationEventMessage;
+import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
+import it.eng.negotiation.model.ContractOfferMessage;
+import it.eng.negotiation.model.ContractRequestMessage;
+import it.eng.negotiation.model.Serializer;
+import it.eng.negotiation.service.CallbackHandler;
+import it.eng.negotiation.service.ContractNegotiationService;
+import it.eng.negotiation.transformer.from.JsonFromContractNegotiationErrorMessageTrasformer;
+import it.eng.negotiation.transformer.to.JsonToContractNegotiationEventMessageTransformer;
+import it.eng.negotiation.transformer.to.JsonToContractRequestMessageTransformer;
+import it.eng.tools.model.DSpaceConstants;
+import lombok.extern.java.Log;
 
 @RestController
 @RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/negotiations")
@@ -159,8 +173,8 @@ public class NegotiationProtocolController {
     //@PostMapping(path = "/:providerPid/events")
     public ResponseEntity<JsonNode> providerCanFinalizeContract(
             /* @PathVariable */ String id,
-            /* @RequestBody */ JsonNode object) {
-        ContractNegotiationEventMessage cam = Serializer.deserializeProtocol(object.toString(), ContractNegotiationEventMessage.class);
+            /* @RequestBody */ JsonNode contractcNegotiationEventMessageJsonNode) {
+        ContractNegotiationEventMessage cam = Serializer.deserializeProtocol(contractcNegotiationEventMessageJsonNode, ContractNegotiationEventMessage.class);
 
         // If the negotiation state is successfully transitioned, the consumer must return HTTP code 200 (OK).
         // The response body is not specified and clients are not required to process it.
@@ -176,8 +190,9 @@ public class NegotiationProtocolController {
 
     @PostMapping(path = "/{id}/agreement/verification")
     public ResponseEntity<JsonNode> consumerCanVerifyAgreement(@PathVariable String id,
-                                                               @RequestBody JsonNode object) {
-        ContractAgreementVerificationMessage cavm = Serializer.deserializeProtocol(object.toString(), ContractAgreementVerificationMessage.class);
+                                                               @RequestBody JsonNode contractAgreementVerificationMessageJsonNode) {
+        ContractAgreementVerificationMessage cavm = 
+        		Serializer.deserializeProtocol(contractAgreementVerificationMessageJsonNode, ContractAgreementVerificationMessage.class);
         return null;
     }
 
@@ -196,9 +211,10 @@ public class NegotiationProtocolController {
 
     //@PostMapping(path = "/{id}/termination")
     public ResponseEntity<JsonNode> consumerCanTerminateNegotiation(/*@PathVariable*/ String id,
-            /*@RequestBody*/ JsonNode object) {
+            /*@RequestBody*/ JsonNode contractNegotiationTerminationMessageJsonNode) {
 
-        ContractNegotiationTerminationMessage cntm = Serializer.deserializeProtocol(object.toString(), ContractNegotiationTerminationMessage.class);
+        ContractNegotiationTerminationMessage cntm = 
+        		Serializer.deserializeProtocol(contractNegotiationTerminationMessageJsonNode, ContractNegotiationTerminationMessage.class);
         return null;
     }
 
@@ -207,9 +223,9 @@ public class NegotiationProtocolController {
 
     //@PostMapping(path = "/{id}/events")
     public ResponseEntity<JsonNode> providerCanTerminateNegotiation(/*@PathVariable*/ String id,
-            /*@RequestBody*/ JsonNode object) {
+            /*@RequestBody*/ JsonNode contractNegotiationTerminationMessageJsonNode) {
 
-        ContractNegotiationTerminationMessage cntm = Serializer.deserializeProtocol(object.toString(), ContractNegotiationTerminationMessage.class);
+        ContractNegotiationTerminationMessage cntm = Serializer.deserializeProtocol(contractNegotiationTerminationMessageJsonNode, ContractNegotiationTerminationMessage.class);
         return null;
     }
 
@@ -230,9 +246,9 @@ public class NegotiationProtocolController {
 
     @PostMapping(path = "/{id}/offers")
     public ResponseEntity<JsonNode> providerMayMakeOffer(@PathVariable String id,
-                                                         @RequestBody JsonNode object) {
+                                                         @RequestBody JsonNode contractOfferMessageJsonNode) {
 
-        ContractOfferMessage com = Serializer.deserializeProtocol(object.toString(), ContractOfferMessage.class);
+        ContractOfferMessage com = Serializer.deserializeProtocol(contractOfferMessageJsonNode, ContractOfferMessage.class);
         return null;
     }
 
@@ -241,9 +257,9 @@ public class NegotiationProtocolController {
 
     @PostMapping(path = "/{id}/agreement")
     public ResponseEntity<JsonNode> providerCanPostAContractAgreement(@PathVariable String id,
-                                                                      @RequestBody JsonNode object) {
+                                                                      @RequestBody JsonNode contractAgreementMessageJsonNode) {
 
-        ContractAgreementMessage com = Serializer.deserializeProtocol(object.toString(), ContractAgreementMessage.class);
+        ContractAgreementMessage com = Serializer.deserializeProtocol(contractAgreementMessageJsonNode, ContractAgreementMessage.class);
         return null;
     }
 
