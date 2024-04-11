@@ -1,6 +1,7 @@
 package it.eng.catalog.rest.protocol;
 
 import java.util.Arrays;
+import java.util.Optional;
 
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +24,6 @@ import it.eng.catalog.model.DatasetRequestMessage;
 import it.eng.catalog.model.Reason;
 import it.eng.catalog.model.Serializer;
 import it.eng.catalog.service.CatalogService;
-import it.eng.catalog.service.DatasetService;
 import it.eng.tools.exception.BadRequestException;
 import it.eng.tools.exception.ResourceNotFoundException;
 import it.eng.tools.model.DSpaceConstants;
@@ -36,12 +36,9 @@ public class CatalogProtocolController {
 
     private final CatalogService catalogService;
 	
-	private final DatasetService datasetService;
-
-	public CatalogProtocolController(CatalogService catalogService, DatasetService datasetService) {
+	public CatalogProtocolController(CatalogService catalogService) {
 		super();
 		this.catalogService = catalogService;
-		this.datasetService = datasetService;
 	}
 	
 	/**
@@ -99,13 +96,13 @@ public class CatalogProtocolController {
 		verifyAuthorization(authorization);
 		try {
 			verifyDatasetRequestMessage(body);
-			Dataset dataset = datasetService.findById(id);
+			Optional<Dataset> dataset = catalogService.getDataSetById(id);
 
 			// @formatter:off
 			return ResponseEntity.ok()
 					.header("foo", "bar")
 					.contentType(MediaType.APPLICATION_JSON)
-					.body(Serializer.serializeProtocol(dataset));
+					.body(Serializer.serializeProtocol(dataset.get()));
 			// @formatter:on
 		} catch (BadRequestException | ResourceNotFoundException e) {
 			// @formatter:off

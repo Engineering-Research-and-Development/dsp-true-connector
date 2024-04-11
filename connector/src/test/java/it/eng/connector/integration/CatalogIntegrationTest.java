@@ -48,6 +48,9 @@ class CatalogIntegrationTest {
 	private CatalogRequestMessage catalogRequestMessage = CatalogRequestMessage.Builder.newInstance().filter(List.of("some-filter")).build();
 	
 	private DatasetRequestMessage datasetRequestMessage = DatasetRequestMessage.Builder.newInstance().dataset(Serializer.serializeProtocol(mockDataset)).build();
+	
+	// this can be found in the initial_data.json
+	private final String DATASET_ID = "fdc45798-a222-4955-8baf-ab7fd66ac4d5";
     
     @Test
     @WithUserDetails("milisav@mail.com")
@@ -110,7 +113,7 @@ class CatalogIntegrationTest {
 		
 		final ResultActions result =
 		        mockMvc.perform(
-		            get("/catalog/datasets/1")
+		            get("/catalog/datasets/" + DATASET_ID)
 					.content(jsonNode.toPrettyString())
 		            .contentType(MediaType.APPLICATION_JSON));
 		    result.andExpect(status().isOk())
@@ -128,7 +131,7 @@ class CatalogIntegrationTest {
 		
 		final ResultActions result =
 		        mockMvc.perform(
-		            get("/catalog/datasets/1")
+		            get("/catalog/datasets/" + DATASET_ID)
 					.content(jsonNode.toPrettyString())
 		            .contentType(MediaType.APPLICATION_JSON));
 		    result.andExpect(status().isOk())
@@ -145,7 +148,7 @@ class CatalogIntegrationTest {
 		
 		final ResultActions result =
 		        mockMvc.perform(
-		            get("/catalog/datasets/1")
+		            get("/catalog/datasets/" + DATASET_ID)
 		                .content(jsonNode.toPrettyString())
 		                .contentType(MediaType.APPLICATION_JSON));
 		    result.andExpect(status().isOk())

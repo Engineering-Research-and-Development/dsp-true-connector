@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import java.util.Optional;
+
 import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,7 +25,6 @@ import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.DatasetRequestMessage;
 import it.eng.catalog.model.Serializer;
 import it.eng.catalog.service.CatalogService;
-import it.eng.catalog.service.DatasetService;
 import it.eng.catalog.util.MockObjectUtil;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,8 +34,6 @@ public class CatalogProtocolControllerTest {
 	
 	@Mock
 	private CatalogService catalogService;
-	@Mock
-	private DatasetService datasetService;
 	
 	private ObjectMapper mapper = new ObjectMapper(); 
 	
@@ -50,7 +49,7 @@ public class CatalogProtocolControllerTest {
 	
 	@BeforeEach
 	public void init() {
-		catalogProtocolController = new CatalogProtocolController(catalogService, datasetService);
+		catalogProtocolController = new CatalogProtocolController(catalogService);
 	}
 	
 	//TODO add junit test to cover Validation exception
@@ -102,7 +101,7 @@ public class CatalogProtocolControllerTest {
 	@Test
 	public void getDatasetSuccessfulTest() throws Exception {
 		
-		when(datasetService.findById(any())).thenReturn(mockCatalog.getDataset().get(0));
+		when(catalogService.getDataSetById(any())).thenReturn(Optional.of(mockCatalog.getDataset().get(0)));
 		
 		String json = Serializer.serializeProtocol(datasetRequestMessage);
 		JsonNode jsonNode = mapper.readTree(json);
