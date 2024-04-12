@@ -1,17 +1,21 @@
 package it.eng.catalog.exceptions;
 
-import it.eng.catalog.model.*;
-import it.eng.catalog.rest.protocol.CatalogProtocolController;
-import it.eng.catalog.service.CatalogService;
-import jakarta.validation.ValidationException;
+import java.util.Arrays;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-import java.util.Arrays;
+import it.eng.catalog.model.CatalogError;
+import it.eng.catalog.model.GenericApiResponse;
+import it.eng.catalog.model.Reason;
+import it.eng.catalog.model.Serializer;
+import it.eng.catalog.rest.protocol.CatalogProtocolController;
+import it.eng.catalog.service.CatalogService;
+import jakarta.validation.ValidationException;
 
 @RestControllerAdvice(basePackageClasses = {CatalogProtocolController.class, CatalogService.class})
 public class CatalogExceptionAdvice extends ResponseEntityExceptionHandler {
@@ -22,7 +26,7 @@ public class CatalogExceptionAdvice extends ResponseEntityExceptionHandler {
         		.code(HttpStatus.NOT_FOUND.getReasonPhrase())
                 .reason(Arrays.asList(Reason.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()))
                 .build();
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Serializer.serializeProtocol(catalogError));
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).contentType(MediaType.APPLICATION_JSON).body(Serializer.serializeProtocol(catalogError));
     }
 
     @ExceptionHandler(value = {CatalogNotFoundException.class})
@@ -36,6 +40,6 @@ public class CatalogExceptionAdvice extends ResponseEntityExceptionHandler {
     			  .code(HttpStatus.BAD_REQUEST.getReasonPhrase())
                   .reason(Arrays.asList(Reason.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()))
                   .build();
-    	  return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Serializer.serializeProtocol(catalogError));
+    	  return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(Serializer.serializeProtocol(catalogError));
     }
 }

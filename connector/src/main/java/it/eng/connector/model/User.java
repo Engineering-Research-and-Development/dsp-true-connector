@@ -1,15 +1,13 @@
 package it.eng.connector.model;
 
-import java.io.Serial;
 import java.util.Collection;
 import java.util.List;
 
-import jakarta.persistence.Id;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
