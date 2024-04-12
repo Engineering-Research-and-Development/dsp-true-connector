@@ -12,8 +12,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.CatalogRequestMessage;
 import it.eng.catalog.model.Dataset;
+import it.eng.catalog.model.DatasetRequestMessage;
 import it.eng.catalog.model.Serializer;
 import it.eng.catalog.service.CatalogService;
 import lombok.extern.java.Log;
@@ -34,23 +36,24 @@ public class CatalogProtocolController {
     @PostMapping(path = "/request")
     protected ResponseEntity<String> getCatalog(@RequestHeader(required = false) String authorization,
                                                 @RequestBody JsonNode jsonBody) {
-        log.info("Handling get catalog");
+    	log.info("Handling catalog request");
         verifyAuthorization(authorization);
         Serializer.deserializeProtocol(jsonBody, CatalogRequestMessage.class);
-        var catalog = catalogService.getCatalog();
+        Catalog catalog = catalogService.getCatalog();
         return ResponseEntity.ok()
-        		.header("foo", "bar")
         		.contentType(MediaType.APPLICATION_JSON)
                 .body(Serializer.serializeProtocol(catalog));
 
     }
 
     @GetMapping(path = "datasets/{id}")
-    public ResponseEntity<String> getDataset(@PathVariable String id) {
+    public ResponseEntity<String> getDataset(@RequestHeader(required = false) String authorization,
+    		@PathVariable String id, @RequestBody JsonNode jsonBody) {
         log.info("Preparing dataset");
+        verifyAuthorization(authorization);
+        Serializer.deserializeProtocol(jsonBody, DatasetRequestMessage.class);
         Dataset dataSet = catalogService.getDataSetById(id);
         return ResponseEntity.ok()
-        		.header("foo", "bar")
         		.contentType(MediaType.APPLICATION_JSON)
                 .body(Serializer.serializeProtocol(dataSet));
     }
