@@ -50,8 +50,6 @@ public class MockObjectUtil {
 			.build();
 	
 	public static Offer OFFER = Offer.Builder.newInstance()
-			.assignee(ASSIGNEE)
-			.assigner(ASSIGNER)
 			.target(TARGET)
 			.permission(Arrays.asList(PERMISSION))
 			.build();

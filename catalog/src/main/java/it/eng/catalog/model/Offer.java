@@ -32,9 +32,6 @@ public class Offer {
 	"odrl:offer": {
     "@type": "odrl:Offer",
     "@id": "urn:uuid:6bcea82e-c509-443d-ba8c-8eef25984c07",
-    "odrl:target": "urn:uuid:3dd1add8-4d2d-569e-d634-8394a8836a88",
-    "odrl:assigner": "urn:tsdshhs636378",
-    "odrl:assignee": "urn:jashd766",
     "odrl:permission": [{
       "odrl:action": "odrl:use" ,
       "odrl:constraint": [{
@@ -58,13 +55,16 @@ public class Offer {
 	@JsonProperty(DSpaceConstants.ID)
 	private String id;
 	
+	// Different to a Catalog or Dataset, the Offer inside a Contract Request Message must have an odrl:target attribute.
+	// not mandatory for Catalog or Dataset offer to have target field - different from the Offer in negotiation module
 	@JsonProperty(DSpaceConstants.ODRL_TARGET)
 	private String target;
 	
-	@NotNull
+	// required in catalog???
 	@JsonProperty(DSpaceConstants.ODRL_ASSIGNER)
 	private String assigner;
-	
+
+	// required in catalog???
 	@JsonProperty(DSpaceConstants.ODRL_ASSIGNEE)
 	private String assignee;
 	
