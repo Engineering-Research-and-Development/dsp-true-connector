@@ -7,7 +7,7 @@ WORKDIR /home/nobody
 # The application's jar file
 COPY target/dependency-jars /home/nobody/app/dependency-jars
 COPY src/main/resources/ssl-server.jks /home/nobody/ssl-server.jks
-COPY src/main/resources/data.sql /home/nobody/data.sql
+COPY src/main/resources/initial_data.json /home/nobody/intial_data.json
 
 # Add the application's jar to the container
 ADD target/connector-0.0.1-SNAPSHOT.jar /home/nobody/app/application.jar

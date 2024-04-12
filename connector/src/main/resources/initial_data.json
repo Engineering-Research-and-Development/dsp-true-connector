@@ -132,5 +132,14 @@
       "homepage": "https://www.homepage.com/test",
       "type": "dcat:Catalog"
     }
+  ],
+  "contract_negotiations": [
+    {
+      "_class": "it.eng.negotiation.model.ContractNegotiation",
+      "_id": "fdc45797-e957-4955-8baf-ab7fd66ac4d3",
+      "providerPid": "urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aab",
+      "consumerPid": "urn:uuid:32541fe6-c580-409e-85a8-8a9a32fbe833",
+      "state": "REQUESTED"
+    }
   ]
 }
