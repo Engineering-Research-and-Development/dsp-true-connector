@@ -1,7 +1,9 @@
 package it.eng.catalog.model;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -12,6 +14,9 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
 import it.eng.tools.model.DSpaceConstants;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidationException;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,7 +29,7 @@ public class DataService {
 
 	@JsonProperty(DSpaceConstants.ID)
 	private String id;
-	
+	// Resource
 	@JsonProperty(DSpaceConstants.DCAT_KEYWORD)
 	private List<String> keyword;
 	@JsonProperty(DSpaceConstants.DCAT_THEME)
@@ -139,7 +144,7 @@ public class DataService {
 		}
 		
 		@JsonProperty(DSpaceConstants.DCAT_SERVES_DATASET)
-		private Builder servesDataset(List<Dataset> servesDataset) {
+		public Builder servesDataset(List<Dataset> servesDataset) {
 			service.servesDataset = servesDataset;
 			return this;
 		}
@@ -148,8 +153,17 @@ public class DataService {
 			if(service.id == null) {
 				service.id = UUID.randomUUID().toString();
 			}
-			return service;
-		}
+			Set<ConstraintViolation<DataService>> violations 
+				= Validation.buildDefaultValidatorFactory().getValidator().validate(service);
+			if(violations.isEmpty()) {
+				return service;
+			}
+			throw new ValidationException("DataService - " +
+					violations
+						.stream()
+						.map(v -> v.getPropertyPath() + " " + v.getMessage())
+						.collect(Collectors.joining(",")));
+			}
 	}
 	
 	@JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
