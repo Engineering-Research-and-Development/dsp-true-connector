@@ -29,4 +29,17 @@ public class ContractNegotiationExceptionAdvice extends ResponseEntityExceptionH
 
         return handleExceptionInternal(ex, response, new HttpHeaders(), HttpStatus.NOT_FOUND, request);
     }
+
+    @ExceptionHandler(value = {ContractNegotiationExistsException.class})
+    protected ResponseEntity<Object> handleContractExists(ContractNegotiationExistsException ex, WebRequest request) {
+
+        ContractNegotiationErrorMessage errorMessage = ContractNegotiationErrorMessage.Builder.newInstance()
+                .providerPid(ex.getProviderPid())
+                .code(HttpStatus.NOT_FOUND.getReasonPhrase())
+                .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()))
+                .description(Collections.singletonList(Description.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build())).build();
+        String response = Serializer.serializeProtocol(errorMessage);
+
+        return handleExceptionInternal(ex, response, new HttpHeaders(), HttpStatus.NOT_FOUND, request);
+    }
 }
