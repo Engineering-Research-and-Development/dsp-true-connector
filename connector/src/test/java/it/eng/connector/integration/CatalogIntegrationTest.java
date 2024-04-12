@@ -19,8 +19,6 @@ import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
-import com.fasterxml.jackson.databind.JsonNode;
-
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.CatalogError;
 import it.eng.catalog.model.CatalogRequestMessage;
@@ -54,12 +52,12 @@ class CatalogIntegrationTest {
     @WithUserDetails("milisav@mail.com")
     public void getCatalogSuccessfulTest() throws Exception {
     	
-    	JsonNode jsonNode = Serializer.serializeProtocolJsonNode(catalogRequestMessage);
+    	String body = Serializer.serializeProtocol(catalogRequestMessage);
     	
     	final ResultActions result =
     			mockMvc.perform(
     					post("/catalog/request")
-    					.content(jsonNode.toPrettyString())
+    					.content(body)
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isOk())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -70,12 +68,12 @@ class CatalogIntegrationTest {
     @WithUserDetails("milisav@mail.com")
 	public void notValidCatalogRequestMessageTest() throws Exception {
     	
-    	JsonNode jsonNode = Serializer.serializeProtocolJsonNode(datasetRequestMessage);
+    	String body = Serializer.serializeProtocol(datasetRequestMessage);
 		
 		final ResultActions result =
 				mockMvc.perform(
 		            post("/catalog/request")
-					.content(jsonNode.toPrettyString())
+					.content(body)
 		            .contentType(MediaType.APPLICATION_JSON));
 		    result.andExpect(status().is4xxClientError())
 		        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -87,12 +85,12 @@ class CatalogIntegrationTest {
 	@WithUserDetails("milisav@mail.com")
 	public void getDatasetSuccessfulTest() throws Exception {
 		
-		JsonNode jsonNode = Serializer.serializeProtocolJsonNode(datasetRequestMessage);
+		String body = Serializer.serializeProtocol(datasetRequestMessage);
 		
 		final ResultActions result =
 		        mockMvc.perform(
 		            get("/catalog/datasets/" + DATASET_ID)
-					.content(jsonNode.toPrettyString())
+					.content(body)
 		            .contentType(MediaType.APPLICATION_JSON));
 		    result.andExpect(status().isOk())
 		        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -104,12 +102,12 @@ class CatalogIntegrationTest {
 	@WithUserDetails("milisav@mail.com")
 	public void notValidDatasetRequestMessageTest() throws Exception {
 		
-		JsonNode jsonNode = Serializer.serializeProtocolJsonNode(catalogRequestMessage);
+		String body = Serializer.serializeProtocol(catalogRequestMessage);
 		
 		final ResultActions result =
 		        mockMvc.perform(
 		            get("/catalog/datasets/" + DATASET_ID)
-					.content(jsonNode.toPrettyString())
+					.content(body)
 		            .contentType(MediaType.APPLICATION_JSON));
 		    result.andExpect(status().is4xxClientError())
 		        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
