@@ -59,4 +59,10 @@ public class ModelUtil {
 							.build()))
 					.build()))
 			.build();
+	
+	public static ContractRequestMessage CONTRACT_REQUEST_MESSAGE = ContractRequestMessage.Builder.newInstance()
+			.callbackAddress(CALLBACK_ADDRESS)
+			.consumerPid(CONSUMER_PID)
+			.offer(OFFER)
+			.build();
 }

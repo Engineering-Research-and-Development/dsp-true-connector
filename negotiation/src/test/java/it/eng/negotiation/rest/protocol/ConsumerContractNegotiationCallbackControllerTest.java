@@ -34,9 +34,9 @@ import it.eng.negotiation.service.CallbackHandler;
 import it.eng.negotiation.service.ContractNegotiationConsumerService;
 
 @ExtendWith(MockitoExtension.class)
-public class ContractNegotiationConsumerCallbackControllerTest {
+public class ConsumerContractNegotiationCallbackControllerTest {
 
-	private ContractNegotiationConsumerCallbackController controller;
+	private ConsumerContractNegotiationCallbackController controller;
 	
 	@Mock
 	private ContractNegotiationConsumerService contractNegotiationConsumerService;
@@ -47,7 +47,7 @@ public class ContractNegotiationConsumerCallbackControllerTest {
 	
 	@BeforeEach
 	public void setup() {
-		controller = new ContractNegotiationConsumerCallbackController(contractNegotiationConsumerService, callbackHandler);
+		controller = new ConsumerContractNegotiationCallbackController(contractNegotiationConsumerService, callbackHandler);
 	}
 	
 	@Test
