@@ -21,6 +21,8 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 /*
 {
@@ -37,8 +39,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = ContractNegotiation.Builder.class)
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic = true)
+@Document(collection = "contract_negotiations")
 public class ContractNegotiation extends AbstractNegotiationModel {
 
+
+    @JsonProperty(DSpaceConstants.ID)
+    @Id
+    private String id;
     @NotNull
     @JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
     private String consumerPid;
