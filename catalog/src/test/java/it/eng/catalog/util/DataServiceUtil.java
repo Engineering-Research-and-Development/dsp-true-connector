@@ -7,7 +7,7 @@ import it.eng.catalog.model.DataService;
 
 public class DataServiceUtil {
 
-	public static DataService DATA_SERVICE = DataService.Builder.newInstance()
+	public static final DataService DATA_SERVICE = DataService.Builder.newInstance()
 			.id(UUID.randomUUID().toString())
 			.keyword(Arrays.asList("DataService keyword1", "DataService keyword2"))
 			.theme(Arrays.asList("DataService theme1", "DataService theme2"))

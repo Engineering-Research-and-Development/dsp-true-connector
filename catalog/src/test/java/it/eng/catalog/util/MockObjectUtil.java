@@ -35,26 +35,26 @@ public class MockObjectUtil {
 	public static final String TITLE = "Title for test";
 	public static final String ENDPOINT_URL = "https://provider-a.com/connector";
 	
-	public static Multilanguage MULTILANGUAGE =
+	public static final Multilanguage MULTILANGUAGE =
 		Multilanguage.Builder.newInstance().language("en").value("For test").build();
 	
-	public static Constraint CONSTRAINT = Constraint.Builder.newInstance()
+	public static final Constraint CONSTRAINT = Constraint.Builder.newInstance()
 			.leftOperand(LeftOperand.ABSOLUTE_POSITION)
 			.rightOperand(RIGHT_EXPRESSION)
 			.operator(Operator.EQ)
 			.build();
 	
-	public static Permission PERMISSION = Permission.Builder.newInstance()
+	public static final Permission PERMISSION = Permission.Builder.newInstance()
 			.action(Action.USE)
 			.constraint(Arrays.asList(CONSTRAINT))
 			.build();
 	
-	public static Offer OFFER = Offer.Builder.newInstance()
+	public static final Offer OFFER = Offer.Builder.newInstance()
 			.target(TARGET)
 			.permission(Arrays.asList(PERMISSION))
 			.build();
 	
-	public static Distribution DISTRIBUTION = Distribution.Builder.newInstance()
+	public static final Distribution DISTRIBUTION = Distribution.Builder.newInstance()
 			.title(MockObjectUtil.TITLE)
 			.description(Arrays.asList(MockObjectUtil.MULTILANGUAGE))
 			.issued(MockObjectUtil.ISSUED)
@@ -63,7 +63,7 @@ public class MockObjectUtil {
 			.accessService(Arrays.asList(DataServiceUtil.DATA_SERVICE))
 			.build();
 	
-	public static Dataset DATASET = Dataset.Builder.newInstance()
+	public static final Dataset DATASET = Dataset.Builder.newInstance()
 			.conformsTo(CONFORMSTO)
 			.creator(CREATOR)
 			.distribution(Arrays.asList(DISTRIBUTION))
@@ -77,7 +77,7 @@ public class MockObjectUtil {
 			.hasPolicy(Arrays.asList(OFFER))
 			.build();
 	
-	public static Catalog CATALOG = Catalog.Builder.newInstance()
+	public static final Catalog CATALOG = Catalog.Builder.newInstance()
 		.conformsTo(CONFORMSTO)
 		.creator(CREATOR)
 		.description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Catalog description").build()))
