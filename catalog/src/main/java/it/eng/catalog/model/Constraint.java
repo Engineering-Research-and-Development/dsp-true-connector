@@ -17,11 +17,12 @@ public class Constraint {
 	
 	@JsonProperty(DSpaceConstants.ODRL_LEFT_OPERAND)
 	private LeftOperand leftOperand;
+	
 	@JsonProperty(DSpaceConstants.ODRL_OPERATOR)
 	private Operator operator;
+	
 	@JsonProperty(DSpaceConstants.ODRL_RIGHT_OPERAND)
 	private String rightOperand;
-	
 
 	@JsonPOJOBuilder(withPrefix = "")
 	@JsonIgnoreProperties(ignoreUnknown = true)

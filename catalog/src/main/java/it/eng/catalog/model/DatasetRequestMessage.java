@@ -18,7 +18,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/**
+/*
  * {
   "@context":  "https://w3id.org/dspace/2024/1/context.json",
   "@type": "dspace:DatasetRequestMessage",
@@ -61,7 +61,7 @@ public class DatasetRequestMessage extends AbstractCatalogMessage {
 			if(violations.isEmpty()) {
 				return datasetRequestMessage;
 			}
-			throw new ValidationException(
+			throw new ValidationException("DatasetRequestMessage - " +
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())

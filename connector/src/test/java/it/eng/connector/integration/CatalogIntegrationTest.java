@@ -19,10 +19,8 @@ import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
-import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.CatalogError;
 import it.eng.catalog.model.CatalogRequestMessage;
-import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.DatasetRequestMessage;
 import it.eng.catalog.model.Serializer;
 import it.eng.catalog.util.MockObjectUtil;
@@ -35,15 +33,10 @@ class CatalogIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
     
-	private Catalog mockCatalog = MockObjectUtil.createCatalog();
-	
-	private Dataset mockDataset = MockObjectUtil.createDataset();
-	
 	private CatalogError catalogError = CatalogError.Builder.newInstance().build();
-	
 	private CatalogRequestMessage catalogRequestMessage = CatalogRequestMessage.Builder.newInstance().filter(List.of("some-filter")).build();
-	
-	private DatasetRequestMessage datasetRequestMessage = DatasetRequestMessage.Builder.newInstance().dataset(Serializer.serializeProtocol(mockDataset)).build();
+	private DatasetRequestMessage datasetRequestMessage = DatasetRequestMessage.Builder.newInstance()
+			.dataset(Serializer.serializeProtocol(MockObjectUtil.DATASET)).build();
 	
 	// this can be found in the initial_data.json
 	private final String DATASET_ID = "fdc45798-a222-4955-8baf-ab7fd66ac4d5";
@@ -61,7 +54,7 @@ class CatalogIntegrationTest {
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isOk())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(mockCatalog.getType())));
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CATALOG.getType())));
     }
     
     @Test
@@ -94,8 +87,8 @@ class CatalogIntegrationTest {
 		            .contentType(MediaType.APPLICATION_JSON));
 		    result.andExpect(status().isOk())
 		        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(mockCatalog.getDataset().get(0).getType())))
-		        .andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(mockCatalog.getDataset().get(0).getContext())));
+		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.DATASET.getType())))
+		        .andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(MockObjectUtil.DATASET.getContext())));
 	}
 	
 	@Test

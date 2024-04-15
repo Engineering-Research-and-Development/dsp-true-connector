@@ -4,7 +4,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.UUID;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -12,20 +11,16 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import it.eng.catalog.model.Action;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.Constraint;
-import it.eng.catalog.model.DataService;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.Distribution;
 import it.eng.catalog.model.LeftOperand;
-import it.eng.catalog.model.LiteralExpression;
 import it.eng.catalog.model.Multilanguage;
 import it.eng.catalog.model.Offer;
 import it.eng.catalog.model.Operator;
 import it.eng.catalog.model.Permission;
-import it.eng.catalog.model.Reference;
 
 public class MockObjectUtil {
 	
-	public static final LiteralExpression LEFT_EXPRESSION = new LiteralExpression("spatial");
 	public static final String RIGHT_EXPRESSION = "EU";
 	public static final String USE = "use";
 	public static final String INCLUDED_IN = "includedInAction";
@@ -40,100 +35,63 @@ public class MockObjectUtil {
 	public static final String TITLE = "Title for test";
 	public static final String ENDPOINT_URL = "https://provider-a.com/connector";
 	
+	public static final Multilanguage MULTILANGUAGE =
+		Multilanguage.Builder.newInstance().language("en").value("For test").build();
 	
-	public static Catalog createCatalog() {
-		
-		 return Catalog.Builder.newInstance()
-					.conformsTo(CONFORMSTO)
-					.creator(CREATOR)
-					.description(Arrays.asList(createMultilanguage()))
-					.identifier(IDENTIFIER)
-					.issued(ISSUED)
-					.keyword(Arrays.asList("keyword1", "keyword2"))
-					.modified(MODIFIED)
-					.theme(Arrays.asList("white", "blue", "aqua"))
-					.title(TITLE)
-					.participantId("urn:example:DataProviderA")
-					.service(Arrays.asList(createDataService()))
-					.dataset(Arrays.asList(createDataset()))
-					.distribution(Arrays.asList(createDistribution()))
-					.build();
-	}
-
-
-	public static Dataset createDataset() {
-		Dataset dataset = Dataset.Builder.newInstance()
-				.conformsTo(CONFORMSTO)
-				.creator(CREATOR)
-				.distribution(Arrays.asList(createDistribution()))
-				.description(Arrays.asList(createMultilanguage()))
-				.issued(ISSUED)
-				.keyword(Arrays.asList("keyword1", "keyword2"))
-				.modified(MODIFIED)
-				.theme(Arrays.asList("white", "blue", "aqua"))
-				.title(TITLE)
-				.hasPolicy(Arrays.asList(createOffer()))
-				.build();
-		return dataset;
-	}
-
-
-	public static Multilanguage createMultilanguage() {
-		Multilanguage multilanguage = Multilanguage.Builder.newInstance()
-				.language("en")
-				.value("For test")
-				.build();
-		return multilanguage;
-	}
-
-
-	public static Offer createOffer() {
-		Offer offer = Offer.Builder.newInstance()
-				.assignee(ASSIGNEE)
-				.assigner(ASSIGNER)
-				.target(TARGET)
-				.permission(Arrays.asList(createPermission()))
-				.build();
-		return offer;
-	}
-
-
-	public static Permission createPermission() {
-		Permission permission = Permission.Builder.newInstance()
-				.action(Action.USE)
-				.constraint(Arrays.asList(createConstraint()))
-				.build();
-		return permission;
-	}
-
-
-	public static Distribution createDistribution() {
-		Distribution distribution = Distribution.Builder.newInstance()
-				.dataService(Arrays.asList(createDataService()))
-				.format(Reference.Builder.newInstance().id("pdf").build())
-				.build();
-		return distribution;
-	}
-
-
-	public static DataService createDataService() {
-		return DataService.Builder.newInstance()
-				.id(UUID.randomUUID().toString())
-				.endpointURL("http://dataservice.com")
-				.endpointDescription("endpoint description")
-				.build();
-	}
-
-
-	public static Constraint createConstraint() {
-		Constraint constraint = Constraint.Builder.newInstance()
-				.leftOperand(LeftOperand.ABSOLUTE_POSITION)
-				.rightOperand(RIGHT_EXPRESSION)
-				.operator(Operator.EQ)
-				.build();
-		return constraint;
-	}
+	public static final Constraint CONSTRAINT = Constraint.Builder.newInstance()
+			.leftOperand(LeftOperand.ABSOLUTE_POSITION)
+			.rightOperand(RIGHT_EXPRESSION)
+			.operator(Operator.EQ)
+			.build();
 	
+	public static final Permission PERMISSION = Permission.Builder.newInstance()
+			.action(Action.USE)
+			.constraint(Arrays.asList(CONSTRAINT))
+			.build();
+	
+	public static final Offer OFFER = Offer.Builder.newInstance()
+			.target(TARGET)
+			.permission(Arrays.asList(PERMISSION))
+			.build();
+	
+	public static final Distribution DISTRIBUTION = Distribution.Builder.newInstance()
+			.title(MockObjectUtil.TITLE)
+			.description(Arrays.asList(MockObjectUtil.MULTILANGUAGE))
+			.issued(MockObjectUtil.ISSUED)
+			.modified(MockObjectUtil.MODIFIED)
+			.hasPolicy(Arrays.asList(MockObjectUtil.OFFER))
+			.accessService(Arrays.asList(DataServiceUtil.DATA_SERVICE))
+			.build();
+	
+	public static final Dataset DATASET = Dataset.Builder.newInstance()
+			.conformsTo(CONFORMSTO)
+			.creator(CREATOR)
+			.distribution(Arrays.asList(DISTRIBUTION))
+			.description(Arrays.asList(MULTILANGUAGE))
+			.issued(ISSUED)
+			.keyword(Arrays.asList("keyword1", "keyword2"))
+			.identifier(IDENTIFIER)
+			.modified(MODIFIED)
+			.theme(Arrays.asList("white", "blue", "aqua"))
+			.title(TITLE)
+			.hasPolicy(Arrays.asList(OFFER))
+			.build();
+	
+	public static final Catalog CATALOG = Catalog.Builder.newInstance()
+		.conformsTo(CONFORMSTO)
+		.creator(CREATOR)
+		.description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Catalog description").build()))
+		.identifier(IDENTIFIER)
+		.issued(ISSUED)
+		.keyword(Arrays.asList("keyword1", "keyword2"))
+		.modified(MODIFIED)
+		.theme(Arrays.asList("white", "blue", "aqua"))
+		.title(TITLE)
+		.participantId("urn:example:DataProviderA")
+		.service(Arrays.asList(DataServiceUtil.DATA_SERVICE))
+		.dataset(Arrays.asList(DATASET))
+		.distribution(Arrays.asList(DISTRIBUTION))
+		.build();
 
 	public static void getAllKeysUsingJsonNodeFieldNames(JsonNode jsonNode, Set<String> keys) {
 	    if (jsonNode.isObject()) {

@@ -148,7 +148,7 @@ public class Serializer {
 	private static <T> void validateProtocol(JsonNode jsonNode, Class<T> clazz) {
 		try { 
 			Objects.requireNonNull(jsonNode.get(DSpaceConstants.TYPE));
-			if(clazz.equals(Catalog.class) || clazz.equals(Dataset.class)) {
+			if(clazz.equals(Catalog.class) || clazz.equals(Dataset.class) || clazz.equals(DataService.class)) {
 				if(!Objects.equals(DSpaceConstants.DCAT + clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
 					throw new ValidationException("@type field not correct, expected "+ DSpaceConstants.DSPACE + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
 				}
@@ -157,9 +157,14 @@ public class Serializer {
 					throw new ValidationException("@type field not correct, expected "+ DSpaceConstants.DSPACE + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
 				}
 			}
-			Objects.requireNonNull(jsonNode.get(DSpaceConstants.CONTEXT));
-			if(!Objects.equals(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE, jsonNode.get(DSpaceConstants.CONTEXT).asText())) {
-				throw new ValidationException("@contexxt field not valid - was " + jsonNode.get(DSpaceConstants.CONTEXT).asText());
+			//if(!(Distribution.class.isInstance(clazz) || DataService.class.isInstance(clazz))) {
+			//if(!(clazz.isInstance(Distribution.class) || clazz.isInstance(DataService.class))) {
+			// skip context check if not one of following
+			if(!(clazz.equals(Distribution.class) || clazz.equals(DataService.class))) {
+				Objects.requireNonNull(jsonNode.get(DSpaceConstants.CONTEXT));
+				if(!Objects.equals(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE, jsonNode.get(DSpaceConstants.CONTEXT).asText())) {
+					throw new ValidationException("@contexxt field not valid - was " + jsonNode.get(DSpaceConstants.CONTEXT).asText());
+				}
 			}
 		} catch (NullPointerException npe) {
 			throw new ValidationException("Missing mandatory protocol fields @context and/or @type or value not correct");
