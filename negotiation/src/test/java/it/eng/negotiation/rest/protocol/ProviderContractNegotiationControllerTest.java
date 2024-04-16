@@ -1,42 +1,28 @@
 package it.eng.negotiation.rest.protocol;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.Mockito.when;
-
-import java.util.Arrays;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.context.request.RequestAttributes;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
-
 import com.fasterxml.jackson.databind.JsonNode;
-
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import static org.mockito.ArgumentMatchers.any;
-
-import it.eng.negotiation.model.ContractAgreementVerificationMessage;
-import it.eng.negotiation.model.ContractNegotiation;
-import it.eng.negotiation.model.ContractNegotiationEventMessage;
-import it.eng.negotiation.model.ContractNegotiationEventType;
-import it.eng.negotiation.model.ContractNegotiationState;
-import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
-import it.eng.negotiation.model.ContractRequestMessage;
-import it.eng.negotiation.model.ModelUtil;
-import it.eng.negotiation.model.Reason;
-import it.eng.negotiation.model.Serializer;
+import it.eng.negotiation.model.*;
 import it.eng.negotiation.service.ContractNegotiationService;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.servlet.http.HttpServletRequest;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
+import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class ProviderContractNegotiationControllerTest {
@@ -65,7 +51,7 @@ public class ProviderContractNegotiationControllerTest {
 	@Test
 	public void getNegotiationByProviderPid_success() throws InterruptedException, ExecutionException {
 		when(contractNegotiationService.getNegotiationByProviderPid(ModelUtil.PROVIDER_PID))
-			.thenReturn(CompletableFuture.completedFuture(contractNegotiation));
+			.thenReturn(contractNegotiation);
 		ResponseEntity<JsonNode> response = controller.getNegotiationByProviderPid(ModelUtil.PROVIDER_PID);
 		assertNotNull(response, "Response is not null");
 		assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -82,7 +68,7 @@ public class ProviderContractNegotiationControllerTest {
                 .providerPid(ModelUtil.PROVIDER_PID)
                 .build();
 		when(contractNegotiationService.startContractNegotiation(any(ContractRequestMessage.class)))
-			.thenReturn(CompletableFuture.completedFuture(Serializer.serializeProtocolJsonNode(cn)));
+			.thenReturn(cn);
 		
 		ResponseEntity<JsonNode> response = controller.createNegotiation(Serializer.serializeProtocolJsonNode(ModelUtil.CONTRACT_REQUEST_MESSAGE));
 		

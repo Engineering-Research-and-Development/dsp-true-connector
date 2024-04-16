@@ -5,7 +5,6 @@ import java.util.UUID;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -37,19 +36,34 @@ public class ContractNegotiationExceptionAdvice extends ResponseEntityExceptionH
     }
     
     @ExceptionHandler(value = {ValidationException.class})
-    protected ResponseEntity<Object> handleValidationException(ValidationException ex) {
-    	  ContractNegotiationErrorMessage contractNegotiationErrorMessage = ContractNegotiationErrorMessage.Builder.newInstance()
+    protected ResponseEntity<Object> handleValidationException(ValidationException ex, WebRequest request) {
+    	  ContractNegotiationErrorMessage errorMessage = ContractNegotiationErrorMessage.Builder.newInstance()
     			//TODO add proper provider and consumer pid
     			  .providerPid(createNewId())
     			  .consumerPid(createNewId())
                   .code(HttpStatus.NOT_FOUND.getReasonPhrase())
                   .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()))
                   .description(Collections.singletonList(Description.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build())).build();
-//    	  return handleExceptionInternal(ex, response, new HttpHeaders(), HttpStatus.NOT_FOUND, request);
-    	  return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(Serializer.serializeProtocol(contractNegotiationErrorMessage));
+    	  String response = Serializer.serializeProtocol(errorMessage);
+    	  
+    	  return handleExceptionInternal(ex, response, new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
     }
     
-    protected String createNewId() {
-		return "urn:uuid:" + UUID.randomUUID();
-	}
+
+    @ExceptionHandler(value = {ContractNegotiationExistsException.class})
+    protected ResponseEntity<Object> handleContractExists(ContractNegotiationExistsException ex, WebRequest request) {
+
+        ContractNegotiationErrorMessage errorMessage = ContractNegotiationErrorMessage.Builder.newInstance()
+                .providerPid(ex.getProviderPid())
+                .code(HttpStatus.NOT_FOUND.getReasonPhrase())
+                .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()))
+                .description(Collections.singletonList(Description.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build())).build();
+        String response = Serializer.serializeProtocol(errorMessage);
+
+        return handleExceptionInternal(ex, response, new HttpHeaders(), HttpStatus.NOT_FOUND, request);
+    }
+    
+    private String createNewId() {
+    	return "urn:uuid:" + UUID.randomUUID();
+    }
 }

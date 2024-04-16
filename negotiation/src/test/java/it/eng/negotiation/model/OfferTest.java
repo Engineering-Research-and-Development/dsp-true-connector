@@ -1,22 +1,17 @@
 package it.eng.negotiation.model;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
-import java.util.Arrays;
-
+import jakarta.validation.ValidationException;
 import org.junit.jupiter.api.Test;
 
-import jakarta.validation.ValidationException;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class OfferTest {
 
 	@Test
 	public void validOffer() {
 		Offer offer = Offer.Builder.newInstance()
-				.assigner(ModelUtil.ASSIGNER)
-				.assignee(ModelUtil.ASSIGNEE)
-				.permission(Arrays.asList(ModelUtil.PERMISSION))
+				.target(ModelUtil.TARGET)
 				.build();
 		assertNotNull(offer, "Offer should be created with mandatory fields");
 		assertNotNull(offer.getId());

@@ -1,10 +1,5 @@
 package it.eng.negotiation.model;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import java.util.Arrays;
@@ -13,6 +8,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class ContractNegotiationTest {
 
@@ -45,7 +42,7 @@ public class ContractNegotiationTest {
 		assertNotNull(result.get(DSpaceConstants.DSPACE_CONSUMER_PID).asText());
 		assertNotNull(result.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText());
 		assertNotNull(result.get(DSpaceConstants.DSPACE_STATE).asText());
-		
+		assertNull(result.get(DSpaceConstants.ID));
 		ContractNegotiation javaObj = Serializer.deserializeProtocol(result, ContractNegotiation.class);
 		validateJavaObj(javaObj);
 	}

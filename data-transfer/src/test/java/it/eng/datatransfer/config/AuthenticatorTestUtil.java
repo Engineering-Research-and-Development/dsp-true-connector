@@ -1,9 +1,6 @@
 package it.eng.datatransfer.config;
 
-import java.security.KeyStoreException;
-import java.security.PublicKey;
-import java.util.Iterator;
-
+import lombok.extern.slf4j.Slf4j;
 import org.apache.sshd.common.config.keys.KeyUtils;
 import org.apache.sshd.server.auth.AsyncAuthException;
 import org.apache.sshd.server.auth.pubkey.PublickeyAuthenticator;
@@ -14,7 +11,9 @@ import org.springframework.boot.ssl.NoSuchSslBundleException;
 import org.springframework.boot.test.context.TestComponent;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-import lombok.extern.slf4j.Slf4j;
+import java.security.KeyStoreException;
+import java.security.PublicKey;
+import java.util.Iterator;
 
 @Slf4j
 @TestComponent
@@ -30,7 +29,7 @@ public class AuthenticatorTestUtil implements PublickeyAuthenticator {
 		try {
 			aliases = sslConfiguration.getTrustManagerKeyStore().aliases().asIterator();
 			while (aliases.hasNext() && !isAuthenticated) {
-				isAuthenticated = KeyUtils.compareKeys(key, 
+				isAuthenticated = KeyUtils.compareKeys(key,
 						sslConfiguration.getTrustManagerKeyStore().getCertificate(aliases.next()).getPublicKey());
 			}
 		} catch (KeyStoreException e) {
