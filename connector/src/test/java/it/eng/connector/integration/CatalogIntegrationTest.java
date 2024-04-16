@@ -8,8 +8,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.List;
-
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -19,9 +17,6 @@ import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
-import it.eng.catalog.model.CatalogError;
-import it.eng.catalog.model.CatalogRequestMessage;
-import it.eng.catalog.model.DatasetRequestMessage;
 import it.eng.catalog.model.Serializer;
 import it.eng.catalog.util.MockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
@@ -33,11 +28,6 @@ class CatalogIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
     
-	private CatalogError catalogError = CatalogError.Builder.newInstance().build();
-	private CatalogRequestMessage catalogRequestMessage = CatalogRequestMessage.Builder.newInstance().filter(List.of("some-filter")).build();
-	private DatasetRequestMessage datasetRequestMessage = DatasetRequestMessage.Builder.newInstance()
-			.dataset(Serializer.serializeProtocol(MockObjectUtil.DATASET)).build();
-	
 	// this can be found in the initial_data.json
 	private final String DATASET_ID = "fdc45798-a222-4955-8baf-ab7fd66ac4d5";
     
@@ -45,7 +35,7 @@ class CatalogIntegrationTest {
     @WithUserDetails("milisav@mail.com")
     public void getCatalogSuccessfulTest() throws Exception {
     	
-    	String body = Serializer.serializeProtocol(catalogRequestMessage);
+    	String body = Serializer.serializeProtocol(MockObjectUtil.CATALOG_REQUEST_MESSAGE);
     	
     	final ResultActions result =
     			mockMvc.perform(
@@ -61,7 +51,7 @@ class CatalogIntegrationTest {
     @WithUserDetails("milisav@mail.com")
 	public void notValidCatalogRequestMessageTest() throws Exception {
     	
-    	String body = Serializer.serializeProtocol(datasetRequestMessage);
+    	String body = Serializer.serializeProtocol(MockObjectUtil.DATASET_REQUEST_MESSAGE);
 		
 		final ResultActions result =
 				mockMvc.perform(
@@ -70,7 +60,7 @@ class CatalogIntegrationTest {
 		            .contentType(MediaType.APPLICATION_JSON));
 		    result.andExpect(status().is4xxClientError())
 		        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(catalogError.getType())))
+		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CATALOG_ERROR.getType())))
 		        .andExpect(jsonPath("['"+DSpaceConstants.DSPACE_REASON+"'][0]['"+DSpaceConstants.VALUE+"']", containsString("@type field not correct, expected dspace:CatalogRequestMessage")));
 	}
 	
@@ -78,7 +68,7 @@ class CatalogIntegrationTest {
 	@WithUserDetails("milisav@mail.com")
 	public void getDatasetSuccessfulTest() throws Exception {
 		
-		String body = Serializer.serializeProtocol(datasetRequestMessage);
+		String body = Serializer.serializeProtocol(MockObjectUtil.DATASET_REQUEST_MESSAGE);
 		
 		final ResultActions result =
 		        mockMvc.perform(
@@ -95,7 +85,7 @@ class CatalogIntegrationTest {
 	@WithUserDetails("milisav@mail.com")
 	public void notValidDatasetRequestMessageTest() throws Exception {
 		
-		String body = Serializer.serializeProtocol(catalogRequestMessage);
+		String body = Serializer.serializeProtocol(MockObjectUtil.CATALOG_REQUEST_MESSAGE);
 		
 		final ResultActions result =
 		        mockMvc.perform(
@@ -104,7 +94,7 @@ class CatalogIntegrationTest {
 		            .contentType(MediaType.APPLICATION_JSON));
 		    result.andExpect(status().is4xxClientError())
 		        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(catalogError.getType())))
+		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CATALOG_ERROR.getType())))
 		        .andExpect(jsonPath("['"+DSpaceConstants.DSPACE_REASON+"'][0]['"+DSpaceConstants.VALUE+"']", containsString("@type field not correct, expected dspace:DatasetRequestMessage")));	}
 	
 }
