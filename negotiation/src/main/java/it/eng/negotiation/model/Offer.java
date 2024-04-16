@@ -1,10 +1,5 @@
 package it.eng.negotiation.model;
 
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
@@ -12,7 +7,6 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -21,6 +15,11 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 /*
 	"odrl:offer": {
@@ -55,21 +54,22 @@ import lombok.NoArgsConstructor;
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true) 
 public class Offer {
 
-	@NotNull
+//	@NotNull
 	@JsonProperty(DSpaceConstants.ID)
 	private String id;
-	
+
+	@NotNull
 	@JsonProperty(DSpaceConstants.ODRL_TARGET)
 	private String target;
 	
-	@NotNull
+//	@NotNull
 	@JsonProperty(DSpaceConstants.ODRL_ASSIGNER)
 	private String assigner;
 	
 	@JsonProperty(DSpaceConstants.ODRL_ASSIGNEE)
 	private String assignee;
 	
-	@NotNull
+//	@NotNull
 	@JsonProperty(DSpaceConstants.ODRL_PERMISSION)
 	private List<Permission> permission;
 	

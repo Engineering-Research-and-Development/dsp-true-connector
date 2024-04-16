@@ -1,16 +1,15 @@
 package it.eng.negotiation.repository;
 
-import java.util.Optional;
-
-import org.springframework.data.jpa.repository.JpaRepository;
+import it.eng.negotiation.model.ContractNegotiation;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
-import it.eng.negotiation.entity.ContractNegotiationEntity;
+import java.util.Optional;
 
 @Repository
-public interface ContractNegotiationRepository extends JpaRepository<ContractNegotiationEntity, String> {
+public interface ContractNegotiationRepository extends MongoRepository<ContractNegotiation, String> {
 
-	Optional<ContractNegotiationEntity> findByProviderPid(String providerPid);
-	
-	Optional<ContractNegotiationEntity> findByProviderPidAndConsumerPid(String providerPid, String consumerPid);
+	Optional<ContractNegotiation> findByProviderPid(String providerPid);
+
+	Optional<ContractNegotiation> findByProviderPidAndConsumerPid(String providerPid, String consumerPid);
 }

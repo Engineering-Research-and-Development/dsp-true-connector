@@ -1,18 +1,8 @@
 package it.eng.negotiation.model;
 
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import org.apache.commons.lang3.builder.ToStringBuilder;
-
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.*;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -21,6 +11,12 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /*
 {
@@ -37,8 +33,14 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = ContractNegotiation.Builder.class)
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic = true)
+@Document(collection = "contract_negotiations")
 public class ContractNegotiation extends AbstractNegotiationModel {
 
+
+    @JsonIgnore
+    @JsonProperty(DSpaceConstants.ID)
+    @Id
+    private String id;
     @NotNull
     @JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
     private String consumerPid;
