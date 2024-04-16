@@ -52,8 +52,8 @@ public interface DSpaceConstants {
 	public static final String NAME = "name";
 	public static final String DSPACE_NAME = DSPACE + NAME;
 	public static final String DSPACE_VALUE = DSPACE + "value";
-
-	public static final String DCT_FORMAT = DCT + "format";
+	public static final String FORMAT = "format";
+	public static final String DCT_FORMAT = DCT + FORMAT;
 	public static final String DCT_TERMS = DCT + "terms";
 	public static final String ENDPOINT_URL= "endpointURL";
 	public static final String DCAT_ENDPOINT_URL = DCAT + ENDPOINT_URL;
@@ -62,7 +62,8 @@ public interface DSpaceConstants {
 	public static final String DCAT_DATASET = DCAT + DATASET;
 	public static final String SERVES_DATASET = "servesDataset";
 	public static final String DCAT_SERVES_DATASET = DCAT + SERVES_DATASET;
-	public static final String DATA_SERVICE = DCAT + "dataservice";
+	public static final String DATA_SERVICE = "dataService";
+	public static final String DCAT_DATA_SERVICE = DCAT + DATA_SERVICE;
 	public static final String DISTRIBUTION = "distribution";
 	public static final String DCAT_DISTRIBUTION = DCAT + DISTRIBUTION;
 	public static final String POLICY_TYPE = "@policytype";

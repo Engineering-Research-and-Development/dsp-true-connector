@@ -21,9 +21,17 @@ end note
 
 == ContractOfferMessage ==
 alt Provider
+note over p
+	ContractNegotiation.status: **OFFERED**
+end note
+
 p->p: create ContractOfferMessage; callbackAddress https://provider.com
 p->c: https://consumer.com/negotiations/offers
+note over c
+	ContractNegotiation.state **OFFERED**
+end note
 c->p: 201 Created with body ContractNegotiation state **OFFERED**
+p->p: Handle f request not 200
 
 	alt accepts
 		c<-c: ContractNegotiationEventMessage,\nstatus **ACCEPTED**
@@ -47,24 +55,40 @@ note over p
 end note
 
 == ContractAgreementMessage ==
+
+note over p
+	Provider update status of
+	ContractNegotiation to **AGREED**
+end note
+
 p->p: ContractAgreementMessage \ncallbackAddress: https://provider.com
 p->c: callbackAddress + /negotiations/:consumerPid/agreement
 
-c<-c: status: **AGREED**
+c<-c: ContractNegotiation.status **AGREED**
 c->p : 200 OK
+p->p: handle if not 200 OK\nupdate ContractNegotiation.status
 
 == ContractAgreementVerificationMessage ==
+note over c
+ ContractNegotiation.status = **VERIFIED**
+end note
 c<-c: ContractAgreementVerificationMessage
 c->p: callbackAddress + /negotiations/:providerPid/agreement/verification
 
-p->p: status: **VERIFIED**??
-p->c: 200 OK
+p->p: ContractNegotiation.status **VERIFIED**
+p->c: 200 OK 
+c<-c: handle if not 200 OK\nupdate ContractNegotiation.status
 
 == ContractNegotiationEventMessage ==
+note over p
+	ContractNegotiation.status **FINALIZED**
+end note
+
 p->p: ContractNegotiationEventMessage, eventType **FINALIZED**
 
 p->c: callback + /negotiations/:consumerPid/events
-c<-c: status: FINALIZED
+c<-c: ContractNEgotation.status **FINALIZED**
 c->p: 200 OK
+p->p: handle if not 200 OK\nupdate ContractNegotiation.status
 
 @enduml

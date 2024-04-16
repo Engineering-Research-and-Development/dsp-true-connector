@@ -1,18 +1,22 @@
 package it.eng.catalog.model;
 
 import java.util.List;
-
-import org.springframework.lang.NonNull;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
 import it.eng.tools.model.DSpaceConstants;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidationException;
+import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -35,12 +39,12 @@ public class Distribution {
 	@JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
 	private List<Offer> hasPolicy;
 	
-	@JsonProperty(DSpaceConstants.DCT_FORMAT)
-	private Reference format;
+//	@JsonProperty(DSpaceConstants.DCT_FORMAT)
+//	private Reference format;
 	
-	@NonNull
+	@NotNull
 	@JsonProperty(DSpaceConstants.DCAT_ACCESS_SERVICE)
-	private List<DataService> dataservice;
+	private List<DataService> accessService;
 
 	@JsonPOJOBuilder(withPrefix = "")
 	@JsonIgnoreProperties(ignoreUnknown = true)
@@ -81,16 +85,16 @@ public class Distribution {
 		}
 		
 		@JsonProperty(DSpaceConstants.DCAT_ACCESS_SERVICE)
-		public Builder dataService(List<DataService> dataService) {
-			distribution.dataservice = dataService;
+		public Builder accessService(List<DataService> dataService) {
+			distribution.accessService = dataService;
 			return this;
 		}
 		
-		@JsonProperty(DSpaceConstants.DCT_FORMAT)
-		public Builder format(Reference format) {
-			distribution.format = format;
-			return this;
-		}
+//		@JsonProperty(DSpaceConstants.DCT_FORMAT)
+//		public Builder format(Reference format) {
+//			distribution.format = format;
+//			return this;
+//		}
 		
 		@JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
 		public Builder hasPolicy(List<Offer> policies) {
@@ -99,8 +103,17 @@ public class Distribution {
 		}
 		
 		public Distribution build() {
-			return distribution;
-		}
+			Set<ConstraintViolation<Distribution>> violations 
+				= Validation.buildDefaultValidatorFactory().getValidator().validate(distribution);
+			if(violations.isEmpty()) {
+				return distribution;
+			}
+			throw new ValidationException("Distribution - " +
+					violations
+						.stream()
+						.map(v -> v.getPropertyPath() + " " + v.getMessage())
+						.collect(Collectors.joining(",")));
+			}
 	}
 	
 	@JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)

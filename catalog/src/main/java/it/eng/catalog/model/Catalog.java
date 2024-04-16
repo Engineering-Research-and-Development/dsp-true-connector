@@ -1,21 +1,27 @@
 package it.eng.catalog.model;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
 import it.eng.tools.model.DSpaceConstants;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidationException;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 @Getter
 @JsonDeserialize(builder = Catalog.Builder.class)
@@ -54,13 +60,17 @@ public class Catalog {
     private String modified;
     @JsonProperty(DSpaceConstants.DCT_TITLE)
     private String title;
+    
+    // from Dataset definition
     @JsonProperty(DSpaceConstants.DCAT_DISTRIBUTION)
     private List<Distribution> distribution;
-
-
+    // assumption - policy for allowing catalog usage/display - not mandatory for catalog
+	@JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
+	private List<Offer> hasPolicy;
+	// end Dataset definition
+	
     @JsonProperty(DSpaceConstants.DCAT_DATASET)
     private List<Dataset> dataset;
-
     @JsonProperty(DSpaceConstants.DCAT_SERVICE)
     private List<DataService> service;
 
@@ -142,6 +152,12 @@ public class Catalog {
             catalog.title = title;
             return this;
         }
+        
+        @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
+		public Builder hasPolicy(List<Offer> policies) {
+        	catalog.hasPolicy = policies;
+			return this;
+		}
 
         @JsonProperty(DSpaceConstants.DCAT_DISTRIBUTION)
         public Builder distribution(List<Distribution> distribution) {
@@ -179,8 +195,17 @@ public class Catalog {
             if (catalog.id == null) {
                 catalog.id = UUID.randomUUID().toString();
             }
-            return catalog;
-        }
+            Set<ConstraintViolation<Catalog>> violations 
+				= Validation.buildDefaultValidatorFactory().getValidator().validate(catalog);
+			if(violations.isEmpty()) {
+				return catalog;
+			}
+			throw new ValidationException("Catalog - " +
+					violations
+						.stream()
+						.map(v -> v.getPropertyPath() + " " + v.getMessage())
+						.collect(Collectors.joining(",")));
+			}
     }
 
     @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)

@@ -1,7 +1,9 @@
 package it.eng.catalog.model;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -12,6 +14,9 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
 import it.eng.tools.model.DSpaceConstants;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidationException;
 import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -27,9 +32,6 @@ public class Offer {
 	"odrl:offer": {
     "@type": "odrl:Offer",
     "@id": "urn:uuid:6bcea82e-c509-443d-ba8c-8eef25984c07",
-    "odrl:target": "urn:uuid:3dd1add8-4d2d-569e-d634-8394a8836a88",
-    "odrl:assigner": "urn:tsdshhs636378",
-    "odrl:assignee": "urn:jashd766",
     "odrl:permission": [{
       "odrl:action": "odrl:use" ,
       "odrl:constraint": [{
@@ -39,17 +41,34 @@ public class Offer {
       }]
     }]
   }
-	 */
+  Offer -> allOf  /definitions/MessageOffer
+		allOf /definitions/PolicyClass
+			allOf /definitions/AbstractPolicyRule
+				"not": { "required": [ "odrl:target" ] }
+			"required": "@id"
+		"required": [ "@type", "odrl:assigner" ]
+	"required": "odrl:permission" or "odrl:prohibition"
+   	"not": { "required": [ "odrl:target" ] }
+ *
+ */
+	@NotNull
 	@JsonProperty(DSpaceConstants.ID)
 	private String id;
+	
+	// Different to a Catalog or Dataset, the Offer inside a Contract Request Message must have an odrl:target attribute.
+	// not mandatory for Catalog or Dataset offer to have target field - different from the Offer in negotiation module
 	@JsonProperty(DSpaceConstants.ODRL_TARGET)
 	private String target;
-	@NotNull
+	
+	// required in catalog???
 	@JsonProperty(DSpaceConstants.ODRL_ASSIGNER)
 	private String assigner;
-	@NotNull
+
+	// required in catalog???
 	@JsonProperty(DSpaceConstants.ODRL_ASSIGNEE)
 	private String assignee;
+	
+	@NotNull
 	@JsonProperty(DSpaceConstants.ODRL_PERMISSION)
 	private List<Permission> permission;
 	
@@ -107,17 +126,17 @@ public class Offer {
 			if (offer.id == null) {
 				offer.id = UUID.randomUUID().toString();
 			}
-			return offer;
-		}
+			Set<ConstraintViolation<Offer>> violations 
+				= Validation.buildDefaultValidatorFactory().getValidator().validate(offer);
+			if(violations.isEmpty()) {
+				return offer;
+			}
+			throw new ValidationException("Offer - " + 
+					violations
+						.stream()
+						.map(v -> v.getPropertyPath() + " " + v.getMessage())
+						.collect(Collectors.joining(", ")));
+			}
 	}
-
-
-//	@JsonIgnore
-//	public boolean isBlank() {
-//		if(id.isBlank() || target.isBlank()) {
-//			return true;
-//		}
-//		return false;
-//	}
 		
 }
