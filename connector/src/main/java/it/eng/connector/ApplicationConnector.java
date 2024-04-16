@@ -7,11 +7,11 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 
 @SpringBootApplication
 @ComponentScan({"it.eng.connector", "it.eng.catalog", "it.eng.negotiation", "it.eng.tools", "it.eng.datatransfer"})
-@EnableMongoRepositories(basePackages = {"it.eng.connector.*", "it.eng.catalog.*", "it.eng.negotiation.*"})
+@EnableMongoRepositories(basePackages = {"it.eng.connector.repository", "it.eng.catalog.repository", "it.eng.negotiation.repository"})
 public class ApplicationConnector {
 
     
-	public static void main(String[] args) throws Exception {
+	public static void main(String[] args) {
 		System.setProperty("server.error.include-stacktrace", "never");
 		SpringApplication.run(ApplicationConnector.class, args);
 	}

@@ -33,7 +33,7 @@ public class ContractNegotiationServiceTest {
 
     @BeforeEach
     public void setup() {
-        service = new ContractNegotiationService(publisher, repository, "conncector_id", false);
+        service = new ContractNegotiationService(publisher, repository);
     }
 
     @Test
