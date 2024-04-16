@@ -1,27 +1,17 @@
 package it.eng.negotiation.rest.protocol;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.fasterxml.jackson.databind.JsonNode;
-
-import it.eng.negotiation.model.ContractAgreementMessage;
-import it.eng.negotiation.model.ContractNegotiationEventMessage;
-import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
-import it.eng.negotiation.model.ContractOfferMessage;
-import it.eng.negotiation.model.Serializer;
+import it.eng.negotiation.model.*;
 import it.eng.negotiation.service.CallbackHandler;
 import it.eng.negotiation.service.ContractNegotiationConsumerService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 @RestController
 @RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -60,7 +50,7 @@ public class ConsumerContractNegotiationCallbackController {
 	
 	// https://consumer.com/:callback/negotiations/:consumerPid/offers	POST	ContractOfferMessage
 	// process message - if OK return 200; The response body is not specified and clients are not required to process it.
-	@PostMapping("/negotiations/{consumerPid}/offers")
+	@PostMapping("/consumer/negotiations/{consumerPid}/offers")
 	public ResponseEntity<JsonNode> handleNegotiationOfferConsumerPid(@PathVariable String consumerPid,
 			 @RequestBody JsonNode contractOfferMessageJsonNode) throws InterruptedException, ExecutionException { 
 		ContractOfferMessage contractOfferMessage = Serializer.deserializeProtocol(contractOfferMessageJsonNode, 
@@ -80,7 +70,7 @@ public class ConsumerContractNegotiationCallbackController {
 	
 	// https://consumer.com/:callback/negotiations/:consumerPid/agreement	POST	ContractAgreementMessage
 	// after successful processing - 200 ok; body not specified
-	@PostMapping("/negotiations/{consumerPid}/agreement")
+	@PostMapping("/consumer/negotiations/{consumerPid}/agreement")
 	public ResponseEntity<JsonNode> handleAgreement(@PathVariable String consumerPid,
 			@RequestBody JsonNode contractAgreementMessageJsonNode) throws InterruptedException, ExecutionException { 
 		
@@ -101,7 +91,7 @@ public class ConsumerContractNegotiationCallbackController {
 	
 	// https://consumer.com/:callback/negotiations/:consumerPid/events	POST	ContractNegotiationEventMessage
 	// No callbackAddress
-	@PostMapping("/negotiations/{consumerPid}/events")
+	@PostMapping("/consumer/negotiations/{consumerPid}/events")
 	public ResponseEntity<JsonNode> handleEventsResponse(@PathVariable String consumerPid,
 			@RequestBody JsonNode contractNegotiationEventMessageJsonNode) throws InterruptedException, ExecutionException {
 		
@@ -121,7 +111,7 @@ public class ConsumerContractNegotiationCallbackController {
 
 	// https://consumer.com/:callback/negotiations/:consumerPid/termination POST	ContractNegotiationTerminationMessage
 	// No callbackAddress
-	@PostMapping("/negotiations/{consumerPid}/termination")
+	@PostMapping("/consumer/negotiations/{consumerPid}/termination")
 	public ResponseEntity<JsonNode> handleTerminationResponse(@PathVariable String consumerPid, 
 			@RequestBody JsonNode contractNegotiationTerminationMessageJsonNode) throws InterruptedException, ExecutionException { 
 		
