@@ -41,7 +41,6 @@ public class ContractNegotiationServiceTest {
         when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.ofNullable(null));
         ContractRequestMessage crm = ContractRequestMessage.Builder.newInstance()
                 .consumerPid(ModelUtil.CONSUMER_PID)
-//				.providerPid(ModelUtil.PROVIDER_PID)
                 .offer(ModelUtil.OFFER)
                 .callbackAddress(ModelUtil.CALLBACK_ADDRESS)
                 .build();
