@@ -33,7 +33,7 @@ import lombok.NoArgsConstructor;
 @JsonDeserialize(builder = ContractAgreementVerificationMessage.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true) 
-public class ContractAgreementVerificationMessage extends AbstractNegotiationModel {
+public class ContractAgreementVerificationMessage extends AbstractNegotiationObject {
 
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
