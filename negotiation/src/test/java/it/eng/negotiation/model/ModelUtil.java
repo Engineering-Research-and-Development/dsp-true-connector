@@ -76,4 +76,10 @@ public class ModelUtil {
             .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value("Some reason").build()))
             .description(Collections.singletonList(Description.Builder.newInstance().language("en").value("Some description").build()))
 			.build();
+	
+	public static final ContractNegotiation CONTRACT_NEGOTIATION = ContractNegotiation.Builder.newInstance()
+			.consumerPid(ModelUtil.CONSUMER_PID)
+			.providerPid(ModelUtil.PROVIDER_PID)
+			.state(ContractNegotiationState.ACCEPTED)
+			.build();
 }
