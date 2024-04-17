@@ -33,7 +33,7 @@ public class ContractNegotiationEventHandlerService {
     private ContractNegotiationRepository repository;
 	
 	@Autowired
-	private OkHttpRestClient okHttpClient;
+	private CallbackHandler callbackHandler;
 	
 	public void handleContractNegotiationOfferResponse(ContractNegotiationOfferResponse response) {
 		String result = response.isOfferAccepted() ? "accepted" : "declined";
@@ -51,16 +51,19 @@ public class ContractNegotiationEventHandlerService {
 					.agreement(agreementFromOffer(Serializer.deserializeProtocol(response.getOffer(), Offer.class)))
 					.build();
 			
-			RequestBody body = RequestBody.create(Serializer.serializeProtocol(agreementMessage),
-					MediaType.parse("application/json"));
-
-			Request request = new Request.Builder().url(contractNegtiation.getCallbackAddress() + 
-					ContactNegotiationCallback.getContractAgreementCallback("consumer", contractNegtiation.getConsumerPid()))
-					.post(body)
-					.build();
-
-			Response okHttpResponse = okHttpClient.executeCall(request);
-			log.info("Response received, status {}", okHttpResponse.code());
+//			RequestBody body = RequestBody.create(Serializer.serializeProtocol(agreementMessage),
+//					MediaType.parse("application/json"));
+//
+//			Request request = new Request.Builder().url(contractNegtiation.getCallbackAddress() + 
+//					ContactNegotiationCallback.getContractAgreementCallback("consumer", contractNegtiation.getConsumerPid()))
+//					.post(body)
+//					.build();
+//
+//			Response okHttpResponse = okHttpClient.executeCall(request);
+//			log.info("Response received, status {}", okHttpResponse.code());
+			callbackHandler.handleCallbackResponseProtocol(
+					ContactNegotiationCallback.getContractAgreementCallback("consumer", contractNegtiation.getConsumerPid()), 
+					Serializer.serializeProtocolJsonNode(agreementMessage));
 		}
 	}
 
