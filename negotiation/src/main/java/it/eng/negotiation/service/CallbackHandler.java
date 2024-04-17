@@ -1,12 +1,8 @@
 package it.eng.negotiation.service;
 
 import java.io.IOException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.ObjectUtils;
 
@@ -22,21 +18,26 @@ import okhttp3.Response;
 @Service
 @Slf4j
 public class CallbackHandler {
-	
-//	@Qualifier("okHttpClientInsecure")
-	@Autowired
-	private OkHttpRestClient client;
-	
+
+    //	@Qualifier("okHttpClientInsecure")
+    @Autowired
+    private OkHttpRestClient client;
+
 //	public CallbackHandler(@Qualifier("okHttpClientInsecure") OkHttpRestClient okHttpClientInsecure) {
 //		super();
 //		this.client = okHttpClientInsecure;
 //	}
 
-	@Async("asyncExecutor")
-	public void handleCallbackResponse(String callbackAddress, Future<JsonNode> jsonNodeFuture) throws InterruptedException, ExecutionException {
+    /**
+     * Sends a response to a specified callback address using HTTP POST method if callback address is not null or empty.
+     *
+     * @param callbackAddress - the URL to which the response needs to be sent.
+     * @param jsonNode        - the JSON content to be sent as the body of the request.
+     */
+	public void handleCallbackResponse(String callbackAddress, JsonNode jsonNode) {
 		if(!ObjectUtils.isEmpty(callbackAddress)) {
 			// send response to callback URL
-			RequestBody body = RequestBody.create(jsonNodeFuture.get().toPrettyString(), MediaType.parse("application/json"));
+			RequestBody body = RequestBody.create(jsonNode.toPrettyString(), MediaType.parse("application/json"));
 			Request request = new Request.Builder()
 				      .url(callbackAddress)
 				      .addHeader("Authorization", okhttp3.Credentials.basic("username", "password"))
@@ -51,8 +52,13 @@ public class CallbackHandler {
 		} 
 	}
 	
-	@Async("asyncExecutor")
-	public CompletableFuture<String> handleCallbackResponseProtocol(String callbackAddress, JsonNode jsonNode) {
+	/**
+	 * 
+	 * @param callbackAddress
+	 * @param jsonNode
+	 * @return HTTP status code of the request
+	 */
+	public int handleCallbackResponseProtocol(String callbackAddress, JsonNode jsonNode) {
 		if(!ObjectUtils.isEmpty(callbackAddress)) {
 			// send response to callback URL
 //			okhttp3.RequestBody body = okhttp3.RequestBody.create(jsonNode.toPrettyString(), okhttp3.MediaType.parse(MediaType.APPLICATION_JSON_VALUE));
@@ -67,12 +73,12 @@ public class CallbackHandler {
 			try (Response response = client.executeCall(request)) {
 				log.info("Status {}", response.code());
 	            log.info("Response received: {}", response.body().string());
-	            return CompletableFuture.completedFuture(response.body().string());
+	            return response.code();
 	        } catch (IOException e) {
 				log.error(e.getLocalizedMessage());
-				return CompletableFuture.failedFuture(e);
+				return 500;
 			}
 		} 
-		return null;
+		return 0;
 	}
 }

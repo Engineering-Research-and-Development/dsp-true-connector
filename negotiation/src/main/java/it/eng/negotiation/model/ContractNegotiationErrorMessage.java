@@ -1,16 +1,11 @@
 package it.eng.negotiation.model;
 
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -19,6 +14,10 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /*
 {
@@ -51,7 +50,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = ContractNegotiationErrorMessage.Builder.class)
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic = true)
-public class ContractNegotiationErrorMessage extends AbstractNegotiationModel {
+public class ContractNegotiationErrorMessage extends AbstractNegotiationObject {
 
     @NotNull
     @JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
@@ -112,7 +111,7 @@ public class ContractNegotiationErrorMessage extends AbstractNegotiationModel {
 
         public ContractNegotiationErrorMessage build() {
             if (message.consumerPid == null) {
-                message.consumerPid = message.createNewId();
+                message.consumerPid = message.createNewPid();
             }
             Set<ConstraintViolation<ContractNegotiationErrorMessage>> violations
                     = Validation.buildDefaultValidatorFactory().getValidator().validate(message);

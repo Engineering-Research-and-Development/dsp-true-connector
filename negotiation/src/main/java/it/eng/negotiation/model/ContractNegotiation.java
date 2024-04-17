@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 @JsonDeserialize(builder = ContractNegotiation.Builder.class)
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic = true)
 @Document(collection = "contract_negotiations")
-public class ContractNegotiation extends AbstractNegotiationModel {
+public class ContractNegotiation extends AbstractNegotiationObject {
 
     @JsonIgnore
     @JsonProperty(DSpaceConstants.ID)
@@ -66,6 +66,11 @@ public class ContractNegotiation extends AbstractNegotiationModel {
         public static ContractNegotiation.Builder newInstance() {
             return new ContractNegotiation.Builder();
         }
+        
+        public Builder id(String id) {
+        	message.id = id;
+        	return this;
+        }
 
         @JsonProperty(DSpaceConstants.DSPACE_STATE)
         public Builder state(ContractNegotiationState state) {
@@ -91,15 +96,18 @@ public class ContractNegotiation extends AbstractNegotiationModel {
         }
 
         public ContractNegotiation build() {
+            if (message.id == null) {
+                message.id = message.createNewId();
+            }
             if (message.providerPid == null) {
-                message.providerPid = message.createNewId();
+                message.providerPid = message.createNewPid();
             }
             Set<ConstraintViolation<ContractNegotiation>> violations
                     = Validation.buildDefaultValidatorFactory().getValidator().validate(message);
             if (violations.isEmpty()) {
                 return message;
             }
-            throw new ValidationException("ContractNegotiation - " + 
+            throw new ValidationException("ContractNegotiation - " +
                     violations
                             .stream()
                             .map(v -> v.getPropertyPath() + " " + v.getMessage())

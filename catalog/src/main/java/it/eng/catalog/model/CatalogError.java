@@ -36,7 +36,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = CatalogError.Builder.class)
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true)
-public class CatalogError extends AbstractCatalogMessage {
+public class CatalogError extends AbstractCatalogObject {
 
 	@JsonProperty(DSpaceConstants.DSPACE_CODE)
 	private String code;

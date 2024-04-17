@@ -1,10 +1,5 @@
 package it.eng.catalog.model;
 
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -12,7 +7,6 @@ import com.fasterxml.jackson.annotation.JsonProperty.Access;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -22,17 +16,18 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = Dataset.Builder.class)
 @JsonPropertyOrder(value = { DSpaceConstants.CONTEXT, DSpaceConstants.ID, DSpaceConstants.TYPE, DSpaceConstants.DCT_TITLE,
 		DSpaceConstants.DCT_DESCRIPTION, DSpaceConstants.DCAT_KEYWORD, DSpaceConstants.ODRL_HAS_POLICY, 
 		DSpaceConstants.DCAT_DISTRIBUTION}, alphabetic = true)
-public class Dataset {
+public class Dataset extends AbstractCatalogObject {
 
-	@JsonProperty(value = DSpaceConstants.CONTEXT, access = Access.READ_ONLY)
-	private String context = DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE;
-	
 	@JsonProperty(DSpaceConstants.ID)
 	private String id;
 	
@@ -150,7 +145,7 @@ public class Dataset {
 
 		public Dataset build() {
 			if(dataset.id == null) {
-				dataset.id = UUID.randomUUID().toString();
+				dataset.id = dataset.createNewId();
 			}
 			Set<ConstraintViolation<Dataset>> violations 
 				= Validation.buildDefaultValidatorFactory().getValidator().validate(dataset);

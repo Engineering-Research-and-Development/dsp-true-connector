@@ -40,7 +40,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @JsonDeserialize(builder = ContractNegotiationTerminationMessage.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class ContractNegotiationTerminationMessage extends AbstractNegotiationModel {
+public class ContractNegotiationTerminationMessage extends AbstractNegotiationObject {
 	
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.ContractAgreementMessage;
 import it.eng.negotiation.model.ContractNegotiation;
+import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.model.Serializer;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
@@ -61,9 +62,20 @@ public class ContractNegotiationEventHandlerService {
 //
 //			Response okHttpResponse = okHttpClient.executeCall(request);
 //			log.info("Response received, status {}", okHttpResponse.code());
-			callbackHandler.handleCallbackResponseProtocol(
-					ContactNegotiationCallback.getContractAgreementCallback("consumer", contractNegtiation.getConsumerPid()), 
+			int status = callbackHandler.handleCallbackResponseProtocol(
+					contractNegtiation.getCallbackAddress() + ContactNegotiationCallback.getContractAgreementCallback("consumer", contractNegtiation.getConsumerPid()), 
 					Serializer.serializeProtocolJsonNode(agreementMessage));
+			if(status == 200) {
+				log.info("Updating status for negotiation {} to agreed", contractNegtiation.getId());
+				ContractNegotiation contractNegtiationUpdate = ContractNegotiation.Builder.newInstance()
+						.id(contractNegtiation.getId())
+						.callbackAddress(contractNegtiation.getCallbackAddress())
+						.consumerPid(contractNegtiation.getCallbackAddress())
+						.providerPid(contractNegtiation.getProviderPid())
+						.state(ContractNegotiationState.AGREED)
+						.build();
+				repository.save(contractNegtiationUpdate);
+			}
 		}
 	}
 
