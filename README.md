@@ -16,7 +16,3 @@ Multi module maven project:
 * statemachine - module for finite state machine (negotiation and transfer process)
 * data-transfer - module maintaining transfer of the data
 * tools - various tools and utilities needed across modules
-
-## h2-console
-
-It is available on http://localhost:8080/h2-console with following connection parameters url=jdbc:h2:mem:trueconnector user=sa password=sa. Be sure to choose Generic H2 (Server) and not Embedded.
