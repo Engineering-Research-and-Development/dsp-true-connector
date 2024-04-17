@@ -52,7 +52,7 @@ import lombok.NoArgsConstructor;
 @JsonDeserialize(builder = ContractOfferMessage.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true) 
-public class ContractOfferMessage extends AbstractNegotiationModel {
+public class ContractOfferMessage extends AbstractNegotiationObject {
 
 	// not mandatory in initial offer message
 	@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)

@@ -1,14 +1,9 @@
 package it.eng.catalog.model;
 
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -16,6 +11,10 @@ import jakarta.validation.ValidationException;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /*
  * {
@@ -30,7 +29,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = CatalogRequestMessage.Builder.class)
-public class CatalogRequestMessage extends AbstractCatalogMessage {
+public class CatalogRequestMessage extends AbstractCatalogObject {
 	
 	@JsonProperty(DSpaceConstants.DSPACE_FILTER)
 	private List<String> filter;
@@ -55,7 +54,7 @@ public class CatalogRequestMessage extends AbstractCatalogMessage {
 		}
 		
 		public CatalogRequestMessage build() {
-			Set<ConstraintViolation<CatalogRequestMessage>> violations 
+			Set<ConstraintViolation<CatalogRequestMessage>> violations
 				= Validation.buildDefaultValidatorFactory().getValidator().validate(message);
 			if(violations.isEmpty()) {
 				return message;

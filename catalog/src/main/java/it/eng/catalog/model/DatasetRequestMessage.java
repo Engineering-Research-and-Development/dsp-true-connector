@@ -1,14 +1,10 @@
 package it.eng.catalog.model;
 
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -17,6 +13,9 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /*
  * {
@@ -30,7 +29,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = DatasetRequestMessage.Builder.class)
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true)
-public class DatasetRequestMessage extends AbstractCatalogMessage {
+public class DatasetRequestMessage extends AbstractCatalogObject {
 
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_DATASET)
@@ -56,7 +55,7 @@ public class DatasetRequestMessage extends AbstractCatalogMessage {
 		}
 		
 		public DatasetRequestMessage build() {
-			Set<ConstraintViolation<DatasetRequestMessage>> violations 
+			Set<ConstraintViolation<DatasetRequestMessage>> violations
 				= Validation.buildDefaultValidatorFactory().getValidator().validate(datasetRequestMessage);
 			if(violations.isEmpty()) {
 				return datasetRequestMessage;

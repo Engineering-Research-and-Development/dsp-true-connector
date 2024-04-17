@@ -23,32 +23,30 @@ This dashboard is used to keep track of backlog, current set of tasks that will 
 
 Task can be considered *READY* when following criteria's are fulfilled:
  
- - task breakdown should be present, with clear guideline what needs to be done
- - estimation is present (preferably for each step); be sure not to estimate more than max 16 hours
- - uncertainty is reduced to minimal possible measure (meaning that by reading of the description, anyone from the team can pick up task and start working on it)
- - if from working on DoR some impediments emerge, new Spike (investigation) task should be created and addressed BEFORE work on current task starts. Purpose for Spike task is to reduce level of uncertainty, check or investigate possible solutions, do PoC. Spike task should be treated like any other task.
+ - Task breakdown should be present, with clear guideline what needs to be done
+ - Estimation is present (preferably for each step); be sure not to estimate more than max 16 hours
+ - Uncertainty is reduced to minimal possible measure (meaning that by reading of the description, anyone from the team can pick up task and start working on it)
+ - If from working on DoR some impediments emerge, new Spike (investigation) task should be created and addressed BEFORE work on current task starts. Purpose for Spike task is to reduce level of uncertainty, check or investigate possible solutions, do PoC. Spike task should be treated like any other task.
 
 ## Definition of done (DoD)
 
 Task can be considered *DONE* when following criteria's are fulfilled:
  
- - code is implemented and pushed to the GitHub repository (feature branch)
- - new feature or bug fix needs to be covered with junit/integration/GitHub Action tests
- - all tests are pass
- - documentation is updated
- - changelog is updated (if applicable)
- - pull request review is done (resolved all conversation comments from RP) -> code is squash merged to develop branch (one commit to develop branch)
- - feature branch deleted
- - task in Project Dashboard is closed (should be done automatically if linked with branch); if not, close it manually
+ - Code is implemented and pushed to the GitHub repository (feature branch)
+ - New feature or bug fix needs to be covered with junit/integration/GitHub Action tests
+ - All tests are pass
+ - Documentation is updated
+ - Changelog is updated (if applicable)
+ - Pull request review is done (resolved all conversation comments from PR) -> code is squash merged to develop branch (one commit to develop branch)
+ - Feature branch deleted
+ - Task in Project Dashboard is closed (should be done automatically if linked with PR); if not, close it manually
 
 ## Working on task
 
  - When task is compliant with DoR, ticket in Project Dashboard should be moved to In Progress column, and assigned to the developer.
  - Convert task to the issue. This will create issue in GitHub project Issues tab.
  - New feature branch should be created, with name clear enough to know which task that is; be sure to synchronize local develop branch before creating feature branch from it. This will minimize later synchronization problems.
- - Once branch is pushed to remote, link branch with ticket in Project Backlog. This can be done when editing task, and in Development section select branch created.
- - When development is done, and all criteria from ticket are implemented, create pull request and assign developers from review
- - Once pull request is approved, merge code to develop; if task and branch are linked, once PR is merged it should move ticket to Done.
+ - When development is done, and all criteria from ticket are implemented, create pull request and assign developers from review.
+ - After Pull request is created, link it with ticket in Project Dashboard. This can be done when editing task, and in Development section select PR previously created.
+ - Once pull request is approved, merge code to develop; if task and PR are linked, once PR is merged it should move ticket to Done.
  - Use DoD as guideline for completing the task
- 
-
