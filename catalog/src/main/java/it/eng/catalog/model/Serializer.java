@@ -152,6 +152,10 @@ public class Serializer {
 				if(!Objects.equals(DSpaceConstants.DCAT + clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
 					throw new ValidationException("@type field not correct, expected "+ DSpaceConstants.DSPACE + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
 				}
+			} else if(clazz.equals(Offer.class)) {
+				if(!Objects.equals(DSpaceConstants.ODRL + clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
+					throw new ValidationException("@type field not correct, expected "+ DSpaceConstants.ODRL + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
+				}
 			} else {
 				if(!Objects.equals(DSpaceConstants.DSPACE + clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
 					throw new ValidationException("@type field not correct, expected "+ DSpaceConstants.DSPACE + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
@@ -160,10 +164,10 @@ public class Serializer {
 			//if(!(Distribution.class.isInstance(clazz) || DataService.class.isInstance(clazz))) {
 			//if(!(clazz.isInstance(Distribution.class) || clazz.isInstance(DataService.class))) {
 			// skip context check if not one of following
-			if(!(clazz.equals(Distribution.class) || clazz.equals(DataService.class))) {
+			if(!(clazz.equals(Distribution.class) || clazz.equals(DataService.class) || clazz.equals(Offer.class))) {
 				Objects.requireNonNull(jsonNode.get(DSpaceConstants.CONTEXT));
 				if(!Objects.equals(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE, jsonNode.get(DSpaceConstants.CONTEXT).asText())) {
-					throw new ValidationException("@contexxt field not valid - was " + jsonNode.get(DSpaceConstants.CONTEXT).asText());
+					throw new ValidationException("@context field not valid - was " + jsonNode.get(DSpaceConstants.CONTEXT).asText());
 				}
 			}
 		} catch (NullPointerException npe) {

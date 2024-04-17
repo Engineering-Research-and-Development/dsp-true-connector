@@ -8,7 +8,9 @@ import it.eng.negotiation.listener.ContractNegotiationPublisher;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ContractRequestMessage;
+import it.eng.negotiation.model.Serializer;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
+import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -19,7 +21,6 @@ public class ContractNegotiationService {
 
     private ContractNegotiationPublisher publisher;
     private ContractNegotiationRepository repository;
-
 
     public ContractNegotiationService(ContractNegotiationPublisher publisher, ContractNegotiationRepository repository) {
         super();
@@ -51,7 +52,7 @@ public class ContractNegotiationService {
 
     public ContractNegotiation startContractNegotiation(ContractRequestMessage contractRequestMessage) {
         log.info("Starting contract negotiation...");
-
+        
         repository.findByProviderPidAndConsumerPid(contractRequestMessage.getProviderPid(), contractRequestMessage.getConsumerPid())
                 .ifPresent(crm -> {
                     throw new ContractNegotiationExistsException("Contract request message with provider and consumer pid's exists", contractRequestMessage.getProviderPid(), contractRequestMessage.getConsumerPid());
@@ -60,7 +61,13 @@ public class ContractNegotiationService {
         ContractNegotiation cn = ContractNegotiation.Builder.newInstance()
                 .state(ContractNegotiationState.REQUESTED)
                 .consumerPid(contractRequestMessage.getConsumerPid())
+                .callbackAddress(contractRequestMessage.getCallbackAddress())
                 .build();
+
+        publisher.publishEvent(new ContractNegotationOfferRequest(
+        		cn.getConsumerPid(),
+        		cn.getProviderPid(),
+        		Serializer.serializeProtocolJsonNode(contractRequestMessage.getOffer())));
 
         repository.save(cn);
         return cn;

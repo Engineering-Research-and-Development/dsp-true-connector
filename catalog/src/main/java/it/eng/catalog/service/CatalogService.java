@@ -3,24 +3,36 @@ package it.eng.catalog.service;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.Dataset;
+import it.eng.catalog.model.Offer;
+import it.eng.catalog.model.Serializer;
 import it.eng.catalog.repository.CatalogRepository;
+import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequest;
+import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponse;
+import jakarta.validation.ValidationException;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * The CatalogService class provides methods to interact with catalog data, including saving, retrieving, and deleting catalogs.
  */
 @Service
+@Slf4j
 public class CatalogService {
 
-    private final CatalogRepository repository;
+	@Autowired
+    private CatalogRepository repository;
+	@Autowired
+    private ApplicationEventPublisher publisher;
 
-    public CatalogService(CatalogRepository repository) {
-        this.repository = repository;
-    }
+//    public CatalogService(CatalogRepository repository) {
+//        this.repository = repository;
+//    }
 
     /**
      * Saves the given catalog.
@@ -82,5 +94,36 @@ public class CatalogService {
      */
     public void deleteCatalog(String id) {
         repository.deleteById(id);
+    }
+    
+    public void validateIfOfferIsValid(ContractNegotationOfferRequest offerRequest) {
+    	log.info("Comparing if offer is valid or not");
+    	Offer offer = Serializer.deserializeProtocol(offerRequest.getOffer(), Offer.class);
+    	boolean valid = false;
+//    	try {
+//    		Catalog catalog = getCatalog();
+//    		catalog.getDataset().forEach(ds -> {
+//    			ds.getHasPolicy().forEach(p -> {
+//    				if(!p.getTarget().equals(offer.getTarget())) {
+//    					throw new ValidationException("Target not equal");
+//    				}
+//    			p.getPermission().forEach(perm -> {
+//    				perm.getConstraint().forEach(constr ->{
+//    					constr.getLeftOperand().equals(catalog)
+//    				});
+//    			});
+//    			});
+//    		});
+    		// if reached here, all checks are OK, meaning offer is valid
+    		log.info("Offer is valid, all checks passed ");
+    		valid = true;
+//    	} catch (Exception ex) {
+//    		log.info("Offer is NOT valid", ex.getLocalizedMessage());
+//    		valid = false;
+//    	}
+    	
+    	ContractNegotiationOfferResponse contractNegotiationOfferResponse = new ContractNegotiationOfferResponse(offerRequest.getConsumerPid(), 
+    			offerRequest.getProviderPid(), valid, Serializer.serializeProtocolJsonNode(offer));
+    	publisher.publishEvent(contractNegotiationOfferResponse);
     }
 }

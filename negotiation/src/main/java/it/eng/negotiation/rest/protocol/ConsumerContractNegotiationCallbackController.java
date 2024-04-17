@@ -10,6 +10,10 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -74,6 +78,8 @@ public class ConsumerContractNegotiationCallbackController {
     public ResponseEntity<JsonNode> handleAgreement(@PathVariable String consumerPid,
                                                     @RequestBody JsonNode contractAgreementMessageJsonNode) throws InterruptedException, ExecutionException {
 
+    	
+    	log.info("Received agreement from provider !!!!!, consumerPid - {}", consumerPid);
         ContractAgreementMessage contractAgreementMessage = Serializer.deserializeProtocol(contractAgreementMessageJsonNode,
                 ContractAgreementMessage.class);
 
