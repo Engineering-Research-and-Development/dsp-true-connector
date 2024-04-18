@@ -57,7 +57,7 @@ class CatalogIntegrationTest {
 		            post("/catalog/request")
 					.content(body)
 		            .contentType(MediaType.APPLICATION_JSON));
-		    result.andExpect(status().is4xxClientError())
+		    result.andExpect(status().isBadRequest())
 		        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
 		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CATALOG_ERROR.getType())))
 		        .andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)))
@@ -92,10 +92,29 @@ class CatalogIntegrationTest {
 		            get("/catalog/datasets/" + TestUtil.DATASET_ID)
 					.content(body)
 		            .contentType(MediaType.APPLICATION_JSON));
-		    result.andExpect(status().is4xxClientError())
+		    result.andExpect(status().isBadRequest())
 		        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
 		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CATALOG_ERROR.getType())))
 		        .andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)))
-		        .andExpect(jsonPath("['"+DSpaceConstants.DSPACE_REASON+"'][0]['"+DSpaceConstants.VALUE+"']", containsString("@type field not correct, expected dspace:DatasetRequestMessage")));	}
+		        .andExpect(jsonPath("['"+DSpaceConstants.DSPACE_REASON+"'][0]['"+DSpaceConstants.VALUE+"']", containsString("@type field not correct, expected dspace:DatasetRequestMessage")));
+	}
+	
+	@Test
+	@WithUserDetails(TestUtil.USER_DETAILS)
+	public void noDatasetFoundTest() throws Exception {
+		
+		String body = Serializer.serializeProtocol(MockObjectUtil.DATASET_REQUEST_MESSAGE);
+		
+		final ResultActions result =
+		        mockMvc.perform(
+		            get("/catalog/datasets/1")
+					.content(body)
+		            .contentType(MediaType.APPLICATION_JSON));
+		    result.andExpect(status().isNotFound())
+		        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CATALOG_ERROR.getType())))
+		        .andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)))
+		        .andExpect(jsonPath("['"+DSpaceConstants.DSPACE_REASON+"'][0]['"+DSpaceConstants.VALUE+"']", containsString("Data Set with id: 1 not found")));
+	}
 	
 }

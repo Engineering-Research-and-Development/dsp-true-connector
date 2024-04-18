@@ -11,8 +11,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-import com.fasterxml.jackson.databind.JsonNode;
-
 import it.eng.negotiation.model.ContractNegotiationErrorMessage;
 import it.eng.negotiation.model.Description;
 import it.eng.negotiation.model.Reason;
@@ -32,9 +30,8 @@ public class ContractNegotiationExceptionAdvice extends ResponseEntityExceptionH
                 .code(HttpStatus.NOT_FOUND.getReasonPhrase())
                 .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()))
                 .description(Collections.singletonList(Description.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build())).build();
-        JsonNode response = Serializer.serializeProtocolJsonNode(errorMessage);
 
-        return handleExceptionInternal(ex, response, new HttpHeaders(), HttpStatus.NOT_FOUND, request);
+        return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(), HttpStatus.NOT_FOUND, request);
     }
     
     @ExceptionHandler(value = {ValidationException.class})
@@ -43,12 +40,11 @@ public class ContractNegotiationExceptionAdvice extends ResponseEntityExceptionH
     			//TODO add proper provider and consumer pid
     			  .providerPid(createNewId())
     			  .consumerPid(createNewId())
-                  .code(HttpStatus.NOT_FOUND.getReasonPhrase())
+                  .code(HttpStatus.BAD_REQUEST.getReasonPhrase())
                   .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()))
                   .description(Collections.singletonList(Description.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build())).build();
-    	  JsonNode response = Serializer.serializeProtocolJsonNode(errorMessage);
     	  
-    	  return handleExceptionInternal(ex, response, new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
+    	  return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
     }
     
 
@@ -60,9 +56,8 @@ public class ContractNegotiationExceptionAdvice extends ResponseEntityExceptionH
                 .code(HttpStatus.CONFLICT.getReasonPhrase())
                 .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()))
                 .description(Collections.singletonList(Description.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build())).build();
-        JsonNode response = Serializer.serializeProtocolJsonNode(errorMessage);
 
-        return handleExceptionInternal(ex, response, new HttpHeaders(), HttpStatus.CONFLICT, request);
+        return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(), HttpStatus.CONFLICT, request);
     }
     
     private String createNewId() {
