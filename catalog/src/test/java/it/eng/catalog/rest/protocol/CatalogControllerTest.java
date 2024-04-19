@@ -43,12 +43,12 @@ public class CatalogControllerTest {
         when(catalogService.getCatalog()).thenReturn(MockObjectUtil.CATALOG);
         JsonNode jsonNode = Serializer.serializeProtocolJsonNode(catalogRequestMessage);
 
-        ResponseEntity<String> response = catalogController.getCatalog(null, jsonNode);
+        ResponseEntity<JsonNode> response = catalogController.getCatalog(null, jsonNode);
 
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
-        assertTrue(StringUtils.contains(response.getBody(), MockObjectUtil.CATALOG.getType()));
-        assertTrue(StringUtils.contains(response.getBody(), DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE));
+        assertTrue(StringUtils.contains(response.getBody().toString(), MockObjectUtil.CATALOG.getType()));
+        assertTrue(StringUtils.contains(response.getBody().toString(), DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE));
     }
 
     @Test
@@ -66,12 +66,12 @@ public class CatalogControllerTest {
 
         JsonNode jsonNode = Serializer.serializeProtocolJsonNode(datasetRequestMessage);
 
-        ResponseEntity<String> response = catalogController.getDataset(null, "1", jsonNode);
+        ResponseEntity<JsonNode> response = catalogController.getDataset(null, "1", jsonNode);
 
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
-        assertTrue(StringUtils.contains(response.getBody(), MockObjectUtil.DATASET.getType()));
-        assertTrue(StringUtils.contains(response.getBody(), DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE));
+        assertTrue(StringUtils.contains(response.getBody().toString(), MockObjectUtil.DATASET.getType()));
+        assertTrue(StringUtils.contains(response.getBody().toString(), DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE));
     }
 
     @Test
