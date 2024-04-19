@@ -33,7 +33,7 @@ public class NegotiationIntegrationTest {
     
     @ParameterizedTest
     @ValueSource(strings = {"/request", "/1/request", "/1/events", "/1/agreement/verification", "/1/termination"})
-    @WithUserDetails(TestUtil.USER_DETAILS)
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void negotiationWrongMessageTests(String path) throws Exception {
     	
     	final ResultActions result =
@@ -48,7 +48,7 @@ public class NegotiationIntegrationTest {
     }
     
     @Test
-    @WithUserDetails(TestUtil.USER_DETAILS)
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void createNegotiationTests() throws Exception {
     	
     	final ResultActions result =
@@ -63,7 +63,7 @@ public class NegotiationIntegrationTest {
     }
     
     @Test
-    @WithUserDetails(TestUtil.USER_DETAILS)
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void negotiationExistsTests() throws Exception {
     	ContractRequestMessage crm = ContractRequestMessage.Builder.newInstance()
 		.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
@@ -84,7 +84,7 @@ public class NegotiationIntegrationTest {
     }
     
     @Test
-    @WithUserDetails(TestUtil.USER_DETAILS)
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void getNegotiationByProviderPidTests() throws Exception {
     	
     	final ResultActions result =
@@ -98,7 +98,7 @@ public class NegotiationIntegrationTest {
     }
     
     @Test
-    @WithUserDetails(TestUtil.USER_DETAILS)
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void noNegotiationFoundTests() throws Exception {
     	
     	final ResultActions result =

@@ -30,7 +30,7 @@ class CatalogIntegrationTest {
     private MockMvc mockMvc;
     
     @Test
-    @WithUserDetails(TestUtil.USER_DETAILS)
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void getCatalogSuccessfulTest() throws Exception {
     	
     	String body = Serializer.serializeProtocol(MockObjectUtil.CATALOG_REQUEST_MESSAGE);
@@ -47,7 +47,7 @@ class CatalogIntegrationTest {
     }
     
     @Test
-    @WithUserDetails(TestUtil.USER_DETAILS)
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
 	public void notValidCatalogRequestMessageTest() throws Exception {
     	
     	String body = Serializer.serializeProtocol(MockObjectUtil.DATASET_REQUEST_MESSAGE);
@@ -65,7 +65,7 @@ class CatalogIntegrationTest {
 	}
 	
 	@Test
-	@WithUserDetails(TestUtil.USER_DETAILS)
+	@WithUserDetails(TestUtil.CONNECTOR_USER)
 	public void getDatasetSuccessfulTest() throws Exception {
 		
 		String body = Serializer.serializeProtocol(MockObjectUtil.DATASET_REQUEST_MESSAGE);
@@ -82,7 +82,7 @@ class CatalogIntegrationTest {
 	}
 	
 	@Test
-	@WithUserDetails(TestUtil.USER_DETAILS)
+	@WithUserDetails(TestUtil.CONNECTOR_USER)
 	public void notValidDatasetRequestMessageTest() throws Exception {
 		
 		String body = Serializer.serializeProtocol(MockObjectUtil.CATALOG_REQUEST_MESSAGE);
@@ -100,7 +100,7 @@ class CatalogIntegrationTest {
 	}
 	
 	@Test
-	@WithUserDetails(TestUtil.USER_DETAILS)
+	@WithUserDetails(TestUtil.CONNECTOR_USER)
 	public void noDatasetFoundTest() throws Exception {
 		
 		String body = Serializer.serializeProtocol(MockObjectUtil.DATASET_REQUEST_MESSAGE);
