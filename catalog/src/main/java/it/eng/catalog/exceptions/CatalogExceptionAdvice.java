@@ -13,10 +13,10 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 import it.eng.catalog.model.CatalogError;
 import it.eng.catalog.model.Reason;
 import it.eng.catalog.model.Serializer;
-import it.eng.catalog.rest.protocol.CatalogProtocolController;
+import it.eng.catalog.rest.protocol.CatalogController;
 import jakarta.validation.ValidationException;
 
-@RestControllerAdvice(basePackageClasses = CatalogProtocolController.class)
+@RestControllerAdvice(basePackageClasses = CatalogController.class)
 public class CatalogExceptionAdvice extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(value = {CatalogErrorException.class})

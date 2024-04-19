@@ -24,11 +24,11 @@ import lombok.extern.java.Log;
 @RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE,
         path = "/catalog")
 @Log
-public class CatalogProtocolController {
+public class CatalogController {
 
     private final CatalogService catalogService;
 
-    public CatalogProtocolController(CatalogService catalogService) {
+    public CatalogController(CatalogService catalogService) {
         super();
         this.catalogService = catalogService;
     }

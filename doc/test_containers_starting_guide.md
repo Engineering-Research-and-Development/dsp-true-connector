@@ -48,8 +48,6 @@ import org.testcontainers.containers.MongoDBContainer;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import it.eng.catalog.rest.protocol.CatalogProtocolController;
-
 @SpringBootTest
 @AutoConfigureMockMvc
 class CatalogIntegrationTest {

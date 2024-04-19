@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import it.eng.connector.util.TestUtil;
+import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.ModelUtil;
 import it.eng.negotiation.model.Serializer;
 import it.eng.tools.model.DSpaceConstants;
@@ -55,9 +56,30 @@ public class NegotiationIntegrationTest {
     					post("/negotiations/request")
     					.content(Serializer.serializeProtocol(ModelUtil.CONTRACT_REQUEST_MESSAGE))
     					.contentType(MediaType.APPLICATION_JSON));
-    	result.andExpect(status().is2xxSuccessful())
+    	result.andExpect(status().isCreated())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
     	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(ModelUtil.CONTRACT_NEGOTIATION.getType())))
+    	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
+    }
+    
+    @Test
+    @WithUserDetails(TestUtil.USER_DETAILS)
+    public void negotiationExistsTests() throws Exception {
+    	ContractRequestMessage crm = ContractRequestMessage.Builder.newInstance()
+		.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
+		.consumerPid(TestUtil.CONSUMER_PID)
+		.providerPid(TestUtil.PROVIDER_PID)
+		.offer(ModelUtil.OFFER)
+		.build();
+    	
+    	final ResultActions result =
+    			mockMvc.perform(
+    					post("/negotiations/request")
+    					.content(Serializer.serializeProtocol(crm))
+    					.contentType(MediaType.APPLICATION_JSON));
+    	result.andExpect(status().isBadRequest())
+    	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(ModelUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())))
     	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
     }
     
@@ -69,7 +91,7 @@ public class NegotiationIntegrationTest {
     			mockMvc.perform(
     					get("/negotiations/" + TestUtil.PROVIDER_PID)
     					.contentType(MediaType.APPLICATION_JSON));
-    	result.andExpect(status().is2xxSuccessful())
+    	result.andExpect(status().isOk())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
     	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(ModelUtil.CONTRACT_NEGOTIATION.getType())))
     	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));

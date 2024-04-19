@@ -53,11 +53,11 @@ public class ContractNegotiationExceptionAdvice extends ResponseEntityExceptionH
 
         ContractNegotiationErrorMessage errorMessage = ContractNegotiationErrorMessage.Builder.newInstance()
                 .providerPid(ex.getProviderPid())
-                .code(HttpStatus.CONFLICT.getReasonPhrase())
+                .code(HttpStatus.BAD_REQUEST.getReasonPhrase())
                 .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()))
                 .description(Collections.singletonList(Description.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build())).build();
 
-        return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(), HttpStatus.CONFLICT, request);
+        return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
     }
     
     private String createNewId() {

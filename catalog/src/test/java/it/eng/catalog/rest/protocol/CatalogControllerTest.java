@@ -21,9 +21,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class CatalogProtocolControllerTest {
+public class CatalogControllerTest {
 
-    private CatalogProtocolController catalogProtocolController;
+    private CatalogController catalogController;
 
     @Mock
     private CatalogService catalogService;
@@ -35,7 +35,7 @@ public class CatalogProtocolControllerTest {
 
     @BeforeEach
     public void init() {
-        catalogProtocolController = new CatalogProtocolController(catalogService);
+        catalogController = new CatalogController(catalogService);
     }
 
     @Test
@@ -43,7 +43,7 @@ public class CatalogProtocolControllerTest {
         when(catalogService.getCatalog()).thenReturn(MockObjectUtil.CATALOG);
         JsonNode jsonNode = Serializer.serializeProtocolJsonNode(catalogRequestMessage);
 
-        ResponseEntity<String> response = catalogProtocolController.getCatalog(null, jsonNode);
+        ResponseEntity<String> response = catalogController.getCatalog(null, jsonNode);
 
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
@@ -55,7 +55,7 @@ public class CatalogProtocolControllerTest {
     public void notValidCatalogRequestMessageTest() throws Exception {
         JsonNode jsonNode = Serializer.serializeProtocolJsonNode(datasetRequestMessage);
 
-        Exception e = assertThrows(ValidationException.class, () -> catalogProtocolController.getCatalog(null, jsonNode));
+        Exception e = assertThrows(ValidationException.class, () -> catalogController.getCatalog(null, jsonNode));
 
         assertTrue(StringUtils.contains(e.getMessage(), "@type field not correct, expected dspace:CatalogRequestMessage"));
     }
@@ -66,7 +66,7 @@ public class CatalogProtocolControllerTest {
 
         JsonNode jsonNode = Serializer.serializeProtocolJsonNode(datasetRequestMessage);
 
-        ResponseEntity<String> response = catalogProtocolController.getDataset(null, "1", jsonNode);
+        ResponseEntity<String> response = catalogController.getDataset(null, "1", jsonNode);
 
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
@@ -78,7 +78,7 @@ public class CatalogProtocolControllerTest {
     public void notValidDatasetRequestMessageTest() throws Exception {
         JsonNode jsonNode = Serializer.serializeProtocolJsonNode(catalogRequestMessage);
 
-        Exception e = assertThrows(ValidationException.class, () -> catalogProtocolController.getDataset(null, "1", jsonNode));
+        Exception e = assertThrows(ValidationException.class, () -> catalogController.getDataset(null, "1", jsonNode));
 
         assertTrue(StringUtils.contains(e.getMessage(), "@type field not correct, expected dspace:DatasetRequestMessage"));
     }
