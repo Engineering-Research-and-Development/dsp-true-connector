@@ -3,7 +3,7 @@
   "id": "59d54e6d-a3f3-4a03-a093-d276e3068eef",
   "firstName" : "Petar",
   "lastName" : "Cvetkovic",
-  "email" : "petar@mail.com",
+  "email" : "admin@mail.com",
   "password" : "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
   "enabled" : "true",
   "role" : "ADMIN"
@@ -13,7 +13,7 @@
   "id": "cab7b27b-f810-457d-b900-368994f6a640",
   "firstName" : "Milisav",
   "lastName" : "Petrovic",
-  "email" : "milisav@mail.com",
+  "email" : "connector@mail.com",
   "password" : "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
   "enabled" : "true",
   "role" : "USER"

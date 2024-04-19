@@ -293,7 +293,7 @@
 				"basic": [
 					{
 						"key": "username",
-						"value": "petar@mail.com",
+						"value": "admin@mail.com",
 						"type": "string"
 					},
 					{
@@ -439,7 +439,7 @@
 					},
 					{
 						"key": "username",
-						"value": "milisav@mail.com",
+						"value": "connector@mail.com",
 						"type": "string"
 					}
 				]
