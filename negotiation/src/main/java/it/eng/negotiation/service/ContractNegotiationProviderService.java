@@ -1,32 +1,38 @@
 package it.eng.negotiation.service;
 
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import it.eng.negotiation.event.ContractNegotiationEvent;
 import it.eng.negotiation.exception.ContractNegotiationExistsException;
 import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
 import it.eng.negotiation.listener.ContractNegotiationPublisher;
+import it.eng.negotiation.model.ContractAgreementVerificationMessage;
 import it.eng.negotiation.model.ContractNegotiation;
+import it.eng.negotiation.model.ContractNegotiationEventMessage;
+import it.eng.negotiation.model.ContractNegotiationEventType;
 import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.Serializer;
+import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
+import it.eng.negotiation.rest.protocol.ContactNegotiationCallback;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequest;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-
 
 @Service
 @Slf4j
-public class ContractNegotiationService {
+public class ContractNegotiationProviderService {
 
+	@Autowired
     private ContractNegotiationPublisher publisher;
-    private ContractNegotiationRepository repository;
-
-    public ContractNegotiationService(ContractNegotiationPublisher publisher, ContractNegotiationRepository repository) {
-        super();
-        this.publisher = publisher;
-        this.repository = repository;
-    }
+	@Autowired
+	private ContractNegotiationRepository repository;
+	@Autowired
+	private CallbackHandler callbackHandler;
+	@Autowired
+	private ContractNegotiationProperties properties;
 
     /**
      * Method to get a contract negotiation by its unique identifier.
@@ -81,12 +87,47 @@ public class ContractNegotiationService {
                 .callbackAddress(contractRequestMessage.getCallbackAddress())
                 .build();
 
-        publisher.publishEvent(new ContractNegotationOfferRequest(
-        		cn.getConsumerPid(),
-        		cn.getProviderPid(),
-        		Serializer.serializeProtocolJsonNode(contractRequestMessage.getOffer())));
+        if(properties.isAutomaticNegotiation()) {
+        	log.debug("Performing automatic negotiation");
+        	publisher.publishEvent(new ContractNegotationOfferRequest(
+        			cn.getConsumerPid(),
+        			cn.getProviderPid(),
+        			Serializer.serializeProtocolJsonNode(contractRequestMessage.getOffer())));
+        } else {
+        	log.debug("Offer evaluation will have to be done by human");
+        }
 
         repository.save(cn);
         return cn;
     }
+
+	public void finalizeNegotiation(ContractAgreementVerificationMessage cavm) {
+		ContractNegotiation contractNegotiation = repository
+				.findByProviderPidAndConsumerPid(cavm.getProviderPid(), cavm.getConsumerPid())
+				.orElseThrow(() -> new ContractNegotiationNotFoundException(
+						"Contract negotiation with provider pid " + cavm.getProviderPid() + " not found"));
+
+		ContractNegotiationEventMessage finalize = ContractNegotiationEventMessage.Builder.newInstance()
+				.consumerPid(contractNegotiation.getConsumerPid())
+				.providerPid(contractNegotiation.getProviderPid())
+				.eventType(ContractNegotiationEventType.FINALIZED)
+				.build();
+		//	https://consumer.com/:callback/negotiations/:consumerPid/events
+		String callbackAddress = contractNegotiation.getCallbackAddress() + ContactNegotiationCallback.getContractEventsCallback("consumer", contractNegotiation.getConsumerPid());
+		log.info("Sending ContractNegotiationEventMessage.FINALIZED to {}", callbackAddress);
+		int status = callbackHandler.handleCallbackResponseProtocol(callbackAddress, Serializer.serializeProtocolJsonNode(finalize));
+		if (status == 200) {
+			ContractNegotiation contractNegtiationUpdate = ContractNegotiation.Builder.newInstance()
+					.id(contractNegotiation.getId())
+					.consumerPid(cavm.getConsumerPid())
+					.providerPid(cavm.getProviderPid())
+					.callbackAddress(contractNegotiation.getCallbackAddress())
+					.state(ContractNegotiationState.FINALIZED)
+					.build();
+			repository.save(contractNegtiationUpdate);
+		} else {
+			log.info(
+					"Response status not 200 - consumer did not process AgreementMessage correct - what to do with it???");
+		}
+	}
 }

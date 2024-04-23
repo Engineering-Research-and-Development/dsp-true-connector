@@ -1,8 +1,5 @@
 package it.eng.negotiation.service;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -11,20 +8,16 @@ import org.springframework.stereotype.Service;
 
 import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.ContractAgreementMessage;
+import it.eng.negotiation.model.ContractAgreementVerificationMessage;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.model.Serializer;
+import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.rest.protocol.ContactNegotiationCallback;
-import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponse;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.Call;
-import okhttp3.MediaType;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
 
 @Service
 @Slf4j
@@ -32,6 +25,8 @@ public class ContractNegotiationEventHandlerService {
 	
 	@Autowired
     private ContractNegotiationRepository repository;
+	@Autowired
+	private ContractNegotiationProperties properties;
 	
 	@Autowired
 	private CallbackHandler callbackHandler;
@@ -43,38 +38,32 @@ public class ContractNegotiationEventHandlerService {
 		log.info("ConsumerPid - " + response.getConsumerPid() + ", providerPid - " + response.getProviderPid());
 		Optional<ContractNegotiation> contractNegtiationOpt = repository.findByProviderPidAndConsumerPid(response.getProviderPid(), response.getConsumerPid());
 		contractNegtiationOpt.ifPresent(cn -> log.info("Found intial negotiation" + " - CallbackAddress " + cn.getCallbackAddress()));
-		ContractNegotiation contractNegtiation = contractNegtiationOpt.get();
+		ContractNegotiation contractNegotiation = contractNegtiationOpt.get();
 		if(response.isOfferAccepted()) {
 			ContractAgreementMessage agreementMessage = ContractAgreementMessage.Builder.newInstance()
-					.callbackAddress(getCallbackAddress())
-					.consumerPid(contractNegtiation.getConsumerPid())
-					.providerPid(contractNegtiation.getProviderPid())
+					.consumerPid(contractNegotiation.getConsumerPid())
+					.providerPid(contractNegotiation.getProviderPid())
+					.callbackAddress(properties.callbackAddress())
 					.agreement(agreementFromOffer(Serializer.deserializeProtocol(response.getOffer(), Offer.class)))
 					.build();
 			
-//			RequestBody body = RequestBody.create(Serializer.serializeProtocol(agreementMessage),
-//					MediaType.parse("application/json"));
-//
-//			Request request = new Request.Builder().url(contractNegtiation.getCallbackAddress() + 
-//					ContactNegotiationCallback.getContractAgreementCallback("consumer", contractNegtiation.getConsumerPid()))
-//					.post(body)
-//					.build();
-//
-//			Response okHttpResponse = okHttpClient.executeCall(request);
-//			log.info("Response received, status {}", okHttpResponse.code());
 			int status = callbackHandler.handleCallbackResponseProtocol(
-					contractNegtiation.getCallbackAddress() + ContactNegotiationCallback.getContractAgreementCallback("consumer", contractNegtiation.getConsumerPid()), 
+					contractNegotiation.getCallbackAddress() + ContactNegotiationCallback.getContractAgreementCallback("consumer", contractNegotiation.getConsumerPid()), 
 					Serializer.serializeProtocolJsonNode(agreementMessage));
 			if(status == 200) {
-				log.info("Updating status for negotiation {} to agreed", contractNegtiation.getId());
+				log.info("Updating status for negotiation {} to agreed", contractNegotiation.getId());
 				ContractNegotiation contractNegtiationUpdate = ContractNegotiation.Builder.newInstance()
-						.id(contractNegtiation.getId())
-						.callbackAddress(contractNegtiation.getCallbackAddress())
-						.consumerPid(contractNegtiation.getCallbackAddress())
-						.providerPid(contractNegtiation.getProviderPid())
+						.id(contractNegotiation.getId())
+						.callbackAddress(contractNegotiation.getCallbackAddress())
+						.consumerPid(contractNegotiation.getConsumerPid())
+						.providerPid(contractNegotiation.getProviderPid())
 						.state(ContractNegotiationState.AGREED)
+						.callbackAddress(contractNegotiation.getCallbackAddress())
 						.build();
 				repository.save(contractNegtiationUpdate);
+				// TODO save agreement also
+			} else {
+				log.info("Response status not 200 - consumer did not process AgreementMessage correct - what to do with it???");
 			}
 		}
 	}
@@ -82,15 +71,39 @@ public class ContractNegotiationEventHandlerService {
 	private Agreement agreementFromOffer(Offer offer) {
 		return Agreement.Builder.newInstance()
 				.id(UUID.randomUUID().toString())
-				.assignee(getCallbackAddress())
-				.assigner(getCallbackAddress())
+				.assignee(properties.callbackAddress())
+				.assigner(properties.callbackAddress())
 				.target("target")
 				.timestamp("now")
 				.permission(offer.getPermission())
 				.build();
 	}
 
-	private String getCallbackAddress() {
-		return "abc";
+	public void contractAgreementVerificationMessage(ContractAgreementVerificationMessage verificationMessage) {
+		log.info("ConsumerPid - " + verificationMessage.getConsumerPid() + ", providerPid - " + verificationMessage.getProviderPid());
+		Optional<ContractNegotiation> contractNegtiationOpt = 
+				repository.findByProviderPidAndConsumerPid(verificationMessage.getProviderPid(), verificationMessage.getConsumerPid());
+		contractNegtiationOpt.ifPresent(cn -> log.info("Found intial negotiation" + " - CallbackAddress " + cn.getCallbackAddress()));
+		ContractNegotiation contractNegtiation = contractNegtiationOpt.get();
+
+		String callbackAddress = contractNegtiation.getCallbackAddress() + ContactNegotiationCallback.getProviderHandleAgreementCallback(verificationMessage.getProviderPid());
+		log.info("Sending verification message to provider to {}", callbackAddress);
+		int status = callbackHandler.handleCallbackResponseProtocol(callbackAddress, Serializer.serializeProtocolJsonNode(verificationMessage));
+		
+		if(status == 200) {
+			log.info("Updating status for negotiation {} to verified", contractNegtiation.getId());
+			ContractNegotiation contractNegtiationUpdate = ContractNegotiation.Builder.newInstance()
+					.id(contractNegtiation.getId())
+					.callbackAddress(contractNegtiation.getCallbackAddress())
+					.consumerPid(contractNegtiation.getConsumerPid())
+					.providerPid(contractNegtiation.getProviderPid())
+					.state(ContractNegotiationState.FINALIZED)
+					.callbackAddress(contractNegtiation.getCallbackAddress())
+					.build();
+			repository.save(contractNegtiationUpdate);
+		} else {
+			log.info("Response status not 200 - consumer did not process Verification message correct - what to do with it???");
+		}
 	}
+
 }

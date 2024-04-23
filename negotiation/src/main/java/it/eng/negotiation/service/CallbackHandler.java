@@ -40,7 +40,7 @@ public class CallbackHandler {
 			RequestBody body = RequestBody.create(jsonNode.toPrettyString(), MediaType.parse("application/json"));
 			Request request = new Request.Builder()
 				      .url(callbackAddress)
-				      .addHeader("Authorization", okhttp3.Credentials.basic("username", "password"))
+				      .addHeader("Authorization", okhttp3.Credentials.basic("milisav@mail.com", "password"))
 				      .post(body)
 				      .build();
 			log.info("Sending response using callback address: " + callbackAddress);
@@ -66,7 +66,7 @@ public class CallbackHandler {
 			
 			Request request = new Request.Builder()
 				      .url(callbackAddress)
-				      .addHeader("Authorization", okhttp3.Credentials.basic("username", "password"))
+				      .addHeader("Authorization", okhttp3.Credentials.basic("milisav@mail.com", "password"))
 				      .post(body)
 				      .build();
 			log.info("Sending response using callback address: " + callbackAddress);
@@ -80,5 +80,31 @@ public class CallbackHandler {
 			}
 		} 
 		return 0;
+	}
+	
+	
+	public String sendRequestProtocol(String callbackAddress, JsonNode jsonNode) {
+		if(!ObjectUtils.isEmpty(callbackAddress)) {
+			// send response to callback URL
+//			okhttp3.RequestBody body = okhttp3.RequestBody.create(jsonNode.toPrettyString(), okhttp3.MediaType.parse(MediaType.APPLICATION_JSON_VALUE));
+			RequestBody body = RequestBody.create(jsonNode.toPrettyString(), MediaType.parse("application/json"));
+			
+			Request request = new Request.Builder()
+				      .url(callbackAddress)
+				      .addHeader("Authorization", okhttp3.Credentials.basic("milisav@mail.com", "password"))
+				      .post(body)
+				      .build();
+			log.info("Sending response using callback address: " + callbackAddress);
+			try (Response response = client.executeCall(request)) {
+				log.info("Status {}", response.code());
+				String resp = response.body().string();
+	            log.info("Response received: {}", resp);
+	            return resp;
+	        } catch (IOException e) {
+				log.error(e.getLocalizedMessage());
+				return null;
+			}
+		} 
+		return null;
 	}
 }

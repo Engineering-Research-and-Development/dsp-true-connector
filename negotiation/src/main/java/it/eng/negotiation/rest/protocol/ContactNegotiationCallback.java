@@ -13,7 +13,8 @@ public class ContactNegotiationCallback {
 	 */
 	private static final String PROVIDER_NEGOTIATION_OFFER = "callback:/negotiations/offers/cb";
 	private static final String PROVIDER_NEGOTIATION_OFFER_CONSUMER = "callback:/negotiations/offers/cb";
-	private static final String PROVIDER_HANDLE_AGREEMENT = "callback:/negotiations/agreement/cb";
+	// /{providerPid}/agreement/verification
+	private static final String PROVIDER_HANDLE_AGREEMENT = "negotiations/:providerPid:/agreement/verification";
 	
 	public static String getOffersCallback() {
 		return OFFERS;
@@ -46,7 +47,7 @@ public class ContactNegotiationCallback {
 		return PROVIDER_NEGOTIATION_OFFER_CONSUMER.replace(":callback:", callback);
 	}
 	
-	public static String getProviderHandleAgreementCallback(String callback) {
-		return PROVIDER_HANDLE_AGREEMENT.replace(":callback:", callback);
+	public static String getProviderHandleAgreementCallback(String providerPid) {
+		return PROVIDER_HANDLE_AGREEMENT.replace(":providerPid:", providerPid);
 	}
 }

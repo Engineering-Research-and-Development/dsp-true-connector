@@ -1,5 +1,20 @@
 package it.eng.negotiation.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
+
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import it.eng.negotiation.exception.ContractNegotiationExistsException;
 import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
 import it.eng.negotiation.listener.ContractNegotiationPublisher;
@@ -7,34 +22,25 @@ import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.ModelUtil;
+import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class ContractNegotiationServiceTest {
+public class ContractNegotiationProviderServiceTest {
 
     @Mock
     private ContractNegotiationPublisher publisher;
     @Mock
     private ContractNegotiationRepository repository;
+    @Mock
+    private ContractNegotiationProperties properties;
+    @InjectMocks
+    private ContractNegotiationProviderService service;
 
-    private ContractNegotiationService service;
-
-    @BeforeEach
-    public void setup() {
-        service = new ContractNegotiationService(publisher, repository);
-    }
+//    @BeforeEach
+//    public void setup() {
+//        service = new ContractNegotiationService(publisher, repository);
+//    }
 
     @Test
     public void startContractNegotiation() {

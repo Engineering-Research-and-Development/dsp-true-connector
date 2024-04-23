@@ -2,7 +2,7 @@ package it.eng.negotiation.rest.protocol;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.negotiation.model.*;
-import it.eng.negotiation.service.ContractNegotiationService;
+import it.eng.negotiation.service.ContractNegotiationProviderService;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +28,7 @@ import static org.mockito.Mockito.when;
 public class ProviderContractNegotiationControllerTest {
 
 	@Mock
-	private ContractNegotiationService contractNegotiationService;
+	private ContractNegotiationProviderService contractNegotiationService;
 	@Mock
 	private ServletRequestAttributes attrs;
 	@Mock
@@ -105,7 +105,7 @@ public class ProviderContractNegotiationControllerTest {
 				.build();
 		ResponseEntity<JsonNode> response = controller.handleVerifyAgreement(ModelUtil.PROVIDER_PID, Serializer.serializeProtocolJsonNode(cavm));
 		assertNotNull(response, "Response is not null");
-		assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+		assertEquals(HttpStatus.OK, response.getStatusCode());
 	}
 	
 	@Test

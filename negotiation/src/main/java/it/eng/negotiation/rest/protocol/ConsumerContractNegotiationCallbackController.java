@@ -88,7 +88,7 @@ public class ConsumerContractNegotiationCallbackController {
 
         String callbackAddress = contractAgreementMessage.getCallbackAddress();
         JsonNode responseNode =
-                contractNegotiationConsumerService.handleAgreement(consumerPid, contractAgreementMessage);
+                contractNegotiationConsumerService.handleAgreement(callbackAddress, contractAgreementMessage);
 
 //		callbackAddress = callbackAddress.endsWith("/") ? callbackAddress : callbackAddress + "/";
 //		String finalCallback = callbackAddress + ContactNegotiationCallback.getProviderHandleAgreementCallback(callbackAddress);
@@ -101,12 +101,13 @@ public class ConsumerContractNegotiationCallbackController {
     // https://consumer.com/:callback/negotiations/:consumerPid/events	POST	ContractNegotiationEventMessage
     // No callbackAddress
     @PostMapping("/consumer/negotiations/{consumerPid}/events")
-    public ResponseEntity<JsonNode> handleEventsResponse(@PathVariable String consumerPid,
+    public ResponseEntity<JsonNode> handleEventsMessage(@PathVariable String consumerPid,
                                                          @RequestBody JsonNode contractNegotiationEventMessageJsonNode) throws InterruptedException, ExecutionException {
 
         ContractNegotiationEventMessage contractNegotiationEventMessage =
                 Serializer.deserializeProtocol(contractNegotiationEventMessageJsonNode, ContractNegotiationEventMessage.class);
-
+        log.info("Event message received, status {}, consumerPid {}, providerPid", contractNegotiationEventMessage.getEventType(),
+        		contractNegotiationEventMessage.getConsumerPid(), contractNegotiationEventMessage.getProviderPid());
         JsonNode responseNode =
                 contractNegotiationConsumerService.handleEventsResponse(consumerPid, contractNegotiationEventMessage);
 
