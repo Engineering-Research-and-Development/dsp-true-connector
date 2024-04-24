@@ -1,7 +1,6 @@
 package it.eng.negotiation.service;
 
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import it.eng.negotiation.event.ContractNegotiationEvent;
@@ -25,16 +24,21 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ContractNegotiationProviderService {
 
-	@Autowired
     private ContractNegotiationPublisher publisher;
-	@Autowired
 	private ContractNegotiationRepository repository;
-	@Autowired
 	private CallbackHandler callbackHandler;
-	@Autowired
 	private ContractNegotiationProperties properties;
 
-    /**
+    public ContractNegotiationProviderService(ContractNegotiationPublisher publisher,
+			ContractNegotiationRepository repository, CallbackHandler callbackHandler,
+			ContractNegotiationProperties properties) {
+		this.publisher = publisher;
+		this.repository = repository;
+		this.callbackHandler = callbackHandler;
+		this.properties = properties;
+	}
+
+	/**
      * Method to get a contract negotiation by its unique identifier.
      * If no contract negotiation is found with the given ID, it throws a not found exception.
      *

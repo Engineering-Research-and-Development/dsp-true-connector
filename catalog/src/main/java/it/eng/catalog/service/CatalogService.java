@@ -3,7 +3,6 @@ package it.eng.catalog.service;
 import java.util.List;
 import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
@@ -15,7 +14,6 @@ import it.eng.catalog.model.Serializer;
 import it.eng.catalog.repository.CatalogRepository;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequest;
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponse;
-import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -25,14 +23,13 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class CatalogService {
 
-	@Autowired
     private CatalogRepository repository;
-	@Autowired
     private ApplicationEventPublisher publisher;
 
-//    public CatalogService(CatalogRepository repository) {
-//        this.repository = repository;
-//    }
+    public CatalogService(CatalogRepository repository, ApplicationEventPublisher publisher) {
+        this.repository = repository;
+        this.publisher = publisher;
+    }
 
     /**
      * Saves the given catalog.

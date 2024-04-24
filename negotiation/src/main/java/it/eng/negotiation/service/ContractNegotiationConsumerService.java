@@ -2,7 +2,6 @@ package it.eng.negotiation.service;
 
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -26,14 +25,18 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ContractNegotiationConsumerService {
 
-	@Autowired
 	private ContractNegotiationProperties properties;
-	@Autowired
     private ContractNegotiationPublisher publisher;
-	@Autowired
 	private ContractNegotiationRepository repository;
+	
+    public ContractNegotiationConsumerService(ContractNegotiationProperties properties,
+			ContractNegotiationPublisher publisher, ContractNegotiationRepository repository) {
+		this.properties = properties;
+		this.publisher = publisher;
+		this.repository = repository;
+	}
 
-    /**
+	/**
      * {
      * "@context": "https://w3id.org/dspace/v0.8/context.json",
      * "@type": "dspace:ContractNegotiation",

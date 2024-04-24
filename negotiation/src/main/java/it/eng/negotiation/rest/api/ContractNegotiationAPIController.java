@@ -1,6 +1,5 @@
 package it.eng.negotiation.rest.api;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,12 +21,16 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ContractNegotiationAPIController {
 	
-	@Autowired
 	private ContractNegotiationEventHandlerService handlerService;
-	@Autowired
 	private ContractNegotiationAPIService apiService;
 
-    @PostMapping(path = "/startNegotiation")
+    public ContractNegotiationAPIController(ContractNegotiationEventHandlerService handlerService,
+			ContractNegotiationAPIService apiService) {
+		this.handlerService = handlerService;
+		this.apiService = apiService;
+	}
+
+	@PostMapping(path = "/startNegotiation")
     public ResponseEntity<JsonNode> startNegotiation(@RequestBody JsonNode startNegotiationRequest) {
     	String targetConnector = startNegotiationRequest.get("Forward-To").asText();
     	JsonNode offerNode = startNegotiationRequest.get("offer");

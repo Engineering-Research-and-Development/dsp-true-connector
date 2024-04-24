@@ -2,7 +2,7 @@ package it.eng.negotiation.service;
 
 import java.io.IOException;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.util.ObjectUtils;
 
@@ -19,14 +19,12 @@ import okhttp3.Response;
 @Slf4j
 public class CallbackHandler {
 
-    //	@Qualifier("okHttpClientInsecure")
-    @Autowired
     private OkHttpRestClient client;
-
-//	public CallbackHandler(@Qualifier("okHttpClientInsecure") OkHttpRestClient okHttpClientInsecure) {
-//		super();
-//		this.client = okHttpClientInsecure;
-//	}
+    //@Qualifier("okHttpClientInsecure") 
+	public CallbackHandler(OkHttpRestClient okHttpClientInsecure) {
+		super();
+		this.client = okHttpClientInsecure;
+	}
 
     /**
      * Sends a response to a specified callback address using HTTP POST method if callback address is not null or empty.
@@ -83,7 +81,7 @@ public class CallbackHandler {
 	}
 	
 	
-	public String sendRequestProtocol(String callbackAddress, JsonNode jsonNode) {
+	public String sendRequestProtocol(String callbackAddress, JsonNode jsonNode, String authorization) {
 		if(!ObjectUtils.isEmpty(callbackAddress)) {
 			// send response to callback URL
 //			okhttp3.RequestBody body = okhttp3.RequestBody.create(jsonNode.toPrettyString(), okhttp3.MediaType.parse(MediaType.APPLICATION_JSON_VALUE));
@@ -91,7 +89,7 @@ public class CallbackHandler {
 			
 			Request request = new Request.Builder()
 				      .url(callbackAddress)
-				      .addHeader("Authorization", okhttp3.Credentials.basic("milisav@mail.com", "password"))
+				      .addHeader(HttpHeaders.AUTHORIZATION, authorization)
 				      .post(body)
 				      .build();
 			log.info("Sending response using callback address: " + callbackAddress);

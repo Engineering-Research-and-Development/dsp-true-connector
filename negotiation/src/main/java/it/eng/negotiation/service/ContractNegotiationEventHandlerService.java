@@ -3,7 +3,6 @@ package it.eng.negotiation.service;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import it.eng.negotiation.model.Agreement;
@@ -23,14 +22,17 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ContractNegotiationEventHandlerService {
 	
-	@Autowired
     private ContractNegotiationRepository repository;
-	@Autowired
 	private ContractNegotiationProperties properties;
-	
-	@Autowired
 	private CallbackHandler callbackHandler;
 	
+	public ContractNegotiationEventHandlerService(ContractNegotiationRepository repository,
+			ContractNegotiationProperties properties, CallbackHandler callbackHandler) {
+		this.repository = repository;
+		this.properties = properties;
+		this.callbackHandler = callbackHandler;
+	}
+
 	public void handleContractNegotiationOfferResponse(ContractNegotiationOfferResponse response) {
 		String result = response.isOfferAccepted() ? "accepted" : "declined";
 		log.info("Contract offer " + result);

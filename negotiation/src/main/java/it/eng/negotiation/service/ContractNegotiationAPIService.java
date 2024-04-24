@@ -2,7 +2,6 @@ package it.eng.negotiation.service;
 
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -21,12 +20,16 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ContractNegotiationAPIService {
 
-	@Autowired
 	private CallbackHandler callbackHandler;
-	@Autowired
 	private ContractNegotiationRepository repository;
-	@Autowired
 	private ContractNegotiationProperties properties;
+
+	public ContractNegotiationAPIService(CallbackHandler callbackHandler, ContractNegotiationRepository repository,
+			ContractNegotiationProperties properties) {
+		this.callbackHandler = callbackHandler;
+		this.repository = repository;
+		this.properties = properties;
+	}
 
 	public JsonNode startNegotiation(String forwardTo, JsonNode offerNode) {
 		ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
@@ -34,7 +37,8 @@ public class ContractNegotiationAPIService {
 				.consumerPid("urn:uuid:" + UUID.randomUUID())
 				.offer(Serializer.deserializeProtocol(offerNode, Offer.class))
 				.build();
-		String response = callbackHandler.sendRequestProtocol(forwardTo, Serializer.serializeProtocolJsonNode(contractRequestMessage));
+		String authorization =  okhttp3.Credentials.basic("milisav@mail.com", "password");
+		String response = callbackHandler.sendRequestProtocol(forwardTo, Serializer.serializeProtocolJsonNode(contractRequestMessage), authorization);
 		log.info("Response received {}", response);
 		ObjectMapper mapper = new ObjectMapper();
 		JsonNode jsonNode = null;
