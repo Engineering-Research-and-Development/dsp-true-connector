@@ -1,10 +1,9 @@
 {
 	"info": {
-		"_postman_id": "36899ce7-405d-4052-ad6b-78036e603062",
+		"_postman_id": "6d6c119a-afc8-44a7-aba1-18cc1dac6b0b",
 		"name": "TC_V2",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "2326106",
-		"_collection_link": "https://martian-water-684810.postman.co/workspace/New-Connector~493beb9b-a916-4f81-afb2-851668940079/collection/2326106-36899ce7-405d-4052-ad6b-78036e603062?action=share&source=collection_link&creator=2326106"
+		"_exporter_id": "12578087"
 	},
 	"item": [
 		{
@@ -280,6 +279,158 @@
 									"path": [
 										"dataset",
 										"$ID"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Negotiation",
+					"item": [
+						{
+							"name": "Offer Approved",
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "petar@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"consumerPid\" : \"urn:uuid:4e626898-7320-45ff-8f0d-d089a37562c6\",\r\n\t\"providerPid\" : \"urn:uuid:0fc890d1-5204-4f5b-8938-3bd9d202f6aa\",\r\n\t\"offerAccepted\" : true,\r\n    \"offer\": {\r\n        \"@type\": \"odrl:Offer\",\r\n        \"@id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"odrl:target\" : \"target\",\r\n        \"odrl:permission\": [\r\n            {\r\n                \"odrl:action\": \"odrl:use\",\r\n                \"odrl:constraint\": [\r\n                    {\r\n                        \"odrl:leftOperand\": \"odrl:count\",\r\n                        \"odrl:operator\": \"odrl:EQ\",\r\n                        \"odrl:rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:8090/api/negotiations/offerApproved",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "8090",
+									"path": [
+										"api",
+										"negotiations",
+										"offerApproved"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Verify Negotiation",
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "petar@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"consumerPid\" : \"urn:uuid:4e626898-7320-45ff-8f0d-d089a37562c6\",\r\n\t\"providerPid\" : \"urn:uuid:0fc890d1-5204-4f5b-8938-3bd9d202f6aa\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:8090/api/negotiations/verifyNegotiation",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "8090",
+									"path": [
+										"api",
+										"negotiations",
+										"verifyNegotiation"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Start Negotiation",
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "petar@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"Forward-To\": \"http://localhost:8090/negotiations/request\",\r\n    \"offer\": {\r\n        \"@type\": \"odrl:Offer\",\r\n        \"@id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"odrl:target\" : \"target\",\r\n        \"odrl:permission\": [\r\n            {\r\n                \"odrl:action\": \"odrl:use\",\r\n                \"odrl:constraint\": [\r\n                    {\r\n                        \"odrl:leftOperand\": \"odrl:count\",\r\n                        \"odrl:operator\": \"odrl:EQ\",\r\n                        \"odrl:rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:8080/api/negotiations/startNegotiation",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "8080",
+									"path": [
+										"api",
+										"negotiations",
+										"startNegotiation"
 									]
 								}
 							},
