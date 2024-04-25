@@ -14,6 +14,7 @@ import it.eng.negotiation.service.ContractNegotiationAPIService;
 import it.eng.negotiation.service.ContractNegotiationEventHandlerService;
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponse;
 import it.eng.tools.model.DSpaceConstants;
+import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
@@ -31,12 +32,13 @@ public class ContractNegotiationAPIController {
 	}
 
 	@PostMapping(path = "/startNegotiation")
-    public ResponseEntity<JsonNode> startNegotiation(@RequestBody JsonNode startNegotiationRequest) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> startNegotiation(@RequestBody JsonNode startNegotiationRequest) {
     	String targetConnector = startNegotiationRequest.get("Forward-To").asText();
     	JsonNode offerNode = startNegotiationRequest.get("offer");
     	log.info("Consumer starts negotaition with {}", targetConnector);
     	JsonNode response = apiService.startNegotiation(targetConnector, offerNode);
-    	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+    	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+    			.body(GenericApiResponse.success(response, "Contract negotiation initiated"));
     }
     
     @PostMapping(path = "/offerApproved")

@@ -81,18 +81,16 @@ public class CallbackHandler {
 	}
 	
 	
-	public String sendRequestProtocol(String callbackAddress, JsonNode jsonNode, String authorization) {
-		if(!ObjectUtils.isEmpty(callbackAddress)) {
-			// send response to callback URL
-//			okhttp3.RequestBody body = okhttp3.RequestBody.create(jsonNode.toPrettyString(), okhttp3.MediaType.parse(MediaType.APPLICATION_JSON_VALUE));
+	public String sendRequestProtocol(String targetAddress, JsonNode jsonNode, String authorization) {
+		if(!ObjectUtils.isEmpty(targetAddress)) {
+			// send response to targetAddress
 			RequestBody body = RequestBody.create(jsonNode.toPrettyString(), MediaType.parse("application/json"));
-			
 			Request request = new Request.Builder()
-				      .url(callbackAddress)
+				      .url(targetAddress)
 				      .addHeader(HttpHeaders.AUTHORIZATION, authorization)
 				      .post(body)
 				      .build();
-			log.info("Sending response using callback address: " + callbackAddress);
+			log.info("Sending request using address: " + targetAddress);
 			try (Response response = client.executeCall(request)) {
 				log.info("Status {}", response.code());
 				String resp = response.body().string();

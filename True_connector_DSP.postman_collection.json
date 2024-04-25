@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "6d6c119a-afc8-44a7-aba1-18cc1dac6b0b",
+		"_postman_id": "165afb45-3688-491f-9e77-d97465fb18f8",
 		"name": "TC_V2",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "12578087"
@@ -290,23 +290,34 @@
 					"name": "Negotiation",
 					"item": [
 						{
+							"name": "Start Negotiation",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"Forward-To\": \"http://localhost:8090/negotiations/request\",\r\n    \"offer\": {\r\n        \"@type\": \"odrl:Offer\",\r\n        \"@id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"odrl:target\" : \"target\",\r\n        \"odrl:permission\": [\r\n            {\r\n                \"odrl:action\": \"odrl:use\",\r\n                \"odrl:constraint\": [\r\n                    {\r\n                        \"odrl:leftOperand\": \"odrl:count\",\r\n                        \"odrl:operator\": \"odrl:EQ\",\r\n                        \"odrl:rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{SERVER_API_NEGOTIATION}}/startNegotiation",
+									"host": [
+										"{{SERVER_API_NEGOTIATION}}"
+									],
+									"path": [
+										"startNegotiation"
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "Offer Approved",
 							"request": {
-								"auth": {
-									"type": "basic",
-									"basic": [
-										{
-											"key": "username",
-											"value": "petar@mail.com",
-											"type": "string"
-										},
-										{
-											"key": "password",
-											"value": "password",
-											"type": "string"
-										}
-									]
-								},
 								"method": "POST",
 								"header": [
 									{
@@ -325,12 +336,10 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:8090/api/negotiations/offerApproved",
-									"protocol": "http",
+									"raw": "{{SERVER_API_NEGOTIATION}}/api/negotiations/offerApproved",
 									"host": [
-										"localhost"
+										"{{SERVER_API_NEGOTIATION}}"
 									],
-									"port": "8090",
 									"path": [
 										"api",
 										"negotiations",
@@ -343,21 +352,6 @@
 						{
 							"name": "Verify Negotiation",
 							"request": {
-								"auth": {
-									"type": "basic",
-									"basic": [
-										{
-											"key": "username",
-											"value": "petar@mail.com",
-											"type": "string"
-										},
-										{
-											"key": "password",
-											"value": "password",
-											"type": "string"
-										}
-									]
-								},
 								"method": "POST",
 								"header": [
 									{
@@ -376,61 +370,12 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:8090/api/negotiations/verifyNegotiation",
-									"protocol": "http",
+									"raw": "{{SERVER_API_NEGOTIATION}}/verifyNegotiation",
 									"host": [
-										"localhost"
+										"{{SERVER_API_NEGOTIATION}}"
 									],
-									"port": "8090",
 									"path": [
-										"api",
-										"negotiations",
 										"verifyNegotiation"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Start Negotiation",
-							"request": {
-								"auth": {
-									"type": "basic",
-									"basic": [
-										{
-											"key": "username",
-											"value": "petar@mail.com",
-											"type": "string"
-										},
-										{
-											"key": "password",
-											"value": "password",
-											"type": "string"
-										}
-									]
-								},
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\r\n    \"Forward-To\": \"http://localhost:8090/negotiations/request\",\r\n    \"offer\": {\r\n        \"@type\": \"odrl:Offer\",\r\n        \"@id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"odrl:target\" : \"target\",\r\n        \"odrl:permission\": [\r\n            {\r\n                \"odrl:action\": \"odrl:use\",\r\n                \"odrl:constraint\": [\r\n                    {\r\n                        \"odrl:leftOperand\": \"odrl:count\",\r\n                        \"odrl:operator\": \"odrl:EQ\",\r\n                        \"odrl:rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "http://localhost:8080/api/negotiations/startNegotiation",
-									"protocol": "http",
-									"host": [
-										"localhost"
-									],
-									"port": "8080",
-									"path": [
-										"api",
-										"negotiations",
-										"startNegotiation"
 									]
 								}
 							},
@@ -444,7 +389,7 @@
 				"basic": [
 					{
 						"key": "username",
-						"value": "petar@mail.com",
+						"value": "admin@mail.com",
 						"type": "string"
 					},
 					{
@@ -590,7 +535,7 @@
 					},
 					{
 						"key": "username",
-						"value": "milisav@mail.com",
+						"value": "connector@mail.com",
 						"type": "string"
 					}
 				]

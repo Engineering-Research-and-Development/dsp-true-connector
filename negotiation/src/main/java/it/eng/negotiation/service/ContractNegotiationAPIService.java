@@ -8,6 +8,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import it.eng.negotiation.exception.ContractNegotiationAPIException;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.Offer;
@@ -37,7 +38,7 @@ public class ContractNegotiationAPIService {
 				.consumerPid("urn:uuid:" + UUID.randomUUID())
 				.offer(Serializer.deserializeProtocol(offerNode, Offer.class))
 				.build();
-		String authorization =  okhttp3.Credentials.basic("milisav@mail.com", "password");
+		String authorization =  okhttp3.Credentials.basic("connector@mail.com", "password");
 		String response = callbackHandler.sendRequestProtocol(forwardTo, Serializer.serializeProtocolJsonNode(contractRequestMessage), authorization);
 		log.info("Response received {}", response);
 		ObjectMapper mapper = new ObjectMapper();
@@ -56,8 +57,7 @@ public class ContractNegotiationAPIService {
 					.build();
 			repository.save(contractNegtiationUpdate);
 		} catch (JsonProcessingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			throw new ContractNegotiationAPIException(e.getLocalizedMessage(), e);
 		}
 		return jsonNode;
 	}

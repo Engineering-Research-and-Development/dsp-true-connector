@@ -2,6 +2,7 @@ package it.eng.catalog.util;
 
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 
@@ -10,14 +11,18 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 
 import it.eng.catalog.model.Action;
 import it.eng.catalog.model.Catalog;
+import it.eng.catalog.model.CatalogError;
+import it.eng.catalog.model.CatalogRequestMessage;
 import it.eng.catalog.model.Constraint;
 import it.eng.catalog.model.Dataset;
+import it.eng.catalog.model.DatasetRequestMessage;
 import it.eng.catalog.model.Distribution;
 import it.eng.catalog.model.LeftOperand;
 import it.eng.catalog.model.Multilanguage;
 import it.eng.catalog.model.Offer;
 import it.eng.catalog.model.Operator;
 import it.eng.catalog.model.Permission;
+import it.eng.catalog.model.Serializer;
 
 public class MockObjectUtil {
 	
@@ -92,6 +97,16 @@ public class MockObjectUtil {
 		.dataset(Arrays.asList(DATASET))
 		.distribution(Arrays.asList(DISTRIBUTION))
 		.build();
+	
+	public static final CatalogError CATALOG_ERROR = CatalogError.Builder.newInstance().build();
+	
+	public static final CatalogRequestMessage CATALOG_REQUEST_MESSAGE = CatalogRequestMessage.Builder.newInstance()
+			.filter(List.of("some-filter"))
+			.build();
+	
+	public static final DatasetRequestMessage DATASET_REQUEST_MESSAGE = DatasetRequestMessage.Builder.newInstance()
+			.dataset(Serializer.serializeProtocol(MockObjectUtil.DATASET))
+			.build();
 
 	public static void getAllKeysUsingJsonNodeFieldNames(JsonNode jsonNode, Set<String> keys) {
 	    if (jsonNode.isObject()) {

@@ -1,6 +1,6 @@
 package it.eng.catalog.rest.api;
 
-import it.eng.catalog.exceptions.CatalogNotFoundException;
+import it.eng.catalog.exceptions.CatalogNotFoundAPIException;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.Serializer;
 import it.eng.catalog.service.CatalogService;
@@ -38,7 +38,7 @@ public class CatalogAPIController {
     public ResponseEntity<String> getCatalogById(@PathVariable String id) {
 
         log.info("Fetching catalog with id '" + id + "'");
-        Catalog catalog = catalogService.getCatalogById(id).orElseThrow(() -> new CatalogNotFoundException("Catalog with id" + id + " not Found"));
+        Catalog catalog = catalogService.getCatalogById(id).orElseThrow(() -> new CatalogNotFoundAPIException("Catalog with id" + id + " not Found"));
 
         applicationEventPublisher.publishEvent(catalog);
         return ResponseEntity.ok().header("id", "bar").contentType(MediaType.APPLICATION_JSON)

@@ -1,5 +1,5 @@
 {
-	"id": "b7146cd2-94f3-4e66-bc55-f3033220bdcc",
+	"id": "14ee8f0e-0ad0-4de8-9df3-f6c1dc11eb44",
 	"name": "TC_V2_ENV",
 	"values": [
 		{
@@ -19,9 +19,15 @@
 			"value": "http://localhost:8080/negotiations",
 			"type": "default",
 			"enabled": true
+		},
+		{
+			"key": "SERVER_API_NEGOTIATION",
+			"value": "http://localhost:8080/api/negotiations",
+			"type": "default",
+			"enabled": true
 		}
 	],
 	"_postman_variable_scope": "environment",
-	"_postman_exported_at": "2024-04-01T14:51:53.162Z",
-	"_postman_exported_using": "Postman/10.24.2"
+	"_postman_exported_at": "2024-04-25T13:38:53.221Z",
+	"_postman_exported_using": "Postman/10.24.23"
 }
