@@ -17,7 +17,9 @@ import it.eng.negotiation.model.Serializer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.rest.protocol.ContactNegotiationCallback;
+import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequest;
+import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -26,15 +28,15 @@ public class ContractNegotiationProviderService {
 
     private ContractNegotiationPublisher publisher;
 	private ContractNegotiationRepository repository;
-	private CallbackHandler callbackHandler;
+	private OkHttpRestClient okHttpRestClient;
 	private ContractNegotiationProperties properties;
 
     public ContractNegotiationProviderService(ContractNegotiationPublisher publisher,
-			ContractNegotiationRepository repository, CallbackHandler callbackHandler,
+			ContractNegotiationRepository repository, OkHttpRestClient okHttpRestClient,
 			ContractNegotiationProperties properties) {
 		this.publisher = publisher;
 		this.repository = repository;
-		this.callbackHandler = callbackHandler;
+		this.okHttpRestClient = okHttpRestClient;
 		this.properties = properties;
 	}
 
@@ -116,11 +118,14 @@ public class ContractNegotiationProviderService {
 				.providerPid(contractNegotiation.getProviderPid())
 				.eventType(ContractNegotiationEventType.FINALIZED)
 				.build();
+		String authorization = okhttp3.Credentials.basic("connector@mail.com", "password");
 		//	https://consumer.com/:callback/negotiations/:consumerPid/events
 		String callbackAddress = contractNegotiation.getCallbackAddress() + ContactNegotiationCallback.getContractEventsCallback("consumer", contractNegotiation.getConsumerPid());
 		log.info("Sending ContractNegotiationEventMessage.FINALIZED to {}", callbackAddress);
-		int status = callbackHandler.handleCallbackResponseProtocol(callbackAddress, Serializer.serializeProtocolJsonNode(finalize));
-		if (status == 200) {
+		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(callbackAddress, 
+				Serializer.serializeProtocolJsonNode(finalize),
+				authorization);
+		if (response.isSuccess()) {
 			ContractNegotiation contractNegtiationUpdate = ContractNegotiation.Builder.newInstance()
 					.id(contractNegotiation.getId())
 					.consumerPid(cavm.getConsumerPid())

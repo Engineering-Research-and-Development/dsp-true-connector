@@ -18,7 +18,6 @@ import it.eng.negotiation.model.ContractNegotiationEventMessage;
 import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
 import it.eng.negotiation.model.ContractOfferMessage;
 import it.eng.negotiation.model.Serializer;
-import it.eng.negotiation.service.CallbackHandler;
 import it.eng.negotiation.service.ContractNegotiationConsumerService;
 import lombok.extern.slf4j.Slf4j;
 
@@ -28,13 +27,10 @@ import lombok.extern.slf4j.Slf4j;
 public class ConsumerContractNegotiationCallbackController {
 
     private ContractNegotiationConsumerService contractNegotiationConsumerService;
-    private CallbackHandler callbackHandler;
 
-    public ConsumerContractNegotiationCallbackController(ContractNegotiationConsumerService contractNegotiationConsumerService,
-                                                         CallbackHandler callbackHandler) {
+    public ConsumerContractNegotiationCallbackController(ContractNegotiationConsumerService contractNegotiationConsumerService) {
         super();
         this.contractNegotiationConsumerService = contractNegotiationConsumerService;
-        this.callbackHandler = callbackHandler;
     }
 
     //	https://consumer.com/negotiations/offers	POST	ContractOfferMessage
@@ -49,8 +45,6 @@ public class ConsumerContractNegotiationCallbackController {
 
 //		callbackAddress = callbackAddress.endsWith("/") ? callbackAddress : callbackAddress + "/";
 //		String finalCallback = callbackAddress + ContactNegotiationCallback.getProviderNegotiationOfferCallback(callbackAddress);
-        //TODO assumption - using callbackAddress from request as-is
-        callbackHandler.handleCallbackResponse(callbackAddress, responseNode);
         // send OK 200
         log.info("Sending response OK in callback case");
         return ResponseEntity.ok().build();
@@ -70,8 +64,6 @@ public class ConsumerContractNegotiationCallbackController {
 
 //		callbackAddress = callbackAddress.endsWith("/") ? callbackAddress : callbackAddress + "/";
 //		String finalCallback = callbackAddress + ContactNegotiationCallback.getNegotiationOfferConsumer(callbackAddress);
-        //TODO assumption - using callbackAddress from request as-is
-        callbackHandler.handleCallbackResponse(callbackAddress, responseNode);
         log.info("Sending response OK in callback case");
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).build();
     }
@@ -87,14 +79,10 @@ public class ConsumerContractNegotiationCallbackController {
                 ContractAgreementMessage.class);
 
         String callbackAddress = contractAgreementMessage.getCallbackAddress();
-        JsonNode responseNode =
-                contractNegotiationConsumerService.handleAgreement(callbackAddress, contractAgreementMessage);
+        contractNegotiationConsumerService.handleAgreement(callbackAddress, contractAgreementMessage);
 
 //		callbackAddress = callbackAddress.endsWith("/") ? callbackAddress : callbackAddress + "/";
-//		String finalCallback = callbackAddress + ContactNegotiationCallback.getProviderHandleAgreementCallback(callbackAddress);
-        //TODO assumption - using callbackAddress from request as-is
-        // callbackHandler.handleCallbackResponse(callbackAddress, responseNode);
-        log.info("Sending response OK in callback case");
+        log.info("CONSUMER - Sending response OK - agreementMessage received");
         return ResponseEntity.ok().build();
     }
 

@@ -3,6 +3,7 @@ package it.eng.negotiation.rest.protocol;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -27,7 +28,6 @@ import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
 import it.eng.negotiation.model.ContractOfferMessage;
 import it.eng.negotiation.model.ModelUtil;
 import it.eng.negotiation.model.Serializer;
-import it.eng.negotiation.service.CallbackHandler;
 import it.eng.negotiation.service.ContractNegotiationConsumerService;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,14 +37,12 @@ public class ConsumerContractNegotiationCallbackControllerTest {
 
     @Mock
     private ContractNegotiationConsumerService contractNegotiationConsumerService;
-    @Mock
-    private CallbackHandler callbackHandler;
 
     ObjectMapper mapper = new ObjectMapper();
 
     @BeforeEach
     public void setup() {
-        controller = new ConsumerContractNegotiationCallbackController(contractNegotiationConsumerService, callbackHandler);
+        controller = new ConsumerContractNegotiationCallbackController(contractNegotiationConsumerService);
     }
 
     @Test
@@ -56,8 +54,6 @@ public class ConsumerContractNegotiationCallbackControllerTest {
         ResponseEntity<JsonNode> response = controller.handleNegotiationOffers(jsonNode);
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
-
-        verify(callbackHandler).handleCallbackResponse(any(String.class), any(JsonNode.class));
     }
 
 
@@ -71,22 +67,19 @@ public class ConsumerContractNegotiationCallbackControllerTest {
         ResponseEntity<JsonNode> response = controller.handleNegotiationOfferConsumerPid(ModelUtil.CONSUMER_PID, jsonNode);
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
-
-        verify(callbackHandler).handleCallbackResponse(any(String.class), any(JsonNode.class));
     }
 
     @Test
     public void handleAgreement() throws InterruptedException, ExecutionException, JsonMappingException, JsonProcessingException {
         String json = Serializer.serializeProtocol(contractAgreementMessage());
         JsonNode jsonNode = mapper.readTree(json);
-        when(contractNegotiationConsumerService.handleAgreement(any(String.class), any(ContractAgreementMessage.class)))
-                .thenReturn(jsonNode);
+        doNothing().when(contractNegotiationConsumerService).handleAgreement(any(String.class), any(ContractAgreementMessage.class));
 
         ResponseEntity<JsonNode> response = controller.handleAgreement(ModelUtil.CONSUMER_PID, jsonNode);
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
 
-//        verify(callbackHandler).handleCallbackResponse(any(String.class), any(JsonNode.class));
+        verify(contractNegotiationConsumerService).handleAgreement(any(String.class), any(ContractAgreementMessage.class));
     }
 
     @Test

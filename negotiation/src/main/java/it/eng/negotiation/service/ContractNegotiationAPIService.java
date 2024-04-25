@@ -15,19 +15,21 @@ import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.model.Serializer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
+import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
 public class ContractNegotiationAPIService {
 
-	private CallbackHandler callbackHandler;
+	private OkHttpRestClient okHttpRestClient;
 	private ContractNegotiationRepository repository;
 	private ContractNegotiationProperties properties;
 
-	public ContractNegotiationAPIService(CallbackHandler callbackHandler, ContractNegotiationRepository repository,
+	public ContractNegotiationAPIService(OkHttpRestClient okHttpRestClient, ContractNegotiationRepository repository,
 			ContractNegotiationProperties properties) {
-		this.callbackHandler = callbackHandler;
+		this.okHttpRestClient = okHttpRestClient;
 		this.repository = repository;
 		this.properties = properties;
 	}
@@ -39,13 +41,13 @@ public class ContractNegotiationAPIService {
 				.offer(Serializer.deserializeProtocol(offerNode, Offer.class))
 				.build();
 		String authorization =  okhttp3.Credentials.basic("connector@mail.com", "password");
-		String response = callbackHandler.sendRequestProtocol(forwardTo, Serializer.serializeProtocolJsonNode(contractRequestMessage), authorization);
+		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(forwardTo, Serializer.serializeProtocolJsonNode(contractRequestMessage), authorization);
 		log.info("Response received {}", response);
 		ObjectMapper mapper = new ObjectMapper();
 		JsonNode jsonNode = null;
 		try {
 			log.info("ContractNegotiation received {}", response);
-			jsonNode = mapper.readTree(response);
+			jsonNode = mapper.readTree(response.getData());
 			ContractNegotiation contractNegotiation = Serializer.deserializeProtocol(jsonNode, ContractNegotiation.class);
 			// as workaround set forwartDo in callbackAddress???
 			ContractNegotiation contractNegtiationUpdate = ContractNegotiation.Builder.newInstance()

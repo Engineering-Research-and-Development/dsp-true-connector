@@ -86,8 +86,9 @@ public class ContractNegotiationConsumerService {
      * @return
      */
 
-    public JsonNode handleAgreement(String callbackAddress, ContractAgreementMessage contractAgreementMessage) {
+    public void handleAgreement(String callbackAddress, ContractAgreementMessage contractAgreementMessage) {
     	// ends verification message to provider
+    	// TODO add error handling in case not correct
     	if(properties.isAutomaticNegotiation()) {
     		log.debug("Automatic negotiation - processing sending ContractAgreementVerificationMessage");
     		ContractAgreementVerificationMessage verificationMessage = ContractAgreementVerificationMessage.Builder.newInstance()
@@ -116,9 +117,6 @@ public class ContractNegotiationConsumerService {
     	repository.save(contractNegtiationUpdate);
     	// TODO save agreement also
     	
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode testNode = mapper.createObjectNode();
-        return testNode;
     }
 
     /**

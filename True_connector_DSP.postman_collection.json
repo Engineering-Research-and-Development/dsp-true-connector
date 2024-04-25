@@ -336,7 +336,7 @@
 									}
 								},
 								"url": {
-									"raw": "{{SERVER_API_NEGOTIATION}}/api/negotiations/offerApproved",
+									"raw": "{{SERVER_API_NEGOTIATION}}/offerApproved",
 									"host": [
 										"{{SERVER_API_NEGOTIATION}}"
 									],

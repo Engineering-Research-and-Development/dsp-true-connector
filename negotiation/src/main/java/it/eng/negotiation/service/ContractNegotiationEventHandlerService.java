@@ -15,7 +15,9 @@ import it.eng.negotiation.model.Serializer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.rest.protocol.ContactNegotiationCallback;
+import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponse;
+import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -24,35 +26,37 @@ public class ContractNegotiationEventHandlerService {
 	
     private ContractNegotiationRepository repository;
 	private ContractNegotiationProperties properties;
-	private CallbackHandler callbackHandler;
+	private OkHttpRestClient okHttpRestClient;
 	
 	public ContractNegotiationEventHandlerService(ContractNegotiationRepository repository,
-			ContractNegotiationProperties properties, CallbackHandler callbackHandler) {
+			ContractNegotiationProperties properties, OkHttpRestClient okHttpRestClient) {
 		this.repository = repository;
 		this.properties = properties;
-		this.callbackHandler = callbackHandler;
+		this.okHttpRestClient = okHttpRestClient;
 	}
 
-	public void handleContractNegotiationOfferResponse(ContractNegotiationOfferResponse response) {
-		String result = response.isOfferAccepted() ? "accepted" : "declined";
+	public void handleContractNegotiationOfferResponse(ContractNegotiationOfferResponse offerResponse) {
+		String result = offerResponse.isOfferAccepted() ? "accepted" : "declined";
 		log.info("Contract offer " + result);
 		// TODO get callbackAddress and send Agreement message
-		log.info("ConsumerPid - " + response.getConsumerPid() + ", providerPid - " + response.getProviderPid());
-		Optional<ContractNegotiation> contractNegtiationOpt = repository.findByProviderPidAndConsumerPid(response.getProviderPid(), response.getConsumerPid());
+		log.info("ConsumerPid - " + offerResponse.getConsumerPid() + ", providerPid - " + offerResponse.getProviderPid());
+		Optional<ContractNegotiation> contractNegtiationOpt = repository.findByProviderPidAndConsumerPid(offerResponse.getProviderPid(), offerResponse.getConsumerPid());
 		contractNegtiationOpt.ifPresent(cn -> log.info("Found intial negotiation" + " - CallbackAddress " + cn.getCallbackAddress()));
 		ContractNegotiation contractNegotiation = contractNegtiationOpt.get();
-		if(response.isOfferAccepted()) {
+		if(offerResponse.isOfferAccepted()) {
 			ContractAgreementMessage agreementMessage = ContractAgreementMessage.Builder.newInstance()
 					.consumerPid(contractNegotiation.getConsumerPid())
 					.providerPid(contractNegotiation.getProviderPid())
 					.callbackAddress(properties.callbackAddress())
-					.agreement(agreementFromOffer(Serializer.deserializeProtocol(response.getOffer(), Offer.class)))
+					.agreement(agreementFromOffer(Serializer.deserializeProtocol(offerResponse.getOffer(), Offer.class)))
 					.build();
 			
-			int status = callbackHandler.handleCallbackResponseProtocol(
+			String authorization = okhttp3.Credentials.basic("connector@mail.com", "password");
+			GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
 					contractNegotiation.getCallbackAddress() + ContactNegotiationCallback.getContractAgreementCallback("consumer", contractNegotiation.getConsumerPid()), 
-					Serializer.serializeProtocolJsonNode(agreementMessage));
-			if(status == 200) {
+					Serializer.serializeProtocolJsonNode(agreementMessage),
+					authorization);
+			if(response.isSuccess()) {
 				log.info("Updating status for negotiation {} to agreed", contractNegotiation.getId());
 				ContractNegotiation contractNegtiationUpdate = ContractNegotiation.Builder.newInstance()
 						.id(contractNegotiation.getId())
@@ -88,11 +92,14 @@ public class ContractNegotiationEventHandlerService {
 		contractNegtiationOpt.ifPresent(cn -> log.info("Found intial negotiation" + " - CallbackAddress " + cn.getCallbackAddress()));
 		ContractNegotiation contractNegtiation = contractNegtiationOpt.get();
 
+		String authorization = okhttp3.Credentials.basic("connector@mail.com", "password");
 		String callbackAddress = contractNegtiation.getCallbackAddress() + ContactNegotiationCallback.getProviderHandleAgreementCallback(verificationMessage.getProviderPid());
 		log.info("Sending verification message to provider to {}", callbackAddress);
-		int status = callbackHandler.handleCallbackResponseProtocol(callbackAddress, Serializer.serializeProtocolJsonNode(verificationMessage));
+		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(callbackAddress, 
+				Serializer.serializeProtocolJsonNode(verificationMessage),
+				authorization);
 		
-		if(status == 200) {
+		if(response.getHttpStatus() == 200) {
 			log.info("Updating status for negotiation {} to verified", contractNegtiation.getId());
 			ContractNegotiation contractNegtiationUpdate = ContractNegotiation.Builder.newInstance()
 					.id(contractNegtiation.getId())
