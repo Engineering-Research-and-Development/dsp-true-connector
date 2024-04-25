@@ -10,11 +10,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import it.eng.catalog.model.CatalogError;
-import it.eng.catalog.model.GenericApiResponse;
 import it.eng.catalog.model.Reason;
 import it.eng.catalog.model.Serializer;
 import it.eng.catalog.rest.protocol.CatalogProtocolController;
 import it.eng.catalog.service.CatalogService;
+import it.eng.tools.response.GenericApiResponse;
 import jakarta.validation.ValidationException;
 
 @RestControllerAdvice(basePackageClasses = {CatalogProtocolController.class, CatalogService.class})

@@ -1,4 +1,4 @@
-package it.eng.catalog.model;
+package it.eng.tools.response;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
