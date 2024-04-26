@@ -11,6 +11,7 @@ public class ModelUtil {
 	public static final String CONSUMER_PID = "urn:uuid:CONSUMER_PID";
 	public static final String PROVIDER_PID = "urn:uuid:PROVIDER_PID";
 	public static final String CALLBACK_ADDRESS = "https://callback.address/callback";
+	public static final String FORWARD_TO = "https://forward-to.com";
 	public static final String DATASET_ID = "urn:uuid:DATASET_ID";
 	public static final String ASSIGNEE = "urn:uuid:ASSIGNEE";
 	public static final String ASSIGNER = "urn:uuid:ASSIGNER";
@@ -21,6 +22,26 @@ public class ModelUtil {
 		return "urn:uuid:" + UUID.randomUUID().toString();
 	}
 	
+	
+	public static ContractNegotiationEventMessage getEventMessage(ContractNegotiationEventType eventType) {
+		return ContractNegotiationEventMessage.Builder.newInstance()
+				.consumerPid(ModelUtil.CONSUMER_PID)
+				.providerPid(ModelUtil.PROVIDER_PID)
+				.eventType(eventType)
+				.build();
+	}
+	
+	public static final ContractAgreementVerificationMessage CONTRACT_AGREEMENT_VERIFICATION_MESSAGE = ContractAgreementVerificationMessage.Builder.newInstance()
+			.consumerPid(ModelUtil.CONSUMER_PID)
+			.providerPid(ModelUtil.PROVIDER_PID)
+			.build();
+
+	public static final ContractNegotiationTerminationMessage TERMINATION_MESSAGE = ContractNegotiationTerminationMessage.Builder.newInstance()
+			.consumerPid(ModelUtil.CONSUMER_PID)
+			.providerPid(ModelUtil.PROVIDER_PID)
+			.code("Test")
+			.reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("test").build()))
+			.build();
 	
 	public static final Constraint CONSTRAINT = Constraint.Builder.newInstance()
 			.leftOperand(LeftOperand.DATE_TIME)
@@ -69,6 +90,13 @@ public class ModelUtil {
 			.offer(OFFER)
 			.build();
 	
+	public static final ContractAgreementMessage CONTRACT_AGREEMENT_MESSAGE = ContractAgreementMessage.Builder.newInstance()
+			.consumerPid(ModelUtil.CONSUMER_PID)
+			.providerPid(ModelUtil.PROVIDER_PID)
+			.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
+			.agreement(AGREEMENT)
+			.build();
+	
 	public static final ContractNegotiationErrorMessage CONTRACT_NEGOTIATION_ERROR_MESSAGE = ContractNegotiationErrorMessage.Builder.newInstance()
 			.consumerPid(CONSUMER_PID)
 			.providerPid(PROVIDER_PID)
@@ -81,5 +109,11 @@ public class ModelUtil {
 			.consumerPid(ModelUtil.CONSUMER_PID)
 			.providerPid(ModelUtil.PROVIDER_PID)
 			.state(ContractNegotiationState.ACCEPTED)
+			.build();
+	
+	public static final ContractNegotiation CONTRACT_NEGOTIATION_FINALIZED = ContractNegotiation.Builder.newInstance()
+			.consumerPid(ModelUtil.CONSUMER_PID)
+			.providerPid(ModelUtil.PROVIDER_PID)
+			.state(ContractNegotiationState.FINALIZED)
 			.build();
 }

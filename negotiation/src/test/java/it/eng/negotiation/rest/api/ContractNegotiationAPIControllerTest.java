@@ -1,0 +1,86 @@
+package it.eng.negotiation.rest.api;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import it.eng.negotiation.model.ContractAgreementVerificationMessage;
+import it.eng.negotiation.model.ModelUtil;
+import it.eng.negotiation.model.Serializer;
+import it.eng.negotiation.service.ContractNegotiationAPIService;
+import it.eng.negotiation.service.ContractNegotiationEventHandlerService;
+import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponse;
+import it.eng.tools.model.DSpaceConstants;
+import it.eng.tools.response.GenericApiResponse;
+
+@ExtendWith(MockitoExtension.class)
+public class ContractNegotiationAPIControllerTest {
+	
+	@Mock
+	private ContractNegotiationEventHandlerService handlerService;
+	@Mock
+	private ContractNegotiationAPIService apiService;
+
+	@InjectMocks
+	private ContractNegotiationAPIController controller;
+
+	ObjectMapper mapper = new ObjectMapper();
+
+	@Test
+	@DisplayName("Start contract negotiation success")
+	public void startNegotiation_success() {
+		Map<String, Object> map = new HashMap<>();
+		map.put("Forward-To", ModelUtil.FORWARD_TO);
+		map.put("offer", Serializer.serializeProtocolJsonNode(ModelUtil.OFFER));
+				
+		when(apiService.startNegotiation(any(String.class), any(JsonNode.class)))
+			.thenReturn(Serializer.serializeProtocolJsonNode(ModelUtil.CONTRACT_NEGOTIATION));
+		
+		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.startNegotiation(mapper.convertValue(map, JsonNode.class));
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+		verify(apiService).startNegotiation(any(String.class), any(JsonNode.class));
+	}
+	
+	@Test
+	@DisplayName("Approve requested offer success")
+	public void offerApproved_success() {
+		Map<String, Object> map = new HashMap<>();
+		map.put("offer", Serializer.serializeProtocolJsonNode(ModelUtil.OFFER));
+		map.put(DSpaceConstants.CONSUMER_PID, "urn:uuid:" + UUID.randomUUID());
+		map.put(DSpaceConstants.PROVIDER_PID, "urn:uuid:" + UUID.randomUUID());
+		map.put("offerAccepted", true);
+		
+		ResponseEntity<JsonNode> response = controller.handleOfferApproved(mapper.convertValue(map, JsonNode.class));
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+		verify(handlerService).handleContractNegotiationOfferResponse(any(ContractNegotiationOfferResponse.class));
+	}
+	
+	@Test
+	@DisplayName("Verify negotiation success")
+	public void verifyNegotiation_success() {
+		Map<String, Object> map = new HashMap<>();
+		map.put(DSpaceConstants.CONSUMER_PID, "urn:uuid:" + UUID.randomUUID());
+		map.put(DSpaceConstants.PROVIDER_PID, "urn:uuid:" + UUID.randomUUID());
+		
+		ResponseEntity<JsonNode> response = controller.verifyNegotiation(mapper.convertValue(map, JsonNode.class));
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+		verify(handlerService).contractAgreementVerificationMessage(any(ContractAgreementVerificationMessage.class));
+	}
+}
