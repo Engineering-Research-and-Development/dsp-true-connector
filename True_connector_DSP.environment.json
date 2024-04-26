@@ -19,9 +19,15 @@
 			"value": "http://localhost:8080/negotiations",
 			"type": "default",
 			"enabled": true
+		},
+		{
+			"key": "SERVER_API_DATASET",
+			"value": "http://localhost:8080/api/dataset",
+			"type": "default",
+			"enabled": true
 		}
 	],
 	"_postman_variable_scope": "environment",
-	"_postman_exported_at": "2024-04-01T14:51:53.162Z",
-	"_postman_exported_using": "Postman/10.24.2"
+	"_postman_exported_at": "2024-04-26T15:07:11.533Z",
+	"_postman_exported_using": "Postman/10.24.24"
 }
