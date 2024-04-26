@@ -16,4 +16,9 @@ public class CatalogAPIExceptionAdvice extends ResponseEntityExceptionHandler {
 	protected ResponseEntity<Object> handleCatalogNotFoundException(CatalogNotFoundAPIException ex, WebRequest request) {
 		return handleExceptionInternal(ex, ex.getLocalizedMessage(), new HttpHeaders(), HttpStatus.NOT_FOUND, request);
 	}
+
+	@ExceptionHandler(value = { DatasetNotFoundAPIException.class })
+	protected ResponseEntity<Object> handleDatasetNotFoundException(DatasetNotFoundAPIException ex, WebRequest request) {
+		return handleExceptionInternal(ex, ex.getLocalizedMessage(), new HttpHeaders(), HttpStatus.NOT_FOUND, request);
+	}
 }
