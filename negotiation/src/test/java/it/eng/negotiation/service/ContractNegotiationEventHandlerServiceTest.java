@@ -3,6 +3,7 @@ package it.eng.negotiation.service;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
 
 import java.util.Optional;
 
@@ -56,6 +57,19 @@ public class ContractNegotiationEventHandlerServiceTest {
 		verify(repository).save(any(ContractNegotiation.class));
 	}
 	
+	@Test
+	@DisplayName("Handle contract negotiation offer declined")
+	public void handleContractNegotiationOfferResponse_declined() {
+		ContractNegotiationOfferResponse offerResponse = new ContractNegotiationOfferResponse(ModelUtil.CONSUMER_PID, 
+				ModelUtil.PROVIDER_PID, false, Serializer.serializeProtocolJsonNode(ModelUtil.OFFER));
+		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class)))
+			.thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION));
+
+		handlerService.handleContractNegotiationOfferResponse(offerResponse);
+		
+		verify(repository, times(0)).save(any(ContractNegotiation.class));
+	}
+
 	@Test
 	@DisplayName("Handle agreement verification message success")
 	public void contractAgreementVerificationMessage_success() {
