@@ -9,9 +9,9 @@ import static org.mockito.Mockito.when;
 
 import java.util.concurrent.ExecutionException;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
@@ -33,17 +33,13 @@ import it.eng.negotiation.service.ContractNegotiationConsumerService;
 @ExtendWith(MockitoExtension.class)
 public class ConsumerContractNegotiationCallbackControllerTest {
 
+	@InjectMocks
     private ConsumerContractNegotiationCallbackController controller;
 
     @Mock
     private ContractNegotiationConsumerService contractNegotiationConsumerService;
 
     ObjectMapper mapper = new ObjectMapper();
-
-    @BeforeEach
-    public void setup() {
-        controller = new ConsumerContractNegotiationCallbackController(contractNegotiationConsumerService);
-    }
 
     @Test
     public void handleNegotiationOffers() throws JsonProcessingException {
