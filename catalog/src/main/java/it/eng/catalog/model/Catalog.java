@@ -1,5 +1,6 @@
 package it.eng.catalog.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
@@ -13,12 +14,16 @@ import jakarta.validation.ValidationException;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.*;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
 
 @Getter
 @JsonDeserialize(builder = Catalog.Builder.class)
@@ -48,23 +53,28 @@ public class Catalog extends AbstractCatalogObject {
     @JsonProperty(DSpaceConstants.DCT_IDENTIFIER)
     private String identifier;
     @JsonProperty(DSpaceConstants.DCT_ISSUED)
-    private String issued;
+    @CreatedDate
+    private Instant issued;
     @JsonProperty(DSpaceConstants.DCT_MODIFIED)
-    private String modified;
+    @LastModifiedDate
+    private Instant modified;
     @JsonProperty(DSpaceConstants.DCT_TITLE)
     private String title;
 
     // from Dataset definition
     @JsonProperty(DSpaceConstants.DCAT_DISTRIBUTION)
+    @DBRef
     private List<Distribution> distribution;
     // assumption - policy for allowing catalog usage/display - not mandatory for catalog
-	@JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
-	private List<Offer> hasPolicy;
-	// end Dataset definition
+    @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
+    private List<Offer> hasPolicy;
+    // end Dataset definition
 
     @JsonProperty(DSpaceConstants.DCAT_DATASET)
+    @DBRef
     private List<Dataset> dataset;
     @JsonProperty(DSpaceConstants.DCAT_SERVICE)
+    @DBRef
     private List<DataService> service;
 
     @JsonProperty(DSpaceConstants.DSPACE_PARTICIPANT_ID)
@@ -72,6 +82,19 @@ public class Catalog extends AbstractCatalogObject {
 
     @JsonProperty("foaf:homepage")
     private String homepage;
+
+    @JsonIgnore
+    @CreatedBy
+    private String createdBy;
+
+    @JsonIgnore
+    @LastModifiedBy
+    private String lastModifiedBy;
+
+    @JsonIgnore
+    @Version
+    @Field("version")
+    private Long version;
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -86,11 +109,13 @@ public class Catalog extends AbstractCatalogObject {
             return new Builder();
         }
 
+
         @JsonProperty(DSpaceConstants.ID)
         public Builder id(String id) {
             catalog.id = id;
             return this;
         }
+
 
         @JsonProperty(DSpaceConstants.DCAT_KEYWORD)
         public Builder keyword(List<String> keyword) {
@@ -129,13 +154,13 @@ public class Catalog extends AbstractCatalogObject {
         }
 
         @JsonProperty(DSpaceConstants.DCT_ISSUED)
-        public Builder issued(String issued) {
+        public Builder issued(Instant issued) {
             catalog.issued = issued;
             return this;
         }
 
         @JsonProperty(DSpaceConstants.DCT_MODIFIED)
-        public Builder modified(String modified) {
+        public Builder modified(Instant modified) {
             catalog.modified = modified;
             return this;
         }
@@ -147,18 +172,16 @@ public class Catalog extends AbstractCatalogObject {
         }
 
         @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
-		public Builder hasPolicy(List<Offer> policies) {
-        	catalog.hasPolicy = policies;
-			return this;
-		}
+        public Builder hasPolicy(List<Offer> policies) {
+            catalog.hasPolicy = policies;
+            return this;
+        }
 
         @JsonProperty(DSpaceConstants.DCAT_DISTRIBUTION)
         public Builder distribution(List<Distribution> distribution) {
             catalog.distribution = distribution;
             return this;
         }
-        //**********
-
 
         @JsonProperty(DSpaceConstants.DCAT_DATASET)
         public Builder dataset(List<Dataset> datasets) {
@@ -184,21 +207,39 @@ public class Catalog extends AbstractCatalogObject {
             return this;
         }
 
+        @JsonProperty("createdBy")
+        public Builder createdBy(String createdBy) {
+            catalog.createdBy = createdBy;
+            return this;
+        }
+
+        @JsonProperty("lastModifiedBy")
+        public Builder lastModifiedBy(String lastModifiedBy) {
+            catalog.lastModifiedBy = lastModifiedBy;
+            return this;
+        }
+
+        @JsonProperty("version")
+        public Builder version(Long version) {
+            catalog.version = version;
+            return this;
+        }
+
         public Catalog build() {
             if (catalog.id == null) {
-                catalog.id = catalog.createNewId();;
+                catalog.id = catalog.createNewId();
             }
             Set<ConstraintViolation<Catalog>> violations
-				= Validation.buildDefaultValidatorFactory().getValidator().validate(catalog);
-			if(violations.isEmpty()) {
-				return catalog;
-			}
-			throw new ValidationException("Catalog - " +
-					violations
-						.stream()
-						.map(v -> v.getPropertyPath() + " " + v.getMessage())
-						.collect(Collectors.joining(",")));
-			}
+                    = Validation.buildDefaultValidatorFactory().getValidator().validate(catalog);
+            if (violations.isEmpty()) {
+                return catalog;
+            }
+            throw new ValidationException("Catalog - " +
+                    violations
+                            .stream()
+                            .map(v -> v.getPropertyPath() + " " + v.getMessage())
+                            .collect(Collectors.joining(",")));
+        }
     }
 
     @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)

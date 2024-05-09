@@ -1,5 +1,5 @@
 {
-	"id": "14ee8f0e-0ad0-4de8-9df3-f6c1dc11eb44",
+	"id": "3d1e57ec-169a-4853-838d-41783827cf88",
 	"name": "TC_V2_ENV",
 	"values": [
 		{
@@ -25,9 +25,21 @@
 			"value": "http://localhost:8080/api/negotiations",
 			"type": "default",
 			"enabled": true
+		},
+		{
+			"key": "SERVER_API_DATASET",
+			"value": "http://localhost:8080/api/dataset",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "SERVER_API_DATASERVICE",
+			"value": "http://localhost:8080/api/dataservice",
+			"type": "default",
+			"enabled": true
 		}
 	],
 	"_postman_variable_scope": "environment",
-	"_postman_exported_at": "2024-04-25T13:38:53.221Z",
-	"_postman_exported_using": "Postman/10.24.23"
+	"_postman_exported_at": "2024-05-09T14:28:29.553Z",
+	"_postman_exported_using": "Postman/10.24.24"
 }

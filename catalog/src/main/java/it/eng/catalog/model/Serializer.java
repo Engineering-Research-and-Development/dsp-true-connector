@@ -1,9 +1,5 @@
 package it.eng.catalog.model;
 
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -11,35 +7,44 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
 import jakarta.validation.Validator;
 
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 public class Serializer {
 
-	private static JsonMapper jsonMapperPlain;
-	private static JsonMapper jsonMapper;
-	private static Validator validator;
-	
-	static {
-		jsonMapperPlain = JsonMapper.builder()
-				.configure(MapperFeature.USE_ANNOTATIONS, false)
-				.serializationInclusion(Include.NON_NULL)
-				.serializationInclusion(Include.NON_EMPTY)
-				.configure(SerializationFeature.INDENT_OUTPUT, true)
-				.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
-				.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-				.build();
-		
-		jsonMapper = JsonMapper.builder()
-				.serializationInclusion(Include.NON_NULL)
-				.serializationInclusion(Include.NON_EMPTY)
-				.configure(SerializationFeature.INDENT_OUTPUT, true)
-				.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
+    private static JsonMapper jsonMapperPlain;
+    private static JsonMapper jsonMapper;
+    private static Validator validator;
+
+    static {
+
+        jsonMapperPlain = JsonMapper.builder()
+                .configure(MapperFeature.USE_ANNOTATIONS, false)
+                .serializationInclusion(Include.NON_NULL)
+                .serializationInclusion(Include.NON_EMPTY)
+                .configure(SerializationFeature.INDENT_OUTPUT, true)
+                .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+                .addModule(new JavaTimeModule())
+                .build();
+
+        jsonMapper = JsonMapper.builder()
+                .serializationInclusion(Include.NON_NULL)
+                .serializationInclusion(Include.NON_EMPTY)
+                .configure(SerializationFeature.INDENT_OUTPUT, true)
+                .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
 //			.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+                .addModule(new JavaTimeModule())
 				.build();
 		
 		validator = Validation.buildDefaultValidatorFactory().getValidator();
@@ -47,6 +52,7 @@ public class Serializer {
 	
 	/**
 	 * Serialize java object to json
+     *
 	 * @param toSerialize
 	 * @return Json string - plain
 	 */
@@ -61,6 +67,7 @@ public class Serializer {
 	
 	/**
 	 * Convert object to jsonNode, without annotations. Used in tests
+     *
 	 * @param toSerialize
 	 * @return JsonNode
 	 */
@@ -70,6 +77,7 @@ public class Serializer {
 	
 	/**
 	 * Converts json string (plain) to java object
+     *
 	 * @param <T> Type of class
 	 * @param jsonStringPlain json string
 	 * @param clazz
@@ -95,6 +103,7 @@ public class Serializer {
 	
 	/**
 	 * Serialize java object to json compliant with Dataspace protocol (contains prefixes for json fields)
+     *
 	 * @param toSerialize java object to serialize
 	 * @return Json string - with Dataspace prefixes
 	 */
@@ -109,6 +118,7 @@ public class Serializer {
 	
 	/**
 	 * Convert object to JsonNode with prefixes. Used in tests
+     *
 	 * @param toSerialize
 	 * @return
 	 */
@@ -119,6 +129,7 @@ public class Serializer {
 	/**
 	 * Convert Dataspace json (with prefixes) to java object, performs validation for @context and @type before converting to java
 	 * Enforce validation for mandatory fields
+     *
 	 * @param <T>
 	 * @param jsonNode
 	 * @param clazz
@@ -140,6 +151,7 @@ public class Serializer {
 	
 	/**
 	 * Checks for @context and @type if present and if values are correct
+     *
 	 * @param <T>
 	 * @param jsonNode
 	 * @param clazz

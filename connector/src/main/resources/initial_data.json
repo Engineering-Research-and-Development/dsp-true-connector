@@ -36,101 +36,40 @@
         "light theme"
       ],
       "conformsTo": "conformsToSomething",
-      "creator": "Chuck Norris",
+      "creator": "Engineering Informatica S.p.A.",
       "description": [
         {
           "value": "Some text for multi language",
           "language": "en"
         }
       ],
-      "identifier": "Unique identifier for tests",
-      "issued": "yesterday",
-      "modified": "today",
-      "title": "Title for test",
+      "identifier": "Unique identifier for testing Catalog",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "Title for testing catalog",
       "distribution": [
         {
-          "title": "Flash lightning distribution",
-          "format": {
-            "_id": "dspace:s3+push"
-          },
-          "dataservice": [
-            {
-              "_id": "1dc45797-4444-4955-8baf-ab7fd66ac4d5",
-              "endpointDescription": "endpoint description",
-              "endpointURL": "https://provider-a.com/connector",
-              "type": "dcat:DataService"
-            }
-          ],
-          "type": "dspace:Distribution"
+          "$ref": "distributions",
+          "$id": "1dc45797-4444-4932-8baf-ab7fd66ql4d5"
         }
       ],
       "dataset": [
         {
-          "context": "https://w3id.org/dspace/2024/1/context.json",
-          "_id": "fdc45798-a222-4955-8baf-ab7fd66ac4d5",
-          "keyword": [
-            "keyword1",
-            "keyword2",
-            "keyword3"
-          ],
-          "theme": [
-            "dark theme",
-            "light theme"
-          ],
-          "conformsTo": "conformsToSomething",
-          "creator": "Chuck Norris",
-          "identifier": "Unique identifier for tests",
-          "issued": "yesterday",
-          "modified": "today",
-          "title": "Title for test",
-          "hasPolicy": [
-            {
-              "_id": "fdc45798-a123-4955-8baf-ab7fd66ac4d5",
-              "permission": [
-                {
-                  "action": "USE",
-                  "constraint": [
-                    {
-                      "leftOperand": "COUNT",
-                      "operator": "EQ",
-                      "rightOperand": "5"
-                    }
-                  ]
-                }
-              ]
-            }
-          ],
-          "distribution": [
-            {
-              "title": "Flash lightning distribution",
-              "format": {
-                "_id": "dspace:s3+push"
-              },
-              "dataservice": [
-                {
-                  "_id": "1dc45797-4444-4955-8baf-ab7fd66ac4d5",
-                  "endpointDescription": "endpoint description",
-                  "endpointURL": "https://provider-a.com/connector",
-                  "type": "dcat:DataService"
-                }
-              ],
-              "type": "dspace:Distribution"
-            }
-          ],
-          "type": "dcat:Dataset"
+          "$ref": "datasets",
+          "$id": "fdc45798-a222-4955-8baf-ab7fd66ac4d5"
         }
       ],
       "service": [
         {
-          "_id": "1234",
-          "endpointDescription": "endpoint description",
-          "endpointURL": "https://provider-a.com/connector",
-          "type": "dcat:DataService"
+          "$ref": "dataservices",
+          "$id": "1dc45797-4444-4955-8baf-ab7fd66ac4d5"
         }
       ],
       "participantId": "urn:example:DataProviderA",
       "homepage": "https://www.homepage.com/test",
-      "type": "dcat:Catalog"
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
     }
   ],
   "contract_negotiations": [
@@ -140,6 +79,110 @@
       "providerPid": "urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aab",
       "consumerPid": "urn:uuid:32541fe6-c580-409e-85a8-8a9a32fbe833",
       "state": "REQUESTED"
+    }
+  ],
+  "datasets": [
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "context": "https://w3id.org/dspace/2024/1/context.json",
+      "_id": "fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "keyword": [
+        "keyword1",
+        "keyword2",
+        "keyword3"
+      ],
+      "theme": [
+        "dark theme",
+        "light theme"
+      ],
+      "description": [
+        {
+          "value": "Some text for multi language Dataset",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for testing Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "Title for test Dataset",
+      "hasPolicy": [
+        {
+          "_id": "fdc45798-a123-4955-8baf-ab7fd66ac4d5",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "USE",
+              "constraint": [
+                {
+                  "leftOperand": "COUNT",
+                  "operator": "EQ",
+                  "rightOperand": "5"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "1dc45797-4444-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    }
+  ],
+  "dataservices": [
+    {
+      "_id": "1dc45797-4444-4955-8baf-ab7fd66ac4d5",
+      "keyword": [
+        "keyword1",
+        "keyword2",
+        "keyword3"
+      ],
+      "theme": [
+        "dark theme",
+        "light theme"
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "description": [
+        {
+          "value": "Some text for multi language",
+          "language": "en"
+        }
+      ],
+      "identifier": "Unique identifier for testing Data Service",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "Title for testing Data Service",
+      "endpointDescription": "endpoint description",
+      "endpointURL": "https://provider-a.com/connector",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    }
+  ],
+  "distributions": [
+    {
+      "_id": "1dc45797-4444-4932-8baf-ab7fd66ql4d5",
+      "title": "Flash lightning distribution",
+      "format": {
+        "_id": "dspace:s3+push"
+      },
+      "accessService": [
+        {
+          "$ref": "dataservices",
+          "$id": "1dc45797-4444-4955-8baf-ab7fd66ac4d5"
+        }
+      ],
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
     }
   ]
 }
