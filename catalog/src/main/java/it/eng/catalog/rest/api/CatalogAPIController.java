@@ -29,7 +29,7 @@ public class CatalogAPIController {
 
         var catalog = catalogService.getCatalog();
 
-        return ResponseEntity.ok().header("id", "bar").contentType(MediaType.APPLICATION_JSON)
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(Serializer.serializePlainJsonNode(catalog));
     }
 
@@ -39,7 +39,7 @@ public class CatalogAPIController {
 
         Catalog catalog = catalogService.getCatalogById(id).orElseThrow(() -> new CatalogNotFoundAPIException("Catalog with id" + id + " not Found"));
 
-        return ResponseEntity.ok().header("id", "bar").contentType(MediaType.APPLICATION_JSON)
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(Serializer.serializePlainJsonNode(catalog));
     }
 
@@ -51,7 +51,7 @@ public class CatalogAPIController {
 
         Catalog storedCatalog = catalogService.saveCatalog(c);
 
-        return ResponseEntity.ok().header("id", "bar").contentType(MediaType.APPLICATION_JSON)
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(Serializer.serializePlainJsonNode(storedCatalog));
     }
 
@@ -71,7 +71,7 @@ public class CatalogAPIController {
 
         Catalog updatedCatalog = catalogService.updateCatalog(id, c);
 
-        return ResponseEntity.ok().header("id", "bar").contentType(MediaType.APPLICATION_JSON)
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(Serializer.serializePlainJsonNode(updatedCatalog));
     }
 }
