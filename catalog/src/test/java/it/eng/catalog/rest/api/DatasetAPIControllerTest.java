@@ -1,13 +1,13 @@
 package it.eng.catalog.rest.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import it.eng.catalog.rest.api.DatasetAPIController;
-import it.eng.catalog.service.DataSetService;
+import it.eng.catalog.model.Serializer;
+import it.eng.catalog.service.DatasetService;
 import it.eng.catalog.util.MockObjectUtil;
 import org.apache.commons.lang3.StringUtils;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
@@ -19,15 +19,16 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class DatasetAPIControllerTest {
 
+    @InjectMocks
     DatasetAPIController datasetAPIController;
 
     @Mock
-    private DataSetService dataSetService;
+    private DatasetService dataSetService;
 
-    @BeforeEach
-    public void init() {
-        datasetAPIController = new DatasetAPIController(dataSetService);
-    }
+//    @BeforeEach
+//    public void init() {
+//        datasetAPIController = new DatasetAPIController(dataSetService);
+//    }
 
 
     @Test
@@ -50,14 +51,15 @@ public class DatasetAPIControllerTest {
         assertTrue(StringUtils.contains(response.getBody().toString(), MockObjectUtil.DATASET.getType()));
     }
 
-//    @Test
-//    public void saveDatasetSuccessfulTest() {
-//        ResponseEntity<String> response = datasetAPIController.saveDataset(MockObjectUtil.DATASET.toString());
-//
-//        assertNotNull(response);
-//        assertTrue(response.getStatusCode().is2xxSuccessful());
-//        assertTrue(StringUtils.contains(response.getBody(), "Dataset created successfully"));
-//    }
+    @Test
+    public void saveDatasetSuccessfulTest() {
+        String dataset = Serializer.serializePlain(MockObjectUtil.DATASET);
+        ResponseEntity<String> response = datasetAPIController.saveDataset(dataset);
+
+        assertNotNull(response);
+        assertTrue(response.getStatusCode().is2xxSuccessful());
+        assertTrue(StringUtils.contains(response.getBody(), "Dataset created successfully"));
+    }
 
     @Test
     public void deleteDatasetSuccessfulTest() {
@@ -68,13 +70,14 @@ public class DatasetAPIControllerTest {
         assertTrue(StringUtils.contains(response.getBody(), "Dataset deleted successfully"));
     }
 
-//    @Test
-//    public void updateDatasetSuccessfulTest() {
-//        ResponseEntity<String> response = datasetAPIController.updateDataset(MockObjectUtil.DATASET.getId(), MockObjectUtil.DATASET.toString());
-//
-//        assertNotNull(response);
-//        assertTrue(response.getStatusCode().is2xxSuccessful());
-//        assertTrue(StringUtils.contains(response.getBody(), "Dataset updated successfully"));
-//    }
+    @Test
+    public void updateDatasetSuccessfulTest() {
+        String dataset = Serializer.serializePlain(MockObjectUtil.DATASET);
+        ResponseEntity<String> response = datasetAPIController.updateDataset(MockObjectUtil.DATASET.getId(), dataset);
+
+        assertNotNull(response);
+        assertTrue(response.getStatusCode().is2xxSuccessful());
+        assertTrue(StringUtils.contains(response.getBody(), "Dataset updated successfully"));
+    }
 
 }

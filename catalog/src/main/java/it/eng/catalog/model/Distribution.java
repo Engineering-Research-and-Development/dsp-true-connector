@@ -21,6 +21,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -44,10 +45,10 @@ public class Distribution {
     private List<Multilanguage> description;
     @JsonProperty(DSpaceConstants.DCT_ISSUED)
     @CreatedDate
-    private String issued;
+    private Instant issued;
     @JsonProperty(DSpaceConstants.DCT_MODIFIED)
     @LastModifiedDate
-    private String modified;
+    private Instant modified;
     @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
     private List<Offer> hasPolicy;
 
@@ -86,13 +87,13 @@ public class Distribution {
         }
 
         @JsonProperty(DSpaceConstants.DCT_ISSUED)
-        public Builder issued(String issued) {
+        public Builder issued(Instant issued) {
             distribution.issued = issued;
             return this;
         }
 
         @JsonProperty(DSpaceConstants.DCT_MODIFIED)
-        public Builder modified(String modified) {
+        public Builder modified(Instant modified) {
             distribution.modified = modified;
             return this;
         }

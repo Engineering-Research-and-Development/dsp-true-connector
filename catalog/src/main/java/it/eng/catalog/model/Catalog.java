@@ -19,6 +19,7 @@ import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -53,10 +54,10 @@ public class Catalog extends AbstractCatalogObject {
     private String identifier;
     @JsonProperty(DSpaceConstants.DCT_ISSUED)
     @CreatedDate
-    private String issued;
+    private Instant issued;
     @JsonProperty(DSpaceConstants.DCT_MODIFIED)
     @LastModifiedDate
-    private String modified;
+    private Instant modified;
     @JsonProperty(DSpaceConstants.DCT_TITLE)
     private String title;
 
@@ -153,13 +154,13 @@ public class Catalog extends AbstractCatalogObject {
         }
 
         @JsonProperty(DSpaceConstants.DCT_ISSUED)
-        public Builder issued(String issued) {
+        public Builder issued(Instant issued) {
             catalog.issued = issued;
             return this;
         }
 
         @JsonProperty(DSpaceConstants.DCT_MODIFIED)
-        public Builder modified(String modified) {
+        public Builder modified(Instant modified) {
             catalog.modified = modified;
             return this;
         }

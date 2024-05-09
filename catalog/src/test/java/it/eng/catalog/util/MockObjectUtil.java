@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import it.eng.catalog.model.*;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -21,8 +22,8 @@ public class MockObjectUtil {
     public static final String CONFORMSTO = "conformsToSomething";
     public static final String CREATOR = "Chuck Norris";
     public static final String IDENTIFIER = "Uniwue identifier for tests";
-    public static final String ISSUED = "yesterday";
-    public static final String MODIFIED = "today";
+    public static final Instant ISSUED = Instant.parse("2024-04-23T16:26:00Z");
+    public static final Instant MODIFIED = Instant.parse("2024-04-23T16:26:00Z");
     public static final String TITLE = "Title for test";
     public static final String ENDPOINT_URL = "https://provider-a.com/connector";
 

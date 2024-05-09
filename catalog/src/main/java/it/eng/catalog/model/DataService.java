@@ -15,6 +15,7 @@ import org.springframework.data.annotation.*;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -45,10 +46,10 @@ public class DataService {
     private String identifier;
     @JsonProperty(DSpaceConstants.DCT_ISSUED)
     @CreatedDate
-    private String issued;
+    private Instant issued;
     @LastModifiedDate
     @JsonProperty(DSpaceConstants.DCT_MODIFIED)
-    private String modified;
+    private Instant modified;
     @JsonProperty(DSpaceConstants.DCT_TITLE)
     private String title;
     @JsonProperty(DSpaceConstants.DCAT_ENDPOINT_DESCRIPTION)
@@ -126,13 +127,13 @@ public class DataService {
         }
 
         @JsonProperty(DSpaceConstants.DCT_ISSUED)
-        public Builder issued(String issued) {
+        public Builder issued(Instant issued) {
             service.issued = issued;
             return this;
         }
 
         @JsonProperty(DSpaceConstants.DCT_MODIFIED)
-        public Builder modified(String modified) {
+        public Builder modified(Instant modified) {
             service.modified = modified;
             return this;
         }

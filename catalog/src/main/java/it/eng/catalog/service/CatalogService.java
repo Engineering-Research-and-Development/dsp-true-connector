@@ -1,11 +1,10 @@
 package it.eng.catalog.service;
 
 import it.eng.catalog.exceptions.CatalogErrorException;
+import it.eng.catalog.exceptions.CatalogNotFoundAPIException;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.repository.CatalogRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,8 +15,7 @@ import java.util.Optional;
  */
 @Service
 public class CatalogService {
-    @Autowired
-    private MongoTemplate mongoTemplate;
+
     private final CatalogRepository repository;
 
     public CatalogService(CatalogRepository repository) {
@@ -169,7 +167,7 @@ public class CatalogService {
                         .version(c.getVersion())
                         .issued(c.getIssued())
                         .createdBy(c.getCreatedBy()))
-                .orElseThrow(() -> new CatalogErrorException("Catalog with id: " + id + " not found"));
+                .orElseThrow(() -> new CatalogNotFoundAPIException("Catalog with id: " + id + " not found"));
     }
 
 }

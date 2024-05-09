@@ -3,7 +3,7 @@ package it.eng.catalog.service;
 import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.exceptions.DatasetNotFoundAPIException;
 import it.eng.catalog.model.Dataset;
-import it.eng.catalog.repository.DataSetRepository;
+import it.eng.catalog.repository.DatasetRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,14 +12,14 @@ import java.util.List;
  * The DataSetService class provides methods to interact with Dataset data, including saving, retrieving, and deleting datasets.
  */
 @Service
-public class DataSetService {
+public class DatasetService {
 
 
-    private final DataSetRepository repository;
+    private final DatasetRepository repository;
     private final CatalogService catalogService;
 
 
-    public DataSetService(DataSetRepository repository, CatalogService catalogService) {
+    public DatasetService(DatasetRepository repository, CatalogService catalogService) {
         this.repository = repository;
         this.catalogService = catalogService;
     }

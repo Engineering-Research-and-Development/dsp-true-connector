@@ -3,7 +3,7 @@ package it.eng.catalog.rest.api;
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.Serializer;
-import it.eng.catalog.service.DataSetService;
+import it.eng.catalog.service.DatasetService;
 import lombok.extern.java.Log;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -16,10 +16,10 @@ import java.util.List;
 @Log
 public class DatasetAPIController {
 
-    private final DataSetService datasetService;
+    private final DatasetService datasetService;
 
 
-    public DatasetAPIController(DataSetService datasetService) {
+    public DatasetAPIController(DatasetService datasetService) {
         super();
         this.datasetService = datasetService;
     }

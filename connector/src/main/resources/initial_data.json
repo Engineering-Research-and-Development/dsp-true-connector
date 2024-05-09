@@ -44,8 +44,8 @@
         }
       ],
       "identifier": "Unique identifier for testing Catalog",
-      "issued": "4/23/24, 4:26 PM",
-      "modified": "4/23/24, 4:26 PM",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
       "title": "Title for testing catalog",
       "distribution": [
         {
@@ -104,8 +104,8 @@
       "conformsTo": "conformsToSomething",
       "creator": "Engineering Informatica S.p.A.",
       "identifier": "Unique identifier for testing Dataset",
-      "issued": "4/23/24, 4:26 PM",
-      "modified": "4/23/24, 4:26 PM",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
       "title": "Title for test Dataset",
       "hasPolicy": [
         {
@@ -157,8 +157,8 @@
         }
       ],
       "identifier": "Unique identifier for testing Data Service",
-      "issued": "4/23/24, 4:26 PM",
-      "modified": "4/23/24, 4:26 PM",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
       "title": "Title for testing Data Service",
       "endpointDescription": "endpoint description",
       "endpointURL": "https://provider-a.com/connector",
@@ -180,8 +180,8 @@
           "$id": "1dc45797-4444-4955-8baf-ab7fd66ac4d5"
         }
       ],
-      "issued": "4/23/24, 4:26 PM",
-      "modified": "4/23/24, 4:26 PM",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
       "version": 0
     }
   ]

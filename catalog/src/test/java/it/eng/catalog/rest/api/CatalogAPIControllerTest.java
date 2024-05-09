@@ -2,12 +2,13 @@ package it.eng.catalog.rest.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.catalog.exceptions.CatalogNotFoundAPIException;
+import it.eng.catalog.model.Serializer;
 import it.eng.catalog.service.CatalogService;
 import it.eng.catalog.util.MockObjectUtil;
 import org.apache.commons.lang3.StringUtils;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
@@ -21,14 +22,10 @@ import static org.mockito.Mockito.when;
 public class CatalogAPIControllerTest {
 
 
+    @InjectMocks
     CatalogAPIController catalogAPIController;
     @Mock
     private CatalogService catalogService;
-
-    @BeforeEach
-    public void init() {
-        catalogAPIController = new CatalogAPIController(catalogService);
-    }
 
     @Test
     public void getCatalogSuccessfulTest() {
@@ -63,7 +60,8 @@ public class CatalogAPIControllerTest {
 
     @Test
     public void createCatalogSuccessfulTest() {
-        ResponseEntity<String> response = catalogAPIController.createCatalog(MockObjectUtil.CATALOG.toString());
+        String catalog = Serializer.serializePlain(MockObjectUtil.CATALOG);
+        ResponseEntity<String> response = catalogAPIController.createCatalog(catalog);
 
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
@@ -81,7 +79,8 @@ public class CatalogAPIControllerTest {
 
     @Test
     public void updateCatalogSuccessfulTest() {
-        ResponseEntity<String> response = catalogAPIController.updateCatalog(MockObjectUtil.CATALOG.getId(), MockObjectUtil.CATALOG.toString());
+        String catalog = Serializer.serializePlain(MockObjectUtil.CATALOG);
+        ResponseEntity<String> response = catalogAPIController.updateCatalog(MockObjectUtil.CATALOG.getId(), catalog);
 
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
