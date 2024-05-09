@@ -1,11 +1,11 @@
 package it.eng.catalog.rest.api;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.catalog.exceptions.CatalogNotFoundAPIException;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.Serializer;
 import it.eng.catalog.service.CatalogService;
 import lombok.extern.java.Log;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,46 +15,63 @@ import org.springframework.web.bind.annotation.*;
 @Log
 public class CatalogAPIController {
 
-    private final ApplicationEventPublisher applicationEventPublisher;
 
     private final CatalogService catalogService;
 
-    public CatalogAPIController(CatalogService service, ApplicationEventPublisher applicationEventPublisher) {
+    public CatalogAPIController(CatalogService service) {
         super();
         this.catalogService = service;
-        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     @GetMapping(path = "/")
-    public ResponseEntity<String> getCatalog() {
+    public ResponseEntity<JsonNode> getCatalog() {
+        log.info("Fetching catalog");
+
         var catalog = catalogService.getCatalog();
 
-        applicationEventPublisher.publishEvent(catalog);
-        return ResponseEntity.ok().header("id", "bar").contentType(MediaType.APPLICATION_JSON)
-                .body(Serializer.serializePlain(catalog));
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(Serializer.serializePlainJsonNode(catalog));
     }
 
     @GetMapping(path = "/{id}")
-    public ResponseEntity<String> getCatalogById(@PathVariable String id) {
-
+    public ResponseEntity<JsonNode> getCatalogById(@PathVariable String id) {
         log.info("Fetching catalog with id '" + id + "'");
+
         Catalog catalog = catalogService.getCatalogById(id).orElseThrow(() -> new CatalogNotFoundAPIException("Catalog with id" + id + " not Found"));
 
-        applicationEventPublisher.publishEvent(catalog);
-        return ResponseEntity.ok().header("id", "bar").contentType(MediaType.APPLICATION_JSON)
-                .body(Serializer.serializePlain(catalog));
-
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(Serializer.serializePlainJsonNode(catalog));
     }
 
     @PostMapping
-    public ResponseEntity<String> createCatalog(@RequestBody Catalog catalog) {
-        catalogService.saveCatalog(catalog);
-        return ResponseEntity.ok().body("Catalog created successfully");
+    public ResponseEntity<JsonNode> createCatalog(@RequestBody String catalog) {
+        Catalog c = Serializer.deserializePlain(catalog, Catalog.class);
+
+        log.info("Saving new catalog");
+
+        Catalog storedCatalog = catalogService.saveCatalog(c);
+
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(Serializer.serializePlainJsonNode(storedCatalog));
     }
 
     @DeleteMapping(path = "/{id}")
     public ResponseEntity<String> deleteCatalog(@PathVariable String id) {
+        log.info("Deleting catalog with id: " + id);
+
         catalogService.deleteCatalog(id);
         return ResponseEntity.ok().body("Catalog deleted successfully");
+    }
+
+    @PutMapping(path = "/{id}")
+    public ResponseEntity<JsonNode> updateCatalog(@PathVariable String id, @RequestBody String catalog) {
+        Catalog c = Serializer.deserializePlain(catalog, Catalog.class);
+
+        log.info("Updating catalog with id: " + id);
+
+        Catalog updatedCatalog = catalogService.updateCatalog(id, c);
+
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(Serializer.serializePlainJsonNode(updatedCatalog));
     }
 }

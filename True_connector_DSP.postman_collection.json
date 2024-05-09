@@ -72,7 +72,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n\n    \"@type\": \"dcat:Catalog\",\n    \"dct:title\": \"Title for test\",\n    \"dct:description\": [\n        {\n            \"@value\": \"Some text for multi language\",\n            \"@language\": \"en\"\n        }\n    ],\n    \"dspace:participantId\": \"urn:example:DataProviderA\",\n    \"dcat:keyword\": [\n        \"keyword1\",\n        \"keyword2\",\n        \"keyword3\"\n    ],\n    \"dcat:service\": [\n        {\n            \"@type\": \"dcat:DataService\",\n            \"dcat:endpointDescription\": \"endpoint description\",\n            \"dcat:endpointURL\": \"https://provider-a.com/connector\"\n        }\n    ],\n    \"dcat:dataset\": [\n        {\n            \"@context\": \"https://w3id.org/dspace/2024/1/context.json\",\n            \"@type\": \"dcat:Dataset\",\n            \"dct:title\": \"Title for test\",\n            \"dcat:keyword\": [\n                \"keyword1\",\n                \"keyword2\",\n                \"keyword3\"\n            ],\n            \"odrl:hasPolicy\": [\n                {\n                    \"@type\": \"odrl:Offer\",\n                    \"odrl:permission\": [\n                        {\n                            \"odrl:action\": \"odrl:use\",\n                            \"odrl:constraint\": [\n                                {\n                                    \"odrl:leftOperand\": \"odrl:count\",\n                                    \"odrl:operator\": \"odrl:eq\",\n                                    \"odrl:rightOperand\": \"5\"\n                                }\n                            ]\n                        }\n                    ]\n                }\n            ],\n            \"dcat:distribution\": [\n                {\n                    \"@type\": \"dspace:Distribution\",\n                    \"dct:format\": {},\n                    \"dcat:accessService\": [\n                        {\n                            \"@type\": \"dcat:DataService\",\n                            \"dcat:endpointDescription\": \"endpoint description\",\n                            \"dcat:endpointURL\": \"https://provider-a.com/connector\"\n                        }\n                    ],\n                    \"dct:title\": \"Flash lightning distribution\"\n                }\n            ],\n            \"dcat:creator\": \"Chuck Norris\",\n            \"dcat:identifier\": \"Unique identifier for tests\",\n            \"dcat:issued\": \"yesterday\",\n            \"dcat:theme\": [\n                \"dark theme\",\n                \"light theme\"\n            ],\n            \"dct:conformsTo\": \"conformsToSomething\",\n            \"dct:modified\": \"today\"\n        }\n    ],\n    \"dcat:creator\": \"Chuck Norris\",\n    \"dcat:distribution\": [\n        {\n            \"@type\": \"dspace:Distribution\",\n            \"dct:format\": {},\n            \"dcat:accessService\": [\n                {\n                    \"@type\": \"dcat:DataService\",\n                    \"dcat:endpointDescription\": \"endpoint description\",\n                    \"dcat:endpointURL\": \"https://provider-a.com/connector\"\n                }\n            ],\n            \"dct:title\": \"Flash lightning distribution\"\n        }\n    ],\n    \"dcat:identifier\": \"Unique identifier for tests\",\n    \"dcat:issued\": \"yesterday\",\n    \"dcat:theme\": [\n        \"dark theme\",\n        \"light theme\"\n    ],\n    \"dct:conformsTo\": \"conformsToSomething\",\n    \"dct:modified\": \"today\",\n    \"foaf:homepage\": \"https://www.homepage.com/test\"\n}",
+									"raw": "{\n    \"keyword\": [\n        \"keyword1\",\n        \"keyword2\",\n        \"keyword3\"\n    ],\n    \"theme\": [\n        \"dark theme\",\n        \"light theme\"\n    ],\n    \"conformsTo\": \"conformsToSomething\",\n    \"creator\": \"Engineering Informatica S.p.A.\",\n    \"description\": [\n        {\n            \"value\": \"Some text for multi language\",\n            \"language\": \"en\"\n        }\n    ],\n    \"identifier\": \"Unique identifier for testing Catalog\",\n    \"title\": \"Title for testing catalog\",\n    \"distribution\": [\n        {\n            \"id\": \"1dc45797-4444-4932-8baf-ab7fd66ql4d5\",\n            \"title\": \"Flash lightning distribution\",\n            \"issued\": \"2024-04-23T16:26:00Z\",\n            \"modified\": \"2024-04-23T16:26:00Z\",\n            \"accessService\": [\n                {\n                    \"id\": \"1dc45797-4444-4955-8baf-ab7fd66ac4d5\",\n                    \"keyword\": [\n                        \"keyword1\",\n                        \"keyword2\",\n                        \"keyword3\"\n                    ],\n                    \"theme\": [\n                        \"dark theme\",\n                        \"light theme\"\n                    ],\n                    \"conformsTo\": \"conformsToSomething\",\n                    \"creator\": \"Engineering Informatica S.p.A.\",\n                    \"description\": [\n                        {\n                            \"value\": \"Some text for multi language\",\n                            \"language\": \"en\"\n                        }\n                    ],\n                    \"identifier\": \"Unique identifier for testing Data Service\",\n                    \"issued\": \"2024-04-23T16:26:00Z\",\n                    \"modified\": \"2024-04-23T16:26:00Z\",\n                    \"title\": \"Title for testing Data Service\",\n                    \"endpointDescription\": \"endpoint description\",\n                    \"endpointURL\": \"https://provider-a.com/connector\",\n                    \"createdBy\": \"admin@mail.com\",\n                    \"lastModifiedBy\": \"admin@mail.com\",\n                    \"version\": 0,\n                    \"type\": \"dcat:DataService\"\n                }\n            ],\n            \"type\": \"dspace:Distribution\"\n        }\n    ],\n    \"dataset\": [\n        {\n            \"id\": \"fdc45798-a222-4955-8baf-ab7fd66ac4d5\",\n            \"keyword\": [\n                \"keyword1\",\n                \"keyword2\",\n                \"keyword3\"\n            ],\n            \"theme\": [\n                \"dark theme\",\n                \"light theme\"\n            ],\n            \"conformsTo\": \"conformsToSomething\",\n            \"creator\": \"Engineering Informatica S.p.A.\",\n            \"description\": [\n                {\n                    \"value\": \"Some text for multi language Dataset\",\n                    \"language\": \"en\"\n                }\n            ],\n            \"identifier\": \"Unique identifier for testing Dataset\",\n            \"issued\": \"2024-04-23T16:26:00Z\",\n            \"modified\": \"2024-04-23T16:26:00Z\",\n            \"title\": \"Title for test Dataset\",\n            \"hasPolicy\": [\n                {\n                    \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\n                    \"permission\": [\n                        {\n                            \"action\": \"USE\",\n                            \"constraint\": [\n                                {\n                                    \"leftOperand\": \"COUNT\",\n                                    \"operator\": \"EQ\",\n                                    \"rightOperand\": \"5\"\n                                }\n                            ]\n                        }\n                    ]\n                }\n            ],\n            \"distribution\": [\n                {\n                    \"id\": \"1dc45797-4444-4932-8baf-ab7fd66ql4d5\",\n                    \"title\": \"Flash lightning distribution\",\n                    \"issued\": \"2024-04-23T16:26:00Z\",\n                    \"modified\": \"2024-04-23T16:26:00Z\",\n                    \"accessService\": [\n                        {\n                            \"id\": \"1dc45797-4444-4955-8baf-ab7fd66ac4d5\",\n                            \"keyword\": [\n                                \"keyword1\",\n                                \"keyword2\",\n                                \"keyword3\"\n                            ],\n                            \"theme\": [\n                                \"dark theme\",\n                                \"light theme\"\n                            ],\n                            \"conformsTo\": \"conformsToSomething\",\n                            \"creator\": \"Engineering Informatica S.p.A.\",\n                            \"description\": [\n                                {\n                                    \"value\": \"Some text for multi language\",\n                                    \"language\": \"en\"\n                                }\n                            ],\n                            \"identifier\": \"Unique identifier for testing Data Service\",\n                            \"issued\": \"2024-04-23T16:26:00Z\",\n                            \"modified\": \"2024-04-23T16:26:00Z\",\n                            \"title\": \"Title for testing Data Service\",\n                            \"endpointDescription\": \"endpoint description\",\n                            \"endpointURL\": \"https://provider-a.com/connector\",\n                            \"createdBy\": \"admin@mail.com\",\n                            \"lastModifiedBy\": \"admin@mail.com\",\n                            \"version\": 0,\n                            \"type\": \"dcat:DataService\"\n                        }\n                    ],\n                    \"type\": \"dspace:Distribution\"\n                }\n            ],\n            \"createdBy\": \"admin@mail.com\",\n            \"lastModifiedBy\": \"admin@mail.com\",\n            \"version\": 0,\n            \"type\": \"dcat:Dataset\"\n        }\n    ],\n    \"service\": [\n        {\n            \"id\": \"1dc45797-4444-4955-8baf-ab7fd66ac4d5\",\n            \"keyword\": [\n                \"keyword1\",\n                \"keyword2\",\n                \"keyword3\"\n            ],\n            \"theme\": [\n                \"dark theme\",\n                \"light theme\"\n            ],\n            \"conformsTo\": \"conformsToSomething\",\n            \"creator\": \"Engineering Informatica S.p.A.\",\n            \"description\": [\n                {\n                    \"value\": \"Some text for multi language\",\n                    \"language\": \"en\"\n                }\n            ],\n            \"identifier\": \"Unique identifier for testing Data Service\",\n            \"issued\": \"2024-04-23T16:26:00Z\",\n            \"modified\": \"2024-04-23T16:26:00Z\",\n            \"title\": \"Title for testing Data Service\",\n            \"endpointDescription\": \"endpoint description\",\n            \"endpointURL\": \"https://provider-a.com/connector\",\n            \"createdBy\": \"admin@mail.com\",\n            \"lastModifiedBy\": \"admin@mail.com\",\n            \"version\": 0,\n            \"type\": \"dcat:DataService\"\n        }\n    ],\n    \"participantId\": \"urn:example:DataProviderA\",\n    \"homepage\": \"https://www.homepage.com/test\",\n    \"type\": \"dcat:Catalog\"\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -83,6 +83,38 @@
 									"raw": "{{SERVER_API_CATALOG}}",
 									"host": [
 										"{{SERVER_API_CATALOG}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Catalog",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"keyword\": [\n        \"keyword1\",\n        \"keyword2\",\n        \"keyword3\"\n    ],\n    \"theme\": [\n        \"dark theme\",\n        \"light theme\"\n    ],\n    \"conformsTo\": \"conformsToSomethingEdit\",\n    \"creator\": \"Engineering Informatica S.p.A.\",\n    \"description\": [\n        {\n            \"value\": \"Some text for multi language\",\n            \"language\": \"en\"\n        }\n    ],\n    \"identifier\": \"Unique identifier for testing Catalog\",\n    \"issued\": \"2024-04-23T16:26:00Z\",\n    \"modified\": \"2024-04-23T16:26:00Z\",\n    \"title\": \"Title for testing catalog\",\n    \"distribution\": [\n        {\n            \"id\": \"1dc45797-4444-4932-8baf-ab7fd66ql4d5\",\n            \"title\": \"Flash lightning distribution\",\n            \"issued\": \"2024-04-23T16:26:00Z\",\n            \"modified\": \"2024-04-23T16:26:00Z\",\n            \"accessService\": [\n                {\n                    \"id\": \"1dc45797-4444-4955-8baf-ab7fd66ac4d5\",\n                    \"keyword\": [\n                        \"keyword1\",\n                        \"keyword2\",\n                        \"keyword3\"\n                    ],\n                    \"theme\": [\n                        \"dark theme\",\n                        \"light theme\"\n                    ],\n                    \"conformsTo\": \"conformsToSomething\",\n                    \"creator\": \"Engineering Informatica S.p.A.\",\n                    \"description\": [\n                        {\n                            \"value\": \"Some text for multi language\",\n                            \"language\": \"en\"\n                        }\n                    ],\n                    \"identifier\": \"Unique identifier for testing Data Service\",\n                    \"issued\": \"2024-04-23T16:26:00Z\",\n                    \"modified\": \"2024-04-23T16:26:00Z\",\n                    \"title\": \"Title for testing Data Service\",\n                    \"endpointDescription\": \"endpoint description\",\n                    \"endpointURL\": \"https://provider-a.com/connector\",\n                    \"createdBy\": \"admin@mail.com\",\n                    \"lastModifiedBy\": \"admin@mail.com\",\n                    \"version\": 0,\n                    \"type\": \"dcat:DataService\"\n                }\n            ],\n            \"type\": \"dspace:Distribution\"\n        }\n    ],\n    \"dataset\": [\n        {\n            \"id\": \"fdc45798-a222-4955-8baf-ab7fd66ac4d5\",\n            \"keyword\": [\n                \"keyword1\",\n                \"keyword2\",\n                \"keyword3\"\n            ],\n            \"theme\": [\n                \"dark theme\",\n                \"light theme\"\n            ],\n            \"conformsTo\": \"conformsToSomething\",\n            \"creator\": \"Engineering Informatica S.p.A.\",\n            \"description\": [\n                {\n                    \"value\": \"Some text for multi language Dataset\",\n                    \"language\": \"en\"\n                }\n            ],\n            \"identifier\": \"Unique identifier for testing Dataset\",\n            \"issued\": \"2024-04-23T16:26:00Z\",\n            \"modified\": \"2024-04-23T16:26:00Z\",\n            \"title\": \"Title for test Dataset\",\n            \"hasPolicy\": [\n                {\n                    \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\n                    \"permission\": [\n                        {\n                            \"action\": \"USE\",\n                            \"constraint\": [\n                                {\n                                    \"leftOperand\": \"COUNT\",\n                                    \"operator\": \"EQ\",\n                                    \"rightOperand\": \"5\"\n                                }\n                            ]\n                        }\n                    ]\n                }\n            ],\n            \"distribution\": [\n                {\n                    \"id\": \"1dc45797-4444-4932-8baf-ab7fd66ql4d5\",\n                    \"title\": \"Flash lightning distribution\",\n                    \"issued\": \"2024-04-23T16:26:00Z\",\n                    \"modified\": \"2024-04-23T16:26:00Z\",\n                    \"accessService\": [\n                        {\n                            \"id\": \"1dc45797-4444-4955-8baf-ab7fd66ac4d5\",\n                            \"keyword\": [\n                                \"keyword1\",\n                                \"keyword2\",\n                                \"keyword3\"\n                            ],\n                            \"theme\": [\n                                \"dark theme\",\n                                \"light theme\"\n                            ],\n                            \"conformsTo\": \"conformsToSomething\",\n                            \"creator\": \"Engineering Informatica S.p.A.\",\n                            \"description\": [\n                                {\n                                    \"value\": \"Some text for multi language\",\n                                    \"language\": \"en\"\n                                }\n                            ],\n                            \"identifier\": \"Unique identifier for testing Data Service\",\n                            \"issued\": \"2024-04-23T16:26:00Z\",\n                            \"modified\": \"2024-04-23T16:26:00Z\",\n                            \"title\": \"Title for testing Data Service\",\n                            \"endpointDescription\": \"endpoint description\",\n                            \"endpointURL\": \"https://provider-a.com/connector\",\n                            \"createdBy\": \"admin@mail.com\",\n                            \"lastModifiedBy\": \"admin@mail.com\",\n                            \"version\": 0,\n                            \"type\": \"dcat:DataService\"\n                        }\n                    ],\n                    \"type\": \"dspace:Distribution\"\n                }\n            ],\n            \"createdBy\": \"admin@mail.com\",\n            \"lastModifiedBy\": \"admin@mail.com\",\n            \"version\": 0,\n            \"type\": \"dcat:Dataset\"\n        }\n    ],\n    \"service\": [\n        {\n            \"id\": \"1dc45797-4444-4955-8baf-ab7fd66ac4d5\",\n            \"keyword\": [\n                \"keyword1\",\n                \"keyword2\",\n                \"keyword3\"\n            ],\n            \"theme\": [\n                \"dark theme\",\n                \"light theme\"\n            ],\n            \"conformsTo\": \"conformsToSomething\",\n            \"creator\": \"Engineering Informatica S.p.A.\",\n            \"description\": [\n                {\n                    \"value\": \"Some text for multi language\",\n                    \"language\": \"en\"\n                }\n            ],\n            \"identifier\": \"Unique identifier for testing Data Service\",\n            \"issued\": \"2024-04-23T16:26:00Z\",\n            \"modified\": \"2024-04-23T16:26:00Z\",\n            \"title\": \"Title for testing Data Service\",\n            \"endpointDescription\": \"endpoint description\",\n            \"endpointURL\": \"https://provider-a.com/connector\",\n            \"createdBy\": \"admin@mail.com\",\n            \"lastModifiedBy\": \"admin@mail.com\",\n            \"version\": 0,\n            \"type\": \"dcat:DataService\"\n        }\n    ],\n    \"participantId\": \"urn:example:DataProviderA\",\n    \"homepage\": \"https://www.homepage.com/test\",\n    \"createdBy\": \"admin@mail.com\",\n    \"lastModifiedBy\": \"admin@mail.com\",\n    \"version\": 0,\n    \"type\": \"dcat:Catalog\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{SERVER_API_CATALOG}}/{$ID}",
+									"host": [
+										"{{SERVER_API_CATALOG}}"
+									],
+									"path": [
+										"{$ID}"
 									]
 								}
 							},
@@ -238,7 +270,7 @@
 					"name": "DataSet",
 					"item": [
 						{
-							"name": "Get All DataSets",
+							"name": "Get All Datasets",
 							"request": {
 								"method": "GET",
 								"header": [
@@ -249,20 +281,16 @@
 									}
 								],
 								"url": {
-									"raw": "{{SERVER_API_URL}}/dataset/",
+									"raw": "{{SERVER_API_DATASET}}",
 									"host": [
-										"{{SERVER_API_URL}}"
-									],
-									"path": [
-										"dataset",
-										""
+										"{{SERVER_API_DATASET}}"
 									]
 								}
 							},
 							"response": []
 						},
 						{
-							"name": "Get DataSet by ID",
+							"name": "Get Dataset by ID",
 							"request": {
 								"method": "GET",
 								"header": [
@@ -273,13 +301,90 @@
 									}
 								],
 								"url": {
-									"raw": "{{SERVER_API_URL}}/dataset/$ID",
+									"raw": "{{SERVER_API_DATASET}}/{$ID}",
 									"host": [
-										"{{SERVER_API_URL}}"
+										"{{SERVER_API_DATASET}}"
 									],
 									"path": [
-										"dataset",
-										"$ID"
+										"{$ID}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Add Dataset",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"keyword\": [\r\n        \"keyword1\",\r\n        \"keyword2\",\r\n        \"keyword3\"\r\n    ],\r\n    \"theme\": [\r\n        \"dark theme\",\r\n        \"light theme\"\r\n    ],\r\n    \"conformsTo\": \"conformsToSomethingNew\",\r\n    \"creator\": \"Engineering Informatica S.p.A.\",\r\n    \"description\": [\r\n        {\r\n            \"value\": \"Some text for multi language Dataset\",\r\n            \"language\": \"en\"\r\n        }\r\n    ],\r\n    \"identifier\": \"Unique identifier for testing Dataset\",\r\n    \"title\": \"Title for test Dataset new created\",\r\n    \"hasPolicy\": [\r\n        {\r\n            \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n            \"permission\": [\r\n                {\r\n                    \"action\": \"USE\",\r\n                    \"constraint\": [\r\n                        {\r\n                            \"leftOperand\": \"COUNT\",\r\n                            \"operator\": \"EQ\",\r\n                            \"rightOperand\": \"5\"\r\n                        }\r\n                    ]\r\n                }\r\n            ]\r\n        }\r\n    ],\r\n    \"distribution\": [\r\n        {\r\n            \"id\": \"1dc45797-4444-4932-8baf-ab7fd66ql4d5\",\r\n            \"title\": \"Flash lightning distribution\",\r\n            \"issued\": \"2024-04-23T16:26:00Z\",\r\n            \"modified\": \"2024-04-23T16:26:00Z\",\r\n            \"type\": \"dspace:Distribution\"\r\n        }\r\n    ]\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{SERVER_API_DATASET}}",
+									"host": [
+										"{{SERVER_API_DATASET}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Dataset",
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"keyword\": [\r\n        \"keyword1\",\r\n        \"keyword2\",\r\n        \"keyword3\"\r\n    ],\r\n    \"theme\": [\r\n        \"dark theme\",\r\n        \"light theme\"\r\n    ],\r\n    \"conformsTo\": \"conformsToSomethingEdit\",\r\n    \"creator\": \"Engineering Informatica S.p.A.\",\r\n    \"description\": [\r\n        {\r\n            \"value\": \"Some text for multi language Dataset\",\r\n            \"language\": \"en\"\r\n        }\r\n    ],\r\n    \"identifier\": \"Unique identifier for testing Dataset\",\r\n    \"issued\": \"2024-04-23T16:26:00Z\",\r\n    \"modified\": \"2024-04-23T16:26:00Z\",\r\n    \"title\": \"Title for test Dataset\",\r\n    \"hasPolicy\": [\r\n        {\r\n            \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n            \"permission\": [\r\n                {\r\n                    \"action\": \"USE\",\r\n                    \"constraint\": [\r\n                        {\r\n                            \"leftOperand\": \"COUNT\",\r\n                            \"operator\": \"EQ\",\r\n                            \"rightOperand\": \"5\"\r\n                        }\r\n                    ]\r\n                }\r\n            ]\r\n        }\r\n    ],\r\n    \"distribution\": [\r\n        {\r\n            \"id\": \"1dc45797-4444-4932-8baf-ab7fd66ql4d5\",\r\n            \"title\": \"Flash lightning distribution\",\r\n            \"issued\": \"2024-04-23T16:26:00Z\",\r\n            \"modified\": \"2024-04-23T16:26:00Z\",\r\n            \"accessService\": [\r\n                {\r\n                    \"id\": \"1dc45797-4444-4955-8baf-ab7fd66ac4d5\",\r\n                    \"keyword\": [\r\n                        \"keyword1\",\r\n                        \"keyword2\",\r\n                        \"keyword3\"\r\n                    ],\r\n                    \"theme\": [\r\n                        \"dark theme\",\r\n                        \"light theme\"\r\n                    ],\r\n                    \"conformsTo\": \"conformsToSomething\",\r\n                    \"creator\": \"Engineering Informatica S.p.A.\",\r\n                    \"description\": [\r\n                        {\r\n                            \"value\": \"Some text for multi language\",\r\n                            \"language\": \"en\"\r\n                        }\r\n                    ],\r\n                    \"identifier\": \"Unique identifier for testing Data Service\",\r\n                    \"issued\": \"2024-04-23T16:26:00Z\",\r\n                    \"modified\": \"2024-04-23T16:26:00Z\",\r\n                    \"title\": \"Title for testing Data Service\",\r\n                    \"endpointDescription\": \"endpoint description\",\r\n                    \"endpointURL\": \"https://provider-a.com/connector\",\r\n                    \"createdBy\": \"admin@mail.com\",\r\n                    \"lastModifiedBy\": \"admin@mail.com\",\r\n                    \"version\": 0,\r\n                    \"type\": \"dcat:DataService\"\r\n                }\r\n            ],\r\n            \"type\": \"dspace:Distribution\"\r\n        }\r\n    ],\r\n    \"createdBy\": \"admin@mail.com\",\r\n    \"lastModifiedBy\": \"admin@mail.com\",\r\n    \"version\": 0,\r\n    \"type\": \"dcat:Dataset\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{SERVER_API_DATASET}}/{$ID}",
+									"host": [
+										"{{SERVER_API_DATASET}}"
+									],
+									"path": [
+										"{$ID}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Dataset",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{SERVER_API_DATASET}}/{$ID}",
+									"host": [
+										"{{SERVER_API_DATASET}}"
+									],
+									"path": [
+										"{$ID}"
 									]
 								}
 							},
@@ -331,7 +436,7 @@
 					"name": "Negotiation_API",
 					"item": [
 						{
-							"name": "Negotiation",
+							"name": "Get negotiation by ProviderPid",
 							"request": {
 								"method": "GET",
 								"header": [
@@ -342,12 +447,38 @@
 									}
 								],
 								"url": {
-									"raw": "{{SERVER_PROTOCOL_NEGOTIATION}}/{$ID}",
+									"raw": "{{SERVER_PROTOCOL_NEGOTIATION}}/urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aa",
 									"host": [
 										"{{SERVER_PROTOCOL_NEGOTIATION}}"
 									],
 									"path": [
-										"{$ID}"
+										"urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aa"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Start contract negotiation initial",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"@context\": \"https://w3id.org/dspace/2024/1/context.json\",\r\n  \"@type\": \"dspace:ContractRequestMessage\",\r\n  \"dspace:consumerPid\": \"urn:uuid:32541fe6-c580-409e-85a8-8a9a32fbe833\",\r\n  \"dspace:offer\": {\r\n    \"@type\": \"odrl:Offer\",\r\n    \"@id\": \"1234\",\r\n    \"target\": \"urn:uuid:3dd1add8-4d2d-569e-d634-8394a8836a88\"\r\n  },\r\n  \"dspace:callbackAddress\": \"https://...\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{SERVER_PROTOCOL_NEGOTIATION}}/request",
+									"host": [
+										"{{SERVER_PROTOCOL_NEGOTIATION}}"
+									],
+									"path": [
+										"request"
 									]
 								}
 							},
@@ -371,7 +502,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n  \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\n  \"@type\": \"dspace:CatalogRequestMessage\",\n  \"dspace:filter\": {}\n}",
+									"raw": "{\n  \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\n  \"@type\": \"dspace:CatalogRequestMessage\",\n  \"dspace:filter\": []\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -433,13 +564,13 @@
 				"type": "basic",
 				"basic": [
 					{
-						"key": "password",
-						"value": "password",
+						"key": "username",
+						"value": "connector@mail.com",
 						"type": "string"
 					},
 					{
-						"key": "username",
-						"value": "connector@mail.com",
+						"key": "password",
+						"value": "password",
 						"type": "string"
 					}
 				]

@@ -1,20 +1,13 @@
 package it.eng.catalog.model;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
 import com.fasterxml.jackson.databind.JsonNode;
-
 import it.eng.catalog.util.MockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class CatalogTest {
 	
@@ -56,7 +49,6 @@ public class CatalogTest {
 		assertNotNull(result.get(DSpaceConstants.DCT_DESCRIPTION).asText());
 		assertNotNull(result.get(DSpaceConstants.DCT_IDENTIFIER).asText());
 		assertNotNull(result.get(DSpaceConstants.DCT_ISSUED).asText());
-		assertNotNull(result.get(DSpaceConstants.DCT_MODIFIED).asText());
 		assertNotNull(result.get(DSpaceConstants.DCT_MODIFIED).asText());
 		assertNotNull(result.get(DSpaceConstants.DCAT_DISTRIBUTION).asText());
 		
