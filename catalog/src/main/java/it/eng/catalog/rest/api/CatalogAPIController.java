@@ -25,6 +25,8 @@ public class CatalogAPIController {
 
     @GetMapping(path = "/")
     public ResponseEntity<JsonNode> getCatalog() {
+        log.info("Fetching catalog");
+
         var catalog = catalogService.getCatalog();
 
         return ResponseEntity.ok().header("id", "bar").contentType(MediaType.APPLICATION_JSON)
@@ -33,34 +35,43 @@ public class CatalogAPIController {
 
     @GetMapping(path = "/{id}")
     public ResponseEntity<JsonNode> getCatalogById(@PathVariable String id) {
-
         log.info("Fetching catalog with id '" + id + "'");
+
         Catalog catalog = catalogService.getCatalogById(id).orElseThrow(() -> new CatalogNotFoundAPIException("Catalog with id" + id + " not Found"));
 
         return ResponseEntity.ok().header("id", "bar").contentType(MediaType.APPLICATION_JSON)
                 .body(Serializer.serializePlainJsonNode(catalog));
-
     }
 
     @PostMapping
-    public ResponseEntity<String> createCatalog(@RequestBody String catalog) {
+    public ResponseEntity<JsonNode> createCatalog(@RequestBody String catalog) {
         Catalog c = Serializer.deserializePlain(catalog, Catalog.class);
 
-        catalogService.saveCatalog(c);
-        return ResponseEntity.ok().body("Catalog created successfully");
+        log.info("Saving new catalog");
+
+        Catalog storedCatalog = catalogService.saveCatalog(c);
+
+        return ResponseEntity.ok().header("id", "bar").contentType(MediaType.APPLICATION_JSON)
+                .body(Serializer.serializePlainJsonNode(storedCatalog));
     }
 
     @DeleteMapping(path = "/{id}")
     public ResponseEntity<String> deleteCatalog(@PathVariable String id) {
+        log.info("Deleting catalog with id: " + id);
+
         catalogService.deleteCatalog(id);
         return ResponseEntity.ok().body("Catalog deleted successfully");
     }
 
     @PutMapping(path = "/{id}")
-    public ResponseEntity<String> updateCatalog(@PathVariable String id, @RequestBody String catalog) {
+    public ResponseEntity<JsonNode> updateCatalog(@PathVariable String id, @RequestBody String catalog) {
         Catalog c = Serializer.deserializePlain(catalog, Catalog.class);
-        catalogService.updateCatalog(id, c);
 
-        return ResponseEntity.ok().body("Catalog updated successfully");
+        log.info("Updating catalog with id: " + id);
+
+        Catalog updatedCatalog = catalogService.updateCatalog(id, c);
+
+        return ResponseEntity.ok().header("id", "bar").contentType(MediaType.APPLICATION_JSON)
+                .body(Serializer.serializePlainJsonNode(updatedCatalog));
     }
 }

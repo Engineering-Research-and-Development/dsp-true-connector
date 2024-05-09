@@ -26,8 +26,8 @@ public class DatasetAPIController {
 
     @GetMapping(path = "/{id}")
     public ResponseEntity<JsonNode> getDatasetById(@PathVariable String id) {
-        log.info("Fetching dataset with id '" + id + "'");
-        Dataset dataset = datasetService.getDataSetById(id);
+        log.info("Fetching dataset with id: '" + id + "'");
+        Dataset dataset = datasetService.getDatasetById(id);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(Serializer.serializePlainJsonNode(dataset));
     }
@@ -35,31 +35,40 @@ public class DatasetAPIController {
     @GetMapping
     public ResponseEntity<JsonNode> getAllDatasets() {
         log.info("Fetching all datasets");
-        List<Dataset> datasets = datasetService.getAllDataSets();
+        List<Dataset> datasets = datasetService.getAllDatasets();
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(Serializer.serializePlainJsonNode(datasets));
     }
 
     @PostMapping
-    public ResponseEntity<String> saveDataset(@RequestBody String dataset) {
+    public ResponseEntity<JsonNode> saveDataset(@RequestBody String dataset) {
         Dataset ds = Serializer.deserializePlain(dataset, Dataset.class);
 
-        datasetService.saveDataSet(ds);
-        return ResponseEntity.ok().body("Dataset created successfully");
+        log.info("Saving new dataset");
+
+        Dataset storedDataset = datasetService.saveDataset(ds);
+
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(Serializer.serializePlainJsonNode(storedDataset));
     }
 
     @DeleteMapping(path = "/{id}")
     public ResponseEntity<String> deleteDataset(@PathVariable String id) {
-        datasetService.deleteDataSet(id);
+        log.info("Deleting dataset with id: " + id);
+
+        datasetService.deleteDataset(id);
+
         return ResponseEntity.ok().body("Dataset deleted successfully");
     }
 
     @PutMapping(path = "/{id}")
-    public ResponseEntity<String> updateDataset(@PathVariable String id, @RequestBody String dataset) {
+    public ResponseEntity<JsonNode> updateDataset(@PathVariable String id, @RequestBody String dataset) {
         Dataset ds = Serializer.deserializePlain(dataset, Dataset.class);
-        datasetService.updateDataSet(id, ds);
-        return ResponseEntity.ok().body("Dataset updated successfully");
-    }
 
+        log.info("Updating dataset with id: " + id);
+
+        Dataset storedDataset = datasetService.updateDataset(id, ds);
+
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(Serializer.serializePlainJsonNode(storedDataset));
+    }
 }
 

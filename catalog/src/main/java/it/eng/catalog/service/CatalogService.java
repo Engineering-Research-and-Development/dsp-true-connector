@@ -27,9 +27,10 @@ public class CatalogService {
      *
      * @param catalog The catalog to be saved.
      */
-    public void saveCatalog(Catalog catalog) {
+    public Catalog saveCatalog(Catalog catalog) {
         // TODO handle the situation when we insert catalog for the first time, and the object like dataSets, distributions, etc. should be stored into separate documents
-        repository.save(catalog);
+        Catalog storedCatalog = repository.save(catalog);
+        return storedCatalog;
     }
 
     /**
@@ -93,7 +94,7 @@ public class CatalogService {
      * @param id                 The ID of the catalog to update.
      * @param updatedCatalogData The updated catalog data.
      */
-    public void updateCatalog(String id, Catalog updatedCatalogData) {
+    public Catalog updateCatalog(String id, Catalog updatedCatalogData) {
 
         Catalog.Builder builder = returnBaseCatalogForUpdate(id);
         builder
@@ -111,7 +112,8 @@ public class CatalogService {
                 .homepage(updatedCatalogData.getHomepage());
 
         Catalog updatedCatalog = builder.build();
-        repository.save(updatedCatalog);
+        Catalog storedCatalog = repository.save(updatedCatalog);
+        return storedCatalog;
     }
 
 

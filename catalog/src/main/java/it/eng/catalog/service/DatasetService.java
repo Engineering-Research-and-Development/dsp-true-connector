@@ -31,7 +31,7 @@ public class DatasetService {
      * @return the dataset corresponding to the provided ID
      * @throws CatalogErrorException if no dataset is found with the provided ID
      */
-    public Dataset getDataSetById(String id) {
+    public Dataset getDatasetById(String id) {
         return repository.findById(id).orElseThrow(() -> new DatasetNotFoundAPIException("Data Set with id: " + id + " not found"));
 
     }
@@ -41,7 +41,7 @@ public class DatasetService {
      *
      * @return a list of all datasets
      */
-    public List<Dataset> getAllDataSets() {
+    public List<Dataset> getAllDatasets() {
         return repository.findAll();
     }
 
@@ -50,9 +50,10 @@ public class DatasetService {
      *
      * @param dataset the dataset to be saved
      */
-    public void saveDataSet(Dataset dataset) {
+    public Dataset saveDataset(Dataset dataset) {
         Dataset savedDataSet = repository.save(dataset);
         catalogService.updateCatalogDatasetAfterSave(savedDataSet);
+        return dataset;
     }
 
     /**
@@ -60,7 +61,7 @@ public class DatasetService {
      *
      * @param id the unique ID of the dataset to delete
      */
-    public void deleteDataSet(String id) {
+    public void deleteDataset(String id) {
         Dataset ds = repository.findById(id).orElseThrow(() -> new DatasetNotFoundAPIException("Data Set with id: " + id + " not found"));
         repository.deleteById(id);
         catalogService.updateCatalogDatasetAfterDelete(ds);
@@ -71,7 +72,7 @@ public class DatasetService {
      *
      * @param updatedDatasetData the dataset to update
      */
-    public void updateDataSet(String id, Dataset updatedDatasetData) {
+    public Dataset updateDataset(String id, Dataset updatedDatasetData) {
         Dataset.Builder builder = returnBaseDatasetForUpdate(id);
 
         builder.keyword(updatedDatasetData.getKeyword())
@@ -85,8 +86,9 @@ public class DatasetService {
                 .hasPolicy(updatedDatasetData.getHasPolicy());
 
         Dataset updatedDataset = builder.build();
-        repository.save(updatedDataset);
+        Dataset storedDataset = repository.save(updatedDataset);
         catalogService.updateCatalogDatasetAfterUpdate(updatedDataset);
+        return storedDataset;
     }
 
 

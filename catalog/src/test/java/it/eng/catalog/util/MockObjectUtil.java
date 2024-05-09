@@ -69,6 +69,26 @@ public class MockObjectUtil {
             .hasPolicy(Arrays.asList(OFFER))
             .build();
 
+    public static final Dataset DATASET_FOR_UPDATE = Dataset.Builder.newInstance()
+            .conformsTo(CONFORMSTO)
+            .creator(CREATOR)
+            .distribution(Arrays.asList(DISTRIBUTION))
+            .description(Arrays.asList(MULTILANGUAGE))
+            .issued(ISSUED)
+            .keyword(Arrays.asList("keyword1", "keyword2"))
+            .identifier(IDENTIFIER)
+            .modified(MODIFIED)
+            .theme(Arrays.asList("white", "blue", "aqua"))
+            .title(TITLE)
+            .hasPolicy(Arrays.asList(OFFER))
+            .version(0L)
+            .createdBy("admin@mail.com")
+            .lastModifiedBy("admin@mail.com")
+            .issued(ISSUED)
+            .modified(MODIFIED)
+            .build();
+
+
     public static final List<Dataset> DATASETS = Arrays.asList(DATASET);
     public static final Catalog CATALOG = Catalog.Builder.newInstance()
             .conformsTo(CONFORMSTO)
@@ -84,6 +104,29 @@ public class MockObjectUtil {
             .service(Arrays.asList(DataServiceUtil.DATA_SERVICE))
             .dataset(Arrays.asList(DATASET))
             .distribution(Arrays.asList(DISTRIBUTION))
+            .hasPolicy(Arrays.asList(OFFER))
+            .homepage(ENDPOINT_URL)
+            .build();
+
+    public static final Catalog CATALOG_FOR_UPDATE = Catalog.Builder.newInstance()
+            .conformsTo(CONFORMSTO)
+            .creator(CREATOR)
+            .description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Catalog description").build()))
+            .identifier(IDENTIFIER)
+            .keyword(Arrays.asList("keyword1", "keyword2"))
+            .theme(Arrays.asList("white", "blue", "aqua"))
+            .title(TITLE)
+            .participantId("urn:example:DataProviderA")
+            .service(Arrays.asList(DataServiceUtil.DATA_SERVICE))
+            .dataset(Arrays.asList(DATASET))
+            .distribution(Arrays.asList(DISTRIBUTION))
+            .hasPolicy(Arrays.asList(OFFER))
+            .homepage(ENDPOINT_URL)
+            .version(0L)
+            .createdBy("admin@mail.com")
+            .lastModifiedBy("admin@mail.com")
+            .issued(ISSUED)
+            .modified(MODIFIED)
             .build();
 
     public static final CatalogError CATALOG_ERROR = CatalogError.Builder.newInstance().build();
