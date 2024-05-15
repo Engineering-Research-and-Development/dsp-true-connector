@@ -1,5 +1,6 @@
 package it.eng.negotiation.service;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -13,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import it.eng.negotiation.exception.ContractNegotiationAPIException;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ModelUtil;
 import it.eng.negotiation.model.Serializer;
@@ -46,5 +48,31 @@ public class ContractNegotiationAPIServiceTest {
 		service.startNegotiation(ModelUtil.FORWARD_TO, Serializer.serializeProtocolJsonNode(ModelUtil.OFFER));
 		
 		verify(repository).save(any(ContractNegotiation.class));
+	}
+	
+	@Test
+	@DisplayName("Process posted offer - success")
+	public void postContractOffer_success() {
+		when(properties.callbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
+		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
+			.thenReturn(apiResponse);
+		when(apiResponse.isSuccess()).thenReturn(true);
+		when(apiResponse.getData()).thenReturn(Serializer.serializeProtocol(ModelUtil.CONTRACT_NEGOTIATION_OFFERED));
+		// plain jsonNode
+		service.postContractOffer(ModelUtil.FORWARD_TO, Serializer.serializePlainJsonNode(ModelUtil.OFFER));
+		
+		verify(repository).save(any(ContractNegotiation.class));
+	}
+	
+	@Test
+	@DisplayName("Process posted offer - error")
+	public void postContractOffer_error() {
+		when(properties.callbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
+		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
+			.thenReturn(apiResponse);
+		when(apiResponse.isSuccess()).thenReturn(false);
+		
+		assertThrows(ContractNegotiationAPIException.class, ()->
+			service.postContractOffer(ModelUtil.FORWARD_TO, Serializer.serializePlainJsonNode(ModelUtil.OFFER)));
 	}
 }

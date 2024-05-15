@@ -16,6 +16,7 @@ import it.eng.negotiation.model.ContractNegotiationEventMessage;
 import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
 import it.eng.negotiation.model.ContractOfferMessage;
+import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.model.Serializer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
@@ -51,16 +52,23 @@ public class ContractNegotiationConsumerService {
 
     public JsonNode processContractOffer(ContractOfferMessage contractOfferMessage) {
         //TODO consumer side only - handle consumerPid and providerPid
+    	processContractOffer(contractOfferMessage.getOffer());
         ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
                 .consumerPid(contractOfferMessage.getProviderPid())
                 .providerPid(createNewPid())
                 .state(ContractNegotiationState.OFFERED)
                 .build();
-
+        repository.save(contractNegotiation);
         return Serializer.serializeProtocolJsonNode(contractNegotiation);
     }
     
-    protected String createNewPid() {
+    //TODO save offer so it can be decided what to do with it
+    private void processContractOffer(Offer offer) {
+    	// automatic processing or manual
+		
+	}
+
+	protected String createNewPid() {
         return "urn:uuid:" + UUID.randomUUID();
     }
 
@@ -177,5 +185,4 @@ public class ContractNegotiationConsumerService {
         JsonNode testNode = mapper.createObjectNode();
         return testNode;
     }
-
 }

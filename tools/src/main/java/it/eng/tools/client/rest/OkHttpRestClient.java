@@ -57,8 +57,12 @@ public class OkHttpRestClient {
 			int code = response.code();
 			log.info("Status {}", code);
 			String resp = response.body().string();
-            log.info("Response received: {}", resp);
-            return GenericApiResponse.success(resp, "Response received from " + targetAddress, code);
+			log.info("Response received: {}", resp);
+			if(response.isSuccessful()) { // code in 200..299
+				return GenericApiResponse.success(resp, "Response received from " + targetAddress, code);
+			} else {
+				return GenericApiResponse.error(resp, code);
+			}
         } catch (IOException e) {
 			log.error(e.getLocalizedMessage());
 			return GenericApiResponse.error(e.getLocalizedMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value());

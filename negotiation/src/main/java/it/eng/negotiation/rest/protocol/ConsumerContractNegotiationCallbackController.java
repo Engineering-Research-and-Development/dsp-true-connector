@@ -1,5 +1,6 @@
 package it.eng.negotiation.rest.protocol;
 
+import java.net.URI;
 import java.util.concurrent.ExecutionException;
 
 import org.springframework.http.HttpHeaders;
@@ -18,7 +19,9 @@ import it.eng.negotiation.model.ContractNegotiationEventMessage;
 import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
 import it.eng.negotiation.model.ContractOfferMessage;
 import it.eng.negotiation.model.Serializer;
+import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.service.ContractNegotiationConsumerService;
+import it.eng.tools.model.DSpaceConstants;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
@@ -27,10 +30,13 @@ import lombok.extern.slf4j.Slf4j;
 public class ConsumerContractNegotiationCallbackController {
 
     private ContractNegotiationConsumerService contractNegotiationConsumerService;
+    private ContractNegotiationProperties properties;
 
-    public ConsumerContractNegotiationCallbackController(ContractNegotiationConsumerService contractNegotiationConsumerService) {
+    public ConsumerContractNegotiationCallbackController(ContractNegotiationConsumerService contractNegotiationConsumerService, 
+    		ContractNegotiationProperties properties) {
         super();
         this.contractNegotiationConsumerService = contractNegotiationConsumerService;
+        this.properties = properties;
     }
 
     //	https://consumer.com/negotiations/offers	POST	ContractOfferMessage
@@ -40,14 +46,17 @@ public class ConsumerContractNegotiationCallbackController {
         ContractOfferMessage contractOfferMessage = Serializer.deserializeProtocol(contractOfferMessageJsonNode,
                 ContractOfferMessage.class);
 
-        String callbackAddress = contractOfferMessage.getCallbackAddress();
         JsonNode responseNode = contractNegotiationConsumerService.processContractOffer(contractOfferMessage);
-
-//		callbackAddress = callbackAddress.endsWith("/") ? callbackAddress : callbackAddress + "/";
-//		String finalCallback = callbackAddress + ContactNegotiationCallback.getProviderNegotiationOfferCallback(callbackAddress);
-        // send OK 200
+        // send OK 201
         log.info("Sending response OK in callback case");
-        return ResponseEntity.ok().build();
+        return ResponseEntity.created(createdURI(responseNode))
+        		.body(Serializer.serializeProtocolJsonNode(responseNode));
+    }
+    
+    private URI createdURI(JsonNode responseNode) {
+    	// "https://provider.com/negotiations/:providerPid"
+    	String providerPid = responseNode.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText();
+    	return URI.create(properties.callbackAddress() + "/negotiations/" + providerPid);
     }
 
     // https://consumer.com/:callback/negotiations/:consumerPid/offers	POST	ContractOfferMessage
@@ -58,7 +67,6 @@ public class ConsumerContractNegotiationCallbackController {
         ContractOfferMessage contractOfferMessage = Serializer.deserializeProtocol(contractOfferMessageJsonNode,
                 ContractOfferMessage.class);
 
-        String callbackAddress = contractOfferMessage.getCallbackAddress();
         JsonNode responseNode =
                 contractNegotiationConsumerService.handleNegotiationOfferConsumer(consumerPid, contractOfferMessage);
 

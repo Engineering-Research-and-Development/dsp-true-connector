@@ -28,6 +28,7 @@ import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
 import it.eng.negotiation.model.ContractOfferMessage;
 import it.eng.negotiation.model.ModelUtil;
 import it.eng.negotiation.model.Serializer;
+import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.service.ContractNegotiationConsumerService;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,6 +39,8 @@ public class ConsumerContractNegotiationCallbackControllerTest {
 
     @Mock
     private ContractNegotiationConsumerService contractNegotiationConsumerService;
+    @Mock
+    private ContractNegotiationProperties properties;
 
     ObjectMapper mapper = new ObjectMapper();
 
@@ -46,12 +49,12 @@ public class ConsumerContractNegotiationCallbackControllerTest {
         String json = Serializer.serializeProtocol(createContractOfferMessage());
         JsonNode jsonNode = mapper.readTree(json);
         when(contractNegotiationConsumerService.processContractOffer(any(ContractOfferMessage.class)))
-                .thenReturn(jsonNode);
+                .thenReturn(Serializer.serializeProtocolJsonNode(ModelUtil.CONTRACT_NEGOTIATION_OFFERED));
+        when(properties.callbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
         ResponseEntity<JsonNode> response = controller.handleNegotiationOffers(jsonNode);
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
     }
-
 
     @Test
     public void handleNegotiationOfferConsumerPid() throws InterruptedException, ExecutionException, JsonMappingException, JsonProcessingException {

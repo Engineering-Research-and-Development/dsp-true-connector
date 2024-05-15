@@ -41,7 +41,7 @@ public class ContractNegotiationAPIController {
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
     			.body(GenericApiResponse.success(response, "Contract negotiation initiated", HttpStatus.OK.value()));
     }
-    
+	
     @PostMapping(path = "/offerApproved")
     public ResponseEntity<JsonNode> handleOfferApproved(@RequestBody JsonNode response) {
         log.info("Handling offer approved");
@@ -66,6 +66,17 @@ public class ContractNegotiationAPIController {
 				.build();
     	handlerService.contractAgreementVerificationMessage(verificationMessage);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(null);
+    }
+    
+    /********* PROVIDER ***********/
+    @PostMapping(path = "/postOffer")
+    public ResponseEntity<GenericApiResponse<JsonNode>> postOffer(@RequestBody JsonNode contractOfferRequest) {
+    	String targetConnector = contractOfferRequest.get("Forward-To").asText();
+    	JsonNode offerNode = contractOfferRequest.get("offer");
+    	log.info("Provider posts offer - starts negotaition with {}", targetConnector);
+    	JsonNode response = apiService.postContractOffer(targetConnector, offerNode);
+    	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+    			.body(GenericApiResponse.success(response, "Contract negotiation posted", HttpStatus.OK.value()));
     }
 
 }

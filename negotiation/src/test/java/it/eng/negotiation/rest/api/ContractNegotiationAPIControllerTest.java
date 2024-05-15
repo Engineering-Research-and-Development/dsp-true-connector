@@ -1,6 +1,9 @@
 package it.eng.negotiation.rest.api;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -21,7 +24,9 @@ import org.springframework.http.ResponseEntity;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import it.eng.negotiation.exception.ContractNegotiationAPIException;
 import it.eng.negotiation.model.ContractAgreementVerificationMessage;
+import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ModelUtil;
 import it.eng.negotiation.model.Serializer;
 import it.eng.negotiation.service.ContractNegotiationAPIService;
@@ -82,5 +87,37 @@ public class ContractNegotiationAPIControllerTest {
 		ResponseEntity<JsonNode> response = controller.verifyNegotiation(mapper.convertValue(map, JsonNode.class));
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 		verify(handlerService).contractAgreementVerificationMessage(any(ContractAgreementVerificationMessage.class));
+	}
+	
+	@Test
+	@DisplayName("Provider posts offer - success")
+	public void providerPostsOffer_success() {
+		Map<String, Object> map = new HashMap<>();
+		map.put("Forward-To", ModelUtil.FORWARD_TO);
+		map.put("offer", Serializer.serializeProtocolJsonNode(ModelUtil.OFFER));
+		
+		when(apiService.postContractOffer(any(String.class), any(JsonNode.class)))
+			.thenReturn(Serializer.serializeProtocolJsonNode(ModelUtil.CONTRACT_NEGOTIATION_OFFERED));
+		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.postOffer(mapper.convertValue(map, JsonNode.class));
+	
+		assertNotNull(response);
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+		assertNotNull(response.getBody());
+		assertTrue(response.getBody().isSuccess());
+		assertEquals(response.getBody().getData().get(DSpaceConstants.TYPE).asText(), DSpaceConstants.DSPACE + ContractNegotiation.class.getSimpleName());
+	}
+	
+	@Test
+	@DisplayName("Provider posts offer - error")
+	public void providerPostsOffer_error() {
+		Map<String, Object> map = new HashMap<>();
+		map.put("Forward-To", ModelUtil.FORWARD_TO);
+		map.put("offer", Serializer.serializeProtocolJsonNode(ModelUtil.OFFER));
+		
+		when(apiService.postContractOffer(any(String.class), any(JsonNode.class)))
+			.thenThrow(new ContractNegotiationAPIException("Something not correct - tests"));
+
+		assertThrows(ContractNegotiationAPIException.class, () ->
+			controller.postOffer(mapper.convertValue(map, JsonNode.class)));
 	}
 }
