@@ -48,7 +48,7 @@ public class ContractNegotiationEventHandlerService {
 					.consumerPid(contractNegotiation.getConsumerPid())
 					.providerPid(contractNegotiation.getProviderPid())
 					.callbackAddress(properties.callbackAddress())
-					.agreement(agreementFromOffer(Serializer.deserializeProtocol(offerResponse.getOffer(), Offer.class)))
+					.agreement(agreementFromOffer(Serializer.deserializePlain(offerResponse.getOffer().toPrettyString(), Offer.class)))
 					.build();
 			
 			String authorization = okhttp3.Credentials.basic("connector@mail.com", "password");

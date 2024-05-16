@@ -46,7 +46,7 @@ public class ContractNegotiationAPIService {
 		ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
 				.callbackAddress(properties.callbackAddress())
 				.consumerPid("urn:uuid:" + UUID.randomUUID())
-				.offer(Serializer.deserializeProtocol(offerNode, Offer.class))
+				.offer(Serializer.deserializePlain(offerNode.toPrettyString(), Offer.class))
 				.build();
 		String authorization =  okhttp3.Credentials.basic("connector@mail.com", "password");
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(forwardTo, Serializer.serializeProtocolJsonNode(contractRequestMessage), authorization);

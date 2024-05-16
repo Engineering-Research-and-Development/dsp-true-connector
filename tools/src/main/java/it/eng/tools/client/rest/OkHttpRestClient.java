@@ -2,6 +2,7 @@ package it.eng.tools.client.rest;
 
 import java.io.IOException;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -47,11 +48,13 @@ public class OkHttpRestClient {
 	public GenericApiResponse<String> sendRequestProtocol(String targetAddress, JsonNode jsonNode, String authorization) {
 		// send response to targetAddress
 		RequestBody body = RequestBody.create(jsonNode.toPrettyString(), MediaType.parse("application/json"));
-		Request request = new Request.Builder()
+		Request.Builder requestBuilder = new Request.Builder()
 			      .url(targetAddress)
-			      .addHeader(HttpHeaders.AUTHORIZATION, authorization)
-			      .post(body)
-			      .build();
+			      .post(body);
+		if(StringUtils.isNotBlank(authorization)) {
+			requestBuilder.addHeader(HttpHeaders.AUTHORIZATION, authorization);
+		}
+		Request request = requestBuilder.build();
 		log.info("Sending request using address: " + targetAddress);
 		try (Response response = okHttpClient.newCall(request).execute()) {
 			int code = response.code();

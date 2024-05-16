@@ -1,9 +1,9 @@
 {
 	"info": {
-		"_postman_id": "166c44ad-7276-4de1-8580-800a5398056f",
+		"_postman_id": "172107e6-49ff-40f1-9e43-38ed112ba9ae",
 		"name": "TC_V2",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "12578087"
+		"_exporter_id": "21815221"
 	},
 	"item": [
 		{
@@ -19,8 +19,7 @@
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
+										"value": "application/json"
 									}
 								],
 								"url": {
@@ -42,8 +41,7 @@
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
+										"value": "application/json"
 									}
 								],
 								"url": {
@@ -65,8 +63,7 @@
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
+										"value": "application/json"
 									}
 								],
 								"body": {
@@ -94,8 +91,7 @@
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
+										"value": "application/json"
 									}
 								],
 								"body": {
@@ -126,8 +122,7 @@
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
+										"value": "application/json"
 									}
 								],
 								"url": {
@@ -174,8 +169,7 @@
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
+										"value": "application/json"
 									}
 								],
 								"url": {
@@ -197,8 +191,7 @@
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
+										"value": "application/json"
 									}
 								],
 								"url": {
@@ -221,8 +214,7 @@
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
+										"value": "application/json"
 									}
 								],
 								"url": {
@@ -244,8 +236,7 @@
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
+										"value": "application/json"
 									}
 								],
 								"url": {
@@ -272,8 +263,7 @@
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
+										"value": "application/json"
 									}
 								],
 								"url": {
@@ -292,8 +282,7 @@
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
+										"value": "application/json"
 									}
 								],
 								"url": {
@@ -315,8 +304,7 @@
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
+										"value": "application/json"
 									}
 								],
 								"body": {
@@ -370,8 +358,7 @@
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
+										"value": "application/json"
 									}
 								],
 								"url": {
@@ -424,8 +411,7 @@
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
+										"value": "application/json"
 									}
 								],
 								"body": {
@@ -458,8 +444,7 @@
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
+										"value": "application/json"
 									}
 								],
 								"body": {
@@ -523,216 +508,399 @@
 			]
 		},
 		{
-			"name": "Protocol_API",
+			"name": "Backend",
 			"item": [
 				{
-					"name": "Negotiation_API",
+					"name": "Catalog",
 					"item": [
 						{
-							"name": "Get negotiation by ProviderPid",
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"url": {
-									"raw": "{{SERVER_PROTOCOL_NEGOTIATION}}/urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aa",
-									"host": [
-										"{{SERVER_PROTOCOL_NEGOTIATION}}"
-									],
-									"path": [
-										"urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aa"
-									]
+							"name": "Protocol",
+							"item": [
+								{
+									"name": "Get Catalog",
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\n  \"@type\": \"dspace:CatalogRequestMessage\",\n  \"dspace:filter\": []\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{CONSUMER_SERVER_PROTOCOL_CATALOG}}/request",
+											"host": [
+												"{{CONSUMER_SERVER_PROTOCOL_CATALOG}}"
+											],
+											"path": [
+												"request"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get Catalog by Dataset ID",
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									},
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\n  \"@type\": \"dspace:DatasetRequestMessage\",\n  \"dspace:dataset\": \"fdc45798-a222-4955-8baf-ab7fd66ac4d5\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{CONSUMER_SERVER_PROTOCOL_CATALOG}}/datasets/fdc45798-a222-4955-8baf-ab7fd66ac4d",
+											"host": [
+												"{{CONSUMER_SERVER_PROTOCOL_CATALOG}}"
+											],
+											"path": [
+												"datasets",
+												"fdc45798-a222-4955-8baf-ab7fd66ac4d"
+											]
+										}
+									},
+									"response": []
 								}
+							]
+						}
+					],
+					"auth": {
+						"type": "basic",
+						"basic": [
+							{
+								"key": "password",
+								"value": "password",
+								"type": "string"
 							},
-							"response": []
+							{
+								"key": "username",
+								"value": "connector@mail.com",
+								"type": "string"
+							}
+						]
+					},
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"packages": {},
+								"exec": [
+									""
+								]
+							}
 						},
 						{
-							"name": "Start negotiation",
-							"request": {
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\r\n    \"Forward-To\": \"http://localhost:8090/negotiations/request\",\r\n    \"offer\": {\r\n        \"@type\": \"odrl:Offer\",\r\n        \"@id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"odrl:target\" : \"target\",\r\n        \"odrl:permission\": [\r\n            {\r\n                \"odrl:action\": \"odrl:use\",\r\n                \"odrl:constraint\": [\r\n                    {\r\n                        \"odrl:leftOperand\": \"odrl:count\",\r\n                        \"odrl:operator\": \"odrl:EQ\",\r\n                        \"odrl:rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{SERVER_API_NEGOTIATION}}/startNegotiation",
-									"host": [
-										"{{SERVER_API_NEGOTIATION}}"
-									],
-									"path": [
-										"startNegotiation"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Offer approved",
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\r\n    \"dspace:consumerPid\": \"urn:uuid:d13499db-5787-4018-a352-32f31e9277a3\",\r\n    \"dspace:providerPid\": \"urn:uuid:71d96cd0-8c2b-45db-af7e-c28ca2763a1d\",\r\n\t\"offerAccepted\" : true,\r\n    \"offer\": {\r\n        \"@type\": \"odrl:Offer\",\r\n        \"@id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"odrl:target\" : \"target\",\r\n        \"odrl:permission\": [\r\n            {\r\n                \"odrl:action\": \"odrl:use\",\r\n                \"odrl:constraint\": [\r\n                    {\r\n                        \"odrl:leftOperand\": \"odrl:count\",\r\n                        \"odrl:operator\": \"odrl:EQ\",\r\n                        \"odrl:rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{SERVER_API_NEGOTIATION}}/api/negotiations/offerApproved",
-									"host": [
-										"{{SERVER_API_NEGOTIATION}}"
-									],
-									"path": [
-										"api",
-										"negotiations",
-										"offerApproved"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Verify negotiation",
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\r\n    \"consumerPid\": \"urn:uuid:d13499db-5787-4018-a352-32f31e9277a3\",\r\n    \"providerPid\": \"urn:uuid:71d96cd0-8c2b-45db-af7e-c28ca2763a1d\"\r\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{SERVER_API_NEGOTIATION}}/verifyNegotiation",
-									"host": [
-										"{{SERVER_API_NEGOTIATION}}"
-									],
-									"path": [
-										"verifyNegotiation"
-									]
-								}
-							},
-							"response": []
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"packages": {},
+								"exec": [
+									""
+								]
+							}
 						}
 					]
 				},
 				{
-					"name": "Catalog_API",
+					"name": "Negotiation",
 					"item": [
 						{
-							"name": "Get Catalog",
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n  \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\n  \"@type\": \"dspace:CatalogRequestMessage\",\n  \"dspace:filter\": []\n}",
-									"options": {
-										"raw": {
-											"language": "json"
+							"name": "API",
+							"item": [
+								{
+									"name": "Start negotiation",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER_SERVER_PROTOCOL_NEGOTIATION}}/request\",\r\n    \"offer\": {\r\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"target\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"EQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/startNegotiation",
+											"host": [
+												"{{CONSUMER_SERVER_API_NEGOTIATION}}"
+											],
+											"path": [
+												"startNegotiation"
+											]
 										}
+									},
+									"response": []
+								},
+								{
+									"name": "Offer approved",
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"consumerPid\": \"urn:uuid:32541fe6-c580-409e-85a8-8a9a32fbe833\",\r\n    \"providerPid\": \"urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aab\",\r\n    \"offerAccepted\": true,\r\n    \"offer\": {\r\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"target\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"EQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/offerApproved",
+											"host": [
+												"{{CONSUMER_SERVER_API_NEGOTIATION}}"
+											],
+											"path": [
+												"offerApproved"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Verify negotiation",
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"consumerPid\": \"urn:uuid:d13499db-5787-4018-a352-32f31e9277a3\",\r\n    \"providerPid\": \"urn:uuid:71d96cd0-8c2b-45db-af7e-c28ca2763a1d\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/verifyNegotiation",
+											"host": [
+												"{{CONSUMER_SERVER_API_NEGOTIATION}}"
+											],
+											"path": [
+												"verifyNegotiation"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Post offer",
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Basic YWRtaW5AbWFpbC5jb206cGFzc3dvcmQ="
+											},
+											{
+												"key": "Cookie",
+												"value": "JSESSIONID=1B172A0D2187794C8FA816EF096C69B8"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"Forward-To\": \"{{CONSUMER_SERVER_PROTOCOL_NEGOTIATION}}/request\",\n    \"offer\": {\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\n        \"target\" : \"target\",\n        \"permission\": [\n            {\n                \"action\": \"USE\",\n                \"constraint\": [\n                    {\n                        \"leftOperand\": \"COUNT\",\n                        \"operator\": \"EQ\",\n                        \"rightOperand\": \"5\"\n                    }\n                ]\n            }\n        ]\n    }\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/postOffer",
+											"host": [
+												"{{PROVIDER_SERVER_API_NEGOTIATION}}"
+											],
+											"path": [
+												"postOffer"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"auth": {
+								"type": "basic",
+								"basic": [
+									{
+										"key": "username",
+										"value": "admin@mail.com",
+										"type": "string"
+									},
+									{
+										"key": "password",
+										"value": "password",
+										"type": "string"
+									}
+								]
+							},
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"packages": {},
+										"exec": [
+											""
+										]
 									}
 								},
-								"url": {
-									"raw": "{{SERVER_PROTOCOL_CATALOG}}/request",
-									"host": [
-										"{{SERVER_PROTOCOL_CATALOG}}"
-									],
-									"path": [
-										"request"
-									]
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"packages": {},
+										"exec": [
+											""
+										]
+									}
 								}
-							},
-							"response": []
+							]
 						},
 						{
-							"name": "Get Catalog by Dataset ID",
-							"protocolProfileBehavior": {
-								"disableBodyPruning": true
-							},
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n  \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\n  \"@type\": \"dspace:DatasetRequestMessage\",\n  \"dspace:dataset\": \"fdc45798-a222-4955-8baf-ab7fd66ac4d5\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
+							"name": "Protocol",
+							"item": [
+								{
+									"name": "Get negotiation by ProviderPid",
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									},
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{CONSUMER_SERVER_PROTOCOL_NEGOTIATION}}/urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aa",
+											"host": [
+												"{{CONSUMER_SERVER_PROTOCOL_NEGOTIATION}}"
+											],
+											"path": [
+												"urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aa"
+											]
 										}
+									},
+									"response": []
+								}
+							],
+							"auth": {
+								"type": "basic",
+								"basic": [
+									{
+										"key": "password",
+										"value": "password",
+										"type": "string"
+									},
+									{
+										"key": "username",
+										"value": "connector@mail.com",
+										"type": "string"
+									}
+								]
+							},
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"packages": {},
+										"exec": [
+											""
+										]
 									}
 								},
-								"url": {
-									"raw": "{{SERVER_PROTOCOL_CATALOG}}/datasets/fdc45798-a222-4955-8baf-ab7fd66ac4d",
-									"host": [
-										"{{SERVER_PROTOCOL_CATALOG}}"
-									],
-									"path": [
-										"datasets",
-										"fdc45798-a222-4955-8baf-ab7fd66ac4d"
-									]
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"packages": {},
+										"exec": [
+											""
+										]
+									}
 								}
-							},
-							"response": []
+							]
+						}
+					],
+					"auth": {
+						"type": "noauth"
+					},
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"packages": {},
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"packages": {},
+								"exec": [
+									""
+								]
+							}
 						}
 					]
 				}
 			],
 			"auth": {
-				"type": "basic",
-				"basic": [
-					{
-						"key": "username",
-						"value": "connector@mail.com",
-						"type": "string"
-					},
-					{
-						"key": "password",
-						"value": "password",
-						"type": "string"
-					}
-				]
+				"type": "noauth"
 			},
 			"event": [
 				{
