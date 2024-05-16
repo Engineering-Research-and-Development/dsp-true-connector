@@ -3,6 +3,7 @@ package it.eng.tools.configuration;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
@@ -80,7 +81,8 @@ public class OkHttpClientConfiguration {
 		OkHttpClient client;
 		//@formatter:off
 		client = new OkHttpClient.Builder()
-				.connectionSpecs(Collections.singletonList(ConnectionSpec.MODERN_TLS))
+//				.connectionSpecs(Collections.singletonList(ConnectionSpec.MODERN_TLS))
+				.connectionSpecs(Arrays.asList(ConnectionSpec.MODERN_TLS, ConnectionSpec.CLEARTEXT))
 				.connectTimeout(60, TimeUnit.SECONDS)
 		        .writeTimeout(60, TimeUnit.SECONDS)
 		        .readTimeout(60, TimeUnit.SECONDS)

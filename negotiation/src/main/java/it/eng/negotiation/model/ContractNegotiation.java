@@ -36,11 +36,14 @@ import java.util.stream.Collectors;
 @Document(collection = "contract_negotiations")
 public class ContractNegotiation extends AbstractNegotiationObject {
 
-
     @JsonIgnore
     @JsonProperty(DSpaceConstants.ID)
     @Id
     private String id;
+    
+    @JsonIgnore
+    private String callbackAddress;
+    
     @NotNull
     @JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
     private String consumerPid;
@@ -63,11 +66,21 @@ public class ContractNegotiation extends AbstractNegotiationObject {
         public static ContractNegotiation.Builder newInstance() {
             return new ContractNegotiation.Builder();
         }
+        
+        public Builder id(String id) {
+        	message.id = id;
+        	return this;
+        }
 
         @JsonProperty(DSpaceConstants.DSPACE_STATE)
         public Builder state(ContractNegotiationState state) {
             message.state = state;
             return this;
+        }
+        
+        public Builder callbackAddress(String callbackAddress) {
+        	message.callbackAddress = callbackAddress;
+        	return this;
         }
 
         @JsonSetter(DSpaceConstants.DSPACE_PROVIDER_PID)

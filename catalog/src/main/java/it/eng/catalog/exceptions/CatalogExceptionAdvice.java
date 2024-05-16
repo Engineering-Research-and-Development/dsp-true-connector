@@ -19,7 +19,7 @@ import jakarta.validation.ValidationException;
 @RestControllerAdvice(basePackageClasses = CatalogController.class)
 public class CatalogExceptionAdvice extends ResponseEntityExceptionHandler {
 
-    @ExceptionHandler(value = {CatalogErrorException.class})
+	@ExceptionHandler(value = {CatalogErrorException.class})
     protected ResponseEntity<Object> handleCatalogErrorException(CatalogErrorException ex, WebRequest request) {
         CatalogError catalogError = CatalogError.Builder.newInstance()
         		.code(HttpStatus.NOT_FOUND.getReasonPhrase())
