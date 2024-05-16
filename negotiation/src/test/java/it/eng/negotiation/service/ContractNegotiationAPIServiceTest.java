@@ -45,7 +45,7 @@ public class ContractNegotiationAPIServiceTest {
 		when(apiResponse.getData()).thenReturn(Serializer.serializeProtocol(ModelUtil.CONTRACT_NEGOTIATION));
 		when(properties.callbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
 		
-		service.startNegotiation(ModelUtil.FORWARD_TO, Serializer.serializeProtocolJsonNode(ModelUtil.OFFER));
+		service.startNegotiation(ModelUtil.FORWARD_TO, Serializer.serializePlainJsonNode(ModelUtil.OFFER));
 		
 		verify(repository).save(any(ContractNegotiation.class));
 	}

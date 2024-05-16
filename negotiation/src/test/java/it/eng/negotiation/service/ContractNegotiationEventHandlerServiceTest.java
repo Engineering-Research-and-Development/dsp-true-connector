@@ -44,7 +44,7 @@ public class ContractNegotiationEventHandlerServiceTest {
 	@DisplayName("Handle contract negotiation offer response success")
 	public void handleContractNegotiationOfferResponse_accepted_success() {
 		ContractNegotiationOfferResponse offerResponse = new ContractNegotiationOfferResponse(ModelUtil.CONSUMER_PID, 
-				ModelUtil.PROVIDER_PID, true, Serializer.serializeProtocolJsonNode(ModelUtil.OFFER));
+				ModelUtil.PROVIDER_PID, true, Serializer.serializePlainJsonNode(ModelUtil.OFFER));
 		
 		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION));
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
