@@ -136,9 +136,47 @@ public class MockObjectUtil {
             .filter(List.of("some-filter"))
             .build();
 
+    public static final List<Catalog> CATALOGS = Arrays.asList(CATALOG);
+
     public static final DatasetRequestMessage DATASET_REQUEST_MESSAGE = DatasetRequestMessage.Builder.newInstance()
             .dataset(Serializer.serializeProtocol(MockObjectUtil.DATASET))
             .build();
+
+    public static final DataService DATA_SERVICE = DataService.Builder.newInstance()
+            .keyword(Arrays.asList("keyword1", "keyword2"))
+            .theme(Arrays.asList("white", "blue", "aqua"))
+            .conformsTo(CONFORMSTO)
+            .creator(CREATOR)
+            .description(Arrays.asList(MULTILANGUAGE))
+            .identifier(IDENTIFIER)
+            .issued(ISSUED)
+            .modified(MODIFIED)
+            .title(TITLE)
+            .endpointDescription("Description for test")
+            .endpointURL(ENDPOINT_URL)
+            .servesDataset(DATASETS)
+            .build();
+
+    public static final DataService DATA_SERVICE_FOR_UPDATE = DataService.Builder.newInstance()
+            .keyword(Arrays.asList("keyword1", "keyword2"))
+            .theme(Arrays.asList("white", "blue", "aqua"))
+            .conformsTo(CONFORMSTO)
+            .creator(CREATOR)
+            .description(Arrays.asList(MULTILANGUAGE))
+            .identifier(IDENTIFIER)
+            .issued(ISSUED)
+            .modified(MODIFIED)
+            .title(TITLE)
+            .endpointDescription("Description for test")
+            .endpointURL(ENDPOINT_URL)
+            .servesDataset(DATASETS)
+            .version(0L)
+            .createdBy("admin@mail.com")
+            .lastModifiedBy("admin@mail.com")
+            .build();
+
+    public static final List<DataService> DATA_SERVICES = Arrays.asList(DATA_SERVICE);
+
 
     public static void getAllKeysUsingJsonNodeFieldNames(JsonNode jsonNode, Set<String> keys) {
         if (jsonNode.isObject()) {
