@@ -1,6 +1,7 @@
 package it.eng.catalog.model;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import it.eng.catalog.serializer.Serializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 import org.junit.jupiter.api.DisplayName;

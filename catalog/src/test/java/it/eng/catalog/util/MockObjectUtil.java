@@ -3,6 +3,7 @@ package it.eng.catalog.util;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import it.eng.catalog.model.*;
+import it.eng.catalog.serializer.Serializer;
 
 import java.time.Instant;
 import java.util.Arrays;

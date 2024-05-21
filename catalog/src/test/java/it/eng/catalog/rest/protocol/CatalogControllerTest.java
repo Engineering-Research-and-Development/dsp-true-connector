@@ -18,7 +18,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.catalog.model.CatalogRequestMessage;
 import it.eng.catalog.model.DatasetRequestMessage;
-import it.eng.catalog.model.Serializer;
+import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.service.CatalogService;
 import it.eng.catalog.util.MockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;

@@ -17,7 +17,7 @@ import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
-import it.eng.catalog.model.Serializer;
+import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.util.MockObjectUtil;
 import it.eng.connector.util.TestUtil;
 import it.eng.tools.model.DSpaceConstants;
