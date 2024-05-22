@@ -84,7 +84,7 @@ public class DataService {
             return new Builder();
         }
 
-        public static Builder updateDataServiceInstance(DataService existingDataService, DataService updatedDataService) {
+        public static Builder updateInstance(DataService existingDataService, DataService updatedDataService) {
 
             Builder builder = newInstance();
             builder.id(existingDataService.getId());
