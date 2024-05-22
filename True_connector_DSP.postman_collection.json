@@ -1,9 +1,10 @@
 {
 	"info": {
-		"_postman_id": "172107e6-49ff-40f1-9e43-38ed112ba9ae",
+		"_postman_id": "7267d077-2a1f-4241-9bd2-dde0e189feb4",
 		"name": "TC_V2",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "21815221"
+		"_exporter_id": "2326106",
+		"_collection_link": "https://martian-water-684810.postman.co/workspace/New-Connector~493beb9b-a916-4f81-afb2-851668940079/collection/2326106-7267d077-2a1f-4241-9bd2-dde0e189feb4?action=share&source=collection_link&creator=2326106"
 	},
 	"item": [
 		{
@@ -23,9 +24,9 @@
 									}
 								],
 								"url": {
-									"raw": "{{SERVER_API_CATALOG}}/",
+									"raw": "{{CONSUMER_SERVER_API_CATALOG}}/",
 									"host": [
-										"{{SERVER_API_CATALOG}}"
+										"{{CONSUMER_SERVER_API_CATALOG}}"
 									],
 									"path": [
 										""
@@ -45,9 +46,9 @@
 									}
 								],
 								"url": {
-									"raw": "{{SERVER_API_CATALOG}}/{$ID}",
+									"raw": "{{CONSUMER_SERVER_API_CATALOG}}/{$ID}",
 									"host": [
-										"{{SERVER_API_CATALOG}}"
+										"{{CONSUMER_SERVER_API_CATALOG}}"
 									],
 									"path": [
 										"{$ID}"
@@ -76,9 +77,9 @@
 									}
 								},
 								"url": {
-									"raw": "{{SERVER_API_CATALOG}}",
+									"raw": "{{CONSUMER_SERVER_API_CATALOG}}",
 									"host": [
-										"{{SERVER_API_CATALOG}}"
+										"{{CONSUMER_SERVER_API_CATALOG}}"
 									]
 								}
 							},
@@ -104,9 +105,9 @@
 									}
 								},
 								"url": {
-									"raw": "{{SERVER_API_CATALOG}}/{$ID}",
+									"raw": "{{CONSUMER_SERVER_API_CATALOG}}/{$ID}",
 									"host": [
-										"{{SERVER_API_CATALOG}}"
+										"{{CONSUMER_SERVER_API_CATALOG}}"
 									],
 									"path": [
 										"{$ID}"
@@ -126,9 +127,9 @@
 									}
 								],
 								"url": {
-									"raw": "{{SERVER_API_CATALOG}}/{$ID}",
+									"raw": "{{CONSUMER_SERVER_API_CATALOG}}/{$ID}",
 									"host": [
-										"{{SERVER_API_CATALOG}}"
+										"{{CONSUMER_SERVER_API_CATALOG}}"
 									],
 									"path": [
 										"{$ID}"
@@ -173,35 +174,9 @@
 									}
 								],
 								"url": {
-									"raw": "{{SERVER_API_DATASERVICE}}/",
+									"raw": "{{CONSUMER_SERVER_API_DATASERVICE}}",
 									"host": [
-										"{{SERVER_API_DATASERVICE}}"
-									],
-									"path": [
-										""
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Get All DataServices by Catalog ID",
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"url": {
-									"raw": "{{SERVER_API_DATASERVICE}}/catalog/$catalogID",
-									"host": [
-										"{{SERVER_API_DATASERVICE}}"
-									],
-									"path": [
-										"catalog",
-										"$catalogID"
+										"{{CONSUMER_SERVER_API_DATASERVICE}}"
 									]
 								}
 							},
@@ -218,9 +193,9 @@
 									}
 								],
 								"url": {
-									"raw": "{{SERVER_API_DATASERVICE}}/$ID",
+									"raw": "{{CONSUMER_SERVER_API_DATASERVICE}}/$ID",
 									"host": [
-										"{{SERVER_API_DATASERVICE}}"
+										"{{CONSUMER_SERVER_API_DATASERVICE}}"
 									],
 									"path": [
 										"$ID"
@@ -239,13 +214,68 @@
 										"value": "application/json"
 									}
 								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"keyword\": [\r\n        \"keyword1\",\r\n        \"keyword2\",\r\n        \"keyword3\"\r\n    ],\r\n    \"theme\": [\r\n        \"dark theme\",\r\n        \"light theme\"\r\n    ],\r\n    \"conformsTo\": \"conformsToSomething\",\r\n    \"creator\": \"Engineering Informatica S.p.A.\",\r\n    \"description\": [\r\n        {\r\n            \"value\": \"Some text for multi language\",\r\n            \"language\": \"en\"\r\n        }\r\n    ],\r\n    \"identifier\": \"Unique identifier for testing Data Service New\",\r\n    \"title\": \"Title for testing Data Service\",\r\n    \"endpointDescription\": \"endpoint description\",\r\n    \"endpointURL\": \"https://provider-a.com/connector\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
 								"url": {
-									"raw": "{{SERVER_API_DATASERVICE}}/dataservicetocatalog",
+									"raw": "{{CONSUMER_SERVER_API_DATASERVICE}}",
 									"host": [
-										"{{SERVER_API_DATASERVICE}}"
+										"{{CONSUMER_SERVER_API_DATASERVICE}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update DataService",
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "    {\r\n        \"keyword\": [\r\n            \"keyword1\",\r\n            \"keyword2\",\r\n            \"keyword3\"\r\n        ],\r\n        \"theme\": [\r\n            \"dark theme\",\r\n            \"light theme\"\r\n        ],\r\n        \"conformsTo\": \"conformsToSomething\",\r\n        \"creator\": \"Engineering Informatica S.p.A.\",\r\n        \"description\": [\r\n            {\r\n                \"value\": \"Some text for multi language\",\r\n                \"language\": \"en\"\r\n            }\r\n        ],\r\n        \"identifier\": \"Unique identifier for testing Data Service\",\r\n        \"title\": \"Title for testing Data Service Edit\",\r\n        \"endpointDescription\": \"endpoint description\",\r\n        \"endpointURL\": \"https://provider-a.com/connector\"\r\n    }",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_DATASERVICE}}/1dc45797-4444-4955-8baf-ab7fd66ac4d5",
+									"host": [
+										"{{CONSUMER_SERVER_API_DATASERVICE}}"
 									],
 									"path": [
-										"dataservicetocatalog"
+										"1dc45797-4444-4955-8baf-ab7fd66ac4d5"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete DataService",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_DATASERVICE}}/$ID",
+									"host": [
+										"{{CONSUMER_SERVER_API_DATASERVICE}}"
+									],
+									"path": [
+										"$ID"
 									]
 								}
 							},
@@ -267,9 +297,9 @@
 									}
 								],
 								"url": {
-									"raw": "{{SERVER_API_DATASET}}",
+									"raw": "{{CONSUMER_SERVER_API_DATASET}}",
 									"host": [
-										"{{SERVER_API_DATASET}}"
+										"{{CONSUMER_SERVER_API_DATASET}}"
 									]
 								}
 							},
@@ -286,9 +316,9 @@
 									}
 								],
 								"url": {
-									"raw": "{{SERVER_API_DATASET}}/{$ID}",
+									"raw": "{{CONSUMER_SERVER_API_DATASET}}/{$ID}",
 									"host": [
-										"{{SERVER_API_DATASET}}"
+										"{{CONSUMER_SERVER_API_DATASET}}"
 									],
 									"path": [
 										"{$ID}"
@@ -317,9 +347,9 @@
 									}
 								},
 								"url": {
-									"raw": "{{SERVER_API_DATASET}}",
+									"raw": "{{CONSUMER_SERVER_API_DATASET}}",
 									"host": [
-										"{{SERVER_API_DATASET}}"
+										"{{CONSUMER_SERVER_API_DATASET}}"
 									]
 								}
 							},
@@ -332,7 +362,7 @@
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n    \"keyword\": [\r\n        \"keyword1\",\r\n        \"keyword2\",\r\n        \"keyword3\"\r\n    ],\r\n    \"theme\": [\r\n        \"dark theme\",\r\n        \"light theme\"\r\n    ],\r\n    \"conformsTo\": \"conformsToSomethingEdit\",\r\n    \"creator\": \"Engineering Informatica S.p.A.\",\r\n    \"description\": [\r\n        {\r\n            \"value\": \"Some text for multi language Dataset\",\r\n            \"language\": \"en\"\r\n        }\r\n    ],\r\n    \"identifier\": \"Unique identifier for testing Dataset\",\r\n    \"issued\": \"2024-04-23T16:26:00Z\",\r\n    \"modified\": \"2024-04-23T16:26:00Z\",\r\n    \"title\": \"Title for test Dataset\",\r\n    \"hasPolicy\": [\r\n        {\r\n            \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n            \"permission\": [\r\n                {\r\n                    \"action\": \"USE\",\r\n                    \"constraint\": [\r\n                        {\r\n                            \"leftOperand\": \"COUNT\",\r\n                            \"operator\": \"EQ\",\r\n                            \"rightOperand\": \"5\"\r\n                        }\r\n                    ]\r\n                }\r\n            ]\r\n        }\r\n    ],\r\n    \"distribution\": [\r\n        {\r\n            \"id\": \"1dc45797-4444-4932-8baf-ab7fd66ql4d5\",\r\n            \"title\": \"Flash lightning distribution\",\r\n            \"issued\": \"2024-04-23T16:26:00Z\",\r\n            \"modified\": \"2024-04-23T16:26:00Z\",\r\n            \"accessService\": [\r\n                {\r\n                    \"id\": \"1dc45797-4444-4955-8baf-ab7fd66ac4d5\",\r\n                    \"keyword\": [\r\n                        \"keyword1\",\r\n                        \"keyword2\",\r\n                        \"keyword3\"\r\n                    ],\r\n                    \"theme\": [\r\n                        \"dark theme\",\r\n                        \"light theme\"\r\n                    ],\r\n                    \"conformsTo\": \"conformsToSomething\",\r\n                    \"creator\": \"Engineering Informatica S.p.A.\",\r\n                    \"description\": [\r\n                        {\r\n                            \"value\": \"Some text for multi language\",\r\n                            \"language\": \"en\"\r\n                        }\r\n                    ],\r\n                    \"identifier\": \"Unique identifier for testing Data Service\",\r\n                    \"issued\": \"2024-04-23T16:26:00Z\",\r\n                    \"modified\": \"2024-04-23T16:26:00Z\",\r\n                    \"title\": \"Title for testing Data Service\",\r\n                    \"endpointDescription\": \"endpoint description\",\r\n                    \"endpointURL\": \"https://provider-a.com/connector\",\r\n                    \"createdBy\": \"admin@mail.com\",\r\n                    \"lastModifiedBy\": \"admin@mail.com\",\r\n                    \"version\": 0,\r\n                    \"type\": \"dcat:DataService\"\r\n                }\r\n            ],\r\n            \"type\": \"dspace:Distribution\"\r\n        }\r\n    ],\r\n    \"createdBy\": \"admin@mail.com\",\r\n    \"lastModifiedBy\": \"admin@mail.com\",\r\n    \"version\": 0,\r\n    \"type\": \"dcat:Dataset\"\r\n}",
+									"raw": "{\r\n    \"keyword\": [\r\n        \"keyword1\",\r\n        \"keyword2\",\r\n        \"keyword3\"\r\n    ],\r\n    \"theme\": [\r\n        \"dark theme\",\r\n        \"light theme\"\r\n    ],\r\n    \"conformsTo\": \"conformsToSomethingEdit\",\r\n    \"creator\": \"Engineering Informatica S.p.A.\",\r\n    \"description\": [\r\n        {\r\n            \"value\": \"Some text for multi language Dataset\",\r\n            \"language\": \"en\"\r\n        }\r\n    ],\r\n    \"identifier\": \"Unique identifier for testing Dataset\",\r\n    \"title\": \"Title for test Dataset\",\r\n    \"hasPolicy\": [\r\n        {\r\n            \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n            \"permission\": [\r\n                {\r\n                    \"action\": \"USE\",\r\n                    \"constraint\": [\r\n                        {\r\n                            \"leftOperand\": \"COUNT\",\r\n                            \"operator\": \"EQ\",\r\n                            \"rightOperand\": \"5\"\r\n                        }\r\n                    ]\r\n                }\r\n            ]\r\n        }\r\n    ],\r\n    \"distribution\": [\r\n        {\r\n            \"id\": \"1dc45797-4444-4932-8baf-ab7fd66ql4d5\",\r\n            \"title\": \"Flash lightning distribution\",\r\n            \"issued\": \"2024-04-23T16:26:00Z\",\r\n            \"modified\": \"2024-04-23T16:26:00Z\",\r\n            \"accessService\": [\r\n                {\r\n                    \"id\": \"1dc45797-4444-4955-8baf-ab7fd66ac4d5\",\r\n                    \"keyword\": [\r\n                        \"keyword1\",\r\n                        \"keyword2\",\r\n                        \"keyword3\"\r\n                    ],\r\n                    \"theme\": [\r\n                        \"dark theme\",\r\n                        \"light theme\"\r\n                    ],\r\n                    \"conformsTo\": \"conformsToSomething\",\r\n                    \"creator\": \"Engineering Informatica S.p.A.\",\r\n                    \"description\": [\r\n                        {\r\n                            \"value\": \"Some text for multi language\",\r\n                            \"language\": \"en\"\r\n                        }\r\n                    ],\r\n                    \"identifier\": \"Unique identifier for testing Data Service\",\r\n                    \"issued\": \"2024-04-23T16:26:00Z\",\r\n                    \"modified\": \"2024-04-23T16:26:00Z\",\r\n                    \"title\": \"Title for testing Data Service\",\r\n                    \"endpointDescription\": \"endpoint description\",\r\n                    \"endpointURL\": \"https://provider-a.com/connector\",\r\n                    \"createdBy\": \"admin@mail.com\",\r\n                    \"lastModifiedBy\": \"admin@mail.com\",\r\n                    \"version\": 0,\r\n                    \"type\": \"dcat:DataService\"\r\n                }\r\n            ],\r\n            \"type\": \"dspace:Distribution\"\r\n        }\r\n    ]\r\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -340,12 +370,12 @@
 									}
 								},
 								"url": {
-									"raw": "{{SERVER_API_DATASET}}/{$ID}",
+									"raw": "{{CONSUMER_SERVER_API_DATASET}}/fdc45798-a222-4955-8baf-ab7fd66ac4d5",
 									"host": [
-										"{{SERVER_API_DATASET}}"
+										"{{CONSUMER_SERVER_API_DATASET}}"
 									],
 									"path": [
-										"{$ID}"
+										"fdc45798-a222-4955-8baf-ab7fd66ac4d5"
 									]
 								}
 							},
@@ -362,9 +392,9 @@
 									}
 								],
 								"url": {
-									"raw": "{{SERVER_API_DATASET}}/{$ID}",
+									"raw": "{{CONSUMER_SERVER_API_DATASET}}/{$ID}",
 									"host": [
-										"{{SERVER_API_DATASET}}"
+										"{{CONSUMER_SERVER_API_DATASET}}"
 									],
 									"path": [
 										"{$ID}"
@@ -379,13 +409,13 @@
 					"name": "Negotiation",
 					"item": [
 						{
-							"name": "Start Negotiation",
+							"name": "Start negotiation",
 							"request": {
 								"method": "POST",
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n    \"Forward-To\": \"http://localhost:8090/negotiations/request\",\r\n    \"offer\": {\r\n        \"@type\": \"odrl:Offer\",\r\n        \"@id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"odrl:target\" : \"target\",\r\n        \"odrl:permission\": [\r\n            {\r\n                \"odrl:action\": \"odrl:use\",\r\n                \"odrl:constraint\": [\r\n                    {\r\n                        \"odrl:leftOperand\": \"odrl:count\",\r\n                        \"odrl:operator\": \"odrl:EQ\",\r\n                        \"odrl:rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+									"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER_SERVER_PROTOCOL_NEGOTIATION}}/request\",\r\n    \"offer\": {\r\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"target\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"EQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -393,9 +423,9 @@
 									}
 								},
 								"url": {
-									"raw": "{{SERVER_API_NEGOTIATION}}/startNegotiation",
+									"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/startNegotiation",
 									"host": [
-										"{{SERVER_API_NEGOTIATION}}"
+										"{{CONSUMER_SERVER_API_NEGOTIATION}}"
 									],
 									"path": [
 										"startNegotiation"
@@ -405,7 +435,7 @@
 							"response": []
 						},
 						{
-							"name": "Offer Approved",
+							"name": "Offer approved",
 							"request": {
 								"method": "POST",
 								"header": [
@@ -416,7 +446,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n    \"consumerPid\" : \"urn:uuid:4e626898-7320-45ff-8f0d-d089a37562c6\",\r\n\t\"providerPid\" : \"urn:uuid:0fc890d1-5204-4f5b-8938-3bd9d202f6aa\",\r\n\t\"offerAccepted\" : true,\r\n    \"offer\": {\r\n        \"@type\": \"odrl:Offer\",\r\n        \"@id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"odrl:target\" : \"target\",\r\n        \"odrl:permission\": [\r\n            {\r\n                \"odrl:action\": \"odrl:use\",\r\n                \"odrl:constraint\": [\r\n                    {\r\n                        \"odrl:leftOperand\": \"odrl:count\",\r\n                        \"odrl:operator\": \"odrl:EQ\",\r\n                        \"odrl:rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+									"raw": "{\r\n    \"consumerPid\": \"urn:uuid:32541fe6-c580-409e-85a8-8a9a32fbe833\",\r\n    \"providerPid\": \"urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aab\",\r\n    \"offerAccepted\": true,\r\n    \"offer\": {\r\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"target\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"EQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -424,13 +454,11 @@
 									}
 								},
 								"url": {
-									"raw": "{{SERVER_API_NEGOTIATION}}/api/negotiations/offerApproved",
+									"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/offerApproved",
 									"host": [
-										"{{SERVER_API_NEGOTIATION}}"
+										"{{CONSUMER_SERVER_API_NEGOTIATION}}"
 									],
 									"path": [
-										"api",
-										"negotiations",
 										"offerApproved"
 									]
 								}
@@ -438,7 +466,7 @@
 							"response": []
 						},
 						{
-							"name": "Verify Negotiation",
+							"name": "Verify negotiation",
 							"request": {
 								"method": "POST",
 								"header": [
@@ -449,7 +477,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n    \"consumerPid\" : \"urn:uuid:4e626898-7320-45ff-8f0d-d089a37562c6\",\r\n\t\"providerPid\" : \"urn:uuid:0fc890d1-5204-4f5b-8938-3bd9d202f6aa\"\r\n}",
+									"raw": "{\r\n    \"consumerPid\": \"urn:uuid:d13499db-5787-4018-a352-32f31e9277a3\",\r\n    \"providerPid\": \"urn:uuid:71d96cd0-8c2b-45db-af7e-c28ca2763a1d\"\r\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -457,12 +485,51 @@
 									}
 								},
 								"url": {
-									"raw": "{{SERVER_API_NEGOTIATION}}/verifyNegotiation",
+									"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/verifyNegotiation",
 									"host": [
-										"{{SERVER_API_NEGOTIATION}}"
+										"{{CONSUMER_SERVER_API_NEGOTIATION}}"
 									],
 									"path": [
 										"verifyNegotiation"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Post offer",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Basic YWRtaW5AbWFpbC5jb206cGFzc3dvcmQ="
+									},
+									{
+										"key": "Cookie",
+										"value": "JSESSIONID=1B172A0D2187794C8FA816EF096C69B8"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Forward-To\": \"{{CONSUMER_SERVER_PROTOCOL_NEGOTIATION}}/request\",\n    \"offer\": {\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\n        \"target\" : \"target\",\n        \"permission\": [\n            {\n                \"action\": \"USE\",\n                \"constraint\": [\n                    {\n                        \"leftOperand\": \"COUNT\",\n                        \"operator\": \"EQ\",\n                        \"rightOperand\": \"5\"\n                    }\n                ]\n            }\n        ]\n    }\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/postOffer",
+									"host": [
+										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
+									],
+									"path": [
+										"postOffer"
 									]
 								}
 							},
@@ -508,81 +575,76 @@
 			]
 		},
 		{
-			"name": "Backend",
+			"name": "Protocol",
 			"item": [
 				{
 					"name": "Catalog",
 					"item": [
 						{
-							"name": "Protocol",
-							"item": [
-								{
-									"name": "Get Catalog",
-									"request": {
-										"method": "POST",
-										"header": [
-											{
-												"key": "Content-Type",
-												"value": "application/json"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{\n  \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\n  \"@type\": \"dspace:CatalogRequestMessage\",\n  \"dspace:filter\": []\n}",
-											"options": {
-												"raw": {
-													"language": "json"
-												}
-											}
-										},
-										"url": {
-											"raw": "{{CONSUMER_SERVER_PROTOCOL_CATALOG}}/request",
-											"host": [
-												"{{CONSUMER_SERVER_PROTOCOL_CATALOG}}"
-											],
-											"path": [
-												"request"
-											]
+							"name": "Get Catalog",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\n  \"@type\": \"dspace:CatalogRequestMessage\",\n  \"dspace:filter\": []\n}",
+									"options": {
+										"raw": {
+											"language": "json"
 										}
-									},
-									"response": []
+									}
 								},
-								{
-									"name": "Get Catalog by Dataset ID",
-									"protocolProfileBehavior": {
-										"disableBodyPruning": true
-									},
-									"request": {
-										"method": "GET",
-										"header": [
-											{
-												"key": "Content-Type",
-												"value": "application/json"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{\n  \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\n  \"@type\": \"dspace:DatasetRequestMessage\",\n  \"dspace:dataset\": \"fdc45798-a222-4955-8baf-ab7fd66ac4d5\"\n}",
-											"options": {
-												"raw": {
-													"language": "json"
-												}
-											}
-										},
-										"url": {
-											"raw": "{{CONSUMER_SERVER_PROTOCOL_CATALOG}}/datasets/fdc45798-a222-4955-8baf-ab7fd66ac4d",
-											"host": [
-												"{{CONSUMER_SERVER_PROTOCOL_CATALOG}}"
-											],
-											"path": [
-												"datasets",
-												"fdc45798-a222-4955-8baf-ab7fd66ac4d"
-											]
-										}
-									},
-									"response": []
+								"url": {
+									"raw": "{{CONSUMER_SERVER_PROTOCOL_CATALOG}}/request",
+									"host": [
+										"{{CONSUMER_SERVER_PROTOCOL_CATALOG}}"
+									],
+									"path": [
+										"request"
+									]
 								}
-							]
+							},
+							"response": []
+						},
+						{
+							"name": "Get Catalog by Dataset ID",
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\n  \"@type\": \"dspace:DatasetRequestMessage\",\n  \"dspace:dataset\": \"fdc45798-a222-4955-8baf-ab7fd66ac4d5\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_PROTOCOL_CATALOG}}/datasets/fdc45798-a222-4955-8baf-ab7fd66ac4d",
+									"host": [
+										"{{CONSUMER_SERVER_PROTOCOL_CATALOG}}"
+									],
+									"path": [
+										"datasets",
+										"fdc45798-a222-4955-8baf-ab7fd66ac4d"
+									]
+								}
+							},
+							"response": []
 						}
 					],
 					"auth": {
@@ -627,249 +689,38 @@
 					"name": "Negotiation",
 					"item": [
 						{
-							"name": "API",
-							"item": [
-								{
-									"name": "Start negotiation",
-									"request": {
-										"method": "POST",
-										"header": [],
-										"body": {
-											"mode": "raw",
-											"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER_SERVER_PROTOCOL_NEGOTIATION}}/request\",\r\n    \"offer\": {\r\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"target\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"EQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
-											"options": {
-												"raw": {
-													"language": "json"
-												}
-											}
-										},
-										"url": {
-											"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/startNegotiation",
-											"host": [
-												"{{CONSUMER_SERVER_API_NEGOTIATION}}"
-											],
-											"path": [
-												"startNegotiation"
-											]
-										}
-									},
-									"response": []
-								},
-								{
-									"name": "Offer approved",
-									"request": {
-										"method": "POST",
-										"header": [
-											{
-												"key": "Content-Type",
-												"value": "application/json"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{\r\n    \"consumerPid\": \"urn:uuid:32541fe6-c580-409e-85a8-8a9a32fbe833\",\r\n    \"providerPid\": \"urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aab\",\r\n    \"offerAccepted\": true,\r\n    \"offer\": {\r\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"target\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"EQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
-											"options": {
-												"raw": {
-													"language": "json"
-												}
-											}
-										},
-										"url": {
-											"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/offerApproved",
-											"host": [
-												"{{CONSUMER_SERVER_API_NEGOTIATION}}"
-											],
-											"path": [
-												"offerApproved"
-											]
-										}
-									},
-									"response": []
-								},
-								{
-									"name": "Verify negotiation",
-									"request": {
-										"method": "POST",
-										"header": [
-											{
-												"key": "Content-Type",
-												"value": "application/json"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{\r\n    \"consumerPid\": \"urn:uuid:d13499db-5787-4018-a352-32f31e9277a3\",\r\n    \"providerPid\": \"urn:uuid:71d96cd0-8c2b-45db-af7e-c28ca2763a1d\"\r\n}",
-											"options": {
-												"raw": {
-													"language": "json"
-												}
-											}
-										},
-										"url": {
-											"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/verifyNegotiation",
-											"host": [
-												"{{CONSUMER_SERVER_API_NEGOTIATION}}"
-											],
-											"path": [
-												"verifyNegotiation"
-											]
-										}
-									},
-									"response": []
-								},
-								{
-									"name": "Post offer",
-									"request": {
-										"method": "POST",
-										"header": [
-											{
-												"key": "Content-Type",
-												"value": "application/json"
-											},
-											{
-												"key": "Authorization",
-												"value": "Basic YWRtaW5AbWFpbC5jb206cGFzc3dvcmQ="
-											},
-											{
-												"key": "Cookie",
-												"value": "JSESSIONID=1B172A0D2187794C8FA816EF096C69B8"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{\n    \"Forward-To\": \"{{CONSUMER_SERVER_PROTOCOL_NEGOTIATION}}/request\",\n    \"offer\": {\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\n        \"target\" : \"target\",\n        \"permission\": [\n            {\n                \"action\": \"USE\",\n                \"constraint\": [\n                    {\n                        \"leftOperand\": \"COUNT\",\n                        \"operator\": \"EQ\",\n                        \"rightOperand\": \"5\"\n                    }\n                ]\n            }\n        ]\n    }\n}",
-											"options": {
-												"raw": {
-													"language": "json"
-												}
-											}
-										},
-										"url": {
-											"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/postOffer",
-											"host": [
-												"{{PROVIDER_SERVER_API_NEGOTIATION}}"
-											],
-											"path": [
-												"postOffer"
-											]
-										}
-									},
-									"response": []
-								}
-							],
-							"auth": {
-								"type": "basic",
-								"basic": [
-									{
-										"key": "username",
-										"value": "admin@mail.com",
-										"type": "string"
-									},
-									{
-										"key": "password",
-										"value": "password",
-										"type": "string"
-									}
-								]
+							"name": "Get negotiation by ProviderPid",
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
 							},
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"type": "text/javascript",
-										"packages": {},
-										"exec": [
-											""
-										]
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
 									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"type": "text/javascript",
-										"packages": {},
-										"exec": [
-											""
-										]
-									}
-								}
-							]
-						},
-						{
-							"name": "Protocol",
-							"item": [
-								{
-									"name": "Get negotiation by ProviderPid",
-									"protocolProfileBehavior": {
-										"disableBodyPruning": true
-									},
-									"request": {
-										"method": "GET",
-										"header": [
-											{
-												"key": "Content-Type",
-												"value": "application/json"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "",
-											"options": {
-												"raw": {
-													"language": "json"
-												}
-											}
-										},
-										"url": {
-											"raw": "{{CONSUMER_SERVER_PROTOCOL_NEGOTIATION}}/urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aa",
-											"host": [
-												"{{CONSUMER_SERVER_PROTOCOL_NEGOTIATION}}"
-											],
-											"path": [
-												"urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aa"
-											]
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
 										}
-									},
-									"response": []
-								}
-							],
-							"auth": {
-								"type": "basic",
-								"basic": [
-									{
-										"key": "password",
-										"value": "password",
-										"type": "string"
-									},
-									{
-										"key": "username",
-										"value": "connector@mail.com",
-										"type": "string"
-									}
-								]
-							},
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"type": "text/javascript",
-										"packages": {},
-										"exec": [
-											""
-										]
 									}
 								},
-								{
-									"listen": "test",
-									"script": {
-										"type": "text/javascript",
-										"packages": {},
-										"exec": [
-											""
-										]
-									}
+								"url": {
+									"raw": "{{CONSUMER_SERVER_PROTOCOL_NEGOTIATION}}/urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aa",
+									"host": [
+										"{{CONSUMER_SERVER_PROTOCOL_NEGOTIATION}}"
+									],
+									"path": [
+										"urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aa"
+									]
 								}
-							]
+							},
+							"response": []
 						}
 					],
 					"auth": {

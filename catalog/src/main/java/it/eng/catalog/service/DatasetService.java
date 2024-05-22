@@ -101,11 +101,11 @@ public class DatasetService {
      */
     private Dataset.Builder returnBaseDatasetForUpdate(String id) {
         return repository.findById(id)
-                .map(c -> Dataset.Builder.newInstance()
-                        .id(c.getId())
-                        .version(c.getVersion())
-                        .issued(c.getIssued())
-                        .createdBy(c.getCreatedBy()))
-                .orElseThrow(() -> new CatalogErrorException("Catalog with id: " + id + " not found"));
+                .map(ds -> Dataset.Builder.newInstance()
+                        .id(ds.getId())
+                        .version(ds.getVersion())
+                        .issued(ds.getIssued())
+                        .createdBy(ds.getCreatedBy()))
+                .orElseThrow(() -> new CatalogErrorException("Dataset with id: " + id + " not found"));
     }
 }

@@ -3,7 +3,7 @@ package it.eng.catalog.rest.api;
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.catalog.exceptions.CatalogNotFoundAPIException;
 import it.eng.catalog.model.Catalog;
-import it.eng.catalog.model.Serializer;
+import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.service.CatalogService;
 import lombok.extern.java.Log;
 import org.springframework.http.MediaType;
@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/api/catalog")
 @Log
 public class CatalogAPIController {
-
 
     private final CatalogService catalogService;
 

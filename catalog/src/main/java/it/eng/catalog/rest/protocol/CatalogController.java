@@ -2,6 +2,7 @@ package it.eng.catalog.rest.protocol;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.catalog.model.*;
+import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.service.CatalogService;
 import lombok.extern.java.Log;
 import org.springframework.http.MediaType;

@@ -1,21 +1,21 @@
 package it.eng.catalog.service;
 
-import java.util.List;
-import java.util.Optional;
-
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.stereotype.Service;
-
 import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.exceptions.CatalogNotFoundAPIException;
 import it.eng.catalog.model.Catalog;
+import it.eng.catalog.model.DataService;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.Offer;
-import it.eng.catalog.model.Serializer;
 import it.eng.catalog.repository.CatalogRepository;
+import it.eng.catalog.serializer.Serializer;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequest;
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
 
 /**
  * The CatalogService class provides methods to interact with catalog data, including saving, retrieving, and deleting catalogs.
@@ -96,11 +96,11 @@ public class CatalogService {
     public void deleteCatalog(String id) {
         repository.deleteById(id);
     }
-    
+
     public void validateIfOfferIsValid(ContractNegotationOfferRequest offerRequest) {
-    	log.info("Comparing if offer is valid or not");
-    	Offer offer = Serializer.deserializeProtocol(offerRequest.getOffer(), Offer.class);
-    	boolean valid = false;
+        log.info("Comparing if offer is valid or not");
+        Offer offer = Serializer.deserializeProtocol(offerRequest.getOffer(), Offer.class);
+        boolean valid = false;
 //    	try {
 //    		Catalog catalog = getCatalog();
 //    		catalog.getDataset().forEach(ds -> {
@@ -115,19 +115,18 @@ public class CatalogService {
 //    			});
 //    			});
 //    		});
-    		// if reached here, all checks are OK, meaning offer is valid
-    		log.info("Offer is valid, all checks passed ");
-    		valid = true;
+        // if reached here, all checks are OK, meaning offer is valid
+        log.info("Offer is valid, all checks passed ");
+        valid = true;
 //    	} catch (Exception ex) {
 //    		log.info("Offer is NOT valid", ex.getLocalizedMessage());
 //    		valid = false;
 //    	}
-    	
-    	ContractNegotiationOfferResponse contractNegotiationOfferResponse = new ContractNegotiationOfferResponse(offerRequest.getConsumerPid(), 
-    			offerRequest.getProviderPid(), valid, Serializer.serializeProtocolJsonNode(offer));
-    	publisher.publishEvent(contractNegotiationOfferResponse);
+
+        ContractNegotiationOfferResponse contractNegotiationOfferResponse = new ContractNegotiationOfferResponse(offerRequest.getConsumerPid(),
+                offerRequest.getProviderPid(), valid, Serializer.serializeProtocolJsonNode(offer));
+        publisher.publishEvent(contractNegotiationOfferResponse);
     }
-    
 
 
     /**
@@ -194,6 +193,45 @@ public class CatalogService {
     public void updateCatalogDatasetAfterDelete(Dataset dataset) {
         Catalog c = getCatalog();
         c.getDataset().remove(dataset);
+        repository.save(c);
+    }
+
+    /**
+     * Updates the catalog with a newly saved dataService reference.
+     * This method adds the new dataService reference to the catalog's dataService list and saves the updated catalog.
+     *
+     * @param dataService The new data service reference to be added to the catalog.
+     * @param dataService
+     */
+    public void updateCatalogDataServiceAfterSave(DataService dataService) {
+        Catalog c = getCatalog();
+        c.getService().add(dataService);
+        repository.save(c);
+    }
+
+
+    /**
+     * Updates the catalog with modified dataService information.
+     * This method replaces an existing dataService in the catalog with its updated version and saves the updated catalog.
+     *
+     * @param dataService The dataService with updated information to be integrated into the catalog.
+     */
+    public void updateCatalogDataServiceAfterUpdate(DataService dataService) {
+        Catalog c = getCatalog();
+        c.getService().add(dataService);
+        repository.save(c);
+    }
+
+    /**
+     * Removes a dataService reference from the catalog and saves the updated catalog.
+     * This method removes the specified dataService reference from the catalog's dataService collection and saves the updated catalog.
+     *
+     * @param dataService The dataService to be removed from the catalog.
+     */
+
+    public void updateCatalogDataServiceAfterDelete(DataService dataService) {
+        Catalog c = getCatalog();
+        c.getService().remove(dataService);
         repository.save(c);
     }
 

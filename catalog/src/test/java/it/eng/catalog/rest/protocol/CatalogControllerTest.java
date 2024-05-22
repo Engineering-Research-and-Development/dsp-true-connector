@@ -1,11 +1,13 @@
 package it.eng.catalog.rest.protocol;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import it.eng.catalog.model.CatalogRequestMessage;
+import it.eng.catalog.model.DatasetRequestMessage;
+import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.service.CatalogService;
+import it.eng.catalog.util.MockObjectUtil;
+import it.eng.tools.model.DSpaceConstants;
+import jakarta.validation.ValidationException;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,15 +16,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 
-import com.fasterxml.jackson.databind.JsonNode;
-
-import it.eng.catalog.model.CatalogRequestMessage;
-import it.eng.catalog.model.DatasetRequestMessage;
-import it.eng.catalog.model.Serializer;
-import it.eng.catalog.service.CatalogService;
-import it.eng.catalog.util.MockObjectUtil;
-import it.eng.tools.model.DSpaceConstants;
-import jakarta.validation.ValidationException;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class CatalogControllerTest {
