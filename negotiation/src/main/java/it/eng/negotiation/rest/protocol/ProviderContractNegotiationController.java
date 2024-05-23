@@ -2,8 +2,9 @@ package it.eng.negotiation.rest.protocol;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.negotiation.model.*;
-import it.eng.negotiation.service.ContractNegotiationService;
-import lombok.extern.java.Log;
+import it.eng.negotiation.service.ContractNegotiationProviderService;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,14 +16,14 @@ import java.util.concurrent.ExecutionException;
 
 @RestController
 @RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/negotiations")
-@Log
+@Slf4j
 public class ProviderContractNegotiationController {
 
-    private ContractNegotiationService contractNegotiationService;
+    private ContractNegotiationProviderService providerService;
 
-    public ProviderContractNegotiationController(ContractNegotiationService contractNegotiationService) {
+    public ProviderContractNegotiationController(ContractNegotiationProviderService providerService) {
         super();
-        this.contractNegotiationService = contractNegotiationService;
+        this.providerService = providerService;
     }
 
     // 2.1 The negotiation endpoint
@@ -31,7 +32,7 @@ public class ProviderContractNegotiationController {
     @GetMapping(path = "/{providerPid}")
     public ResponseEntity<JsonNode>  getNegotiationByProviderPid(@PathVariable String providerPid) throws InterruptedException, ExecutionException {
         log.info("Get negotiation by provider pid");
-		ContractNegotiation contractNegotiation = contractNegotiationService.getNegotiationByProviderPid(providerPid);
+		ContractNegotiation contractNegotiation = providerService.getNegotiationByProviderPid(providerPid);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(Serializer.serializeProtocolJsonNode(contractNegotiation));
     }
 
@@ -43,7 +44,7 @@ public class ProviderContractNegotiationController {
     		throws InterruptedException, ExecutionException {
         log.info("Creating negotiation");
         ContractRequestMessage crm = Serializer.deserializeProtocol(contractRequestMessageJsonNode, ContractRequestMessage.class);
-        ContractNegotiation cn = contractNegotiationService.startContractNegotiation(crm);
+        ContractNegotiation cn = providerService.startContractNegotiation(crm);
        
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest().path("/{id}")
@@ -86,9 +87,11 @@ public class ProviderContractNegotiationController {
                                                                @RequestBody JsonNode contractAgreementVerificationMessageJsonNode) {
         ContractAgreementVerificationMessage cavm = 
         		Serializer.deserializeProtocol(contractAgreementVerificationMessageJsonNode, ContractAgreementVerificationMessage.class);
-
-        ContractNegotiationErrorMessage error = methodNotYetImplemented();
-        return ResponseEntity.internalServerError().contentType(MediaType.APPLICATION_JSON).body(Serializer.serializeProtocolJsonNode(error));
+        log.info("Verification message received {}", contractAgreementVerificationMessageJsonNode.toPrettyString());
+//        ContractNegotiationErrorMessage error = methodNotYetImplemented();
+//        return ResponseEntity.internalServerError().contentType(MediaType.APPLICATION_JSON).body(Serializer.serializeProtocolJsonNode(error));
+        providerService.finalizeNegotiation(cavm);
+        return ResponseEntity.ok().build();
     }
 
     // 2.6 The provider negotiations/:id/termination resource

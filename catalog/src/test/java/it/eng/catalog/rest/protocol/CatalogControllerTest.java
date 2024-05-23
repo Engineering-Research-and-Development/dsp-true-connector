@@ -3,15 +3,15 @@ package it.eng.catalog.rest.protocol;
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.catalog.model.CatalogRequestMessage;
 import it.eng.catalog.model.DatasetRequestMessage;
-import it.eng.catalog.model.Serializer;
+import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.service.CatalogService;
 import it.eng.catalog.util.MockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 import org.apache.commons.lang3.StringUtils;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +23,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class CatalogControllerTest {
 
+	@InjectMocks
     private CatalogController catalogController;
 
     @Mock
@@ -33,10 +34,6 @@ public class CatalogControllerTest {
             .dataset(Serializer.serializeProtocol(MockObjectUtil.DATASET))
             .build();
 
-    @BeforeEach
-    public void init() {
-        catalogController = new CatalogController(catalogService);
-    }
 
     @Test
     public void getCatalogSuccessfulTest() throws Exception {

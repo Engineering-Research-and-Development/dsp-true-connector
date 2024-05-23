@@ -51,7 +51,7 @@ public class Offer {
    	"not": { "required": [ "odrl:target" ] }
  *
  */
-	@NotNull
+//	@NotNull (if new offer from consumer Id of offer is null)
 	@JsonProperty(DSpaceConstants.ID)
 	private String id;
 	

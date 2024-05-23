@@ -1,27 +1,93 @@
 {
-	"id": "b7146cd2-94f3-4e66-bc55-f3033220bdcc",
+	"id": "60081eb8-46de-4a5c-a723-9f6d8445cb48",
 	"name": "TC_V2_ENV",
 	"values": [
 		{
-			"key": "SERVER_API_CATALOG",
-			"value": "http://localhost:8080/api/catalog",
+			"key": "CONSUMER",
+			"value": "http://localhost:8080",
 			"type": "default",
 			"enabled": true
 		},
 		{
-			"key": "SERVER_PROTOCOL_CATALOG",
-			"value": "http://localhost:8080/catalog",
+			"key": "PROVIDER",
+			"value": "http://localhost:8090",
 			"type": "default",
 			"enabled": true
 		},
 		{
-			"key": "SERVER_PROTOCOL_NEGOTIATION",
-			"value": "http://localhost:8080/negotiations",
+			"key": "CONSUMER_SERVER_API_CATALOG",
+			"value": "{{CONSUMER}}/api/catalog",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_PROTOCOL_CATALOG",
+			"value": "{{CONSUMER}}/catalog",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_PROTOCOL_NEGOTIATION",
+			"value": "{{CONSUMER}}/negotiations",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_API_NEGOTIATION",
+			"value": "{{CONSUMER}}/api/negotiations",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_API_DATASET",
+			"value": "{{CONSUMER}}/api/dataset",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_API_DATASERVICE",
+			"value": "{{CONSUMER}}/api/dataservice",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "PROVIDER_SERVER_API_CATALOG",
+			"value": "{{PROVIDER}}/api/catalog",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "PROVIDER_SERVER_PROTOCOL_CATALOG",
+			"value": "{{PROVIDER}}/catalog",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "PROVIDER_SERVER_PROTOCOL_NEGOTIATION",
+			"value": "{{PROVIDER}}/negotiations",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "PROVIDER_SERVER_API_NEGOTIATION",
+			"value": "{{PROVIDER}}/api/negotiations",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "PROVIDER_SERVER_API_DATASET",
+			"value": "{{PROVIDER}}/api/dataset",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "PROVIDER_SERVER_API_DATASERVICE",
+			"value": "{{PROVIDER}}/api/dataservice",
 			"type": "default",
 			"enabled": true
 		}
 	],
 	"_postman_variable_scope": "environment",
-	"_postman_exported_at": "2024-04-01T14:51:53.162Z",
-	"_postman_exported_using": "Postman/10.24.2"
+	"_postman_exported_at": "2024-05-20T14:56:55.255Z",
+	"_postman_exported_using": "Postman/10.24.24"
 }
