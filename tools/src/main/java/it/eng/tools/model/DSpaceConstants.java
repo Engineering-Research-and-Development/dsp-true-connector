@@ -154,4 +154,10 @@ public interface DSpaceConstants {
 	public static final String PUBLISHER = DCT + "publisher";
 	public static final String CATALOG_REQUEST_MESSAGE = DSPACE + "CatalogRequestMessage";
 
+	public static final String SAMPLE_VALUE = "sampleValue";
+	public static final String MANDATORY = "mandatory";
+	public static final String INSERT_DATE = "insertDate";
+	public static final String LAST_CHANGE_DATE = "lastChangeDate";
+	public static final String KEY = "@key";
+
 }
