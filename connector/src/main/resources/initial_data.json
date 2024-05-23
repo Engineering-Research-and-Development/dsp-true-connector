@@ -141,5 +141,18 @@
       "consumerPid": "urn:uuid:32541fe6-c580-409e-85a8-8a9a32fbe833",
       "state": "REQUESTED"
     }
+  ],
+  "properties": [
+    {
+    "_id": "test_property",
+    "key": "test_property",    
+    "value": "true",
+    "mandatory": false
+  }, {
+    "_id": "test_property_2",
+    "key": "test_property_2",    
+    "value": 123,
+    "mandatory": false
+  }
   ]
 }
