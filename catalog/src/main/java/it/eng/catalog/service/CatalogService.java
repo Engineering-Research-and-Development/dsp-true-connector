@@ -1,11 +1,9 @@
+
 package it.eng.catalog.service;
 
 import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.exceptions.CatalogNotFoundAPIException;
-import it.eng.catalog.model.Catalog;
-import it.eng.catalog.model.DataService;
-import it.eng.catalog.model.Dataset;
-import it.eng.catalog.model.Offer;
+import it.eng.catalog.model.*;
 import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.serializer.Serializer;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequest;
@@ -236,6 +234,31 @@ public class CatalogService {
     }
 
     /**
+     * Updates the catalog with a newly saved distribution reference.
+     * This method adds the new distribution reference to the catalog's distribution list and saves the updated catalog.
+     *
+     * @param newDistribution The new distribution reference to be added to the catalog.
+     */
+    public void updateCatalogDistributionAfterSave(Distribution newDistribution) {
+        Catalog c = getCatalog();
+        c.getDistribution().add(newDistribution);
+        repository.save(c);
+    }
+    
+    /**
+     * Removes a distribution reference from the catalog and saves the updated catalog.
+     * This method removes the specified distribution reference from the catalog's distribution collection and saves the updated catalog.
+     *
+     * @param distribution The distribution to be removed from the catalog.
+     */
+
+    public void updateCatalogDistributionAfterDelete(Distribution distribution) {
+        Catalog c = getCatalog();
+        c.getDistribution().remove(distribution);
+        repository.save(c);
+    }
+
+    /**
      * Private method for creating base builder for catalog update by its ID.
      *
      * @param id The ID of the catalog for update.
@@ -251,6 +274,4 @@ public class CatalogService {
                         .createdBy(c.getCreatedBy()))
                 .orElseThrow(() -> new CatalogNotFoundAPIException("Catalog with id: " + id + " not found"));
     }
-
 }
-

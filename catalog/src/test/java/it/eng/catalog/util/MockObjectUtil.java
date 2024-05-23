@@ -56,6 +56,19 @@ public class MockObjectUtil {
             .accessService(Arrays.asList(DataServiceUtil.DATA_SERVICE))
             .build();
 
+    public static final Distribution DISTRIBUTION_FOR_UPDATE = Distribution.Builder.newInstance()
+            .title(MockObjectUtil.TITLE)
+            .description(Arrays.asList(MockObjectUtil.MULTILANGUAGE))
+            .issued(MockObjectUtil.ISSUED)
+            .modified(MockObjectUtil.MODIFIED)
+            .hasPolicy(Arrays.asList(MockObjectUtil.OFFER))
+            .accessService(Arrays.asList(DataServiceUtil.DATA_SERVICE))
+            .version(0L)
+            .createdBy("admin@mail.com")
+            .lastModifiedBy("admin@mail.com")
+            .build();
+
+    public static final List<Distribution> DISTRIBUTIONS = Arrays.asList(DISTRIBUTION);
     public static final Dataset DATASET = Dataset.Builder.newInstance()
             .conformsTo(CONFORMSTO)
             .creator(CREATOR)
