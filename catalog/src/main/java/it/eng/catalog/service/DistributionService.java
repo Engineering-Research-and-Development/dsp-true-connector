@@ -75,8 +75,7 @@ public class DistributionService {
         Distribution existingDistribution = repository.findById(id).orElseThrow(() -> new DistributionNotFoundAPIException("Distribution with id: " + id + " not found"));
         Distribution updatedDistribution = Distribution.Builder.updateInstance(existingDistribution, distribution).build();
         Distribution storedDistribution = repository.save(updatedDistribution);
-        catalogService.updateCatalogDistributionAfterUpdate(storedDistribution);
 
-        return updatedDistribution;
+        return storedDistribution;
     }
 }

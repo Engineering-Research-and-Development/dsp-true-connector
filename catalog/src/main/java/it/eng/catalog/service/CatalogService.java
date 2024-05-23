@@ -244,19 +244,7 @@ public class CatalogService {
         c.getDistribution().add(newDistribution);
         repository.save(c);
     }
-
-    /**
-     * Updates the catalog with modified distribution information.
-     * This method replaces an existing distribution in the catalog with its updated version and saves the updated catalog.
-     *
-     * @param updatedDistribution The distribution with updated information to be integrated into the catalog.
-     */
-    public void updateCatalogDistributionAfterUpdate(Distribution updatedDistribution) {
-        Catalog c = getCatalog();
-        c.getDistribution().add(updatedDistribution);
-        repository.save(c);
-    }
-
+    
     /**
      * Removes a distribution reference from the catalog and saves the updated catalog.
      * This method removes the specified distribution reference from the catalog's distribution collection and saves the updated catalog.

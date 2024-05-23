@@ -114,6 +114,5 @@ public class DistributionServiceTest {
         assertEquals(distribution.getId(), result.getId());
         verify(repository).findById(distribution.getId());
         verify(repository).save(any(Distribution.class));
-        verify(catalogService).updateCatalogDistributionAfterUpdate(any(Distribution.class));
     }
 }
