@@ -75,8 +75,7 @@ public class DataServiceService {
         DataService existingDataService = repository.findById(id).orElseThrow(() -> new DataServiceNotFoundAPIException("Data Service with id: " + id + " not found"));
         DataService updatedDataService = DataService.Builder.updateInstance(existingDataService, dataService).build();
         DataService storedDataService = repository.save(updatedDataService);
-        catalogService.updateCatalogDataServiceAfterUpdate(storedDataService);
 
-        return updatedDataService;
+        return storedDataService;
     }
 }

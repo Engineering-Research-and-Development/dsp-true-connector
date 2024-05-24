@@ -170,19 +170,6 @@ public class CatalogService {
     }
 
     /**
-     * Updates the catalog with modified dataset information.
-     * This method replaces an existing dataset in the catalog with its updated version and saves the updated catalog.
-     *
-     * @param updatedDataset The dataset with updated information to be integrated into the catalog.
-     */
-    public void updateCatalogDatasetAfterUpdate(Dataset updatedDataset) {
-        // TODO handle the situation when updated dataset have distribution which is not present in catalog
-        Catalog c = getCatalog();
-        c.getDataset().add(updatedDataset);
-        repository.save(c);
-    }
-
-    /**
      * Removes a dataset reference from the catalog and saves the updated catalog.
      * This method removes the specified dataset reference from the catalog's dataset collection and saves the updated catalog.
      *
@@ -209,18 +196,6 @@ public class CatalogService {
 
 
     /**
-     * Updates the catalog with modified dataService information.
-     * This method replaces an existing dataService in the catalog with its updated version and saves the updated catalog.
-     *
-     * @param dataService The dataService with updated information to be integrated into the catalog.
-     */
-    public void updateCatalogDataServiceAfterUpdate(DataService dataService) {
-        Catalog c = getCatalog();
-        c.getService().add(dataService);
-        repository.save(c);
-    }
-
-    /**
      * Removes a dataService reference from the catalog and saves the updated catalog.
      * This method removes the specified dataService reference from the catalog's dataService collection and saves the updated catalog.
      *
@@ -244,7 +219,7 @@ public class CatalogService {
         c.getDistribution().add(newDistribution);
         repository.save(c);
     }
-    
+
     /**
      * Removes a distribution reference from the catalog and saves the updated catalog.
      * This method removes the specified distribution reference from the catalog's distribution collection and saves the updated catalog.

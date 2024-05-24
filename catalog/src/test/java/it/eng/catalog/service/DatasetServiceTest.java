@@ -109,6 +109,5 @@ public class DatasetServiceTest {
         assertEquals(dataset.getId(), result.getId());
         verify(repository).findById(dataset.getId());
         verify(repository).save(any(Dataset.class));
-        verify(catalogService).updateCatalogDatasetAfterUpdate(any(Dataset.class));
     }
 }
