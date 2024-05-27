@@ -87,7 +87,6 @@ public class DatasetService {
 
         Dataset updatedDataset = builder.build();
         Dataset storedDataset = repository.save(updatedDataset);
-        catalogService.updateCatalogDatasetAfterUpdate(updatedDataset);
         return storedDataset;
     }
 
