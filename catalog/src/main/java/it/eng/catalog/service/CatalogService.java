@@ -8,8 +8,8 @@ import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.Offer;
 import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.serializer.Serializer;
-import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequest;
-import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponse;
+import it.eng.tools.event.contractnegotiation.OfferValidationRequest;
+import it.eng.tools.event.contractnegotiation.OfferValidationResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -97,7 +97,7 @@ public class CatalogService {
         repository.deleteById(id);
     }
 
-    public void validateIfOfferIsValid(ContractNegotationOfferRequest offerRequest) {
+    public void validateOffer(OfferValidationRequest offerRequest) {
         log.info("Comparing if offer is valid or not");
         Offer offer = Serializer.deserializeProtocol(offerRequest.getOffer(), Offer.class);
         boolean valid = false;
@@ -123,9 +123,9 @@ public class CatalogService {
 //    		valid = false;
 //    	}
 
-        ContractNegotiationOfferResponse contractNegotiationOfferResponse = new ContractNegotiationOfferResponse(offerRequest.getConsumerPid(),
+        OfferValidationResponse offerValidationResponse = new OfferValidationResponse(offerRequest.getConsumerPid(),
                 offerRequest.getProviderPid(), valid, Serializer.serializeProtocolJsonNode(offer));
-        publisher.publishEvent(contractNegotiationOfferResponse);
+        publisher.publishEvent(offerValidationResponse);
     }
 
 

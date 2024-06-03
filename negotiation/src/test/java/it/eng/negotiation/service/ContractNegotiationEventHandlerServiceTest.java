@@ -20,9 +20,10 @@ import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ModelUtil;
 import it.eng.negotiation.model.Serializer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
+import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponse;
+import it.eng.tools.event.contractnegotiation.OfferValidationResponse;
 import it.eng.tools.response.GenericApiResponse;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,6 +31,8 @@ public class ContractNegotiationEventHandlerServiceTest {
 
 	@Mock
 	private ContractNegotiationRepository repository;
+	@Mock
+	private AgreementRepository agreementRepository;
 	@Mock
 	private ContractNegotiationProperties properties;
 	@Mock
@@ -43,7 +46,7 @@ public class ContractNegotiationEventHandlerServiceTest {
 	@Test
 	@DisplayName("Handle contract negotiation offer response success")
 	public void handleContractNegotiationOfferResponse_accepted_success() {
-		ContractNegotiationOfferResponse offerResponse = new ContractNegotiationOfferResponse(ModelUtil.CONSUMER_PID, 
+		OfferValidationResponse offerResponse = new OfferValidationResponse(ModelUtil.CONSUMER_PID, 
 				ModelUtil.PROVIDER_PID, true, Serializer.serializePlainJsonNode(ModelUtil.OFFER));
 		
 		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION));
@@ -60,7 +63,7 @@ public class ContractNegotiationEventHandlerServiceTest {
 	@Test
 	@DisplayName("Handle contract negotiation offer declined")
 	public void handleContractNegotiationOfferResponse_declined() {
-		ContractNegotiationOfferResponse offerResponse = new ContractNegotiationOfferResponse(ModelUtil.CONSUMER_PID, 
+		OfferValidationResponse offerResponse = new OfferValidationResponse(ModelUtil.CONSUMER_PID, 
 				ModelUtil.PROVIDER_PID, false, Serializer.serializeProtocolJsonNode(ModelUtil.OFFER));
 		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class)))
 			.thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION));

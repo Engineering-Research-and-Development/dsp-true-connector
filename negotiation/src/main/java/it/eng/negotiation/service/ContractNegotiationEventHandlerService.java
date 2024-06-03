@@ -13,10 +13,11 @@ import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.model.Serializer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
+import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
-import it.eng.negotiation.rest.protocol.ContactNegotiationCallback;
+import it.eng.negotiation.rest.protocol.ContractNegotiationCallback;
 import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponse;
+import it.eng.tools.event.contractnegotiation.OfferValidationResponse;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 
@@ -24,23 +25,25 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ContractNegotiationEventHandlerService {
 	
-    private ContractNegotiationRepository repository;
-	private ContractNegotiationProperties properties;
-	private OkHttpRestClient okHttpRestClient;
+	private final ContractNegotiationRepository contractNegotiationRepository;
+	private final AgreementRepository agreementRepository;
+	private final ContractNegotiationProperties properties;
+	private final OkHttpRestClient okHttpRestClient;
 	
-	public ContractNegotiationEventHandlerService(ContractNegotiationRepository repository,
-			ContractNegotiationProperties properties, OkHttpRestClient okHttpRestClient) {
-		this.repository = repository;
+	public ContractNegotiationEventHandlerService(ContractNegotiationRepository contractNegotiationRepository,
+			ContractNegotiationProperties properties, OkHttpRestClient okHttpRestClient, AgreementRepository agreementRepository) {
+		this.contractNegotiationRepository = contractNegotiationRepository;
+		this.agreementRepository = agreementRepository;
 		this.properties = properties;
 		this.okHttpRestClient = okHttpRestClient;
 	}
 
-	public void handleContractNegotiationOfferResponse(ContractNegotiationOfferResponse offerResponse) {
+	public void handleContractNegotiationOfferResponse(OfferValidationResponse offerResponse) {
 		String result = offerResponse.isOfferAccepted() ? "accepted" : "declined";
 		log.info("Contract offer " + result);
 		// TODO get callbackAddress and send Agreement message
 		log.info("ConsumerPid - " + offerResponse.getConsumerPid() + ", providerPid - " + offerResponse.getProviderPid());
-		Optional<ContractNegotiation> contractNegtiationOpt = repository.findByProviderPidAndConsumerPid(offerResponse.getProviderPid(), offerResponse.getConsumerPid());
+		Optional<ContractNegotiation> contractNegtiationOpt = contractNegotiationRepository.findByProviderPidAndConsumerPid(offerResponse.getProviderPid(), offerResponse.getConsumerPid());
 		contractNegtiationOpt.ifPresent(cn -> log.info("Found intial negotiation" + " - CallbackAddress " + cn.getCallbackAddress()));
 		ContractNegotiation contractNegotiation = contractNegtiationOpt.get();
 		if(offerResponse.isOfferAccepted()) {
@@ -53,7 +56,7 @@ public class ContractNegotiationEventHandlerService {
 			
 			String authorization = okhttp3.Credentials.basic("connector@mail.com", "password");
 			GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
-					contractNegotiation.getCallbackAddress() + ContactNegotiationCallback.getContractAgreementCallback("consumer", contractNegotiation.getConsumerPid()), 
+					contractNegotiation.getCallbackAddress() + ContractNegotiationCallback.getContractAgreementCallback("consumer", contractNegotiation.getConsumerPid()), 
 					Serializer.serializeProtocolJsonNode(agreementMessage),
 					authorization);
 			if(response.isSuccess()) {
@@ -66,8 +69,9 @@ public class ContractNegotiationEventHandlerService {
 						.state(ContractNegotiationState.AGREED)
 						.callbackAddress(contractNegotiation.getCallbackAddress())
 						.build();
-				repository.save(contractNegtiationUpdate);
-				// TODO save agreement also
+				contractNegotiationRepository.save(contractNegtiationUpdate);
+				log.info("Saving agreement..." + agreementMessage.getAgreement().getId());
+				agreementRepository.save(agreementMessage.getAgreement());
 			} else {
 				log.info("Response status not 200 - consumer did not process AgreementMessage correct - what to do with it???");
 			}
@@ -88,12 +92,12 @@ public class ContractNegotiationEventHandlerService {
 	public void contractAgreementVerificationMessage(ContractAgreementVerificationMessage verificationMessage) {
 		log.info("ConsumerPid - " + verificationMessage.getConsumerPid() + ", providerPid - " + verificationMessage.getProviderPid());
 		Optional<ContractNegotiation> contractNegtiationOpt = 
-				repository.findByProviderPidAndConsumerPid(verificationMessage.getProviderPid(), verificationMessage.getConsumerPid());
+				contractNegotiationRepository.findByProviderPidAndConsumerPid(verificationMessage.getProviderPid(), verificationMessage.getConsumerPid());
 		contractNegtiationOpt.ifPresent(cn -> log.info("Found intial negotiation" + " - CallbackAddress " + cn.getCallbackAddress()));
 		ContractNegotiation contractNegtiation = contractNegtiationOpt.get();
 
 		String authorization = okhttp3.Credentials.basic("connector@mail.com", "password");
-		String callbackAddress = contractNegtiation.getCallbackAddress() + ContactNegotiationCallback.getProviderHandleAgreementCallback(verificationMessage.getProviderPid());
+		String callbackAddress = contractNegtiation.getCallbackAddress() + ContractNegotiationCallback.getProviderHandleAgreementCallback(verificationMessage.getProviderPid());
 		log.info("Sending verification message to provider to {}", callbackAddress);
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(callbackAddress, 
 				Serializer.serializeProtocolJsonNode(verificationMessage),
@@ -109,7 +113,7 @@ public class ContractNegotiationEventHandlerService {
 					.state(ContractNegotiationState.FINALIZED)
 					.callbackAddress(contractNegtiation.getCallbackAddress())
 					.build();
-			repository.save(contractNegtiationUpdate);
+			contractNegotiationRepository.save(contractNegtiationUpdate);
 		} else {
 			log.info("Response status not 200 - consumer did not process Verification message correct - what to do with it???");
 		}

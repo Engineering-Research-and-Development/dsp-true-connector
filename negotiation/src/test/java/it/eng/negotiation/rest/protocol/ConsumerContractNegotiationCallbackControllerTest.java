@@ -72,13 +72,13 @@ public class ConsumerContractNegotiationCallbackControllerTest {
     public void handleAgreement() throws InterruptedException, ExecutionException, JsonMappingException, JsonProcessingException {
         String json = Serializer.serializeProtocol(contractAgreementMessage());
         JsonNode jsonNode = mapper.readTree(json);
-        doNothing().when(contractNegotiationConsumerService).handleAgreement(any(String.class), any(ContractAgreementMessage.class));
+        doNothing().when(contractNegotiationConsumerService).handleAgreement(any(ContractAgreementMessage.class));
 
         ResponseEntity<JsonNode> response = controller.handleAgreement(ModelUtil.CONSUMER_PID, jsonNode);
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
 
-        verify(contractNegotiationConsumerService).handleAgreement(any(String.class), any(ContractAgreementMessage.class));
+        verify(contractNegotiationConsumerService).handleAgreement(any(ContractAgreementMessage.class));
     }
 
     @Test

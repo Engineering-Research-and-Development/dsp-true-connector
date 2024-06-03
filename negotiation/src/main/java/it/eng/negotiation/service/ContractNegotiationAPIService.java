@@ -9,13 +9,18 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
+import it.eng.negotiation.model.Agreement;
+import it.eng.negotiation.model.ContractAgreementMessage;
 import it.eng.negotiation.model.ContractNegotiation;
+import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ContractOfferMessage;
 import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.model.Serializer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
+import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
+import it.eng.negotiation.repository.OfferRepository;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -24,50 +29,59 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ContractNegotiationAPIService {
 
-	private OkHttpRestClient okHttpRestClient;
-	private ContractNegotiationRepository repository;
-	private ContractNegotiationProperties properties;
+	private final OkHttpRestClient okHttpRestClient;
+	private final ContractNegotiationRepository contractNegotiationRepository;
+	private final ContractNegotiationProperties properties;
+	private final OfferRepository offerRepository;
+	private final AgreementRepository agreementRepository;
+	ObjectMapper mapper = new ObjectMapper();
 
-	public ContractNegotiationAPIService(OkHttpRestClient okHttpRestClient, ContractNegotiationRepository repository,
-			ContractNegotiationProperties properties) {
+	public ContractNegotiationAPIService(OkHttpRestClient okHttpRestClient, ContractNegotiationRepository contractNegotiationRepository,
+			ContractNegotiationProperties properties, OfferRepository offerRepository, AgreementRepository agreementRepository) {
 		this.okHttpRestClient = okHttpRestClient;
-		this.repository = repository;
+		this.contractNegotiationRepository = contractNegotiationRepository;
 		this.properties = properties;
+		this.offerRepository = offerRepository;
+		this.agreementRepository = agreementRepository;
 	}
 
 	/**
-	 * Start negotiation</br>
+	 * Start negotiation as consumer</br>
 	 * Contract request message will be created and sent to connector behind forwardTo URL
 	 * @param forwardTo - target connector URL
 	 * @param offerNode - offer
 	 * @return
 	 */
 	public JsonNode startNegotiation(String forwardTo, JsonNode offerNode) {
+		Offer offer = Serializer.deserializePlain(offerNode.toPrettyString(), Offer.class);
 		ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
 				.callbackAddress(properties.callbackAddress())
 				.consumerPid("urn:uuid:" + UUID.randomUUID())
-				.offer(Serializer.deserializePlain(offerNode.toPrettyString(), Offer.class))
+				.offer(offer)
 				.build();
 		String authorization =  okhttp3.Credentials.basic("connector@mail.com", "password");
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(forwardTo, Serializer.serializeProtocolJsonNode(contractRequestMessage), authorization);
 		log.info("Response received {}", response);
-		ObjectMapper mapper = new ObjectMapper();
 		JsonNode jsonNode = null;
-		try {
-			log.info("ContractNegotiation received {}", response);
-			jsonNode = mapper.readTree(response.getData());
-			ContractNegotiation contractNegotiation = Serializer.deserializeProtocol(jsonNode, ContractNegotiation.class);
-			// as workaround set forwartDo in callbackAddress???
-			ContractNegotiation contractNegtiationUpdate = ContractNegotiation.Builder.newInstance()
-					.id(contractNegotiation.getId())
-					.consumerPid(contractNegotiation.getConsumerPid())
-					.providerPid(contractNegotiation.getProviderPid())
-					.callbackAddress("http://localhost:8090/")
-					.state(contractNegotiation.getState())
-					.build();
-			repository.save(contractNegtiationUpdate);
-		} catch (JsonProcessingException e) {
-			throw new ContractNegotiationAPIException(e.getLocalizedMessage(), e);
+		if (response.getHttpStatus() == 201) {
+			try {
+				jsonNode = mapper.readTree(response.getData());
+				ContractNegotiation contractNegotiation = Serializer.deserializeProtocol(jsonNode, ContractNegotiation.class);
+				contractNegotiationRepository.save(contractNegotiation);
+				log.info("Contract negotiation {} saved", contractNegotiation.getId());
+				Offer dbOffer = Offer.Builder.newInstance()
+				.assignee(contractNegotiation.getConsumerPid())
+				.assigner(contractNegotiation.getProviderPid())
+				.id(offer.getId())
+				.permission(offer.getPermission())
+				.target(offer.getTarget())
+				.build();
+				offerRepository.save(dbOffer);
+				log.info("Offer {} saved", offer.getId());
+			} catch (JsonProcessingException e) {
+				log.error("Contract negotiation from response not valid");
+				throw new ContractNegotiationAPIException(e.getLocalizedMessage(), e);
+			}
 		}
 		return jsonNode;
 	}
@@ -111,11 +125,12 @@ public class ContractNegotiationAPIService {
 						.id(contractNegotiation.getId())
 						.consumerPid(contractNegotiation.getConsumerPid())
 						.providerPid(contractNegotiation.getProviderPid())
-						.callbackAddress(forwardTo)
+						// callbackAddress is the same because it is now Consumer's turn to respond
+//						.callbackAddress(forwardTo)
 						.state(contractNegotiation.getState())
 						.build();
 				// provider saves contract negotiation
-				repository.save(contractNegtiationUpdate);
+				contractNegotiationRepository.save(contractNegtiationUpdate);
 			} else {
 				log.info("Error response received!");
 				throw new ContractNegotiationAPIException(response.getMessage());
@@ -124,5 +139,38 @@ public class ContractNegotiationAPIService {
 			throw new ContractNegotiationAPIException(e.getLocalizedMessage(), e);
 		}
 		return jsonNode;
+	}
+
+	public GenericApiResponse<String> sendAgreement(String forwardTo, String consumerPid, String providerPid, JsonNode agreementNode) {
+		ContractNegotiation contractNegotiation = contractNegotiationRepository.findByProviderPidAndConsumerPid(providerPid, consumerPid)
+				.orElseThrow(() -> new ContractNegotiationAPIException(
+						"Contract negotiation with providerPid " + providerPid + 
+						" and consumerPid " + consumerPid + " not found"));
+		Agreement agreement = Serializer.deserializePlain(agreementNode.toPrettyString(), Agreement.class);
+		ContractAgreementMessage agreementMessage = ContractAgreementMessage.Builder.newInstance()
+				.consumerPid(consumerPid)
+				.providerPid(providerPid)
+				.callbackAddress(properties.callbackAddress())
+				.agreement(agreement)
+				.build();
+		
+		String authorization =  okhttp3.Credentials.basic("connector@mail.com", "password");
+		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(forwardTo, Serializer.serializeProtocolJsonNode(agreementMessage), authorization);
+		log.info("Response received {}", response);
+		if (response.getHttpStatus() == 200) {
+			ContractNegotiation contractNegotiationStateChange = ContractNegotiation.Builder.newInstance()
+					.id(contractNegotiation.getId())
+					.callbackAddress(contractNegotiation.getCallbackAddress())
+					.consumerPid(contractNegotiation.getConsumerPid())
+					.providerPid(contractNegotiation.getProviderPid())
+					.state(ContractNegotiationState.AGREED)
+					.build();
+			
+			contractNegotiationRepository.save(contractNegotiationStateChange);
+			log.info("Contract negotiation {} saved", contractNegotiation.getId());
+			agreementRepository.save(agreement);
+			log.info("Agreement {} saved", agreement.getId());
+		}
+		return response;
 	}
 }

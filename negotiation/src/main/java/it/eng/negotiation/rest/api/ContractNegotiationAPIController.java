@@ -13,7 +13,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.negotiation.model.ContractAgreementVerificationMessage;
 import it.eng.negotiation.service.ContractNegotiationAPIService;
 import it.eng.negotiation.service.ContractNegotiationEventHandlerService;
-import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponse;
+import it.eng.tools.event.contractnegotiation.OfferValidationResponse;
 import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +32,7 @@ public class ContractNegotiationAPIController {
 		this.apiService = apiService;
 	}
 
+    //consumer starts contract negotiation
 	@PostMapping(path = "/startNegotiation")
     public ResponseEntity<GenericApiResponse<JsonNode>> startNegotiation(@RequestBody JsonNode startNegotiationRequest) {
     	String targetConnector = startNegotiationRequest.get("Forward-To").asText();
@@ -49,7 +50,7 @@ public class ContractNegotiationAPIController {
         String providerPid = response.get(DSpaceConstants.PROVIDER_PID).asText();
         boolean offerAccepted = response.get("offerAccepted").asBoolean();
         JsonNode offer = response.get(DSpaceConstants.OFFER);
-        ContractNegotiationOfferResponse offerResponse = new ContractNegotiationOfferResponse(consumerPid, providerPid, offerAccepted, offer);
+        OfferValidationResponse offerResponse = new OfferValidationResponse(consumerPid, providerPid, offerAccepted, offer);
         handlerService.handleContractNegotiationOfferResponse(offerResponse);
         
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(null);
@@ -77,6 +78,18 @@ public class ContractNegotiationAPIController {
     	JsonNode response = apiService.postContractOffer(targetConnector, offerNode);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
     			.body(GenericApiResponse.success(response, "Contract negotiation posted", HttpStatus.OK.value()));
+    }
+    
+    @PostMapping(path = "/sendAgreement")
+    public ResponseEntity<GenericApiResponse<Object>> sendAgreement(@RequestBody JsonNode contractAgreementRequest) {
+    	String forwardTo = contractAgreementRequest.get("Forward-To").asText();
+    	JsonNode agreementNode = contractAgreementRequest.get("agreement");
+    	String consumerPid = contractAgreementRequest.get(DSpaceConstants.CONSUMER_PID).asText();
+        String providerPid = contractAgreementRequest.get(DSpaceConstants.PROVIDER_PID).asText();
+    	log.info("Sending agreement as provider to {}", forwardTo);
+    	apiService.sendAgreement(forwardTo, consumerPid, providerPid, agreementNode);
+    	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+    			.body(GenericApiResponse.success(null, "Contract negotiation posted", HttpStatus.OK.value()));
     }
 
 }

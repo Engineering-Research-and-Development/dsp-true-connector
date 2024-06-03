@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 import it.eng.negotiation.event.ContractNegotiationEvent;
 import it.eng.negotiation.model.ContractAgreementVerificationMessage;
 import it.eng.negotiation.service.ContractNegotiationEventHandlerService;
-import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponse;
+import it.eng.tools.event.contractnegotiation.OfferValidationResponse;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
@@ -25,7 +25,7 @@ public class ContractNegotiationListner {
 	}
 	
 	@EventListener
-	public void handleContractNegotiationOfferResponse(ContractNegotiationOfferResponse response) {
+	public void handleContractNegotiationOfferResponse(OfferValidationResponse response) {
 		log.info("Handling ContractNegotiationOfferResponse...");
 		contractNegotiationEventHandlerService.handleContractNegotiationOfferResponse(response);
 	}

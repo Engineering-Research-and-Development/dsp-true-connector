@@ -31,7 +31,7 @@ import it.eng.negotiation.model.ModelUtil;
 import it.eng.negotiation.model.Serializer;
 import it.eng.negotiation.service.ContractNegotiationAPIService;
 import it.eng.negotiation.service.ContractNegotiationEventHandlerService;
-import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponse;
+import it.eng.tools.event.contractnegotiation.OfferValidationResponse;
 import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.response.GenericApiResponse;
 
@@ -74,7 +74,7 @@ public class ContractNegotiationAPIControllerTest {
 		
 		ResponseEntity<JsonNode> response = controller.handleOfferApproved(mapper.convertValue(map, JsonNode.class));
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		verify(handlerService).handleContractNegotiationOfferResponse(any(ContractNegotiationOfferResponse.class));
+		verify(handlerService).handleContractNegotiationOfferResponse(any(OfferValidationResponse.class));
 	}
 	
 	@Test

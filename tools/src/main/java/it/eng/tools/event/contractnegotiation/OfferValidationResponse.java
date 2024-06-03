@@ -12,7 +12,7 @@ import lombok.Data;
  */
 @Data
 @AllArgsConstructor
-public class ContractNegotiationOfferResponse {
+public class OfferValidationResponse {
 
 	private String consumerPid;
 	private String providerPid;

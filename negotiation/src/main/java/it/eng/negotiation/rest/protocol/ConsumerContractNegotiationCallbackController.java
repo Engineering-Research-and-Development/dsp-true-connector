@@ -86,10 +86,8 @@ public class ConsumerContractNegotiationCallbackController {
         ContractAgreementMessage contractAgreementMessage = Serializer.deserializeProtocol(contractAgreementMessageJsonNode,
                 ContractAgreementMessage.class);
 
-        String callbackAddress = contractAgreementMessage.getCallbackAddress();
-        contractNegotiationConsumerService.handleAgreement(callbackAddress, contractAgreementMessage);
+        contractNegotiationConsumerService.handleAgreement(contractAgreementMessage);
 
-//		callbackAddress = callbackAddress.endsWith("/") ? callbackAddress : callbackAddress + "/";
         log.info("CONSUMER - Sending response OK - agreementMessage received");
         return ResponseEntity.ok().build();
     }

@@ -19,7 +19,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import it.eng.connector.util.TestUtil;
-import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.ModelUtil;
 import it.eng.negotiation.model.Serializer;
 import it.eng.tools.model.DSpaceConstants;
@@ -64,27 +63,6 @@ public class NegotiationIntegrationTest {
     
     @Test
     @WithUserDetails(TestUtil.CONNECTOR_USER)
-    public void negotiationExistsTests() throws Exception {
-    	ContractRequestMessage crm = ContractRequestMessage.Builder.newInstance()
-		.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
-		.consumerPid(TestUtil.CONSUMER_PID)
-		.providerPid(TestUtil.PROVIDER_PID)
-		.offer(ModelUtil.OFFER)
-		.build();
-    	
-    	final ResultActions result =
-    			mockMvc.perform(
-    					post("/negotiations/request")
-    					.content(Serializer.serializeProtocol(crm))
-    					.contentType(MediaType.APPLICATION_JSON));
-    	result.andExpect(status().isBadRequest())
-    	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(ModelUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())))
-    	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
-    }
-    
-    @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void getNegotiationByProviderPidTests() throws Exception {
     	
     	final ResultActions result =
@@ -105,7 +83,7 @@ public class NegotiationIntegrationTest {
     			mockMvc.perform(
     					get("/negotiations/1")
     					.contentType(MediaType.APPLICATION_JSON));
-    	result.andExpect(status().isNotFound())
+    	result.andExpect(status().isBadRequest())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
     	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(ModelUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())))
     	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));

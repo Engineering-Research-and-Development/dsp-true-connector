@@ -12,7 +12,7 @@ import lombok.Getter;
  */
 @AllArgsConstructor
 @Getter
-public class ContractNegotationOfferRequest {
+public class OfferValidationRequest {
 
 	private String consumerPid;
 	private String providerPid;

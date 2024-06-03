@@ -1,5 +1,6 @@
 package it.eng.negotiation.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
@@ -53,6 +54,12 @@ import java.util.stream.Collectors;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true) 
 public class Offer {
+	
+	@JsonIgnore
+	private String consumerPid;
+	
+	@JsonIgnore
+	private String providerPid;
 
 //	@NotNull
 	@JsonProperty(DSpaceConstants.ID)
@@ -108,6 +115,16 @@ public class Offer {
 		@JsonProperty(DSpaceConstants.ODRL_ASSIGNER)
 		public Builder assigner(String assigner) {
 			offer.assigner = assigner;
+			return this;
+		}
+		
+		public Builder consumerPid(String consumerPid) {
+			offer.consumerPid = consumerPid;
+			return this;
+		}
+		
+		public Builder providerPid(String providerPid) {
+			offer.providerPid = providerPid;
 			return this;
 		}
 		

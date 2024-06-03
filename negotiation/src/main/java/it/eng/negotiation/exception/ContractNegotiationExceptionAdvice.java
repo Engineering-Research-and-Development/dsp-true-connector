@@ -23,15 +23,15 @@ import jakarta.validation.ValidationException;
 public class ContractNegotiationExceptionAdvice extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(value = {ContractNegotiationNotFoundException.class})
-    protected ResponseEntity<Object> handleContractNotFound(ContractNegotiationNotFoundException ex, WebRequest request) {
+    protected ResponseEntity<Object> ContractNegotiationNotFoundException(ContractNegotiationNotFoundException ex, WebRequest request) {
 
         ContractNegotiationErrorMessage errorMessage = ContractNegotiationErrorMessage.Builder.newInstance()
                 .providerPid(ex.getProviderPid())
-                .code(HttpStatus.NOT_FOUND.getReasonPhrase())
+                .code(HttpStatus.BAD_REQUEST.getReasonPhrase())
                 .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()))
                 .description(Collections.singletonList(Description.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build())).build();
 
-        return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(), HttpStatus.NOT_FOUND, request);
+        return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
     }
     
     @ExceptionHandler(value = {ValidationException.class})
@@ -49,7 +49,19 @@ public class ContractNegotiationExceptionAdvice extends ResponseEntityExceptionH
     
 
     @ExceptionHandler(value = {ContractNegotiationExistsException.class})
-    protected ResponseEntity<Object> handleContractExists(ContractNegotiationExistsException ex, WebRequest request) {
+    protected ResponseEntity<Object> ContractNegotiationExistsException(ContractNegotiationExistsException ex, WebRequest request) {
+
+        ContractNegotiationErrorMessage errorMessage = ContractNegotiationErrorMessage.Builder.newInstance()
+                .providerPid(ex.getProviderPid())
+                .code(HttpStatus.BAD_REQUEST.getReasonPhrase())
+                .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()))
+                .description(Collections.singletonList(Description.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build())).build();
+
+        return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
+    }
+    
+    @ExceptionHandler(value = {OfferNotFoundException.class})
+    protected ResponseEntity<Object> handleOfferNotFoundException(OfferNotFoundException ex, WebRequest request) {
 
         ContractNegotiationErrorMessage errorMessage = ContractNegotiationErrorMessage.Builder.newInstance()
                 .providerPid(ex.getProviderPid())

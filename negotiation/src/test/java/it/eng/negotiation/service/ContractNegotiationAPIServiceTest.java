@@ -20,6 +20,7 @@ import it.eng.negotiation.model.ModelUtil;
 import it.eng.negotiation.model.Serializer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
+import it.eng.negotiation.repository.OfferRepository;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.response.GenericApiResponse;
 
@@ -30,6 +31,8 @@ public class ContractNegotiationAPIServiceTest {
 	private OkHttpRestClient okHttpRestClient;
 	@Mock
 	private ContractNegotiationRepository repository;
+	@Mock
+	private OfferRepository offerRepository;
 	@Mock
 	private ContractNegotiationProperties properties;
 	@Mock
@@ -43,6 +46,7 @@ public class ContractNegotiationAPIServiceTest {
 	public void startNegotiation_success() {
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.getData()).thenReturn(Serializer.serializeProtocol(ModelUtil.CONTRACT_NEGOTIATION));
+		when(apiResponse.getHttpStatus()).thenReturn(201);
 		when(properties.callbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
 		
 		service.startNegotiation(ModelUtil.FORWARD_TO, Serializer.serializePlainJsonNode(ModelUtil.OFFER));

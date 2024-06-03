@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -21,7 +20,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import it.eng.negotiation.exception.ContractNegotiationExistsException;
 import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
 import it.eng.negotiation.listener.ContractNegotiationPublisher;
 import it.eng.negotiation.model.ContractNegotiation;
@@ -30,6 +28,7 @@ import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.ModelUtil;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
+import it.eng.negotiation.repository.OfferRepository;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.response.GenericApiResponse;
 
@@ -40,6 +39,8 @@ public class ContractNegotiationProviderServiceTest {
     private ContractNegotiationPublisher publisher;
     @Mock
     private ContractNegotiationRepository repository;
+    @Mock
+	private OfferRepository offerRepository;
     @Mock
     private ContractNegotiationProperties properties;
     @Mock
@@ -54,7 +55,6 @@ public class ContractNegotiationProviderServiceTest {
 
     @Test
     public void startContractNegotiation() {
-        when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.ofNullable(null));
         ContractRequestMessage crm = ContractRequestMessage.Builder.newInstance()
                 .consumerPid(ModelUtil.CONSUMER_PID)
                 .offer(ModelUtil.OFFER)
@@ -66,25 +66,6 @@ public class ContractNegotiationProviderServiceTest {
         verify(repository).save(argCaptorContractNegotiation.capture());
 		//verify that status is updated to REQUESTED
 		assertEquals(ContractNegotiationState.REQUESTED, argCaptorContractNegotiation.getValue().getState());
-    }
-
-    @Test
-    public void startContractNegotiation_exists() {
-        ContractRequestMessage crm = ContractRequestMessage.Builder.newInstance()
-                .consumerPid(ModelUtil.CONSUMER_PID)
-                .providerPid(ModelUtil.PROVIDER_PID)
-                .offer(ModelUtil.OFFER)
-                .callbackAddress(ModelUtil.CALLBACK_ADDRESS)
-                .build();
-        ContractNegotiation cn = ContractNegotiation.Builder.newInstance()
-                .consumerPid(ModelUtil.CONSUMER_PID)
-                .providerPid(ModelUtil.PROVIDER_PID)
-                .state(ContractNegotiationState.REQUESTED)
-                .build();
-
-        when(repository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(cn));
-        assertThrows(ContractNegotiationExistsException.class, () -> service.startContractNegotiation(crm),
-                "Expected startContractNegotiation to throw ContractNegotiationExistsException, but it did not");
     }
 
     @Test
