@@ -16,11 +16,11 @@ import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ContractOfferMessage;
 import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.Offer;
-import it.eng.negotiation.model.Serializer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
+import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -82,6 +82,9 @@ public class ContractNegotiationAPIService {
 				log.error("Contract negotiation from response not valid");
 				throw new ContractNegotiationAPIException(e.getLocalizedMessage(), e);
 			}
+		} else {
+			log.info("Error response received!");
+			throw new ContractNegotiationAPIException(response.getMessage());
 		}
 		return jsonNode;
 	}
@@ -141,7 +144,7 @@ public class ContractNegotiationAPIService {
 		return jsonNode;
 	}
 
-	public GenericApiResponse<String> sendAgreement(String forwardTo, String consumerPid, String providerPid, JsonNode agreementNode) {
+	public void sendAgreement(String forwardTo, String consumerPid, String providerPid, JsonNode agreementNode) {
 		ContractNegotiation contractNegotiation = contractNegotiationRepository.findByProviderPidAndConsumerPid(providerPid, consumerPid)
 				.orElseThrow(() -> new ContractNegotiationAPIException(
 						"Contract negotiation with providerPid " + providerPid + 
@@ -170,7 +173,9 @@ public class ContractNegotiationAPIService {
 			log.info("Contract negotiation {} saved", contractNegotiation.getId());
 			agreementRepository.save(agreement);
 			log.info("Agreement {} saved", agreement.getId());
+		} else {
+			log.info("Error response received!");
+			throw new ContractNegotiationAPIException(response.getMessage());
 		}
-		return response;
 	}
 }

@@ -1,5 +1,10 @@
 package it.eng.catalog.serializer;
 
+import java.time.Instant;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -9,20 +14,17 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.DataService;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.Distribution;
+import it.eng.catalog.model.Offer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
 import jakarta.validation.Validator;
-
-import java.time.Instant;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 public class Serializer {
 
@@ -177,6 +179,10 @@ public class Serializer {
                 if (!Objects.equals(DSpaceConstants.DCAT + clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
                     throw new ValidationException("@type field not correct, expected " + DSpaceConstants.DSPACE + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
                 }
+            } else if (clazz.equals(Offer.class)) {
+				if(!Objects.equals(DSpaceConstants.ODRL + clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
+					throw new ValidationException("@type field not correct, expected "+ DSpaceConstants.ODRL + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
+				}
             } else {
                 if (!Objects.equals(DSpaceConstants.DSPACE + clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
                     throw new ValidationException("@type field not correct, expected " + DSpaceConstants.DSPACE + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());

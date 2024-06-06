@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.Optional;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -54,7 +55,26 @@ public class ContractNegotiationProviderServiceTest {
 	private ArgumentCaptor<ContractNegotiation> argCaptorContractNegotiation;
 
     @Test
-    public void startContractNegotiation() {
+    @DisplayName("Start contract negotiation success - automatic negotiation ON")
+    public void startContractNegotiation_automaticON() throws InterruptedException {
+    	when(properties.isAutomaticNegotiation()).thenReturn(true);
+        ContractRequestMessage crm = ContractRequestMessage.Builder.newInstance()
+                .consumerPid(ModelUtil.CONSUMER_PID)
+                .offer(ModelUtil.OFFER)
+                .callbackAddress(ModelUtil.CALLBACK_ADDRESS)
+                .build();
+        ContractNegotiation result = service.startContractNegotiation(crm);
+        assertNotNull(result);
+        assertEquals(result.getType(), "dspace:ContractNegotiation");
+        verify(repository).save(argCaptorContractNegotiation.capture());
+		//verify that status is updated to REQUESTED
+		assertEquals(ContractNegotiationState.REQUESTED, argCaptorContractNegotiation.getValue().getState());
+    }
+    
+    @Test
+    @DisplayName("Start contract negotiation success - automatic negotiation OFF")
+    public void startContractNegotiation_automatic_OFF() throws InterruptedException {
+    	when(properties.isAutomaticNegotiation()).thenReturn(false);
         ContractRequestMessage crm = ContractRequestMessage.Builder.newInstance()
                 .consumerPid(ModelUtil.CONSUMER_PID)
                 .offer(ModelUtil.OFFER)

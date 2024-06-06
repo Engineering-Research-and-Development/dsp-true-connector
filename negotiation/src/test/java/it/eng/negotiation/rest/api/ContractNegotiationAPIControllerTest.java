@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -28,10 +29,10 @@ import it.eng.negotiation.exception.ContractNegotiationAPIException;
 import it.eng.negotiation.model.ContractAgreementVerificationMessage;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ModelUtil;
-import it.eng.negotiation.model.Serializer;
+import it.eng.negotiation.serializer.Serializer;
 import it.eng.negotiation.service.ContractNegotiationAPIService;
 import it.eng.negotiation.service.ContractNegotiationEventHandlerService;
-import it.eng.tools.event.contractnegotiation.OfferValidationResponse;
+import it.eng.tools.event.contractnegotiation.ContractNegotationOfferResponseEvent;
 import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.response.GenericApiResponse;
 
@@ -74,7 +75,7 @@ public class ContractNegotiationAPIControllerTest {
 		
 		ResponseEntity<JsonNode> response = controller.handleOfferApproved(mapper.convertValue(map, JsonNode.class));
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		verify(handlerService).handleContractNegotiationOfferResponse(any(OfferValidationResponse.class));
+		verify(handlerService).handleContractNegotiationOfferResponse(any(ContractNegotationOfferResponseEvent.class));
 	}
 	
 	@Test
@@ -119,5 +120,35 @@ public class ContractNegotiationAPIControllerTest {
 
 		assertThrows(ContractNegotiationAPIException.class, () ->
 			controller.postOffer(mapper.convertValue(map, JsonNode.class)));
+	}
+	
+	@Test
+	@DisplayName("Send agreement success")
+	public void sendAgreement_success() {
+		Map<String, Object> map = new HashMap<>();
+		map.put("Forward-To", ModelUtil.FORWARD_TO);
+		map.put("consumerPid", ModelUtil.CONSUMER_PID);
+		map.put("providerPid", ModelUtil.PROVIDER_PID);
+		map.put("agreement", Serializer.serializeProtocolJsonNode(ModelUtil.AGREEMENT));
+				
+		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.sendAgreement(mapper.convertValue(map, JsonNode.class));
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+		verify(apiService).sendAgreement(any(String.class), any(String.class), any(String.class), any(JsonNode.class));
+	}
+	
+	@Test
+	@DisplayName("Send agreement failed")
+	public void sendAgreement_failed() {
+		Map<String, Object> map = new HashMap<>();
+		map.put("Forward-To", ModelUtil.FORWARD_TO);
+		map.put("consumerPid", ModelUtil.CONSUMER_PID);
+		map.put("providerPid", ModelUtil.PROVIDER_PID);
+		map.put("agreement", Serializer.serializeProtocolJsonNode(ModelUtil.AGREEMENT));
+				
+		doThrow(new ContractNegotiationAPIException("Something not correct - tests"))
+		.when(apiService).sendAgreement(any(String.class), any(String.class), any(String.class), any(JsonNode.class));
+		
+		assertThrows(ContractNegotiationAPIException.class, () ->
+		controller.sendAgreement(mapper.convertValue(map, JsonNode.class)));
 	}
 }

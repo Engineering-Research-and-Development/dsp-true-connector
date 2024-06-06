@@ -27,8 +27,8 @@ import it.eng.negotiation.model.ContractNegotiationEventType;
 import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
 import it.eng.negotiation.model.ContractOfferMessage;
 import it.eng.negotiation.model.ModelUtil;
-import it.eng.negotiation.model.Serializer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
+import it.eng.negotiation.serializer.Serializer;
 import it.eng.negotiation.service.ContractNegotiationConsumerService;
 
 @ExtendWith(MockitoExtension.class)

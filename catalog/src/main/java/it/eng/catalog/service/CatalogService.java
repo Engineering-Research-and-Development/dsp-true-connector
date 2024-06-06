@@ -1,5 +1,11 @@
 package it.eng.catalog.service;
 
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+
 import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.exceptions.CatalogNotFoundAPIException;
 import it.eng.catalog.model.Catalog;
@@ -8,14 +14,10 @@ import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.Offer;
 import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.serializer.Serializer;
+import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
+import it.eng.tools.event.contractnegotiation.ContractNegotationOfferResponseEvent;
 import it.eng.tools.event.contractnegotiation.OfferValidationRequest;
-import it.eng.tools.event.contractnegotiation.OfferValidationResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.Optional;
 
 /**
  * The CatalogService class provides methods to interact with catalog data, including saving, retrieving, and deleting catalogs.
@@ -97,7 +99,7 @@ public class CatalogService {
         repository.deleteById(id);
     }
 
-    public void validateOffer(OfferValidationRequest offerRequest) {
+    public void validateOffer(ContractNegotationOfferRequestEvent offerRequest) {
         log.info("Comparing if offer is valid or not");
         Offer offer = Serializer.deserializeProtocol(offerRequest.getOffer(), Offer.class);
         boolean valid = false;
@@ -123,7 +125,7 @@ public class CatalogService {
 //    		valid = false;
 //    	}
 
-        OfferValidationResponse offerValidationResponse = new OfferValidationResponse(offerRequest.getConsumerPid(),
+        ContractNegotationOfferResponseEvent offerValidationResponse = new ContractNegotationOfferResponseEvent(offerRequest.getConsumerPid(),
                 offerRequest.getProviderPid(), valid, Serializer.serializeProtocolJsonNode(offer));
         publisher.publishEvent(offerValidationResponse);
     }
@@ -251,6 +253,10 @@ public class CatalogService {
                         .createdBy(c.getCreatedBy()))
                 .orElseThrow(() -> new CatalogNotFoundAPIException("Catalog with id: " + id + " not found"));
     }
+
+	public void validateOfferRequest(OfferValidationRequest offerRequest) {
+		
+	}
 
 }
 

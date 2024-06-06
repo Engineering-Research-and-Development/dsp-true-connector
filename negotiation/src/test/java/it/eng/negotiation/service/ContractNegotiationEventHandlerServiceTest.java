@@ -18,12 +18,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ModelUtil;
-import it.eng.negotiation.model.Serializer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
+import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.event.contractnegotiation.OfferValidationResponse;
+import it.eng.tools.event.contractnegotiation.ContractNegotationOfferResponseEvent;
 import it.eng.tools.response.GenericApiResponse;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,7 +46,7 @@ public class ContractNegotiationEventHandlerServiceTest {
 	@Test
 	@DisplayName("Handle contract negotiation offer response success")
 	public void handleContractNegotiationOfferResponse_accepted_success() {
-		OfferValidationResponse offerResponse = new OfferValidationResponse(ModelUtil.CONSUMER_PID, 
+		ContractNegotationOfferResponseEvent offerResponse = new ContractNegotationOfferResponseEvent(ModelUtil.CONSUMER_PID, 
 				ModelUtil.PROVIDER_PID, true, Serializer.serializePlainJsonNode(ModelUtil.OFFER));
 		
 		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION));
@@ -63,7 +63,7 @@ public class ContractNegotiationEventHandlerServiceTest {
 	@Test
 	@DisplayName("Handle contract negotiation offer declined")
 	public void handleContractNegotiationOfferResponse_declined() {
-		OfferValidationResponse offerResponse = new OfferValidationResponse(ModelUtil.CONSUMER_PID, 
+		ContractNegotationOfferResponseEvent offerResponse = new ContractNegotationOfferResponseEvent(ModelUtil.CONSUMER_PID, 
 				ModelUtil.PROVIDER_PID, false, Serializer.serializeProtocolJsonNode(ModelUtil.OFFER));
 		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class)))
 			.thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION));

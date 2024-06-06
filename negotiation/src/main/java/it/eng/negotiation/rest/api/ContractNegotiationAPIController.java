@@ -13,7 +13,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.negotiation.model.ContractAgreementVerificationMessage;
 import it.eng.negotiation.service.ContractNegotiationAPIService;
 import it.eng.negotiation.service.ContractNegotiationEventHandlerService;
-import it.eng.tools.event.contractnegotiation.OfferValidationResponse;
+import it.eng.tools.event.contractnegotiation.ContractNegotationOfferResponseEvent;
 import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -50,7 +50,7 @@ public class ContractNegotiationAPIController {
         String providerPid = response.get(DSpaceConstants.PROVIDER_PID).asText();
         boolean offerAccepted = response.get("offerAccepted").asBoolean();
         JsonNode offer = response.get(DSpaceConstants.OFFER);
-        OfferValidationResponse offerResponse = new OfferValidationResponse(consumerPid, providerPid, offerAccepted, offer);
+        ContractNegotationOfferResponseEvent offerResponse = new ContractNegotationOfferResponseEvent(consumerPid, providerPid, offerAccepted, offer);
         handlerService.handleContractNegotiationOfferResponse(offerResponse);
         
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(null);
@@ -81,7 +81,7 @@ public class ContractNegotiationAPIController {
     }
     
     @PostMapping(path = "/sendAgreement")
-    public ResponseEntity<GenericApiResponse<Object>> sendAgreement(@RequestBody JsonNode contractAgreementRequest) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> sendAgreement(@RequestBody JsonNode contractAgreementRequest) {
     	String forwardTo = contractAgreementRequest.get("Forward-To").asText();
     	JsonNode agreementNode = contractAgreementRequest.get("agreement");
     	String consumerPid = contractAgreementRequest.get(DSpaceConstants.CONSUMER_PID).asText();
@@ -89,7 +89,7 @@ public class ContractNegotiationAPIController {
     	log.info("Sending agreement as provider to {}", forwardTo);
     	apiService.sendAgreement(forwardTo, consumerPid, providerPid, agreementNode);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-    			.body(GenericApiResponse.success(null, "Contract negotiation posted", HttpStatus.OK.value()));
+    			.body(GenericApiResponse.success(null, "Contract agreement sent", HttpStatus.OK.value()));
     }
 
 }

@@ -2,6 +2,7 @@ package it.eng.negotiation.rest.protocol;
 
 import java.net.URI;
 import java.util.Arrays;
+import java.util.concurrent.CompletableFuture;
 
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +23,7 @@ import it.eng.negotiation.model.ContractNegotiationEventMessage;
 import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
 import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.Description;
-import it.eng.negotiation.model.Serializer;
+import it.eng.negotiation.serializer.Serializer;
 import it.eng.negotiation.service.ContractNegotiationProviderService;
 import lombok.extern.slf4j.Slf4j;
 
@@ -52,11 +53,11 @@ public class ProviderContractNegotiationController {
     // POST
     // The Provider must return an HTTP 201 (Created); "dspace:state" :"REQUESTED"
     @PostMapping(path = "/request")
-    public ResponseEntity<JsonNode> createNegotiation(@RequestBody JsonNode contractRequestMessageJsonNode) {
+    public ResponseEntity<JsonNode> createNegotiation(@RequestBody JsonNode contractRequestMessageJsonNode) throws InterruptedException {
         log.info("Creating negotiation");
         ContractRequestMessage crm = Serializer.deserializeProtocol(contractRequestMessageJsonNode, ContractRequestMessage.class);
-        ContractNegotiation cn = providerService.startContractNegotiation(crm);
-       
+        CompletableFuture<JsonNode> responseNode = providerService.startContractNegotiation(crm);
+        
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest().path("/{id}")
                 .buildAndExpand("123").toUri();
