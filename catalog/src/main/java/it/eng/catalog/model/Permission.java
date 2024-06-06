@@ -1,6 +1,5 @@
 package it.eng.catalog.model;
 
-import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -15,10 +14,12 @@ import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
 import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
+@EqualsAndHashCode
 @JsonDeserialize(builder = Permission.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Permission {
@@ -39,7 +40,7 @@ public class Permission {
 	
 	@NotNull
 	@JsonProperty(DSpaceConstants.ODRL_CONSTRAINT)
-	private List<Constraint> constraint;
+	private Set<Constraint> constraint;
 	
 	@JsonPOJOBuilder(withPrefix = "")
 	@JsonIgnoreProperties(ignoreUnknown = true)
@@ -80,7 +81,8 @@ public class Permission {
 		}
 		
 		@JsonProperty(DSpaceConstants.ODRL_CONSTRAINT)
-		public Builder constraint(List<Constraint> constraint) {
+		@JsonDeserialize(as = Set.class)
+		public Builder constraint(Set<Constraint> constraint) {
 			permission.constraint = constraint;
 			return this;
 		}

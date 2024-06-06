@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 public class DistributionAPIControllerTest {
 
     @InjectMocks
-    DistributionAPIController distributionAPIController;
+    private DistributionAPIController distributionAPIController;
 
     @Mock
     private DistributionService distributionService;

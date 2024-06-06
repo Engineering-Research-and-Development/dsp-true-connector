@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * The CatalogService class provides methods to interact with catalog data, including saving, retrieving, and deleting catalogs.
@@ -99,28 +100,38 @@ public class CatalogService {
         log.info("Comparing if offer is valid or not");
         Offer offer = Serializer.deserializeProtocol(offerRequest.getOffer(), Offer.class);
         boolean valid = false;
+        Catalog catalog = getCatalog();
+        
+        Offer existingOffer = catalog.getDataset().stream().flatMap(dataset -> dataset.getHasPolicy().stream())
+        		.filter(of -> of.getId().equals(offer.getId()))
+        		.findFirst()
+        		.orElse(null);
+    	
+        log.debug("Offer with id '{}' {}", offer.getId(), existingOffer != null ? " found." : "not found.");
+    	
+    	if(existingOffer == null) {
+    		valid = false;
+    	} else {
+//    		 check if offers are equals
+    		if(offer.equals(existingOffer)) {
+    			log.debug("Existing and prvided offers are same");
+    			valid = true;
+    		}
+    	}
 //    	try {
-//    		Catalog catalog = getCatalog();
-//    		catalog.getDataset().forEach(ds -> {
-//    			ds.getHasPolicy().forEach(p -> {
-//    				if(!p.getTarget().equals(offer.getTarget())) {
-//    					throw new ValidationException("Target not equal");
-//    				}
-//    			p.getPermission().forEach(perm -> {
-//    				perm.getConstraint().forEach(constr ->{
-//    					constr.getLeftOperand().equals(catalog)
-//    				});
+//    		Offer existingOffer = catalog.getDataset().forEach(ds -> {
+//    			ds.getHasPolicy().stream()
+//    				.anyMatch(o -> o.getId().equals(offer.getId())).get();
 //    			});
-//    			});
-//    		});
-        // if reached here, all checks are OK, meaning offer is valid
-        log.info("Offer is valid, all checks passed ");
-        valid = true;
+//    		
+//		// if reached here, all checks are OK, meaning offer is valid
+//        log.info("Offer is valid, all checks passed ");
+//        valid = true;
 //    	} catch (Exception ex) {
 //    		log.info("Offer is NOT valid", ex.getLocalizedMessage());
 //    		valid = false;
 //    	}
-
+    	log.info("Offer evaluated as {}", valid ? "valid" : "invalid");
         ContractNegotiationOfferResponse contractNegotiationOfferResponse = new ContractNegotiationOfferResponse(offerRequest.getConsumerPid(),
                 offerRequest.getProviderPid(), valid, Serializer.serializeProtocolJsonNode(offer));
         publisher.publishEvent(contractNegotiationOfferResponse);
@@ -204,7 +215,10 @@ public class CatalogService {
 
     public void updateCatalogDataServiceAfterDelete(DataService dataService) {
         Catalog c = getCatalog();
-        c.getService().remove(dataService);
+//        c.getService().remove(dataService);
+        c.getService().stream()
+        	.filter(ds -> ds.equals(dataService))
+        	.collect(Collectors.toSet());
         repository.save(c);
     }
 

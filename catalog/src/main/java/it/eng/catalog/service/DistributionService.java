@@ -6,7 +6,7 @@ import it.eng.catalog.model.Distribution;
 import it.eng.catalog.repository.DistributionRepository;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.util.Collection;
 
 /**
  * The DistributionService class provides methods to interact with Distribution data, including saving, retrieving, and deleting distributions.
@@ -38,7 +38,7 @@ public class DistributionService {
      *
      * @return a list of all distributions
      */
-    public List<Distribution> getAllDistributions() {
+    public Collection<Distribution> getAllDistributions() {
         return repository.findAll();
     }
 

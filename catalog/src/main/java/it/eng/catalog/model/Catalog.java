@@ -20,7 +20,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.Instant;
-import java.util.List;
+import java.util.Collection;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -41,15 +41,15 @@ public class Catalog extends AbstractCatalogObject {
     // from Dataset
     // Resource
     @JsonProperty(DSpaceConstants.DCAT_KEYWORD)
-    private List<String> keyword;
+    private Set<String> keyword;
     @JsonProperty(DSpaceConstants.DCAT_THEME)
-    private List<String> theme;
+    private Collection<String> theme;
     @JsonProperty(DSpaceConstants.DCT_CONFORMSTO)
     private String conformsTo;
     @JsonProperty(DSpaceConstants.DCT_CREATOR)
     private String creator;
     @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
-    private List<Multilanguage> description;
+    private Collection<Multilanguage> description;
     @JsonProperty(DSpaceConstants.DCT_IDENTIFIER)
     private String identifier;
     @JsonProperty(DSpaceConstants.DCT_ISSUED)
@@ -64,18 +64,18 @@ public class Catalog extends AbstractCatalogObject {
     // from Dataset definition
     @JsonProperty(DSpaceConstants.DCAT_DISTRIBUTION)
     @DBRef
-    private List<Distribution> distribution;
+    private Collection<Distribution> distribution;
     // assumption - policy for allowing catalog usage/display - not mandatory for catalog
     @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
-    private List<Offer> hasPolicy;
+    private Collection<Offer> hasPolicy;
     // end Dataset definition
 
     @JsonProperty(DSpaceConstants.DCAT_DATASET)
     @DBRef
-    private List<Dataset> dataset;
+    private Collection<Dataset> dataset;
     @JsonProperty(DSpaceConstants.DCAT_SERVICE)
     @DBRef
-    private List<DataService> service;
+    private Collection<DataService> service;
 
     @JsonProperty(DSpaceConstants.DSPACE_PARTICIPANT_ID)
     private String participantId;
@@ -118,13 +118,15 @@ public class Catalog extends AbstractCatalogObject {
 
 
         @JsonProperty(DSpaceConstants.DCAT_KEYWORD)
-        public Builder keyword(List<String> keyword) {
+        @JsonDeserialize(as = Set.class)
+        public Builder keyword(Set<String> keyword) {
             catalog.keyword = keyword;
             return this;
         }
 
         @JsonProperty(DSpaceConstants.DCAT_THEME)
-        public Builder theme(List<String> theme) {
+        @JsonDeserialize(as = Set.class)
+        public Builder theme(Collection<String> theme) {
             catalog.theme = theme;
             return this;
         }
@@ -142,7 +144,8 @@ public class Catalog extends AbstractCatalogObject {
         }
 
         @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
-        public Builder description(List<Multilanguage> description) {
+        @JsonDeserialize(as = Set.class)
+        public Builder description(Collection<Multilanguage> description) {
             catalog.description = description;
             return this;
         }
@@ -172,25 +175,29 @@ public class Catalog extends AbstractCatalogObject {
         }
 
         @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
-        public Builder hasPolicy(List<Offer> policies) {
+        @JsonDeserialize(as = Set.class)
+        public Builder hasPolicy(Collection<Offer> policies) {
             catalog.hasPolicy = policies;
             return this;
         }
 
         @JsonProperty(DSpaceConstants.DCAT_DISTRIBUTION)
-        public Builder distribution(List<Distribution> distribution) {
+        @JsonDeserialize(as = Set.class)
+        public Builder distribution(Collection<Distribution> distribution) {
             catalog.distribution = distribution;
             return this;
         }
 
         @JsonProperty(DSpaceConstants.DCAT_DATASET)
-        public Builder dataset(List<Dataset> datasets) {
+        @JsonDeserialize(as = Set.class)
+        public Builder dataset(Collection<Dataset> datasets) {
             catalog.dataset = datasets;
             return this;
         }
 
         @JsonProperty(DSpaceConstants.DCAT_SERVICE)
-        public Builder service(List<DataService> service) {
+        @JsonDeserialize(as = Set.class)
+        public Builder service(Collection<DataService> service) {
             catalog.service = service;
             return this;
         }
