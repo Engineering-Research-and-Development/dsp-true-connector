@@ -44,9 +44,9 @@ public class ModelUtil {
 			.build();
 	
 	public static final Constraint CONSTRAINT = Constraint.Builder.newInstance()
-			.leftOperand(LeftOperand.DATE_TIME)
-			.operator(Operator.GT)
-			.rightOperand("2024-02-29T00:00:01+01:00")
+			.leftOperand(LeftOperand.COUNT)
+			.operator(Operator.EQ)
+			.rightOperand("5")
 			.build();
 	
 	public static final Permission PERMISSION = Permission.Builder.newInstance()
@@ -74,14 +74,7 @@ public class ModelUtil {
 			.assignee(ModelUtil.ASSIGNEE)
 			.assigner(ModelUtil.ASSIGNER)
 			.target(ModelUtil.TARGET)
-			.permission(Arrays.asList(Permission.Builder.newInstance()
-					.action(Action.USE)
-					.constraint(Arrays.asList(Constraint.Builder.newInstance()
-							.leftOperand(LeftOperand.COUNT)
-							.operator(Operator.EQ)
-							.rightOperand("5")
-							.build()))
-					.build()))
+			.permission(Arrays.asList(ModelUtil.PERMISSION))
 			.build();
 	
 	public static final ContractRequestMessage CONTRACT_REQUEST_MESSAGE = ContractRequestMessage.Builder.newInstance()

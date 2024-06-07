@@ -19,7 +19,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
-@EqualsAndHashCode
+@EqualsAndHashCode(exclude = "target")
 @JsonDeserialize(builder = Permission.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Permission {

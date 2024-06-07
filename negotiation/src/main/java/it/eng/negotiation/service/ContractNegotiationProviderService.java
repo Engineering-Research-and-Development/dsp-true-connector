@@ -89,7 +89,7 @@ public class ContractNegotiationProviderService {
         
 
         String authorization =  okhttp3.Credentials.basic("admin@mail.com", "password");
-		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:8090/api/offer/validateOffer", Serializer.serializePlainJsonNode(contractRequestMessage.getOffer()), authorization);
+		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + properties.serverPort() + "/api/offer/validateOffer", Serializer.serializePlainJsonNode(contractRequestMessage.getOffer()), authorization);
         
 		if (!response.isSuccess()) {
 			throw new ContractNegotiationExistsException("OFFER NOT VALID", contractRequestMessage.getProviderPid(), contractRequestMessage.getConsumerPid());
