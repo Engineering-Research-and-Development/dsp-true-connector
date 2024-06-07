@@ -86,7 +86,16 @@ public class ContractNegotiationProviderService {
                 .ifPresent(crm -> {
                     throw new ContractNegotiationExistsException("Contract request message with provider and consumer pid's exists", contractRequestMessage.getProviderPid(), contractRequestMessage.getConsumerPid());
                 });
+        
 
+        String authorization =  okhttp3.Credentials.basic("admin@mail.com", "password");
+		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:8090/api/offer/validateOffer", Serializer.serializePlainJsonNode(contractRequestMessage.getOffer()), authorization);
+        
+		if (!response.isSuccess()) {
+			throw new ContractNegotiationExistsException("OFFER NOT VALID", contractRequestMessage.getProviderPid(), contractRequestMessage.getConsumerPid());
+
+		}
+		
         ContractNegotiation cn = ContractNegotiation.Builder.newInstance()
                 .state(ContractNegotiationState.REQUESTED)
                 .consumerPid(contractRequestMessage.getConsumerPid())

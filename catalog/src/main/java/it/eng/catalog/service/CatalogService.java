@@ -1,20 +1,25 @@
 
 package it.eng.catalog.service;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+
 import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.exceptions.CatalogNotFoundAPIException;
-import it.eng.catalog.model.*;
+import it.eng.catalog.model.Catalog;
+import it.eng.catalog.model.DataService;
+import it.eng.catalog.model.Dataset;
+import it.eng.catalog.model.Distribution;
+import it.eng.catalog.model.Offer;
 import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.serializer.Serializer;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequest;
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 /**
  * The CatalogService class provides methods to interact with catalog data, including saving, retrieving, and deleting catalogs.
@@ -99,39 +104,7 @@ public class CatalogService {
     public void validateIfOfferIsValid(ContractNegotationOfferRequest offerRequest) {
         log.info("Comparing if offer is valid or not");
         Offer offer = Serializer.deserializeProtocol(offerRequest.getOffer(), Offer.class);
-        boolean valid = false;
-        Catalog catalog = getCatalog();
-        
-        Offer existingOffer = catalog.getDataset().stream().flatMap(dataset -> dataset.getHasPolicy().stream())
-        		.filter(of -> of.getId().equals(offer.getId()))
-        		.findFirst()
-        		.orElse(null);
-    	
-        log.debug("Offer with id '{}' {}", offer.getId(), existingOffer != null ? " found." : "not found.");
-    	
-    	if(existingOffer == null) {
-    		valid = false;
-    	} else {
-//    		 check if offers are equals
-    		if(offer.equals(existingOffer)) {
-    			log.debug("Existing and prvided offers are same");
-    			valid = true;
-    		}
-    	}
-//    	try {
-//    		Offer existingOffer = catalog.getDataset().forEach(ds -> {
-//    			ds.getHasPolicy().stream()
-//    				.anyMatch(o -> o.getId().equals(offer.getId())).get();
-//    			});
-//    		
-//		// if reached here, all checks are OK, meaning offer is valid
-//        log.info("Offer is valid, all checks passed ");
-//        valid = true;
-//    	} catch (Exception ex) {
-//    		log.info("Offer is NOT valid", ex.getLocalizedMessage());
-//    		valid = false;
-//    	}
-    	log.info("Offer evaluated as {}", valid ? "valid" : "invalid");
+        boolean valid = validateOffer(offer);
         ContractNegotiationOfferResponse contractNegotiationOfferResponse = new ContractNegotiationOfferResponse(offerRequest.getConsumerPid(),
                 offerRequest.getProviderPid(), valid, Serializer.serializeProtocolJsonNode(offer));
         publisher.publishEvent(contractNegotiationOfferResponse);
@@ -263,4 +236,26 @@ public class CatalogService {
                         .createdBy(c.getCreatedBy()))
                 .orElseThrow(() -> new CatalogNotFoundAPIException("Catalog with id: " + id + " not found"));
     }
+
+	public boolean validateOffer(Offer offer) {
+		boolean valid = false;
+		Catalog catalog = getCatalog();
+
+		Offer existingOffer = catalog.getDataset().stream().flatMap(dataset -> dataset.getHasPolicy().stream())
+				.filter(of -> of.getId().equals(offer.getId())).findFirst().orElse(null);
+
+		log.debug("Offer with id '{}' {}", offer.getId(), existingOffer != null ? " found." : "not found.");
+
+		if (existingOffer == null) {
+			valid = false;
+		} else {
+//	    		 check if offers are equals
+			if (offer.equals(existingOffer)) {
+				log.debug("Existing and prvided offers are same");
+				valid = true;
+			}
+		}
+		log.info("Offer evaluated as {}", valid ? "valid" : "invalid");
+		return valid;
+	}
 }
