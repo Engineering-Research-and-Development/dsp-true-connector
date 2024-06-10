@@ -247,6 +247,7 @@ public class CatalogService {
 		log.debug("Offer with id '{}' {}", offer.getId(), existingOffer != null ? " found." : "not found.");
 
 		if (existingOffer == null) {
+			log.warn("Offer with id {} not found in catalog", offer.getId());
 			valid = false;
 		} else {
 //	    		 check if offers are equals
