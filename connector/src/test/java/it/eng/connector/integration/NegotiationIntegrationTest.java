@@ -9,16 +9,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.Arrays;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithUserDetails;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import it.eng.connector.util.TestUtil;
@@ -28,13 +23,8 @@ import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.model.Serializer;
 import it.eng.tools.model.DSpaceConstants;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-public class NegotiationIntegrationTest {
+public class NegotiationIntegrationTest extends BaseIntegrationTest {
 	
-    @Autowired
-    private MockMvc mockMvc;
-    
     @ParameterizedTest
     @ValueSource(strings = {"/request", "/1/request", "/1/events", "/1/agreement/verification", "/1/termination"})
     @WithUserDetails(TestUtil.CONNECTOR_USER)
@@ -51,22 +41,22 @@ public class NegotiationIntegrationTest {
     	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
     }
     
-    @Disabled
     @Test
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void createNegotiationTests() throws Exception {
+    	
     	//needs to match offer in initial.data
     	Offer offer = Offer.Builder.newInstance()
     			.id("fdc45798-a123-4955-8baf-ab7fd66ac4d5")
     			.target(ModelUtil.TARGET)
-    			.permission(Arrays.asList(ModelUtil.PERMISSION))
+    			.permission(Arrays.asList(ModelUtil.PERMISSION_COUNT_5))
     			.build();
     	
     	ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
-    			.callbackAddress(ModelUtil.CONTRACT_REQUEST_MESSAGE.getCallbackAddress())
-    			.consumerPid(ModelUtil.CONTRACT_REQUEST_MESSAGE.getConsumerPid())
+    			.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
+    			.consumerPid(ModelUtil.CONSUMER_PID)
+    			.providerPid(ModelUtil.PROVIDER_PID)
     			.offer(offer)
-    			.providerPid(ModelUtil.CONTRACT_REQUEST_MESSAGE.getProviderPid())
     			.build();
     	
     	final ResultActions result =
