@@ -6,7 +6,7 @@ import it.eng.catalog.model.*;
 import it.eng.catalog.serializer.Serializer;
 
 import java.time.Instant;
-import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
@@ -14,6 +14,8 @@ import java.util.Set;
 
 public class MockObjectUtil {
 
+	public static final String CONSUMER_PID = "urn:uuid:CONSUMER_PID";
+	public static final String PROVIDER_PID = "urn:uuid:PROVIDER_PID";
     public static final String RIGHT_EXPRESSION = "EU";
     public static final String USE = "use";
     public static final String INCLUDED_IN = "includedInAction";
@@ -36,65 +38,83 @@ public class MockObjectUtil {
             .rightOperand(RIGHT_EXPRESSION)
             .operator(Operator.EQ)
             .build();
+    
+    public static final Constraint CONSTRAINT_COUNT_5_TIMES = Constraint.Builder.newInstance()
+            .leftOperand(LeftOperand.COUNT)
+            .rightOperand("5")
+            .operator(Operator.EQ)
+            .build();
 
     public static final Permission PERMISSION = Permission.Builder.newInstance()
             .action(Action.USE)
-            .constraint(Arrays.asList(CONSTRAINT))
+            .constraint(Set.of(CONSTRAINT))
+            .build();
+    
+    public static final Permission PERMISSION_ANONYMIZE = Permission.Builder.newInstance()
+            .action(Action.ANONYMIZE)
+            .constraint(Set.of(CONSTRAINT_COUNT_5_TIMES))
             .build();
 
     public static final Offer OFFER = Offer.Builder.newInstance()
+    		.id("urn:offer_id")
+//            .target(TARGET)
+            .permission(Set.of(PERMISSION))
+            .build();
+    
+    public static final Offer OFFER_WITH_TARGET = Offer.Builder.newInstance()
+    		.id("urn:offer_id")
             .target(TARGET)
-            .permission(Arrays.asList(PERMISSION))
+            .permission(Set.of(PERMISSION))
             .build();
 
     public static final Distribution DISTRIBUTION = Distribution.Builder.newInstance()
             .title(MockObjectUtil.TITLE)
-            .description(Arrays.asList(MockObjectUtil.MULTILANGUAGE))
+            .description(Set.of(MockObjectUtil.MULTILANGUAGE))
             .issued(MockObjectUtil.ISSUED)
             .modified(MockObjectUtil.MODIFIED)
-            .hasPolicy(Arrays.asList(MockObjectUtil.OFFER))
-            .accessService(Arrays.asList(DataServiceUtil.DATA_SERVICE))
+            .hasPolicy(Set.of(MockObjectUtil.OFFER))
+            .accessService(Set.of(DataServiceUtil.DATA_SERVICE))
             .build();
 
     public static final Distribution DISTRIBUTION_FOR_UPDATE = Distribution.Builder.newInstance()
             .title(MockObjectUtil.TITLE)
-            .description(Arrays.asList(MockObjectUtil.MULTILANGUAGE))
+            .description(Set.of(MockObjectUtil.MULTILANGUAGE))
             .issued(MockObjectUtil.ISSUED)
             .modified(MockObjectUtil.MODIFIED)
-            .hasPolicy(Arrays.asList(MockObjectUtil.OFFER))
-            .accessService(Arrays.asList(DataServiceUtil.DATA_SERVICE))
+            .hasPolicy(Set.of(MockObjectUtil.OFFER))
+            .accessService(Set.of(DataServiceUtil.DATA_SERVICE))
             .version(0L)
             .createdBy("admin@mail.com")
             .lastModifiedBy("admin@mail.com")
             .build();
 
-    public static final List<Distribution> DISTRIBUTIONS = Arrays.asList(DISTRIBUTION);
+    public static final Collection<Distribution> DISTRIBUTIONS = Set.of(DISTRIBUTION);
     public static final Dataset DATASET = Dataset.Builder.newInstance()
             .conformsTo(CONFORMSTO)
             .creator(CREATOR)
-            .distribution(Arrays.asList(DISTRIBUTION))
-            .description(Arrays.asList(MULTILANGUAGE))
+            .distribution(Set.of(DISTRIBUTION))
+            .description(Set.of(MULTILANGUAGE))
             .issued(ISSUED)
-            .keyword(Arrays.asList("keyword1", "keyword2"))
+            .keyword(Set.of("keyword1", "keyword2"))
             .identifier(IDENTIFIER)
             .modified(MODIFIED)
-            .theme(Arrays.asList("white", "blue", "aqua"))
+            .theme(Set.of("white", "blue", "aqua"))
             .title(TITLE)
-            .hasPolicy(Arrays.asList(OFFER))
+            .hasPolicy(Set.of(OFFER))
             .build();
 
     public static final Dataset DATASET_FOR_UPDATE = Dataset.Builder.newInstance()
             .conformsTo(CONFORMSTO)
             .creator(CREATOR)
-            .distribution(Arrays.asList(DISTRIBUTION))
-            .description(Arrays.asList(MULTILANGUAGE))
+            .distribution(Set.of(DISTRIBUTION))
+            .description(Set.of(MULTILANGUAGE))
             .issued(ISSUED)
-            .keyword(Arrays.asList("keyword1", "keyword2"))
+            .keyword(Set.of("keyword1", "keyword2"))
             .identifier(IDENTIFIER)
             .modified(MODIFIED)
-            .theme(Arrays.asList("white", "blue", "aqua"))
+            .theme(Set.of("white", "blue", "aqua"))
             .title(TITLE)
-            .hasPolicy(Arrays.asList(OFFER))
+            .hasPolicy(Set.of(OFFER))
             .version(0L)
             .createdBy("admin@mail.com")
             .lastModifiedBy("admin@mail.com")
@@ -103,38 +123,38 @@ public class MockObjectUtil {
             .build();
 
 
-    public static final List<Dataset> DATASETS = Arrays.asList(DATASET);
+    public static final Collection<Dataset> DATASETS = Set.of(DATASET);
     public static final Catalog CATALOG = Catalog.Builder.newInstance()
             .conformsTo(CONFORMSTO)
             .creator(CREATOR)
-            .description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Catalog description").build()))
+            .description(Set.of(Multilanguage.Builder.newInstance().language("en").value("Catalog description").build()))
             .identifier(IDENTIFIER)
             .issued(ISSUED)
-            .keyword(Arrays.asList("keyword1", "keyword2"))
+            .keyword(Set.of("keyword1", "keyword2"))
             .modified(MODIFIED)
-            .theme(Arrays.asList("white", "blue", "aqua"))
+            .theme(Set.of("white", "blue", "aqua"))
             .title(TITLE)
             .participantId("urn:example:DataProviderA")
-            .service(Arrays.asList(DataServiceUtil.DATA_SERVICE))
-            .dataset(Arrays.asList(DATASET))
-            .distribution(Arrays.asList(DISTRIBUTION))
-            .hasPolicy(Arrays.asList(OFFER))
+            .service(Set.of(DataServiceUtil.DATA_SERVICE))
+            .dataset(Set.of(DATASET))
+            .distribution(Set.of(DISTRIBUTION))
+            .hasPolicy(Set.of(OFFER))
             .homepage(ENDPOINT_URL)
             .build();
 
     public static final Catalog CATALOG_FOR_UPDATE = Catalog.Builder.newInstance()
             .conformsTo(CONFORMSTO)
             .creator(CREATOR)
-            .description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Catalog description").build()))
+            .description(Set.of(Multilanguage.Builder.newInstance().language("en").value("Catalog description").build()))
             .identifier(IDENTIFIER)
-            .keyword(Arrays.asList("keyword1", "keyword2"))
-            .theme(Arrays.asList("white", "blue", "aqua"))
+            .keyword(Set.of("keyword1", "keyword2"))
+            .theme(Set.of("white", "blue", "aqua"))
             .title(TITLE)
             .participantId("urn:example:DataProviderA")
-            .service(Arrays.asList(DataServiceUtil.DATA_SERVICE))
-            .dataset(Arrays.asList(DATASET))
-            .distribution(Arrays.asList(DISTRIBUTION))
-            .hasPolicy(Arrays.asList(OFFER))
+            .service(Set.of(DataServiceUtil.DATA_SERVICE))
+            .dataset(Set.of(DATASET))
+            .distribution(Set.of(DISTRIBUTION))
+            .hasPolicy(Set.of(OFFER))
             .homepage(ENDPOINT_URL)
             .version(0L)
             .createdBy("admin@mail.com")
@@ -149,18 +169,18 @@ public class MockObjectUtil {
             .filter(List.of("some-filter"))
             .build();
 
-    public static final List<Catalog> CATALOGS = Arrays.asList(CATALOG);
+    public static final Collection<Catalog> CATALOGS = Set.of(CATALOG);
 
     public static final DatasetRequestMessage DATASET_REQUEST_MESSAGE = DatasetRequestMessage.Builder.newInstance()
             .dataset(Serializer.serializeProtocol(MockObjectUtil.DATASET))
             .build();
 
     public static final DataService DATA_SERVICE = DataService.Builder.newInstance()
-            .keyword(Arrays.asList("keyword1", "keyword2"))
-            .theme(Arrays.asList("white", "blue", "aqua"))
+            .keyword(Set.of("keyword1", "keyword2"))
+            .theme(Set.of("white", "blue", "aqua"))
             .conformsTo(CONFORMSTO)
             .creator(CREATOR)
-            .description(Arrays.asList(MULTILANGUAGE))
+            .description(Set.of(MULTILANGUAGE))
             .identifier(IDENTIFIER)
             .issued(ISSUED)
             .modified(MODIFIED)
@@ -171,11 +191,11 @@ public class MockObjectUtil {
             .build();
 
     public static final DataService DATA_SERVICE_FOR_UPDATE = DataService.Builder.newInstance()
-            .keyword(Arrays.asList("keyword1", "keyword2"))
-            .theme(Arrays.asList("white", "blue", "aqua"))
+            .keyword(Set.of("keyword1", "keyword2"))
+            .theme(Set.of("white", "blue", "aqua"))
             .conformsTo(CONFORMSTO)
             .creator(CREATOR)
-            .description(Arrays.asList(MULTILANGUAGE))
+            .description(Set.of(MULTILANGUAGE))
             .identifier(IDENTIFIER)
             .issued(ISSUED)
             .modified(MODIFIED)
@@ -188,7 +208,7 @@ public class MockObjectUtil {
             .lastModifiedBy("admin@mail.com")
             .build();
 
-    public static final List<DataService> DATA_SERVICES = Arrays.asList(DATA_SERVICE);
+    public static final Collection<DataService> DATA_SERVICES = Set.of(DATA_SERVICE);
 
 
     public static void getAllKeysUsingJsonNodeFieldNames(JsonNode jsonNode, Set<String> keys) {

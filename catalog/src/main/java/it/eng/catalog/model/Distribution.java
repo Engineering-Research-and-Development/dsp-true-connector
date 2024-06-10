@@ -19,7 +19,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.Instant;
-import java.util.List;
+import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -39,7 +39,7 @@ public class Distribution {
     @JsonProperty(DSpaceConstants.DCT_TITLE)
     private String title;
     @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
-    private List<Multilanguage> description;
+    private Collection<Multilanguage> description;
     @JsonProperty(DSpaceConstants.DCT_ISSUED)
     @CreatedDate
     private Instant issued;
@@ -47,7 +47,7 @@ public class Distribution {
     @LastModifiedDate
     private Instant modified;
     @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
-    private List<Offer> hasPolicy;
+    private Collection<Offer> hasPolicy;
 
 //	@JsonProperty(DSpaceConstants.DCT_FORMAT)
 //	private Reference format;
@@ -66,7 +66,7 @@ public class Distribution {
     @NotNull
     @DBRef
     @JsonProperty(DSpaceConstants.DCAT_ACCESS_SERVICE)
-    private List<DataService> accessService;
+    private Collection<DataService> accessService;
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -111,7 +111,7 @@ public class Distribution {
         }
 
         @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
-        public Builder description(List<Multilanguage> description) {
+        public Builder description(Collection<Multilanguage> description) {
             distribution.description = description;
             return this;
         }
@@ -129,7 +129,7 @@ public class Distribution {
         }
 
         @JsonProperty(DSpaceConstants.DCAT_ACCESS_SERVICE)
-        public Builder accessService(List<DataService> dataService) {
+        public Builder accessService(Collection<DataService> dataService) {
             distribution.accessService = dataService;
             return this;
         }
@@ -141,7 +141,8 @@ public class Distribution {
 //		}
 
         @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
-        public Builder hasPolicy(List<Offer> policies) {
+        @JsonDeserialize(as = Set.class)
+        public Builder hasPolicy(Collection<Offer> policies) {
             distribution.hasPolicy = policies;
             return this;
         }

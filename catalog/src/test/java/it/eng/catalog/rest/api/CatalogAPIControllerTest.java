@@ -24,9 +24,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class CatalogAPIControllerTest {
 
-
     @InjectMocks
-    CatalogAPIController catalogAPIController;
+    private CatalogAPIController catalogAPIController;
     @Mock
     private CatalogService catalogService;
 

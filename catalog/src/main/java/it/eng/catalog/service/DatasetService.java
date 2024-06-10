@@ -6,7 +6,7 @@ import it.eng.catalog.model.Dataset;
 import it.eng.catalog.repository.DatasetRepository;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.util.Collection;
 
 /**
  * The DataSetService class provides methods to interact with Dataset data, including saving, retrieving, and deleting datasets.
@@ -41,7 +41,7 @@ public class DatasetService {
      *
      * @return a list of all datasets
      */
-    public List<Dataset> getAllDatasets() {
+    public Collection<Dataset> getAllDatasets() {
         return repository.findAll();
     }
 

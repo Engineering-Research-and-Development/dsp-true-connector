@@ -49,10 +49,22 @@ public class ModelUtil {
 			.rightOperand("2024-02-29T00:00:01+01:00")
 			.build();
 	
+	public static final Constraint CONSTRAINT_COUNT_5 = Constraint.Builder.newInstance()
+			.leftOperand(LeftOperand.COUNT)
+			.operator(Operator.EQ)
+			.rightOperand("5")
+			.build();
+	
 	public static final Permission PERMISSION = Permission.Builder.newInstance()
 			.action(Action.USE)
 			.target(ModelUtil.TARGET)
 			.constraint(Arrays.asList(ModelUtil.CONSTRAINT))
+			.build();
+	
+	public static final Permission PERMISSION_COUNT_5 = Permission.Builder.newInstance()
+			.action(Action.USE)
+			.target(ModelUtil.TARGET)
+			.constraint(Arrays.asList(ModelUtil.CONSTRAINT_COUNT_5))
 			.build();
 	
 	public static final Offer OFFER = Offer.Builder.newInstance()
@@ -60,6 +72,13 @@ public class ModelUtil {
 			.assignee(ModelUtil.ASSIGNEE)
 			.assigner(ModelUtil.ASSIGNER)
 			.permission(Arrays.asList(ModelUtil.PERMISSION))
+			.build();
+	
+	public static final Offer OFFER_COUNT_5 = Offer.Builder.newInstance()
+			.target(ModelUtil.TARGET)
+			.assignee(ModelUtil.ASSIGNEE)
+			.assigner(ModelUtil.ASSIGNER)
+			.permission(Arrays.asList(ModelUtil.PERMISSION_COUNT_5))
 			.build();
 
 	public static final ContractOfferMessage CONTRACT_OFFER_MESSAGE = ContractOfferMessage.Builder.newInstance()

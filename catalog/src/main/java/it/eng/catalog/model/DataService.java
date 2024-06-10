@@ -16,7 +16,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.Instant;
-import java.util.List;
+import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -33,15 +33,15 @@ public class DataService {
     private String id;
     // Resource
     @JsonProperty(DSpaceConstants.DCAT_KEYWORD)
-    private List<String> keyword;
+    private Collection<String> keyword;
     @JsonProperty(DSpaceConstants.DCAT_THEME)
-    private List<String> theme;
+    private Collection<String> theme;
     @JsonProperty(DSpaceConstants.DCT_CONFORMSTO)
     private String conformsTo;
     @JsonProperty(DSpaceConstants.DCT_CREATOR)
     private String creator;
     @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
-    private List<Multilanguage> description;
+    private Collection<Multilanguage> description;
     @JsonProperty(DSpaceConstants.DCT_IDENTIFIER)
     private String identifier;
     @JsonProperty(DSpaceConstants.DCT_ISSUED)
@@ -58,7 +58,7 @@ public class DataService {
     private String endpointURL;
     @JsonProperty(DSpaceConstants.DCAT_SERVES_DATASET)
     // @DBRef// Check if this is correct
-    private List<Dataset> servesDataset;
+    private Collection<Dataset> servesDataset;
     @JsonIgnore
     @CreatedBy
     private String createdBy;
@@ -114,13 +114,13 @@ public class DataService {
         }
 
         @JsonProperty(DSpaceConstants.DCAT_KEYWORD)
-        public Builder keyword(List<String> keyword) {
+        public Builder keyword(Collection<String> keyword) {
             service.keyword = keyword;
             return this;
         }
 
         @JsonProperty(DSpaceConstants.DCAT_THEME)
-        public Builder theme(List<String> theme) {
+        public Builder theme(Collection<String> theme) {
             service.theme = theme;
             return this;
         }
@@ -138,7 +138,7 @@ public class DataService {
         }
 
         @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
-        public Builder description(List<Multilanguage> description) {
+        public Builder description(Collection<Multilanguage> description) {
             service.description = description;
             return this;
         }
@@ -180,7 +180,7 @@ public class DataService {
         }
 
         @JsonProperty(DSpaceConstants.DCAT_SERVES_DATASET)
-        public Builder servesDataset(List<Dataset> servesDataset) {
+        public Builder servesDataset(Collection<Dataset> servesDataset) {
             service.servesDataset = servesDataset;
             return this;
         }

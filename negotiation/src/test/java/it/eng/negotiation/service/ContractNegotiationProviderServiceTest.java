@@ -55,6 +55,8 @@ public class ContractNegotiationProviderServiceTest {
     @Test
     public void startContractNegotiation() {
         when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.ofNullable(null));
+    	when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+    	when(apiResponse.isSuccess()).thenReturn(true);
         ContractRequestMessage crm = ContractRequestMessage.Builder.newInstance()
                 .consumerPid(ModelUtil.CONSUMER_PID)
                 .offer(ModelUtil.OFFER)
