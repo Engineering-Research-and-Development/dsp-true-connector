@@ -12,7 +12,7 @@ import lombok.Data;
  */
 @Data
 @AllArgsConstructor
-public class ContractNegotationOfferResponseEvent {
+public class ContractNegotiationOfferResponseEvent {
 
 	private String consumerPid;
 	private String providerPid;

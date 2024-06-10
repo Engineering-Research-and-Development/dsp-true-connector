@@ -370,12 +370,12 @@
 									}
 								},
 								"url": {
-									"raw": "{{CONSUMER_SERVER_API_DATASET}}/fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+									"raw": "{{CONSUMER_SERVER_API_DATASET}}/{$ID}",
 									"host": [
 										"{{CONSUMER_SERVER_API_DATASET}}"
 									],
 									"path": [
-										"fdc45798-a222-4955-8baf-ab7fd66ac4d5"
+										"{$ID}"
 									]
 								}
 							},
@@ -530,6 +530,128 @@
 									],
 									"path": [
 										"postOffer"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Distribution",
+					"item": [
+						{
+							"name": "Get All Distributions",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_DISTRIBUTION}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_DISTRIBUTION}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Distribution by ID",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_DISTRIBUTION}}/{$ID}",
+									"host": [
+										"{{CONSUMER_SERVER_API_DISTRIBUTION}}"
+									],
+									"path": [
+										"{$ID}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Add Distribution",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"title\": \"Flash lightning distribution\",\r\n    \"accessService\": [\r\n        {\r\n            \"id\": \"1dc45797-4444-4955-8baf-ab7fd66ac4d5\",\r\n            \"keyword\": [\r\n                \"keyword1\",\r\n                \"keyword2\",\r\n                \"keyword3\"\r\n            ],\r\n            \"theme\": [\r\n                \"dark theme\",\r\n                \"light theme\"\r\n            ],\r\n            \"conformsTo\": \"conformsToSomething\",\r\n            \"creator\": \"Engineering Informatica S.p.A.\",\r\n            \"description\": [\r\n                {\r\n                    \"value\": \"Some text for multi language\",\r\n                    \"language\": \"en\"\r\n                }\r\n            ],\r\n            \"identifier\": \"Unique identifier for testing Data Service\",\r\n            \"issued\": \"2024-04-23T18:26:00+02:00[Europe/Berlin]\",\r\n            \"modified\": \"2024-04-23T18:26:00+02:00[Europe/Berlin]\",\r\n            \"title\": \"Title for testing Data Service\",\r\n            \"endpointDescription\": \"endpoint description\",\r\n            \"endpointURL\": \"https://provider-a.com/connector\",\r\n            \"createdBy\": \"admin@mail.com\",\r\n            \"lastModifiedBy\": \"admin@mail.com\",\r\n            \"version\": 0,\r\n            \"type\": \"dcat:DataService\"\r\n        }\r\n    ]\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_DISTRIBUTION}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_DISTRIBUTION}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Distribution",
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"title\": \"Flash lightning distribution Edit\",\r\n    \"accessService\": [\r\n        {\r\n            \"id\": \"1dc45797-4444-4955-8baf-ab7fd66ac4d5\",\r\n            \"keyword\": [\r\n                \"keyword1\",\r\n                \"keyword2\",\r\n                \"keyword3\"\r\n            ],\r\n            \"theme\": [\r\n                \"dark theme\",\r\n                \"light theme\"\r\n            ],\r\n            \"conformsTo\": \"conformsToSomething\",\r\n            \"creator\": \"Engineering Informatica S.p.A.\",\r\n            \"description\": [\r\n                {\r\n                    \"value\": \"Some text for multi language\",\r\n                    \"language\": \"en\"\r\n                }\r\n            ],\r\n            \"identifier\": \"Unique identifier for testing Data Service\",\r\n            \"issued\": \"2024-04-23T18:26:00+02:00[Europe/Berlin]\",\r\n            \"modified\": \"2024-04-23T18:26:00+02:00[Europe/Berlin]\",\r\n            \"title\": \"Title for testing Data Service\",\r\n            \"endpointDescription\": \"endpoint description\",\r\n            \"endpointURL\": \"https://provider-a.com/connector\",\r\n            \"createdBy\": \"admin@mail.com\",\r\n            \"lastModifiedBy\": \"admin@mail.com\",\r\n            \"version\": 0,\r\n            \"type\": \"dcat:DataService\"\r\n        }\r\n    ]\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_DISTRIBUTION}}/{$ID}",
+									"host": [
+										"{{CONSUMER_SERVER_API_DISTRIBUTION}}"
+									],
+									"path": [
+										"{$ID}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Distribution",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_DISTRIBUTION}}/{$ID}",
+									"host": [
+										"{{CONSUMER_SERVER_API_DISTRIBUTION}}"
+									],
+									"path": [
+										"{$ID}"
 									]
 								}
 							},

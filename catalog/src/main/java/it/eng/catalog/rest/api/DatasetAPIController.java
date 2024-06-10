@@ -9,7 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.Collection;
 
 @RestController
 @RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/api/dataset")
@@ -34,7 +34,7 @@ public class DatasetAPIController {
     @GetMapping
     public ResponseEntity<JsonNode> getAllDatasets() {
         log.info("Fetching all datasets");
-        List<Dataset> datasets = datasetService.getAllDatasets();
+        Collection<Dataset> datasets = datasetService.getAllDatasets();
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(Serializer.serializePlainJsonNode(datasets));
     }

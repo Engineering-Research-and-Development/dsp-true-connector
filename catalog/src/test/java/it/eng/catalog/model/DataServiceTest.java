@@ -89,7 +89,7 @@ public class DataServiceTest {
 	private void validateDataService(DataService dataService) {
 		assertNotNull(dataService.getConformsTo());
 		assertNotNull(dataService.getCreator());
-		assertNotNull(dataService.getDescription().get(0));
+		assertNotNull(dataService.getDescription().iterator().next());
 		assertNotNull(dataService.getIdentifier());
 		assertNotNull(dataService.getIssued());
 		assertNotNull(dataService.getKeyword());

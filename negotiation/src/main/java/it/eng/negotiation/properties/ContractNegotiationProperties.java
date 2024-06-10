@@ -12,6 +12,9 @@ public class ContractNegotiationProperties {
 	@Value("${application.automatic.negotiation}")
 	private boolean automaticNegotiation;
 	
+	@Value("${server.port}")
+	private String serverPort;
+	
 //	@Value("${application.connectorid}")
 	public String connectorId() {
 		return "connectorId";
@@ -24,4 +27,9 @@ public class ContractNegotiationProperties {
 	public String callbackAddress() {
 		return callbackAddress;
 	}
+	
+	public String serverPort() {
+		return serverPort;
+	}
+	
 }

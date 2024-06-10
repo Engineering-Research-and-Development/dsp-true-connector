@@ -33,7 +33,7 @@ public class ProviderContractNegotiationControllerTest {
 	@Mock
 	private ServletRequestAttributes attrs;
 	@Mock
-	HttpServletRequest request;
+	private HttpServletRequest request;
 	
 	@InjectMocks
 	private ProviderContractNegotiationController controller;

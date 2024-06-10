@@ -3,11 +3,9 @@ package it.eng.negotiation.exception;
 import lombok.Getter;
 
 @Getter
-public class ContractNegotiationExistsException  extends RuntimeException {
-    /**
-	 * 
-	 */
+public class ContractNegotiationExistsException extends RuntimeException {
 	private static final long serialVersionUID = -1849763093258841825L;
+
 	private String providerPid;
     private String consumerPid;
 

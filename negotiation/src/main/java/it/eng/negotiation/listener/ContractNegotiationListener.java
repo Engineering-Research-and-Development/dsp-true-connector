@@ -8,7 +8,7 @@ import it.eng.negotiation.exception.OfferNotFoundException;
 import it.eng.negotiation.exception.OfferNotValidException;
 import it.eng.negotiation.model.ContractAgreementVerificationMessage;
 import it.eng.negotiation.service.ContractNegotiationEventHandlerService;
-import it.eng.tools.event.contractnegotiation.ContractNegotationOfferResponseEvent;
+import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferNotFoundExceptionEvent;
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferNotValidExceptionEvent;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +29,7 @@ public class ContractNegotiationListener {
 	}
 	
 	@EventListener
-	public void handleContractNegotiationOfferResponse(ContractNegotationOfferResponseEvent response) {
+	public void handleContractNegotiationOfferResponse(ContractNegotiationOfferResponseEvent response) {
 		log.info("Handling ContractNegotiationOfferResponse...");
 		contractNegotiationEventHandlerService.handleContractNegotiationOfferResponse(response);
 	}

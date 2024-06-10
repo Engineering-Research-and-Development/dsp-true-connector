@@ -1,10 +1,8 @@
+
 package it.eng.catalog.model;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.*;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import it.eng.tools.model.DSpaceConstants;
@@ -15,15 +13,15 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.annotation.*;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.Instant;
-import java.util.List;
+import java.util.Collection;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Getter
@@ -34,7 +32,6 @@ import java.util.stream.Collectors;
 @Document(collection = "distributions")
 public class Distribution {
 
-
     @Id
     @JsonProperty(DSpaceConstants.ID)
     private String id;
@@ -42,7 +39,7 @@ public class Distribution {
     @JsonProperty(DSpaceConstants.DCT_TITLE)
     private String title;
     @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
-    private List<Multilanguage> description;
+    private Collection<Multilanguage> description;
     @JsonProperty(DSpaceConstants.DCT_ISSUED)
     @CreatedDate
     private Instant issued;
@@ -50,15 +47,26 @@ public class Distribution {
     @LastModifiedDate
     private Instant modified;
     @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
-    private List<Offer> hasPolicy;
+    private Collection<Offer> hasPolicy;
 
 //	@JsonProperty(DSpaceConstants.DCT_FORMAT)
 //	private Reference format;
 
+    @JsonIgnore
+    @CreatedBy
+    private String createdBy;
+    @JsonIgnore
+    @LastModifiedBy
+    private String lastModifiedBy;
+    @JsonIgnore
+    @Version
+    @Field("version")
+    private Long version;
+
     @NotNull
     @DBRef
     @JsonProperty(DSpaceConstants.DCAT_ACCESS_SERVICE)
-    private List<DataService> accessService;
+    private Collection<DataService> accessService;
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -74,6 +82,28 @@ public class Distribution {
             return new Builder();
         }
 
+        public static Builder updateInstance(Distribution existingDistribution, Distribution updatedDistribution) {
+
+            Distribution.Builder builder = newInstance();
+            builder.id(existingDistribution.getId());
+            builder.version(existingDistribution.getVersion());
+            builder.issued(existingDistribution.getIssued());
+            builder.createdBy(existingDistribution.getCreatedBy());
+            builder.modified(updatedDistribution.getModified() != null ? updatedDistribution.getModified() : existingDistribution.getModified());
+            builder.title(updatedDistribution.getTitle() != null ? updatedDistribution.getTitle() : existingDistribution.getTitle());
+            builder.description(updatedDistribution.getDescription() != null ? updatedDistribution.getDescription() : existingDistribution.getDescription());
+            builder.accessService(updatedDistribution.getAccessService() != null ? updatedDistribution.getAccessService() : existingDistribution.getAccessService());
+            builder.hasPolicy(updatedDistribution.getHasPolicy() != null ? updatedDistribution.getHasPolicy() : existingDistribution.getHasPolicy());
+
+            return builder;
+        }
+
+        @JsonProperty(DSpaceConstants.ID)
+        public Builder id(String id) {
+            distribution.id = id;
+            return this;
+        }
+
         @JsonProperty(DSpaceConstants.DCT_TITLE)
         public Builder title(String title) {
             distribution.title = title;
@@ -81,7 +111,7 @@ public class Distribution {
         }
 
         @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
-        public Builder description(List<Multilanguage> description) {
+        public Builder description(Collection<Multilanguage> description) {
             distribution.description = description;
             return this;
         }
@@ -99,7 +129,7 @@ public class Distribution {
         }
 
         @JsonProperty(DSpaceConstants.DCAT_ACCESS_SERVICE)
-        public Builder accessService(List<DataService> dataService) {
+        public Builder accessService(Collection<DataService> dataService) {
             distribution.accessService = dataService;
             return this;
         }
@@ -111,12 +141,34 @@ public class Distribution {
 //		}
 
         @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
-        public Builder hasPolicy(List<Offer> policies) {
+        @JsonDeserialize(as = Set.class)
+        public Builder hasPolicy(Collection<Offer> policies) {
             distribution.hasPolicy = policies;
             return this;
         }
 
+        @JsonProperty("createdBy")
+        public Distribution.Builder createdBy(String createdBy) {
+            distribution.createdBy = createdBy;
+            return this;
+        }
+
+        @JsonProperty("lastModifiedBy")
+        public Distribution.Builder lastModifiedBy(String lastModifiedBy) {
+            distribution.lastModifiedBy = lastModifiedBy;
+            return this;
+        }
+
+        @JsonProperty("version")
+        public Distribution.Builder version(Long version) {
+            distribution.version = version;
+            return this;
+        }
+
         public Distribution build() {
+            if (distribution.id == null) {
+                distribution.id = UUID.randomUUID().toString();
+            }
             Set<ConstraintViolation<Distribution>> violations
                     = Validation.buildDefaultValidatorFactory().getValidator().validate(distribution);
             if (violations.isEmpty()) {

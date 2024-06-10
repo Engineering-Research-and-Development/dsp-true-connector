@@ -57,6 +57,12 @@
 			"enabled": true
 		},
 		{
+			"key": "CONSUMER_SERVER_API_DISTRIBUTION",
+			"value": "{{CONSUMER}}/api/distribution",
+			"type": "default",
+			"enabled": true
+		},
+		{
 			"key": "PROVIDER_SERVER_PROTOCOL_CATALOG",
 			"value": "{{PROVIDER}}/catalog",
 			"type": "default",
@@ -85,9 +91,15 @@
 			"value": "{{PROVIDER}}/api/dataservice",
 			"type": "default",
 			"enabled": true
+		},
+		{
+			"key": "PROVIDER_SERVER_API_DISTRIBUTION",
+			"value": "{{PROVIDER}}/api/distribution",
+			"type": "default",
+			"enabled": true
 		}
 	],
 	"_postman_variable_scope": "environment",
-	"_postman_exported_at": "2024-05-20T14:56:55.255Z",
+	"_postman_exported_at": "2024-05-22T15:09:14.024Z",
 	"_postman_exported_using": "Postman/10.24.24"
 }

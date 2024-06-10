@@ -23,7 +23,7 @@ import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.event.contractnegotiation.ContractNegotationOfferResponseEvent;
+import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
 import it.eng.tools.response.GenericApiResponse;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,7 +46,7 @@ public class ContractNegotiationEventHandlerServiceTest {
 	@Test
 	@DisplayName("Handle contract negotiation offer response success")
 	public void handleContractNegotiationOfferResponse_accepted_success() {
-		ContractNegotationOfferResponseEvent offerResponse = new ContractNegotationOfferResponseEvent(ModelUtil.CONSUMER_PID, 
+		ContractNegotiationOfferResponseEvent offerResponse = new ContractNegotiationOfferResponseEvent(ModelUtil.CONSUMER_PID, 
 				ModelUtil.PROVIDER_PID, true, Serializer.serializePlainJsonNode(ModelUtil.OFFER));
 		
 		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION));
@@ -63,7 +63,7 @@ public class ContractNegotiationEventHandlerServiceTest {
 	@Test
 	@DisplayName("Handle contract negotiation offer declined")
 	public void handleContractNegotiationOfferResponse_declined() {
-		ContractNegotationOfferResponseEvent offerResponse = new ContractNegotationOfferResponseEvent(ModelUtil.CONSUMER_PID, 
+		ContractNegotiationOfferResponseEvent offerResponse = new ContractNegotiationOfferResponseEvent(ModelUtil.CONSUMER_PID, 
 				ModelUtil.PROVIDER_PID, false, Serializer.serializeProtocolJsonNode(ModelUtil.OFFER));
 		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class)))
 			.thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION));

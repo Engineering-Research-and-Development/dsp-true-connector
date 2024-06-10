@@ -1,15 +1,13 @@
 package it.eng.negotiation.service;
 
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import it.eng.negotiation.event.ContractNegotiationEvent;
 import it.eng.negotiation.exception.ContractNegotiationExistsException;
 import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
+import it.eng.negotiation.exception.OfferNotValidException;
 import it.eng.negotiation.exception.ProviderPidNotBlankException;
 import it.eng.negotiation.listener.ContractNegotiationPublisher;
 import it.eng.negotiation.model.ContractAgreementVerificationMessage;
@@ -26,9 +24,7 @@ import it.eng.negotiation.rest.protocol.ContractNegotiationCallback;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
-import it.eng.tools.event.contractnegotiation.OfferValidationRequest;
 import it.eng.tools.response.GenericApiResponse;
-import it.eng.tools.service.OfferValidationService;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -40,17 +36,15 @@ public class ContractNegotiationProviderService {
 	private final OkHttpRestClient okHttpRestClient;
 	private final  ContractNegotiationProperties properties;
 	private final OfferRepository offerRepository;
-	private final OfferValidationService offerValidationService;
 
     public ContractNegotiationProviderService(ContractNegotiationPublisher publisher,
 			ContractNegotiationRepository repository, OkHttpRestClient okHttpRestClient,
-			ContractNegotiationProperties properties, OfferRepository offerRepository, OfferValidationService offerValidationService) {
+			ContractNegotiationProperties properties, OfferRepository offerRepository) {
 		this.publisher = publisher;
 		this.repository = repository;
 		this.okHttpRestClient = okHttpRestClient;
 		this.properties = properties;
 		this.offerRepository = offerRepository;
-		this.offerValidationService = offerValidationService;
 	}
 
 	/**
@@ -100,12 +94,24 @@ public class ContractNegotiationProviderService {
         	throw new ProviderPidNotBlankException("Contract negotiation failed - providerPid has to be blank", contractRequestMessage.getConsumerPid());
         }
         
+        repository.findByProviderPidAndConsumerPid(contractRequestMessage.getProviderPid(), contractRequestMessage.getConsumerPid())
+                .ifPresent(crm -> {
+                    throw new ContractNegotiationExistsException("Contract request message with provider and consumer pid's exists", contractRequestMessage.getProviderPid(), contractRequestMessage.getConsumerPid());
+                });
+        
+
+        String authorization =  okhttp3.Credentials.basic("admin@mail.com", "password");
+		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + properties.serverPort() + "/api/offer/validateOffer", Serializer.serializePlainJsonNode(contractRequestMessage.getOffer()), authorization);
+        
+		if (!response.isSuccess()) {
+			throw new OfferNotValidException("Contract offer is not valid", contractRequestMessage.getProviderPid(), contractRequestMessage.getConsumerPid());
+		}
+		
         ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
                 .state(ContractNegotiationState.REQUESTED)
                 .consumerPid(contractRequestMessage.getConsumerPid())
                 .build();
 
-        List<Boolean> isValid = new ArrayList<>();
         if (properties.isAutomaticNegotiation()) {
         	log.debug("Performing automatic negotiation");
         	publisher.publishEvent(new ContractNegotationOfferRequestEvent(
@@ -114,18 +120,10 @@ public class ContractNegotiationProviderService {
         			Serializer.serializeProtocolJsonNode(contractRequestMessage.getOffer())));
         } else {
         	log.debug("Offer evaluation will have to be done by human");
-        	 publisher.publishEvent(new OfferValidationRequest(
-        			isValid,
-         			contractNegotiation.getConsumerPid(),
-         			contractNegotiation.getProviderPid(),
-         			Serializer.serializeProtocolJsonNode(contractRequestMessage.getOffer())));
         }
         
-        
-        System.out.println(isValid.get(0));
         repository.save(contractNegotiation);
         log.info("Contract negotiation {} saved", contractNegotiation.getId());
-        //TODO check if offer is present in catalog and return here (if not valid the response has be sent from here)
         Offer dbOffer = Offer.Builder.newInstance()
 			.id(contractRequestMessage.getOffer().getId())
 			.permission(contractRequestMessage.getOffer().getPermission())

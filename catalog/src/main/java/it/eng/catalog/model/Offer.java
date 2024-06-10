@@ -1,6 +1,5 @@
 package it.eng.catalog.model;
 
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -19,10 +18,12 @@ import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
 import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
+@EqualsAndHashCode(exclude = "target")
 @JsonDeserialize(builder = Offer.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true) 
@@ -70,7 +71,7 @@ public class Offer {
 	
 	@NotNull
 	@JsonProperty(DSpaceConstants.ODRL_PERMISSION)
-	private List<Permission> permission;
+	private Set<Permission> permission;
 	
 	@JsonIgnoreProperties(value={ "type" }, allowGetters=true)
 	@JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
@@ -117,7 +118,8 @@ public class Offer {
 		}
 		
 		@JsonSetter(DSpaceConstants.ODRL_PERMISSION)
-		public Builder permission(List<Permission> permission) {
+		@JsonDeserialize(as = Set.class)
+		public Builder permission(Set<Permission> permission) {
 			offer.permission = permission;
 			return this;
 		}
@@ -138,5 +140,5 @@ public class Offer {
 						.collect(Collectors.joining(", ")));
 			}
 	}
-		
+	
 }

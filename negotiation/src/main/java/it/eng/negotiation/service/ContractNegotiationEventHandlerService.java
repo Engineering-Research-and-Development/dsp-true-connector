@@ -17,7 +17,7 @@ import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.rest.protocol.ContractNegotiationCallback;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.event.contractnegotiation.ContractNegotationOfferResponseEvent;
+import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 
@@ -38,7 +38,7 @@ public class ContractNegotiationEventHandlerService {
 		this.okHttpRestClient = okHttpRestClient;
 	}
 
-	public void handleContractNegotiationOfferResponse(ContractNegotationOfferResponseEvent offerResponse) {
+	public void handleContractNegotiationOfferResponse(ContractNegotiationOfferResponseEvent offerResponse) {
 		String result = offerResponse.isOfferAccepted() ? "accepted" : "declined";
 		log.info("Contract offer " + result);
 		// TODO get callbackAddress and send Agreement message

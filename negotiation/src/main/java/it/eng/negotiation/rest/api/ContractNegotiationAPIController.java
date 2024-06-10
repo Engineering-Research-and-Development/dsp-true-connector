@@ -13,7 +13,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.negotiation.model.ContractAgreementVerificationMessage;
 import it.eng.negotiation.service.ContractNegotiationAPIService;
 import it.eng.negotiation.service.ContractNegotiationEventHandlerService;
-import it.eng.tools.event.contractnegotiation.ContractNegotationOfferResponseEvent;
+import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
 import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -50,7 +50,7 @@ public class ContractNegotiationAPIController {
         String providerPid = response.get(DSpaceConstants.PROVIDER_PID).asText();
         boolean offerAccepted = response.get("offerAccepted").asBoolean();
         JsonNode offer = response.get(DSpaceConstants.OFFER);
-        ContractNegotationOfferResponseEvent offerResponse = new ContractNegotationOfferResponseEvent(consumerPid, providerPid, offerAccepted, offer);
+        ContractNegotiationOfferResponseEvent offerResponse = new ContractNegotiationOfferResponseEvent(consumerPid, providerPid, offerAccepted, offer);
         handlerService.handleContractNegotiationOfferResponse(offerResponse);
         
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(null);

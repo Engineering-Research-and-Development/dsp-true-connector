@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -58,6 +59,9 @@ public class ContractNegotiationProviderServiceTest {
     @DisplayName("Start contract negotiation success - automatic negotiation ON")
     public void startContractNegotiation_automaticON() throws InterruptedException {
     	when(properties.isAutomaticNegotiation()).thenReturn(true);
+        when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.ofNullable(null));
+    	when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+    	when(apiResponse.isSuccess()).thenReturn(true);
         ContractRequestMessage crm = ContractRequestMessage.Builder.newInstance()
                 .consumerPid(ModelUtil.CONSUMER_PID)
                 .offer(ModelUtil.OFFER)
