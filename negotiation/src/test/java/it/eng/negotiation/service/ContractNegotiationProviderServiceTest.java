@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -32,6 +33,7 @@ import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
 import it.eng.tools.response.GenericApiResponse;
 
 @ExtendWith(MockitoExtension.class)
@@ -73,12 +75,16 @@ public class ContractNegotiationProviderServiceTest {
         verify(repository).save(argCaptorContractNegotiation.capture());
 		//verify that status is updated to REQUESTED
 		assertEquals(ContractNegotiationState.REQUESTED, argCaptorContractNegotiation.getValue().getState());
+		verify(publisher).publishEvent(any(ContractNegotationOfferRequestEvent.class));
     }
     
     @Test
     @DisplayName("Start contract negotiation success - automatic negotiation OFF")
     public void startContractNegotiation_automatic_OFF() throws InterruptedException {
     	when(properties.isAutomaticNegotiation()).thenReturn(false);
+        when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.ofNullable(null));
+    	when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+    	when(apiResponse.isSuccess()).thenReturn(true);
         ContractRequestMessage crm = ContractRequestMessage.Builder.newInstance()
                 .consumerPid(ModelUtil.CONSUMER_PID)
                 .offer(ModelUtil.OFFER)
@@ -90,6 +96,7 @@ public class ContractNegotiationProviderServiceTest {
         verify(repository).save(argCaptorContractNegotiation.capture());
 		//verify that status is updated to REQUESTED
 		assertEquals(ContractNegotiationState.REQUESTED, argCaptorContractNegotiation.getValue().getState());
+		verify(publisher, times(0)).publishEvent(any(ContractNegotationOfferRequestEvent.class));
     }
 
     @Test

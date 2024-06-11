@@ -2,7 +2,6 @@ package it.eng.negotiation.rest.protocol;
 
 import java.net.URI;
 import java.util.Arrays;
-import java.util.concurrent.CompletableFuture;
 
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -56,7 +55,7 @@ public class ProviderContractNegotiationController {
     public ResponseEntity<JsonNode> createNegotiation(@RequestBody JsonNode contractRequestMessageJsonNode) throws InterruptedException {
         log.info("Creating negotiation");
         ContractRequestMessage crm = Serializer.deserializeProtocol(contractRequestMessageJsonNode, ContractRequestMessage.class);
-        CompletableFuture<JsonNode> responseNode = providerService.startContractNegotiation(crm);
+        ContractNegotiation cn = providerService.startContractNegotiation(crm);
         
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest().path("/{id}")

@@ -55,7 +55,6 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     	ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
     			.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
     			.consumerPid(ModelUtil.CONSUMER_PID)
-    			.providerPid(ModelUtil.PROVIDER_PID)
     			.offer(offer)
     			.build();
     	
