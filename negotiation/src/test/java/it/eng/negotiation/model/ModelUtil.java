@@ -13,8 +13,8 @@ public class ModelUtil {
 	public static final String CALLBACK_ADDRESS = "https://callback.address/callback";
 	public static final String FORWARD_TO = "https://forward-to.com";
 	public static final String DATASET_ID = "urn:uuid:DATASET_ID";
-	public static final String ASSIGNEE = "ASSIGNEE_CONSUMER";
-	public static final String ASSIGNER = "ASSIGNER_PROVIDER";
+	public static final String ASSIGNEE = "urn:uuid:ASSIGNEE_CONSUMER";
+	public static final String ASSIGNER = "urn:uuid:ASSIGNER_PROVIDER";
 	
 	public static final String TARGET = "urn:uuid:TARGET";
 	

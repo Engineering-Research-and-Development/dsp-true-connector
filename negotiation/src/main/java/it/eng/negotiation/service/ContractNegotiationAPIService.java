@@ -62,11 +62,11 @@ public class ContractNegotiationAPIService {
 		String authorization =  okhttp3.Credentials.basic("connector@mail.com", "password");
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(forwardTo, Serializer.serializeProtocolJsonNode(contractRequestMessage), authorization);
 		log.info("Response received {}", response);
-		JsonNode jsonNode = null;
+		ContractNegotiation contractNegotiation = null;
 		if (response.getHttpStatus() == 201) {
 			try {
-				jsonNode = mapper.readTree(response.getData());
-				ContractNegotiation contractNegotiation = Serializer.deserializeProtocol(jsonNode, ContractNegotiation.class);
+				JsonNode jsonNode = mapper.readTree(response.getData());
+				contractNegotiation = Serializer.deserializeProtocol(jsonNode, ContractNegotiation.class);
 				contractNegotiationRepository.save(contractNegotiation);
 				log.info("Contract negotiation {} saved", contractNegotiation.getId());
 				Offer dbOffer = Offer.Builder.newInstance()
@@ -86,7 +86,7 @@ public class ContractNegotiationAPIService {
 			log.info("Error response received!");
 			throw new ContractNegotiationAPIException(response.getMessage());
 		}
-		return jsonNode;
+		return Serializer.serializePlainJsonNode(contractNegotiation);
 	}
 
 	/**
@@ -149,6 +149,12 @@ public class ContractNegotiationAPIService {
 				.orElseThrow(() -> new ContractNegotiationAPIException(
 						"Contract negotiation with providerPid " + providerPid + 
 						" and consumerPid " + consumerPid + " not found"));
+		
+		if (!contractNegotiation.getState().equals(ContractNegotiationState.REQUESTED)
+    			&& !contractNegotiation.getState().equals(ContractNegotiationState.ACCEPTED)) {
+			throw new ContractNegotiationAPIException("Agreement aborted, wrong state " + contractNegotiation.getState().name());
+		}
+		
 		Agreement agreement = Serializer.deserializePlain(agreementNode.toPrettyString(), Agreement.class);
 		ContractAgreementMessage agreementMessage = ContractAgreementMessage.Builder.newInstance()
 				.consumerPid(consumerPid)

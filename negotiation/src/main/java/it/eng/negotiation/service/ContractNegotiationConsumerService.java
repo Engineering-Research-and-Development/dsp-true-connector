@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import it.eng.negotiation.exception.ContractNegotiationInvalidStateException;
 import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
 import it.eng.negotiation.exception.OfferNotFoundException;
 import it.eng.negotiation.listener.ContractNegotiationPublisher;
@@ -103,6 +104,12 @@ public class ContractNegotiationConsumerService {
     public void handleAgreement(ContractAgreementMessage contractAgreementMessage) {
     	// save callbackAddress into ContractNegotiation - used for sending ContractNegotiationEventMessage.FINALIZED 
     	ContractNegotiation contractNegotiation = validateNegotiation(contractAgreementMessage.getConsumerPid(), contractAgreementMessage.getProviderPid());
+    	
+    	if (!contractNegotiation.getState().equals(ContractNegotiationState.REQUESTED)
+    			&& !contractNegotiation.getState().equals(ContractNegotiationState.ACCEPTED)) {
+			throw new ContractNegotiationInvalidStateException("Agreement aborted, wrong state " + contractNegotiation.getState().name(),
+					contractAgreementMessage.getConsumerPid(), contractAgreementMessage.getProviderPid());
+		}
     	
     	validateAgreementAgainstOffer(contractAgreementMessage);
 

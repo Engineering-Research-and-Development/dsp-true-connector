@@ -130,6 +130,19 @@ public class ContractNegotiationAPIServiceTest {
 	}
 	
 	@Test
+	@DisplayName("Send agreement failed - wrong negotiation state")
+	public void handleAgreement_off_wrongNegotiationState() {
+		
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(ModelUtil.PROVIDER_PID, ModelUtil.CONSUMER_PID)).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_OFFERED));
+
+		assertThrows(ContractNegotiationAPIException.class, () -> service.sendAgreement(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID, Serializer.serializePlainJsonNode(ModelUtil.AGREEMENT)));
+		
+		verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(ModelUtil.PROVIDER_PID, ModelUtil.CONSUMER_PID);
+		verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
+		verify(agreementRepository, times(0)).save(any(Agreement.class));
+	}
+	
+	@Test
 	@DisplayName("Send agreement failed - bad request")
 	public void sendAgreement_failedBadRequest() {
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);

@@ -36,7 +36,7 @@ public class ContractNegotiationAPIController {
 	@PostMapping(path = "/startNegotiation")
     public ResponseEntity<GenericApiResponse<JsonNode>> startNegotiation(@RequestBody JsonNode startNegotiationRequest) {
     	String targetConnector = startNegotiationRequest.get("Forward-To").asText();
-    	JsonNode offerNode = startNegotiationRequest.get("offer");
+    	JsonNode offerNode = startNegotiationRequest.get(DSpaceConstants.OFFER);
     	log.info("Consumer starts negotaition with {}", targetConnector);
     	JsonNode response = apiService.startNegotiation(targetConnector, offerNode);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
@@ -73,7 +73,7 @@ public class ContractNegotiationAPIController {
     @PostMapping(path = "/postOffer")
     public ResponseEntity<GenericApiResponse<JsonNode>> postOffer(@RequestBody JsonNode contractOfferRequest) {
     	String targetConnector = contractOfferRequest.get("Forward-To").asText();
-    	JsonNode offerNode = contractOfferRequest.get("offer");
+    	JsonNode offerNode = contractOfferRequest.get(DSpaceConstants.OFFER);
     	log.info("Provider posts offer - starts negotaition with {}", targetConnector);
     	JsonNode response = apiService.postContractOffer(targetConnector, offerNode);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
@@ -82,7 +82,7 @@ public class ContractNegotiationAPIController {
     
     @PostMapping(path = "/sendAgreement")
     public ResponseEntity<GenericApiResponse<JsonNode>> sendAgreement(@RequestBody JsonNode contractAgreementRequest) {
-    	JsonNode agreementNode = contractAgreementRequest.get("agreement");
+    	JsonNode agreementNode = contractAgreementRequest.get(DSpaceConstants.AGREEMENT);
     	String consumerPid = contractAgreementRequest.get(DSpaceConstants.CONSUMER_PID).asText();
         String providerPid = contractAgreementRequest.get(DSpaceConstants.PROVIDER_PID).asText();
     	apiService.sendAgreement(consumerPid, providerPid, agreementNode);

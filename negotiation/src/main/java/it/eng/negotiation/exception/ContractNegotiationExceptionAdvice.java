@@ -29,11 +29,11 @@ public class ContractNegotiationExceptionAdvice extends ResponseEntityExceptionH
         ContractNegotiationErrorMessage errorMessage = ContractNegotiationErrorMessage.Builder.newInstance()
         		.consumerPid(ex.getConsumerPid() != null ?  ex.getConsumerPid() : PID_NOT_FOUND)
                 .providerPid(ex.getProviderPid() != null ?  ex.getProviderPid() : PID_NOT_FOUND)
-                .code(HttpStatus.BAD_REQUEST.getReasonPhrase())
+                .code(HttpStatus.NOT_FOUND.getReasonPhrase())
                 .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()))
                 .description(Collections.singletonList(Description.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build())).build();
 
-        return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
+        return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(), HttpStatus.NOT_FOUND, request);
     }
     
     @ExceptionHandler(value = {ValidationException.class})
@@ -50,7 +50,20 @@ public class ContractNegotiationExceptionAdvice extends ResponseEntityExceptionH
     
 
     @ExceptionHandler(value = {ContractNegotiationExistsException.class})
-    protected ResponseEntity<Object> ContractNegotiationExistsException(ContractNegotiationExistsException ex, WebRequest request) {
+    protected ResponseEntity<Object> handleContractNegotiationExistsException(ContractNegotiationExistsException ex, WebRequest request) {
+
+        ContractNegotiationErrorMessage errorMessage = ContractNegotiationErrorMessage.Builder.newInstance()
+        		.consumerPid(ex.getConsumerPid() != null ?  ex.getConsumerPid() : PID_NOT_FOUND)
+                .providerPid(ex.getProviderPid() != null ?  ex.getProviderPid() : PID_NOT_FOUND)
+                .code(HttpStatus.BAD_REQUEST.getReasonPhrase())
+                .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()))
+                .description(Collections.singletonList(Description.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build())).build();
+
+        return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
+    }
+    
+    @ExceptionHandler(value = {ContractNegotiationInvalidStateException.class})
+    protected ResponseEntity<Object> handleContractNegotiationInvalidStateException(ContractNegotiationInvalidStateException ex, WebRequest request) {
 
         ContractNegotiationErrorMessage errorMessage = ContractNegotiationErrorMessage.Builder.newInstance()
         		.consumerPid(ex.getConsumerPid() != null ?  ex.getConsumerPid() : PID_NOT_FOUND)

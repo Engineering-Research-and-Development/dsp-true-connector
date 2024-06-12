@@ -112,7 +112,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     			mockMvc.perform(
     					get("/negotiations/1")
     					.contentType(MediaType.APPLICATION_JSON));
-    	result.andExpect(status().isBadRequest())
+    	result.andExpect(status().isNotFound())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
     	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(ModelUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())))
     	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));

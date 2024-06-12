@@ -18,6 +18,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import it.eng.negotiation.exception.ContractNegotiationInvalidStateException;
 import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
 import it.eng.negotiation.exception.OfferNotFoundException;
 import it.eng.negotiation.listener.ContractNegotiationPublisher;
@@ -96,7 +97,22 @@ public class ContractNegotiationConsumerServiceTest {
 	@Test
 	@DisplayName("Process agreement message - automatic negotiation OFF - negotiation not found")
 	public void handleAgreement_off_negotiationNotFound() {
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(ModelUtil.PROVIDER_PID, ModelUtil.CONSUMER_PID)).thenReturn(Optional.ofNullable(null));
+
 		assertThrows(ContractNegotiationNotFoundException.class, () -> service.handleAgreement( ModelUtil.CONTRACT_AGREEMENT_MESSAGE));
+		
+		verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(ModelUtil.PROVIDER_PID, ModelUtil.CONSUMER_PID);
+		verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
+		verify(agreementRepository, times(0)).save(any(Agreement.class));
+	}
+	
+	@Test
+	@DisplayName("Process agreement message - automatic negotiation OFF - wrong negotiation state")
+	public void handleAgreement_off_wrongNegotiationState() {
+		
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(ModelUtil.PROVIDER_PID, ModelUtil.CONSUMER_PID)).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_OFFERED));
+
+		assertThrows(ContractNegotiationInvalidStateException.class, () -> service.handleAgreement( ModelUtil.CONTRACT_AGREEMENT_MESSAGE));
 		
 		verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(ModelUtil.PROVIDER_PID, ModelUtil.CONSUMER_PID);
 		verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
