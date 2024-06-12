@@ -96,7 +96,7 @@ public class ContractNegotiationProviderService {
         
         repository.findByProviderPidAndConsumerPid(contractRequestMessage.getProviderPid(), contractRequestMessage.getConsumerPid())
                 .ifPresent(crm -> {
-                    throw new ContractNegotiationExistsException("PROVIDER -Contract request message with provider and consumer pid's exists", contractRequestMessage.getProviderPid(), contractRequestMessage.getConsumerPid());
+                    throw new ContractNegotiationExistsException("PROVIDER - Contract request message with provider and consumer pid's exists", contractRequestMessage.getProviderPid(), contractRequestMessage.getConsumerPid());
                 });
         
 
@@ -114,17 +114,17 @@ public class ContractNegotiationProviderService {
                 .build();
 
         if (properties.isAutomaticNegotiation()) {
-        	log.debug("PROVIDER -Performing automatic negotiation");
+        	log.debug("PROVIDER - Performing automatic negotiation");
         	publisher.publishEvent(new ContractNegotationOfferRequestEvent(
         			contractNegotiation.getConsumerPid(),
         			contractNegotiation.getProviderPid(),
         			Serializer.serializeProtocolJsonNode(contractRequestMessage.getOffer())));
         } else {
-        	log.debug("PROVIDER -Offer evaluation will have to be done by human");
+        	log.debug("PROVIDER - Offer evaluation will have to be done by human");
         }
         
         repository.save(contractNegotiation);
-        log.info("PROVIDER -Contract negotiation {} saved", contractNegotiation.getId());
+        log.info("PROVIDER - Contract negotiation {} saved", contractNegotiation.getId());
         Offer dbOffer = Offer.Builder.newInstance()
 			.id(contractRequestMessage.getOffer().getId())
 			.permission(contractRequestMessage.getOffer().getPermission())
@@ -133,7 +133,7 @@ public class ContractNegotiationProviderService {
 			.providerPid(contractNegotiation.getProviderPid())
 			.build();
 		offerRepository.save(dbOffer);
-		log.info("PROVIDER -Offer {} saved", contractRequestMessage.getOffer().getId());
+		log.info("PROVIDER - Offer {} saved", contractRequestMessage.getOffer().getId());
         return contractNegotiation;
     }
 

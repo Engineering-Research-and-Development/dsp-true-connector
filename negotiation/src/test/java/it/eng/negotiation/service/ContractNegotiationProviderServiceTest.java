@@ -23,10 +23,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import it.eng.negotiation.exception.ContractNegotiationExistsException;
 import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
+import it.eng.negotiation.exception.OfferNotValidException;
+import it.eng.negotiation.exception.ProviderPidNotBlankException;
 import it.eng.negotiation.listener.ContractNegotiationPublisher;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationState;
+import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.ModelUtil;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
@@ -78,7 +82,6 @@ public class ContractNegotiationProviderServiceTest {
     @Test
     @DisplayName("Start contract negotiation success - automatic negotiation OFF")
     public void startContractNegotiation_automatic_OFF() throws InterruptedException {
-    	when(properties.isAutomaticNegotiation()).thenReturn(false);
         when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.ofNullable(null));
     	when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
     	when(apiResponse.isSuccess()).thenReturn(true);
@@ -92,6 +95,40 @@ public class ContractNegotiationProviderServiceTest {
 		assertEquals(ModelUtil.CONSUMER_PID, argCaptorContractNegotiation.getValue().getConsumerPid());
 		assertNotNull(argCaptorContractNegotiation.getValue().getProviderPid());
 		verify(publisher, times(0)).publishEvent(any(ContractNegotationOfferRequestEvent.class));
+    }
+    
+    @Test
+    @DisplayName("Start contract negotiation failed - provider pid not blank")
+    public void startContractNegotiation_providerPidNotBlank() throws InterruptedException {
+    	ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
+    			.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
+    			.consumerPid(ModelUtil.CONSUMER_PID)
+    			.providerPid(ModelUtil.PROVIDER_PID)
+    			.offer(ModelUtil.OFFER)
+    			.build();
+    	
+        assertThrows(ProviderPidNotBlankException.class,()-> service.startContractNegotiation(contractRequestMessage));
+        verify(repository, times(0)).save(any(ContractNegotiation.class));
+    }
+    
+    @Test
+    @DisplayName("Start contract negotiation failed - contract negotiation exists")
+    public void startContractNegotiation_contractNegotiationExists() throws InterruptedException {
+        when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION));
+    	
+        assertThrows(ContractNegotiationExistsException.class,()-> service.startContractNegotiation(ModelUtil.CONTRACT_REQUEST_MESSAGE));
+        verify(repository, times(0)).save(any(ContractNegotiation.class));
+    }
+    
+    @Test
+    @DisplayName("Start contract negotiation failed - offer not valid")
+    public void startContractNegotiation_offerNotValid() throws InterruptedException {
+        when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.ofNullable(null));
+    	when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+    	when(apiResponse.isSuccess()).thenReturn(false);
+    	
+        assertThrows(OfferNotValidException.class,()-> service.startContractNegotiation(ModelUtil.CONTRACT_REQUEST_MESSAGE));
+        verify(repository, times(0)).save(any(ContractNegotiation.class));
     }
 
     @Test
