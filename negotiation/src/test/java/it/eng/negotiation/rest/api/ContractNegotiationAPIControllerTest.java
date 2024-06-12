@@ -133,7 +133,7 @@ public class ContractNegotiationAPIControllerTest {
 				
 		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.sendAgreement(mapper.convertValue(map, JsonNode.class));
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		verify(apiService).sendAgreement(any(String.class), any(String.class), any(String.class), any(JsonNode.class));
+		verify(apiService).sendAgreement(any(String.class), any(String.class), any(JsonNode.class));
 	}
 	
 	@Test
@@ -146,7 +146,7 @@ public class ContractNegotiationAPIControllerTest {
 		map.put("agreement", Serializer.serializeProtocolJsonNode(ModelUtil.AGREEMENT));
 				
 		doThrow(new ContractNegotiationAPIException("Something not correct - tests"))
-		.when(apiService).sendAgreement(any(String.class), any(String.class), any(String.class), any(JsonNode.class));
+		.when(apiService).sendAgreement(any(String.class), any(String.class), any(JsonNode.class));
 		
 		assertThrows(ContractNegotiationAPIException.class, () ->
 		controller.sendAgreement(mapper.convertValue(map, JsonNode.class)));

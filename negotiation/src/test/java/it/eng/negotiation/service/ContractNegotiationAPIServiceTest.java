@@ -113,7 +113,7 @@ public class ContractNegotiationAPIServiceTest {
 		when(properties.callbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION));
 		
-		service.sendAgreement(ModelUtil.FORWARD_TO, ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID, Serializer.serializePlainJsonNode(ModelUtil.AGREEMENT));
+		service.sendAgreement(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID, Serializer.serializePlainJsonNode(ModelUtil.AGREEMENT));
 		
 		verify(contractNegotiationRepository).save(any(ContractNegotiation.class));
 		verify(agreementRepository).save(any(Agreement.class));
@@ -122,7 +122,7 @@ public class ContractNegotiationAPIServiceTest {
 	@Test
 	@DisplayName("Send agreement failed - negotiation not found")
 	public void sendAgreement_failedNegotiationNotFound() {
-		assertThrows(ContractNegotiationAPIException.class, ()-> service.sendAgreement(ModelUtil.FORWARD_TO, ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID, Serializer.serializePlainJsonNode(ModelUtil.AGREEMENT)));
+		assertThrows(ContractNegotiationAPIException.class, ()-> service.sendAgreement(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID, Serializer.serializePlainJsonNode(ModelUtil.AGREEMENT)));
 		
 		verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
 		verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
@@ -137,7 +137,7 @@ public class ContractNegotiationAPIServiceTest {
 		when(properties.callbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION));
 		
-		assertThrows(ContractNegotiationAPIException.class, ()-> service.sendAgreement(ModelUtil.FORWARD_TO, ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID, Serializer.serializePlainJsonNode(ModelUtil.AGREEMENT)));
+		assertThrows(ContractNegotiationAPIException.class, ()-> service.sendAgreement(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID, Serializer.serializePlainJsonNode(ModelUtil.AGREEMENT)));
 	
 		verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
 		verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));

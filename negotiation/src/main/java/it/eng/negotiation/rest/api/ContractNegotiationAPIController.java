@@ -82,12 +82,10 @@ public class ContractNegotiationAPIController {
     
     @PostMapping(path = "/sendAgreement")
     public ResponseEntity<GenericApiResponse<JsonNode>> sendAgreement(@RequestBody JsonNode contractAgreementRequest) {
-    	String forwardTo = contractAgreementRequest.get("Forward-To").asText();
     	JsonNode agreementNode = contractAgreementRequest.get("agreement");
     	String consumerPid = contractAgreementRequest.get(DSpaceConstants.CONSUMER_PID).asText();
         String providerPid = contractAgreementRequest.get(DSpaceConstants.PROVIDER_PID).asText();
-    	log.info("Sending agreement as provider to {}", forwardTo);
-    	apiService.sendAgreement(forwardTo, consumerPid, providerPid, agreementNode);
+    	apiService.sendAgreement(consumerPid, providerPid, agreementNode);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
     			.body(GenericApiResponse.success(null, "Contract agreement sent", HttpStatus.OK.value()));
     }

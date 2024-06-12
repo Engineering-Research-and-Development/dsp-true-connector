@@ -70,11 +70,11 @@ public class ContractNegotiationAPIService {
 				contractNegotiationRepository.save(contractNegotiation);
 				log.info("Contract negotiation {} saved", contractNegotiation.getId());
 				Offer dbOffer = Offer.Builder.newInstance()
-				.assignee(contractNegotiation.getConsumerPid())
-				.assigner(contractNegotiation.getProviderPid())
 				.id(offer.getId())
 				.permission(offer.getPermission())
 				.target(offer.getTarget())
+				.consumerPid(contractNegotiation.getConsumerPid())
+				.providerPid(contractNegotiation.getProviderPid())
 				.build();
 				offerRepository.save(dbOffer);
 				log.info("Offer {} saved", offer.getId());
@@ -144,7 +144,7 @@ public class ContractNegotiationAPIService {
 		return jsonNode;
 	}
 
-	public void sendAgreement(String forwardTo, String consumerPid, String providerPid, JsonNode agreementNode) {
+	public void sendAgreement(String consumerPid, String providerPid, JsonNode agreementNode) {
 		ContractNegotiation contractNegotiation = contractNegotiationRepository.findByProviderPidAndConsumerPid(providerPid, consumerPid)
 				.orElseThrow(() -> new ContractNegotiationAPIException(
 						"Contract negotiation with providerPid " + providerPid + 
@@ -157,8 +157,12 @@ public class ContractNegotiationAPIService {
 				.agreement(agreement)
 				.build();
 		
+    	log.info("Sending agreement as provider to {}", contractNegotiation.getCallbackAddress());
 		String authorization =  okhttp3.Credentials.basic("connector@mail.com", "password");
-		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(forwardTo, Serializer.serializeProtocolJsonNode(agreementMessage), authorization);
+		GenericApiResponse<String> response = okHttpRestClient
+				.sendRequestProtocol(contractNegotiation.getCallbackAddress() + "/consumer/negotiations/" + consumerPid + "/agreement",
+				Serializer.serializeProtocolJsonNode(agreementMessage),
+				authorization);
 		log.info("Response received {}", response);
 		if (response.getHttpStatus() == 200) {
 			ContractNegotiation contractNegotiationStateChange = ContractNegotiation.Builder.newInstance()

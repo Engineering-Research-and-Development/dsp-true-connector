@@ -88,7 +88,7 @@ public class ContractNegotiationProviderService {
      * @throws ContractNegotiationExistsException if a contract negotiation already exists for the given provider and consumer PID combination.
      */
     public ContractNegotiation startContractNegotiation(ContractRequestMessage contractRequestMessage) throws InterruptedException {
-        log.info("Starting contract negotiation...");
+        log.info("PROVIDER - Starting contract negotiation...");
         
         if (StringUtils.isNotBlank(contractRequestMessage.getProviderPid())) {
         	throw new ProviderPidNotBlankException("Contract negotiation failed - providerPid has to be blank", contractRequestMessage.getConsumerPid());
@@ -96,7 +96,7 @@ public class ContractNegotiationProviderService {
         
         repository.findByProviderPidAndConsumerPid(contractRequestMessage.getProviderPid(), contractRequestMessage.getConsumerPid())
                 .ifPresent(crm -> {
-                    throw new ContractNegotiationExistsException("Contract request message with provider and consumer pid's exists", contractRequestMessage.getProviderPid(), contractRequestMessage.getConsumerPid());
+                    throw new ContractNegotiationExistsException("PROVIDER -Contract request message with provider and consumer pid's exists", contractRequestMessage.getProviderPid(), contractRequestMessage.getConsumerPid());
                 });
         
 
@@ -104,35 +104,36 @@ public class ContractNegotiationProviderService {
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + properties.serverPort() + "/api/offer/validateOffer", Serializer.serializePlainJsonNode(contractRequestMessage.getOffer()), authorization);
         
 		if (!response.isSuccess()) {
-			throw new OfferNotValidException("Contract offer is not valid", contractRequestMessage.getProviderPid(), contractRequestMessage.getConsumerPid());
+			throw new OfferNotValidException("Contract offer is not valid", contractRequestMessage.getConsumerPid(), contractRequestMessage.getProviderPid());
 		}
 		
         ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
                 .state(ContractNegotiationState.REQUESTED)
                 .consumerPid(contractRequestMessage.getConsumerPid())
+                .callbackAddress(contractRequestMessage.getCallbackAddress())
                 .build();
 
         if (properties.isAutomaticNegotiation()) {
-        	log.debug("Performing automatic negotiation");
+        	log.debug("PROVIDER -Performing automatic negotiation");
         	publisher.publishEvent(new ContractNegotationOfferRequestEvent(
         			contractNegotiation.getConsumerPid(),
         			contractNegotiation.getProviderPid(),
         			Serializer.serializeProtocolJsonNode(contractRequestMessage.getOffer())));
         } else {
-        	log.debug("Offer evaluation will have to be done by human");
+        	log.debug("PROVIDER -Offer evaluation will have to be done by human");
         }
         
         repository.save(contractNegotiation);
-        log.info("Contract negotiation {} saved", contractNegotiation.getId());
+        log.info("PROVIDER -Contract negotiation {} saved", contractNegotiation.getId());
         Offer dbOffer = Offer.Builder.newInstance()
 			.id(contractRequestMessage.getOffer().getId())
 			.permission(contractRequestMessage.getOffer().getPermission())
 			.target(contractRequestMessage.getOffer().getTarget())
-			.consumerPid(contractRequestMessage.getOffer().getConsumerPid())
-			.providerPid(contractRequestMessage.getOffer().getProviderPid())
+			.consumerPid(contractNegotiation.getConsumerPid())
+			.providerPid(contractNegotiation.getProviderPid())
 			.build();
 		offerRepository.save(dbOffer);
-		log.info("Offer {} saved", contractRequestMessage.getOffer().getId());
+		log.info("PROVIDER -Offer {} saved", contractRequestMessage.getOffer().getId());
         return contractNegotiation;
     }
 

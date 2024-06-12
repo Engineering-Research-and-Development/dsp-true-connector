@@ -97,9 +97,7 @@ public class ContractNegotiationConsumerService {
     /**
      * The response body is not specified and clients are not required to process it.
      *
-     * @param consumerPid
      * @param contractAgreementMessage
-     * @return
      */
 
     public void handleAgreement(ContractAgreementMessage contractAgreementMessage) {
@@ -204,10 +202,12 @@ public class ContractNegotiationConsumerService {
     
     private Offer validateAgreementAgainstOffer(ContractAgreementMessage contractAgreementMessage) {
 		return offerRepository
-				.findByConsumerPidAndProviderPidAndTarget(contractAgreementMessage.getConsumerPid(), contractAgreementMessage.getProviderPid(), contractAgreementMessage.getAgreement().getTarget())
+				.findByConsumerPidAndProviderPidAndTarget(contractAgreementMessage.getConsumerPid(),
+						contractAgreementMessage.getProviderPid(),
+						contractAgreementMessage.getAgreement().getTarget())
 				.orElseThrow(() -> new OfferNotFoundException(
-						"Offer with validation Agreement providerPid " + contractAgreementMessage.getProviderPid() + 
-						" and consumerPid " + contractAgreementMessage.getConsumerPid() + "and target " + contractAgreementMessage.getAgreement().getTarget() + " not found"));
+						"Offer with following values from Agreement not found: providerPid " + contractAgreementMessage.getProviderPid() + 
+						" and consumerPid " + contractAgreementMessage.getConsumerPid() + "and target " + contractAgreementMessage.getAgreement().getTarget()));
 	}
 
 	private ContractNegotiation validateNegotiation(String consumerPid, String providerPid) {
