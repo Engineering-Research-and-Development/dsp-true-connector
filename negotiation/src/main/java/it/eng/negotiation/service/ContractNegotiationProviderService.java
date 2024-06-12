@@ -113,15 +113,6 @@ public class ContractNegotiationProviderService {
                 .callbackAddress(contractRequestMessage.getCallbackAddress())
                 .build();
 
-        if (properties.isAutomaticNegotiation()) {
-        	log.debug("PROVIDER - Performing automatic negotiation");
-        	publisher.publishEvent(new ContractNegotationOfferRequestEvent(
-        			contractNegotiation.getConsumerPid(),
-        			contractNegotiation.getProviderPid(),
-        			Serializer.serializeProtocolJsonNode(contractRequestMessage.getOffer())));
-        } else {
-        	log.debug("PROVIDER - Offer evaluation will have to be done by human");
-        }
         
         repository.save(contractNegotiation);
         log.info("PROVIDER - Contract negotiation {} saved", contractNegotiation.getId());
@@ -134,6 +125,15 @@ public class ContractNegotiationProviderService {
 			.build();
 		offerRepository.save(dbOffer);
 		log.info("PROVIDER - Offer {} saved", contractRequestMessage.getOffer().getId());
+		if (properties.isAutomaticNegotiation()) {
+			log.debug("PROVIDER - Performing automatic negotiation");
+			publisher.publishEvent(new ContractNegotationOfferRequestEvent(
+					contractNegotiation.getConsumerPid(),
+					contractNegotiation.getProviderPid(),
+					Serializer.serializeProtocolJsonNode(contractRequestMessage.getOffer())));
+		} else {
+			log.debug("PROVIDER - Offer evaluation will have to be done by human");
+		}
         return contractNegotiation;
     }
 

@@ -23,7 +23,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.negotiation.model.ContractAgreementMessage;
 import it.eng.negotiation.model.ContractNegotiationEventMessage;
-import it.eng.negotiation.model.ContractNegotiationEventType;
 import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
 import it.eng.negotiation.model.ContractOfferMessage;
 import it.eng.negotiation.model.ModelUtil;
@@ -46,7 +45,7 @@ public class ConsumerContractNegotiationCallbackControllerTest {
 
     @Test
     public void handleNegotiationOffers() throws JsonProcessingException {
-        String json = Serializer.serializeProtocol(createContractOfferMessage());
+        String json = Serializer.serializeProtocol(ModelUtil.CONTRACT_OFFER_MESSAGE);
         JsonNode jsonNode = mapper.readTree(json);
         when(contractNegotiationConsumerService.processContractOffer(any(ContractOfferMessage.class)))
                 .thenReturn(Serializer.serializeProtocolJsonNode(ModelUtil.CONTRACT_NEGOTIATION_OFFERED));
@@ -58,7 +57,7 @@ public class ConsumerContractNegotiationCallbackControllerTest {
 
     @Test
     public void handleNegotiationOfferConsumerPid() throws InterruptedException, ExecutionException, JsonMappingException, JsonProcessingException {
-        String json = Serializer.serializeProtocol(createContractOfferMessage());
+        String json = Serializer.serializeProtocol(ModelUtil.CONTRACT_OFFER_MESSAGE);
         JsonNode jsonNode = mapper.readTree(json);
         when(contractNegotiationConsumerService.handleNegotiationOfferConsumer(any(String.class), any(ContractOfferMessage.class)))
                 .thenReturn(jsonNode);
@@ -70,7 +69,7 @@ public class ConsumerContractNegotiationCallbackControllerTest {
 
     @Test
     public void handleAgreement() throws InterruptedException, ExecutionException, JsonMappingException, JsonProcessingException {
-        String json = Serializer.serializeProtocol(contractAgreementMessage());
+        String json = Serializer.serializeProtocol(ModelUtil.CONTRACT_AGREEMENT_MESSAGE);
         JsonNode jsonNode = mapper.readTree(json);
         doNothing().when(contractNegotiationConsumerService).handleAgreement(any(ContractAgreementMessage.class));
 
@@ -83,7 +82,7 @@ public class ConsumerContractNegotiationCallbackControllerTest {
 
     @Test
     public void handleEventsResponse() throws InterruptedException, ExecutionException, JsonMappingException, JsonProcessingException {
-        String json = Serializer.serializeProtocol(contractNegotiationEventMessage());
+        String json = Serializer.serializeProtocol(ModelUtil.CONTRACT_NEGOTIATION_EVENT_MESSAGE);
         JsonNode jsonNode = mapper.readTree(json);
         when(contractNegotiationConsumerService.handleEventsResponse(any(String.class), any(ContractNegotiationEventMessage.class)))
                 .thenReturn(null);
@@ -95,7 +94,7 @@ public class ConsumerContractNegotiationCallbackControllerTest {
 
     @Test
     public void handleTerminationResponse() throws InterruptedException, ExecutionException, JsonMappingException, JsonProcessingException {
-        String json = Serializer.serializeProtocol(contractNegotiationTerminationMessage());
+        String json = Serializer.serializeProtocol(ModelUtil.TERMINATION_MESSAGE);
         JsonNode jsonNode = mapper.readTree(json);
         when(contractNegotiationConsumerService.handleTerminationResponse(any(String.class), any(ContractNegotiationTerminationMessage.class)))
                 .thenReturn((null));
@@ -103,38 +102,5 @@ public class ConsumerContractNegotiationCallbackControllerTest {
         ResponseEntity<JsonNode> response = controller.handleTerminationResponse(ModelUtil.CONSUMER_PID, jsonNode);
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
-    }
-
-    private ContractAgreementMessage contractAgreementMessage() {
-        return ContractAgreementMessage.Builder.newInstance()
-                .providerPid(ModelUtil.PROVIDER_PID)
-                .consumerPid(ModelUtil.CONSUMER_PID)
-                .callbackAddress(ModelUtil.CALLBACK_ADDRESS)
-                .agreement(ModelUtil.AGREEMENT)
-                .build();
-    }
-
-    private ContractNegotiationEventMessage contractNegotiationEventMessage() {
-        return ContractNegotiationEventMessage.Builder.newInstance()
-                .providerPid(ModelUtil.PROVIDER_PID)
-                .consumerPid(ModelUtil.CONSUMER_PID)
-                .eventType(ContractNegotiationEventType.FINALIZED)
-                .build();
-    }
-
-    private ContractNegotiationTerminationMessage contractNegotiationTerminationMessage() {
-        return ContractNegotiationTerminationMessage.Builder.newInstance()
-                .providerPid(ModelUtil.PROVIDER_PID)
-                .consumerPid(ModelUtil.CONSUMER_PID)
-                .build();
-    }
-
-    private ContractOfferMessage createContractOfferMessage() {
-        return ContractOfferMessage.Builder.newInstance()
-//				.consumerPid(ModelUtil.CONSUMER_PID) // optional; If the message includes a consumerPid property, the request will be associated with an existing CN.
-                .providerPid(ModelUtil.PROVIDER_PID)
-                .offer(ModelUtil.OFFER)
-                .callbackAddress(ModelUtil.CALLBACK_ADDRESS)   // mandatory???
-                .build();
     }
 }

@@ -65,7 +65,7 @@ public class ContractNegotiationConsumerServiceTest {
 	}
 	
 	@Test
-	@DisplayName("Process agreement message automatic negotiation ON success")
+	@DisplayName("Process agreement message - automatic negotiation - ON success")
 	public void handleAgreement_success() {
 		when(properties.isAutomaticNegotiation()).thenReturn(true);
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION));
@@ -77,7 +77,7 @@ public class ContractNegotiationConsumerServiceTest {
 	}
 	
 	@Test
-	@DisplayName("Process agreement message automatic negotiation OFF success")
+	@DisplayName("Process agreement message - automatic negotiation OFF - success")
 	public void handleAgreement_off_success() {
 		when(properties.isAutomaticNegotiation()).thenReturn(false);
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(ModelUtil.PROVIDER_PID, ModelUtil.CONSUMER_PID)).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION));
@@ -90,12 +90,12 @@ public class ContractNegotiationConsumerServiceTest {
 		verify(agreementRepository).save(any(Agreement.class));
 		//verify that status is updated to AGREED
 		assertEquals(ContractNegotiationState.AGREED, argCaptorContractNegotiation.getValue().getState());
+		verify(publisher, times(0)).publishEvent(any(ContractAgreementVerificationMessage.class));
 	}
 	
 	@Test
-	@DisplayName("Process agreement message automatic negotiation OFF - negotiation not found")
+	@DisplayName("Process agreement message - automatic negotiation OFF - negotiation not found")
 	public void handleAgreement_off_negotiationNotFound() {
-		when(properties.isAutomaticNegotiation()).thenReturn(false);
 		assertThrows(ContractNegotiationNotFoundException.class, () -> service.handleAgreement( ModelUtil.CONTRACT_AGREEMENT_MESSAGE));
 		
 		verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(ModelUtil.PROVIDER_PID, ModelUtil.CONSUMER_PID);
@@ -104,9 +104,8 @@ public class ContractNegotiationConsumerServiceTest {
 	}
 	
 	@Test
-	@DisplayName("Process agreement message automatic negotiation OFF - offer not found")
+	@DisplayName("Process agreement message - automatic negotiation OFF - offer not found")
 	public void handleAgreement_off_offerNotFound() {
-		when(properties.isAutomaticNegotiation()).thenReturn(false);
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(ModelUtil.PROVIDER_PID, ModelUtil.CONSUMER_PID)).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION));
 
 		assertThrows(OfferNotFoundException.class, () -> service.handleAgreement( ModelUtil.CONTRACT_AGREEMENT_MESSAGE));

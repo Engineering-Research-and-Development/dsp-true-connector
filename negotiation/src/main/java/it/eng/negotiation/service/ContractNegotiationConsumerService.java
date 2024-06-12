@@ -101,18 +101,6 @@ public class ContractNegotiationConsumerService {
      */
 
     public void handleAgreement(ContractAgreementMessage contractAgreementMessage) {
-    	// sends verification message to provider
-    	// TODO add error handling in case not correct
-    	if(properties.isAutomaticNegotiation()) {
-    		log.debug("Automatic negotiation - processing sending ContractAgreementVerificationMessage");
-    		ContractAgreementVerificationMessage verificationMessage = ContractAgreementVerificationMessage.Builder.newInstance()
-    				.consumerPid(contractAgreementMessage.getConsumerPid())
-    				.providerPid(contractAgreementMessage.getProviderPid())
-    				.build();
-    				publisher.publishEvent(verificationMessage);
-    	} else {
-    		log.debug("Sending only 200 if agreement is valid, ContractAgreementVerificationMessage must be manually sent");
-    	}
     	// save callbackAddress into ContractNegotiation - used for sending ContractNegotiationEventMessage.FINALIZED 
     	ContractNegotiation contractNegotiation = validateNegotiation(contractAgreementMessage.getConsumerPid(), contractAgreementMessage.getProviderPid());
     	
@@ -142,6 +130,18 @@ public class ContractNegotiationConsumerService {
     	agreementRepository.save(agreement);
     	log.info("CONSUMER - agreement {} saved", contractAgreementMessage.getAgreement().getId());
     	
+    	// sends verification message to provider
+    	// TODO add error handling in case not correct
+    	if(properties.isAutomaticNegotiation()) {
+    		log.debug("Automatic negotiation - processing sending ContractAgreementVerificationMessage");
+    		ContractAgreementVerificationMessage verificationMessage = ContractAgreementVerificationMessage.Builder.newInstance()
+    				.consumerPid(contractAgreementMessage.getConsumerPid())
+    				.providerPid(contractAgreementMessage.getProviderPid())
+    				.build();
+    		publisher.publishEvent(verificationMessage);
+    	} else {
+    		log.debug("Sending only 200 if agreement is valid, ContractAgreementVerificationMessage must be manually sent");
+    	}
     }
 
     /**
