@@ -1,4 +1,4 @@
-package it.eng.negotiation.model;
+package it.eng.negotiation.serializer;
 
 import java.util.Objects;
 import java.util.Set;
@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 
+import it.eng.negotiation.model.Offer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;

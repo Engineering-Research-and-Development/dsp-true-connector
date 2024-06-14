@@ -6,13 +6,13 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 
 /**
- * Response from catalog to negotiation module</br>
+ * Used in automatic negotiation response from catalog to negotiation module</br>
  * Containing response if offer is accepted or not
  *
  */
 @Data
 @AllArgsConstructor
-public class ContractNegotiationOfferResponse {
+public class ContractNegotiationOfferResponseEvent {
 
 	private String consumerPid;
 	private String providerPid;

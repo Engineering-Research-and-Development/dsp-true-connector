@@ -1,18 +1,30 @@
 package it.eng.negotiation.rest.protocol;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import it.eng.negotiation.model.*;
-import it.eng.negotiation.service.ContractNegotiationProviderService;
-import lombok.extern.slf4j.Slf4j;
+import java.net.URI;
+import java.util.Arrays;
 
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import java.net.URI;
-import java.util.Arrays;
-import java.util.concurrent.ExecutionException;
+import com.fasterxml.jackson.databind.JsonNode;
+
+import it.eng.negotiation.model.ContractAgreementVerificationMessage;
+import it.eng.negotiation.model.ContractNegotiation;
+import it.eng.negotiation.model.ContractNegotiationErrorMessage;
+import it.eng.negotiation.model.ContractNegotiationEventMessage;
+import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
+import it.eng.negotiation.model.ContractRequestMessage;
+import it.eng.negotiation.model.Description;
+import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.service.ContractNegotiationProviderService;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/negotiations")
@@ -30,7 +42,7 @@ public class ProviderContractNegotiationController {
     // GET
     // Provider must return an HTTP 200 (OK) response and a body containing the Contract Negotiation
     @GetMapping(path = "/{providerPid}")
-    public ResponseEntity<JsonNode>  getNegotiationByProviderPid(@PathVariable String providerPid) throws InterruptedException, ExecutionException {
+    public ResponseEntity<JsonNode>  getNegotiationByProviderPid(@PathVariable String providerPid) {
         log.info("Get negotiation by provider pid");
 		ContractNegotiation contractNegotiation = providerService.getNegotiationByProviderPid(providerPid);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(Serializer.serializeProtocolJsonNode(contractNegotiation));
@@ -40,12 +52,11 @@ public class ProviderContractNegotiationController {
     // POST
     // The Provider must return an HTTP 201 (Created); "dspace:state" :"REQUESTED"
     @PostMapping(path = "/request")
-    public ResponseEntity<JsonNode> createNegotiation(@RequestBody JsonNode contractRequestMessageJsonNode)
-    		throws InterruptedException, ExecutionException {
+    public ResponseEntity<JsonNode> createNegotiation(@RequestBody JsonNode contractRequestMessageJsonNode) throws InterruptedException {
         log.info("Creating negotiation");
         ContractRequestMessage crm = Serializer.deserializeProtocol(contractRequestMessageJsonNode, ContractRequestMessage.class);
         ContractNegotiation cn = providerService.startContractNegotiation(crm);
-       
+        
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest().path("/{id}")
                 .buildAndExpand("123").toUri();

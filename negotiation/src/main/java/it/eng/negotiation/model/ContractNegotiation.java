@@ -78,6 +78,12 @@ public class ContractNegotiation extends AbstractNegotiationObject {
             return this;
         }
         
+        /**
+         * It is sent in a request and is stored on the responder side for the next request
+         * E.g. Consumer sends request to provider-> Provider stores callbackAddress for future request and responses with 200 ()
+         * @param callbackAddress
+         * @return
+         */
         public Builder callbackAddress(String callbackAddress) {
         	message.callbackAddress = callbackAddress;
         	return this;

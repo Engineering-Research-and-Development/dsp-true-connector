@@ -33,8 +33,8 @@ import it.eng.catalog.model.Offer;
 import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.util.MockObjectUtil;
-import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequest;
-import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponse;
+import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
+import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
 
 @ExtendWith(MockitoExtension.class)
 public class CatalogServiceTest {
@@ -45,7 +45,7 @@ public class CatalogServiceTest {
     private ApplicationEventPublisher publisher;
     
     @Captor
-	private ArgumentCaptor<ContractNegotiationOfferResponse> argCaptorContractNegotiationOfferResponse;
+	private ArgumentCaptor<ContractNegotiationOfferResponseEvent> argCaptorContractNegotiationOfferResponse;
 
     @InjectMocks
     private CatalogService service;
@@ -140,9 +140,9 @@ public class CatalogServiceTest {
     @Test
     public void providedOfferExists() {
     	when(repository.findAll()).thenReturn(new ArrayList<>(MockObjectUtil.CATALOGS));
-    	ContractNegotationOfferRequest offerRequest = new ContractNegotationOfferRequest(MockObjectUtil.CONSUMER_PID,
+    	ContractNegotationOfferRequestEvent offerRequest = new ContractNegotationOfferRequestEvent(MockObjectUtil.CONSUMER_PID,
     			MockObjectUtil.PROVIDER_PID, Serializer.serializeProtocolJsonNode(MockObjectUtil.OFFER_WITH_TARGET));
-    	service.validateIfOfferIsValid(offerRequest);
+    	service.validateOffer(offerRequest);;
     	
     	verify(publisher).publishEvent(argCaptorContractNegotiationOfferResponse.capture());
     	assertTrue(argCaptorContractNegotiationOfferResponse.getValue().isOfferAccepted());
@@ -157,9 +157,9 @@ public class CatalogServiceTest {
 	            .build();
 	
     	when(repository.findAll()).thenReturn(new ArrayList<>(MockObjectUtil.CATALOGS));
-    	ContractNegotationOfferRequest offerRequest = new ContractNegotationOfferRequest(MockObjectUtil.CONSUMER_PID,
+    	ContractNegotationOfferRequestEvent offerRequest = new ContractNegotationOfferRequestEvent(MockObjectUtil.CONSUMER_PID,
     			MockObjectUtil.PROVIDER_PID, Serializer.serializeProtocolJsonNode(differentOffer));
-    	service.validateIfOfferIsValid(offerRequest);
+    	service.validateOffer(offerRequest);
     	
     	verify(publisher).publishEvent(argCaptorContractNegotiationOfferResponse.capture());
     	assertFalse(argCaptorContractNegotiationOfferResponse.getValue().isOfferAccepted());

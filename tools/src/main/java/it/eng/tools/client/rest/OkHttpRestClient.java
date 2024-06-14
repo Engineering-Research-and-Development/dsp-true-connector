@@ -59,6 +59,7 @@ public class OkHttpRestClient {
 		try (Response response = okHttpClient.newCall(request).execute()) {
 			int code = response.code();
 			log.info("Status {}", code);
+			//why is this not JSONNode
 			String resp = response.body().string();
 			log.info("Response received: {}", resp);
 			if(response.isSuccessful()) { // code in 200..299

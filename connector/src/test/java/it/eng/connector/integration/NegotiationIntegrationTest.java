@@ -20,7 +20,7 @@ import it.eng.connector.util.TestUtil;
 import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.ModelUtil;
 import it.eng.negotiation.model.Offer;
-import it.eng.negotiation.model.Serializer;
+import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.model.DSpaceConstants;
 
 public class NegotiationIntegrationTest extends BaseIntegrationTest {
@@ -55,7 +55,6 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     	ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
     			.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
     			.consumerPid(ModelUtil.CONSUMER_PID)
-    			.providerPid(ModelUtil.PROVIDER_PID)
     			.offer(offer)
     			.build();
     	
@@ -79,7 +78,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
 		.providerPid(TestUtil.PROVIDER_PID)
 		.offer(ModelUtil.OFFER)
 		.build();
-    	
+
     	final ResultActions result =
     			mockMvc.perform(
     					post("/negotiations/request")
