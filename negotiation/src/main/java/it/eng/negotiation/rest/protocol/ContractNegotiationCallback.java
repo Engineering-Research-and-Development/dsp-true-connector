@@ -1,6 +1,6 @@
 package it.eng.negotiation.rest.protocol;
 
-public class ContactNegotiationCallback {
+public class ContractNegotiationCallback {
 
 	private static final String OFFERS = "negotiations/offers";
 	private static final String CONSUMER_OFFERS = ":callback:/negotiations/:consumerPid:/offers";

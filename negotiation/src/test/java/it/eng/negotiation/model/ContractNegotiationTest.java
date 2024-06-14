@@ -6,6 +6,7 @@ import java.util.Arrays;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 

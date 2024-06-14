@@ -1,11 +1,14 @@
 package it.eng.negotiation.service;
 
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import it.eng.negotiation.event.ContractNegotiationEvent;
 import it.eng.negotiation.exception.ContractNegotiationExistsException;
 import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
+import it.eng.negotiation.exception.OfferNotValidException;
+import it.eng.negotiation.exception.ProviderPidNotBlankException;
 import it.eng.negotiation.listener.ContractNegotiationPublisher;
 import it.eng.negotiation.model.ContractAgreementVerificationMessage;
 import it.eng.negotiation.model.ContractNegotiation;
@@ -13,12 +16,14 @@ import it.eng.negotiation.model.ContractNegotiationEventMessage;
 import it.eng.negotiation.model.ContractNegotiationEventType;
 import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ContractRequestMessage;
-import it.eng.negotiation.model.Serializer;
+import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
-import it.eng.negotiation.rest.protocol.ContactNegotiationCallback;
+import it.eng.negotiation.repository.OfferRepository;
+import it.eng.negotiation.rest.protocol.ContractNegotiationCallback;
+import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequest;
+import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 
@@ -26,18 +31,20 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ContractNegotiationProviderService {
 
-    private ContractNegotiationPublisher publisher;
-	private ContractNegotiationRepository repository;
-	private OkHttpRestClient okHttpRestClient;
-	private ContractNegotiationProperties properties;
+    private final ContractNegotiationPublisher publisher;
+	private final ContractNegotiationRepository repository;
+	private final OkHttpRestClient okHttpRestClient;
+	private final  ContractNegotiationProperties properties;
+	private final OfferRepository offerRepository;
 
     public ContractNegotiationProviderService(ContractNegotiationPublisher publisher,
 			ContractNegotiationRepository repository, OkHttpRestClient okHttpRestClient,
-			ContractNegotiationProperties properties) {
+			ContractNegotiationProperties properties, OfferRepository offerRepository) {
 		this.publisher = publisher;
 		this.repository = repository;
 		this.okHttpRestClient = okHttpRestClient;
 		this.properties = properties;
+		this.offerRepository = offerRepository;
 	}
 
 	/**
@@ -71,20 +78,25 @@ public class ContractNegotiationProviderService {
     }
 
     /**
-     * Initiates a new contract negotiation based on the provided contract request and saves it in the database.
+     * Instantiates a new contract negotiation based on the consumer contract request and saves it in the database.
      * This method ensures that no existing contract negotiation between the same provider and consumer is active.
      * If a negotiation already exists, an exception is thrown to prevent duplication.
      *
      * @param contractRequestMessage - the contract request message containing details about the provider and consumer involved in the negotiation.
      * @return ContractNegotiation - the newly created contract negotiation record.
+     * @throws InterruptedException 
      * @throws ContractNegotiationExistsException if a contract negotiation already exists for the given provider and consumer PID combination.
      */
-    public ContractNegotiation startContractNegotiation(ContractRequestMessage contractRequestMessage) {
-        log.info("Starting contract negotiation...");
+    public ContractNegotiation startContractNegotiation(ContractRequestMessage contractRequestMessage) throws InterruptedException {
+        log.info("PROVIDER - Starting contract negotiation...");
+        
+        if (StringUtils.isNotBlank(contractRequestMessage.getProviderPid())) {
+        	throw new ProviderPidNotBlankException("Contract negotiation failed - providerPid has to be blank", contractRequestMessage.getConsumerPid());
+        }
         
         repository.findByProviderPidAndConsumerPid(contractRequestMessage.getProviderPid(), contractRequestMessage.getConsumerPid())
                 .ifPresent(crm -> {
-                    throw new ContractNegotiationExistsException("Contract request message with provider and consumer pid's exists", contractRequestMessage.getProviderPid(), contractRequestMessage.getConsumerPid());
+                    throw new ContractNegotiationExistsException("PROVIDER - Contract request message with provider and consumer pid's exists", contractRequestMessage.getProviderPid(), contractRequestMessage.getConsumerPid());
                 });
         
 
@@ -92,28 +104,37 @@ public class ContractNegotiationProviderService {
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + properties.serverPort() + "/api/offer/validateOffer", Serializer.serializePlainJsonNode(contractRequestMessage.getOffer()), authorization);
         
 		if (!response.isSuccess()) {
-			throw new ContractNegotiationExistsException("OFFER NOT VALID", contractRequestMessage.getProviderPid(), contractRequestMessage.getConsumerPid());
-
+			throw new OfferNotValidException("Contract offer is not valid", contractRequestMessage.getConsumerPid(), contractRequestMessage.getProviderPid());
 		}
 		
-        ContractNegotiation cn = ContractNegotiation.Builder.newInstance()
+        ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
                 .state(ContractNegotiationState.REQUESTED)
                 .consumerPid(contractRequestMessage.getConsumerPid())
                 .callbackAddress(contractRequestMessage.getCallbackAddress())
                 .build();
 
-        if(properties.isAutomaticNegotiation()) {
-        	log.debug("Performing automatic negotiation");
-        	publisher.publishEvent(new ContractNegotationOfferRequest(
-        			cn.getConsumerPid(),
-        			cn.getProviderPid(),
-        			Serializer.serializeProtocolJsonNode(contractRequestMessage.getOffer())));
-        } else {
-        	log.debug("Offer evaluation will have to be done by human");
-        }
-
-        repository.save(cn);
-        return cn;
+        
+        repository.save(contractNegotiation);
+        log.info("PROVIDER - Contract negotiation {} saved", contractNegotiation.getId());
+        Offer dbOffer = Offer.Builder.newInstance()
+			.id(contractRequestMessage.getOffer().getId())
+			.permission(contractRequestMessage.getOffer().getPermission())
+			.target(contractRequestMessage.getOffer().getTarget())
+			.consumerPid(contractNegotiation.getConsumerPid())
+			.providerPid(contractNegotiation.getProviderPid())
+			.build();
+		offerRepository.save(dbOffer);
+		log.info("PROVIDER - Offer {} saved", contractRequestMessage.getOffer().getId());
+		if (properties.isAutomaticNegotiation()) {
+			log.debug("PROVIDER - Performing automatic negotiation");
+			publisher.publishEvent(new ContractNegotationOfferRequestEvent(
+					contractNegotiation.getConsumerPid(),
+					contractNegotiation.getProviderPid(),
+					Serializer.serializeProtocolJsonNode(contractRequestMessage.getOffer())));
+		} else {
+			log.debug("PROVIDER - Offer evaluation will have to be done by human");
+		}
+        return contractNegotiation;
     }
 
 	public void finalizeNegotiation(ContractAgreementVerificationMessage cavm) {
@@ -129,7 +150,7 @@ public class ContractNegotiationProviderService {
 				.build();
 		String authorization = okhttp3.Credentials.basic("connector@mail.com", "password");
 		//	https://consumer.com/:callback/negotiations/:consumerPid/events
-		String callbackAddress = contractNegotiation.getCallbackAddress() + ContactNegotiationCallback.getContractEventsCallback("consumer", contractNegotiation.getConsumerPid());
+		String callbackAddress = contractNegotiation.getCallbackAddress() + ContractNegotiationCallback.getContractEventsCallback("consumer", contractNegotiation.getConsumerPid());
 		log.info("Sending ContractNegotiationEventMessage.FINALIZED to {}", callbackAddress);
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(callbackAddress, 
 				Serializer.serializeProtocolJsonNode(finalize),
@@ -139,7 +160,6 @@ public class ContractNegotiationProviderService {
 					.id(contractNegotiation.getId())
 					.consumerPid(cavm.getConsumerPid())
 					.providerPid(cavm.getProviderPid())
-					.callbackAddress(contractNegotiation.getCallbackAddress())
 					.state(ContractNegotiationState.FINALIZED)
 					.build();
 			repository.save(contractNegtiationUpdate);

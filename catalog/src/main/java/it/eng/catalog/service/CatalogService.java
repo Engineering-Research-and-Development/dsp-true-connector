@@ -17,8 +17,8 @@ import it.eng.catalog.model.Distribution;
 import it.eng.catalog.model.Offer;
 import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.serializer.Serializer;
-import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequest;
-import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponse;
+import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
+import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -101,11 +101,11 @@ public class CatalogService {
         repository.deleteById(id);
     }
 
-    public void validateIfOfferIsValid(ContractNegotationOfferRequest offerRequest) {
+    public void validateOffer(ContractNegotationOfferRequestEvent offerRequest) {
         log.info("Comparing if offer is valid or not");
         Offer offer = Serializer.deserializeProtocol(offerRequest.getOffer(), Offer.class);
         boolean valid = validateOffer(offer);
-        ContractNegotiationOfferResponse contractNegotiationOfferResponse = new ContractNegotiationOfferResponse(offerRequest.getConsumerPid(),
+        ContractNegotiationOfferResponseEvent contractNegotiationOfferResponse = new ContractNegotiationOfferResponseEvent(offerRequest.getConsumerPid(),
                 offerRequest.getProviderPid(), valid, Serializer.serializeProtocolJsonNode(offer));
         publisher.publishEvent(contractNegotiationOfferResponse);
     }

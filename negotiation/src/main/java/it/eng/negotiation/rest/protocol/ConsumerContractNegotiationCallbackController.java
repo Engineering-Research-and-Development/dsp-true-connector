@@ -18,8 +18,8 @@ import it.eng.negotiation.model.ContractAgreementMessage;
 import it.eng.negotiation.model.ContractNegotiationEventMessage;
 import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
 import it.eng.negotiation.model.ContractOfferMessage;
-import it.eng.negotiation.model.Serializer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
+import it.eng.negotiation.serializer.Serializer;
 import it.eng.negotiation.service.ContractNegotiationConsumerService;
 import it.eng.tools.model.DSpaceConstants;
 import lombok.extern.slf4j.Slf4j;
@@ -86,10 +86,8 @@ public class ConsumerContractNegotiationCallbackController {
         ContractAgreementMessage contractAgreementMessage = Serializer.deserializeProtocol(contractAgreementMessageJsonNode,
                 ContractAgreementMessage.class);
 
-        String callbackAddress = contractAgreementMessage.getCallbackAddress();
-        contractNegotiationConsumerService.handleAgreement(callbackAddress, contractAgreementMessage);
+        contractNegotiationConsumerService.handleAgreement(contractAgreementMessage);
 
-//		callbackAddress = callbackAddress.endsWith("/") ? callbackAddress : callbackAddress + "/";
         log.info("CONSUMER - Sending response OK - agreementMessage received");
         return ResponseEntity.ok().build();
     }

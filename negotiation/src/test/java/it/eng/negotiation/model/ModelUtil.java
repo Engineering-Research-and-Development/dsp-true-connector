@@ -13,8 +13,8 @@ public class ModelUtil {
 	public static final String CALLBACK_ADDRESS = "https://callback.address/callback";
 	public static final String FORWARD_TO = "https://forward-to.com";
 	public static final String DATASET_ID = "urn:uuid:DATASET_ID";
-	public static final String ASSIGNEE = "urn:uuid:ASSIGNEE";
-	public static final String ASSIGNER = "urn:uuid:ASSIGNER";
+	public static final String ASSIGNEE = "urn:uuid:ASSIGNEE_CONSUMER";
+	public static final String ASSIGNER = "urn:uuid:ASSIGNER_PROVIDER";
 	
 	public static final String TARGET = "urn:uuid:TARGET";
 	
@@ -93,14 +93,7 @@ public class ModelUtil {
 			.assignee(ModelUtil.ASSIGNEE)
 			.assigner(ModelUtil.ASSIGNER)
 			.target(ModelUtil.TARGET)
-			.permission(Arrays.asList(Permission.Builder.newInstance()
-					.action(Action.USE)
-					.constraint(Arrays.asList(Constraint.Builder.newInstance()
-							.leftOperand(LeftOperand.COUNT)
-							.operator(Operator.EQ)
-							.rightOperand("5")
-							.build()))
-					.build()))
+			.permission(Arrays.asList(PERMISSION_COUNT_5))
 			.build();
 	
 	public static final ContractRequestMessage CONTRACT_REQUEST_MESSAGE = ContractRequestMessage.Builder.newInstance()
@@ -114,6 +107,12 @@ public class ModelUtil {
 			.providerPid(ModelUtil.PROVIDER_PID)
 			.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
 			.agreement(AGREEMENT)
+			.build();
+	
+	public static final ContractNegotiationEventMessage CONTRACT_NEGOTIATION_EVENT_MESSAGE = ContractNegotiationEventMessage.Builder.newInstance()
+			.consumerPid(ModelUtil.CONSUMER_PID)
+			.providerPid(ModelUtil.PROVIDER_PID)
+			.eventType(ContractNegotiationEventType.FINALIZED)
 			.build();
 	
 	public static final ContractNegotiationErrorMessage CONTRACT_NEGOTIATION_ERROR_MESSAGE = ContractNegotiationErrorMessage.Builder.newInstance()

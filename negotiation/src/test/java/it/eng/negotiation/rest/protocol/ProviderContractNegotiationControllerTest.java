@@ -2,6 +2,7 @@ package it.eng.negotiation.rest.protocol;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.negotiation.model.*;
+import it.eng.negotiation.serializer.Serializer;
 import it.eng.negotiation.service.ContractNegotiationProviderService;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.servlet.http.HttpServletRequest;
