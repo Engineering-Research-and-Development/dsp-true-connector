@@ -204,6 +204,8 @@
 	  "_class": "it.eng.datatransfer.model.TransferProcess",
       "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
       "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+      "callbackAddress" : "http://localhost:8080/consumer/transfer/callback/",
+      "agreementId" : "urn:uuid:AGREEMENT_ID",
 	  "state" : "STARTED",
 	  "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",

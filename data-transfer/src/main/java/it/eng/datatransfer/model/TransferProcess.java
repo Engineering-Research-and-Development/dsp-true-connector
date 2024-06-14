@@ -55,6 +55,13 @@ public class TransferProcess extends AbstractTransferMessage {
 	@JsonProperty(DSpaceConstants.DSPACE_STATE)
 	private TransferState state;
 	
+	// used to store agreement so we can enforce it
+	@JsonIgnore
+	private String agreementId;
+	
+	@JsonIgnore
+	private String callbackAddress;
+	
     @JsonIgnore
     @CreatedBy
     private String createdBy;
@@ -118,6 +125,18 @@ public class TransferProcess extends AbstractTransferMessage {
 		@JsonProperty("version")
 		public Builder version(Long version) {
 			message.version = version;
+			return this;
+		}
+		
+		@JsonProperty(DSpaceConstants.AGREEMENT_ID)
+		public Builder agreementId(String agreementId) {
+			message.agreementId = agreementId;
+			return this;
+		}
+		
+		@JsonProperty(DSpaceConstants.CALLBACK_ADDRESS)
+		public Builder callbackAddress(String callbackAddress) {
+			message.callbackAddress = callbackAddress;
 			return this;
 		}
 

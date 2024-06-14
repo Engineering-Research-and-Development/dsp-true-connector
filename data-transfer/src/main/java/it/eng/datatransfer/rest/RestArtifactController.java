@@ -61,7 +61,7 @@ public class RestArtifactController {
 	 * @param jsonBody
 	 * @return
 	 */
-    @PostMapping(path = "/{transactionId}/{id}")
+    @PostMapping(path = "/{transactionId}/{artifactId}")
     protected ResponseEntity<String> getArtifact(@RequestHeader(required = false) String authorization,
 										    		@PathVariable String transactionId,                                       
 										    		@PathVariable String artifactId, 
