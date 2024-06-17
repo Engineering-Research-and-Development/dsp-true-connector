@@ -140,6 +140,20 @@ public class TransferProcess extends AbstractTransferMessage {
 			return this;
 		}
 
+		public Builder copyWithNewTransferState(TransferProcess fromTransferProcess, TransferState transferState) {
+			message.id = fromTransferProcess.getId();
+			message.agreementId = fromTransferProcess.getAgreementId();
+			message.consumerPid = fromTransferProcess.getConsumerPid();
+			message.providerPid = fromTransferProcess.getProviderPid();
+			message.callbackAddress = fromTransferProcess.getCallbackAddress();
+			message.state = transferState;
+			// no need to modify audit fields???
+//			message.lastModifiedBy = fromTransferProcess.getLastModifiedBy();
+//			message.version = fromTransferProcess.getVersion();
+//			message.createdBy = fromTransferProcess.getCreatedBy();
+			return this;
+		}
+
 		public TransferProcess build() {
 			if (message.id == null) {
 	               message.id = message.createNewId();
@@ -161,4 +175,5 @@ public class TransferProcess extends AbstractTransferMessage {
 	public String getType() {
 		return DSpaceConstants.DSPACE + TransferProcess.class.getSimpleName();
 	}
+	
 }

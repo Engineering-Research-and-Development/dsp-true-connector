@@ -105,8 +105,7 @@ public class DataService {
 
             return builder;
         }
-
-
+        
         @JsonProperty(DSpaceConstants.ID)
         public Builder id(String id) {
             service.id = id;
@@ -224,4 +223,30 @@ public class DataService {
     public String getType() {
         return DSpaceConstants.DCAT + DataService.class.getSimpleName();
     }
+    
+    /**
+     * Update existing instance with new values from passed DataService parameter</br>
+     * If fields are not present in updatedDataService, existing values will remain
+     * @param updatedDataService
+     * @return dataService with updated values
+     */
+    public DataService updateInstance(DataService updatedDataService) {
+
+//      service.id(updatedDataService.getId());
+//      service.version(existingDataService.getVersion());
+//      service.issued(existingDataService.getIssued());
+//      service.createdBy(existingDataService.getCreatedBy());
+      this.keyword  = updatedDataService.getKeyword() != null ? updatedDataService.getKeyword() : this.keyword;
+      this.theme = updatedDataService.getTheme() != null ? updatedDataService.getTheme() : this.theme;
+      this.conformsTo = updatedDataService.getConformsTo() != null ? updatedDataService.getConformsTo() : this.conformsTo;
+      this.creator = updatedDataService.getCreator() != null ? updatedDataService.getCreator() : this.creator;
+      this.description = updatedDataService.getDescription() != null ? updatedDataService.getDescription() : this.description;
+      this.identifier = updatedDataService.getIdentifier() != null ? updatedDataService.getIdentifier() : this.identifier;
+      this.title = updatedDataService.getTitle() != null ? updatedDataService.getTitle() : this.title;
+      this.endpointDescription = updatedDataService.getEndpointDescription() != null ? updatedDataService.getEndpointDescription() : this.endpointDescription;
+      this.endpointURL = updatedDataService.getEndpointURL() != null ? updatedDataService.getEndpointURL() : this.endpointURL;
+      this.servesDataset = updatedDataService.getServesDataset() != null ? updatedDataService.getServesDataset() : this.servesDataset;
+
+      return this;
+  }
 }

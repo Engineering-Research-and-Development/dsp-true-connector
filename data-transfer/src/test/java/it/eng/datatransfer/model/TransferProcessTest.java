@@ -1,5 +1,6 @@
 package it.eng.datatransfer.model;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -60,6 +61,19 @@ public class TransferProcessTest {
 	public void missingContextAndType() {
 		JsonNode result = Serializer.serializePlainJsonNode(transferProcess);
 		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, TransferProcess.class));
+	}
+	
+	@Test
+	public void testCopy() {
+		TransferProcess tpCopied = TransferProcess.Builder.newInstance()
+				.copyWithNewTransferState(ModelUtil.TRANSFER_PROCESS_REQUESTED, TransferState.STARTED)
+				.build();
+		
+		assertEquals(ModelUtil.TRANSFER_PROCESS_REQUESTED.getId(), tpCopied.getId());
+		assertEquals(ModelUtil.CONSUMER_PID, tpCopied.getConsumerPid());
+		assertEquals(ModelUtil.PROVIDER_PID, tpCopied.getProviderPid());
+		assertEquals(ModelUtil.AGREEMENT_ID, tpCopied.getAgreementId());
+		assertEquals(TransferState.STARTED, tpCopied.getState());
 	}
 
 	private void validateJavaObject(TransferProcess javaObj) {

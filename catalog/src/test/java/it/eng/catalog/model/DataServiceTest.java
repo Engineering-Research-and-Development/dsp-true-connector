@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Set;
+
 import it.eng.catalog.serializer.Serializer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.catalog.util.DataServiceUtil;
+import it.eng.catalog.util.MockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 
@@ -86,6 +89,33 @@ public class DataServiceTest {
 		assertDoesNotThrow(() -> DataService.Builder.newInstance().build(), "No mandatory fields");
 	}
 	
+	@Test
+	@DisplayName("Update instance")
+	public void updateInstance() {
+		DataService dataServiceForUpdate = DataService.Builder.newInstance()
+	            .keyword(Set.of("keyword1", "keyword2"))
+	            .theme(Set.of("red", "green", "black"))
+	            .creator("Updater")
+	            .description(Set.of(MockObjectUtil.MULTILANGUAGE))
+	            .endpointDescription("Description for test")
+	            .endpointURL("updatedEndpointUrl")
+	            .servesDataset(MockObjectUtil.DATASETS)
+	            .build();
+		
+		DataService updated = MockObjectUtil.DATA_SERVICE.updateInstance(dataServiceForUpdate);
+		assertEquals("Updater", updated.getCreator());
+		assertEquals(MockObjectUtil.CONFORMSTO, updated.getConformsTo());
+		assertTrue(updated.getKeyword().contains("keyword1"));
+		assertTrue(updated.getTheme().contains("red"));
+		assertTrue(updated.getTheme().contains("green"));
+		assertTrue(updated.getTheme().contains("black"));
+		assertEquals("updatedEndpointUrl", updated.getEndpointURL());
+		assertEquals("Description for test", updated.getEndpointDescription());
+		assertEquals(MockObjectUtil.DATASETS, updated.getServesDataset());
+		assertEquals(MockObjectUtil.ISSUED, updated.getIssued());
+		assertEquals(MockObjectUtil.TITLE, updated.getTitle());
+	}
+	
 	private void validateDataService(DataService dataService) {
 		assertNotNull(dataService.getConformsTo());
 		assertNotNull(dataService.getCreator());
@@ -102,7 +132,5 @@ public class DataServiceTest {
 		assertNotNull(dataService.getEndpointDescription());
 		assertNotNull(dataService.getEndpointURL());
 		assertNotNull(dataService.getServesDataset());
-		
-		
 	}
 }
