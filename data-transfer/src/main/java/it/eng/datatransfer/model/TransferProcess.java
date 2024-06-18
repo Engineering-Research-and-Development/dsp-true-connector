@@ -176,4 +176,24 @@ public class TransferProcess extends AbstractTransferMessage {
 		return DSpaceConstants.DSPACE + TransferProcess.class.getSimpleName();
 	}
 	
+	/**
+	 * Create new TransferProcess from origin, with new TransferState.</br>
+	 * Used to update state when transition happens.
+	 * @param newTransferState
+	 * @return
+	 */
+	public TransferProcess copyWithNewTransferState(TransferState newTransferState) {
+		// no need to modify audit fields???
+		return TransferProcess.Builder.newInstance()
+				.id(this.id)
+				.agreementId(this.agreementId)
+				.consumerPid(this.consumerPid)
+				.providerPid(this.providerPid)
+				.callbackAddress(this.callbackAddress)
+				.state(newTransferState)
+				.createdBy(this.createdBy)
+				.lastModifiedBy(this.lastModifiedBy)
+				.version(this.version)
+				.build();
+	}
 }

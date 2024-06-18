@@ -75,6 +75,16 @@ public class TransferProcessTest {
 		assertEquals(ModelUtil.AGREEMENT_ID, tpCopied.getAgreementId());
 		assertEquals(TransferState.STARTED, tpCopied.getState());
 	}
+	
+	@Test
+	public void copy2() {
+		TransferProcess tpCopied = ModelUtil.TRANSFER_PROCESS_REQUESTED.copyWithNewTransferState(TransferState.STARTED);
+		assertEquals(ModelUtil.TRANSFER_PROCESS_REQUESTED.getId(), tpCopied.getId());
+		assertEquals(ModelUtil.CONSUMER_PID, tpCopied.getConsumerPid());
+		assertEquals(ModelUtil.PROVIDER_PID, tpCopied.getProviderPid());
+		assertEquals(ModelUtil.AGREEMENT_ID, tpCopied.getAgreementId());
+		assertEquals(TransferState.STARTED, tpCopied.getState());
+	}
 
 	private void validateJavaObject(TransferProcess javaObj) {
 		assertNotNull(javaObj);
