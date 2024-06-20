@@ -12,7 +12,7 @@ public class ContractNegotiationCallbackTest {
 	public void callbackTest() {
 		String consumerPid = UUID.randomUUID().toString();
 		String callback = "callbackTest";
-		assertEquals("negotiations/offers", ContractNegotiationCallback.getOffersCallback());
+		assertEquals("/negotiations/offers", ContractNegotiationCallback.getOffersCallback());
 		assertEquals("callbackTest/negotiations/" + consumerPid + "/offers", ContractNegotiationCallback.getConsumerOffersCallback(callback, consumerPid));
 		assertEquals("callbackTest/negotiations/" + consumerPid + "/agreement", ContractNegotiationCallback.getContractAgreementCallback(callback, consumerPid));
 		assertEquals("callbackTest/negotiations/" + consumerPid + "/events", ContractNegotiationCallback.getContractEventsCallback(callback, consumerPid));

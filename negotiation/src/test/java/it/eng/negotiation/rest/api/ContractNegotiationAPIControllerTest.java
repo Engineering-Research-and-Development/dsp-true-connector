@@ -57,7 +57,7 @@ public class ContractNegotiationAPIControllerTest {
 		map.put("offer", Serializer.serializeProtocolJsonNode(ModelUtil.OFFER));
 				
 		when(apiService.startNegotiation(any(String.class), any(JsonNode.class)))
-			.thenReturn(Serializer.serializeProtocolJsonNode(ModelUtil.CONTRACT_NEGOTIATION));
+			.thenReturn(Serializer.serializeProtocolJsonNode(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 		
 		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.startNegotiation(mapper.convertValue(map, JsonNode.class));
 		assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -87,7 +87,7 @@ public class ContractNegotiationAPIControllerTest {
 		
 		ResponseEntity<JsonNode> response = controller.verifyNegotiation(mapper.convertValue(map, JsonNode.class));
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		verify(handlerService).contractAgreementVerificationMessage(any(ContractAgreementVerificationMessage.class));
+		verify(handlerService).verifyNegotiation(any(ContractAgreementVerificationMessage.class));
 	}
 	
 	@Test
@@ -97,9 +97,9 @@ public class ContractNegotiationAPIControllerTest {
 		map.put("Forward-To", ModelUtil.FORWARD_TO);
 		map.put("offer", Serializer.serializeProtocolJsonNode(ModelUtil.OFFER));
 		
-		when(apiService.postContractOffer(any(String.class), any(JsonNode.class)))
+		when(apiService.sendContractOffer(any(String.class), any(JsonNode.class)))
 			.thenReturn(Serializer.serializeProtocolJsonNode(ModelUtil.CONTRACT_NEGOTIATION_OFFERED));
-		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.postOffer(mapper.convertValue(map, JsonNode.class));
+		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.sendOffer(mapper.convertValue(map, JsonNode.class));
 	
 		assertNotNull(response);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -115,11 +115,11 @@ public class ContractNegotiationAPIControllerTest {
 		map.put("Forward-To", ModelUtil.FORWARD_TO);
 		map.put("offer", Serializer.serializeProtocolJsonNode(ModelUtil.OFFER));
 		
-		when(apiService.postContractOffer(any(String.class), any(JsonNode.class)))
+		when(apiService.sendContractOffer(any(String.class), any(JsonNode.class)))
 			.thenThrow(new ContractNegotiationAPIException("Something not correct - tests"));
 
 		assertThrows(ContractNegotiationAPIException.class, () ->
-			controller.postOffer(mapper.convertValue(map, JsonNode.class)));
+			controller.sendOffer(mapper.convertValue(map, JsonNode.class)));
 	}
 	
 	@Test

@@ -65,7 +65,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isCreated())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(ModelUtil.CONTRACT_NEGOTIATION.getType())))
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())))
     	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
     }
     
@@ -100,7 +100,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isOk())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(ModelUtil.CONTRACT_NEGOTIATION.getType())))
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())))
     	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
     }
     

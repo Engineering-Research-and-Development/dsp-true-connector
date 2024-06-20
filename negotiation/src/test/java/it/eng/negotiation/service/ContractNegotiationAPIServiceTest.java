@@ -58,7 +58,7 @@ public class ContractNegotiationAPIServiceTest {
 	@DisplayName("Start contract negotiation success")
 	public void startNegotiation_success() {
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
-		when(apiResponse.getData()).thenReturn(Serializer.serializeProtocol(ModelUtil.CONTRACT_NEGOTIATION));
+		when(apiResponse.getData()).thenReturn(Serializer.serializeProtocol(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 		when(apiResponse.getHttpStatus()).thenReturn(201);
 		when(properties.callbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
 		
@@ -88,7 +88,7 @@ public class ContractNegotiationAPIServiceTest {
 		when(apiResponse.isSuccess()).thenReturn(true);
 		when(apiResponse.getData()).thenReturn(Serializer.serializeProtocol(ModelUtil.CONTRACT_NEGOTIATION_OFFERED));
 		// plain jsonNode
-		service.postContractOffer(ModelUtil.FORWARD_TO, Serializer.serializePlainJsonNode(ModelUtil.OFFER));
+		service.sendContractOffer(ModelUtil.FORWARD_TO, Serializer.serializePlainJsonNode(ModelUtil.OFFER));
 		
 		verify(contractNegotiationRepository).save(any(ContractNegotiation.class));
 	}
@@ -102,7 +102,7 @@ public class ContractNegotiationAPIServiceTest {
 		when(apiResponse.isSuccess()).thenReturn(false);
 		
 		assertThrows(ContractNegotiationAPIException.class, ()->
-			service.postContractOffer(ModelUtil.FORWARD_TO, Serializer.serializePlainJsonNode(ModelUtil.OFFER)));
+			service.sendContractOffer(ModelUtil.FORWARD_TO, Serializer.serializePlainJsonNode(ModelUtil.OFFER)));
 	}
 	
 	@Test
@@ -111,7 +111,7 @@ public class ContractNegotiationAPIServiceTest {
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.getHttpStatus()).thenReturn(200);
 		when(properties.callbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION));
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 		
 		service.sendAgreement(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID, Serializer.serializePlainJsonNode(ModelUtil.AGREEMENT));
 		
@@ -148,7 +148,7 @@ public class ContractNegotiationAPIServiceTest {
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.getHttpStatus()).thenReturn(400);
 		when(properties.callbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION));
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 		
 		assertThrows(ContractNegotiationAPIException.class, ()-> service.sendAgreement(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID, Serializer.serializePlainJsonNode(ModelUtil.AGREEMENT)));
 	

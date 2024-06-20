@@ -33,6 +33,6 @@ public class ContractNegotiationListener {
 	@EventListener
 	public void handleContractAgreementVerificationMessage(ContractAgreementVerificationMessage verificationMessage) {
 		log.info("Handling ContractAgreementVerificationMessage...");
-		contractNegotiationEventHandlerService.contractAgreementVerificationMessage(verificationMessage);
+		contractNegotiationEventHandlerService.verifyNegotiation(verificationMessage);
 	}
 }

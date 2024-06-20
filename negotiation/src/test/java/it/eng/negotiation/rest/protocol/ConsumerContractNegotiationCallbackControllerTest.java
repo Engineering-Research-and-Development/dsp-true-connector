@@ -1,6 +1,7 @@
 package it.eng.negotiation.rest.protocol;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
@@ -81,14 +82,13 @@ public class ConsumerContractNegotiationCallbackControllerTest {
     }
 
     @Test
-    public void handleEventsResponse() throws InterruptedException, ExecutionException, JsonMappingException, JsonProcessingException {
+    public void handleFinalizeEvent() throws InterruptedException, ExecutionException, JsonMappingException, JsonProcessingException {
         String json = Serializer.serializeProtocol(ModelUtil.CONTRACT_NEGOTIATION_EVENT_MESSAGE);
         JsonNode jsonNode = mapper.readTree(json);
-        when(contractNegotiationConsumerService.handleEventsResponse(any(String.class), any(ContractNegotiationEventMessage.class)))
-                .thenReturn(null);
+        doNothing().when(contractNegotiationConsumerService).handleFinalizeEvent(any(ContractNegotiationEventMessage.class));
 
         ResponseEntity<JsonNode> response = controller.handleEventsMessage(ModelUtil.CONSUMER_PID, jsonNode);
-        assertNotNull(response);
+        assertNull(response.getBody());
         assertTrue(response.getStatusCode().is2xxSuccessful());
     }
 

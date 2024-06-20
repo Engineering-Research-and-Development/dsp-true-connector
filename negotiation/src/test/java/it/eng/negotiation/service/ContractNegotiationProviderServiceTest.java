@@ -114,7 +114,7 @@ public class ContractNegotiationProviderServiceTest {
     @Test
     @DisplayName("Start contract negotiation failed - contract negotiation exists")
     public void startContractNegotiation_contractNegotiationExists() throws InterruptedException {
-        when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION));
+        when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
     	
         assertThrows(ContractNegotiationExistsException.class,()-> service.startContractNegotiation(ModelUtil.CONTRACT_REQUEST_MESSAGE));
         verify(repository, times(0)).save(any(ContractNegotiation.class));
@@ -133,7 +133,7 @@ public class ContractNegotiationProviderServiceTest {
 
     @Test
     public void getNegotiationByProviderPid() {
-        when(repository.findByProviderPid(anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION));
+        when(repository.findByProviderPid(anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 
         ContractNegotiation result = service.getNegotiationByProviderPid(ModelUtil.PROVIDER_PID);
 
@@ -152,21 +152,14 @@ public class ContractNegotiationProviderServiceTest {
     }
     
     @Test
-    public void finalizeNegotiation_success() {
-    	ContractNegotiation cn = ContractNegotiation.Builder.newInstance()
-                .consumerPid(ModelUtil.CONSUMER_PID)
-                .providerPid(ModelUtil.PROVIDER_PID)
-                .state(ContractNegotiationState.ACCEPTED)
-                .build();
-        when(repository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(cn));
-		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
-		when(apiResponse.isSuccess()).thenReturn(true);
+    public void verifyNegotiation_success() {
+        when(repository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_AGREED));
 
-    	service.finalizeNegotiation(ModelUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE);
+    	service.verifyNegotiation(ModelUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE);
     	
 		verify(repository).save(argCaptorContractNegotiation.capture());
 		//verify that status is updated to FINAILZED
-		assertEquals(ContractNegotiationState.FINALIZED, argCaptorContractNegotiation.getValue().getState());
+		assertEquals(ContractNegotiationState.VERIFIED, argCaptorContractNegotiation.getValue().getState());
 
     }
 

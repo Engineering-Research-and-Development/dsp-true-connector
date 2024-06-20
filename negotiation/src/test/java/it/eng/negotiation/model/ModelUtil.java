@@ -123,21 +123,38 @@ public class ModelUtil {
             .description(Collections.singletonList(Description.Builder.newInstance().language("en").value("Some description").build()))
 			.build();
 	
-	public static final ContractNegotiation CONTRACT_NEGOTIATION = ContractNegotiation.Builder.newInstance()
+	public static final ContractNegotiation CONTRACT_NEGOTIATION_ACCEPTED = ContractNegotiation.Builder.newInstance()
 			.consumerPid(ModelUtil.CONSUMER_PID)
 			.providerPid(ModelUtil.PROVIDER_PID)
+			.callbackAddress(CALLBACK_ADDRESS)
 			.state(ContractNegotiationState.ACCEPTED)
+			.build();
+	
+	public static final ContractNegotiation CONTRACT_NEGOTIATION_AGREED = ContractNegotiation.Builder.newInstance()
+			.consumerPid(ModelUtil.CONSUMER_PID)
+			.providerPid(ModelUtil.PROVIDER_PID)
+			.callbackAddress(CALLBACK_ADDRESS)
+			.state(ContractNegotiationState.AGREED)
 			.build();
 	
 	public static final ContractNegotiation CONTRACT_NEGOTIATION_OFFERED = ContractNegotiation.Builder.newInstance()
 			.consumerPid(ModelUtil.CONSUMER_PID)
 			.providerPid(ModelUtil.PROVIDER_PID)
+			.callbackAddress(CALLBACK_ADDRESS)
 			.state(ContractNegotiationState.OFFERED)
+			.build();
+	
+	public static final ContractNegotiation CONTRACT_NEGOTIATION_VERIFIED = ContractNegotiation.Builder.newInstance()
+			.consumerPid(ModelUtil.CONSUMER_PID)
+			.providerPid(ModelUtil.PROVIDER_PID)
+			.callbackAddress(CALLBACK_ADDRESS)
+			.state(ContractNegotiationState.VERIFIED)
 			.build();
 	
 	public static final ContractNegotiation CONTRACT_NEGOTIATION_FINALIZED = ContractNegotiation.Builder.newInstance()
 			.consumerPid(ModelUtil.CONSUMER_PID)
 			.providerPid(ModelUtil.PROVIDER_PID)
+			.callbackAddress(CALLBACK_ADDRESS)
 			.state(ContractNegotiationState.FINALIZED)
 			.build();
 }

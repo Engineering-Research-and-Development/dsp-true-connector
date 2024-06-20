@@ -49,7 +49,7 @@ public class ContractNegotiationEventHandlerServiceTest {
 		ContractNegotiationOfferResponseEvent offerResponse = new ContractNegotiationOfferResponseEvent(ModelUtil.CONSUMER_PID, 
 				ModelUtil.PROVIDER_PID, true, Serializer.serializePlainJsonNode(ModelUtil.OFFER));
 		
-		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION));
+		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(true);
 		// TODO temporary until figure out how to get assignee and assigner
@@ -66,7 +66,7 @@ public class ContractNegotiationEventHandlerServiceTest {
 		ContractNegotiationOfferResponseEvent offerResponse = new ContractNegotiationOfferResponseEvent(ModelUtil.CONSUMER_PID, 
 				ModelUtil.PROVIDER_PID, false, Serializer.serializeProtocolJsonNode(ModelUtil.OFFER));
 		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class)))
-			.thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION));
+			.thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 
 		handlerService.handleContractNegotiationOfferResponse(offerResponse);
 		
@@ -76,11 +76,11 @@ public class ContractNegotiationEventHandlerServiceTest {
 	@Test
 	@DisplayName("Handle agreement verification message success")
 	public void contractAgreementVerificationMessage_success() {
-		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION));
+		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_AGREED));
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.getHttpStatus()).thenReturn(200);
 
-		handlerService.contractAgreementVerificationMessage(ModelUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE);
+		handlerService.verifyNegotiation(ModelUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE);
 		
 		verify(repository).save(any(ContractNegotiation.class));
 	}

@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.negotiation.model.ContractAgreementVerificationMessage;
+import it.eng.negotiation.model.ContractNegotiationEventMessage;
+import it.eng.negotiation.model.ContractNegotiationEventType;
 import it.eng.negotiation.service.ContractNegotiationAPIService;
 import it.eng.negotiation.service.ContractNegotiationEventHandlerService;
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
@@ -53,7 +55,7 @@ public class ContractNegotiationAPIController {
         ContractNegotiationOfferResponseEvent offerResponse = new ContractNegotiationOfferResponseEvent(consumerPid, providerPid, offerAccepted, offer);
         handlerService.handleContractNegotiationOfferResponse(offerResponse);
         
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(null);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).build();
     }
     
     @PostMapping(path = "/verifyNegotiation")
@@ -65,17 +67,17 @@ public class ContractNegotiationAPIController {
 				.consumerPid(consumerPid)
 				.providerPid(providerPid)
 				.build();
-    	handlerService.contractAgreementVerificationMessage(verificationMessage);
-    	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(null);
+    	handlerService.verifyNegotiation(verificationMessage);
+    	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).build();
     }
     
     /********* PROVIDER ***********/
-    @PostMapping(path = "/postOffer")
-    public ResponseEntity<GenericApiResponse<JsonNode>> postOffer(@RequestBody JsonNode contractOfferRequest) {
+    @PostMapping(path = "/sendOffer")
+    public ResponseEntity<GenericApiResponse<JsonNode>> sendOffer(@RequestBody JsonNode contractOfferRequest) {
     	String targetConnector = contractOfferRequest.get("Forward-To").asText();
     	JsonNode offerNode = contractOfferRequest.get(DSpaceConstants.OFFER);
     	log.info("Provider posts offer - starts negotaition with {}", targetConnector);
-    	JsonNode response = apiService.postContractOffer(targetConnector, offerNode);
+    	JsonNode response = apiService.sendContractOffer(targetConnector, offerNode);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
     			.body(GenericApiResponse.success(response, "Contract negotiation posted", HttpStatus.OK.value()));
     }
@@ -88,6 +90,20 @@ public class ContractNegotiationAPIController {
     	apiService.sendAgreement(consumerPid, providerPid, agreementNode);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
     			.body(GenericApiResponse.success(null, "Contract agreement sent", HttpStatus.OK.value()));
+    }
+    
+    @PostMapping(path = "/finalizeNegotiation")
+    public ResponseEntity<GenericApiResponse<JsonNode>> finalizeNegotiation(@RequestBody JsonNode finalizeNegotiationRequest) {
+    	String consumerPid = finalizeNegotiationRequest.get(DSpaceConstants.CONSUMER_PID).asText();
+        String providerPid = finalizeNegotiationRequest.get(DSpaceConstants.PROVIDER_PID).asText();
+        ContractNegotiationEventMessage  contractNegotiationEventMessage = ContractNegotiationEventMessage.Builder.newInstance()
+				.consumerPid(consumerPid)
+				.providerPid(providerPid)
+				.eventType(ContractNegotiationEventType.FINALIZED)
+				.build();
+    	apiService.finalizeNegotiation(contractNegotiationEventMessage);
+    	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+    			.body(GenericApiResponse.success(null, "Contract negotiation finalized", HttpStatus.OK.value()));
     }
 
 }
