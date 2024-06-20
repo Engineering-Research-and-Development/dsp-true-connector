@@ -140,20 +140,6 @@ public class TransferProcess extends AbstractTransferMessage {
 			return this;
 		}
 
-		public Builder copyWithNewTransferState(TransferProcess fromTransferProcess, TransferState transferState) {
-			message.id = fromTransferProcess.getId();
-			message.agreementId = fromTransferProcess.getAgreementId();
-			message.consumerPid = fromTransferProcess.getConsumerPid();
-			message.providerPid = fromTransferProcess.getProviderPid();
-			message.callbackAddress = fromTransferProcess.getCallbackAddress();
-			message.state = transferState;
-			// no need to modify audit fields???
-//			message.lastModifiedBy = fromTransferProcess.getLastModifiedBy();
-//			message.version = fromTransferProcess.getVersion();
-//			message.createdBy = fromTransferProcess.getCreatedBy();
-			return this;
-		}
-
 		public TransferProcess build() {
 			if (message.id == null) {
 	               message.id = message.createNewId();
@@ -180,10 +166,9 @@ public class TransferProcess extends AbstractTransferMessage {
 	 * Create new TransferProcess from origin, with new TransferState.</br>
 	 * Used to update state when transition happens.
 	 * @param newTransferState
-	 * @return
+	 * @return new TransferProcess object from initial, with new state
 	 */
 	public TransferProcess copyWithNewTransferState(TransferState newTransferState) {
-		// no need to modify audit fields???
 		return TransferProcess.Builder.newInstance()
 				.id(this.id)
 				.agreementId(this.agreementId)
@@ -191,6 +176,7 @@ public class TransferProcess extends AbstractTransferMessage {
 				.providerPid(this.providerPid)
 				.callbackAddress(this.callbackAddress)
 				.state(newTransferState)
+				// no need to modify audit fields???
 				.createdBy(this.createdBy)
 				.lastModifiedBy(this.lastModifiedBy)
 				.version(this.version)

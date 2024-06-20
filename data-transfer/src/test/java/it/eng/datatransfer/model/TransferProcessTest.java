@@ -64,20 +64,8 @@ public class TransferProcessTest {
 	}
 	
 	@Test
-	public void testCopy() {
-		TransferProcess tpCopied = TransferProcess.Builder.newInstance()
-				.copyWithNewTransferState(ModelUtil.TRANSFER_PROCESS_REQUESTED, TransferState.STARTED)
-				.build();
-		
-		assertEquals(ModelUtil.TRANSFER_PROCESS_REQUESTED.getId(), tpCopied.getId());
-		assertEquals(ModelUtil.CONSUMER_PID, tpCopied.getConsumerPid());
-		assertEquals(ModelUtil.PROVIDER_PID, tpCopied.getProviderPid());
-		assertEquals(ModelUtil.AGREEMENT_ID, tpCopied.getAgreementId());
-		assertEquals(TransferState.STARTED, tpCopied.getState());
-	}
-	
-	@Test
-	public void copy2() {
+	@DisplayName("From initial TransferProcess with new TrasnferState")
+	public void fromInitialWithNewState() {
 		TransferProcess tpCopied = ModelUtil.TRANSFER_PROCESS_REQUESTED.copyWithNewTransferState(TransferState.STARTED);
 		assertEquals(ModelUtil.TRANSFER_PROCESS_REQUESTED.getId(), tpCopied.getId());
 		assertEquals(ModelUtil.CONSUMER_PID, tpCopied.getConsumerPid());

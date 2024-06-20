@@ -131,5 +131,24 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     public String getType() {
         return DSpaceConstants.DSPACE + ContractNegotiation.class.getSimpleName();
     }
+    
+    /**
+     * Create new ContractNegotiation from initial, with new state
+     * @param newState new ContractNegotiationState
+     * @return new instance of ContractNegotiation
+     */
+    public ContractNegotiation withNewContractNegotiationState(ContractNegotiationState newState) {
+    	return ContractNegotiation.Builder.newInstance()
+    			.id(this.id)
+    			.consumerPid(this.consumerPid)
+    			.providerPid(this.providerPid)
+    			.callbackAddress(this.callbackAddress)
+    			// not yet auditable fields
+//    			.createdBy(this.createdBy)
+//				.lastModifiedBy(this.lastModifiedBy)
+//				.version(this.version)
+    			.state(newState)
+    			.build();
+    }
 }
 

@@ -118,6 +118,16 @@ public class ContractNegotiationTest {
 		assertTrue(cn.getState().nextState().containsAll(Arrays.asList(ContractNegotiationState.FINALIZED, ContractNegotiationState.TERMINATED)));
 	}
 
+	@Test
+	@DisplayName("From initial ContractNegotiation with new ContractNegotiationState")
+	public void withNewState() {
+		ContractNegotiation contractNegotiationOffered = ModelUtil.CONTRACT_NEGOTIATION.withNewContractNegotiationState(ContractNegotiationState.OFFERED);
+		assertEquals(ModelUtil.CONTRACT_NEGOTIATION.getId(), contractNegotiationOffered.getId());
+		assertEquals(ModelUtil.CONTRACT_NEGOTIATION.getConsumerPid(), contractNegotiationOffered.getConsumerPid());
+		assertEquals(ModelUtil.CONTRACT_NEGOTIATION.getProviderPid(), contractNegotiationOffered.getProviderPid());
+		assertEquals(ModelUtil.CONTRACT_NEGOTIATION.getCallbackAddress(), contractNegotiationOffered.getCallbackAddress());
+		assertEquals(ContractNegotiationState.OFFERED, contractNegotiationOffered.getState());
+	}
 	
 	private void validateJavaObj(ContractNegotiation javaObj) {
 		assertNotNull(javaObj);
