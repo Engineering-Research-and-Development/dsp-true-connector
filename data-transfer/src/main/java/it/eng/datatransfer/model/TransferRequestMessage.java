@@ -3,6 +3,10 @@ package it.eng.datatransfer.model;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
@@ -49,8 +53,14 @@ import lombok.NoArgsConstructor;
 @Getter
 @JsonDeserialize(builder = TransferRequestMessage.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
+@Document(collection = "transfer_request_messages")
 public class TransferRequestMessage extends AbstractTransferMessage {
 
+    @JsonIgnore
+    @JsonProperty(DSpaceConstants.ID)
+    @Id
+    private String id;
+    
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_AGREEMENT_ID)
 	private String agreementId;
@@ -80,6 +90,11 @@ public class TransferRequestMessage extends AbstractTransferMessage {
 		public static Builder newInstance() {
 			return new Builder();
 		}
+		
+		public Builder id(String id) {
+        	message.id = id;
+        	return this;
+        }
 		
 		@JsonProperty(DSpaceConstants.DSPACE_AGREEMENT_ID)
 		public Builder agreementId(String agreementId) {
@@ -112,6 +127,9 @@ public class TransferRequestMessage extends AbstractTransferMessage {
 		}
 
 		public TransferRequestMessage build() {
+			if (message.id == null) {
+	               message.id = message.createNewId();
+	        }
 			Set<ConstraintViolation<TransferRequestMessage>> violations 
 				= Validation.buildDefaultValidatorFactory().getValidator().validate(message);
 			if(violations.isEmpty()) {
