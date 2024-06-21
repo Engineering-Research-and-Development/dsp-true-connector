@@ -69,7 +69,6 @@ public class TransferRequestMessage extends AbstractTransferMessage {
 	@JsonProperty(DSpaceConstants.DCT_FORMAT)
 	private String format;
 	
-	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_DATA_ADDRESS)
 	private DataAddress dataAddress;
 	
