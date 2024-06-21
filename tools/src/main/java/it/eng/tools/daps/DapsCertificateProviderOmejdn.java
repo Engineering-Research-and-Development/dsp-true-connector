@@ -33,9 +33,9 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 @Slf4j
 public class DapsCertificateProviderOmejdn {
-	
+
 	private String targetAudience = "idsc:IDS_CONNECTORS_ALL";
-	
+
 	private DapsProperties dapsProperties;
 	private SslBundles sslBundles;
 
@@ -66,7 +66,7 @@ public class DapsCertificateProviderOmejdn {
 			log.info("**********************************************************************");
 		}
 	}
-	
+
 	public String getDapsV2Jws() {
 		log.debug("V2");
 
@@ -90,7 +90,7 @@ public class DapsCertificateProviderOmejdn {
 		}
 		return jws;
 	}
-	
+
 	private Key getPrivateKey() {
 		try {
 			return dapsKeystore.getKey(sslBundles.getBundle("daps").getKey().getAlias(), sslBundles.getBundle("daps").getStores().getKeyStorePassword().toCharArray());
@@ -99,7 +99,7 @@ public class DapsCertificateProviderOmejdn {
 		}
 		return null;
 	}
-	
+
 	private String getConnectorUUID() throws KeyStoreException {
 		String alias = sslBundles.getBundle("daps").getKey().getAlias();
 		// Get AKI
@@ -124,7 +124,7 @@ public class DapsCertificateProviderOmejdn {
 
 		return connectorUUID;
 	}
-	
+
 	/**
 	 * Encode a byte array to an hex string
 	 * 
@@ -169,18 +169,18 @@ public class DapsCertificateProviderOmejdn {
 		return sb.toString();
 	}
 
-    /***
-     * Split string ever len chars and return string array
-     * @param src
-     * @param len
-     * @return
-     */
-    private String[] split(String src, int len) {
-        String[] result = new String[(int)Math.ceil((double)src.length()/(double)len)];
-        for (int i=0; i<result.length; i++)
-            result[i] = src.substring(i*len, Math.min(src.length(), (i+1)*len));
-        return result;
-    }
+	/***
+	 * Split string ever len chars and return string array
+	 * @param src
+	 * @param len
+	 * @return
+	 */
+	private String[] split(String src, int len) {
+		String[] result = new String[(int)Math.ceil((double)src.length()/(double)len)];
+		for (int i=0; i<result.length; i++)
+			result[i] = src.substring(i*len, Math.min(src.length(), (i+1)*len));
+		return result;
+	}
 
 	private void checkCertificateExired(Certificate certificate) throws CertificateException {
 		if (certificate instanceof X509Certificate) {
