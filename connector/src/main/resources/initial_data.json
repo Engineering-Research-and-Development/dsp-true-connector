@@ -185,17 +185,21 @@
       "version": 0
     }
   ],
-  "properties": [
+  "application_properties": [
     {
-    "_id": "test_property",
-    "key": "test_property",    
+    "_id": "test_property",    
     "value": "true",
-    "mandatory": false
+    "mandatory": false,
+    "issued": "2024-06-17T13:31:02.000Z",
+	"modified":  "2024-06-17T13:31:02.000Z",
+    "version": 0
   }, {
-    "_id": "test_property_2",
-    "key": "test_property_2",    
+    "_id": "test_property_2",    
     "value": 123,
-    "mandatory": false
+    "mandatory": false,
+    "issued": "2024-06-17T13:31:02.000Z",
+	"modified":  "2024-06-17T13:31:02.000Z",
+    "version": 0
   }
   ]
 }
