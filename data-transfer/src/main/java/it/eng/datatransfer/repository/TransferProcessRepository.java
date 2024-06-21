@@ -11,4 +11,6 @@ import it.eng.datatransfer.model.TransferProcess;
 public interface TransferProcessRepository extends MongoRepository<TransferProcess, String> {
 
     Optional<TransferProcess> findByConsumerPidAndProviderPid(String consumerPid, String providerPid);
+    
+    Optional<TransferProcess> findByProviderPid(String providerPid);
 }

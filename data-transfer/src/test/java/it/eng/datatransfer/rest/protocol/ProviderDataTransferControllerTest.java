@@ -2,30 +2,46 @@ package it.eng.datatransfer.rest.protocol;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
+import it.eng.datatransfer.exceptions.TransferProcessNotFound;
 import it.eng.datatransfer.model.Serializer;
+import it.eng.datatransfer.service.DataTransferService;
 import it.eng.datatransfer.util.MockObjectUtil;
 import jakarta.validation.ValidationException;
 
-
 @ExtendWith(MockitoExtension.class)
 public class ProviderDataTransferControllerTest {
+	
+	@Mock
+	private DataTransferService dataTransferService;
 
 	@InjectMocks
 	private ProviderDataTransferController controller;
 	
 	@Test
 	@DisplayName("Get TransferProcess for ProviderPid")
-	public void getDataTransfer() {
-		assertEquals(HttpStatus.NOT_IMPLEMENTED, 
-				controller.getTransferProcessByProviderPid(MockObjectUtil.PROVIDER_PID).getStatusCode());
+	public void geTransferProcess() {
+		when(dataTransferService.findTransferProcessByProviderPid(MockObjectUtil.PROVIDER_PID))
+			.thenReturn(MockObjectUtil.TRANSFER_PROCESS_REQUESTED);
+		assertEquals(HttpStatus.OK, controller.getTransferProcessByProviderPid(MockObjectUtil.PROVIDER_PID).getStatusCode());
+	}
+	
+	@Test
+	@DisplayName("Get TransferProcess for ProviderPid - not found")
+	public void transferProcessNtFound() {
+		when(dataTransferService.findTransferProcessByProviderPid(MockObjectUtil.PROVIDER_PID))
+			.thenThrow(new TransferProcessNotFound("Not found"));
+		assertThrows(TransferProcessNotFound.class, 
+				()-> controller.getTransferProcessByProviderPid(MockObjectUtil.PROVIDER_PID).getStatusCode());
 	}
 	
 	@Test

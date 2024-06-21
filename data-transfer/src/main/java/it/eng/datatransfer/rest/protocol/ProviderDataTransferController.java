@@ -16,10 +16,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.datatransfer.model.Serializer;
 import it.eng.datatransfer.model.TransferCompletionMessage;
+import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferRequestMessage;
 import it.eng.datatransfer.model.TransferStartMessage;
 import it.eng.datatransfer.model.TransferSuspensionMessage;
 import it.eng.datatransfer.model.TransferTerminationMessage;
+import it.eng.datatransfer.service.DataTransferService;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
@@ -27,10 +29,18 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ProviderDataTransferController {
 
+	private DataTransferService dataTransferService;
+	
+	public ProviderDataTransferController(DataTransferService dataTransferService) {
+		super();
+		this.dataTransferService = dataTransferService;
+	}
+
 	@GetMapping(path = "/{providerPid}")
 	public ResponseEntity<JsonNode> getTransferProcessByProviderPid(@PathVariable String providerPid) {
 		log.info("Fetching TransferProcess for id {}", providerPid);
-		return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(notImplemented());
+		TransferProcess transferProcess = dataTransferService.findTransferProcessByProviderPid(providerPid);
+		return ResponseEntity.ok(Serializer.serializeProtocolJsonNode(transferProcess));
 	}
 
 	@PostMapping(path = "/request")
