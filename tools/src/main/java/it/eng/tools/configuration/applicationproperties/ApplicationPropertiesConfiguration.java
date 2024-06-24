@@ -7,7 +7,6 @@ import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.env.OriginTrackedMapPropertySource;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.env.AbstractEnvironment;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.PropertySource;
@@ -26,18 +25,16 @@ public class ApplicationPropertiesConfiguration {
 	@Autowired
 	private Environment environment;
 
-	//private final ApplicationEventPublisher applicationEventPublisher;
 
 	private final ApplicationPropertiesService service;
 
 	private final ApplicationPropertiesRepository repository;
 
 
-	public ApplicationPropertiesConfiguration(ApplicationPropertiesService service, ApplicationPropertiesRepository repository, ApplicationEventPublisher applicationEventPublisher) {
+	public ApplicationPropertiesConfiguration(ApplicationPropertiesService service, ApplicationPropertiesRepository repository) {
 		super();
 		this.repository = repository;
 		this.service = service;
-		//this.applicationEventPublisher = applicationEventPublisher;
 	}
 
 	@PostConstruct
