@@ -75,7 +75,7 @@
 									}
 								],
 								"url": {
-									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/?key_prefix={$KEY_PREFIX}",
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/?key_prefix={{KEY_PREFIX}}",
 									"host": [
 										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
 									],
@@ -85,7 +85,7 @@
 									"query": [
 										{
 											"key": "key_prefix",
-											"value": "{$KEY_PREFIX}"
+											"value": "{{KEY_PREFIX}}"
 										}
 									]
 								}
@@ -118,12 +118,12 @@
 									}
 								],
 								"url": {
-									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/{$KEY}",
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/spring.ssl.bundle.jks.connector.keystore.location",
 									"host": [
 										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
 									],
 									"path": [
-										"{$KEY}"
+										"spring.ssl.bundle.jks.connector.keystore.location"
 									]
 								}
 							},
@@ -156,7 +156,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n    \"key\": \"spring.ssl.bundle.jks.connector.keystore.location\",\r\n    \"value\": \"classpath:ssl-server.jks\",\r\n    \"mandatory\": false,\r\n    \"issued\": 1718204224.274,\r\n    \"modified\": 1718204224.274,\r\n    \"type\": \"ApplicationProperty\"\r\n}",
+									"raw": "{\r\n        \"key\": \"application.daps.enabledDapsInteraction\",\r\n        \"value\": \"true\",\r\n        \"mandatory\": false,\r\n        \"issued\": 1718629303.981000000,\r\n        \"modified\": 1718629303.981000000,\r\n        \"type\": \"ApplicationProperty\"\r\n    }",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -432,8 +432,7 @@
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
+										"value": "application/json"
 									}
 								],
 								"url": {
