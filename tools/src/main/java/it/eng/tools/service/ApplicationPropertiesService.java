@@ -1,12 +1,11 @@
 package it.eng.tools.service;
 
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.MapPropertySource;
@@ -28,7 +27,8 @@ import lombok.extern.java.Log;
 @Log
 public class ApplicationPropertiesService {
 
-	@Autowired
+	private static final String STORED_APPLICATION_PROPERTIES = "storedApplicationProperties";
+
 	private Environment env;
 
 	private final ApplicationPropertiesRepository repository;
@@ -37,15 +37,16 @@ public class ApplicationPropertiesService {
 		return Sort.by("id");
 	}
 
-	public ApplicationPropertiesService(ApplicationPropertiesRepository repository) {
+	public ApplicationPropertiesService(ApplicationPropertiesRepository repository, Environment env) {
 		this.repository = repository;
+		this.env = env;
 	}
 
 	public List<ApplicationProperty> getProperties(String key_prefix) {
 		
 		List<ApplicationProperty> allProperties = null;
 		
-		if(key_prefix != null && !key_prefix.isBlank()) {
+		if(!StringUtils.isBlank(key_prefix)) {
 			allProperties = repository.findByKeyStartingWith(key_prefix, sortByIdAsc());
 		} else {
 			allProperties = repository.findAll(sortByIdAsc());
@@ -105,7 +106,8 @@ public class ApplicationPropertiesService {
 						.version((c.getVersion() != null ? c.getVersion() : 0))
 						.issued(c.getIssued())
 						.createdBy(c.getCreatedBy())
-						.modified(Instant.now()))
+						//.modified(Instant.now())
+						)
 				.orElseThrow(() -> new ApplicationPropertyNotFoundAPIException("ApplicationProperty with key: " + key + " not found"));
 	}
 	
@@ -181,7 +183,7 @@ public class ApplicationPropertiesService {
 
 		Map<String,Object> storedApplicationPropertiesMap = new HashMap<String,Object>();
 
-		PropertySource<?> storedApplicationPropertiesSource = propertySources.get("storedApplicationProperties");
+		PropertySource<?> storedApplicationPropertiesSource = propertySources.get(STORED_APPLICATION_PROPERTIES);
 		if(storedApplicationPropertiesSource != null) {
 			storedApplicationPropertiesMap = (Map)storedApplicationPropertiesSource.getSource();
 		}
@@ -221,14 +223,14 @@ public class ApplicationPropertiesService {
 
 			Map storedApplicationPropertiesMap = new HashMap<String, String>();
 
-			PropertySource<?> storedApplicationPropertiesSource = propertySources.get("storedApplicationProperties");
+			PropertySource<?> storedApplicationPropertiesSource = propertySources.get(STORED_APPLICATION_PROPERTIES);
 			if(storedApplicationPropertiesSource != null) {
 				storedApplicationPropertiesMap = (Map)storedApplicationPropertiesSource.getSource();
 			}
 
 			storedApplicationPropertiesMap.put(key, value);
 
-			propertySources.addFirst(new MapPropertySource("storedApplicationProperties", storedApplicationPropertiesMap));
+			propertySources.addFirst(new MapPropertySource(STORED_APPLICATION_PROPERTIES, storedApplicationPropertiesMap));
 		///}
 			
 			log.info(key + "=" + environment.getProperty(key));
