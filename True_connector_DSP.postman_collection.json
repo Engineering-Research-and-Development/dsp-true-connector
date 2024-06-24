@@ -1,15 +1,182 @@
 {
 	"info": {
-		"_postman_id": "7267d077-2a1f-4241-9bd2-dde0e189feb4",
+		"_postman_id": "fadc19a0-b35f-498a-b93a-157217d35ad9",
 		"name": "TC_V2",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "2326106",
-		"_collection_link": "https://martian-water-684810.postman.co/workspace/New-Connector~493beb9b-a916-4f81-afb2-851668940079/collection/2326106-7267d077-2a1f-4241-9bd2-dde0e189feb4?action=share&source=collection_link&creator=2326106"
+		"_exporter_id": "14367202"
 	},
 	"item": [
 		{
 			"name": "API_FE",
 			"item": [
+				{
+					"name": "ApplicatioProperty",
+					"item": [
+						{
+							"name": "Get All Application Properties",
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "admin@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/",
+									"host": [
+										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
+									],
+									"path": [
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get All Application Properties with prefix",
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "admin@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/?key_prefix={$KEY_PREFIX}",
+									"host": [
+										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
+									],
+									"path": [
+										""
+									],
+									"query": [
+										{
+											"key": "key_prefix",
+											"value": "{$KEY_PREFIX}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Application Property By Key",
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "admin@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/{$KEY}",
+									"host": [
+										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
+									],
+									"path": [
+										"{$KEY}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Application Property",
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "admin@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"key\": \"spring.ssl.bundle.jks.connector.keystore.location\",\r\n    \"value\": \"classpath:ssl-server.jks\",\r\n    \"mandatory\": false,\r\n    \"issued\": 1718204224.274,\r\n    \"modified\": 1718204224.274,\r\n    \"type\": \"ApplicationProperty\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/",
+									"host": [
+										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
+									],
+									"path": [
+										""
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
 				{
 					"name": "Catalog",
 					"item": [
@@ -775,6 +942,12 @@
 					}
 				}
 			]
+		}
+	],
+	"variable": [
+		{
+			"key": "CONSUMER_SERVER_API_APPLICATION_PROPERTY",
+			"value": "http://127.0.0.1/api/connector_property"
 		}
 	]
 }
