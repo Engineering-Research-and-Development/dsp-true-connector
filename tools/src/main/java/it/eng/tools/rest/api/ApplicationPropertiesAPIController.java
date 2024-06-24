@@ -67,7 +67,7 @@ public class ApplicationPropertiesAPIController {
 
 	@PutMapping(path = "/")
 	public ResponseEntity<JsonNode> modifyProperty(@RequestBody ApplicationProperty property) {
-		log.info("addOrModifyProperty(...) ");
+		log.info("modifyProperty(...) ");
 		log.info("property = " + property);
 
 		ApplicationProperty storedProperty = null;
@@ -76,8 +76,8 @@ public class ApplicationPropertiesAPIController {
 
 		ApplicationProperty oldOne = oldOneOpt.get();
 		if(!property.equals(oldOne)) {
-			log.info("Property changed!");
 			storedProperty = propertiesService.updateProperty(property, oldOne);
+			log.info("Property changed!");
 		} else {
 			throw new ApplicationPropertyNotChangedAPIException("Application property not updated becouse it has not changed.");
 		}
@@ -85,76 +85,5 @@ public class ApplicationPropertiesAPIController {
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
 				.body(Serializer.serializeProtocolJsonNode(storedProperty));
 	}
-
-	/*
-	 * @SuppressWarnings({ "unchecked", "rawtypes" })
-	 * 
-	 * @GetMapping(path = "/InsertPropertiesFromFiles") public
-	 * ResponseEntity<List<JsonNode>>
-	 * insertPropertiesFromFiles(@RequestParam(required = false) boolean overwrite)
-	 * { log.info("InsertPropertiesFromFiles(...)"); log.info("overwrite=" +
-	 * overwrite);
-	 * 
-	 * PropertySource propertySource = ((AbstractEnvironment) environment)
-	 * .getPropertySources().stream() .filter(i -> i instanceof
-	 * OriginTrackedMapPropertySource) .filter(i ->
-	 * i.getName().contains("application.properties")) .findFirst() .orElseThrow();
-	 * Map<String, String> properties = (Map<String, String>)
-	 * propertySource.getSource();
-	 * 
-	 * List<ApplicationProperty> storedProperties = new
-	 * ArrayList<ApplicationProperty>();
-	 * 
-	 * Set<Entry<String, String>> entrySet = properties.entrySet(); for
-	 * (Iterator<Entry<String, String>> iterator = entrySet.iterator();
-	 * iterator.hasNext();) { Entry<String, String> entry = (Entry<String, String>)
-	 * iterator.next(); //System.err.println(entry);
-	 * 
-	 * String key = entry.getKey(); Object value = entry.getValue();
-	 * 
-	 * if (propertiesService.getPropertyByKeyFromStore(key).isEmpty() || overwrite)
-	 * { ApplicationProperty storedProperty = propertiesService.addProperty(
-	 * ApplicationProperty.Builder.newInstance() .id(key) .key(key)
-	 * .value(value.toString()) .build());
-	 * 
-	 * storedProperties.add(storedProperty); } }
-	 * 
-	 * return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-	 * .body(Serializer.serializeProtocolListOfJsonNode(storedProperties)); }
-	 */
-
-	/*
-	 * @PostMapping(path = "/") public ResponseEntity<JsonNode>
-	 * addApplicationProperty(@RequestBody ApplicationProperty property) {
-	 * log.info("addApplicationProperty(...) "); log.info("property = " + property);
-	 * 
-	 * ApplicationProperty storedProperty = null;
-	 * 
-	 * Optional<ApplicationProperty> oldOne =
-	 * propertiesService.getStoredPropertyByKey(property.getKey()); if
-	 * (oldOne.isEmpty()) { storedProperty =
-	 * propertiesService.addProperty(property);
-	 * 
-	 * propertiesService.addPropertyToApplicationPropertySource(property.getKey(),
-	 * property.getValue()); } else { throw new
-	 * ApplicationPropertyAlreadyExistsAPIException("An application property with the key "
-	 * + property.getKey() + " already exists."); }
-	 * 
-	 * return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-	 * .body(Serializer.serializeProtocolJsonNode(storedProperty)); }
-	 */
-
-	/*
-	 * @DeleteMapping(path = "/{key}") public ResponseEntity<String>
-	 * deleteProperty(@PathVariable String key) { log.info("deleteProperty(...) ");
-	 * log.info("name = " + key);
-	 * 
-	 * propertiesService.getStoredPropertyByKey(key).orElseThrow(() -> new
-	 * ApplicationPropertyNotFoundAPIException("Application property to delete with key "
-	 * + key + " not found"));
-	 * 
-	 * propertiesService.deleteProperty(key); return
-	 * ResponseEntity.ok().body("Property deleted successfully"); }
-	 */
 
 }
