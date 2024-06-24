@@ -27,7 +27,7 @@ import it.eng.tools.model.Serializer;
 @AutoConfigureMockMvc
 public class ApplicationPropertyIntegrationTest {
 
-	private final String TEST_KEY = "test_property";
+	private final String TEST_KEY = "application.daps.enabledDapsInteraction";
 
 	@Autowired
 	private MockMvc mockMvc;
