@@ -1,4 +1,4 @@
-package it.eng.tools.configuration.applicationproperties;
+package it.eng.tools.configuration;
 
 import java.util.Map;
 import java.util.Map.Entry;
