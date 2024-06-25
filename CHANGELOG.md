@@ -1,6 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+
+## [0.0.1] - 2024-06-25
+
+### Added
+
+ - DataTransfer Consumer callback controller and junit tests
+
 ## [0.0.1] - 2024-06-21
 
 ### Added
