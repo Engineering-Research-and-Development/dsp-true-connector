@@ -2,6 +2,8 @@ package it.eng.datatransfer.service;
 
 import org.springframework.stereotype.Service;
 
+import it.eng.datatransfer.exceptions.TransferProcessNotFound;
+import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 
@@ -26,5 +28,10 @@ public class DataTransferService {
 		return transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid)
 				.map(tp -> TransferState.STARTED.equals(tp.getState()))
 				.orElse(false);
+	}
+
+	public TransferProcess findTransferProcessByProviderPid(String providerPid) {
+		return transferProcessRepository.findByProviderPid(providerPid)
+				.orElseThrow(() -> new TransferProcessNotFound("TransferProcess with providerPid " + providerPid + " not found"));
 	}
 }

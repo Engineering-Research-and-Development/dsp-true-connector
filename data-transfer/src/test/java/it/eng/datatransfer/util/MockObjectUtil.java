@@ -2,8 +2,13 @@ package it.eng.datatransfer.util;
 
 import java.time.Instant;
 
+import it.eng.datatransfer.model.TransferCompletionMessage;
 import it.eng.datatransfer.model.TransferProcess;
+import it.eng.datatransfer.model.TransferRequestMessage;
+import it.eng.datatransfer.model.TransferStartMessage;
 import it.eng.datatransfer.model.TransferState;
+import it.eng.datatransfer.model.TransferSuspensionMessage;
+import it.eng.datatransfer.model.TransferTerminationMessage;
 
 public class MockObjectUtil {
 
@@ -14,6 +19,7 @@ public class MockObjectUtil {
     public static final String INCLUDED_IN = "includedInAction";
     public static final String ASSIGNEE = "assignee";
     public static final String ASSIGNER = "assigner";
+    public static final String AGREEMENT_ID = "urn:uuid:AGREEMENT_ID";
     public static final String TARGET = "target";
     public static final String CONFORMSTO = "conformsToSomething";
     public static final String CREATOR = "Chuck Norris";
@@ -22,6 +28,7 @@ public class MockObjectUtil {
     public static final Instant MODIFIED = Instant.parse("2024-04-23T16:26:00Z");
     public static final String TITLE = "Title for test";
     public static final String ENDPOINT_URL = "https://provider-a.com/connector";
+    public static final String CALLBACK_ADDRESS = "https://example.com/callback";
 
     public static TransferProcess TRANSFER_PROCESS_REQUESTED = TransferProcess.Builder.newInstance()
     		.consumerPid(CONSUMER_PID)
@@ -35,4 +42,32 @@ public class MockObjectUtil {
     		.state(TransferState.STARTED)
     		.build();
     
+    public static TransferRequestMessage TRANSFER_REQUEST_MESSAGE = TransferRequestMessage.Builder.newInstance()
+    		.consumerPid(CONSUMER_PID)
+    		.agreementId(AGREEMENT_ID)
+    		.format("HTTP_PULL")
+    		.callbackAddress(CALLBACK_ADDRESS)
+    		.build();
+    
+    public static TransferStartMessage TRANSFER_START_MESSAGE = TransferStartMessage.Builder.newInstance()
+    		.consumerPid(CONSUMER_PID)
+    		.providerPid(PROVIDER_PID)
+    		.build();
+    
+    public static TransferCompletionMessage TRANSFER_COMPLETION_MESSAGE = TransferCompletionMessage.Builder.newInstance()
+    		.consumerPid(CONSUMER_PID)
+    		.providerPid(PROVIDER_PID)
+    		.build();
+    		
+    public static TransferTerminationMessage TRANSFER_TERMINATION_MESSAGE = TransferTerminationMessage.Builder.newInstance()
+    		.consumerPid(CONSUMER_PID)
+    		.providerPid(PROVIDER_PID)
+    		.code("123")
+    		.build();
+    
+    public static TransferSuspensionMessage TRANSFER_SUSPENSION_MESSAGE = TransferSuspensionMessage.Builder.newInstance()
+    		.consumerPid(CONSUMER_PID)
+    		.providerPid(PROVIDER_PID)
+    		.code("123")
+    		.build();
 }

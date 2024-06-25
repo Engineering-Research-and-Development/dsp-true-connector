@@ -58,7 +58,6 @@ public class TransferProcess extends AbstractTransferMessage {
 	// used to store agreement so we can enforce it
 	@JsonIgnore
 	private String agreementId;
-	
 	@JsonIgnore
 	private String callbackAddress;
 	
