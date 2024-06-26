@@ -2,9 +2,11 @@ package it.eng.negotiation.rest.protocol;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -22,6 +24,7 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import it.eng.negotiation.exception.ContractNegotiationInvalidStateException;
 import it.eng.negotiation.model.ContractAgreementMessage;
 import it.eng.negotiation.model.ContractNegotiationEventMessage;
 import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
@@ -69,7 +72,7 @@ public class ConsumerContractNegotiationCallbackControllerTest {
     }
 
     @Test
-    public void handleAgreement() throws InterruptedException, ExecutionException, JsonMappingException, JsonProcessingException {
+    public void handleAgreement_success() throws InterruptedException, ExecutionException, JsonMappingException, JsonProcessingException {
         String json = Serializer.serializeProtocol(ModelUtil.CONTRACT_AGREEMENT_MESSAGE);
         JsonNode jsonNode = mapper.readTree(json);
         doNothing().when(contractNegotiationConsumerService).handleAgreement(any(ContractAgreementMessage.class));
@@ -80,16 +83,40 @@ public class ConsumerContractNegotiationCallbackControllerTest {
 
         verify(contractNegotiationConsumerService).handleAgreement(any(ContractAgreementMessage.class));
     }
+    
+    @Test
+    public void handleAgreement_failed() throws InterruptedException, ExecutionException, JsonMappingException, JsonProcessingException {
+        String json = Serializer.serializeProtocol(ModelUtil.CONTRACT_AGREEMENT_MESSAGE);
+        JsonNode jsonNode = mapper.readTree(json);
+
+        doThrow(new ContractNegotiationInvalidStateException("Something not correct - tests", ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID))
+		.when(contractNegotiationConsumerService).handleAgreement(any(ContractAgreementMessage.class));
+		
+		assertThrows(ContractNegotiationInvalidStateException.class, () ->
+		controller.handleAgreement(ModelUtil.CONSUMER_PID, jsonNode));
+    }
 
     @Test
-    public void handleFinalizeEvent() throws InterruptedException, ExecutionException, JsonMappingException, JsonProcessingException {
+    public void handleFinalizeEvent_success() throws InterruptedException, ExecutionException, JsonMappingException, JsonProcessingException {
         String json = Serializer.serializeProtocol(ModelUtil.CONTRACT_NEGOTIATION_EVENT_MESSAGE);
         JsonNode jsonNode = mapper.readTree(json);
         doNothing().when(contractNegotiationConsumerService).handleFinalizeEvent(any(ContractNegotiationEventMessage.class));
 
-        ResponseEntity<JsonNode> response = controller.handleEventsMessage(ModelUtil.CONSUMER_PID, jsonNode);
+        ResponseEntity<JsonNode> response = controller.handleFinalizeEvent(ModelUtil.CONSUMER_PID, jsonNode);
         assertNull(response.getBody());
         assertTrue(response.getStatusCode().is2xxSuccessful());
+    }
+    
+    @Test
+    public void handleFinalizeEvent_failed() throws InterruptedException, ExecutionException, JsonMappingException, JsonProcessingException {
+        String json = Serializer.serializeProtocol(ModelUtil.CONTRACT_NEGOTIATION_EVENT_MESSAGE);
+        JsonNode jsonNode = mapper.readTree(json);
+
+        doThrow(new ContractNegotiationInvalidStateException("Something not correct - tests", ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID))
+		.when(contractNegotiationConsumerService).handleFinalizeEvent(any(ContractNegotiationEventMessage.class));
+		
+		assertThrows(ContractNegotiationInvalidStateException.class, () ->
+		controller.handleFinalizeEvent(ModelUtil.CONSUMER_PID, jsonNode));
     }
 
     @Test

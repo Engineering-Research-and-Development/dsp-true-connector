@@ -24,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.negotiation.exception.ContractNegotiationExistsException;
+import it.eng.negotiation.exception.ContractNegotiationInvalidStateException;
 import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
 import it.eng.negotiation.exception.OfferNotValidException;
 import it.eng.negotiation.exception.ProviderPidNotBlankException;
@@ -152,15 +153,49 @@ public class ContractNegotiationProviderServiceTest {
     }
     
     @Test
+    public void getNegotiationById() {
+        when(repository.findById(anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+
+        ContractNegotiation result = service.getNegotiationById(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId());
+
+        assertNotNull(result);
+
+        assertEquals(result.getConsumerPid(), ModelUtil.CONSUMER_PID);
+        assertEquals(result.getProviderPid(), ModelUtil.PROVIDER_PID);
+        assertEquals(result.getState(), ContractNegotiationState.ACCEPTED);
+    }
+
+    @Test
+    public void getNegotiationById_notFound() {
+        when(repository.findById(anyString())).thenReturn(Optional.empty());
+        assertThrows(ContractNegotiationNotFoundException.class, () -> service.getNegotiationById(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId()),
+                "Expected getNegotiationByProviderPid to throw, but it didn't");
+    }
+    
+    @Test
     public void verifyNegotiation_success() {
         when(repository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_AGREED));
 
     	service.verifyNegotiation(ModelUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE);
     	
 		verify(repository).save(argCaptorContractNegotiation.capture());
-		//verify that status is updated to FINAILZED
+		
 		assertEquals(ContractNegotiationState.VERIFIED, argCaptorContractNegotiation.getValue().getState());
 
+    }
+    
+    @Test
+    public void verifyNegotiation_negotiationNotFound() {
+        when(repository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.empty());
+
+        assertThrows(ContractNegotiationNotFoundException.class, () -> service.verifyNegotiation(ModelUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE));
+    }
+    
+    @Test
+    public void verifyNegotiation_invalidState() {
+        when(repository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+
+        assertThrows(ContractNegotiationInvalidStateException.class, () -> service.verifyNegotiation(ModelUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE));
     }
 
 }

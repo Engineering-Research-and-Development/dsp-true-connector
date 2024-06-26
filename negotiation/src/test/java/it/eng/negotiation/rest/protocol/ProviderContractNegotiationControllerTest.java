@@ -1,11 +1,15 @@
 package it.eng.negotiation.rest.protocol;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import it.eng.negotiation.model.*;
-import it.eng.negotiation.serializer.Serializer;
-import it.eng.negotiation.service.ContractNegotiationProviderService;
-import it.eng.tools.model.DSpaceConstants;
-import jakarta.servlet.http.HttpServletRequest;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.when;
+
+import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,13 +21,23 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-import java.util.Arrays;
-import java.util.concurrent.ExecutionException;
+import com.fasterxml.jackson.databind.JsonNode;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
+import it.eng.negotiation.exception.ProviderPidNotBlankException;
+import it.eng.negotiation.model.ContractAgreementVerificationMessage;
+import it.eng.negotiation.model.ContractNegotiation;
+import it.eng.negotiation.model.ContractNegotiationEventMessage;
+import it.eng.negotiation.model.ContractNegotiationEventType;
+import it.eng.negotiation.model.ContractNegotiationState;
+import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
+import it.eng.negotiation.model.ContractRequestMessage;
+import it.eng.negotiation.model.ModelUtil;
+import it.eng.negotiation.model.Reason;
+import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.service.ContractNegotiationProviderService;
+import it.eng.tools.model.DSpaceConstants;
+import jakarta.servlet.http.HttpServletRequest;
 
 @ExtendWith(MockitoExtension.class)
 public class ProviderContractNegotiationControllerTest {
@@ -61,6 +75,14 @@ public class ProviderContractNegotiationControllerTest {
 	}
 	
 	@Test
+	public void getNegotiationByProviderPid_failed() throws InterruptedException, ExecutionException {
+		when(contractNegotiationService.getNegotiationByProviderPid(ModelUtil.PROVIDER_PID))
+			.thenThrow(ContractNegotiationNotFoundException.class);
+		
+		assertThrows(ContractNegotiationNotFoundException.class, () -> controller.getNegotiationByProviderPid(ModelUtil.PROVIDER_PID));
+	}
+	
+	@Test
 	public void createNegotiation_success() throws InterruptedException, ExecutionException {
 	   when(attrs.getRequest()).thenReturn(request);
 		ContractNegotiation cn = ContractNegotiation.Builder.newInstance()
@@ -77,6 +99,14 @@ public class ProviderContractNegotiationControllerTest {
 		assertEquals(HttpStatus.CREATED, response.getStatusCode());
 		assertEquals(response.getBody().get(DSpaceConstants.TYPE).asText(), DSpaceConstants.DSPACE + ContractNegotiation.class.getSimpleName());
 		assertEquals(response.getBody().get(DSpaceConstants.CONTEXT).asText(), DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE);
+	}
+	
+	@Test
+	public void createNegotiation_failed() throws InterruptedException, ExecutionException {
+		when(contractNegotiationService.startContractNegotiation(any(ContractRequestMessage.class)))
+		.thenThrow(ProviderPidNotBlankException.class);
+		
+		assertThrows(ProviderPidNotBlankException.class, () -> controller.createNegotiation(Serializer.serializeProtocolJsonNode(ModelUtil.CONTRACT_REQUEST_MESSAGE)));
 	}
 	
 	@Test
@@ -107,6 +137,14 @@ public class ProviderContractNegotiationControllerTest {
 		ResponseEntity<JsonNode> response = controller.handleVerifyAgreement(ModelUtil.PROVIDER_PID, Serializer.serializeProtocolJsonNode(cavm));
 		assertNotNull(response, "Response is not null");
 		assertEquals(HttpStatus.OK, response.getStatusCode());
+	}
+	
+	@Test
+	public void handleVerifyAgreement_failed() {
+		doThrow(ContractNegotiationNotFoundException.class)
+		.when(contractNegotiationService).verifyNegotiation(any(ContractAgreementVerificationMessage.class));
+		
+		assertThrows(ContractNegotiationNotFoundException.class, () -> controller.handleVerifyAgreement(ModelUtil.PROVIDER_PID, Serializer.serializeProtocolJsonNode(ModelUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE)));
 	}
 	
 	@Test

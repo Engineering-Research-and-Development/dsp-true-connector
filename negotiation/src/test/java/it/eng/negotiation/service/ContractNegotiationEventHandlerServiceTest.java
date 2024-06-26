@@ -1,9 +1,10 @@
 package it.eng.negotiation.service;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.times;
 
 import java.util.Optional;
 
@@ -16,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import it.eng.negotiation.exception.ContractNegotiationAPIException;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ModelUtil;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
@@ -83,6 +85,35 @@ public class ContractNegotiationEventHandlerServiceTest {
 		handlerService.verifyNegotiation(ModelUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE);
 		
 		verify(repository).save(any(ContractNegotiation.class));
+	}
+	
+	@Test
+	@DisplayName("Handle agreement verification message - contract negotiation not found")
+	public void contractAgreementVerificationMessage_contractNegotiationNotFound() {
+		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.empty());
+
+		assertThrows(ContractNegotiationAPIException.class, () -> handlerService.verifyNegotiation(ModelUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE));
+		
+	}
+	
+	@Test
+	@DisplayName("Handle agreement verification message - invalid state")
+	public void contractAgreementVerificationMessage_invalidState() {
+		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+
+		assertThrows(ContractNegotiationAPIException.class, () -> handlerService.verifyNegotiation(ModelUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE));
+		
+	}
+	
+	@Test
+	@DisplayName("Handle agreement verification message - bad request")
+	public void contractAgreementVerificationMessage_badRequest() {
+		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_AGREED));
+		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+		when(apiResponse.getHttpStatus()).thenReturn(400);
+		
+		assertThrows(ContractNegotiationAPIException.class, () -> handlerService.verifyNegotiation(ModelUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE));
+		
 	}
 	
 }

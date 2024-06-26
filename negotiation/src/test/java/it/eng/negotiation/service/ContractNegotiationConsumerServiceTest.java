@@ -9,7 +9,6 @@ import static org.mockito.Mockito.when;
 
 import java.util.Optional;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,6 +18,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import it.eng.negotiation.exception.ContractNegotiationInvalidEventTypeException;
 import it.eng.negotiation.exception.ContractNegotiationInvalidStateException;
 import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
 import it.eng.negotiation.exception.OfferNotFoundException;
@@ -132,17 +132,9 @@ public class ContractNegotiationConsumerServiceTest {
 		verify(agreementRepository, times(0)).save(any(Agreement.class));
 	}
 	
-	@Disabled
 	@Test
-	@DisplayName("Process ACCEPTED event message reposne success")
-	public void handleFinalizeEvent_accepted_success() {
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
-//		service.handleEventsResponse(ModelUtil.CONSUMER_PID, ModelUtil.getEventMessage(ContractNegotiationEventType.ACCEPTED));
-	}
-	
-	@Test
-	@DisplayName("Process FINALIZED event message reposne success")
-	public void handleFinalizeEvent_finalized_success() {
+	@DisplayName("Process FINALIZED event message - response success")
+	public void handleFinalizeEvent_success() {
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_VERIFIED));
 		service.handleFinalizeEvent(ModelUtil.getEventMessage(ContractNegotiationEventType.FINALIZED));
 	
@@ -154,13 +146,30 @@ public class ContractNegotiationConsumerServiceTest {
 	}
 	
 	@Test
-	@DisplayName("Process event message - negotiation not found")
+	@DisplayName("Process FINALIZED event message - wrong event type")
+	public void handleFinalizeEvent_wrongEventType() {
+	
+		assertThrows(ContractNegotiationInvalidEventTypeException.class,
+				() -> service.handleFinalizeEvent(ModelUtil.getEventMessage(ContractNegotiationEventType.ACCEPTED)));
+	
+	}
+	
+	@Test
+	@DisplayName("Process FINALIZED event message - negotiation not found")
 	public void handleFinalizeEvent_notFound() {
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.empty());
 		
-		assertThrows(ContractNegotiationNotFoundException.class, () -> 
-			service.handleFinalizeEvent(ModelUtil.getEventMessage(ContractNegotiationEventType.FINALIZED))
-		);
+		assertThrows(ContractNegotiationNotFoundException.class,
+				() -> service.handleFinalizeEvent(ModelUtil.getEventMessage(ContractNegotiationEventType.FINALIZED)));
+	}
+	
+	@Test
+	@DisplayName("Process FINALIZED event message - invalid state")
+	public void handleFinalizeEvent_invalidState() {
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_AGREED));
+		
+		assertThrows(ContractNegotiationInvalidStateException.class,
+				() -> service.handleFinalizeEvent(ModelUtil.getEventMessage(ContractNegotiationEventType.FINALIZED)));
 	}
 	
 	@Test

@@ -80,6 +80,19 @@ public class ContractNegotiationAPIServiceTest {
 	}
 	
 	@Test
+	@DisplayName("Start contract negotiation json exception")
+	public void startNegotiation_jsonException() {
+		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+		when(apiResponse.getData()).thenReturn("not a JSON");
+		when(apiResponse.getHttpStatus()).thenReturn(201);
+		when(properties.callbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
+		
+		assertThrows(ContractNegotiationAPIException.class, ()-> service.startNegotiation(ModelUtil.FORWARD_TO, Serializer.serializePlainJsonNode(ModelUtil.OFFER)));
+		
+		verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
+	}
+	
+	@Test
 	@DisplayName("Process posted offer - success")
 	public void postContractOffer_success() {
 		when(properties.callbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
@@ -106,12 +119,26 @@ public class ContractNegotiationAPIServiceTest {
 	}
 	
 	@Test
-	@DisplayName("Send agreement success")
-	public void sendAgreement_success() {
+	@DisplayName("Send agreement success - accepted state")
+	public void sendAgreement_success_acceptedState() {
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.getHttpStatus()).thenReturn(200);
 		when(properties.callbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+		
+		service.sendAgreement(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID, Serializer.serializePlainJsonNode(ModelUtil.AGREEMENT));
+		
+		verify(contractNegotiationRepository).save(any(ContractNegotiation.class));
+		verify(agreementRepository).save(any(Agreement.class));
+	}
+	
+	@Test
+	@DisplayName("Send agreement success - requested state")
+	public void sendAgreement_success_requestedState() {
+		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+		when(apiResponse.getHttpStatus()).thenReturn(200);
+		when(properties.callbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_REQUESTED));
 		
 		service.sendAgreement(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID, Serializer.serializePlainJsonNode(ModelUtil.AGREEMENT));
 		
@@ -131,7 +158,7 @@ public class ContractNegotiationAPIServiceTest {
 	
 	@Test
 	@DisplayName("Send agreement failed - wrong negotiation state")
-	public void handleAgreement_off_wrongNegotiationState() {
+	public void sendAgreement_wrongNegotiationState() {
 		
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(ModelUtil.PROVIDER_PID, ModelUtil.CONSUMER_PID)).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_OFFERED));
 
@@ -155,5 +182,53 @@ public class ContractNegotiationAPIServiceTest {
 		verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
 		verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
 		verify(agreementRepository, times(0)).save(any(Agreement.class));
+	}
+	
+	@Test
+	@DisplayName("Finalize negotiation success")
+	public void finalizeNegotiation_success_requestedState() {
+		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+		when(apiResponse.isSuccess()).thenReturn(true);
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_VERIFIED));
+		
+		service.finalizeNegotiation(ModelUtil.CONTRACT_NEGOTIATION_EVENT_MESSAGE);
+		
+		verify(contractNegotiationRepository).save(any(ContractNegotiation.class));
+	}
+	
+	@Test
+	@DisplayName("Finalize negotiation failed - negotiation not found")
+	public void finalizeNegotiation_failedNegotiationNotFound() {
+		assertThrows(ContractNegotiationAPIException.class, ()-> service.finalizeNegotiation(ModelUtil.CONTRACT_NEGOTIATION_EVENT_MESSAGE));
+		
+		verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
+		verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
+		verify(agreementRepository, times(0)).save(any(Agreement.class));
+	}
+	
+	@Test
+	@DisplayName("Finalize negotiation failed - wrong negotiation state")
+	public void finalizeNegotiation_wrongNegotiationState() {
+		
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(ModelUtil.PROVIDER_PID, ModelUtil.CONSUMER_PID)).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_OFFERED));
+
+		assertThrows(ContractNegotiationAPIException.class, () -> service.finalizeNegotiation(ModelUtil.CONTRACT_NEGOTIATION_EVENT_MESSAGE));
+		
+		verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(ModelUtil.PROVIDER_PID, ModelUtil.CONSUMER_PID);
+		verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
+		verify(agreementRepository, times(0)).save(any(Agreement.class));
+	}
+	
+	@Test
+	@DisplayName("Finalize negotiation failed - bad request")
+	public void finalizeNegotiation_failedBadRequest() {
+		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+		when(apiResponse.isSuccess()).thenReturn(false);
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_VERIFIED));
+		
+		assertThrows(ContractNegotiationAPIException.class, ()-> service.finalizeNegotiation(ModelUtil.CONTRACT_NEGOTIATION_EVENT_MESSAGE));
+	
+		verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
+		verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
 	}
 }

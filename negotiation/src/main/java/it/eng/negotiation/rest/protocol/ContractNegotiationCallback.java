@@ -11,43 +11,37 @@ public class ContractNegotiationCallback {
 	/*
 	 * Provider 
 	 */
-	private static final String PROVIDER_NEGOTIATION_OFFER = ":callback:/negotiations/offers/cb";
-	private static final String PROVIDER_NEGOTIATION_OFFER_CONSUMER = ":callback:/negotiations/offers/cb";
 	// /{providerPid}/agreement/verification
-	private static final String PROVIDER_AGREEMENT_VERIFICATION = "/negotiations/:providerPid:/agreement/verification";
+	private static final String PROVIDER_AGREEMENT_VERIFICATION = ":callback:/negotiations/:providerPid:/agreement/verification";
 	
 	public static String getOffersCallback() {
 		return OFFERS;
 	}
 
 	public static String getConsumerOffersCallback(String callback, String consumerPid) {
-		return CONSUMER_OFFERS.replace(":callback:", callback).replace(":consumerPid:", consumerPid);
+		return CONSUMER_OFFERS.replace(":callback:", getValidCallback(callback)).replace(":consumerPid:", consumerPid);
 	}
 	
 	public static String getContractAgreementCallback(String callback, String consumerPid) {
-		return CONSUMER_AGREEMENT.replace(":callback:", callback).replace(":consumerPid:", consumerPid);
+		return CONSUMER_AGREEMENT.replace(":callback:", getValidCallback(callback)).replace(":consumerPid:", consumerPid);
 	}
 	
 	public static String getContractEventsCallback(String callback, String consumerPid) {
-		return CONSUMER_EVENTS.replace(":callback:", callback).replace(":consumerPid:", consumerPid);
+		return CONSUMER_EVENTS.replace(":callback:", getValidCallback(callback)).replace(":consumerPid:", consumerPid);
 	}
 	
 	public static String getContractTerminationCallback(String callback, String consumerPid) {
-		return CONSUMER_TERMINATION.replace(":callback:", callback).replace(":consumerPid:", consumerPid);
+		return CONSUMER_TERMINATION.replace(":callback:", getValidCallback(callback)).replace(":consumerPid:", consumerPid);
 	}
 
 	/*
 	 * Provider
 	 */
-	public static String getProviderNegotiationOfferCallback(String callback) {
-		return PROVIDER_NEGOTIATION_OFFER.replace(":callback:", callback);
+	public static String getProviderAgreementVerificationCallback(String callback, String providerPid) {
+		return PROVIDER_AGREEMENT_VERIFICATION.replace(":callback:", getValidCallback(callback)).replace(":providerPid:", providerPid);
 	}
 	
-	public static String getNegotiationOfferConsumer(String callback) {
-		return PROVIDER_NEGOTIATION_OFFER_CONSUMER.replace(":callback:", callback);
-	}
-	
-	public static String getProviderAgreementVerificationCallback(String providerPid) {
-		return PROVIDER_AGREEMENT_VERIFICATION.replace(":providerPid:", providerPid);
+	private static String getValidCallback(String callback) {
+		return callback.endsWith("/") ? callback.substring(0, callback.length() - 1) : callback;
 	}
 }

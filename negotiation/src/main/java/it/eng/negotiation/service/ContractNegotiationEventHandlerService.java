@@ -105,7 +105,7 @@ public class ContractNegotiationEventHandlerService {
 		log.info("Found intial negotiation" + " - CallbackAddress " + contractNegotiation.getCallbackAddress());
 
 		String authorization = okhttp3.Credentials.basic("connector@mail.com", "password");
-		String callbackAddress = contractNegotiation.getCallbackAddress() + ContractNegotiationCallback.getProviderAgreementVerificationCallback(verificationMessage.getProviderPid());
+		String callbackAddress = ContractNegotiationCallback.getProviderAgreementVerificationCallback(contractNegotiation.getCallbackAddress(), verificationMessage.getProviderPid());
 		log.info("Sending verification message to provider to {}", callbackAddress);
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(callbackAddress, 
 				Serializer.serializeProtocolJsonNode(verificationMessage),

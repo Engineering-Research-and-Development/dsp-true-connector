@@ -130,6 +130,13 @@ public class ModelUtil {
 			.state(ContractNegotiationState.ACCEPTED)
 			.build();
 	
+	public static final ContractNegotiation CONTRACT_NEGOTIATION_REQUESTED = ContractNegotiation.Builder.newInstance()
+			.consumerPid(ModelUtil.CONSUMER_PID)
+			.providerPid(ModelUtil.PROVIDER_PID)
+			.callbackAddress(CALLBACK_ADDRESS)
+			.state(ContractNegotiationState.REQUESTED)
+			.build();
+	
 	public static final ContractNegotiation CONTRACT_NEGOTIATION_AGREED = ContractNegotiation.Builder.newInstance()
 			.consumerPid(ModelUtil.CONSUMER_PID)
 			.providerPid(ModelUtil.PROVIDER_PID)
