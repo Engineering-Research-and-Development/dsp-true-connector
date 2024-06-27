@@ -1,5 +1,7 @@
 package it.eng.datatransfer.model;
 
+import java.util.UUID;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
 
@@ -20,5 +22,9 @@ public abstract class AbstractTransferMessage {
 
 	public String getConsumerPid() {
 		return consumerPid;
+	}
+	
+	protected String createNewId() {
+	    return UUID.randomUUID().toString();
 	}
 }

@@ -84,29 +84,6 @@ public class DataService {
             return new Builder();
         }
 
-        public static Builder updateInstance(DataService existingDataService, DataService updatedDataService) {
-
-            Builder builder = newInstance();
-            builder.id(existingDataService.getId());
-            builder.version(existingDataService.getVersion());
-            builder.issued(existingDataService.getIssued());
-            builder.createdBy(existingDataService.getCreatedBy());
-
-            builder.keyword(updatedDataService.getKeyword() != null ? updatedDataService.getKeyword() : existingDataService.getKeyword());
-            builder.theme(updatedDataService.getTheme() != null ? updatedDataService.getTheme() : existingDataService.getTheme());
-            builder.conformsTo(updatedDataService.getConformsTo() != null ? updatedDataService.getConformsTo() : existingDataService.getConformsTo());
-            builder.creator(updatedDataService.getCreator() != null ? updatedDataService.getCreator() : existingDataService.getCreator());
-            builder.description(updatedDataService.getDescription() != null ? updatedDataService.getDescription() : existingDataService.getDescription());
-            builder.identifier(updatedDataService.getIdentifier() != null ? updatedDataService.getIdentifier() : existingDataService.getIdentifier());
-            builder.title(updatedDataService.getTitle() != null ? updatedDataService.getTitle() : existingDataService.getTitle());
-            builder.endpointDescription(updatedDataService.getEndpointDescription() != null ? updatedDataService.getEndpointDescription() : existingDataService.getEndpointDescription());
-            builder.endpointURL(updatedDataService.getEndpointURL() != null ? updatedDataService.getEndpointURL() : existingDataService.getEndpointURL());
-            builder.servesDataset(updatedDataService.getServesDataset() != null ? updatedDataService.getServesDataset() : existingDataService.getServesDataset());
-
-            return builder;
-        }
-
-
         @JsonProperty(DSpaceConstants.ID)
         public Builder id(String id) {
             service.id = id;
@@ -224,4 +201,29 @@ public class DataService {
     public String getType() {
         return DSpaceConstants.DCAT + DataService.class.getSimpleName();
     }
+    
+    /**
+     * Create new updated instance with new values from passed DataService parameter</br>
+     * If fields are not present in updatedDataService, existing values will remain
+     * @param updatedDataService
+     * @return new updated dataService instance
+     */
+    public DataService updateInstance(DataService updatedDataService) {
+		return DataService.Builder.newInstance()
+         .id(this.id)
+         .version(this.version)
+         .issued(this.issued)
+         .createdBy(this.createdBy)
+         .keyword(updatedDataService.getKeyword() != null ? updatedDataService.getKeyword() : this.keyword)
+         .theme(updatedDataService.getTheme() != null ? updatedDataService.getTheme() : this.theme)
+         .conformsTo(updatedDataService.getConformsTo() != null ? updatedDataService.getConformsTo() : this.conformsTo)
+         .creator(updatedDataService.getCreator() != null ? updatedDataService.getCreator() : this.creator)
+         .description(updatedDataService.getDescription() != null ? updatedDataService.getDescription() : this.description)
+         .identifier(updatedDataService.getIdentifier() != null ? updatedDataService.getIdentifier() : this.identifier)
+         .title(updatedDataService.getTitle() != null ? updatedDataService.getTitle() : this.title)
+         .endpointDescription(updatedDataService.getEndpointDescription() != null ? updatedDataService.getEndpointDescription() : this.endpointDescription)
+         .endpointURL(updatedDataService.getEndpointURL() != null ? updatedDataService.getEndpointURL() : this.endpointURL)
+         .servesDataset(updatedDataService.getServesDataset() != null ? updatedDataService.getServesDataset() : this.servesDataset)
+         .build();
+  }
 }

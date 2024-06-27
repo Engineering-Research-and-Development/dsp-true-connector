@@ -24,7 +24,7 @@ public class MockObjectUtil {
     public static final String TARGET = "target";
     public static final String CONFORMSTO = "conformsToSomething";
     public static final String CREATOR = "Chuck Norris";
-    public static final String IDENTIFIER = "Uniwue identifier for tests";
+    public static final String IDENTIFIER = "Unique identifier for tests";
     public static final Instant ISSUED = Instant.parse("2024-04-23T16:26:00Z");
     public static final Instant MODIFIED = Instant.parse("2024-04-23T16:26:00Z");
     public static final String TITLE = "Title for test";
