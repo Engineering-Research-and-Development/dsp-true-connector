@@ -51,7 +51,7 @@ public class ContractNegotiationEventHandlerService {
 			ContractAgreementMessage agreementMessage = ContractAgreementMessage.Builder.newInstance()
 					.consumerPid(contractNegotiation.getConsumerPid())
 					.providerPid(contractNegotiation.getProviderPid())
-					.callbackAddress(properties.callbackAddress())
+					.callbackAddress(properties.providerCallbackAddress())
 					.agreement(agreementFromOffer(Serializer.deserializePlain(offerResponse.getOffer().toPrettyString(), Offer.class)))
 					.build();
 			
@@ -83,8 +83,8 @@ public class ContractNegotiationEventHandlerService {
 	private Agreement agreementFromOffer(Offer offer) {
 		return Agreement.Builder.newInstance()
 				.id(UUID.randomUUID().toString())
-				.assignee(properties.callbackAddress())
-				.assigner(properties.callbackAddress())
+				.assignee(properties.providerCallbackAddress())
+				.assigner(properties.providerCallbackAddress())
 				.target("target")
 				.timestamp("now")
 				.permission(offer.getPermission())

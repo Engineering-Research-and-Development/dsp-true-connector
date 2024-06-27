@@ -59,7 +59,7 @@ public class ContractNegotiationAPIController {
     }
     
     @PostMapping(path = "/verifyNegotiation")
-    public ResponseEntity<JsonNode> verifyNegotiation(@RequestBody JsonNode verifyNegotiationJson) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> verifyNegotiation(@RequestBody JsonNode verifyNegotiationJson) {
     	log.info("Manual handling for verification message");
     	String consumerPid = verifyNegotiationJson.get(DSpaceConstants.CONSUMER_PID).asText();
         String providerPid = verifyNegotiationJson.get(DSpaceConstants.PROVIDER_PID).asText();
@@ -68,7 +68,8 @@ public class ContractNegotiationAPIController {
 				.providerPid(providerPid)
 				.build();
     	handlerService.verifyNegotiation(verificationMessage);
-    	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).build();
+    	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+    			.body(GenericApiResponse.success(null, "Verified negotiation", HttpStatus.OK.value()));
     }
     
     /********* PROVIDER ***********/

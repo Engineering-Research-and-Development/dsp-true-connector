@@ -85,7 +85,7 @@ public class ContractNegotiationAPIControllerTest {
 		map.put("consumerPid", ModelUtil.CONSUMER_PID);
 		map.put("providerPid", ModelUtil.PROVIDER_PID);
 		
-		ResponseEntity<JsonNode> response = controller.verifyNegotiation(mapper.convertValue(map, JsonNode.class));
+		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.verifyNegotiation(mapper.convertValue(map, JsonNode.class));
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 		verify(handlerService).verifyNegotiation(any(ContractAgreementVerificationMessage.class));
 	}

@@ -56,7 +56,7 @@ public class ConsumerContractNegotiationCallbackController {
     private URI createdURI(JsonNode responseNode) {
     	// "https://provider.com/negotiations/:providerPid"
     	String providerPid = responseNode.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText();
-    	return URI.create(properties.callbackAddress() + "/negotiations/" + providerPid);
+    	return URI.create(properties.providerCallbackAddress() + "/negotiations/" + providerPid);
     }
 
     // https://consumer.com/:callback/negotiations/:consumerPid/offers	POST	ContractOfferMessage

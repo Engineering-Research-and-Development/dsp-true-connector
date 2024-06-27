@@ -53,7 +53,7 @@ public class ConsumerContractNegotiationCallbackControllerTest {
         JsonNode jsonNode = mapper.readTree(json);
         when(contractNegotiationConsumerService.processContractOffer(any(ContractOfferMessage.class)))
                 .thenReturn(Serializer.serializeProtocolJsonNode(ModelUtil.CONTRACT_NEGOTIATION_OFFERED));
-        when(properties.callbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
+        when(properties.providerCallbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
         ResponseEntity<JsonNode> response = controller.handleNegotiationOffers(jsonNode);
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());

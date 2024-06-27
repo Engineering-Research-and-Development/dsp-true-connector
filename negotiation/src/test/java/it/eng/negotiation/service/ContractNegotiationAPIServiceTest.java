@@ -60,7 +60,7 @@ public class ContractNegotiationAPIServiceTest {
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.getData()).thenReturn(Serializer.serializeProtocol(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 		when(apiResponse.getHttpStatus()).thenReturn(201);
-		when(properties.callbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
+		when(properties.consumerCallbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
 		
 		service.startNegotiation(ModelUtil.FORWARD_TO, Serializer.serializePlainJsonNode(ModelUtil.OFFER));
 		
@@ -72,7 +72,7 @@ public class ContractNegotiationAPIServiceTest {
 	public void startNegotiation_failed() {
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.getHttpStatus()).thenReturn(400);
-		when(properties.callbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
+		when(properties.consumerCallbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
 		
 		assertThrows(ContractNegotiationAPIException.class, ()-> service.startNegotiation(ModelUtil.FORWARD_TO, Serializer.serializePlainJsonNode(ModelUtil.OFFER)));
 		
@@ -85,7 +85,7 @@ public class ContractNegotiationAPIServiceTest {
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.getData()).thenReturn("not a JSON");
 		when(apiResponse.getHttpStatus()).thenReturn(201);
-		when(properties.callbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
+		when(properties.consumerCallbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
 		
 		assertThrows(ContractNegotiationAPIException.class, ()-> service.startNegotiation(ModelUtil.FORWARD_TO, Serializer.serializePlainJsonNode(ModelUtil.OFFER)));
 		
@@ -95,7 +95,7 @@ public class ContractNegotiationAPIServiceTest {
 	@Test
 	@DisplayName("Process posted offer - success")
 	public void postContractOffer_success() {
-		when(properties.callbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
+		when(properties.providerCallbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
 			.thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(true);
@@ -109,7 +109,7 @@ public class ContractNegotiationAPIServiceTest {
 	@Test
 	@DisplayName("Process posted offer - error")
 	public void postContractOffer_error() {
-		when(properties.callbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
+		when(properties.providerCallbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
 			.thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(false);
@@ -123,7 +123,7 @@ public class ContractNegotiationAPIServiceTest {
 	public void sendAgreement_success_acceptedState() {
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.getHttpStatus()).thenReturn(200);
-		when(properties.callbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
+		when(properties.providerCallbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 		
 		service.sendAgreement(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID, Serializer.serializePlainJsonNode(ModelUtil.AGREEMENT));
@@ -137,7 +137,7 @@ public class ContractNegotiationAPIServiceTest {
 	public void sendAgreement_success_requestedState() {
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.getHttpStatus()).thenReturn(200);
-		when(properties.callbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
+		when(properties.providerCallbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_REQUESTED));
 		
 		service.sendAgreement(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID, Serializer.serializePlainJsonNode(ModelUtil.AGREEMENT));
@@ -174,7 +174,7 @@ public class ContractNegotiationAPIServiceTest {
 	public void sendAgreement_failedBadRequest() {
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.getHttpStatus()).thenReturn(400);
-		when(properties.callbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
+		when(properties.providerCallbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 		
 		assertThrows(ContractNegotiationAPIException.class, ()-> service.sendAgreement(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID, Serializer.serializePlainJsonNode(ModelUtil.AGREEMENT)));

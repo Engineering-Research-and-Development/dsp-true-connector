@@ -57,7 +57,7 @@ public class ContractNegotiationAPIService {
 	public JsonNode startNegotiation(String forwardTo, JsonNode offerNode) {
 		Offer offer = Serializer.deserializePlain(offerNode.toPrettyString(), Offer.class);
 		ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
-				.callbackAddress(properties.callbackAddress())
+				.callbackAddress(properties.consumerCallbackAddress())
 				.consumerPid("urn:uuid:" + UUID.randomUUID())
 				.offer(offer)
 				.build();
@@ -100,7 +100,7 @@ public class ContractNegotiationAPIService {
 	public JsonNode sendContractOffer(String forwardTo, JsonNode offerNode) {
 		ContractOfferMessage offerMessage = ContractOfferMessage.Builder.newInstance()
 				.providerPid("urn:uuid:" + UUID.randomUUID())
-				.callbackAddress(properties.callbackAddress())
+				.callbackAddress(properties.providerCallbackAddress())
 				.offer(Serializer.deserializePlain(offerNode.toPrettyString(), Offer.class))
 				.build();
 
@@ -161,7 +161,7 @@ public class ContractNegotiationAPIService {
 		ContractAgreementMessage agreementMessage = ContractAgreementMessage.Builder.newInstance()
 				.consumerPid(consumerPid)
 				.providerPid(providerPid)
-				.callbackAddress(properties.callbackAddress())
+				.callbackAddress(properties.providerCallbackAddress())
 				.agreement(agreement)
 				.build();
 		
@@ -206,8 +206,7 @@ public class ContractNegotiationAPIService {
 		
 		String authorization = okhttp3.Credentials.basic("connector@mail.com", "password");
 		//	https://consumer.com/:callback/negotiations/:consumerPid/events
-		String callbackAddress = contractNegotiation.getCallbackAddress() +
-				ContractNegotiationCallback.getContractEventsCallback("consumer", contractNegotiation.getConsumerPid());
+		String callbackAddress = ContractNegotiationCallback.getContractEventsCallback(contractNegotiation.getCallbackAddress(), contractNegotiation.getConsumerPid());
 		
 		log.info("Sending ContractNegotiationEventMessage.FINALIZED to {}", callbackAddress);
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(callbackAddress,
