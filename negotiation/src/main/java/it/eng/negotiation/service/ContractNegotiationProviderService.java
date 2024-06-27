@@ -141,20 +141,14 @@ public class ContractNegotiationProviderService {
 						"Contract negotiation with providerPid " + cavm.getProviderPid() + 
 						" and consumerPid " + cavm.getConsumerPid() + " not found", cavm.getConsumerPid(), cavm.getProviderPid()));
 
-		if (!contractNegotiation.getState().equals(ContractNegotiationState.AGREED)) {
+		if (!contractNegotiation.getState().canTransitTo(ContractNegotiationState.VERIFIED)) {
 			throw new ContractNegotiationInvalidStateException(
 					"Contract negotiation with providerPid " + cavm.getProviderPid() + 
 					" and consumerPid " + cavm.getConsumerPid() + " is not in AGREED state, aborting verification", cavm.getConsumerPid(), cavm.getProviderPid());
 		}
 
-		ContractNegotiation contractNegtiationUpdate = ContractNegotiation.Builder.newInstance()
-				.id(contractNegotiation.getId())
-				.consumerPid(cavm.getConsumerPid())
-				.providerPid(cavm.getProviderPid())
-				.callbackAddress(contractNegotiation.getCallbackAddress())
-				.state(ContractNegotiationState.VERIFIED)
-				.build();
-		contractNegotiationRepository.save(contractNegtiationUpdate);
+		ContractNegotiation contractNegotiationUpdated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.VERIFIED);
+		contractNegotiationRepository.save(contractNegotiationUpdated);
 		log.info("Contract negotiation with providerPid {} and consumerPid {} changed state to VERIFIED and saved", cavm.getProviderPid(), cavm.getConsumerPid());
 	}
 }

@@ -5,8 +5,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
- - updated verified and finalized states
- - separated consumer and provider callback addresses
+ - updated verified and finalized states in negotiation module
+ - separated consumer and provider callback addresses in negotiation module
 
 ## [0.0.1] - 2024-06-21
 

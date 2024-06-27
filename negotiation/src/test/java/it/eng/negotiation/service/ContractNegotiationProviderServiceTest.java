@@ -133,6 +133,7 @@ public class ContractNegotiationProviderServiceTest {
     }
 
     @Test
+    @DisplayName("Get negotiation by provider pid - success")
     public void getNegotiationByProviderPid() {
         when(repository.findByProviderPid(anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 
@@ -146,6 +147,7 @@ public class ContractNegotiationProviderServiceTest {
     }
 
     @Test
+    @DisplayName("Get negotiation by provider pid - negotiation not found")
     public void getNegotiationByProviderPid_notFound() {
         when(repository.findByProviderPid(anyString())).thenReturn(Optional.ofNullable(null));
         assertThrows(ContractNegotiationNotFoundException.class, () -> service.getNegotiationByProviderPid(ModelUtil.PROVIDER_PID),
@@ -153,6 +155,7 @@ public class ContractNegotiationProviderServiceTest {
     }
     
     @Test
+    @DisplayName("Get negotiation by id - success")
     public void getNegotiationById() {
         when(repository.findById(anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 
@@ -166,6 +169,7 @@ public class ContractNegotiationProviderServiceTest {
     }
 
     @Test
+    @DisplayName("Get negotiation by id - negotiation not found")
     public void getNegotiationById_notFound() {
         when(repository.findById(anyString())).thenReturn(Optional.empty());
         assertThrows(ContractNegotiationNotFoundException.class, () -> service.getNegotiationById(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId()),
@@ -173,6 +177,7 @@ public class ContractNegotiationProviderServiceTest {
     }
     
     @Test
+    @DisplayName("Verify negotiation - success")
     public void verifyNegotiation_success() {
         when(repository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_AGREED));
 
@@ -185,6 +190,7 @@ public class ContractNegotiationProviderServiceTest {
     }
     
     @Test
+    @DisplayName("Verify negotiation - negotiation not found")
     public void verifyNegotiation_negotiationNotFound() {
         when(repository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.empty());
 
@@ -192,6 +198,7 @@ public class ContractNegotiationProviderServiceTest {
     }
     
     @Test
+    @DisplayName("Verify negotiation - invalid state")
     public void verifyNegotiation_invalidState() {
         when(repository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 

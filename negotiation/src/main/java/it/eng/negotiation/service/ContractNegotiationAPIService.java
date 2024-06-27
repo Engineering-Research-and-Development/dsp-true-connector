@@ -152,8 +152,7 @@ public class ContractNegotiationAPIService {
 						"Contract negotiation with providerPid " + providerPid + 
 						" and consumerPid " + consumerPid + " not found"));
 		
-		if (!contractNegotiation.getState().equals(ContractNegotiationState.REQUESTED)
-    			&& !contractNegotiation.getState().equals(ContractNegotiationState.ACCEPTED)) {
+		if (!contractNegotiation.getState().canTransitTo(ContractNegotiationState.AGREED)) {
 			throw new ContractNegotiationAPIException("Agreement aborted, wrong state " + contractNegotiation.getState().name());
 		}
 		
@@ -173,15 +172,8 @@ public class ContractNegotiationAPIService {
 				authorization);
 		log.info("Response received {}", response);
 		if (response.getHttpStatus() == 200) {
-			ContractNegotiation contractNegotiationStateChange = ContractNegotiation.Builder.newInstance()
-					.id(contractNegotiation.getId())
-					.callbackAddress(contractNegotiation.getCallbackAddress())
-					.consumerPid(contractNegotiation.getConsumerPid())
-					.providerPid(contractNegotiation.getProviderPid())
-					.state(ContractNegotiationState.AGREED)
-					.build();
-			
-			contractNegotiationRepository.save(contractNegotiationStateChange);
+			ContractNegotiation contractNegotiationUpdated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.AGREED);
+			contractNegotiationRepository.save(contractNegotiationUpdated);
 			log.info("Contract negotiation {} saved", contractNegotiation.getId());
 			agreementRepository.save(agreement);
 			log.info("Agreement {} saved", agreement.getId());
@@ -199,7 +191,7 @@ public class ContractNegotiationAPIService {
 						+ " and consumerPid " + contractNegotiationEventMessage.getConsumerPid()
 						+ " not found"));
 
-		if (!contractNegotiation.getState().equals(ContractNegotiationState.VERIFIED)) {
+		if (!contractNegotiation.getState().canTransitTo(ContractNegotiationState.FINALIZED)) {
 			throw new ContractNegotiationAPIException(
 					"Finalization aborted, wrong state " + contractNegotiation.getState().name());
 		}
@@ -213,14 +205,8 @@ public class ContractNegotiationAPIService {
 				Serializer.serializeProtocolJsonNode(contractNegotiationEventMessage), authorization);
 		
 		if (response.isSuccess()) {
-			ContractNegotiation contractNegtiationUpdate = ContractNegotiation.Builder.newInstance()
-					.id(contractNegotiation.getId())
-					.consumerPid(contractNegotiationEventMessage.getConsumerPid())
-					.providerPid(contractNegotiationEventMessage.getProviderPid())
-					.callbackAddress(contractNegotiation.getCallbackAddress())
-					.state(ContractNegotiationState.FINALIZED)
-					.build();
-			contractNegotiationRepository.save(contractNegtiationUpdate);
+			ContractNegotiation contractNegotiationUpdated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.FINALIZED);
+			contractNegotiationRepository.save(contractNegotiationUpdated);
 		} else {
 			log.error("Error response received!");
 			throw new ContractNegotiationAPIException(response.getMessage());

@@ -107,24 +107,17 @@ public class ContractNegotiationConsumerService {
     	// save callbackAddress into ContractNegotiation - used for sending ContractNegotiationEventMessage.FINALIZED 
     	ContractNegotiation contractNegotiation = validateNegotiation(contractAgreementMessage.getConsumerPid(), contractAgreementMessage.getProviderPid());
     	
-    	if (!contractNegotiation.getState().equals(ContractNegotiationState.REQUESTED)
-    			&& !contractNegotiation.getState().equals(ContractNegotiationState.ACCEPTED)) {
+    	if (!contractNegotiation.getState().canTransitTo(ContractNegotiationState.AGREED)) {
 			throw new ContractNegotiationInvalidStateException("Agreement aborted, wrong state " + contractNegotiation.getState().name(),
 					contractAgreementMessage.getConsumerPid(), contractAgreementMessage.getProviderPid());
 		}
     	
     	validateAgreementAgainstOffer(contractAgreementMessage);
 
-    	ContractNegotiation contractNegtiationUpdate = ContractNegotiation.Builder.newInstance()
-			.id(contractNegotiation.getId())
-	        .state(ContractNegotiationState.AGREED)
-	        .consumerPid(contractNegotiation.getConsumerPid())
-	        .providerPid(contractNegotiation.getProviderPid())
-	        .callbackAddress(contractAgreementMessage.getCallbackAddress())
-	        .build();
+    	ContractNegotiation contractNegotiationUpdated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.AGREED);
     	log.info("CONSUMER - updating negotiation with state AGREED");
-    	repository.save(contractNegtiationUpdate);
-    	log.info("CONSUMER - negotiation {} updated with state AGREED", contractNegtiationUpdate.getId());
+    	repository.save(contractNegotiationUpdated);
+    	log.info("CONSUMER - negotiation {} updated with state AGREED", contractNegotiation.getId());
     	Agreement agreement = Agreement.Builder.newInstance()
     			.assignee(contractAgreementMessage.getAgreement().getAssignee())
     			.assigner(contractAgreementMessage.getAgreement().getAssigner())
@@ -168,22 +161,16 @@ public class ContractNegotiationConsumerService {
     	
     	ContractNegotiation contractNegotiation = validateNegotiation(contractNegotiationEventMessage.getConsumerPid(), contractNegotiationEventMessage.getProviderPid());
 
-    	if (!contractNegotiation.getState().equals(ContractNegotiationState.VERIFIED)) {
+    	if (!contractNegotiation.getState().canTransitTo(ContractNegotiationState.FINALIZED)) {
 			throw new ContractNegotiationInvalidStateException(
 					"Contract negotiation with providerPid " + contractNegotiation.getProviderPid() + 
 					" and consumerPid " + contractNegotiation.getConsumerPid() + " is not in VERIFIED state, aborting verification", contractNegotiation.getConsumerPid(), contractNegotiation.getProviderPid());
 		}
     	
 		log.info("CONSUMER - updating Contract Negotiation state to FINALIZED");
-		ContractNegotiation contractNegtiationUpdate = ContractNegotiation.Builder.newInstance()
-				.id(contractNegotiation.getId())
-				.state(ContractNegotiationState.FINALIZED)
-				.consumerPid(contractNegotiation.getConsumerPid())
-				.providerPid(contractNegotiation.getProviderPid())
-				.callbackAddress(contractNegotiation.getCallbackAddress())
-				.build();
+		ContractNegotiation contractNegotiationUpdated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.FINALIZED);
 		log.info("CONSUMER - saving updated contract negotiation");
-		repository.save(contractNegtiationUpdate);
+		repository.save(contractNegotiationUpdated);
     }
 
     /**
