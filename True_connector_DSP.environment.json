@@ -1,5 +1,5 @@
 {
-	"id": "60081eb8-46de-4a5c-a723-9f6d8445cb48",
+	"id": "cd693373-d4a6-4cfd-a97f-be2e0da3d728",
 	"name": "TC_V2_ENV",
 	"values": [
 		{
@@ -97,9 +97,21 @@
 			"value": "{{PROVIDER}}/api/distribution",
 			"type": "default",
 			"enabled": true
+		},
+		{
+			"key": "PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER",
+			"value": "{{PROVIDER}}/transfers",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_PROTOCOL_DATA_TRANSFER",
+			"value": "{{CONSUMER}}/consumer/transfers",
+			"type": "default",
+			"enabled": true
 		}
 	],
 	"_postman_variable_scope": "environment",
-	"_postman_exported_at": "2024-05-22T15:09:14.024Z",
-	"_postman_exported_using": "Postman/10.24.24"
+	"_postman_exported_at": "2024-06-28T10:42:50.623Z",
+	"_postman_exported_using": "Postman/11.2.24"
 }

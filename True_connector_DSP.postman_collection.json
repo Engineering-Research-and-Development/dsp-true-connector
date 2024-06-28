@@ -409,7 +409,7 @@
 					"name": "Negotiation",
 					"item": [
 						{
-							"name": "Start negotiation",
+							"name": "[C] Start negotiation",
 							"event": [
 								{
 									"listen": "test",
@@ -417,12 +417,12 @@
 										"exec": [
 											"pm.test(\"Retrieve consumer pid\", function () {\r",
 											"    var jsonData = pm.response.json();\r",
-											"    pm.collectionVariables.set(\"consumerPid\", jsonData[\"data\"][\"dspace:consumerPid\"])\r",
+											"    pm.collectionVariables.set(\"consumerPid\", jsonData[\"data\"][\"consumerPid\"])\r",
 											"});\r",
 											"\r",
 											"pm.test(\"Retrieve provider pid\", function () {\r",
 											"    var jsonData = pm.response.json();\r",
-											"    pm.collectionVariables.set(\"providerPid\", jsonData[\"data\"][\"dspace:providerPid\"])\r",
+											"    pm.collectionVariables.set(\"providerPid\", jsonData[\"data\"][\"providerPid\"])\r",
 											"});\r",
 											"\r",
 											"pm.test(\"Check if status code is 200\", function () {\r",
@@ -459,69 +459,7 @@
 							"response": []
 						},
 						{
-							"name": "Offer approved",
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\r\n    \"consumerPid\": \"urn:uuid:32541fe6-c580-409e-85a8-8a9a32fbe833\",\r\n    \"providerPid\": \"urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aab\",\r\n    \"offerAccepted\": true,\r\n    \"offer\": {\r\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"target\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"EQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/offerApproved",
-									"host": [
-										"{{CONSUMER_SERVER_API_NEGOTIATION}}"
-									],
-									"path": [
-										"offerApproved"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Verify negotiation",
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\r\n    \"consumerPid\": \"urn:uuid:d13499db-5787-4018-a352-32f31e9277a3\",\r\n    \"providerPid\": \"urn:uuid:71d96cd0-8c2b-45db-af7e-c28ca2763a1d\"\r\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/verifyNegotiation",
-									"host": [
-										"{{CONSUMER_SERVER_API_NEGOTIATION}}"
-									],
-									"path": [
-										"verifyNegotiation"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Post offer",
+							"name": "[C/P] Send offer",
 							"request": {
 								"method": "POST",
 								"header": [
@@ -548,19 +486,50 @@
 									}
 								},
 								"url": {
-									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/postOffer",
+									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/sendOffer",
 									"host": [
 										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
 									],
 									"path": [
-										"postOffer"
+										"sendOffer"
 									]
 								}
 							},
 							"response": []
 						},
 						{
-							"name": "Send Agreement",
+							"name": "[C] Offer approved",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"consumerPid\": \"{{consumerPid}}\",\r\n    \"providerPid\": \"{{providerPid}}\",\r\n    \"offerAccepted\": true,\r\n    \"offer\": {\r\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"target\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"EQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/offerApproved",
+									"host": [
+										"{{CONSUMER_SERVER_API_NEGOTIATION}}"
+									],
+									"path": [
+										"offerApproved"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Send Agreement",
 							"request": {
 								"method": "POST",
 								"header": [
@@ -593,6 +562,68 @@
 									],
 									"path": [
 										"sendAgreement"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[C] Verify negotiation",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"consumerPid\": \"{{consumerPid}}\",\r\n    \"providerPid\": \"{{providerPid}}\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/verifyNegotiation",
+									"host": [
+										"{{CONSUMER_SERVER_API_NEGOTIATION}}"
+									],
+									"path": [
+										"verifyNegotiation"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Finalize negotiation",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"consumerPid\": \"{{consumerPid}}\",\r\n    \"providerPid\": \"{{providerPid}}\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/finalizeNegotiation",
+									"host": [
+										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
+									],
+									"path": [
+										"finalizeNegotiation"
 									]
 								}
 							},
@@ -933,6 +964,309 @@
 							}
 						}
 					]
+				},
+				{
+					"name": "DataTransfer",
+					"item": [
+						{
+							"name": "Provider",
+							"item": [
+								{
+									"name": "Provider Get TransferProcess",
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/urn:uuid:PROVIDER_PID_UUID_TRANSFER",
+											"host": [
+												"{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}"
+											],
+											"path": [
+												"urn:uuid:PROVIDER_PID_UUID_TRANSFER"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Provider Request transfer - initiate",
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferRequestMessage\",\r\n \"dspace:providerPid\": \"urn:uuid:PROVIDER_PID_UUID_TRANSFER\",\r\n \"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dct:format\": \"example:HTTP_PULL\",\r\n \"dspace:callbackAddress\": \"https://localhost:8080/consumer/transfers/urn:uuid:CONSUMER_PID_UUID_TRANSFER/start\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/request",
+											"host": [
+												"{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}"
+											],
+											"path": [
+												"request"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Provider Start transfer",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferStartMessage\",\r\n \"dspace:providerPid\": \"urn:uuid:PROVIDER_PID_UUID_TRANSFER\",\r\n \"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/PROVIDER_PID_UUID_TRANSFER/start",
+											"host": [
+												"{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}"
+											],
+											"path": [
+												"PROVIDER_PID_UUID_TRANSFER",
+												"start"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Provider Complete transfer",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferCompletionMessage\",\r\n \"dspace:providerPid\": \"urn:uuid:PROVIDER_PID_UUID_TRANSFER\",\r\n \"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/PROVIDER_PID_UUID_TRANSFER/completion",
+											"host": [
+												"{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}"
+											],
+											"path": [
+												"PROVIDER_PID_UUID_TRANSFER",
+												"completion"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Provider Suspend transfer",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferSuspensionMessage\",\r\n \"dspace:providerPid\": \"urn:uuid:PROVIDER_PID_UUID_TRANSFER\",\r\n \"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dspace:code\": \"1\",\r\n \"dspace:reason\": [\r\n   \"Must suspens to take a break,I got tierd.\"\r\n ]\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/PROVIDER_PID_UUID_TRANSFER/suspension",
+											"host": [
+												"{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}"
+											],
+											"path": [
+												"PROVIDER_PID_UUID_TRANSFER",
+												"suspension"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Provider Terminate transfer",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferTerminationMessage\",\r\n \"dspace:providerPid\": \"urn:uuid:PROVIDER_PID_UUID_TRANSFER\",\r\n \"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dspace:code\": \"123\",\r\n \"dspace:reason\": [\r\n   \"Must stop this transfer\"\r\n ]\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/PROVIDER_PID_UUID_TRANSFER/termination",
+											"host": [
+												"{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}"
+											],
+											"path": [
+												"PROVIDER_PID_UUID_TRANSFER",
+												"termination"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						},
+						{
+							"name": "Consumer",
+							"item": [
+								{
+									"name": "Consumer Start transfer",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferStartMessage\",\r\n \"dspace:providerPid\": \"urn:uuid:PROVIDER_PID_UUID_TRANSFER\",\r\n \"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dspace:dataAddress\": {\r\n   \"@type\": \"dspace:DataAddress\",\r\n   \"dspace:endpointType\": \"https://w3id.org/idsa/v4.1/HTTP\",\r\n   \"dspace:endpoint\": \"http://example.com\",\r\n   \"dspace:endpointProperties\": [\r\n     {\r\n       \"@type\": \"dspace:EndpointProperty\",\r\n       \"dspace:name\": \"authorization\",\r\n       \"dspace:value\": \"TOKEN-ABCDEFG\"\r\n     },\r\n     {\r\n       \"@type\": \"dspace:EndpointProperty\",\r\n       \"dspace:name\": \"authType\",\r\n       \"dspace:value\": \"bearer\"\r\n     }\r\n   ]\r\n }\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{CONSUMER_SERVER_PROTOCOL_DATA_TRANSFER}}/CONSUMER_PID_UUID_TRANSFER/start",
+											"host": [
+												"{{CONSUMER_SERVER_PROTOCOL_DATA_TRANSFER}}"
+											],
+											"path": [
+												"CONSUMER_PID_UUID_TRANSFER",
+												"start"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Consumer Completion transfer",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferCompletionMessage\",\r\n \"dspace:providerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dspace:consumerPid\": \"urn:uuid:PROVIDER_PID_UUID_TRANSFER\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{CONSUMER_SERVER_PROTOCOL_DATA_TRANSFER}}/CONSUMER_PID_UUID_TRANSFER/completion",
+											"host": [
+												"{{CONSUMER_SERVER_PROTOCOL_DATA_TRANSFER}}"
+											],
+											"path": [
+												"CONSUMER_PID_UUID_TRANSFER",
+												"completion"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Consumer Suspension transfer",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferSuspensionMessage\",\r\n \"dspace:providerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dspace:consumerPid\": \"urn:uuid:PROVIDER_PID_UUID_TRANSFER\",\r\n \"dspace:code\": \"2\",\r\n \"dspace:reason\": [\r\n   \"Pause please!\"\r\n ]\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{CONSUMER}}/consumer/transfers/CONSUMER_PID_UUID_TRANSFER/suspension",
+											"host": [
+												"{{CONSUMER}}"
+											],
+											"path": [
+												"consumer",
+												"transfers",
+												"CONSUMER_PID_UUID_TRANSFER",
+												"suspension"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Consumer Termination transfer",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferTerminationMessage\",\r\n \"dspace:providerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dspace:consumerPid\": \"urn:uuid:PROVIDER_PID_UUID_TRANSFER\",\r\n \"dspace:code\": \"1\",\r\n \"dspace:reason\": [\r\n   \"Need to take a break\"\r\n ]\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{CONSUMER}}/consumer/transfers/CONSUMER_PID_UUID_TRANSFER/termination",
+											"host": [
+												"{{CONSUMER}}"
+											],
+											"path": [
+												"consumer",
+												"transfers",
+												"CONSUMER_PID_UUID_TRANSFER",
+												"termination"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						}
+					],
+					"auth": {
+						"type": "basic",
+						"basic": [
+							{
+								"key": "password",
+								"value": "password",
+								"type": "string"
+							},
+							{
+								"key": "username",
+								"value": "connector@mail.com",
+								"type": "string"
+							}
+						]
+					}
 				}
 			],
 			"auth": {
@@ -960,6 +1294,16 @@
 					}
 				}
 			]
+		}
+	],
+	"variable": [
+		{
+			"key": "consumerPid",
+			"value": ""
+		},
+		{
+			"key": "providerPid",
+			"value": ""
 		}
 	]
 }
