@@ -90,7 +90,7 @@ public class ProviderContractNegotiationController {
 
     }
 
-    // 2.5 The provider negotiations/:id/agreement/verification resource
+    // 2.5 The provider negotiations/:providerPid/agreement/verification resource
     // POST
 	// Provider must return an HTTP code 200 (OK). The response body is not specified and clients are not required to process it.
     @PostMapping(path = "/{providerPid}/agreement/verification")
@@ -98,10 +98,8 @@ public class ProviderContractNegotiationController {
                                                                @RequestBody JsonNode contractAgreementVerificationMessageJsonNode) {
         ContractAgreementVerificationMessage cavm = 
         		Serializer.deserializeProtocol(contractAgreementVerificationMessageJsonNode, ContractAgreementVerificationMessage.class);
-        log.info("Verification message received {}", contractAgreementVerificationMessageJsonNode.toPrettyString());
-//        ContractNegotiationErrorMessage error = methodNotYetImplemented();
-//        return ResponseEntity.internalServerError().contentType(MediaType.APPLICATION_JSON).body(Serializer.serializeProtocolJsonNode(error));
-        providerService.finalizeNegotiation(cavm);
+        log.info("Verification message received");
+        providerService.verifyNegotiation(cavm);
         return ResponseEntity.ok().build();
     }
 

@@ -11,7 +11,6 @@ import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,6 +27,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
 import it.eng.negotiation.model.ContractAgreementVerificationMessage;
 import it.eng.negotiation.model.ContractNegotiation;
+import it.eng.negotiation.model.ContractNegotiationEventMessage;
 import it.eng.negotiation.model.ModelUtil;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.negotiation.service.ContractNegotiationAPIService;
@@ -57,7 +57,7 @@ public class ContractNegotiationAPIControllerTest {
 		map.put("offer", Serializer.serializeProtocolJsonNode(ModelUtil.OFFER));
 				
 		when(apiService.startNegotiation(any(String.class), any(JsonNode.class)))
-			.thenReturn(Serializer.serializeProtocolJsonNode(ModelUtil.CONTRACT_NEGOTIATION));
+			.thenReturn(Serializer.serializeProtocolJsonNode(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 		
 		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.startNegotiation(mapper.convertValue(map, JsonNode.class));
 		assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -69,8 +69,8 @@ public class ContractNegotiationAPIControllerTest {
 	public void offerApproved_success() {
 		Map<String, Object> map = new HashMap<>();
 		map.put("offer", Serializer.serializeProtocolJsonNode(ModelUtil.OFFER));
-		map.put(DSpaceConstants.CONSUMER_PID, "urn:uuid:" + UUID.randomUUID());
-		map.put(DSpaceConstants.PROVIDER_PID, "urn:uuid:" + UUID.randomUUID());
+		map.put("consumerPid", ModelUtil.CONSUMER_PID);
+		map.put("providerPid", ModelUtil.PROVIDER_PID);
 		map.put("offerAccepted", true);
 		
 		ResponseEntity<JsonNode> response = controller.handleOfferApproved(mapper.convertValue(map, JsonNode.class));
@@ -82,12 +82,26 @@ public class ContractNegotiationAPIControllerTest {
 	@DisplayName("Verify negotiation success")
 	public void verifyNegotiation_success() {
 		Map<String, Object> map = new HashMap<>();
-		map.put(DSpaceConstants.CONSUMER_PID, "urn:uuid:" + UUID.randomUUID());
-		map.put(DSpaceConstants.PROVIDER_PID, "urn:uuid:" + UUID.randomUUID());
+		map.put("consumerPid", ModelUtil.CONSUMER_PID);
+		map.put("providerPid", ModelUtil.PROVIDER_PID);
 		
-		ResponseEntity<JsonNode> response = controller.verifyNegotiation(mapper.convertValue(map, JsonNode.class));
+		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.verifyNegotiation(mapper.convertValue(map, JsonNode.class));
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		verify(handlerService).contractAgreementVerificationMessage(any(ContractAgreementVerificationMessage.class));
+		verify(handlerService).verifyNegotiation(any(ContractAgreementVerificationMessage.class));
+	}
+	
+	@Test
+	@DisplayName("Verify negotiation failed")
+	public void verifyNegotiation_failed() {
+		Map<String, Object> map = new HashMap<>();
+		map.put("consumerPid", ModelUtil.CONSUMER_PID);
+		map.put("providerPid", ModelUtil.PROVIDER_PID);
+		
+		doThrow(new ContractNegotiationAPIException("Something not correct - tests"))
+		.when(handlerService).verifyNegotiation(any(ContractAgreementVerificationMessage.class));
+		
+		assertThrows(ContractNegotiationAPIException.class, () ->
+		controller.verifyNegotiation(mapper.convertValue(map, JsonNode.class)));
 	}
 	
 	@Test
@@ -97,9 +111,9 @@ public class ContractNegotiationAPIControllerTest {
 		map.put("Forward-To", ModelUtil.FORWARD_TO);
 		map.put("offer", Serializer.serializeProtocolJsonNode(ModelUtil.OFFER));
 		
-		when(apiService.postContractOffer(any(String.class), any(JsonNode.class)))
+		when(apiService.sendContractOffer(any(String.class), any(JsonNode.class)))
 			.thenReturn(Serializer.serializeProtocolJsonNode(ModelUtil.CONTRACT_NEGOTIATION_OFFERED));
-		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.postOffer(mapper.convertValue(map, JsonNode.class));
+		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.sendOffer(mapper.convertValue(map, JsonNode.class));
 	
 		assertNotNull(response);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -115,18 +129,17 @@ public class ContractNegotiationAPIControllerTest {
 		map.put("Forward-To", ModelUtil.FORWARD_TO);
 		map.put("offer", Serializer.serializeProtocolJsonNode(ModelUtil.OFFER));
 		
-		when(apiService.postContractOffer(any(String.class), any(JsonNode.class)))
+		when(apiService.sendContractOffer(any(String.class), any(JsonNode.class)))
 			.thenThrow(new ContractNegotiationAPIException("Something not correct - tests"));
 
 		assertThrows(ContractNegotiationAPIException.class, () ->
-			controller.postOffer(mapper.convertValue(map, JsonNode.class)));
+			controller.sendOffer(mapper.convertValue(map, JsonNode.class)));
 	}
 	
 	@Test
 	@DisplayName("Send agreement success")
 	public void sendAgreement_success() {
 		Map<String, Object> map = new HashMap<>();
-		map.put("Forward-To", ModelUtil.FORWARD_TO);
 		map.put("consumerPid", ModelUtil.CONSUMER_PID);
 		map.put("providerPid", ModelUtil.PROVIDER_PID);
 		map.put("agreement", Serializer.serializeProtocolJsonNode(ModelUtil.AGREEMENT));
@@ -140,7 +153,6 @@ public class ContractNegotiationAPIControllerTest {
 	@DisplayName("Send agreement failed")
 	public void sendAgreement_failed() {
 		Map<String, Object> map = new HashMap<>();
-		map.put("Forward-To", ModelUtil.FORWARD_TO);
 		map.put("consumerPid", ModelUtil.CONSUMER_PID);
 		map.put("providerPid", ModelUtil.PROVIDER_PID);
 		map.put("agreement", Serializer.serializeProtocolJsonNode(ModelUtil.AGREEMENT));
@@ -150,5 +162,31 @@ public class ContractNegotiationAPIControllerTest {
 		
 		assertThrows(ContractNegotiationAPIException.class, () ->
 		controller.sendAgreement(mapper.convertValue(map, JsonNode.class)));
+	}
+	
+	@Test
+	@DisplayName("Finalize negotiation success")
+	public void finalizeNegotiation_success() {
+		Map<String, Object> map = new HashMap<>();
+		map.put("consumerPid", ModelUtil.CONSUMER_PID);
+		map.put("providerPid", ModelUtil.PROVIDER_PID);
+				
+		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.finalizeNegotiation(mapper.convertValue(map, JsonNode.class));
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+		verify(apiService).finalizeNegotiation(any(ContractNegotiationEventMessage.class));
+	}
+	
+	@Test
+	@DisplayName("Finalize negotiation failed")
+	public void finalizeNegotiation_failed() {
+		Map<String, Object> map = new HashMap<>();
+		map.put("consumerPid", ModelUtil.CONSUMER_PID);
+		map.put("providerPid", ModelUtil.PROVIDER_PID);
+				
+		doThrow(new ContractNegotiationAPIException("Something not correct - tests"))
+		.when(apiService).finalizeNegotiation(any(ContractNegotiationEventMessage.class));
+		
+		assertThrows(ContractNegotiationAPIException.class, () ->
+		controller.finalizeNegotiation(mapper.convertValue(map, JsonNode.class)));
 	}
 }

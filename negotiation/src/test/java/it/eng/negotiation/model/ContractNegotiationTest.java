@@ -1,16 +1,22 @@
 package it.eng.negotiation.model;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Arrays;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import java.util.Arrays;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 public class ContractNegotiationTest {
 
@@ -121,11 +127,11 @@ public class ContractNegotiationTest {
 	@Test
 	@DisplayName("From initial ContractNegotiation with new ContractNegotiationState")
 	public void withNewState() {
-		ContractNegotiation contractNegotiationOffered = ModelUtil.CONTRACT_NEGOTIATION.withNewContractNegotiationState(ContractNegotiationState.OFFERED);
-		assertEquals(ModelUtil.CONTRACT_NEGOTIATION.getId(), contractNegotiationOffered.getId());
-		assertEquals(ModelUtil.CONTRACT_NEGOTIATION.getConsumerPid(), contractNegotiationOffered.getConsumerPid());
-		assertEquals(ModelUtil.CONTRACT_NEGOTIATION.getProviderPid(), contractNegotiationOffered.getProviderPid());
-		assertEquals(ModelUtil.CONTRACT_NEGOTIATION.getCallbackAddress(), contractNegotiationOffered.getCallbackAddress());
+		ContractNegotiation contractNegotiationOffered = ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.withNewContractNegotiationState(ContractNegotiationState.OFFERED);
+		assertEquals(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId(), contractNegotiationOffered.getId());
+		assertEquals(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getConsumerPid(), contractNegotiationOffered.getConsumerPid());
+		assertEquals(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getProviderPid(), contractNegotiationOffered.getProviderPid());
+		assertEquals(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getCallbackAddress(), contractNegotiationOffered.getCallbackAddress());
 		assertEquals(ContractNegotiationState.OFFERED, contractNegotiationOffered.getState());
 	}
 	
