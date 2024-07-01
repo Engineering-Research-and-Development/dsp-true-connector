@@ -24,7 +24,7 @@ import static org.mockito.Mockito.when;
 public class DataServiceAPIControllerTest {
 
     @InjectMocks
-    DataServiceAPIController dataServiceAPIController;
+    private DataServiceAPIController dataServiceAPIController;
 
     @Mock
     private DataServiceService dataServiceService;

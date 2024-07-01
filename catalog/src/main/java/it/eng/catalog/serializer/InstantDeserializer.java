@@ -13,9 +13,10 @@ import java.time.format.DateTimeFormatter;
  * This deserializer converts a string representation of a zoned date-time to an {@link Instant}.
  */
 public class InstantDeserializer extends StdDeserializer<Instant> {
-    private static final DateTimeFormatter formatter = DateTimeFormatter.ISO_ZONED_DATE_TIME;
+   
+	private static final long serialVersionUID = 4644655526882649737L;
 
-    public InstantDeserializer() {
+	public InstantDeserializer() {
         super(Instant.class);
     }
 
@@ -29,6 +30,6 @@ public class InstantDeserializer extends StdDeserializer<Instant> {
      */
     @Override
     public Instant deserialize(com.fasterxml.jackson.core.JsonParser p, DeserializationContext ctxt) throws IOException {
-        return ZonedDateTime.parse(p.getText(), formatter).toInstant();
+        return ZonedDateTime.parse(p.getText(), DateTimeFormatter.ISO_OFFSET_DATE_TIME).toInstant();
     }
 }

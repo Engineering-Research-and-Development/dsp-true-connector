@@ -8,13 +8,8 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 
 @Configuration
 @EnableMongoAuditing
-@EnableMongoRepositories(basePackages = {
-		"it.eng.catalog.repository",
-		"it.eng.connector.repository",
-		"it.eng.datatransfer.repository",
-		"it.eng.negotiation.repository",
-		"it.eng.tools.repository"
-		})
+@EnableMongoRepositories(basePackages = {"it.eng.tools.repository", "it.eng.connector.repository", "it.eng.catalog.repository", 
+		"it.eng.negotiation.repository", "it.eng.datatransfer.repository"})
 
 public class MongoConfig {
     @Bean

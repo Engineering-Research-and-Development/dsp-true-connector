@@ -13,8 +13,8 @@ public class ModelUtil {
 	public static final String CALLBACK_ADDRESS = "https://callback.address/callback";
 	public static final String FORWARD_TO = "https://forward-to.com";
 	public static final String DATASET_ID = "urn:uuid:DATASET_ID";
-	public static final String ASSIGNEE = "urn:uuid:ASSIGNEE";
-	public static final String ASSIGNER = "urn:uuid:ASSIGNER";
+	public static final String ASSIGNEE = "urn:uuid:ASSIGNEE_CONSUMER";
+	public static final String ASSIGNER = "urn:uuid:ASSIGNER_PROVIDER";
 	
 	public static final String TARGET = "urn:uuid:TARGET";
 	
@@ -49,10 +49,22 @@ public class ModelUtil {
 			.rightOperand("2024-02-29T00:00:01+01:00")
 			.build();
 	
+	public static final Constraint CONSTRAINT_COUNT_5 = Constraint.Builder.newInstance()
+			.leftOperand(LeftOperand.COUNT)
+			.operator(Operator.EQ)
+			.rightOperand("5")
+			.build();
+	
 	public static final Permission PERMISSION = Permission.Builder.newInstance()
 			.action(Action.USE)
 			.target(ModelUtil.TARGET)
 			.constraint(Arrays.asList(ModelUtil.CONSTRAINT))
+			.build();
+	
+	public static final Permission PERMISSION_COUNT_5 = Permission.Builder.newInstance()
+			.action(Action.USE)
+			.target(ModelUtil.TARGET)
+			.constraint(Arrays.asList(ModelUtil.CONSTRAINT_COUNT_5))
 			.build();
 	
 	public static final Offer OFFER = Offer.Builder.newInstance()
@@ -60,6 +72,13 @@ public class ModelUtil {
 			.assignee(ModelUtil.ASSIGNEE)
 			.assigner(ModelUtil.ASSIGNER)
 			.permission(Arrays.asList(ModelUtil.PERMISSION))
+			.build();
+	
+	public static final Offer OFFER_COUNT_5 = Offer.Builder.newInstance()
+			.target(ModelUtil.TARGET)
+			.assignee(ModelUtil.ASSIGNEE)
+			.assigner(ModelUtil.ASSIGNER)
+			.permission(Arrays.asList(ModelUtil.PERMISSION_COUNT_5))
 			.build();
 
 	public static final ContractOfferMessage CONTRACT_OFFER_MESSAGE = ContractOfferMessage.Builder.newInstance()
@@ -74,14 +93,7 @@ public class ModelUtil {
 			.assignee(ModelUtil.ASSIGNEE)
 			.assigner(ModelUtil.ASSIGNER)
 			.target(ModelUtil.TARGET)
-			.permission(Arrays.asList(Permission.Builder.newInstance()
-					.action(Action.USE)
-					.constraint(Arrays.asList(Constraint.Builder.newInstance()
-							.leftOperand(LeftOperand.COUNT)
-							.operator(Operator.EQ)
-							.rightOperand("5")
-							.build()))
-					.build()))
+			.permission(Arrays.asList(PERMISSION_COUNT_5))
 			.build();
 	
 	public static final ContractRequestMessage CONTRACT_REQUEST_MESSAGE = ContractRequestMessage.Builder.newInstance()
@@ -97,6 +109,12 @@ public class ModelUtil {
 			.agreement(AGREEMENT)
 			.build();
 	
+	public static final ContractNegotiationEventMessage CONTRACT_NEGOTIATION_EVENT_MESSAGE = ContractNegotiationEventMessage.Builder.newInstance()
+			.consumerPid(ModelUtil.CONSUMER_PID)
+			.providerPid(ModelUtil.PROVIDER_PID)
+			.eventType(ContractNegotiationEventType.FINALIZED)
+			.build();
+	
 	public static final ContractNegotiationErrorMessage CONTRACT_NEGOTIATION_ERROR_MESSAGE = ContractNegotiationErrorMessage.Builder.newInstance()
 			.consumerPid(CONSUMER_PID)
 			.providerPid(PROVIDER_PID)
@@ -105,21 +123,45 @@ public class ModelUtil {
             .description(Collections.singletonList(Description.Builder.newInstance().language("en").value("Some description").build()))
 			.build();
 	
-	public static final ContractNegotiation CONTRACT_NEGOTIATION = ContractNegotiation.Builder.newInstance()
+	public static final ContractNegotiation CONTRACT_NEGOTIATION_ACCEPTED = ContractNegotiation.Builder.newInstance()
 			.consumerPid(ModelUtil.CONSUMER_PID)
 			.providerPid(ModelUtil.PROVIDER_PID)
+			.callbackAddress(CALLBACK_ADDRESS)
 			.state(ContractNegotiationState.ACCEPTED)
+			.build();
+	
+	public static final ContractNegotiation CONTRACT_NEGOTIATION_REQUESTED = ContractNegotiation.Builder.newInstance()
+			.consumerPid(ModelUtil.CONSUMER_PID)
+			.providerPid(ModelUtil.PROVIDER_PID)
+			.callbackAddress(CALLBACK_ADDRESS)
+			.state(ContractNegotiationState.REQUESTED)
+			.build();
+	
+	public static final ContractNegotiation CONTRACT_NEGOTIATION_AGREED = ContractNegotiation.Builder.newInstance()
+			.consumerPid(ModelUtil.CONSUMER_PID)
+			.providerPid(ModelUtil.PROVIDER_PID)
+			.callbackAddress(CALLBACK_ADDRESS)
+			.state(ContractNegotiationState.AGREED)
 			.build();
 	
 	public static final ContractNegotiation CONTRACT_NEGOTIATION_OFFERED = ContractNegotiation.Builder.newInstance()
 			.consumerPid(ModelUtil.CONSUMER_PID)
 			.providerPid(ModelUtil.PROVIDER_PID)
+			.callbackAddress(CALLBACK_ADDRESS)
 			.state(ContractNegotiationState.OFFERED)
+			.build();
+	
+	public static final ContractNegotiation CONTRACT_NEGOTIATION_VERIFIED = ContractNegotiation.Builder.newInstance()
+			.consumerPid(ModelUtil.CONSUMER_PID)
+			.providerPid(ModelUtil.PROVIDER_PID)
+			.callbackAddress(CALLBACK_ADDRESS)
+			.state(ContractNegotiationState.VERIFIED)
 			.build();
 	
 	public static final ContractNegotiation CONTRACT_NEGOTIATION_FINALIZED = ContractNegotiation.Builder.newInstance()
 			.consumerPid(ModelUtil.CONSUMER_PID)
 			.providerPid(ModelUtil.PROVIDER_PID)
+			.callbackAddress(CALLBACK_ADDRESS)
 			.state(ContractNegotiationState.FINALIZED)
 			.build();
 }

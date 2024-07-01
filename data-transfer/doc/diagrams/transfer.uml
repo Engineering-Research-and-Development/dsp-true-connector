@@ -1,0 +1,76 @@
+@startuml
+
+TITLE Pull
+
+participant CONSUMER as c
+participant PROVIDER as p
+
+== TransfertRequestMessage ==
+
+c->p : https://provider.com/transfers/request
+note left
+TransferRequestMessage
+{
+  "@context":  "https://w3id.org/dspace/2024/1/context.json",
+  "@type": "dspace:TransferRequestMessage",
+  "dspace:consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+  "dspace:agreementId": "urn:uuid:e8dc8655-44c2-46ef-b701-4cffdc2faa44",
+  "dct:format": "example:HTTP_PULL",
+  "dspace:callbackAddress": "https://......"
+}
+end note
+
+p->p: Process received message
+p->p: store message (agreement will be required later)
+p->p: Create TransferProcess with initial consumerPid urn:uuid:PROVIDER_PID_TRANSFER and adds providerPid, state.REQUESTED
+p->c: 200 OK, TransferProcess
+
+...PROVIDER "prepare data for exposure"...
+
+== TransferStartMessage ==
+p->p: Create TransferStartMessage
+p->p: uses consumerPid and providerPid from TransferProcess to generate link for download
+note right
+Base64.encodeBase64URLSafeString((urn:uuid:CONSUMER_PID_TRANSFER + "|" + urn:uuid:PROVIDER_PID_TRANSFER)
+.getBytes(Charset.forName("UTF-8")));
+http://localhost:8080/artifact/encodedValue/1
+end note
+
+note over c, p
+For the moment (POC) we will exclude logic for adding authorization layer on download link
+end note
+
+p->c : callbackUrl + transfers/:consumerPid/start
+note right
+{
+  "@context":  "https://w3id.org/dspace/2024/1/context.json",
+  "@type": "dspace:TransferStartMessage",
+  "dspace:providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
+  "dspace:consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+  "dspace:dataAddress": {
+    "@type": "dspace:DataAddress",
+    "dspace:endpointType": "https://w3id.org/idsa/v4.1/HTTP",
+    "dspace:endpoint": "http://localhost:8080/artifact/encodedValue/1",
+  }
+}
+end note
+
+c->c : process TransferStartMessage, update state locally
+c->p : 200 OK
+p->p: after 200OK< update state in TransferProcess to SARTED
+
+...Consumer executes download link...
+
+== Consumer fetches data ==
+
+c->p ++: http://localhost:8080/artifact/encodedValue/1
+note right
+This can be performed in EndpointAvailableFilter
+end note
+p->p: decode encoded value
+p->p: checks TransferProcess for given consumerPid and providerPid if state is STARTED
+p->p: for consumerPid and providerPid get agreementId (TransferRequestMessage)
+p->p: validate if agreement is valid
+return artifact
+
+@enduml

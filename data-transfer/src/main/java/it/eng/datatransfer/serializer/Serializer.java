@@ -1,4 +1,4 @@
-package it.eng.negotiation.model;
+package it.eng.datatransfer.serializer;
 
 import java.util.Objects;
 import java.util.Set;
@@ -148,19 +148,9 @@ public class Serializer {
 	private static <T> void validateProtocol(JsonNode jsonNode, Class<T> clazz) {
 		try { 
 			Objects.requireNonNull(jsonNode.get(DSpaceConstants.TYPE));
-			// odrl:Offer
-			if(clazz.equals(Offer.class)) {
-				if(!Objects.equals(DSpaceConstants.ODRL + clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
-					throw new ValidationException("@type field not correct, expected "+ DSpaceConstants.ODRL + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
-				}
-			} else {
-				if(!Objects.equals(DSpaceConstants.DSPACE + clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
-					throw new ValidationException("@type field not correct, expected " + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
-				}
-				Objects.requireNonNull(jsonNode.get(DSpaceConstants.CONTEXT));
-				if(!Objects.equals(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE, jsonNode.get(DSpaceConstants.CONTEXT).asText())) {
-					throw new ValidationException("@context field not valid - was " + jsonNode.get(DSpaceConstants.CONTEXT).asText());
-				}
+			Objects.requireNonNull(jsonNode.get(DSpaceConstants.CONTEXT));
+			if(!Objects.equals(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE, jsonNode.get(DSpaceConstants.CONTEXT).asText())) {
+				throw new ValidationException("@context field not valid - was " + jsonNode.get(DSpaceConstants.CONTEXT).asText());
 			}
 		} catch (NullPointerException npe) {
 			throw new ValidationException("Missing mandatory protocol fields @context and/or @type or value not correct");

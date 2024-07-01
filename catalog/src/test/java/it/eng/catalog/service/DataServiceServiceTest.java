@@ -109,6 +109,5 @@ public class DataServiceServiceTest {
         assertEquals(dataService.getId(), result.getId());
         verify(repository).findById(dataService.getId());
         verify(repository).save(any(DataService.class));
-        verify(catalogService).updateCatalogDataServiceAfterUpdate(any(DataService.class));
     }
 }

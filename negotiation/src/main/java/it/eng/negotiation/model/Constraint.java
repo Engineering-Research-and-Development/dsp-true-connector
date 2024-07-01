@@ -7,10 +7,12 @@ import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
 import it.eng.tools.model.DSpaceConstants;
 import lombok.AccessLevel;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
+@EqualsAndHashCode
 @JsonDeserialize(builder = Constraint.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Constraint {

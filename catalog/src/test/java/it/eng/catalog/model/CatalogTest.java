@@ -33,7 +33,9 @@ public class CatalogTest {
 		assertTrue(result.contains(DSpaceConstants.DISTRIBUTION));
 		
 		Catalog javaObj = Serializer.deserializePlain(result, Catalog.class);
-		validateDataset(javaObj.getDataset().get(0));
+		
+		Dataset dataset = javaObj.getDataset().iterator().next();
+		validateDataset(dataset);
 	}
 	
 	@Test
@@ -54,7 +56,7 @@ public class CatalogTest {
 		assertNotNull(result.get(DSpaceConstants.DCAT_DISTRIBUTION).asText());
 		
 		Catalog javaObj = Serializer.deserializeProtocol(result, Catalog.class);
-		validateDataset(javaObj.getDataset().get(0));
+		validateDataset(javaObj.getDataset().iterator().next());
 	}
 	
 	@Test
@@ -71,12 +73,23 @@ public class CatalogTest {
 					.build());
 	}
 	
+	@Test
+	public void findOffer() {
+		boolean offerExists = MockObjectUtil.CATALOG.getDataset().stream()
+				.flatMap(dataset -> dataset.getHasPolicy().stream()).anyMatch(of -> of.getId().equals("urn:offer_id"));
+		assertTrue(offerExists);
+
+		offerExists = MockObjectUtil.CATALOG.getDataset().stream()
+				.flatMap(dataset -> dataset.getHasPolicy().stream()).anyMatch(of -> of.getId().equals("urn:offer_id_not_found"));
+		assertFalse(offerExists);
+	}
+	
 	public void validateDataset(Dataset javaObj) {
 		assertNotNull(javaObj);
 		assertNotNull(javaObj.getConformsTo());
 		assertNotNull(javaObj.getCreator());
-		assertNotNull(javaObj.getDescription().get(0));
-		assertNotNull(javaObj.getDistribution().get(0));
+		assertNotNull(javaObj.getDescription().iterator().next());
+		assertNotNull(javaObj.getDistribution().iterator().next());
 		assertNotNull(javaObj.getIdentifier());
 		assertNotNull(javaObj.getIssued());
 		assertNotNull(javaObj.getKeyword());

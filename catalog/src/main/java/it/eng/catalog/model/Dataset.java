@@ -18,7 +18,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.Instant;
-import java.util.List;
+import java.util.Collection;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -37,15 +37,15 @@ public class Dataset extends AbstractCatalogObject {
 
     // Resource
     @JsonProperty(DSpaceConstants.DCAT_KEYWORD)
-    private List<String> keyword;
+    private Collection<String> keyword;
     @JsonProperty(DSpaceConstants.DCAT_THEME)
-    private List<String> theme;
+    private Collection<String> theme;
     @JsonProperty(DSpaceConstants.DCT_CONFORMSTO)
     private String conformsTo;
     @JsonProperty(DSpaceConstants.DCT_CREATOR)
     private String creator;
     @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
-    private List<Multilanguage> description;
+    private Collection<Multilanguage> description;
     @JsonProperty(DSpaceConstants.DCT_IDENTIFIER)
     private String identifier;
     @JsonProperty(DSpaceConstants.DCT_ISSUED)
@@ -58,10 +58,10 @@ public class Dataset extends AbstractCatalogObject {
     private String title;
     @NotNull
     @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
-    private List<Offer> hasPolicy;
+    private Set<Offer> hasPolicy;
     @JsonProperty(DSpaceConstants.DCAT_DISTRIBUTION)
     @DBRef
-    private List<Distribution> distribution;
+    private Collection<Distribution> distribution;
     @JsonIgnore
     @CreatedBy
     private String createdBy;
@@ -94,13 +94,15 @@ public class Dataset extends AbstractCatalogObject {
         }
 
         @JsonProperty(DSpaceConstants.DCAT_KEYWORD)
-        public Builder keyword(List<String> keyword) {
+        @JsonDeserialize(as = Set.class)
+        public Builder keyword(Collection<String> keyword) {
             dataset.keyword = keyword;
             return this;
         }
 
         @JsonProperty(DSpaceConstants.DCAT_THEME)
-        public Builder theme(List<String> theme) {
+        @JsonDeserialize(as = Set.class)
+        public Builder theme(Collection<String> theme) {
             dataset.theme = theme;
             return this;
         }
@@ -118,7 +120,8 @@ public class Dataset extends AbstractCatalogObject {
         }
 
         @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
-        public Builder description(List<Multilanguage> description) {
+        @JsonDeserialize(as = Set.class)
+        public Builder description(Collection<Multilanguage> description) {
             dataset.description = description;
             return this;
         }
@@ -148,13 +151,15 @@ public class Dataset extends AbstractCatalogObject {
         }
 
         @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
-        public Builder hasPolicy(List<Offer> policies) {
+        @JsonDeserialize(as = Set.class)
+        public Builder hasPolicy(Set<Offer> policies) {
             dataset.hasPolicy = policies;
             return this;
         }
 
         @JsonProperty(DSpaceConstants.DCAT_DISTRIBUTION)
-        public Builder distribution(List<Distribution> distribution) {
+        @JsonDeserialize(as = Set.class)
+        public Builder distribution(Collection<Distribution> distribution) {
             dataset.distribution = distribution;
             return this;
         }

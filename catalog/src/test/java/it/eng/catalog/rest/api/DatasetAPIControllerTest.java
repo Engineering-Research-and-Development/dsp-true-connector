@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 public class DatasetAPIControllerTest {
 
     @InjectMocks
-    DatasetAPIController datasetAPIController;
+    private DatasetAPIController datasetAPIController;
 
     @Mock
     private DatasetService datasetService;

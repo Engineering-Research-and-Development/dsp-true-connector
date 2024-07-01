@@ -6,16 +6,16 @@ import org.springframework.stereotype.Component;
 import it.eng.negotiation.event.ContractNegotiationEvent;
 import it.eng.negotiation.model.ContractAgreementVerificationMessage;
 import it.eng.negotiation.service.ContractNegotiationEventHandlerService;
-import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponse;
+import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
-public class ContractNegotiationListner {
+public class ContractNegotiationListener {
 	
 	private ContractNegotiationEventHandlerService contractNegotiationEventHandlerService;
 
-	public ContractNegotiationListner(ContractNegotiationEventHandlerService contractNegotiationEventHandlerService) {
+	public ContractNegotiationListener(ContractNegotiationEventHandlerService contractNegotiationEventHandlerService) {
 		this.contractNegotiationEventHandlerService = contractNegotiationEventHandlerService;
 	}
 
@@ -25,7 +25,7 @@ public class ContractNegotiationListner {
 	}
 	
 	@EventListener
-	public void handleContractNegotiationOfferResponse(ContractNegotiationOfferResponse response) {
+	public void handleContractNegotiationOfferResponse(ContractNegotiationOfferResponseEvent response) {
 		log.info("Handling ContractNegotiationOfferResponse...");
 		contractNegotiationEventHandlerService.handleContractNegotiationOfferResponse(response);
 	}
@@ -33,6 +33,6 @@ public class ContractNegotiationListner {
 	@EventListener
 	public void handleContractAgreementVerificationMessage(ContractAgreementVerificationMessage verificationMessage) {
 		log.info("Handling ContractAgreementVerificationMessage...");
-		contractNegotiationEventHandlerService.contractAgreementVerificationMessage(verificationMessage);
+		contractNegotiationEventHandlerService.verifyNegotiation(verificationMessage);
 	}
 }

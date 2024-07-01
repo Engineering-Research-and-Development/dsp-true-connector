@@ -107,7 +107,11 @@ public class WebSecurityConfig {
 	        .authorizeHttpRequests((authorize) -> {
 	        	authorize
 	        		.requestMatchers(new AntPathRequestMatcher("/env"), new AntPathRequestMatcher("/actuator/**")).hasRole("ADMIN")
-	        		.requestMatchers(new AntPathRequestMatcher("/connector/**"), new AntPathRequestMatcher("/negotiations/**"), new AntPathRequestMatcher("/catalog/**")).hasRole("CONNECTOR")
+	        		.requestMatchers(new AntPathRequestMatcher("/connector/**"), 
+	        				new AntPathRequestMatcher("/negotiations/**"), 
+	        				new AntPathRequestMatcher("/catalog/**"),
+	        				new AntPathRequestMatcher("/transfers/**"))
+	        		.hasRole("CONNECTOR")
 	        		.requestMatchers(new AntPathRequestMatcher("/api/**")).hasRole("ADMIN")
 	        		.anyRequest().permitAll();
 	        })

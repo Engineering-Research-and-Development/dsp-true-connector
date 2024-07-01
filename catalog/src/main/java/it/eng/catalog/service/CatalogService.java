@@ -1,21 +1,25 @@
+
 package it.eng.catalog.service;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
 
 import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.exceptions.CatalogNotFoundAPIException;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.DataService;
 import it.eng.catalog.model.Dataset;
+import it.eng.catalog.model.Distribution;
 import it.eng.catalog.model.Offer;
 import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.serializer.Serializer;
-import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequest;
-import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponse;
+import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
+import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.Optional;
 
 /**
  * The CatalogService class provides methods to interact with catalog data, including saving, retrieving, and deleting catalogs.
@@ -97,33 +101,11 @@ public class CatalogService {
         repository.deleteById(id);
     }
 
-    public void validateIfOfferIsValid(ContractNegotationOfferRequest offerRequest) {
+    public void validateOffer(ContractNegotationOfferRequestEvent offerRequest) {
         log.info("Comparing if offer is valid or not");
         Offer offer = Serializer.deserializeProtocol(offerRequest.getOffer(), Offer.class);
-        boolean valid = false;
-//    	try {
-//    		Catalog catalog = getCatalog();
-//    		catalog.getDataset().forEach(ds -> {
-//    			ds.getHasPolicy().forEach(p -> {
-//    				if(!p.getTarget().equals(offer.getTarget())) {
-//    					throw new ValidationException("Target not equal");
-//    				}
-//    			p.getPermission().forEach(perm -> {
-//    				perm.getConstraint().forEach(constr ->{
-//    					constr.getLeftOperand().equals(catalog)
-//    				});
-//    			});
-//    			});
-//    		});
-        // if reached here, all checks are OK, meaning offer is valid
-        log.info("Offer is valid, all checks passed ");
-        valid = true;
-//    	} catch (Exception ex) {
-//    		log.info("Offer is NOT valid", ex.getLocalizedMessage());
-//    		valid = false;
-//    	}
-
-        ContractNegotiationOfferResponse contractNegotiationOfferResponse = new ContractNegotiationOfferResponse(offerRequest.getConsumerPid(),
+        boolean valid = validateOffer(offer);
+        ContractNegotiationOfferResponseEvent contractNegotiationOfferResponse = new ContractNegotiationOfferResponseEvent(offerRequest.getConsumerPid(),
                 offerRequest.getProviderPid(), valid, Serializer.serializeProtocolJsonNode(offer));
         publisher.publishEvent(contractNegotiationOfferResponse);
     }
@@ -172,19 +154,6 @@ public class CatalogService {
     }
 
     /**
-     * Updates the catalog with modified dataset information.
-     * This method replaces an existing dataset in the catalog with its updated version and saves the updated catalog.
-     *
-     * @param updatedDataset The dataset with updated information to be integrated into the catalog.
-     */
-    public void updateCatalogDatasetAfterUpdate(Dataset updatedDataset) {
-        // TODO handle the situation when updated dataset have distribution which is not present in catalog
-        Catalog c = getCatalog();
-        c.getDataset().add(updatedDataset);
-        repository.save(c);
-    }
-
-    /**
      * Removes a dataset reference from the catalog and saves the updated catalog.
      * This method removes the specified dataset reference from the catalog's dataset collection and saves the updated catalog.
      *
@@ -211,18 +180,6 @@ public class CatalogService {
 
 
     /**
-     * Updates the catalog with modified dataService information.
-     * This method replaces an existing dataService in the catalog with its updated version and saves the updated catalog.
-     *
-     * @param dataService The dataService with updated information to be integrated into the catalog.
-     */
-    public void updateCatalogDataServiceAfterUpdate(DataService dataService) {
-        Catalog c = getCatalog();
-        c.getService().add(dataService);
-        repository.save(c);
-    }
-
-    /**
      * Removes a dataService reference from the catalog and saves the updated catalog.
      * This method removes the specified dataService reference from the catalog's dataService collection and saves the updated catalog.
      *
@@ -231,7 +188,35 @@ public class CatalogService {
 
     public void updateCatalogDataServiceAfterDelete(DataService dataService) {
         Catalog c = getCatalog();
-        c.getService().remove(dataService);
+//        c.getService().remove(dataService);
+        c.getService().stream()
+        	.filter(ds -> ds.equals(dataService))
+        	.collect(Collectors.toSet());
+        repository.save(c);
+    }
+
+    /**
+     * Updates the catalog with a newly saved distribution reference.
+     * This method adds the new distribution reference to the catalog's distribution list and saves the updated catalog.
+     *
+     * @param newDistribution The new distribution reference to be added to the catalog.
+     */
+    public void updateCatalogDistributionAfterSave(Distribution newDistribution) {
+        Catalog c = getCatalog();
+        c.getDistribution().add(newDistribution);
+        repository.save(c);
+    }
+
+    /**
+     * Removes a distribution reference from the catalog and saves the updated catalog.
+     * This method removes the specified distribution reference from the catalog's distribution collection and saves the updated catalog.
+     *
+     * @param distribution The distribution to be removed from the catalog.
+     */
+
+    public void updateCatalogDistributionAfterDelete(Distribution distribution) {
+        Catalog c = getCatalog();
+        c.getDistribution().remove(distribution);
         repository.save(c);
     }
 
@@ -252,5 +237,26 @@ public class CatalogService {
                 .orElseThrow(() -> new CatalogNotFoundAPIException("Catalog with id: " + id + " not found"));
     }
 
-}
+	public boolean validateOffer(Offer offer) {
+		boolean valid = false;
+		Catalog catalog = getCatalog();
 
+		Offer existingOffer = catalog.getDataset().stream().flatMap(dataset -> dataset.getHasPolicy().stream())
+				.filter(of -> of.getId().equals(offer.getId())).findFirst().orElse(null);
+
+		log.debug("Offer with id '{}' {}", offer.getId(), existingOffer != null ? " found." : "not found.");
+
+		if (existingOffer == null) {
+			log.warn("Offer with id {} not found in catalog", offer.getId());
+			valid = false;
+		} else {
+//	    		 check if offers are equals
+			if (offer.equals(existingOffer)) {
+				log.debug("Existing and prvided offers are same");
+				valid = true;
+			}
+		}
+		log.info("Offer evaluated as {}", valid ? "valid" : "invalid");
+		return valid;
+	}
+}
