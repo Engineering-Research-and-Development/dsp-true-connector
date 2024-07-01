@@ -13,8 +13,6 @@ import java.time.format.DateTimeFormatter;
  * This serializer converts an {@link Instant} to a string representation using the system's default time zone.
  */
 public class InstantSerializer extends JsonSerializer<Instant> {
-    private static final DateTimeFormatter formatter = DateTimeFormatter.ISO_ZONED_DATE_TIME;
-
     /**
      * Serializes an {@link Instant} object to JSON as a string in ISO-8601 zoned date-time format.
      *
@@ -25,6 +23,6 @@ public class InstantSerializer extends JsonSerializer<Instant> {
      */
     @Override
     public void serialize(Instant value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
-        gen.writeString(formatter.format(value.atZone(java.time.ZoneId.systemDefault())));
+        gen.writeString(DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(value.atZone(java.time.ZoneId.systemDefault())));
     }
 }

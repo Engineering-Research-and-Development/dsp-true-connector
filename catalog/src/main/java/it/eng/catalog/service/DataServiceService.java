@@ -5,7 +5,7 @@ import it.eng.catalog.model.DataService;
 import it.eng.catalog.repository.DataServiceRepository;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.util.Collection;
 
 /**
  * The DataServiceService class provides methods to interact with DataService data, including saving, retrieving, and deleting dataServices.
@@ -37,7 +37,7 @@ public class DataServiceService {
      *
      * @return a list of all data services
      */
-    public List<DataService> getAllDataServices() {
+    public Collection<DataService> getAllDataServices() {
         return repository.findAll();
     }
 
@@ -73,10 +73,9 @@ public class DataServiceService {
      */
     public DataService updateDataService(String id, DataService dataService) {
         DataService existingDataService = repository.findById(id).orElseThrow(() -> new DataServiceNotFoundAPIException("Data Service with id: " + id + " not found"));
-        DataService updatedDataService = DataService.Builder.updateInstance(existingDataService, dataService).build();
+        DataService updatedDataService = existingDataService.updateInstance(dataService);//.Builder.updateInstance(, dataService).build();
         DataService storedDataService = repository.save(updatedDataService);
-        catalogService.updateCatalogDataServiceAfterUpdate(storedDataService);
 
-        return updatedDataService;
+        return storedDataService;
     }
 }

@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component;
 
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.service.CatalogService;
-import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequest;
+import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
@@ -25,8 +25,9 @@ public class CatalogEventListener {
 	}
 	
 	@EventListener
-	public void handleContractNegotationOfferRequest(ContractNegotationOfferRequest offerRequest) {
-		log.info("Received event - ContractNegotationOfferRequest");
-		catalogService.validateIfOfferIsValid(offerRequest);
+	public void handleContractNegotationOfferRequestEvent(ContractNegotationOfferRequestEvent offerRequest) {
+		log.info("Received event - ContractNegotationOfferRequestEvent");
+		catalogService.validateOffer(offerRequest);
 	}
+	
 }

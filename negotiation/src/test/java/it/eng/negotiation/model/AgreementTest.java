@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import it.eng.negotiation.serializer.Serializer;
 import jakarta.validation.ValidationException;
 
 public class AgreementTest {

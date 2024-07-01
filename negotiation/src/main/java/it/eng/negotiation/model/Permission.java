@@ -15,6 +15,7 @@ import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
 import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -25,6 +26,7 @@ import lombok.NoArgsConstructor;
  * "required": "odrl:action"
  */
 @Getter
+@EqualsAndHashCode
 @JsonDeserialize(builder = Permission.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Permission {

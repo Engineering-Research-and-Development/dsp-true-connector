@@ -1,30 +1,51 @@
 package it.eng.catalog.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Optional;
+import java.util.Set;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+
 import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.DataService;
 import it.eng.catalog.model.Dataset;
+import it.eng.catalog.model.Offer;
 import it.eng.catalog.repository.CatalogRepository;
+import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.util.MockObjectUtil;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.Collections;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
+import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
 
 @ExtendWith(MockitoExtension.class)
 public class CatalogServiceTest {
 
     @Mock
     private CatalogRepository repository;
+    @Mock
+    private ApplicationEventPublisher publisher;
+    
+    @Captor
+	private ArgumentCaptor<ContractNegotiationOfferResponseEvent> argCaptorContractNegotiationOfferResponse;
 
     @InjectMocks
     private CatalogService service;
@@ -114,5 +135,33 @@ public class CatalogServiceTest {
         service.updateCatalogDataServiceAfterDelete(dataService);
 
         verify(repository).save(any(Catalog.class));
+    }
+    
+    @Test
+    public void providedOfferExists() {
+    	when(repository.findAll()).thenReturn(new ArrayList<>(MockObjectUtil.CATALOGS));
+    	ContractNegotationOfferRequestEvent offerRequest = new ContractNegotationOfferRequestEvent(MockObjectUtil.CONSUMER_PID,
+    			MockObjectUtil.PROVIDER_PID, Serializer.serializeProtocolJsonNode(MockObjectUtil.OFFER_WITH_TARGET));
+    	service.validateOffer(offerRequest);;
+    	
+    	verify(publisher).publishEvent(argCaptorContractNegotiationOfferResponse.capture());
+    	assertTrue(argCaptorContractNegotiationOfferResponse.getValue().isOfferAccepted());
+    }
+
+    @Test
+    public void providedOfferNotFound() {
+	  Offer differentOffer = Offer.Builder.newInstance()
+	    		.id("urn:offer_id")
+	            .target(MockObjectUtil.TARGET)
+	            .permission(Set.of(MockObjectUtil.PERMISSION_ANONYMIZE))
+	            .build();
+	
+    	when(repository.findAll()).thenReturn(new ArrayList<>(MockObjectUtil.CATALOGS));
+    	ContractNegotationOfferRequestEvent offerRequest = new ContractNegotationOfferRequestEvent(MockObjectUtil.CONSUMER_PID,
+    			MockObjectUtil.PROVIDER_PID, Serializer.serializeProtocolJsonNode(differentOffer));
+    	service.validateOffer(offerRequest);
+    	
+    	verify(publisher).publishEvent(argCaptorContractNegotiationOfferResponse.capture());
+    	assertFalse(argCaptorContractNegotiationOfferResponse.getValue().isOfferAccepted());
     }
 }

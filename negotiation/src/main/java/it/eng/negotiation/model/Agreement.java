@@ -5,6 +5,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
@@ -26,6 +27,11 @@ import lombok.NoArgsConstructor;
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true) 
 public class Agreement {
 
+	@JsonIgnore
+	private String consumerPid;
+	
+	@JsonIgnore
+	private String providerPid;
 	/*
 	"dspace:agreement": {
     "@id": "urn:uuid:e8dc8655-44c2-46ef-b701-4cffdc2faa44",
@@ -97,6 +103,16 @@ public class Agreement {
 		@JsonProperty(DSpaceConstants.ODRL_ASSIGNEE)
 		public Builder assignee(String assignee) {
 			agreement.assignee = assignee;
+			return this;
+		}
+		
+		public Builder consumerPid(String consumerPid) {
+			agreement.consumerPid = consumerPid;
+			return this;
+		}
+		
+		public Builder providerPid(String providerPid) {
+			agreement.providerPid = providerPid;
 			return this;
 		}
 

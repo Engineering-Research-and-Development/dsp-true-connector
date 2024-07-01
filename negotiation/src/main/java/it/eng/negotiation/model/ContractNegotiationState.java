@@ -75,6 +75,10 @@ public enum ContractNegotiationState {
 	ContractNegotiationState(final String state) {
 		this.state = state;
 	}
+	
+	public boolean canTransitTo(ContractNegotiationState state) {
+		return nextState().contains(state);
+	}
 
 	@Override
 	@JsonValue

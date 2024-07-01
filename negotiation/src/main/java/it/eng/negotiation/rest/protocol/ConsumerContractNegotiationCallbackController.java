@@ -18,8 +18,8 @@ import it.eng.negotiation.model.ContractAgreementMessage;
 import it.eng.negotiation.model.ContractNegotiationEventMessage;
 import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
 import it.eng.negotiation.model.ContractOfferMessage;
-import it.eng.negotiation.model.Serializer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
+import it.eng.negotiation.serializer.Serializer;
 import it.eng.negotiation.service.ContractNegotiationConsumerService;
 import it.eng.tools.model.DSpaceConstants;
 import lombok.extern.slf4j.Slf4j;
@@ -56,7 +56,7 @@ public class ConsumerContractNegotiationCallbackController {
     private URI createdURI(JsonNode responseNode) {
     	// "https://provider.com/negotiations/:providerPid"
     	String providerPid = responseNode.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText();
-    	return URI.create(properties.callbackAddress() + "/negotiations/" + providerPid);
+    	return URI.create(properties.providerCallbackAddress() + "/negotiations/" + providerPid);
     }
 
     // https://consumer.com/:callback/negotiations/:consumerPid/offers	POST	ContractOfferMessage
@@ -82,14 +82,12 @@ public class ConsumerContractNegotiationCallbackController {
     public ResponseEntity<JsonNode> handleAgreement(@PathVariable String consumerPid,
                                                     @RequestBody JsonNode contractAgreementMessageJsonNode) throws InterruptedException, ExecutionException {
 
-    	log.info("Received agreement from provider !!!!!, consumerPid - {}", consumerPid);
+    	log.info("Received agreement from provider, consumerPid - {}", consumerPid);
         ContractAgreementMessage contractAgreementMessage = Serializer.deserializeProtocol(contractAgreementMessageJsonNode,
                 ContractAgreementMessage.class);
 
-        String callbackAddress = contractAgreementMessage.getCallbackAddress();
-        contractNegotiationConsumerService.handleAgreement(callbackAddress, contractAgreementMessage);
+        contractNegotiationConsumerService.handleAgreement(contractAgreementMessage);
 
-//		callbackAddress = callbackAddress.endsWith("/") ? callbackAddress : callbackAddress + "/";
         log.info("CONSUMER - Sending response OK - agreementMessage received");
         return ResponseEntity.ok().build();
     }
@@ -97,22 +95,21 @@ public class ConsumerContractNegotiationCallbackController {
     // https://consumer.com/:callback/negotiations/:consumerPid/events	POST	ContractNegotiationEventMessage
     // No callbackAddress
     @PostMapping("/consumer/negotiations/{consumerPid}/events")
-    public ResponseEntity<JsonNode> handleEventsMessage(@PathVariable String consumerPid,
+    public ResponseEntity<JsonNode> handleFinalizeEvent(@PathVariable String consumerPid,
                                                          @RequestBody JsonNode contractNegotiationEventMessageJsonNode) throws InterruptedException, ExecutionException {
 
         ContractNegotiationEventMessage contractNegotiationEventMessage =
                 Serializer.deserializeProtocol(contractNegotiationEventMessageJsonNode, ContractNegotiationEventMessage.class);
-        log.info("Event message received, status {}, consumerPid {}, providerPid", contractNegotiationEventMessage.getEventType(),
+        log.info("Event message received, status {}, consumerPid {}, providerPid {}", contractNegotiationEventMessage.getEventType(),
         		contractNegotiationEventMessage.getConsumerPid(), contractNegotiationEventMessage.getProviderPid());
-        JsonNode responseNode =
-                contractNegotiationConsumerService.handleEventsResponse(consumerPid, contractNegotiationEventMessage);
+		contractNegotiationConsumerService.handleFinalizeEvent(contractNegotiationEventMessage);
 
         // ACK or ERROR
         //If the CN's state is successfully transitioned, the Consumer must return HTTP code 200 (OK).
         // The response body is not specified and clients are not required to process it.
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON.toString())
-                .body(responseNode);
+                .build();
     }
 
     // https://consumer.com/:callback/negotiations/:consumerPid/termination POST	ContractNegotiationTerminationMessage

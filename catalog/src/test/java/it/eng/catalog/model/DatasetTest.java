@@ -82,8 +82,8 @@ public class DatasetTest {
 		assertNotNull(javaObj);
 		assertNotNull(javaObj.getConformsTo());
 		assertNotNull(javaObj.getCreator());
-		assertNotNull(javaObj.getDescription().get(0));
-		assertNotNull(javaObj.getDistribution().get(0));
+		assertNotNull(javaObj.getDescription().iterator().next());
+		assertNotNull(javaObj.getDistribution().iterator().next());
 		assertNotNull(javaObj.getIdentifier());
 		assertNotNull(javaObj.getIssued());
 		assertNotNull(javaObj.getKeyword());

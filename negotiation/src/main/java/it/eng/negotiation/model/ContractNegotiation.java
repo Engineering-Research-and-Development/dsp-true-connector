@@ -78,6 +78,12 @@ public class ContractNegotiation extends AbstractNegotiationObject {
             return this;
         }
         
+        /**
+         * It is sent in a request and is stored on the responder side for the next request
+         * E.g. Consumer sends request to provider-> Provider stores callbackAddress for future request and responses with 200 ()
+         * @param callbackAddress
+         * @return
+         */
         public Builder callbackAddress(String callbackAddress) {
         	message.callbackAddress = callbackAddress;
         	return this;
@@ -124,6 +130,25 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     @JsonIgnoreProperties(value = {"type"}, allowGetters = true)
     public String getType() {
         return DSpaceConstants.DSPACE + ContractNegotiation.class.getSimpleName();
+    }
+    
+    /**
+     * Create new ContractNegotiation from initial, with new state
+     * @param newState new ContractNegotiationState
+     * @return new instance of ContractNegotiation
+     */
+    public ContractNegotiation withNewContractNegotiationState(ContractNegotiationState newState) {
+    	return ContractNegotiation.Builder.newInstance()
+    			.id(this.id)
+    			.consumerPid(this.consumerPid)
+    			.providerPid(this.providerPid)
+    			.callbackAddress(this.callbackAddress)
+    			// not yet auditable fields
+//    			.createdBy(this.createdBy)
+//				.lastModifiedBy(this.lastModifiedBy)
+//				.version(this.version)
+    			.state(newState)
+    			.build();
     }
 }
 
