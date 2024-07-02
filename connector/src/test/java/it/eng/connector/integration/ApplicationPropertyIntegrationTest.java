@@ -11,8 +11,6 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.MockMvc;
@@ -23,9 +21,7 @@ import it.eng.tools.model.ApplicationProperty;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.model.Serializer;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-public class ApplicationPropertyIntegrationTest {
+public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 
 	private final String TEST_KEY = "application.daps.enabledDapsInteraction";
 
@@ -35,7 +31,7 @@ public class ApplicationPropertyIntegrationTest {
 	@Test
 	@WithUserDetails(TestUtil.ADMIN_USER)
 	public void getPropertiesSuccessfulTest() throws Exception {
-		
+
 		final ResultActions result =
 				mockMvc.perform(
 						get("/api/connector_property/")
@@ -47,7 +43,7 @@ public class ApplicationPropertyIntegrationTest {
 		//.andExpect(jsonPath("$." + IConstants.KEY).value(equalTo(randomKey)))
 		//.andExpect(jsonPath("$." + IConstants.VALUE).value(equalTo(randomValue)));
 	}
-	
+
 	@Test
 	@WithUserDetails(TestUtil.ADMIN_USER)
 	public void getPropertySuccessfulTest() throws Exception {
@@ -61,23 +57,23 @@ public class ApplicationPropertyIntegrationTest {
 		.andExpect(content().contentType(MediaType.APPLICATION_JSON))
 		.andExpect(jsonPath("['" + IConstants.KEY + "']", is(this.TEST_KEY)));
 	}
-	
+
 	@Test
 	@WithUserDetails(TestUtil.ADMIN_USER)
 	public void putPropertySuccessfulTest() throws Exception {
 
 		String randomValue = UUID.randomUUID().toString();
-		
+
 		ApplicationProperty changedProperty = ApplicationProperty.Builder.newInstance()
 				.key(this.TEST_KEY)
 				.value(randomValue)
 				.build();
-		
+
 		String body = Serializer.serializeProtocolJsonNode(changedProperty).toString();
-		
+
 		final ResultActions result =
 				mockMvc.perform(
-						put("/api/connector_property/")						
+						put("/api/connector_property/")
 						.contentType(MediaType.APPLICATION_JSON_VALUE)
 						.content(body)
 						.accept(MediaType.APPLICATION_JSON_VALUE));
@@ -87,5 +83,5 @@ public class ApplicationPropertyIntegrationTest {
 		.andExpect(jsonPath("['" + IConstants.KEY + "']", is(this.TEST_KEY)))
 		.andExpect(jsonPath("['" + IConstants.VALUE + "']", is(randomValue)));
 	}
-	
+
 }
