@@ -24,7 +24,7 @@ import it.eng.tools.service.ApplicationPropertiesService;
 import lombok.extern.java.Log;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/api/connector_property")
+@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/api/connectorProperty")
 @Log
 public class ApplicationPropertiesAPIController {
 
@@ -57,9 +57,9 @@ public class ApplicationPropertiesAPIController {
 	@GetMapping(path = "/{key}")
 	public ResponseEntity<JsonNode> getPropertyByKey(@PathVariable String key) {
 		log.info("Fetching property with key " + key);
-		
+
 		ApplicationProperty property = propertiesService.getPropertyByKey(key).orElseThrow(() -> new ApplicationPropertyNotFoundAPIException("Property with key " + key + " not found"));
-		
+
 		applicationEventPublisher.publishEvent(property);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
 				.body(Serializer.serializeProtocolJsonNode(property));
@@ -72,7 +72,7 @@ public class ApplicationPropertiesAPIController {
 
 		ApplicationProperty storedProperty = null;
 
-		Optional<ApplicationProperty> oldOneOpt = propertiesService.getPropertyByKey(property.getKey()); 
+		Optional<ApplicationProperty> oldOneOpt = propertiesService.getPropertyByKey(property.getKey());
 
 		ApplicationProperty oldOne = oldOneOpt.get();
 		if(!property.equals(oldOne)) {

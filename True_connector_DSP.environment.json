@@ -94,8 +94,8 @@
 		},
 		{
 			"key": "CONSUMER_SERVER_API_APPLICATION_PROPERTY",
-			"value": "{{CONSUMER}}/api/connector_property",
-    },
+			"value": "{{CONSUMER}}/api/connectorProperty"
+        },
 		{
 			"key": "PROVIDER_SERVER_API_DISTRIBUTION",
 			"value": "{{PROVIDER}}/api/distribution",
@@ -104,8 +104,8 @@
 		},
 		{
 			"key": "KEY_PREFIX",
-			"value": "application.daps",
-    },
+			"value": "application.daps"
+        },
 		{
 			"key": "PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER",
 			"value": "{{PROVIDER}}/transfers",
