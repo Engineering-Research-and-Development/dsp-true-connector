@@ -24,6 +24,7 @@ import it.eng.negotiation.exception.ContractNegotiationAPIException;
 import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ModelUtil;
+import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
@@ -31,6 +32,7 @@ import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.util.CredentialUtils;
 
 @ExtendWith(MockitoExtension.class)
 public class ContractNegotiationAPIServiceTest {
@@ -47,6 +49,8 @@ public class ContractNegotiationAPIServiceTest {
 	private ContractNegotiationProperties properties;
 	@Mock
 	private GenericApiResponse<String> apiResponse;
+	@Mock
+    private CredentialUtils credentialUtils;
 	
 	@Captor
 	private ArgumentCaptor<ContractNegotiation> argumentCaptor;
@@ -57,21 +61,23 @@ public class ContractNegotiationAPIServiceTest {
 	@Test
 	@DisplayName("Start contract negotiation success")
 	public void startNegotiation_success() {
+		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.getData()).thenReturn(Serializer.serializeProtocol(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
-		when(apiResponse.getHttpStatus()).thenReturn(201);
+		when(apiResponse.isSuccess()).thenReturn(true);
 		when(properties.consumerCallbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
 		
 		service.startNegotiation(ModelUtil.FORWARD_TO, Serializer.serializePlainJsonNode(ModelUtil.OFFER));
 		
 		verify(contractNegotiationRepository).save(any(ContractNegotiation.class));
+		verify(offerRepository).save(any(Offer.class));
 	}
 	
 	@Test
 	@DisplayName("Start contract negotiation failed")
 	public void startNegotiation_failed() {
+		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
-		when(apiResponse.getHttpStatus()).thenReturn(400);
 		when(properties.consumerCallbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
 		
 		assertThrows(ContractNegotiationAPIException.class, ()-> service.startNegotiation(ModelUtil.FORWARD_TO, Serializer.serializePlainJsonNode(ModelUtil.OFFER)));
@@ -82,9 +88,10 @@ public class ContractNegotiationAPIServiceTest {
 	@Test
 	@DisplayName("Start contract negotiation json exception")
 	public void startNegotiation_jsonException() {
+		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.getData()).thenReturn("not a JSON");
-		when(apiResponse.getHttpStatus()).thenReturn(201);
+		when(apiResponse.isSuccess()).thenReturn(true);
 		when(properties.consumerCallbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
 		
 		assertThrows(ContractNegotiationAPIException.class, ()-> service.startNegotiation(ModelUtil.FORWARD_TO, Serializer.serializePlainJsonNode(ModelUtil.OFFER)));
@@ -96,6 +103,7 @@ public class ContractNegotiationAPIServiceTest {
 	@DisplayName("Process posted offer - success")
 	public void postContractOffer_success() {
 		when(properties.providerCallbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
+		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
 			.thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(true);
@@ -109,6 +117,7 @@ public class ContractNegotiationAPIServiceTest {
 	@Test
 	@DisplayName("Process posted offer - error")
 	public void postContractOffer_error() {
+		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(properties.providerCallbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
 			.thenReturn(apiResponse);
@@ -121,8 +130,9 @@ public class ContractNegotiationAPIServiceTest {
 	@Test
 	@DisplayName("Send agreement success - accepted state")
 	public void sendAgreement_success_acceptedState() {
+		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
-		when(apiResponse.getHttpStatus()).thenReturn(200);
+		when(apiResponse.isSuccess()).thenReturn(true);
 		when(properties.providerCallbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 		
@@ -135,8 +145,9 @@ public class ContractNegotiationAPIServiceTest {
 	@Test
 	@DisplayName("Send agreement success - requested state")
 	public void sendAgreement_success_requestedState() {
+		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
-		when(apiResponse.getHttpStatus()).thenReturn(200);
+		when(apiResponse.isSuccess()).thenReturn(true);
 		when(properties.providerCallbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_REQUESTED));
 		
@@ -172,8 +183,8 @@ public class ContractNegotiationAPIServiceTest {
 	@Test
 	@DisplayName("Send agreement failed - bad request")
 	public void sendAgreement_failedBadRequest() {
+		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
-		when(apiResponse.getHttpStatus()).thenReturn(400);
 		when(properties.providerCallbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 		
@@ -187,6 +198,7 @@ public class ContractNegotiationAPIServiceTest {
 	@Test
 	@DisplayName("Finalize negotiation success")
 	public void finalizeNegotiation_success_requestedState() {
+		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(true);
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_VERIFIED));
@@ -222,9 +234,11 @@ public class ContractNegotiationAPIServiceTest {
 	@Test
 	@DisplayName("Finalize negotiation failed - bad request")
 	public void finalizeNegotiation_failedBadRequest() {
+		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(false);
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_VERIFIED));
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString()))
+			.thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_VERIFIED));
 		
 		assertThrows(ContractNegotiationAPIException.class, ()-> service.finalizeNegotiation(ModelUtil.CONTRACT_NEGOTIATION_EVENT_MESSAGE));
 	

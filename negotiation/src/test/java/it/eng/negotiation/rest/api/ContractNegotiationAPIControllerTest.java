@@ -5,12 +5,14 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -188,5 +190,27 @@ public class ContractNegotiationAPIControllerTest {
 		
 		assertThrows(ContractNegotiationAPIException.class, () ->
 		controller.finalizeNegotiation(mapper.convertValue(map, JsonNode.class)));
+	}
+	
+	@Test
+	@DisplayName("Provider accepts negotation")
+	public void providerAcceptsCN() {
+		String contractNegotaitionId = UUID.randomUUID().toString();
+		doNothing().when(handlerService).handleContractNegotiationApproved(contractNegotaitionId);
+		
+		ResponseEntity<JsonNode> response =  controller.handleContractNegotationApproved(contractNegotaitionId);
+		
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+	}
+	
+	@Test
+	@DisplayName("Provider terminates negotation")
+	public void providerTerminatesCN() {
+		String contractNegotaitionId = UUID.randomUUID().toString();
+		doNothing().when(handlerService).handleContractNegotiationTerminated(contractNegotaitionId);
+
+		ResponseEntity<JsonNode> response =  controller.handleContractNegotationTerminated(contractNegotaitionId);
+		
+		assertEquals(HttpStatus.OK, response.getStatusCode());
 	}
 }

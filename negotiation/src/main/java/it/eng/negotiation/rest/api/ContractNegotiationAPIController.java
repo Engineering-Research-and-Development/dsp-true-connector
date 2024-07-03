@@ -3,6 +3,7 @@ package it.eng.negotiation.rest.api;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -45,6 +46,7 @@ public class ContractNegotiationAPIController {
     			.body(GenericApiResponse.success(response, "Contract negotiation initiated", HttpStatus.OK.value()));
     }
 	
+	@Deprecated(since = "Please use negotiationApproved negotiationTerminated instead")
     @PostMapping(path = "/offerApproved")
     public ResponseEntity<JsonNode> handleOfferApproved(@RequestBody JsonNode response) {
         log.info("Handling offer approved");
@@ -54,6 +56,22 @@ public class ContractNegotiationAPIController {
         JsonNode offer = response.get(DSpaceConstants.OFFER);
         ContractNegotiationOfferResponseEvent offerResponse = new ContractNegotiationOfferResponseEvent(consumerPid, providerPid, offerAccepted, offer);
         handlerService.handleContractNegotiationOfferResponse(offerResponse);
+        
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).build();
+    }
+    
+    @PostMapping(path = "/negotiationApproved/{contractNegotiationId}")
+    public ResponseEntity<JsonNode> handleContractNegotationApproved(@PathVariable String contractNegotiationId) {
+        log.info("Handling contract negotiation approved");
+        handlerService.handleContractNegotiationApproved(contractNegotiationId);
+        
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).build();
+    }
+    
+    @PostMapping(path = "/negotiationTerminated/{contractNegotiationId}")
+    public ResponseEntity<JsonNode> handleContractNegotationTerminated(@PathVariable String contractNegotiationId) {
+        log.info("Handling contract negotiation approved");
+        handlerService.handleContractNegotiationTerminated(contractNegotiationId);
         
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).build();
     }

@@ -32,7 +32,6 @@ import it.eng.negotiation.model.ModelUtil;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
-import it.eng.negotiation.repository.OfferRepository;
 
 @ExtendWith(MockitoExtension.class)
 public class ContractNegotiationConsumerServiceTest {
@@ -43,8 +42,6 @@ public class ContractNegotiationConsumerServiceTest {
 	private ContractNegotiationPublisher publisher;
 	@Mock
 	private ContractNegotiationRepository contractNegotiationRepository;
-	@Mock
-	private OfferRepository offerRepository;
 	@Mock
 	private AgreementRepository agreementRepository ;
 	
@@ -71,7 +68,6 @@ public class ContractNegotiationConsumerServiceTest {
 	public void handleAgreement_success() {
 		when(properties.isAutomaticNegotiation()).thenReturn(true);
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
-		when(offerRepository.findByConsumerPidAndProviderPidAndTarget(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID, ModelUtil.TARGET)).thenReturn(Optional.of(ModelUtil.OFFER));
 
 		service.handleAgreement(ModelUtil.CONTRACT_AGREEMENT_MESSAGE);
 		
@@ -83,7 +79,6 @@ public class ContractNegotiationConsumerServiceTest {
 	public void handleAgreement_off_success() {
 		when(properties.isAutomaticNegotiation()).thenReturn(false);
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(ModelUtil.PROVIDER_PID, ModelUtil.CONSUMER_PID)).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
-		when(offerRepository.findByConsumerPidAndProviderPidAndTarget(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID, ModelUtil.TARGET)).thenReturn(Optional.of(ModelUtil.OFFER));
 		
 		service.handleAgreement( ModelUtil.CONTRACT_AGREEMENT_MESSAGE);
 		
@@ -123,7 +118,8 @@ public class ContractNegotiationConsumerServiceTest {
 	@Test
 	@DisplayName("Process agreement message - automatic negotiation OFF - offer not found")
 	public void handleAgreement_off_offerNotFound() {
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(ModelUtil.PROVIDER_PID, ModelUtil.CONSUMER_PID)).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(ModelUtil.PROVIDER_PID, ModelUtil.CONSUMER_PID))
+			.thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED_NO_OFFER));
 
 		assertThrows(OfferNotFoundException.class, () -> service.handleAgreement( ModelUtil.CONTRACT_AGREEMENT_MESSAGE));
 		

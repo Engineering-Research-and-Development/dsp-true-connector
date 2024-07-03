@@ -12,7 +12,6 @@ import it.eng.negotiation.exception.ContractNegotiationInvalidStateException;
 import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
 import it.eng.negotiation.exception.OfferNotFoundException;
 import it.eng.negotiation.listener.ContractNegotiationPublisher;
-import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.ContractAgreementMessage;
 import it.eng.negotiation.model.ContractAgreementVerificationMessage;
 import it.eng.negotiation.model.ContractNegotiation;
@@ -25,7 +24,6 @@ import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
-import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.serializer.Serializer;
 import lombok.extern.slf4j.Slf4j;
 
@@ -36,15 +34,13 @@ public class ContractNegotiationConsumerService {
 	private final ContractNegotiationProperties properties;
     private final ContractNegotiationPublisher publisher;
 	private final ContractNegotiationRepository repository;
-	private final OfferRepository offerRepository;
 	private final AgreementRepository agreementRepository;
 	
     public ContractNegotiationConsumerService(ContractNegotiationProperties properties,
-			ContractNegotiationPublisher publisher, ContractNegotiationRepository repository, AgreementRepository agreementRepository, OfferRepository offerRepository) {
+			ContractNegotiationPublisher publisher, ContractNegotiationRepository repository, AgreementRepository agreementRepository) {
 		this.properties = properties;
 		this.publisher = publisher;
 		this.repository = repository;
-		this.offerRepository = offerRepository;
 		this.agreementRepository = agreementRepository;
 	}
 
@@ -111,25 +107,26 @@ public class ContractNegotiationConsumerService {
 			throw new ContractNegotiationInvalidStateException("Agreement aborted, wrong state " + contractNegotiation.getState().name(),
 					contractAgreementMessage.getConsumerPid(), contractAgreementMessage.getProviderPid());
 		}
-    	
-    	validateAgreementAgainstOffer(contractAgreementMessage);
+    	if(contractNegotiation.getOffer() == null) {
+    		throw new OfferNotFoundException("For ContractNegotiation with consumerPid {} and providerPid {} Offer does not exists", 
+    				contractNegotiation.getConsumerPid(), contractNegotiation.getProviderPid());
+    	}
 
-    	ContractNegotiation contractNegotiationUpdated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.AGREED);
-    	log.info("CONSUMER - updating negotiation with state AGREED");
-    	repository.save(contractNegotiationUpdated);
-    	log.info("CONSUMER - negotiation {} updated with state AGREED", contractNegotiation.getId());
-    	Agreement agreement = Agreement.Builder.newInstance()
-    			.assignee(contractAgreementMessage.getAgreement().getAssignee())
-    			.assigner(contractAgreementMessage.getAgreement().getAssigner())
-    			.id(contractAgreementMessage.getAgreement().getId())
-    			.permission(contractAgreementMessage.getAgreement().getPermission())
-    			.target(contractAgreementMessage.getAgreement().getTarget())
-    			.timestamp(contractAgreementMessage.getAgreement().getTimestamp())
+//    	Must do like this since callbackAddress might be null
+    	ContractNegotiation contractNegotiationAgreed = ContractNegotiation.Builder.newInstance()
+    			.id(contractNegotiation.getId())
     			.consumerPid(contractNegotiation.getConsumerPid())
     			.providerPid(contractNegotiation.getProviderPid())
+    			.callbackAddress(contractAgreementMessage.getCallbackAddress())
+    			.assigner(contractNegotiation.getAssigner())
+    			.state(ContractNegotiationState.AGREED)
+    			.offer(contractNegotiation.getOffer())
     			.build();
+    	log.info("CONSUMER - updating negotiation with state AGREED");
+    	repository.save(contractNegotiationAgreed);
+    	log.info("CONSUMER - negotiation {} updated with state AGREED", contractNegotiationAgreed.getId());
     	log.info("CONSUMER - saving agreement");
-    	agreementRepository.save(agreement);
+    	agreementRepository.save(contractAgreementMessage.getAgreement());
     	log.info("CONSUMER - agreement {} saved", contractAgreementMessage.getAgreement().getId());
     	
     	// sends verification message to provider
@@ -187,16 +184,23 @@ public class ContractNegotiationConsumerService {
         return testNode;
     }
     
-    
-    private Offer validateAgreementAgainstOffer(ContractAgreementMessage contractAgreementMessage) {
-		return offerRepository
-				.findByConsumerPidAndProviderPidAndTarget(contractAgreementMessage.getConsumerPid(),
-						contractAgreementMessage.getProviderPid(),
-						contractAgreementMessage.getAgreement().getTarget())
-				.orElseThrow(() -> new OfferNotFoundException(
-						"Offer with following values from Agreement not found: providerPid " + contractAgreementMessage.getProviderPid() + 
-						" and consumerPid " + contractAgreementMessage.getConsumerPid() + "and target " + contractAgreementMessage.getAgreement().getTarget()));
-	}
+//    private Offer validateAgreementAgainstOffer(ContractAgreementMessage contractAgreementMessage) {
+//    	return 
+//    	repository.findByProviderPidAndConsumerPid(contractAgreementMessage.getProviderPid(), contractAgreementMessage.getConsumerPid())
+//    		.map(cn -> cn.getOffer())
+//    	.orElseThrow(() -> new OfferNotFoundException(
+//				"Offer with following values from Agreement not found: providerPid " + contractAgreementMessage.getProviderPid() + 
+//				" and consumerPid " + contractAgreementMessage.getConsumerPid() + "and target " + contractAgreementMessage.getAgreement().getTarget()));
+
+    	
+//		return offerRepository
+//				.findByConsumerPidAndProviderPidAndTarget(contractAgreementMessage.getConsumerPid(),
+//						contractAgreementMessage.getProviderPid(),
+//						contractAgreementMessage.getAgreement().getTarget())
+//				.orElseThrow(() -> new OfferNotFoundException(
+//						"Offer with following values from Agreement not found: providerPid " + contractAgreementMessage.getProviderPid() + 
+//						" and consumerPid " + contractAgreementMessage.getConsumerPid() + "and target " + contractAgreementMessage.getAgreement().getTarget()));
+//	}
 
 	private ContractNegotiation validateNegotiation(String consumerPid, String providerPid) {
 		return repository

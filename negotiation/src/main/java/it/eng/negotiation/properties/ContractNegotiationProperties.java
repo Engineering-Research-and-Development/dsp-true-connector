@@ -36,5 +36,9 @@ public class ContractNegotiationProperties {
 	public String serverPort() {
 		return serverPort;
 	}
+
+	public String getAssignee() {
+		return "TRUEConnector v2";
+	}
 	
 }

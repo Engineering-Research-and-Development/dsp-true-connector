@@ -59,7 +59,7 @@ public class ProviderContractNegotiationController {
         
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest().path("/{id}")
-                .buildAndExpand("123").toUri();
+                .buildAndExpand(cn.getProviderPid()).toUri();
 
         return ResponseEntity.created(location).contentType(MediaType.APPLICATION_JSON).body(Serializer.serializeProtocolJsonNode(cn));
     }

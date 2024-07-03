@@ -128,6 +128,15 @@ public class ModelUtil {
 			.providerPid(ModelUtil.PROVIDER_PID)
 			.callbackAddress(CALLBACK_ADDRESS)
 			.state(ContractNegotiationState.ACCEPTED)
+			.offer(ModelUtil.OFFER_COUNT_5)
+			.assigner(ASSIGNER)
+			.build();
+	
+	public static final ContractNegotiation CONTRACT_NEGOTIATION_ACCEPTED_NO_OFFER = ContractNegotiation.Builder.newInstance()
+			.consumerPid(ModelUtil.CONSUMER_PID)
+			.providerPid(ModelUtil.PROVIDER_PID)
+			.callbackAddress(CALLBACK_ADDRESS)
+			.state(ContractNegotiationState.ACCEPTED)
 			.build();
 	
 	public static final ContractNegotiation CONTRACT_NEGOTIATION_REQUESTED = ContractNegotiation.Builder.newInstance()
@@ -135,6 +144,8 @@ public class ModelUtil {
 			.providerPid(ModelUtil.PROVIDER_PID)
 			.callbackAddress(CALLBACK_ADDRESS)
 			.state(ContractNegotiationState.REQUESTED)
+			.offer(OFFER)
+			.assigner(ASSIGNER)
 			.build();
 	
 	public static final ContractNegotiation CONTRACT_NEGOTIATION_AGREED = ContractNegotiation.Builder.newInstance()
