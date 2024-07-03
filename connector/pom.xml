@@ -160,6 +160,7 @@
 			<plugin>
 				<artifactId>maven-jar-plugin</artifactId>
 				<configuration>
+					<finalName>application</finalName>
 					<excludes>
 						<exclude>**/*.p12</exclude>
 						<exclude>**/*.jks</exclude>
