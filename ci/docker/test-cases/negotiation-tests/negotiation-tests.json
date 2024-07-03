@@ -1,0 +1,276 @@
+{
+	"info": {
+		"_postman_id": "10aab204-266b-44fe-a5aa-4e4981ded9c7",
+		"name": "Negotiation tests",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "21815221",
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-10aab204-266b-44fe-a5aa-4e4981ded9c7?action=share&source=collection_link&creator=21815221"
+	},
+	"item": [
+		{
+			"name": "Negotiation",
+			"item": [
+				{
+					"name": "[C] Start negotiation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Retrieve consumer pid\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.collectionVariables.set(\"consumerPid\", jsonData[\"data\"][\"consumerPid\"])\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Retrieve provider pid\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.collectionVariables.set(\"providerPid\", jsonData[\"data\"][\"providerPid\"])\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER_PROTOCOL_ENDPOINT}}/request\",\r\n    \"offer\": {\r\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"urn:uuid:TARGET\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"EQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{CONSUMER_API_ENDPOINT}}/startNegotiation",
+							"host": [
+								"{{CONSUMER_API_ENDPOINT}}"
+							],
+							"path": [
+								"startNegotiation"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[P] Send Agreement",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Basic YWRtaW5AbWFpbC5jb206cGFzc3dvcmQ="
+							},
+							{
+								"key": "Cookie",
+								"value": "JSESSIONID=1B172A0D2187794C8FA816EF096C69B8"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"consumerPid\": \"{{consumerPid}}\",\n    \"providerPid\": \"{{providerPid}}\",\n    \"agreement\": {\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\n        \"target\": \"urn:uuid:TARGET\",\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\n        \"assignee\": \"urn:uuid:ASSIGNEE_CONSUMER\",\n        \"permission\": [\n            {\n                \"action\": \"USE\",\n                \"constraint\": [\n                    {\n                        \"leftOperand\": \"COUNT\",\n                        \"operator\": \"EQ\",\n                        \"rightOperand\": \"5\"\n                    }\n                ]\n            }\n        ]\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{PROVIDER_API_ENDPOINT}}/sendAgreement",
+							"host": [
+								"{{PROVIDER_API_ENDPOINT}}"
+							],
+							"path": [
+								"sendAgreement"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[C] Verify negotiation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"consumerPid\": \"{{consumerPid}}\",\r\n    \"providerPid\": \"{{providerPid}}\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{CONSUMER_API_ENDPOINT}}/verifyNegotiation",
+							"host": [
+								"{{CONSUMER_API_ENDPOINT}}"
+							],
+							"path": [
+								"verifyNegotiation"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[P] Finalize negotiation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"consumerPid\": \"{{consumerPid}}\",\r\n    \"providerPid\": \"{{providerPid}}\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{PROVIDER_API_ENDPOINT}}/finalizeNegotiation",
+							"host": [
+								"{{PROVIDER_API_ENDPOINT}}"
+							],
+							"path": [
+								"finalizeNegotiation"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "basic",
+		"basic": [
+			{
+				"key": "password",
+				"value": "password",
+				"type": "string"
+			},
+			{
+				"key": "username",
+				"value": "admin@mail.com",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "CONSUMER_API_ENDPOINT",
+			"value": "http://localhost:8080/api/negotiations",
+			"type": "string"
+		},
+		{
+			"key": "PROVIDER_API_ENDPOINT",
+			"value": "http://localhost:8090/api/negotiations",
+			"type": "string"
+		},
+		{
+			"key": "CONSUMER_PROTOCOL_ENDPOINT",
+			"value": "http://connector-a:8080/negotiations",
+			"type": "string"
+		},
+		{
+			"key": "PROVIDER_PROTOCOL_ENDPOINT",
+			"value": "http://connector-b:8080/negotiations",
+			"type": "string"
+		},
+		{
+			"key": "consumerPid",
+			"value": ""
+		},
+		{
+			"key": "providerPid",
+			"value": ""
+		}
+	]
+}
