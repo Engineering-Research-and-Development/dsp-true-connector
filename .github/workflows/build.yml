@@ -40,7 +40,8 @@ jobs:
         id: push
         uses: docker/build-push-action@v6
         with:
-          context: ./connector/Dockerfile
+          context: .
+          file: ./connector/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
