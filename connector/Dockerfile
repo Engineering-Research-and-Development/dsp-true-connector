@@ -9,7 +9,7 @@ COPY target/dependency-jars /home/nobody/app/dependency-jars
 COPY src/main/resources/initial_data.json /home/nobody/intial_data.json
 
 # Add the application's jar to the container
-ADD target/connector.jar /home/nobody/app/application.jar
+ADD target/application.jar /home/nobody/app/application.jar
 
 RUN chown -R nobody:nogroup /home/nobody
 
