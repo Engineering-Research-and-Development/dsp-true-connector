@@ -17,7 +17,7 @@ jobs:
       
     env:
       REGISTRY: ghcr.io
-      IMAGE_NAME: dsp-true-connector-test
+      IMAGE_NAME: Engineering-Research-and-Development/dsp-true-connector-test
 
     steps:
       - name: Checkout repository
