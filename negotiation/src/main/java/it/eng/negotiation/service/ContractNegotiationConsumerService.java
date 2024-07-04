@@ -33,14 +33,14 @@ public class ContractNegotiationConsumerService {
 
 	private final ContractNegotiationProperties properties;
     private final ContractNegotiationPublisher publisher;
-	private final ContractNegotiationRepository repository;
+	private final ContractNegotiationRepository contractNegotiationRepository;
 	private final AgreementRepository agreementRepository;
 	
     public ContractNegotiationConsumerService(ContractNegotiationProperties properties,
 			ContractNegotiationPublisher publisher, ContractNegotiationRepository repository, AgreementRepository agreementRepository) {
 		this.properties = properties;
 		this.publisher = publisher;
-		this.repository = repository;
+		this.contractNegotiationRepository = repository;
 		this.agreementRepository = agreementRepository;
 	}
 
@@ -65,7 +65,7 @@ public class ContractNegotiationConsumerService {
                 .providerPid(createNewPid())
                 .state(ContractNegotiationState.OFFERED)
                 .build();
-        repository.save(contractNegotiation);
+        contractNegotiationRepository.save(contractNegotiation);
         return Serializer.serializeProtocolJsonNode(contractNegotiation);
     }
     
@@ -123,7 +123,7 @@ public class ContractNegotiationConsumerService {
     			.offer(contractNegotiation.getOffer())
     			.build();
     	log.info("CONSUMER - updating negotiation with state AGREED");
-    	repository.save(contractNegotiationAgreed);
+    	contractNegotiationRepository.save(contractNegotiationAgreed);
     	log.info("CONSUMER - negotiation {} updated with state AGREED", contractNegotiationAgreed.getId());
     	log.info("CONSUMER - saving agreement");
     	agreementRepository.save(contractAgreementMessage.getAgreement());
@@ -167,7 +167,7 @@ public class ContractNegotiationConsumerService {
 		log.info("CONSUMER - updating Contract Negotiation state to FINALIZED");
 		ContractNegotiation contractNegotiationUpdated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.FINALIZED);
 		log.info("CONSUMER - saving updated contract negotiation");
-		repository.save(contractNegotiationUpdated);
+		contractNegotiationRepository.save(contractNegotiationUpdated);
     }
 
     /**
@@ -178,10 +178,15 @@ public class ContractNegotiationConsumerService {
      * @return
      */
 
-    public JsonNode handleTerminationResponse(String consumerPid, ContractNegotiationTerminationMessage contractNegotiationTerminationMessage) {
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode testNode = mapper.createObjectNode();
-        return testNode;
+    public void handleTerminationResponse(String consumerPid, ContractNegotiationTerminationMessage contractNegotiationTerminationMessage) {
+		ContractNegotiation contractNegotiation = contractNegotiationRepository.findByProviderPidAndConsumerPid(contractNegotiationTerminationMessage.getProviderPid(), consumerPid)
+	        	.orElseThrow(() ->
+	                new ContractNegotiationNotFoundException("Contract negotiation with consumerPid " + consumerPid + " and providerPid " +
+	                		contractNegotiationTerminationMessage.getProviderPid() + " not found"));
+
+    	ContractNegotiation contractNegotiationTerminated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.TERMINATED);
+    	contractNegotiationRepository.save(contractNegotiationTerminated);
+    	log.info("Contract Negotiation with id {} set to TERMINATED state", contractNegotiation.getId());
     }
     
 //    private Offer validateAgreementAgainstOffer(ContractAgreementMessage contractAgreementMessage) {
@@ -203,7 +208,7 @@ public class ContractNegotiationConsumerService {
 //	}
 
 	private ContractNegotiation validateNegotiation(String consumerPid, String providerPid) {
-		return repository
+		return contractNegotiationRepository
 				.findByProviderPidAndConsumerPid(providerPid, consumerPid)
 				.orElseThrow(() -> new ContractNegotiationNotFoundException(
 						"Contract negotiation with providerPid " + providerPid + 

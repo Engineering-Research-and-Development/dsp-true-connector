@@ -1,8 +1,12 @@
 package it.eng.negotiation.rest.api;
 
+import java.util.Collection;
+
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -12,8 +16,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.negotiation.model.ContractAgreementVerificationMessage;
+import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationEventMessage;
 import it.eng.negotiation.model.ContractNegotiationEventType;
+import it.eng.negotiation.serializer.Serializer;
 import it.eng.negotiation.service.ContractNegotiationAPIService;
 import it.eng.negotiation.service.ContractNegotiationEventHandlerService;
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
@@ -34,6 +40,14 @@ public class ContractNegotiationAPIController {
 		this.handlerService = handlerService;
 		this.apiService = apiService;
 	}
+    
+    @GetMapping(path={ "/find", "/find/{state}" })
+    public ResponseEntity<GenericApiResponse<Collection<JsonNode>>> findContractNegotations(@PathVariable(required = false) String state){
+    	Collection<JsonNode> contractNegotiations = apiService.findContractNegotiations(state);
+    	String message = StringUtils.isNotBlank(state) ? "Contract negotiations - " + state : "Contract negotiations";
+    	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+    			.body(GenericApiResponse.success(contractNegotiations, message, HttpStatus.OK.value()));
+    } 
 
     //consumer starts contract negotiation
 	@PostMapping(path = "/startNegotiation")
@@ -61,19 +75,22 @@ public class ContractNegotiationAPIController {
     }
     
     @PostMapping(path = "/negotiationApproved/{contractNegotiationId}")
-    public ResponseEntity<JsonNode> handleContractNegotationApproved(@PathVariable String contractNegotiationId) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> handleContractNegotationApproved(@PathVariable String contractNegotiationId) {
         log.info("Handling contract negotiation approved");
-        handlerService.handleContractNegotiationApproved(contractNegotiationId);
-        
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).build();
+        ContractNegotiation contractNegotiationApproved = handlerService.handleContractNegotiationApproved(contractNegotiationId);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+        		.body(GenericApiResponse.success(Serializer.serializeProtocolJsonNode(contractNegotiationApproved),
+        				"Contract negotiation approved", HttpStatus.OK.value()));
     }
     
     @PostMapping(path = "/negotiationTerminated/{contractNegotiationId}")
-    public ResponseEntity<JsonNode> handleContractNegotationTerminated(@PathVariable String contractNegotiationId) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> handleContractNegotationTerminated(@PathVariable String contractNegotiationId) {
         log.info("Handling contract negotiation approved");
-        handlerService.handleContractNegotiationTerminated(contractNegotiationId);
+        ContractNegotiation contractNegotiationTerminated = handlerService.handleContractNegotiationTerminated(contractNegotiationId);
         
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).build();
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+        		.body(GenericApiResponse.success(Serializer.serializeProtocolJsonNode(contractNegotiationTerminated),
+        				"Contract negotiation terminated", HttpStatus.OK.value()));
     }
     
     @PostMapping(path = "/verifyNegotiation")

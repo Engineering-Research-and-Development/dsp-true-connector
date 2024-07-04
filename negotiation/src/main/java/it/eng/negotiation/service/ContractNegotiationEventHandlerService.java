@@ -96,7 +96,7 @@ public class ContractNegotiationEventHandlerService {
 		}
 	}
 	
-	public void handleContractNegotiationApproved(String contractNegotiationId) {
+	public ContractNegotiation handleContractNegotiationApproved(String contractNegotiationId) {
 		ContractNegotiation contractNegotiation = contractNegotiationRepository.findById(contractNegotiationId)
         	.orElseThrow(() ->
                 new ContractNegotiationNotFoundException("Contract negotiation with id " + contractNegotiationId + " not found"));
@@ -131,13 +131,14 @@ public class ContractNegotiationEventHandlerService {
 			contractNegotiationRepository.save(contractNegtiationUpdate);
 			log.info("Saving agreement..." + agreementMessage.getAgreement().getId());
 			agreementRepository.save(agreementMessage.getAgreement());
+			return contractNegtiationUpdate;
 		} else {
 			log.error("Response status not 200 - consumer did not process AgreementMessage correct");
 			throw new ContractNegotiationAPIException("consumer did not process AgreementMessage correct");
 		}
 	}
 	
-	public void handleContractNegotiationTerminated(String contractNegotiationId) {
+	public ContractNegotiation handleContractNegotiationTerminated(String contractNegotiationId) {
 		ContractNegotiation contractNegotiation = contractNegotiationRepository.findById(contractNegotiationId)
     		.orElseThrow(() ->
     			new ContractNegotiationNotFoundException("Contract negotiation with id " + contractNegotiationId + " not found"));
@@ -156,8 +157,9 @@ public class ContractNegotiationEventHandlerService {
 				credentialUtils.getConnectorCredentials());
 		if(response.isSuccess()) {
 			log.info("Updating status for negotiation {} to terminated", contractNegotiation.getId());
-			ContractNegotiation contractNegtiationUpdate = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.TERMINATED);
-			contractNegotiationRepository.save(contractNegtiationUpdate);
+			ContractNegotiation contractNegtiationTerminated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.TERMINATED);
+			contractNegotiationRepository.save(contractNegtiationTerminated);
+			return contractNegtiationTerminated;
 		} else {
 			log.error("Response status not 200 - consumer did not process AgreementMessage correct");
 			throw new ContractNegotiationAPIException("consumer did not process AgreementMessage correct");

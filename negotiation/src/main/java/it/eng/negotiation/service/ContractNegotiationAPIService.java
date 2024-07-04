@@ -1,7 +1,10 @@
 package it.eng.negotiation.service;
 
+import java.util.Collection;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -214,5 +217,16 @@ public class ContractNegotiationAPIService {
 			log.error("Error response received!");
 			throw new ContractNegotiationAPIException(response.getMessage());
 		}
+	}
+
+	public Collection<JsonNode> findContractNegotiations(String state) {
+		if(StringUtils.isNotBlank(state)) {
+			return contractNegotiationRepository.findByState(state).stream()
+					.map(cn -> Serializer.serializePlainJsonNode(cn))
+					.collect(Collectors.toList());
+		}
+		return contractNegotiationRepository.findAll().stream()
+				.map(cn -> Serializer.serializePlainJsonNode(cn))
+				.collect(Collectors.toList());
 	}
 }

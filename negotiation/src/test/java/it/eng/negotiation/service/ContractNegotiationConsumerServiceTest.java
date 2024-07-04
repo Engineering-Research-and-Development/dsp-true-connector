@@ -171,6 +171,24 @@ public class ContractNegotiationConsumerServiceTest {
 	@Test
 	@DisplayName("Process termination message success")
 	public void handleTerminationResponse_success() {
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class)))
+			.thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_REQUESTED));
+
 		service.handleTerminationResponse(ModelUtil.CONSUMER_PID, ModelUtil.TERMINATION_MESSAGE);
+		
+		verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
+		assertEquals(ContractNegotiationState.TERMINATED, argCaptorContractNegotiation.getValue().getState());
 	}
+	
+	@Test
+	@DisplayName("Process termination message failed - negotiation not found")
+	public void handleTerminationResponse_fail() {
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class)))
+			.thenReturn(Optional.empty());
+
+		assertThrows(ContractNegotiationNotFoundException.class, 
+				() -> service.handleTerminationResponse(ModelUtil.CONSUMER_PID, ModelUtil.TERMINATION_MESSAGE));
+	}
+	
+	
 }

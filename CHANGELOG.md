@@ -3,10 +3,15 @@ All notable changes to this project will be documented in this file.
 
 ## [0.0.1] - 2024-07-03
 
+### Added 
+
+ - Added API endpoints for accepting and declining negotiation from provider side
+ - Added API endpoint for finding contract negotiations by state or all
+
 ### Changed
 
  - Reviewed negotiation flow
- - Added 2 API endpoints for accepting and declining negotiation from provider side
+ - Updated postman collection
 
 ## [0.0.1] - 2024-06-28
 

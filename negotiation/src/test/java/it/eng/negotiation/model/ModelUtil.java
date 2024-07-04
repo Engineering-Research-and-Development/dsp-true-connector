@@ -175,4 +175,13 @@ public class ModelUtil {
 			.callbackAddress(CALLBACK_ADDRESS)
 			.state(ContractNegotiationState.FINALIZED)
 			.build();
+	
+	public static final ContractNegotiation CONTRACT_NEGOTIATION_TERMINATED = ContractNegotiation.Builder.newInstance()
+			.consumerPid(ModelUtil.CONSUMER_PID)
+			.providerPid(ModelUtil.PROVIDER_PID)
+			.callbackAddress(CALLBACK_ADDRESS)
+			.state(ContractNegotiationState.TERMINATED)
+			.offer(ModelUtil.OFFER_COUNT_5)
+			.assigner(ASSIGNER)
+			.build();
 }

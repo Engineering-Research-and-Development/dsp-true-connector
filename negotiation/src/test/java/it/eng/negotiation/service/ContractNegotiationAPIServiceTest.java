@@ -1,5 +1,7 @@
 package it.eng.negotiation.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -7,6 +9,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
@@ -23,6 +27,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
 import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.ContractNegotiation;
+import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ModelUtil;
 import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
@@ -244,5 +249,27 @@ public class ContractNegotiationAPIServiceTest {
 	
 		verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
 		verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
+	}
+	
+	@Test
+	@DisplayName("Find all contract negotiations")
+	public void findAll() {
+		when(contractNegotiationRepository.findAll())
+				.thenReturn(Arrays.asList(
+						ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED,
+						ModelUtil.CONTRACT_NEGOTIATION_REQUESTED));
+		Collection<JsonNode> response = service.findContractNegotiations(null);
+		assertNotNull(response);
+		assertEquals(2, response.size());
+	}
+	
+	@Test
+	@DisplayName("Find contract negotiations by state")
+	public void findContractNegotiationByState() {
+		when(contractNegotiationRepository.findByState(ContractNegotiationState.ACCEPTED.name()))
+				.thenReturn(Arrays.asList(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+		Collection<JsonNode> response = service.findContractNegotiations(ContractNegotiationState.ACCEPTED.name());
+		assertNotNull(response);
+		assertEquals(1, response.size());
 	}
 }

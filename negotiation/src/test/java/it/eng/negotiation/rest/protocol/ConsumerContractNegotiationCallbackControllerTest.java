@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.negotiation.exception.ContractNegotiationInvalidStateException;
+import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
 import it.eng.negotiation.model.ContractAgreementMessage;
 import it.eng.negotiation.model.ContractNegotiationEventMessage;
 import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
@@ -108,9 +109,8 @@ public class ConsumerContractNegotiationCallbackControllerTest {
     }
     
     @Test
-    public void handleFinalizeEvent_failed() throws InterruptedException, ExecutionException, JsonMappingException, JsonProcessingException {
-        String json = Serializer.serializeProtocol(ModelUtil.CONTRACT_NEGOTIATION_EVENT_MESSAGE);
-        JsonNode jsonNode = mapper.readTree(json);
+    public void handleFinalizeEvent_failed()  {
+		JsonNode jsonNode = Serializer.serializeProtocolJsonNode(ModelUtil.CONTRACT_NEGOTIATION_EVENT_MESSAGE);
 
         doThrow(new ContractNegotiationInvalidStateException("Something not correct - tests", ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID))
 		.when(contractNegotiationConsumerService).handleFinalizeEvent(any(ContractNegotiationEventMessage.class));
@@ -120,14 +120,20 @@ public class ConsumerContractNegotiationCallbackControllerTest {
     }
 
     @Test
-    public void handleTerminationResponse() throws InterruptedException, ExecutionException, JsonMappingException, JsonProcessingException {
-        String json = Serializer.serializeProtocol(ModelUtil.TERMINATION_MESSAGE);
-        JsonNode jsonNode = mapper.readTree(json);
-        when(contractNegotiationConsumerService.handleTerminationResponse(any(String.class), any(ContractNegotiationTerminationMessage.class)))
-                .thenReturn((null));
+    public void handleTerminationResponse() {
+    	JsonNode jsonNode = Serializer.serializeProtocolJsonNode(ModelUtil.TERMINATION_MESSAGE);
 
         ResponseEntity<JsonNode> response = controller.handleTerminationResponse(ModelUtil.CONSUMER_PID, jsonNode);
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
+    }
+    
+    @Test
+    public void handleTerminationResponse_error_service() {
+    	JsonNode jsonNode = Serializer.serializeProtocolJsonNode(ModelUtil.TERMINATION_MESSAGE);
+    	doThrow(ContractNegotiationNotFoundException.class).when(contractNegotiationConsumerService)
+    		.handleTerminationResponse(any(String.class), any(ContractNegotiationTerminationMessage.class));
+    	assertThrows(ContractNegotiationNotFoundException.class, 
+    			() ->controller.handleTerminationResponse(ModelUtil.CONSUMER_PID, jsonNode));
     }
 }
