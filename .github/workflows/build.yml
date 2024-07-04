@@ -50,7 +50,7 @@ jobs:
         id: push
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ./connector
           file: ./connector/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
