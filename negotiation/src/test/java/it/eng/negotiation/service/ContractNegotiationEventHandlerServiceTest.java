@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
 import it.eng.negotiation.exception.ContractNegotiationInvalidStateException;
+import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
 import it.eng.negotiation.exception.OfferNotFoundException;
 import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.ContractNegotiation;
@@ -191,5 +192,47 @@ public class ContractNegotiationEventHandlerServiceTest {
 		
 		verify(repository, times(0)).save(argCaptorContractNegotiation.capture());
 		verify(agreementRepository, times(0)).save(argCaptorAgreement.capture());
+	}
+	
+	@Test
+	@DisplayName("Provider terminate contract negotiation")
+	public void terminateNegotiation() {
+		String contractNegotaitionId = UUID.randomUUID().toString(); 
+		when(repository.findById(contractNegotaitionId)).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_REQUESTED));
+		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+		when(apiResponse.isSuccess()).thenReturn(true);
+		
+		handlerService.handleContractNegotiationTerminated(contractNegotaitionId);
+		
+		verify(repository).save(argCaptorContractNegotiation.capture());
+		assertEquals(ContractNegotiationState.TERMINATED, argCaptorContractNegotiation.getValue().getState());
+	}
+	
+	@Test
+	@DisplayName("Provider terminate contract negotiation - contract negotiaton not found")
+	public void terminateNegotiation_cn_not_found() {
+		String contractNegotaitionId = UUID.randomUUID().toString(); 
+		when(repository.findById(contractNegotaitionId)).thenReturn(Optional.empty());
+
+		assertThrows(ContractNegotiationNotFoundException.class,
+				() -> handlerService.handleContractNegotiationTerminated(contractNegotaitionId));
+		
+		verify(repository, times(0)).save(argCaptorContractNegotiation.capture());
+	}
+	
+	@Test
+	@DisplayName("Provider terminate contract negotiation - consumer did not respond")
+	public void terminateNegotiation_consumer_error() {
+		String contractNegotaitionId = UUID.randomUUID().toString(); 
+		when(repository.findById(contractNegotaitionId)).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_REQUESTED));
+		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+		when(apiResponse.isSuccess()).thenReturn(false);
+
+		assertThrows(ContractNegotiationAPIException.class,
+				() -> handlerService.handleContractNegotiationTerminated(contractNegotaitionId));
+		
+		verify(repository, times(0)).save(argCaptorContractNegotiation.capture());
 	}
 }
