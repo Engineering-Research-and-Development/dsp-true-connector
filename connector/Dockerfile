@@ -5,11 +5,11 @@ RUN mkdir -p /home/nobody/ftp && mkdir -p /home/nobody/data/log/tc
 WORKDIR /home/nobody
 
 # The application's jar file
-COPY target/dependency-jars /home/nobody/app/dependency-jars
-COPY src/main/resources/initial_data.json /home/nobody/intial_data.json
+COPY ./target/dependency-jars /home/nobody/app/dependency-jars
+COPY ./src/main/resources/initial_data.json /home/nobody/intial_data.json
 
 # Add the application's jar to the container
-ADD target/application.jar /home/nobody/app/application.jar
+ADD ./target/application.jar /home/nobody/app/application.jar
 
 RUN chown -R nobody:nogroup /home/nobody
 
