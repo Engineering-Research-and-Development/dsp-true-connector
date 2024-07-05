@@ -76,7 +76,23 @@ jobs:
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
+        
+      - name: Run docker container for negotiation-tests
+        run: docker-compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
+        
+      - name: Wait for container starting
+        run: sleep 90
+
+      - name: Check if the container is up and running
+        run: docker ps -a
 
       - uses: matt-ball/newman-action@master
         with:
           collection: ./ci/docker/test-cases/negotiation-tests/negotiation-tests.json
+          
+      - name: Dump docker negotiation-tests
+        if: failure()
+        uses: jwalton/gh-docker-logs@v2
+
+      - name: Stop docker container negotiation-tests
+        run: docker-compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
