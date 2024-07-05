@@ -2,7 +2,7 @@ version: '3.1'
 services:
 ### intstance a
   connector-a:
-    image: ghcr.io/Engineering-Research-and-Development/dsp-true-connector-test:latest
+    image: ghcr.io/engineering-research-and-development/dsp-true-connector-test:latest
     deploy:
       resources:
         limits:
@@ -53,7 +53,7 @@ services:
 ### instance b
 
   connector-b:
-    image: ghcr.io/Engineering-Research-and-Development/dsp-true-connector-test:latest
+    image: ghcr.io/engineering-research-and-development/dsp-true-connector-test:latest
     deploy:
       resources:
         limits:
