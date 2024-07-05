@@ -79,4 +79,4 @@ jobs:
 
       - uses: matt-ball/newman-action@master
         with:
-          collection: ./ci/docker/test-cases/negotiation-tests/negotiation-tests.json --timeout-request 120000 --insecure --bail --verbose
+          collection: ./ci/docker/test-cases/negotiation-tests/negotiation-tests.json
