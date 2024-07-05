@@ -114,7 +114,13 @@ public class ContractNegotiationConsumerService {
     	
     	validateAgreementAgainstOffer(contractAgreementMessage);
 
-    	ContractNegotiation contractNegotiationUpdated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.AGREED);
+    	
+    	ContractNegotiation contractNegotiationUpdated = ContractNegotiation.Builder.newInstance()
+                .state(ContractNegotiationState.AGREED)
+                .consumerPid(contractNegotiation.getConsumerPid())
+                .providerPid(contractNegotiation.getProviderPid())
+                .callbackAddress(contractAgreementMessage.getCallbackAddress())
+                .build();
     	log.info("CONSUMER - updating negotiation with state AGREED");
     	repository.save(contractNegotiationUpdated);
     	log.info("CONSUMER - negotiation {} updated with state AGREED", contractNegotiation.getId());
