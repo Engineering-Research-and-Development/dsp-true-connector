@@ -1,3 +1,10 @@
+#!/bin/bash
+
+#echo "Downloading certificate from private repository..."
+#git clone https://${GH_TOKEN}:x-oauth-basic@github.com/Engineering-Research-and-Development/private-files-repo.git
+#cp -a private-files-repo/. ./ci/docker/tc_cert
+#echo "Certificate from private repository downloaded"
+
 echo "Installing Newman CLI..."
 sudo npm set strict-ssl false
 sudo npm install -g newman@5.2.2

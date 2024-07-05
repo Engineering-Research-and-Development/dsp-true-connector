@@ -78,7 +78,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run env setup
-        run: ./ci/setupEnv.sh
+        run: /ci/setupEnv.sh
 
       - name: Run docker container for negotiation-tests
         run: docker-compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
