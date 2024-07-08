@@ -82,12 +82,14 @@ public class ProviderContractNegotiationController {
     @PostMapping(path = "/{providerPid}/events")
     public ResponseEntity<JsonNode> handleNegotiationEventMessage(@PathVariable String providerPid, 
     		@RequestBody JsonNode contractNegotiationEventMessageJsonNode) {
-    	 ContractNegotiationEventMessage cnem = Serializer.deserializeProtocol(contractNegotiationEventMessageJsonNode, ContractNegotiationEventMessage.class);
-         log.info(cnem.toString());
+    	 ContractNegotiationEventMessage contractNegotiationEventMessage = Serializer.deserializeProtocol(contractNegotiationEventMessageJsonNode, ContractNegotiationEventMessage.class);
+         log.info(contractNegotiationEventMessage.toString());
          
-         ContractNegotiationErrorMessage error = methodNotYetImplemented();
-         return ResponseEntity.internalServerError().contentType(MediaType.APPLICATION_JSON).body(Serializer.serializeProtocolJsonNode(error));
-
+         ContractNegotiation contractNegotiation = providerService.handleContractNegotationEventMessage(contractNegotiationEventMessage);
+       
+         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+        		 .body(Serializer.serializeProtocolJsonNode(contractNegotiation));
+//        		 .build();
     }
 
     // 2.5 The provider negotiations/:providerPid/agreement/verification resource

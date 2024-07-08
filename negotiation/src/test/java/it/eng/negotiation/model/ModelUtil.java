@@ -115,6 +115,12 @@ public class ModelUtil {
 			.eventType(ContractNegotiationEventType.FINALIZED)
 			.build();
 	
+	public static final ContractNegotiationEventMessage CONTRACT_NEGOTIATION_EVENT_MESSAGE_ACCEPTED = ContractNegotiationEventMessage.Builder.newInstance()
+			.consumerPid(ModelUtil.CONSUMER_PID)
+			.providerPid(ModelUtil.PROVIDER_PID)
+			.eventType(ContractNegotiationEventType.ACCEPTED)
+			.build();
+	
 	public static final ContractNegotiationErrorMessage CONTRACT_NEGOTIATION_ERROR_MESSAGE = ContractNegotiationErrorMessage.Builder.newInstance()
 			.consumerPid(CONSUMER_PID)
 			.providerPid(PROVIDER_PID)

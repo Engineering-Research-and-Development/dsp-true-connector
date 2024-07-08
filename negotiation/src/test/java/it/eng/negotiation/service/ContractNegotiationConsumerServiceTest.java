@@ -29,9 +29,11 @@ import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationEventType;
 import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ModelUtil;
+import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
+import it.eng.negotiation.repository.OfferRepository;
 
 @ExtendWith(MockitoExtension.class)
 public class ContractNegotiationConsumerServiceTest {
@@ -44,6 +46,8 @@ public class ContractNegotiationConsumerServiceTest {
 	private ContractNegotiationRepository contractNegotiationRepository;
 	@Mock
 	private AgreementRepository agreementRepository ;
+	@Mock
+	private OfferRepository offerRepository;
 	
 	@Captor
 	private ArgumentCaptor<ContractNegotiation> argCaptorContractNegotiation;
@@ -55,6 +59,9 @@ public class ContractNegotiationConsumerServiceTest {
 	@DisplayName("Process contract offer success")
 	public void processContractOffer_success() {
 		service.processContractOffer(ModelUtil.CONTRACT_OFFER_MESSAGE);
+		verify(offerRepository).save(any(Offer.class));
+		verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
+		assertEquals(ContractNegotiationState.OFFERED, argCaptorContractNegotiation.getValue().getState());
 	}
 	
 	@Test

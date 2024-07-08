@@ -28,7 +28,6 @@ import it.eng.negotiation.exception.ProviderPidNotBlankException;
 import it.eng.negotiation.model.ContractAgreementVerificationMessage;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationEventMessage;
-import it.eng.negotiation.model.ContractNegotiationEventType;
 import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
 import it.eng.negotiation.model.ContractRequestMessage;
@@ -118,14 +117,12 @@ public class ProviderContractNegotiationControllerTest {
 	
 	@Test
 	public void handleNegotiationEventMessage_success() {
-		ContractNegotiationEventMessage cnem = ContractNegotiationEventMessage.Builder.newInstance()
-				.consumerPid(ModelUtil.CONSUMER_PID)
-				.providerPid(ModelUtil.PROVIDER_PID)
-				.eventType(ContractNegotiationEventType.ACCEPTED)
-				.build();
-		ResponseEntity<JsonNode> response = controller.handleNegotiationEventMessage(ModelUtil.PROVIDER_PID, Serializer.serializeProtocolJsonNode(cnem));
+		when(contractNegotiationService.handleContractNegotationEventMessage(any(ContractNegotiationEventMessage.class)))
+			.thenReturn(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED);
+		ResponseEntity<JsonNode> response = controller
+				.handleNegotiationEventMessage(ModelUtil.PROVIDER_PID, Serializer.serializeProtocolJsonNode(ModelUtil.CONTRACT_NEGOTIATION_EVENT_MESSAGE_ACCEPTED));
 		assertNotNull(response, "Response is not null");
-		assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+		assertEquals(HttpStatus.OK, response.getStatusCode());
 	}
 	
 	@Test

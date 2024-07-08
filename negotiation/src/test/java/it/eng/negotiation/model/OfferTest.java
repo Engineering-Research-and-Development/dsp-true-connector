@@ -17,6 +17,7 @@ public class OfferTest {
 	public void validOffer() {
 		Offer offer = Offer.Builder.newInstance()
 				.target(ModelUtil.TARGET)
+				.assigner(ModelUtil.ASSIGNER)
 				.build();
 		assertNotNull(offer, "Offer should be created with mandatory fields");
 		assertNotNull(offer.getId());
@@ -35,10 +36,12 @@ public class OfferTest {
 		String id = UUID.randomUUID().toString();
 		Offer offer = Offer.Builder.newInstance()
 				.id(id)
+				.assigner(ModelUtil.ASSIGNER)
 				.target(ModelUtil.TARGET)
 				.build();
 		Offer offerB = Offer.Builder.newInstance()
 				.id(id)
+				.assigner(ModelUtil.ASSIGNER)
 				.target(ModelUtil.TARGET)
 				.build();
 		assertTrue(offer.equals(offerB));
@@ -48,9 +51,11 @@ public class OfferTest {
 	public void equalsFalse() {
 		Offer offer = Offer.Builder.newInstance()
 				.target(ModelUtil.TARGET)
+				.assigner(ModelUtil.ASSIGNER)
 				.build();
 		Offer offerB = Offer.Builder.newInstance()
 				.target("SomeDifferentTarget")
+				.assigner(ModelUtil.ASSIGNER)
 				.build();
 		assertFalse(offer.equals(offerB));
 	}

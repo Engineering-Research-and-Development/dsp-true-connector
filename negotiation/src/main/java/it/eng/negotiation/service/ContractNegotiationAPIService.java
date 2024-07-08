@@ -12,10 +12,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
+import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
 import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.ContractAgreementMessage;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationEventMessage;
+import it.eng.negotiation.model.ContractNegotiationEventType;
 import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ContractOfferMessage;
 import it.eng.negotiation.model.ContractRequestMessage;
@@ -106,10 +108,11 @@ public class ContractNegotiationAPIService {
 	 * @return
 	 */
 	public JsonNode sendContractOffer(String forwardTo, JsonNode offerNode) {
+		Offer offer = Serializer.deserializePlain(offerNode.toPrettyString(), Offer.class);
 		ContractOfferMessage offerMessage = ContractOfferMessage.Builder.newInstance()
 				.providerPid("urn:uuid:" + UUID.randomUUID())
 				.callbackAddress(properties.providerCallbackAddress())
-				.offer(Serializer.deserializePlain(offerNode.toPrettyString(), Offer.class))
+				.offer(offer)
 				.build();
 
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(forwardTo, 
@@ -139,11 +142,13 @@ public class ContractNegotiationAPIService {
 						.providerPid(contractNegotiation.getProviderPid())
 						// callbackAddress is the same because it is now Consumer's turn to respond
 //						.callbackAddress(forwardTo)
-						.assigner(contractNegotiation.getAssigner())
+						.assigner(offer.getAssigner())
+						.offer(offer)
 						.state(contractNegotiation.getState())
 						.build();
 				// provider saves contract negotiation
 				contractNegotiationRepository.save(contractNegtiationUpdate);
+				offerRepository.save(offer);
 			} else {
 				log.info("Error response received!");
 				throw new ContractNegotiationAPIException(response.getMessage());
@@ -228,5 +233,44 @@ public class ContractNegotiationAPIService {
 		return contractNegotiationRepository.findAll().stream()
 				.map(cn -> Serializer.serializePlainJsonNode(cn))
 				.collect(Collectors.toList());
+	}
+
+	/**
+	 * Consumer sends ContractNegotiationEventMessage.ACCEPTED and updates state for 
+	 * Contract Negotiation upon successful response to ACCEPTED
+	 * @param contractNegotiationId
+	 * @return
+	 */
+	public ContractNegotiation handleContractNegotiationAccepted(String contractNegotiationId) {
+		ContractNegotiation contractNegotiation = contractNegotiationRepository.findById(contractNegotiationId)
+	        .orElseThrow(() ->
+	                new ContractNegotiationNotFoundException("Contract negotiation with id " + contractNegotiationId + " not found"));
+		
+		if (!contractNegotiation.getState().canTransitTo(ContractNegotiationState.ACCEPTED)) {
+			throw new ContractNegotiationAPIException(
+					"Finalization aborted, wrong state " + contractNegotiation.getState().name());
+		}
+		
+		ContractNegotiationEventMessage eventMessageAccepted = ContractNegotiationEventMessage.Builder.newInstance()
+				.consumerPid(contractNegotiation.getConsumerPid())
+				.providerPid(contractNegotiation.getProviderPid())
+				.eventType(ContractNegotiationEventType.ACCEPTED)
+				.build();
+		
+	   	log.info("Sending ContractNegotiationEventMessage.ACCEPTED as consumer to {}", contractNegotiation.getCallbackAddress());
+		GenericApiResponse<String> response = okHttpRestClient
+				.sendRequestProtocol(ContractNegotiationCallback.getContractEventsCallback(contractNegotiation.getCallbackAddress(), contractNegotiation.getProviderPid()),
+				Serializer.serializeProtocolJsonNode(eventMessageAccepted),
+				credentialUtils.getConnectorCredentials());
+		log.info("Response received {}", response);
+		if (response.isSuccess()) {
+			ContractNegotiation contractNegotiationAccepted = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.ACCEPTED);
+			contractNegotiationRepository.save(contractNegotiationAccepted);
+			log.info("Contract negotiation {} saved", contractNegotiation.getId());
+			return contractNegotiationAccepted;
+		} else {
+			log.error("Error response received!");
+			throw new ContractNegotiationAPIException(response.getMessage());
+		}
 	}
 }

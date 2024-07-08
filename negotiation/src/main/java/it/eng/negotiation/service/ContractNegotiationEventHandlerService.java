@@ -120,7 +120,7 @@ public class ContractNegotiationEventHandlerService {
 				.callbackAddress(properties.providerCallbackAddress())
 				.agreement(agreementFromOffer(offer, contractNegotiation.getAssigner()))
 				.build();
-		
+		// TODO this one will fail because provider does not have cosnumer callbackAddress for sending agreement
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
 				ContractNegotiationCallback.getContractAgreementCallback(contractNegotiation.getCallbackAddress(), contractNegotiation.getConsumerPid()), 
 				Serializer.serializeProtocolJsonNode(agreementMessage),

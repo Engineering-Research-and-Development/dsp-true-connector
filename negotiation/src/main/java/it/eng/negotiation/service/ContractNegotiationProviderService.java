@@ -12,6 +12,7 @@ import it.eng.negotiation.exception.ProviderPidNotBlankException;
 import it.eng.negotiation.listener.ContractNegotiationPublisher;
 import it.eng.negotiation.model.ContractAgreementVerificationMessage;
 import it.eng.negotiation.model.ContractNegotiation;
+import it.eng.negotiation.model.ContractNegotiationEventMessage;
 import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
@@ -149,5 +150,29 @@ public class ContractNegotiationProviderService {
 		ContractNegotiation contractNegotiationUpdated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.VERIFIED);
 		contractNegotiationRepository.save(contractNegotiationUpdated);
 		log.info("Contract negotiation with providerPid {} and consumerPid {} changed state to VERIFIED and saved", cavm.getProviderPid(), cavm.getConsumerPid());
+	}
+
+	public ContractNegotiation handleContractNegotationEventMessage(
+			ContractNegotiationEventMessage contractNegotiationEventMessage) {
+		switch (contractNegotiationEventMessage.getEventType()) {
+		case ACCEPTED: {
+			return processAccepted(contractNegotiationEventMessage);
+		}
+		case FINALIZED: {
+			return null;
+		}
+		}
+		return null;
+	}
+
+	private ContractNegotiation processAccepted(ContractNegotiationEventMessage contractNegotiationEventMessage) {
+		ContractNegotiation contractNegotiation = contractNegotiationRepository.findByProviderPidAndConsumerPid(contractNegotiationEventMessage.getProviderPid(), contractNegotiationEventMessage.getConsumerPid())
+				.orElseThrow(() -> new ContractNegotiationNotFoundException(
+						"Contract negotiation with providerPid " + contractNegotiationEventMessage.getProviderPid() + 
+						" and consumerPid " + contractNegotiationEventMessage.getConsumerPid() + " not found"));
+		
+		log.info("Updating state to ACCEPTED for contract negotiation id {}", contractNegotiation.getId());
+		ContractNegotiation contractNegotiationAccepted = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.ACCEPTED);
+		return contractNegotiationRepository.save(contractNegotiationAccepted);
 	}
 }

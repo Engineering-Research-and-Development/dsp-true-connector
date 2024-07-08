@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import it.eng.negotiation.exception.ContractNegotiationExistsException;
 import it.eng.negotiation.exception.ContractNegotiationInvalidEventTypeException;
 import it.eng.negotiation.exception.ContractNegotiationInvalidStateException;
 import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
@@ -24,6 +25,7 @@ import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
+import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.serializer.Serializer;
 import lombok.extern.slf4j.Slf4j;
 
@@ -34,13 +36,16 @@ public class ContractNegotiationConsumerService {
 	private final ContractNegotiationProperties properties;
     private final ContractNegotiationPublisher publisher;
 	private final ContractNegotiationRepository contractNegotiationRepository;
+	private final OfferRepository offerRepository;
 	private final AgreementRepository agreementRepository;
 	
     public ContractNegotiationConsumerService(ContractNegotiationProperties properties,
-			ContractNegotiationPublisher publisher, ContractNegotiationRepository repository, AgreementRepository agreementRepository) {
+			ContractNegotiationPublisher publisher, ContractNegotiationRepository repository, 
+			OfferRepository offerRepository, AgreementRepository agreementRepository) {
 		this.properties = properties;
 		this.publisher = publisher;
 		this.contractNegotiationRepository = repository;
+		this.offerRepository = offerRepository;
 		this.agreementRepository = agreementRepository;
 	}
 
@@ -58,21 +63,31 @@ public class ContractNegotiationConsumerService {
      */
 
     public JsonNode processContractOffer(ContractOfferMessage contractOfferMessage) {
-        //TODO consumer side only - handle consumerPid and providerPid
+    	contractNegotiationRepository
+			.findByProviderPidAndConsumerPid(contractOfferMessage.getProviderPid(), contractOfferMessage.getConsumerPid())
+			.ifPresent(cn -> {
+					throw new ContractNegotiationExistsException("Contract negotiation with providerPid " + cn.getProviderPid() + 
+							" and consumerPid " + cn.getConsumerPid() + " already exists");
+			});
+    	
     	processContractOffer(contractOfferMessage.getOffer());
+    	
         ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
                 .consumerPid(contractOfferMessage.getProviderPid())
-                .providerPid(createNewPid())
+                .providerPid(contractOfferMessage.getProviderPid())
                 .state(ContractNegotiationState.OFFERED)
+                .offer(contractOfferMessage.getOffer())
+                .assigner(contractOfferMessage.getOffer().getAssigner())
+                .callbackAddress(contractOfferMessage.getCallbackAddress())
                 .build();
         contractNegotiationRepository.save(contractNegotiation);
         return Serializer.serializeProtocolJsonNode(contractNegotiation);
     }
     
-    //TODO save offer so it can be decided what to do with it
     private void processContractOffer(Offer offer) {
-    	// automatic processing or manual
-		
+		offerRepository.findById(offer.getId()).ifPresentOrElse(
+				o -> log.info("Offer already exists"), () -> offerRepository.save(offer));
+		log.info("CONSUMER - Offer {} saved", offer.getId());
 	}
 
 	protected String createNewPid() {

@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -272,4 +273,43 @@ public class ContractNegotiationAPIServiceTest {
 		assertNotNull(response);
 		assertEquals(1, response.size());
 	}
+	
+	@Test
+	@DisplayName("Consumer accepts contract negotiation offered by provider")
+	public void handleContractNegotiationAccepted() {
+		String contractNegotaitionId = UUID.randomUUID().toString();
+		when(contractNegotiationRepository.findById(contractNegotaitionId))
+			.thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_OFFERED));
+		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+		when(apiResponse.isSuccess()).thenReturn(true);
+
+		ContractNegotiation response = service.handleContractNegotiationAccepted(contractNegotaitionId);
+		assertNotNull(response);
+		assertEquals(ContractNegotiationState.ACCEPTED, response.getState());
+	}
+	
+	@Test
+	@DisplayName("Consumer accepts contract negotiation offered by provider")
+	public void handleContractNegotiationAccepted_invalid_state() {
+		String contractNegotaitionId = UUID.randomUUID().toString();
+		when(contractNegotiationRepository.findById(contractNegotaitionId))
+			.thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+
+		assertThrows(ContractNegotiationAPIException.class, 
+				()-> service.handleContractNegotiationAccepted(contractNegotaitionId));
+	}
+	
+	@Test
+	@DisplayName("Consumer accepts contract negotiation offered by provider - error api")
+	public void handleContractNegotiationAccepted_error_api() {
+		String contractNegotaitionId = UUID.randomUUID().toString();
+		when(contractNegotiationRepository.findById(contractNegotaitionId))
+			.thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_OFFERED));
+		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+		when(apiResponse.isSuccess()).thenReturn(false);
+
+		assertThrows(ContractNegotiationAPIException.class, 
+				()-> service.handleContractNegotiationAccepted(contractNegotaitionId));	}
 }
