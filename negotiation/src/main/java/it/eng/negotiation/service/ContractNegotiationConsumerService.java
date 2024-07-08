@@ -116,6 +116,7 @@ public class ContractNegotiationConsumerService {
 
     	
     	ContractNegotiation contractNegotiationUpdated = ContractNegotiation.Builder.newInstance()
+    			.id(contractNegotiation.getId())
                 .state(ContractNegotiationState.AGREED)
                 .consumerPid(contractNegotiation.getConsumerPid())
                 .providerPid(contractNegotiation.getProviderPid())
