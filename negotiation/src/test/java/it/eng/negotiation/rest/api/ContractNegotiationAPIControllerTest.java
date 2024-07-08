@@ -221,10 +221,10 @@ public class ContractNegotiationAPIControllerTest {
 	@DisplayName("Provider accepts negotation")
 	public void providerAcceptsCN() {
 		String contractNegotaitionId = UUID.randomUUID().toString();
-		when(handlerService.handleContractNegotiationApproved(contractNegotaitionId))
+		when(apiService.handleContractNegotiationAgreed(contractNegotaitionId))
 			.thenReturn(ModelUtil.CONTRACT_NEGOTIATION_AGREED);
 		
-		ResponseEntity<GenericApiResponse<JsonNode>> response =  controller.handleContractNegotationApproved(contractNegotaitionId);
+		ResponseEntity<GenericApiResponse<JsonNode>> response =  controller.handleContractNegotationAgreed(contractNegotaitionId);
 		
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 	}
@@ -233,11 +233,11 @@ public class ContractNegotiationAPIControllerTest {
 	@DisplayName("Provider accepts negotation - service throws error")
 	public void providerAcceptsCN_error() {
 		String contractNegotaitionId = UUID.randomUUID().toString();
-		when(handlerService.handleContractNegotiationApproved(contractNegotaitionId))
+		when(apiService.handleContractNegotiationAgreed(contractNegotaitionId))
 			.thenThrow(ContractNegotiationNotFoundException.class);
 		
 		assertThrows(ContractNegotiationNotFoundException.class,
-				() -> controller.handleContractNegotationApproved(contractNegotaitionId));
+				() -> controller.handleContractNegotationAgreed(contractNegotaitionId));
 	}		
 	
 	@Test

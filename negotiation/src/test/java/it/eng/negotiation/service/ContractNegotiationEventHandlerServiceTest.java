@@ -22,9 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
-import it.eng.negotiation.exception.ContractNegotiationInvalidStateException;
 import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
-import it.eng.negotiation.exception.OfferNotFoundException;
 import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationState;
@@ -32,7 +30,6 @@ import it.eng.negotiation.model.ModelUtil;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
-import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
@@ -44,8 +41,6 @@ public class ContractNegotiationEventHandlerServiceTest {
 
 	@Mock
 	private ContractNegotiationRepository repository;
-	@Mock
-	private OfferRepository offerRepository;
 	@Mock
 	private AgreementRepository agreementRepository;
 	@Mock
@@ -134,64 +129,6 @@ public class ContractNegotiationEventHandlerServiceTest {
 		
 		assertThrows(ContractNegotiationAPIException.class, 
 				() -> handlerService.verifyNegotiation(ModelUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE));
-	}
-	
-	@Test
-	@DisplayName("Provider accepts contract negotiation")
-	public void handleCNApproved() {
-		String contractNegotaitionId = UUID.randomUUID().toString(); 
-		when(repository.findById(contractNegotaitionId)).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_REQUESTED));
-		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-		when(properties.providerCallbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
-		when(properties.getAssignee()).thenReturn(ModelUtil.ASSIGNEE);
-		when(offerRepository.findById(any(String.class))).thenReturn(Optional.of(ModelUtil.OFFER));
-		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
-		when(apiResponse.isSuccess()).thenReturn(true);
-		
-		handlerService.handleContractNegotiationApproved(contractNegotaitionId);
-		
-		verify(repository).save(argCaptorContractNegotiation.capture());
-		assertEquals(ContractNegotiationState.AGREED, argCaptorContractNegotiation.getValue().getState());
-	}
-	
-	@Test
-	@DisplayName("Provider accepts contract negotiation - invalid initial state")
-	public void handleCNApproved_invalid_state() {
-		String contractNegotaitionId = UUID.randomUUID().toString(); 
-		when(repository.findById(contractNegotaitionId)).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_AGREED));
-		
-		assertThrows(ContractNegotiationInvalidStateException.class, 
-				() -> handlerService.handleContractNegotiationApproved(contractNegotaitionId));
-	}
-	
-	@Test
-	@DisplayName("Provider accepts contract negotiation - offer does not exists")
-	public void handleCNApproved_no_offer() {
-		String contractNegotaitionId = UUID.randomUUID().toString(); 
-		when(repository.findById(contractNegotaitionId)).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_REQUESTED));
-		when(offerRepository.findById(any(String.class))).thenReturn(Optional.empty());
-		
-		assertThrows(OfferNotFoundException.class, 
-				() -> handlerService.handleContractNegotiationApproved(contractNegotaitionId));
-	}
-	
-	@Test
-	@DisplayName("Provider accepts contract negotiation - error while contacting consumer")
-	public void handleCNApproved_error_consumer() {
-		String contractNegotaitionId = UUID.randomUUID().toString(); 
-		when(repository.findById(contractNegotaitionId)).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_REQUESTED));
-		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-		when(properties.providerCallbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
-		when(properties.getAssignee()).thenReturn(ModelUtil.ASSIGNEE);
-		when(offerRepository.findById(any(String.class))).thenReturn(Optional.of(ModelUtil.OFFER));
-		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
-		when(apiResponse.isSuccess()).thenReturn(false);
-		
-		assertThrows(ContractNegotiationAPIException.class, 
-				() -> handlerService.handleContractNegotiationApproved(contractNegotaitionId));
-		
-		verify(repository, times(0)).save(argCaptorContractNegotiation.capture());
-		verify(agreementRepository, times(0)).save(argCaptorAgreement.capture());
 	}
 	
 	@Test

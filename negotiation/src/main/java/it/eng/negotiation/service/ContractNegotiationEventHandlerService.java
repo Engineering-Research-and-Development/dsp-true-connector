@@ -9,9 +9,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
-import it.eng.negotiation.exception.ContractNegotiationInvalidStateException;
 import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
-import it.eng.negotiation.exception.OfferNotFoundException;
 import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.ContractAgreementMessage;
 import it.eng.negotiation.model.ContractAgreementVerificationMessage;
@@ -23,7 +21,6 @@ import it.eng.negotiation.model.Reason;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
-import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.rest.protocol.ContractNegotiationCallback;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
@@ -39,18 +36,16 @@ public class ContractNegotiationEventHandlerService {
 	private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 	
 	private final ContractNegotiationRepository contractNegotiationRepository;
-	private final OfferRepository offerRepository;
 	private final AgreementRepository agreementRepository;
 	private final ContractNegotiationProperties properties;
 	private final OkHttpRestClient okHttpRestClient;
 	private final CredentialUtils credentialUtils;
 	
 	public ContractNegotiationEventHandlerService(ContractNegotiationRepository contractNegotiationRepository,
-			ContractNegotiationProperties properties, OkHttpRestClient okHttpRestClient, OfferRepository offerRepository, 
+			ContractNegotiationProperties properties, OkHttpRestClient okHttpRestClient,
 			AgreementRepository agreementRepository, CredentialUtils credentialUtils) {
 		this.contractNegotiationRepository = contractNegotiationRepository;
 		this.agreementRepository = agreementRepository;
-		this.offerRepository = offerRepository;
 		this.properties = properties;
 		this.okHttpRestClient = okHttpRestClient;
 		this.credentialUtils = credentialUtils;
@@ -93,48 +88,6 @@ public class ContractNegotiationEventHandlerService {
 				log.error("Response status not 200 - consumer did not process AgreementMessage correct");
 				throw new ContractNegotiationAPIException("consumer did not process AgreementMessage correct");
 			}
-		}
-	}
-	
-	public ContractNegotiation handleContractNegotiationApproved(String contractNegotiationId) {
-		ContractNegotiation contractNegotiation = contractNegotiationRepository.findById(contractNegotiationId)
-        	.orElseThrow(() ->
-                new ContractNegotiationNotFoundException("Contract negotiation with id " + contractNegotiationId + " not found"));
-	
-		// TODO check if this is valid check
-		if (!contractNegotiation.getState().canTransitTo(ContractNegotiationState.AGREED)) {
-			throw new ContractNegotiationInvalidStateException(
-					"Contract negotiation with providerPid " + contractNegotiation.getProviderPid() + 
-					" and consumerPid " + contractNegotiation.getConsumerPid() + " is not in REQUESTED state, aborting verification", 
-					contractNegotiation.getConsumerPid(), contractNegotiation.getProviderPid());
-		}
-
-		Offer offer = contractNegotiation.getOffer();
-		offerRepository.findById(offer.getId())
-       		.orElseThrow(() ->
-       			new OfferNotFoundException("Offer with id " + offer.getId() + " binded to contract neogitation not found"));
-
-		ContractAgreementMessage agreementMessage = ContractAgreementMessage.Builder.newInstance()
-				.consumerPid(contractNegotiation.getConsumerPid())
-				.providerPid(contractNegotiation.getProviderPid())
-				.callbackAddress(properties.providerCallbackAddress())
-				.agreement(agreementFromOffer(offer, contractNegotiation.getAssigner()))
-				.build();
-		// TODO this one will fail because provider does not have cosnumer callbackAddress for sending agreement
-		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
-				ContractNegotiationCallback.getContractAgreementCallback(contractNegotiation.getCallbackAddress(), contractNegotiation.getConsumerPid()), 
-				Serializer.serializeProtocolJsonNode(agreementMessage),
-				credentialUtils.getConnectorCredentials());
-		if(response.isSuccess()) {
-			log.info("Updating status for negotiation {} to agreed", contractNegotiation.getId());
-			ContractNegotiation contractNegtiationUpdate = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.AGREED);
-			contractNegotiationRepository.save(contractNegtiationUpdate);
-			log.info("Saving agreement..." + agreementMessage.getAgreement().getId());
-			agreementRepository.save(agreementMessage.getAgreement());
-			return contractNegtiationUpdate;
-		} else {
-			log.error("Response status not 200 - consumer did not process AgreementMessage correct");
-			throw new ContractNegotiationAPIException("consumer did not process AgreementMessage correct");
 		}
 	}
 	
