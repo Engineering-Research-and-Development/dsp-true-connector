@@ -1,5 +1,6 @@
 package it.eng.negotiation.repository;
 
+import java.util.Collection;
 import java.util.Optional;
 
 import org.springframework.data.mongodb.repository.MongoRepository;
@@ -13,5 +14,7 @@ public interface ContractNegotiationRepository extends MongoRepository<ContractN
 	Optional<ContractNegotiation> findByProviderPid(String providerPid);
 
 	Optional<ContractNegotiation> findByProviderPidAndConsumerPid(String providerPid, String consumerPid);
+
+	Collection<ContractNegotiation> findByState(String state);
 
 }

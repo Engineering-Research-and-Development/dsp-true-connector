@@ -65,6 +65,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     	Offer offer = Offer.Builder.newInstance()
     			.id("fdc45798-a123-4955-8baf-ab7fd66ac4d5")
     			.target(ModelUtil.TARGET)
+    			.assigner(ModelUtil.ASSIGNER)
     			.permission(Arrays.asList(ModelUtil.PERMISSION_COUNT_5))
     			.build();
     	
@@ -93,11 +94,11 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void negotiationExistsTests() throws Exception {
     	ContractRequestMessage crm = ContractRequestMessage.Builder.newInstance()
-		.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
-		.consumerPid(TestUtil.CONSUMER_PID)
-		.providerPid(TestUtil.PROVIDER_PID)
-		.offer(ModelUtil.OFFER)
-		.build();
+			.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
+			.consumerPid(TestUtil.CONSUMER_PID)
+			.providerPid(TestUtil.PROVIDER_PID)
+			.offer(ModelUtil.OFFER)
+			.build();
 
     	final ResultActions result =
     			mockMvc.perform(

@@ -17,4 +17,5 @@ public class ContractNegotiationAPIExceptionAdvice extends ResponseEntityExcepti
     protected ResponseEntity<Object> handleContractNegotiationAPIException(ContractNegotiationAPIException ex, WebRequest request) {
     	return new ResponseEntity<>(GenericApiResponse.error(ex.getLocalizedMessage(), HttpStatus.BAD_REQUEST.value()), HttpStatus.BAD_REQUEST);
     }
+    
 }

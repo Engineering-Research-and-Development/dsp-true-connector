@@ -29,6 +29,7 @@ import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationEventType;
 import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ModelUtil;
+import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
@@ -44,9 +45,9 @@ public class ContractNegotiationConsumerServiceTest {
 	@Mock
 	private ContractNegotiationRepository contractNegotiationRepository;
 	@Mock
-	private OfferRepository offerRepository;
-	@Mock
 	private AgreementRepository agreementRepository ;
+	@Mock
+	private OfferRepository offerRepository;
 	
 	@Captor
 	private ArgumentCaptor<ContractNegotiation> argCaptorContractNegotiation;
@@ -58,6 +59,9 @@ public class ContractNegotiationConsumerServiceTest {
 	@DisplayName("Process contract offer success")
 	public void processContractOffer_success() {
 		service.processContractOffer(ModelUtil.CONTRACT_OFFER_MESSAGE);
+		verify(offerRepository).save(any(Offer.class));
+		verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
+		assertEquals(ContractNegotiationState.OFFERED, argCaptorContractNegotiation.getValue().getState());
 	}
 	
 	@Test
@@ -71,7 +75,6 @@ public class ContractNegotiationConsumerServiceTest {
 	public void handleAgreement_success() {
 		when(properties.isAutomaticNegotiation()).thenReturn(true);
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
-		when(offerRepository.findByConsumerPidAndProviderPidAndTarget(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID, ModelUtil.TARGET)).thenReturn(Optional.of(ModelUtil.OFFER));
 
 		service.handleAgreement(ModelUtil.CONTRACT_AGREEMENT_MESSAGE);
 		
@@ -83,7 +86,6 @@ public class ContractNegotiationConsumerServiceTest {
 	public void handleAgreement_off_success() {
 		when(properties.isAutomaticNegotiation()).thenReturn(false);
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(ModelUtil.PROVIDER_PID, ModelUtil.CONSUMER_PID)).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
-		when(offerRepository.findByConsumerPidAndProviderPidAndTarget(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID, ModelUtil.TARGET)).thenReturn(Optional.of(ModelUtil.OFFER));
 		
 		service.handleAgreement( ModelUtil.CONTRACT_AGREEMENT_MESSAGE);
 		
@@ -123,7 +125,8 @@ public class ContractNegotiationConsumerServiceTest {
 	@Test
 	@DisplayName("Process agreement message - automatic negotiation OFF - offer not found")
 	public void handleAgreement_off_offerNotFound() {
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(ModelUtil.PROVIDER_PID, ModelUtil.CONSUMER_PID)).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(ModelUtil.PROVIDER_PID, ModelUtil.CONSUMER_PID))
+			.thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED_NO_OFFER));
 
 		assertThrows(OfferNotFoundException.class, () -> service.handleAgreement( ModelUtil.CONTRACT_AGREEMENT_MESSAGE));
 		
@@ -175,6 +178,24 @@ public class ContractNegotiationConsumerServiceTest {
 	@Test
 	@DisplayName("Process termination message success")
 	public void handleTerminationResponse_success() {
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class)))
+			.thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_REQUESTED));
+
 		service.handleTerminationResponse(ModelUtil.CONSUMER_PID, ModelUtil.TERMINATION_MESSAGE);
+		
+		verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
+		assertEquals(ContractNegotiationState.TERMINATED, argCaptorContractNegotiation.getValue().getState());
 	}
+	
+	@Test
+	@DisplayName("Process termination message failed - negotiation not found")
+	public void handleTerminationResponse_fail() {
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class)))
+			.thenReturn(Optional.empty());
+
+		assertThrows(ContractNegotiationNotFoundException.class, 
+				() -> service.handleTerminationResponse(ModelUtil.CONSUMER_PID, ModelUtil.TERMINATION_MESSAGE));
+	}
+	
+	
 }

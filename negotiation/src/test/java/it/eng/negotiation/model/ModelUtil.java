@@ -115,6 +115,12 @@ public class ModelUtil {
 			.eventType(ContractNegotiationEventType.FINALIZED)
 			.build();
 	
+	public static final ContractNegotiationEventMessage CONTRACT_NEGOTIATION_EVENT_MESSAGE_ACCEPTED = ContractNegotiationEventMessage.Builder.newInstance()
+			.consumerPid(ModelUtil.CONSUMER_PID)
+			.providerPid(ModelUtil.PROVIDER_PID)
+			.eventType(ContractNegotiationEventType.ACCEPTED)
+			.build();
+	
 	public static final ContractNegotiationErrorMessage CONTRACT_NEGOTIATION_ERROR_MESSAGE = ContractNegotiationErrorMessage.Builder.newInstance()
 			.consumerPid(CONSUMER_PID)
 			.providerPid(PROVIDER_PID)
@@ -128,6 +134,15 @@ public class ModelUtil {
 			.providerPid(ModelUtil.PROVIDER_PID)
 			.callbackAddress(CALLBACK_ADDRESS)
 			.state(ContractNegotiationState.ACCEPTED)
+			.offer(ModelUtil.OFFER_COUNT_5)
+			.assigner(ASSIGNER)
+			.build();
+	
+	public static final ContractNegotiation CONTRACT_NEGOTIATION_ACCEPTED_NO_OFFER = ContractNegotiation.Builder.newInstance()
+			.consumerPid(ModelUtil.CONSUMER_PID)
+			.providerPid(ModelUtil.PROVIDER_PID)
+			.callbackAddress(CALLBACK_ADDRESS)
+			.state(ContractNegotiationState.ACCEPTED)
 			.build();
 	
 	public static final ContractNegotiation CONTRACT_NEGOTIATION_REQUESTED = ContractNegotiation.Builder.newInstance()
@@ -135,6 +150,8 @@ public class ModelUtil {
 			.providerPid(ModelUtil.PROVIDER_PID)
 			.callbackAddress(CALLBACK_ADDRESS)
 			.state(ContractNegotiationState.REQUESTED)
+			.offer(OFFER)
+			.assigner(ASSIGNER)
 			.build();
 	
 	public static final ContractNegotiation CONTRACT_NEGOTIATION_AGREED = ContractNegotiation.Builder.newInstance()
@@ -163,5 +180,14 @@ public class ModelUtil {
 			.providerPid(ModelUtil.PROVIDER_PID)
 			.callbackAddress(CALLBACK_ADDRESS)
 			.state(ContractNegotiationState.FINALIZED)
+			.build();
+	
+	public static final ContractNegotiation CONTRACT_NEGOTIATION_TERMINATED = ContractNegotiation.Builder.newInstance()
+			.consumerPid(ModelUtil.CONSUMER_PID)
+			.providerPid(ModelUtil.PROVIDER_PID)
+			.callbackAddress(CALLBACK_ADDRESS)
+			.state(ContractNegotiationState.TERMINATED)
+			.offer(ModelUtil.OFFER_COUNT_5)
+			.assigner(ASSIGNER)
 			.build();
 }

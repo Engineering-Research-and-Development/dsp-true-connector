@@ -1,10 +1,10 @@
 {
 	"info": {
-		"_postman_id": "aa5805f9-bb26-47d7-8769-3e32395d391c",
+		"_postman_id": "11540350-4d10-4868-be43-a6ea76519212",
 		"name": "TC_V2",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "21815221",
-		"_collection_link": "https://true-connector.postman.co/workspace/Team-Workspace~750afd02-3cf4-4ce3-858b-8ece49134926/collection/21815221-aa5805f9-bb26-47d7-8769-3e32395d391c?action=share&source=collection_link&creator=21815221"
+		"_exporter_id": "36278855",
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-11540350-4d10-4868-be43-a6ea76519212?action=share&source=collection_link&creator=36278855"
 	},
 	"item": [
 		{
@@ -439,7 +439,7 @@
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER_SERVER_PROTOCOL_NEGOTIATION}}/request\",\r\n    \"offer\": {\r\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"urn:uuid:TARGET\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"EQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+									"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER_SERVER_PROTOCOL_NEGOTIATION}}/request\",\r\n    \"offer\": {\r\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"urn:uuid:TARGET\",\r\n        \"assigner\" : \"sender_assigner\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"EQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -624,6 +624,77 @@
 									],
 									"path": [
 										"finalizeNegotiation"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Contract Negotiation approved",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/negotiationApproved/{{providerPid}}",
+									"host": [
+										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
+									],
+									"path": [
+										"negotiationApproved",
+										"{{providerPid}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Contract Negotiation terminated",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/negotiationTerminated/{{providerPid}}",
+									"host": [
+										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
+									],
+									"path": [
+										"negotiationTerminated",
+										"{{providerPid}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Find Contract Negotiation",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/find",
+									"host": [
+										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
+									],
+									"path": [
+										"find"
 									]
 								}
 							},
