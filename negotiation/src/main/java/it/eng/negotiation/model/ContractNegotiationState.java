@@ -46,7 +46,7 @@ public enum ContractNegotiationState {
 	FINALIZED(DSpaceConstants.DSPACE + ContractNegotiationStates.FINALIZED) {
 		@Override
 		public List<ContractNegotiationState> nextState() {
-			return Arrays.asList(TERMINATED);
+			return Arrays.asList();
 		}
 	},
 	TERMINATED(DSpaceConstants.DSPACE + ContractNegotiationStates.TERMINATED) {

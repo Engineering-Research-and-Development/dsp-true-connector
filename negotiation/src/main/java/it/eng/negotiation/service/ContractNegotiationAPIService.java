@@ -14,7 +14,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
-import it.eng.negotiation.exception.ContractNegotiationInvalidStateException;
 import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
 import it.eng.negotiation.exception.OfferNotFoundException;
 import it.eng.negotiation.model.Agreement;
@@ -290,13 +289,10 @@ public class ContractNegotiationAPIService {
         	.orElseThrow(() ->
                 new ContractNegotiationNotFoundException("Contract negotiation with id " + contractNegotiationId + " not found"));
 	
-		// TODO check if this is valid check
 		if (!contractNegotiation.getState().canTransitTo(ContractNegotiationState.AGREED)) {
-			throw new ContractNegotiationInvalidStateException(
-					"Contract negotiation with providerPid " + contractNegotiation.getProviderPid() + 
-					" and consumerPid " + contractNegotiation.getConsumerPid() + " is not in REQUESTED state, aborting verification", 
-					contractNegotiation.getConsumerPid(), contractNegotiation.getProviderPid());
-		}
+			throw new ContractNegotiationAPIException(
+					"Finalization aborted, wrong state " + contractNegotiation.getState().name());
+			}
 
 		Offer offer = contractNegotiation.getOffer();
 		offerRepository.findById(offer.getId())

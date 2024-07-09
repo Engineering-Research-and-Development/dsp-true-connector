@@ -26,7 +26,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
-import it.eng.negotiation.exception.ContractNegotiationInvalidStateException;
 import it.eng.negotiation.exception.OfferNotFoundException;
 import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.ContractNegotiation;
@@ -234,11 +233,24 @@ public class ContractNegotiationAPIServiceTest {
 		
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(ModelUtil.PROVIDER_PID, ModelUtil.CONSUMER_PID)).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_OFFERED));
 
-		assertThrows(ContractNegotiationAPIException.class, () -> service.finalizeNegotiation(ModelUtil.CONTRACT_NEGOTIATION_EVENT_MESSAGE));
+		assertThrows(ContractNegotiationAPIException.class, 
+				() -> service.finalizeNegotiation(ModelUtil.CONTRACT_NEGOTIATION_EVENT_MESSAGE));
 		
 		verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(ModelUtil.PROVIDER_PID, ModelUtil.CONSUMER_PID);
 		verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
 		verify(agreementRepository, times(0)).save(any(Agreement.class));
+	}
+	
+	@Test
+	@DisplayName("Finalize negotiation error - already finalized")
+	public void finalizeNegotiation_error_finalized_state() {
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString()))
+			.thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_FINALIZED));
+		
+		assertThrows(ContractNegotiationAPIException.class,
+				() -> service.finalizeNegotiation(ModelUtil.CONTRACT_NEGOTIATION_EVENT_MESSAGE));
+		
+		verify(contractNegotiationRepository, times(0)).save(argumentCaptor.capture());
 	}
 	
 	@Test
@@ -342,7 +354,7 @@ public class ContractNegotiationAPIServiceTest {
 		String contractNegotaitionId = UUID.randomUUID().toString(); 
 		when(contractNegotiationRepository.findById(contractNegotaitionId)).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_AGREED));
 		
-		assertThrows(ContractNegotiationInvalidStateException.class, 
+		assertThrows(ContractNegotiationAPIException.class, 
 				() -> service.handleContractNegotiationAgreed(contractNegotaitionId));
 	}
 	
