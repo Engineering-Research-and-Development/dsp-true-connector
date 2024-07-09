@@ -116,19 +116,19 @@ public class ConsumerContractNegotiationCallbackController {
     // No callbackAddress
     @PostMapping("/consumer/negotiations/{consumerPid}/termination")
     public ResponseEntity<JsonNode> handleTerminationResponse(@PathVariable String consumerPid,
-                                                              @RequestBody JsonNode contractNegotiationTerminationMessageJsonNode) throws InterruptedException, ExecutionException {
-
+                                                              @RequestBody JsonNode contractNegotiationTerminationMessageJsonNode) {
+    	
+    	log.info("Received terminate contract negotiation for consumerPid {}", consumerPid);
         ContractNegotiationTerminationMessage contractNegotiationTerminationMessage =
                 Serializer.deserializeProtocol(contractNegotiationTerminationMessageJsonNode, ContractNegotiationTerminationMessage.class);
 
-        JsonNode responseNode =
-                contractNegotiationConsumerService.handleTerminationResponse(consumerPid, contractNegotiationTerminationMessage);
+        contractNegotiationConsumerService.handleTerminationResponse(consumerPid, contractNegotiationTerminationMessage);
 
         // ACK or ERROR
         // If the CN's state is successfully transitioned, the Consumer must return HTTP code 200 (OK).
         // The response body is not specified and clients are not required to process it.
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON.toString())
-                .body(responseNode);
+                .build();
     }
 }

@@ -23,7 +23,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
-@EqualsAndHashCode(exclude = "target")
+@EqualsAndHashCode(exclude = {"target", "assigner", "assignee"})
 @JsonDeserialize(builder = Offer.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true) 

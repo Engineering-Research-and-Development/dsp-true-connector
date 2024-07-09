@@ -13,6 +13,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Set;
@@ -43,6 +44,11 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     
     @JsonIgnore
     private String callbackAddress;
+    @JsonIgnore
+    private String assigner;
+    @JsonIgnore
+    @DBRef
+    private Offer offer;
     
     @NotNull
     @JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
@@ -86,6 +92,15 @@ public class ContractNegotiation extends AbstractNegotiationObject {
          */
         public Builder callbackAddress(String callbackAddress) {
         	message.callbackAddress = callbackAddress;
+        	return this;
+        }
+        
+        public Builder assigner(String assigner) {
+        	message.assigner = assigner;
+        	return this;
+        }
+        public Builder offer(Offer offer) {
+        	message.offer = offer;
         	return this;
         }
 
@@ -143,6 +158,8 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     			.consumerPid(this.consumerPid)
     			.providerPid(this.providerPid)
     			.callbackAddress(this.callbackAddress)
+    			.offer(this.offer)
+    			.assigner(this.assigner)
     			// not yet auditable fields
 //    			.createdBy(this.createdBy)
 //				.lastModifiedBy(this.lastModifiedBy)

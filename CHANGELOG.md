@@ -11,6 +11,18 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
  - certificate private key password now used from application.properties
+ 
+## [0.0.1] - 2024-07-09
+
+### Added 
+
+ - Added API endpoints for accepting and declining negotiation from provider side
+ - Added API endpoint for finding contract negotiations by state or all
+
+### Changed
+
+ - Reviewed negotiation flow
+ - Updated postman collection
 
 ## [0.0.1] - 2024-06-28
 

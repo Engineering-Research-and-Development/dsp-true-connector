@@ -72,7 +72,7 @@ public class Offer {
 	@JsonProperty(DSpaceConstants.ODRL_TARGET)
 	private String target;
 	
-//	@NotNull
+	@NotNull
 	@JsonProperty(DSpaceConstants.ODRL_ASSIGNER)
 	private String assigner;
 	
