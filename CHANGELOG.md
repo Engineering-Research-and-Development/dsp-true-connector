@@ -1,6 +1,17 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.0.1] - 2024-06-25
+
+### Added
+
+ - dockerized the application
+ - added integration tests to GHA
+ 
+### Changed
+
+ - certificate private key password now used from application.properties
+
 ## [0.0.1] - 2024-06-28
 
 ### Changed

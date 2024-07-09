@@ -9,11 +9,11 @@ COPY /target/dependency-jars /home/nobody/app/dependency-jars
 COPY /src/main/resources/initial_data.json /home/nobody/intial_data.json
 
 # Add the application's jar to the container
-ADD /target/application.jar /home/nobody/app/application.jar
+ADD /target/dsp-true-connector.jar /home/nobody/app/dsp-true-connector.jar
 
 RUN chown -R nobody:nogroup /home/nobody
 
 USER 65534
 
 # Run the jar file
-ENTRYPOINT java -jar /home/nobody/app/application.jar
+ENTRYPOINT java -jar /home/nobody/app/dsp-true-connector.jar

@@ -160,7 +160,7 @@
 			<plugin>
 				<artifactId>maven-jar-plugin</artifactId>
 				<configuration>
-					<finalName>application</finalName>
+					<finalName>dsp-true-connector</finalName>
 					<excludes>
 						<exclude>**/*.p12</exclude>
 						<exclude>**/*.jks</exclude>
