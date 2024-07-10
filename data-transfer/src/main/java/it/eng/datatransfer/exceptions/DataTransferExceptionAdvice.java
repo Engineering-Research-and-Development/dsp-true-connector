@@ -15,18 +15,31 @@ import it.eng.datatransfer.model.TransferError;
 import it.eng.datatransfer.rest.protocol.ProviderDataTransferController;
 import jakarta.validation.ValidationException;
 
-@RestControllerAdvice(basePackageClasses = {ProviderDataTransferController.class})
+@RestControllerAdvice(basePackageClasses = { ProviderDataTransferController.class })
 public class DataTransferExceptionAdvice extends ResponseEntityExceptionHandler {
 
-	   @ExceptionHandler(value = {ValidationException.class})
-	    protected ResponseEntity<Object> handleValidationException(ValidationException ex, WebRequest request) {
-		   TransferError errorMessage = TransferError.Builder.newInstance()
-	    			  .consumerPid("COULD_NOT_PROCESS")
-	                  .providerPid("COULD_NOT_PROCESS")
-	                  .code(HttpStatus.BAD_REQUEST.getReasonPhrase())
-	                  .reason(Collections.singletonList(ex.getLocalizedMessage()))
-	                  .build();
-	    	  return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
-	    }
+	@ExceptionHandler(value = { ValidationException.class })
+	protected ResponseEntity<Object> handleValidationException(ValidationException ex, WebRequest request) {
+		TransferError errorMessage = TransferError.Builder.newInstance()
+				.consumerPid("COULD_NOT_PROCESS")
+				.providerPid("COULD_NOT_PROCESS")
+				.code(HttpStatus.BAD_REQUEST.getReasonPhrase())
+				.reason(Collections.singletonList(ex.getLocalizedMessage()))
+				.build();
+		return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(),
+				HttpStatus.BAD_REQUEST, request);
+	}
 
+	@ExceptionHandler(value = { TransferProcessExistsException.class })
+	protected ResponseEntity<Object> handleTransferProcessExistsException(TransferProcessExistsException ex,
+			WebRequest request) {
+		TransferError errorMessage = TransferError.Builder.newInstance()
+				.consumerPid(ex.getConsumerPid())
+				.providerPid("COULD_NOT_PROCESS")
+				.code(HttpStatus.BAD_REQUEST.getReasonPhrase())
+				.reason(Collections.singletonList(ex.getLocalizedMessage()))
+				.build();
+		return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(),
+				HttpStatus.BAD_REQUEST, request);
+	}
 }
