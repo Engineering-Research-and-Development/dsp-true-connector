@@ -256,12 +256,12 @@
 		},
 		{
 			"key": "CONSUMER_PROTOCOL_ENDPOINT",
-			"value": "http://connector-a:8080/negotiations",
+			"value": "http://172.17.0.1:8080/negotiations",
 			"type": "string"
 		},
 		{
 			"key": "PROVIDER_PROTOCOL_ENDPOINT",
-			"value": "http://connector-b:8080/negotiations",
+			"value": "http://172.17.0.1:8090/negotiations",
 			"type": "string"
 		},
 		{
