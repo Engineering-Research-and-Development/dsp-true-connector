@@ -1,10 +1,10 @@
 {
 	"info": {
-		"_postman_id": "11540350-4d10-4868-be43-a6ea76519212",
+		"_postman_id": "64b375bc-942b-4984-b3ef-c0434c0fbc68",
 		"name": "TC_V2",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "36278855",
-		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-11540350-4d10-4868-be43-a6ea76519212?action=share&source=collection_link&creator=36278855"
+		"_exporter_id": "21815221",
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-64b375bc-942b-4984-b3ef-c0434c0fbc68?action=share&source=collection_link&creator=21815221"
 	},
 	"item": [
 		{
@@ -439,7 +439,7 @@
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER_SERVER_PROTOCOL_NEGOTIATION}}/request\",\r\n    \"offer\": {\r\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"urn:uuid:TARGET\",\r\n        \"assigner\" : \"sender_assigner\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"EQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+									"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER_SERVER_PROTOCOL_NEGOTIATION}}/request\",\r\n    \"offer\": {\r\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"urn:uuid:TARGET\",\r\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"EQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -460,6 +460,20 @@
 						},
 						{
 							"name": "[C/P] Send offer",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
 							"request": {
 								"method": "POST",
 								"header": [
@@ -499,6 +513,20 @@
 						},
 						{
 							"name": "[C] Offer approved",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
 							"request": {
 								"method": "POST",
 								"header": [
@@ -530,6 +558,20 @@
 						},
 						{
 							"name": "[P] Send Agreement",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
 							"request": {
 								"method": "POST",
 								"header": [
@@ -569,6 +611,20 @@
 						},
 						{
 							"name": "[C] Verify negotiation",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
 							"request": {
 								"method": "POST",
 								"header": [
@@ -600,6 +656,20 @@
 						},
 						{
 							"name": "[P] Finalize negotiation",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
 							"request": {
 								"method": "POST",
 								"header": [
@@ -631,6 +701,20 @@
 						},
 						{
 							"name": "[P] Contract Negotiation approved",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
 							"request": {
 								"method": "POST",
 								"header": [
@@ -655,6 +739,20 @@
 						},
 						{
 							"name": "[P] Contract Negotiation terminated",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
 							"request": {
 								"method": "POST",
 								"header": [
@@ -679,6 +777,20 @@
 						},
 						{
 							"name": "Find Contract Negotiation",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
 							"request": {
 								"method": "GET",
 								"header": [

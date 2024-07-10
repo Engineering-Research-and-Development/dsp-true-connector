@@ -28,6 +28,7 @@ public class GlobalSSLConfiguration {
 	private PublicKey publicKey;
 	private PrivateKey privateKey;
 	private KeyPair keyPair;
+	private String BUNDLE = "connector";
 
 	public GlobalSSLConfiguration(SslBundles sslBundles) {
 		super();
@@ -37,7 +38,7 @@ public class GlobalSSLConfiguration {
 	@PostConstruct
 	public void globalSslConfig() {
 		log.info("Configuring global SSL context - using configured connector key and truststore");
-		SSLContext sslContext = sslBundles.getBundle("connector").createSslContext();
+		SSLContext sslContext = sslBundles.getBundle(BUNDLE).createSslContext();
 		HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
 		loadKeys();
 		loadKeyPair();
@@ -46,10 +47,10 @@ public class GlobalSSLConfiguration {
 	private void loadKeys() {
 		try {
 			log.info("Loading public/private key from connector sslBundle");
-			publicKey = sslBundles.getBundle("connector").getStores().getKeyStore().getCertificate("execution-core-container")
+			publicKey = sslBundles.getBundle(BUNDLE).getStores().getKeyStore().getCertificate(sslBundles.getBundle(BUNDLE).getKey().getAlias())
 					.getPublicKey();
-			privateKey = (PrivateKey) sslBundles.getBundle("connector").getStores().getKeyStore()
-					.getKey("execution-core-container", "changeit".toCharArray());
+			privateKey = (PrivateKey) sslBundles.getBundle(BUNDLE).getStores().getKeyStore()
+					.getKey(sslBundles.getBundle(BUNDLE).getKey().getAlias(), sslBundles.getBundle(BUNDLE).getKey().getPassword().toCharArray());
 		} catch (KeyStoreException | NoSuchSslBundleException | UnrecoverableKeyException | NoSuchAlgorithmException e) {
 			log.error("Could not load public/private key from connector sslBundle", e);
 		}
