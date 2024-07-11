@@ -7,7 +7,12 @@ All notable changes to this project will be documented in this file.
 
  - provider endpoint and logic for initiating data transfer
  - junit and integration tests
+ - GHA for data transfer request
+
+### Changed
  
+ - updated Postman collection for /transfers/request
+   
 ## [0.0.1] - 2024-07-10
 
 ### Added

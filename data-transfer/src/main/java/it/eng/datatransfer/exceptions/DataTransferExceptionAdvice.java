@@ -29,6 +29,18 @@ public class DataTransferExceptionAdvice extends ResponseEntityExceptionHandler 
 		return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(),
 				HttpStatus.BAD_REQUEST, request);
 	}
+	
+	@ExceptionHandler(value = { TransferProcessNotFoundException.class })
+	protected ResponseEntity<Object> handleTransferProcessNotFoundException(TransferProcessNotFoundException ex, WebRequest request) {
+		TransferError errorMessage = TransferError.Builder.newInstance()
+				.consumerPid("COULD_NOT_PROCESS")
+				.providerPid("COULD_NOT_PROCESS")
+				.code(HttpStatus.BAD_REQUEST.getReasonPhrase())
+				.reason(Collections.singletonList(ex.getLocalizedMessage()))
+				.build();
+		return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(),
+				HttpStatus.BAD_REQUEST, request);
+	}
 
 	@ExceptionHandler(value = { TransferProcessExistsException.class })
 	protected ResponseEntity<Object> handleTransferProcessExistsException(TransferProcessExistsException ex,
