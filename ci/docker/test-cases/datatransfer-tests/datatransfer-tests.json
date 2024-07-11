@@ -1,10 +1,10 @@
 {
 	"info": {
-		"_postman_id": "b2fb367b-8ca4-4397-8e15-29f5cf2e3219",
+		"_postman_id": "c32a4af8-b522-4adc-81ec-8e9871bfd5ac",
 		"name": "datatransfer-tests",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "36278855",
-		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/36278855-b2fb367b-8ca4-4397-8e15-29f5cf2e3219?action=share&source=collection_link&creator=36278855"
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/36278855-c32a4af8-b522-4adc-81ec-8e9871bfd5ac?action=share&source=collection_link&creator=36278855"
 	},
 	"item": [
 		{
@@ -57,9 +57,9 @@
 					}
 				],
 				"url": {
-					"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/urn:uuid:PROVIDER_PID_TRANSFER",
+					"raw": "{{PROVIDER_PROTOCOL_ENDPOINT}}/urn:uuid:PROVIDER_PID_TRANSFER",
 					"host": [
-						"{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}"
+						"{{PROVIDER_PROTOCOL_ENDPOINT}}"
 					],
 					"path": [
 						"urn:uuid:PROVIDER_PID_TRANSFER"
@@ -121,9 +121,9 @@
 					}
 				},
 				"url": {
-					"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/request",
+					"raw": "{{PROVIDER_PROTOCOL_ENDPOINT}}/request",
 					"host": [
-						"{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}"
+						"{{PROVIDER_PROTOCOL_ENDPOINT}}"
 					],
 					"path": [
 						"request"
@@ -185,9 +185,9 @@
 					}
 				},
 				"url": {
-					"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/request",
+					"raw": "{{PROVIDER_PROTOCOL_ENDPOINT}}/request",
 					"host": [
-						"{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}"
+						"{{PROVIDER_PROTOCOL_ENDPOINT}}"
 					],
 					"path": [
 						"request"
@@ -195,6 +195,58 @@
 				}
 			},
 			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "CONSUMER_API_ENDPOINT",
+			"value": "http://localhost:8080/api/transfers",
+			"type": "string"
+		},
+		{
+			"key": "PROVIDER_API_ENDPOINT",
+			"value": "http://localhost:8090/api/transfers",
+			"type": "string"
+		},
+		{
+			"key": "CONSUMER_PROTOCOL_ENDPOINT",
+			"value": "http://172.17.0.1:8080/transfers",
+			"type": "string"
+		},
+		{
+			"key": "PROVIDER_PROTOCOL_ENDPOINT",
+			"value": "http://172.17.0.1:8090/transfers",
+			"type": "string"
+		},
+		{
+			"key": "consumerPid",
+			"value": ""
+		},
+		{
+			"key": "providerPid",
+			"value": ""
 		}
 	]
 }
