@@ -73,7 +73,7 @@ jobs:
       - name: Check if the container is up and running
         run: docker ps -a
 
-      - uses: matt-ball/newman-action@master
+      - uses: matt-ball/newman-action@v2
         with:
           collection: ./ci/docker/test-cases/negotiation-tests/negotiation-tests.json
           
@@ -101,7 +101,7 @@ jobs:
       - name: Check if the container is up and running
         run: docker ps -a
 
-      - uses: matt-ball/newman-action@master
+      - uses: matt-ball/newman-action@v2
         with:
           collection: ./ci/docker/test-cases/datatransfer-tests/datatransfer-tests.json
           
