@@ -19,7 +19,6 @@
 	</properties>
 	
 	<modules>
-		<module>statemachine</module>
 		<module>connector</module>
 		<module>catalog</module>
 		<module>tools</module>

@@ -27,4 +27,8 @@ public abstract class AbstractTransferMessage {
 	protected String createNewId() {
 	    return UUID.randomUUID().toString();
 	}
+	
+    protected String createNewPid() {
+        return "urn:uuid:" + UUID.randomUUID();
+    }
 }

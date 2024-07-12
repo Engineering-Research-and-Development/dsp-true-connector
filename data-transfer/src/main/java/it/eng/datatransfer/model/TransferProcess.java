@@ -143,6 +143,9 @@ public class TransferProcess extends AbstractTransferMessage {
 			if (message.id == null) {
 	               message.id = message.createNewId();
 	        }
+			if (message.providerPid == null) {
+                message.providerPid = message.createNewPid();
+            }
 			Set<ConstraintViolation<TransferProcess>> violations 
 				= Validation.buildDefaultValidatorFactory().getValidator().validate(message);
 			if(violations.isEmpty()) {

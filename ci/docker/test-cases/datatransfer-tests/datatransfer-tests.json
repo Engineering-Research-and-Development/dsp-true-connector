@@ -1,0 +1,252 @@
+{
+	"info": {
+		"_postman_id": "c32a4af8-b522-4adc-81ec-8e9871bfd5ac",
+		"name": "datatransfer-tests",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "36278855",
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/36278855-c32a4af8-b522-4adc-81ec-8e9871bfd5ac?action=share&source=collection_link&creator=36278855"
+	},
+	"item": [
+		{
+			"name": "Get TransfrProcess",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"  pm.response.to.have.status(200);\r",
+							"});\r",
+							"pm.test(\"The response is TransferProcess\", () => {\r",
+							"    //parse the response JSON and test three properties\r",
+							"    const responseJson = pm.response.json();\r",
+							"    pm.expect(responseJson['@type']).to.eq('dspace:TransferProcess');\r",
+							"    pm.expect(responseJson['@context']).to.eq('https://w3id.org/dspace/2024/1/context.json');\r",
+							"    pm.expect(responseJson['dspace:consumerPid']).to.eql('urn:uuid:CONSUMER_PID_TRANSFER');\r",
+							"    pm.expect(responseJson['dspace:providerPid']).to.eq('urn:uuid:PROVIDER_PID_TRANSFER');\r",
+							"    pm.expect(responseJson['dspace:state']).to.eq('dspace:STARTED');\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "password",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "connector@mail.com",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{PROVIDER_PROTOCOL_ENDPOINT}}/urn:uuid:PROVIDER_PID_TRANSFER",
+					"host": [
+						"{{PROVIDER_PROTOCOL_ENDPOINT}}"
+					],
+					"path": [
+						"urn:uuid:PROVIDER_PID_TRANSFER"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Initiate transfer process - already exists agreement",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201\", function () {\r",
+							"  pm.response.to.have.status(201);\r",
+							"});\r",
+							"pm.test(\"The response is TransferProcess\", () => {\r",
+							"    //parse the response JSON and test three properties\r",
+							"    const responseJson = pm.response.json();\r",
+							"    pm.expect(responseJson['@type']).to.eq('dspace:TransferProcess');\r",
+							"    pm.expect(responseJson['@context']).to.eq('https://w3id.org/dspace/2024/1/context.json');\r",
+							"    pm.expect(responseJson['dspace:consumerPid']).is.not.empty;\r",
+							"    pm.expect(responseJson['dspace:providerPid']).is.not.empty;\r",
+							"    pm.expect(responseJson['dspace:state']).to.eq('dspace:REQUESTED');\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "password",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "connector@mail.com",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferRequestMessage\",\r\n \"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dspace:agreementId\": \"urn:uuid:AGREEMENT_ID_NEW5\",\r\n \"dct:format\": \"example:HTTP_PULL\",\r\n \"dspace:callbackAddress\": \"https://localhost:8080/consumer/transfers/urn:uuid:CONSUMER_PID_UUID_TRANSFER/start\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{PROVIDER_PROTOCOL_ENDPOINT}}/request",
+					"host": [
+						"{{PROVIDER_PROTOCOL_ENDPOINT}}"
+					],
+					"path": [
+						"request"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Initiate transfer process - already exists agreement",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 400\", function () {\r",
+							"  pm.response.to.have.status(400);\r",
+							"});\r",
+							"pm.test(\"The response is TransferError\", () => {\r",
+							"    //parse the response JSON and test three properties\r",
+							"    const responseJson = pm.response.json();\r",
+							"    pm.expect(responseJson['@context']).to.eq('https://w3id.org/dspace/2024/1/context.json');\r",
+							"    pm.expect(responseJson['@type']).to.eq('dspace:TransferError');\r",
+							"    pm.expect(responseJson['dspace:consumerPid']).is.not.empty;\r",
+							"    pm.expect(responseJson['dspace:providerPid']).is.not.empty;\r",
+							"    pm.expect(responseJson['dspace:reason']).is.not.empty;\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "password",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "connector@mail.com",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferRequestMessage\",\r\n \"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dspace:agreementId\": \"urn:uuid:AGREEMENT_ID\",\r\n \"dct:format\": \"example:HTTP_PULL\",\r\n \"dspace:callbackAddress\": \"https://localhost:8080/consumer/transfers/urn:uuid:CONSUMER_PID_UUID_TRANSFER/start\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{PROVIDER_PROTOCOL_ENDPOINT}}/request",
+					"host": [
+						"{{PROVIDER_PROTOCOL_ENDPOINT}}"
+					],
+					"path": [
+						"request"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "CONSUMER_API_ENDPOINT",
+			"value": "http://localhost:8080/api/transfers",
+			"type": "string"
+		},
+		{
+			"key": "PROVIDER_API_ENDPOINT",
+			"value": "http://localhost:8090/api/transfers",
+			"type": "string"
+		},
+		{
+			"key": "CONSUMER_PROTOCOL_ENDPOINT",
+			"value": "http://172.17.0.1:8080/transfers",
+			"type": "string"
+		},
+		{
+			"key": "PROVIDER_PROTOCOL_ENDPOINT",
+			"value": "http://172.17.0.1:8090/transfers",
+			"type": "string"
+		},
+		{
+			"key": "consumerPid",
+			"value": ""
+		},
+		{
+			"key": "providerPid",
+			"value": ""
+		}
+	]
+}

@@ -47,7 +47,9 @@ public class ProviderDataTransferController {
 	public ResponseEntity<JsonNode> initiateDataTransfer(@RequestBody JsonNode transferRequestMessageJsonNode) {
 		TransferRequestMessage transferRequestMessage = Serializer.deserializeProtocol(transferRequestMessageJsonNode, TransferRequestMessage.class);
 		log.info("Initiating data transfer");
-		return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(notImplemented());
+		TransferProcess transferProcessRequested = dataTransferService.initiateDataTransfer(transferRequestMessage);
+		return ResponseEntity.status(HttpStatus.CREATED)
+				.body(Serializer.serializeProtocolJsonNode(transferProcessRequested));
 	}
 
 	@PostMapping(path = "/{providerPid}/start")

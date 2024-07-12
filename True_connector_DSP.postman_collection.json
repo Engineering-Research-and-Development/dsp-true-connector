@@ -1,10 +1,10 @@
 {
 	"info": {
-		"_postman_id": "64b375bc-942b-4984-b3ef-c0434c0fbc68",
+		"_postman_id": "67215636-7b7f-4eba-b31e-0145ee0680e8",
 		"name": "TC_V2",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "21815221",
-		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-64b375bc-942b-4984-b3ef-c0434c0fbc68?action=share&source=collection_link&creator=21815221"
+		"_exporter_id": "36278855",
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/36278855-67215636-7b7f-4eba-b31e-0145ee0680e8?action=share&source=collection_link&creator=36278855"
 	},
 	"item": [
 		{
@@ -1188,7 +1188,7 @@
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferRequestMessage\",\r\n \"dspace:providerPid\": \"urn:uuid:PROVIDER_PID_UUID_TRANSFER\",\r\n \"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dct:format\": \"example:HTTP_PULL\",\r\n \"dspace:callbackAddress\": \"https://localhost:8080/consumer/transfers/urn:uuid:CONSUMER_PID_UUID_TRANSFER/start\"\r\n}",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferRequestMessage\",\r\n \"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dspace:agreementId\": \"urn:uuid:AGREEMENT_ID_NEW\",\r\n \"dct:format\": \"example:HTTP_PULL\",\r\n \"dspace:callbackAddress\": \"https://localhost:8080/consumer/transfers/urn:uuid:CONSUMER_PID_UUID_TRANSFER/start\"\r\n}",
 											"options": {
 												"raw": {
 													"language": "json"
