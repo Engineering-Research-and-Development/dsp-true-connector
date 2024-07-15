@@ -73,7 +73,7 @@ public class ContractNegotiationConsumerService {
     	processContractOffer(contractOfferMessage.getOffer());
     	
         ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
-                .consumerPid(contractOfferMessage.getProviderPid())
+                .consumerPid("urn:uuid:" + UUID.randomUUID())
                 .providerPid(contractOfferMessage.getProviderPid())
                 .state(ContractNegotiationState.OFFERED)
                 .offer(contractOfferMessage.getOffer())
@@ -118,10 +118,8 @@ public class ContractNegotiationConsumerService {
     	// save callbackAddress into ContractNegotiation - used for sending ContractNegotiationEventMessage.FINALIZED 
     	ContractNegotiation contractNegotiation = validateNegotiation(contractAgreementMessage.getConsumerPid(), contractAgreementMessage.getProviderPid());
     	
-    	if (!contractNegotiation.getState().canTransitTo(ContractNegotiationState.AGREED)) {
-			throw new ContractNegotiationInvalidStateException("Agreement aborted, wrong state " + contractNegotiation.getState().name(),
-					contractAgreementMessage.getConsumerPid(), contractAgreementMessage.getProviderPid());
-		}
+    	stateTransitionCheck(ContractNegotiationState.AGREED, contractNegotiation);
+
     	if(contractNegotiation.getOffer() == null) {
     		throw new OfferNotFoundException("For ContractNegotiation with consumerPid {} and providerPid {} Offer does not exists", 
     				contractNegotiation.getConsumerPid(), contractNegotiation.getProviderPid());
@@ -173,17 +171,14 @@ public class ContractNegotiationConsumerService {
     	
     	ContractNegotiation contractNegotiation = validateNegotiation(contractNegotiationEventMessage.getConsumerPid(), contractNegotiationEventMessage.getProviderPid());
 
-    	if (!contractNegotiation.getState().canTransitTo(ContractNegotiationState.FINALIZED)) {
-			throw new ContractNegotiationInvalidStateException(
-					"Contract negotiation with providerPid " + contractNegotiation.getProviderPid() + 
-					" and consumerPid " + contractNegotiation.getConsumerPid() + " is not in VERIFIED state, aborting verification", contractNegotiation.getConsumerPid(), contractNegotiation.getProviderPid());
-		}
+    	stateTransitionCheck(ContractNegotiationState.FINALIZED, contractNegotiation);
     	
 		log.info("CONSUMER - updating Contract Negotiation state to FINALIZED");
 		ContractNegotiation contractNegotiationUpdated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.FINALIZED);
 		log.info("CONSUMER - saving updated contract negotiation");
 		contractNegotiationRepository.save(contractNegotiationUpdated);
     }
+
 
     /**
      * The response body is not specified and clients are not required to process it.
@@ -194,10 +189,9 @@ public class ContractNegotiationConsumerService {
      */
 
     public void handleTerminationResponse(String consumerPid, ContractNegotiationTerminationMessage contractNegotiationTerminationMessage) {
-		ContractNegotiation contractNegotiation = contractNegotiationRepository.findByProviderPidAndConsumerPid(contractNegotiationTerminationMessage.getProviderPid(), consumerPid)
-	        	.orElseThrow(() ->
-	                new ContractNegotiationNotFoundException("Contract negotiation with consumerPid " + consumerPid + " and providerPid " +
-	                		contractNegotiationTerminationMessage.getProviderPid() + " not found"));
+    	ContractNegotiation contractNegotiation = validateNegotiation(contractNegotiationTerminationMessage.getConsumerPid(), contractNegotiationTerminationMessage.getProviderPid());
+
+    	stateTransitionCheck(ContractNegotiationState.TERMINATED, contractNegotiation);
 
     	ContractNegotiation contractNegotiationTerminated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.TERMINATED);
     	contractNegotiationRepository.save(contractNegotiationTerminated);
@@ -228,5 +222,13 @@ public class ContractNegotiationConsumerService {
 				.orElseThrow(() -> new ContractNegotiationNotFoundException(
 						"Contract negotiation with providerPid " + providerPid + 
 						" and consumerPid " + consumerPid + " not found"));
+	}
+	
+	private void stateTransitionCheck(ContractNegotiationState newState, ContractNegotiation contractNegotiation) {
+		if (!contractNegotiation.getState().canTransitTo(newState)) {
+			throw new ContractNegotiationInvalidStateException("State transition aborted, " + contractNegotiation.getState().name()
+					+ " state can not transition to " + newState.name(),
+					contractNegotiation.getConsumerPid(), contractNegotiation.getProviderPid());
+		}
 	}
 }

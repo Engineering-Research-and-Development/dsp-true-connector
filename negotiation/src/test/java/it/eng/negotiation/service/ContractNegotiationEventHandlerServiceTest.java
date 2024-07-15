@@ -152,7 +152,7 @@ public class ContractNegotiationEventHandlerServiceTest {
 		String contractNegotaitionId = UUID.randomUUID().toString(); 
 		when(repository.findById(contractNegotaitionId)).thenReturn(Optional.empty());
 
-		assertThrows(ContractNegotiationNotFoundException.class,
+		assertThrows(ContractNegotiationAPIException.class,
 				() -> handlerService.handleContractNegotiationTerminated(contractNegotaitionId));
 		
 		verify(repository, times(0)).save(argCaptorContractNegotiation.capture());

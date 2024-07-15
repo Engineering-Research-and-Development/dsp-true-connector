@@ -119,6 +119,11 @@ public class ContractNegotiationAPIService {
 				.callbackAddress(properties.providerCallbackAddress())
 				.offer(offer)
 				.build();
+		
+		// this offer check
+//		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + properties.serverPort() + "/api/offer/validateOffer", 
+//				Serializer.serializePlainJsonNode(offer), 
+//				credentialUtils.getAPICredentials());
 
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(forwardTo, 
 				Serializer.serializeProtocolJsonNode(offerMessage), credentialUtils.getConnectorCredentials());
@@ -135,7 +140,6 @@ public class ContractNegotiationAPIService {
 		}
 		 */
 		JsonNode jsonNode = null;
-		ObjectMapper mapper = new ObjectMapper();
 		try {
 			if(response.isSuccess()) {
 				log.info("ContractNegotiation received {}", response);
@@ -145,6 +149,7 @@ public class ContractNegotiationAPIService {
 						.id(contractNegotiation.getId())
 						.consumerPid(contractNegotiation.getConsumerPid())
 						.providerPid(contractNegotiation.getProviderPid())
+						//TODO when this is solved activate the offer check from above
 						// callbackAddress is the same because it is now Consumer's turn to respond
 //						.callbackAddress(forwardTo)
 						.assigner(offer.getAssigner())
@@ -153,7 +158,7 @@ public class ContractNegotiationAPIService {
 						.build();
 				// provider saves contract negotiation
 				contractNegotiationRepository.save(contractNegtiationUpdate);
-				offerRepository.save(offer);
+				processContractOffer(offer);
 			} else {
 				log.info("Error response received!");
 				throw new ContractNegotiationAPIException(response.getMessage());
@@ -332,5 +337,11 @@ public class ContractNegotiationAPIService {
 				.timestamp(FORMATTER.format(ZonedDateTime.now()))
 				.permission(offer.getPermission())
 				.build();
+	}
+	
+	private void processContractOffer(Offer offer) {
+		offerRepository.findById(offer.getId()).ifPresentOrElse(
+				o -> log.info("Offer already exists"), () -> offerRepository.save(offer));
+		log.info("PROVIDER - Offer {} saved", offer.getId());
 	}
 }

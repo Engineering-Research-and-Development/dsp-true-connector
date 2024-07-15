@@ -94,7 +94,7 @@ public class ContractNegotiationEventHandlerService {
 	public ContractNegotiation handleContractNegotiationTerminated(String contractNegotiationId) {
 		ContractNegotiation contractNegotiation = contractNegotiationRepository.findById(contractNegotiationId)
     		.orElseThrow(() ->
-    			new ContractNegotiationNotFoundException("Contract negotiation with id " + contractNegotiationId + " not found"));
+    			new ContractNegotiationAPIException("Contract negotiation with id " + contractNegotiationId + " not found"));
 		// for now just log it; maybe we can publish event?
 		log.info("Contract negotiation with consumerPid {} and providerPid {} declined", contractNegotiation.getConsumerPid(), contractNegotiation.getProviderPid());
 		ContractNegotiationTerminationMessage negotiationTerminatedEventMessage = ContractNegotiationTerminationMessage.Builder.newInstance()
