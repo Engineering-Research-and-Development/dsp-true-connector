@@ -32,7 +32,7 @@ public class ContractNegotiationProviderService {
     private final ContractNegotiationPublisher publisher;
 	private final ContractNegotiationRepository contractNegotiationRepository;
 	private final OkHttpRestClient okHttpRestClient;
-	private final  ContractNegotiationProperties properties;
+	private final ContractNegotiationProperties properties;
 	private final OfferRepository offerRepository;
 	private final CredentialUtils credentialUtils;
 

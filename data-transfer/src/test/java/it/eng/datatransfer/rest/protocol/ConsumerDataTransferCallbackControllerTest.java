@@ -2,6 +2,9 @@ package it.eng.datatransfer.rest.protocol;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -11,7 +14,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
+import it.eng.datatransfer.exceptions.TransferProcessNotFoundException;
 import it.eng.datatransfer.model.Serializer;
+import it.eng.datatransfer.model.TransferStartMessage;
 import it.eng.datatransfer.service.DataTransferService;
 import it.eng.datatransfer.util.MockObjectUtil;
 import jakarta.validation.ValidationException;
@@ -28,7 +33,9 @@ public class ConsumerDataTransferCallbackControllerTest {
 	@Test
 	@DisplayName("Start TransferProcess")
 	public void startDataTransfer() {
-		assertEquals(HttpStatus.NOT_IMPLEMENTED, 
+		when(dataTransferService.startDataTransfer(any(TransferStartMessage.class), any(String.class), isNull()))
+			.thenReturn(MockObjectUtil.TRANSFER_PROCESS_STARTED);
+		assertEquals(HttpStatus.OK, 
 				controller.startDataTransfer(MockObjectUtil.CONSUMER_PID,
 						Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_START_MESSAGE)).getStatusCode());
 	}
@@ -37,8 +44,18 @@ public class ConsumerDataTransferCallbackControllerTest {
 	@DisplayName("Start TransferProcess - invalid request body")
 	public void startDataTransfer_invalidBody() {
 		assertThrows(ValidationException.class, () ->
-			controller.startDataTransfer(MockObjectUtil.CONSUMER_PID, Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_COMPLETION_MESSAGE))
-		);
+			controller.startDataTransfer(MockObjectUtil.CONSUMER_PID, 
+					Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_COMPLETION_MESSAGE)));
+	}
+	
+	@Test
+	@DisplayName("Start TransferProcess - error service")
+	public void startDataTransfer_errorService() {
+		when(dataTransferService.startDataTransfer(any(TransferStartMessage.class), any(String.class), isNull()))
+			.thenThrow(new TransferProcessNotFoundException("TransferProcess not found test"));
+		assertThrows(TransferProcessNotFoundException.class, () ->
+			controller.startDataTransfer(MockObjectUtil.CONSUMER_PID, 
+					Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_START_MESSAGE)));
 	}
 	
 	@Test
@@ -53,8 +70,8 @@ public class ConsumerDataTransferCallbackControllerTest {
 	@DisplayName("Complete TransferProcess - invalid request body")
 	public void completeDataTransfer_invalidBody() {
 		assertThrows(ValidationException.class, () ->
-			controller.completeDataTransfer(MockObjectUtil.CONSUMER_PID, Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_START_MESSAGE))
-		);
+			controller.completeDataTransfer(MockObjectUtil.CONSUMER_PID, 
+					Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_START_MESSAGE)));
 	}
 	
 	@Test
@@ -69,8 +86,8 @@ public class ConsumerDataTransferCallbackControllerTest {
 	@DisplayName("Terminate TransferProcess - invalid request body")
 	public void terminateDataTransfer_invalidBody() {
 		assertThrows(ValidationException.class, () ->
-			controller.terminateDataTransfer(MockObjectUtil.CONSUMER_PID, Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_START_MESSAGE))
-		);
+			controller.terminateDataTransfer(MockObjectUtil.CONSUMER_PID, 
+					Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_START_MESSAGE)));
 	}
 	
 	@Test
@@ -85,7 +102,7 @@ public class ConsumerDataTransferCallbackControllerTest {
 	@DisplayName("Terminate TransferProcess - invalid request body")
 	public void suspenseDataTransfer_invalidBody() {
 		assertThrows(ValidationException.class, () ->
-			controller.suspenseDataTransfer(MockObjectUtil.CONSUMER_PID, Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_START_MESSAGE))
-		);
+			controller.suspenseDataTransfer(MockObjectUtil.CONSUMER_PID, 
+					Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_START_MESSAGE)));
 	}
 }

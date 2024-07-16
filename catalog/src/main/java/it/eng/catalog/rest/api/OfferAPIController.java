@@ -12,11 +12,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.catalog.model.Offer;
 import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.service.CatalogService;
-import lombok.extern.java.Log;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/api/offer")
-@Log
+@Slf4j
 public class OfferAPIController {
 	
 	private final CatalogService catalogService;

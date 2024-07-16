@@ -54,4 +54,18 @@ public class DataTransferExceptionAdvice extends ResponseEntityExceptionHandler 
 		return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(),
 				HttpStatus.BAD_REQUEST, request);
 	}
+	
+	
+	@ExceptionHandler(value = { TransferProcessInvalidStateException.class, AgreementNotFoundException.class })
+	protected ResponseEntity<Object> handleTransferProcessInvalidStateException(TransferProcessInvalidStateException ex,
+			WebRequest request) {
+		TransferError errorMessage = TransferError.Builder.newInstance()
+				.consumerPid(ex.getConsumerPid())
+				.providerPid(ex.getProviderPid())
+				.code(HttpStatus.BAD_REQUEST.getReasonPhrase())
+				.reason(Collections.singletonList(ex.getLocalizedMessage()))
+				.build();
+		return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(),
+				HttpStatus.BAD_REQUEST, request);
+	}
 }

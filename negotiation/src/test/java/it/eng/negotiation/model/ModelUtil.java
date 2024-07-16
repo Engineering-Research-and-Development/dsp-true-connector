@@ -1,5 +1,7 @@
 package it.eng.negotiation.model;
 
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.UUID;
@@ -93,6 +95,7 @@ public class ModelUtil {
 			.assignee(ModelUtil.ASSIGNEE)
 			.assigner(ModelUtil.ASSIGNER)
 			.target(ModelUtil.TARGET)
+			.timestamp(ZonedDateTime.now().minusDays(2).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
 			.permission(Arrays.asList(PERMISSION_COUNT_5))
 			.build();
 	

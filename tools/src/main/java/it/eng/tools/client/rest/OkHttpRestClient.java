@@ -47,10 +47,15 @@ public class OkHttpRestClient {
 	 */
 	public GenericApiResponse<String> sendRequestProtocol(String targetAddress, JsonNode jsonNode, String authorization) {
 		// send response to targetAddress
-		RequestBody body = RequestBody.create(jsonNode.toPrettyString(), MediaType.parse("application/json"));
 		Request.Builder requestBuilder = new Request.Builder()
-			      .url(targetAddress)
-			      .post(body);
+				.url(targetAddress);
+		if(jsonNode != null) {
+			RequestBody body = RequestBody.create(jsonNode.toPrettyString(), MediaType.parse("application/json"));
+			requestBuilder.post(body);
+		} else {
+			RequestBody body = RequestBody.create("", MediaType.parse("application/json"));
+			requestBuilder.post(body);
+		}
 		if(StringUtils.isNotBlank(authorization)) {
 			requestBuilder.addHeader(HttpHeaders.AUTHORIZATION, authorization);
 		}

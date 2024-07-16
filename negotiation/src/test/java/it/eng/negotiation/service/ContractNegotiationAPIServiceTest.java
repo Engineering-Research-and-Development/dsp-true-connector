@@ -1,5 +1,6 @@
 package it.eng.negotiation.service;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -386,6 +387,22 @@ public class ContractNegotiationAPIServiceTest {
 		
 		verify(contractNegotiationRepository, times(0)).save(argumentCaptor.capture());
 		verify(agreementRepository, times(0)).save(argCaptorAgreement.capture());
+	}
+	
+	@Test
+	@DisplayName("Validate agreement")
+	public void vaidateAgreement() {
+		when(agreementRepository.findById(any(String.class)))
+			.thenReturn(Optional.of(ModelUtil.AGREEMENT));
+		assertDoesNotThrow(()-> service.validateAgreement(ModelUtil.AGREEMENT.getId()));
+	}
+	
+	@Test
+	@DisplayName("Validate agreement - agreement not found")
+	public void vaidateAgreement_notFound() {
+		when(agreementRepository.findById(any(String.class)))
+			.thenReturn(Optional.empty());
+		assertThrows(ContractNegotiationAPIException.class, ()-> service.validateAgreement(ModelUtil.AGREEMENT.getId()));
 	}
 
 }

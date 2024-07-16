@@ -1,6 +1,19 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.0.1] - 2024-07-17
+
+### Added
+
+ - TransferStartMessage logic for provider and consumer callback (controller and service layer)
+ - Negotiation module - API endpoint for agreement check (valid or not)
+ 
+## Updated
+
+ - code coverage (junit and integration)
+ - TransferRequestMessage - call to negotiation for agreement validity check before proceeding
+ - postman collection
+ 
 ## [0.0.1] - 2024-07-12
 
 ### Added
