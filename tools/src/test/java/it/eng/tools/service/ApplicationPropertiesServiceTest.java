@@ -32,24 +32,20 @@ public class ApplicationPropertiesServiceTest {
 	private ApplicationProperty property = MockObjectUtil.PROPERTY;
 
 	@Test
-
-	@DisplayName("Get application properties successfully") void
-	getApplicationProperties_success() {
+	@DisplayName("Get application properties successfully")
+	void getApplicationProperties_success() {
 		when(repository.findAll(Sort.by("id"))).thenReturn(Collections.singletonList(property));
 		List<ApplicationProperty> propertiesList = service.getProperties(null);
 		assertNotNull(propertiesList);
-		//assertNotEquals(propertiesList.size(), 0);
-		verify(repository).findAll(Sort.by("id")); 
+		verify(repository).findAll(Sort.by("id"));
 	}
 
 	@Test
-
-	@DisplayName("Get application property throws exception when not found") void
-	getApplicationProperty_notFound() {
+	@DisplayName("Get application property throws exception when not found")
+	void getApplicationProperty_notFound() {
 		when(repository.findAll(Sort.by("id"))).thenReturn(Collections.emptyList());
-		assertThrows(ApplicationPropertyErrorException.class, () -> service.getProperties(null)); 
+		assertThrows(ApplicationPropertyErrorException.class, () -> service.getProperties(null));
 	}
-
 
 	@Test
 	@DisplayName("Get application property by Key successfully")
