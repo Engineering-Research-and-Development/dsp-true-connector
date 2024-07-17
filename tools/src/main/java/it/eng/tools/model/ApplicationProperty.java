@@ -8,7 +8,6 @@ import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
@@ -27,10 +26,10 @@ import com.fasterxml.jackson.annotation.JsonProperty.Access;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
-import it.eng.tools.exception.ApplicationPropertyErrorException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
+import jakarta.validation.constraints.NotNull;
 
 @Getter
 @JsonDeserialize(builder = ApplicationProperty.Builder.class)
@@ -41,13 +40,14 @@ public class ApplicationProperty {
 
 	/*
 	 * @JsonProperty(IConstants.ID)
-	 * 
+	 *
 	 * @Setter
-	 * 
+	 *
 	 * @Id private String id;
 	 */
 
 	@Id
+	@NotNull
 	@JsonProperty(IConstants.KEY)
 	private String key;
 
@@ -77,7 +77,7 @@ public class ApplicationProperty {
 	@JsonIgnore
 	@Version
 	@Field("version")
-	private Long version;	
+	private Long version;
 
 	@JsonPOJOBuilder(withPrefix = "")
 	@JsonIgnoreProperties(ignoreUnknown = true)
@@ -151,10 +151,6 @@ public class ApplicationProperty {
 		}
 
 		public ApplicationProperty build() {
-			if(property.key == null || property.key.isBlank()) {
-				throw new ApplicationPropertyErrorException("Application Property key couldn't be null!!!");
-			}
-			
 			Set<ConstraintViolation<ApplicationProperty>> violations
 				= Validation.buildDefaultValidatorFactory().getValidator().validate(property);
 			if(violations.isEmpty()) {
@@ -167,12 +163,6 @@ public class ApplicationProperty {
 						.collect(Collectors.joining(",")));
 		}
 	}
-
-	/*
-	 * public Property(String key, String value) { this.id = key; this.key = key;
-	 * this.value = value; OffsetDateTime now = OffsetDateTime.now( ZoneOffset.UTC
-	 * ); this.insertDate = now.toString(); this.lastChangeDate = now.toString(); }
-	 */
 
 	@Override
 	public int hashCode() {
@@ -189,15 +179,15 @@ public class ApplicationProperty {
 			return false;
 		}
 		ApplicationProperty other = (ApplicationProperty) obj;
-		return mandatory == other.mandatory && Objects.equals(key, other.key) 
+		return mandatory == other.mandatory && Objects.equals(key, other.key)
 				&& Objects.equals(sampleValue, other.sampleValue) && Objects.equals(value, other.value);
 	}
 
 	@Override
 	public String toString() {
-		return "Property [" /* + IConstants.ID + "=" + id + 
-				", "*/ + IConstants.KEY + "=" + key + 
-				", " + IConstants.VALUE + "=" + value + 
+		return "Property [" /* + IConstants.ID + "=" + id +
+				", "*/ + IConstants.KEY + "=" + key +
+				", " + IConstants.VALUE + "=" + value +
 				", " + IConstants.SAMPLE_VALUE + "=" + sampleValue +
 				", " + IConstants.MANDATORY + "=" + mandatory + "]";
 	}

@@ -6,9 +6,6 @@ import java.security.interfaces.RSAPublicKey;
 
 import org.springframework.stereotype.Component;
 
-//import org.springframework.boot.context.properties.ConfigurationProperties;
-//import org.springframework.context.annotation.Configuration;
-
 import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkException;
 import com.auth0.jwk.JwkProvider;
@@ -18,15 +15,8 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 
 import it.eng.tools.exception.DapsPropertyErrorException;
 import it.eng.tools.service.ApplicationPropertiesService;
-//import it.eng.tools.service.ApplicationPropertiesService;
-//import lombok.Data;
-//import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-//@ConfigurationProperties(prefix = "application.daps")
-//@Configuration
-//@Data
-//@NoArgsConstructor
 @Component
 @Slf4j
 public class DapsProperties {
@@ -42,21 +32,14 @@ public class DapsProperties {
 	private final String DAPS_KEYSTORE_PASSWORD_KEY = PREFIX + "dapsKeyStorePassword";
 	private final String DAPS_KEYSTORE_ALIAS_NAME_KEY = PREFIX + "dapsKeystoreAliasName";
 
-	/*private boolean enabledDapsInteraction;
-	private boolean extendedTokenValidation;
-	private boolean tokenCaching;
-	private boolean fetchTokenOnStartup;
-	private URL dapsUrl;
-	private URL dapsJWKSUrl; */
-
 	private final ApplicationPropertiesService service;
 
-	public DapsProperties(ApplicationPropertiesService service) { 
+	public DapsProperties(ApplicationPropertiesService service) {
 		this.service = service;
 	}
 
 
-	protected boolean isEnabledDapsInteraction() { 
+	protected boolean isEnabledDapsInteraction() {
 		String enabledDapsInteractionValue = service.get(ENABLED_DAPS_INTERACTION_KEY);
 
 		if(enabledDapsInteractionValue != null) {

@@ -40,7 +40,6 @@ public class Serializer {
 				.serializationInclusion(Include.NON_EMPTY)
 				.configure(SerializationFeature.INDENT_OUTPUT, true)
 				.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
-				//			.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
 				.addModule(new JavaTimeModule())
 				.build();
 
@@ -118,10 +117,11 @@ public class Serializer {
 		return jsonMapper.convertValue(toSerialize, JsonNode.class);
 	}
 
+	@SuppressWarnings("unchecked")
 	public static List<JsonNode> serializeProtocolListOfJsonNode(Object toSerialize) {
 		return jsonMapper.convertValue(toSerialize, List.class);
 	}
-	
+
 	/**
 	 * Convert Dataspace json (with prefixes) to java object, performs validation for @context and @type before converting to java
 	 * Enforce validation for mandatory fields
@@ -131,7 +131,6 @@ public class Serializer {
 	 * @return
 	 */
 	public static <T> T deserializeProtocol(JsonNode jsonNode, Class<T> clazz) {
-		validateProtocol(jsonNode, clazz);
 		T obj = jsonMapper.convertValue(jsonNode, clazz);
 		Set<ConstraintViolation<T>> violations = validator.validate(obj);
 		if(violations.isEmpty()) {
@@ -144,35 +143,4 @@ public class Serializer {
 				.collect(Collectors.joining(",")));
 	}
 
-	/**
-	 * Checks for @context and @type if present and if values are correct
-	 * @param <T>
-	 * @param jsonNode
-	 * @param clazz
-	 * @throws jakarta.validationException 
-	 */
-	private static <T> void validateProtocol(JsonNode jsonNode, Class<T> clazz) {
-		/*
-		 * try { Objects.requireNonNull(jsonNode.get(IConstants.TYPE));
-		 * if(clazz.equals(ApplicationProperty.class)) {
-		 * if(!Objects.equals(DSpaceConstants.DCAT + clazz.getSimpleName(),
-		 * jsonNode.get(IConstants.TYPE).asText())) { throw new
-		 * ValidationException("@type field not correct, expected "+
-		 * DSpaceConstants.DSPACE + clazz.getSimpleName() + " but was " +
-		 * jsonNode.get(IConstants.TYPE).asText()); } } else {
-		 * if(!Objects.equals(DSpaceConstants.DSPACE + clazz.getSimpleName(),
-		 * jsonNode.get(DSpaceConstants.TYPE).asText())) { throw new
-		 * ValidationException("@type field not correct, expected "+
-		 * DSpaceConstants.DSPACE + clazz.getSimpleName() + " but was " +
-		 * jsonNode.get(IConstants.TYPE).asText()); } }
-		 * Objects.requireNonNull(jsonNode.get(DSpaceConstants.CONTEXT));
-		 * if(!Objects.equals(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE,
-		 * jsonNode.get(DSpaceConstants.CONTEXT).asText())) { throw new
-		 * ValidationException("@contexxt field not valid - was " +
-		 * jsonNode.get(DSpaceConstants.CONTEXT).asText()); } } catch
-		 * (NullPointerException npe) { throw new
-		 * ValidationException("Missing mandatory protocol fields @context and/or @type or value not correct"
-		 * ); }
-		 */
-	}
 }
