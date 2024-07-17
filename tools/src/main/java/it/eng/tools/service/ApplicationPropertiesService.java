@@ -43,9 +43,9 @@ public class ApplicationPropertiesService {
 	}
 
 	public List<ApplicationProperty> getProperties(String key_prefix) {
-		
+
 		List<ApplicationProperty> allProperties = null;
-		
+
 		if(!StringUtils.isBlank(key_prefix)) {
 			allProperties = repository.findByKeyStartingWith(key_prefix, sortByIdAsc());
 		} else {
@@ -73,12 +73,12 @@ public class ApplicationPropertiesService {
 						.key(key)
 						.value(propertyValueByApplicationProperty)
 						.build());
-				
+
 				addPropertyOnMongo(storedProperty);
-				
+
 				return Optional.ofNullable(storedProperty);
-			}						
-		} 
+			}
+		}
 		return propertyByMongo;
 	}
 
@@ -95,10 +95,10 @@ public class ApplicationPropertiesService {
 
 		ApplicationProperty updatedApplicationProperty = builder.build();
 		//ApplicationProperty storedApplicationProperty = repository.save(updatedApplicationProperty);
-		
+
 		return addPropertyOnMongo(updatedApplicationProperty);
 	}
-	
+
 	private ApplicationProperty.Builder returnBaseApplicationPropertyForUpdate(String key) {
 		return repository.findById(key)
 				.map(c -> ApplicationProperty.Builder.newInstance()
@@ -110,11 +110,11 @@ public class ApplicationPropertiesService {
 						)
 				.orElseThrow(() -> new ApplicationPropertyNotFoundAPIException("ApplicationProperty with key: " + key + " not found"));
 	}
-	
+
 //	public Optional<ApplicationProperty> getStoredPropertyByKey(String key) {
 //		return repository.findById(key);
 //	}
-	
+
 	/*
 	 * public void deleteProperty(String name) { repository.deleteById(name); }
 	 */
@@ -128,30 +128,30 @@ public class ApplicationPropertiesService {
 	 */
 	/*
 	 * public void updateProperty(String key, String value) {
-	 * 
+	 *
 	 * System.out.println("\n\n\n" + env);
-	 * 
+	 *
 	 * ConfigurableEnvironment configurableEnvironment = (ConfigurableEnvironment)
 	 * env; MutablePropertySources propertySources =
 	 * configurableEnvironment.getPropertySources();
-	 * 
+	 *
 	 * PropertySource<?> ap = propertySources.get("applicationProperties"); if(ap !=
 	 * null) { System.out.println(ap.getSource().getClass().getName());
-	 * 
+	 *
 	 * Map aaa = (Map)ap.getSource();
-	 * 
+	 *
 	 * System.out.println(aaa.entrySet()); }
-	 * 
+	 *
 	 * Map map = new HashMap<String,String>(); map.put(key, value);
-	 * 
+	 *
 	 * propertySources.addFirst(new MapPropertySource("applicationProperties",
 	 * map));
-	 * 
+	 *
 	 * MutablePropertySources ps = ((AbstractEnvironment) env).getPropertySources();
 	 * Iterator<PropertySource<?>> ips = ps.iterator();
-	 * 
+	 *
 	 * while(ips.hasNext()) { PropertySource<?> currentps = ips.next();
-	 * 
+	 *
 	 * String name = currentps.getName(); Object source = currentps.getSource();
 	 * System.out.println("\n\n\nname=" + name +
 	 * (currentps.getProperty("spring.ssl.bundle.jks.connector.keystore.location")
@@ -159,7 +159,7 @@ public class ApplicationPropertiesService {
 	 * currentps.getClass().getName() + "\t" + currentps.toString());
 	 * System.out.println("\n" + source.getClass().getName() + "\t" +
 	 * source.toString() + "\n\n\n"); }
-	 * 
+	 *
 	 * }
 	 */
 
@@ -171,11 +171,11 @@ public class ApplicationPropertiesService {
 	 * customPropertySource = propertySources.get("customPropertySource"); if
 	 * (customPropertySource != null) { // Write properties to configuration file //
 	 * For example, write to application.properties
-	 * 
+	 *
 	 * //TODO: manage add on env when customPropertySource exists } }
 	 */
 
-	public String addPropertyToApplicationPropertySource(String key, Object value) {
+	/*public String addPropertyToApplicationPropertySource(String key, Object value) {
 		log.info("addPropertyToApplicationPropertySource("+key+", "+value+")");
 
 		ConfigurableEnvironment configurableEnvironment = (ConfigurableEnvironment) env;
@@ -190,31 +190,10 @@ public class ApplicationPropertiesService {
 
 		storedApplicationPropertiesMap.put(key, value);
 
-		propertySources.addFirst(new MapPropertySource("applicationProperties", storedApplicationPropertiesMap));
+		propertySources.addFirst(new MapPropertySource(STORED_APPLICATION_PROPERTIES, storedApplicationPropertiesMap));
 
-		/***********************/
-
-		/*
-		 * MutablePropertySources ps = ((AbstractEnvironment) env).getPropertySources();
-		 * Iterator<PropertySource<?>> ips = ps.iterator();
-		 * 
-		 * while(ips.hasNext()) {
-		 * 
-		 * PropertySource<?> currentps = ips.next();
-		 * 
-		 * String name = currentps.getName(); Object source = currentps.getSource();
-		 * System.out.println("\n\n\nname=" + name +
-		 * (currentps.getProperty("spring.ssl.bundle.jks.connector.keystore.location")
-		 * != null ?" YES":" NO")); System.out.println("\n" +
-		 * currentps.getClass().getName() + "\t" + currentps.toString());
-		 * System.out.println("\n" + source.getClass().getName() + "\t" +
-		 * source.toString() + "\n\n\n"); }
-		 */
-
-
-		/***********************/
 		return env.getProperty(key);
-	}
+	}*/
 
 	public void addPropertyOnEnv(String key, Object value, Environment environment) {
 		///if(environment != null) {
@@ -232,12 +211,12 @@ public class ApplicationPropertiesService {
 
 			propertySources.addFirst(new MapPropertySource(STORED_APPLICATION_PROPERTIES, storedApplicationPropertiesMap));
 		///}
-			
+
 			log.info(key + "=" + environment.getProperty(key));
 	}
-	
+
 	public String get(String key) {
 		return env.getProperty(key);
 	}
-	
+
 }
