@@ -10,10 +10,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithUserDetails;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import it.eng.connector.util.TestUtil;
@@ -25,23 +23,19 @@ public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 
 	private final String TEST_KEY = "application.daps.enabledDapsInteraction";
 
-	@Autowired
-	private MockMvc mockMvc;
-
 	@Test
 	@WithUserDetails(TestUtil.ADMIN_USER)
 	public void getPropertiesSuccessfulTest() throws Exception {
 
 		final ResultActions result =
 				mockMvc.perform(
-						get("/api/connector_property/")
+						get("/api/connectorProperty/")
 						.contentType(MediaType.APPLICATION_JSON_VALUE)
 						.accept(MediaType.APPLICATION_JSON_VALUE));
 
 		result.andExpect(status().isOk())
-		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
-		//.andExpect(jsonPath("$." + IConstants.KEY).value(equalTo(randomKey)))
-		//.andExpect(jsonPath("$." + IConstants.VALUE).value(equalTo(randomValue)));
+		.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+		.andExpect(jsonPath("$.[0].['"+IConstants.TYPE+"']", is(ApplicationProperty.class.getSimpleName())));
 	}
 
 	@Test
@@ -50,7 +44,7 @@ public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 
 		final ResultActions result =
 				mockMvc.perform(
-						get("/api/connector_property/{key}", this.TEST_KEY )
+						get("/api/connectorProperty/{key}", this.TEST_KEY )
 						.contentType(MediaType.APPLICATION_JSON_VALUE));
 
 		result.andExpect(status().isOk())
@@ -73,7 +67,7 @@ public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 
 		final ResultActions result =
 				mockMvc.perform(
-						put("/api/connector_property/")
+						put("/api/connectorProperty/")
 						.contentType(MediaType.APPLICATION_JSON_VALUE)
 						.content(body)
 						.accept(MediaType.APPLICATION_JSON_VALUE));
