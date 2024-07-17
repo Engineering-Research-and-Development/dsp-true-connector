@@ -7,10 +7,7 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import it.eng.negotiation.exception.ContractNegotiationExistsException;
 import it.eng.negotiation.exception.ContractNegotiationInvalidEventTypeException;
-import it.eng.negotiation.exception.ContractNegotiationInvalidStateException;
-import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
 import it.eng.negotiation.exception.OfferNotFoundException;
 import it.eng.negotiation.listener.ContractNegotiationPublisher;
 import it.eng.negotiation.model.ContractAgreementMessage;
@@ -27,25 +24,20 @@ import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.serializer.Serializer;
+import it.eng.tools.client.rest.OkHttpRestClient;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
-public class ContractNegotiationConsumerService {
+public class ContractNegotiationConsumerService extends BaseService {
 
-	private final ContractNegotiationProperties properties;
-    private final ContractNegotiationPublisher publisher;
-	private final ContractNegotiationRepository contractNegotiationRepository;
-	private final OfferRepository offerRepository;
 	private final AgreementRepository agreementRepository;
 	
-    public ContractNegotiationConsumerService(ContractNegotiationProperties properties,
-			ContractNegotiationPublisher publisher, ContractNegotiationRepository repository, 
-			OfferRepository offerRepository, AgreementRepository agreementRepository) {
-		this.properties = properties;
-		this.publisher = publisher;
-		this.contractNegotiationRepository = repository;
-		this.offerRepository = offerRepository;
+	public ContractNegotiationConsumerService(ContractNegotiationPublisher publisher,
+			ContractNegotiationRepository contractNegotiationRepository, OkHttpRestClient okHttpRestClient,
+			ContractNegotiationProperties properties, OfferRepository offerRepository,
+			AgreementRepository agreementRepository) {
+		super(publisher, contractNegotiationRepository, okHttpRestClient, properties, offerRepository);
 		this.agreementRepository = agreementRepository;
 	}
 
@@ -63,12 +55,7 @@ public class ContractNegotiationConsumerService {
      */
 
     public JsonNode processContractOffer(ContractOfferMessage contractOfferMessage) {
-    	contractNegotiationRepository
-			.findByProviderPidAndConsumerPid(contractOfferMessage.getProviderPid(), contractOfferMessage.getConsumerPid())
-			.ifPresent(cn -> {
-					throw new ContractNegotiationExistsException("Contract negotiation with providerPid " + cn.getProviderPid() + 
-							" and consumerPid " + cn.getConsumerPid() + " already exists");
-			});
+    	checkIfContractNegotiationExists(contractOfferMessage.getConsumerPid(), contractOfferMessage.getProviderPid());
     	
     	processContractOffer(contractOfferMessage.getOffer());
     	
@@ -116,7 +103,7 @@ public class ContractNegotiationConsumerService {
 
     public void handleAgreement(ContractAgreementMessage contractAgreementMessage) {
     	// save callbackAddress into ContractNegotiation - used for sending ContractNegotiationEventMessage.FINALIZED 
-    	ContractNegotiation contractNegotiation = validateNegotiation(contractAgreementMessage.getConsumerPid(), contractAgreementMessage.getProviderPid());
+    	ContractNegotiation contractNegotiation = findContractNegotiationByPids(contractAgreementMessage.getConsumerPid(), contractAgreementMessage.getProviderPid());
     	
     	stateTransitionCheck(ContractNegotiationState.AGREED, contractNegotiation);
 
@@ -169,7 +156,7 @@ public class ContractNegotiationConsumerService {
 					" and consumerPid " + contractNegotiationEventMessage.getConsumerPid() + " event type is not FINALIZED, aborting state transition", contractNegotiationEventMessage.getConsumerPid(), contractNegotiationEventMessage.getProviderPid());
 		}
     	
-    	ContractNegotiation contractNegotiation = validateNegotiation(contractNegotiationEventMessage.getConsumerPid(), contractNegotiationEventMessage.getProviderPid());
+    	ContractNegotiation contractNegotiation = findContractNegotiationByPids(contractNegotiationEventMessage.getConsumerPid(), contractNegotiationEventMessage.getProviderPid());
 
     	stateTransitionCheck(ContractNegotiationState.FINALIZED, contractNegotiation);
     	
@@ -189,7 +176,7 @@ public class ContractNegotiationConsumerService {
      */
 
     public void handleTerminationResponse(String consumerPid, ContractNegotiationTerminationMessage contractNegotiationTerminationMessage) {
-    	ContractNegotiation contractNegotiation = validateNegotiation(contractNegotiationTerminationMessage.getConsumerPid(), contractNegotiationTerminationMessage.getProviderPid());
+    	ContractNegotiation contractNegotiation = findContractNegotiationByPids(contractNegotiationTerminationMessage.getConsumerPid(), contractNegotiationTerminationMessage.getProviderPid());
 
     	stateTransitionCheck(ContractNegotiationState.TERMINATED, contractNegotiation);
 
@@ -216,19 +203,4 @@ public class ContractNegotiationConsumerService {
 //						" and consumerPid " + contractAgreementMessage.getConsumerPid() + "and target " + contractAgreementMessage.getAgreement().getTarget()));
 //	}
 
-	private ContractNegotiation validateNegotiation(String consumerPid, String providerPid) {
-		return contractNegotiationRepository
-				.findByProviderPidAndConsumerPid(providerPid, consumerPid)
-				.orElseThrow(() -> new ContractNegotiationNotFoundException(
-						"Contract negotiation with providerPid " + providerPid + 
-						" and consumerPid " + consumerPid + " not found"));
-	}
-	
-	private void stateTransitionCheck(ContractNegotiationState newState, ContractNegotiation contractNegotiation) {
-		if (!contractNegotiation.getState().canTransitTo(newState)) {
-			throw new ContractNegotiationInvalidStateException("State transition aborted, " + contractNegotiation.getState().name()
-					+ " state can not transition to " + newState.name(),
-					contractNegotiation.getConsumerPid(), contractNegotiation.getProviderPid());
-		}
-	}
 }

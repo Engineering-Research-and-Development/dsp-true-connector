@@ -1,6 +1,17 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.0.1] - 2024-07-17
+ 
+### Changed
+
+ - moved some common service logic to BaseService
+ - renamed APIs to be REST compliant
+ 
+### Removed
+
+ - removed EventHandlerService
+
 ## [0.0.1] - 2024-07-10
 
 ### Added

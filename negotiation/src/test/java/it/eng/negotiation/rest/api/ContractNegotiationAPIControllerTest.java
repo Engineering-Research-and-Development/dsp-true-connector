@@ -29,23 +29,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
 import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
-import it.eng.negotiation.model.ContractAgreementVerificationMessage;
 import it.eng.negotiation.model.ContractNegotiation;
-import it.eng.negotiation.model.ContractNegotiationEventMessage;
 import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ModelUtil;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.negotiation.service.ContractNegotiationAPIService;
-import it.eng.negotiation.service.ContractNegotiationEventHandlerService;
-import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
 import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.response.GenericApiResponse;
 
 @ExtendWith(MockitoExtension.class)
 public class ContractNegotiationAPIControllerTest {
 	
-	@Mock
-	private ContractNegotiationEventHandlerService handlerService;
 	@Mock
 	private ContractNegotiationAPIService apiService;
 
@@ -61,7 +55,7 @@ public class ContractNegotiationAPIControllerTest {
 				.thenReturn(Arrays.asList(
 						Serializer.serializePlainJsonNode(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED),
 						Serializer.serializePlainJsonNode(ModelUtil.CONTRACT_NEGOTIATION_REQUESTED)));
-		ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.findContractNegotations(null);
+		ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getContractNegotiations(null);
 		assertNotNull(response);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 	}
@@ -71,7 +65,7 @@ public class ContractNegotiationAPIControllerTest {
 	public void findContractNegotiationByState() {
 		when(apiService.findContractNegotiations(ContractNegotiationState.ACCEPTED.name()))
 				.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED)));
-		ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.findContractNegotations(ContractNegotiationState.ACCEPTED.name());
+		ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getContractNegotiations(ContractNegotiationState.ACCEPTED.name());
 		assertNotNull(response);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 	}
@@ -92,29 +86,15 @@ public class ContractNegotiationAPIControllerTest {
 	}
 	
 	@Test
-	@DisplayName("Approve requested offer success")
-	public void offerApproved_success() {
-		Map<String, Object> map = new HashMap<>();
-		map.put("offer", Serializer.serializeProtocolJsonNode(ModelUtil.OFFER));
-		map.put("consumerPid", ModelUtil.CONSUMER_PID);
-		map.put("providerPid", ModelUtil.PROVIDER_PID);
-		map.put("offerAccepted", true);
-		
-		ResponseEntity<JsonNode> response = controller.handleOfferApproved(mapper.convertValue(map, JsonNode.class));
-		assertEquals(HttpStatus.OK, response.getStatusCode());
-		verify(handlerService).handleContractNegotiationOfferResponse(any(ContractNegotiationOfferResponseEvent.class));
-	}
-	
-	@Test
 	@DisplayName("Verify negotiation success")
 	public void verifyNegotiation_success() {
 		Map<String, Object> map = new HashMap<>();
 		map.put("consumerPid", ModelUtil.CONSUMER_PID);
 		map.put("providerPid", ModelUtil.PROVIDER_PID);
 		
-		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.verifyNegotiation(mapper.convertValue(map, JsonNode.class));
+		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.verifyContractNegotiation(mapper.convertValue(map, JsonNode.class));
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		verify(handlerService).verifyNegotiation(any(ContractAgreementVerificationMessage.class));
+		verify(apiService).verifyNegotiation(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID);
 	}
 	
 	@Test
@@ -125,10 +105,10 @@ public class ContractNegotiationAPIControllerTest {
 		map.put("providerPid", ModelUtil.PROVIDER_PID);
 		
 		doThrow(new ContractNegotiationAPIException("Something not correct - tests"))
-		.when(handlerService).verifyNegotiation(any(ContractAgreementVerificationMessage.class));
+		.when(apiService).verifyNegotiation(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID);
 		
 		assertThrows(ContractNegotiationAPIException.class, () ->
-		controller.verifyNegotiation(mapper.convertValue(map, JsonNode.class)));
+		controller.verifyContractNegotiation(mapper.convertValue(map, JsonNode.class)));
 	}
 	
 	@Test
@@ -140,7 +120,7 @@ public class ContractNegotiationAPIControllerTest {
 		
 		when(apiService.sendContractOffer(any(String.class), any(JsonNode.class)))
 			.thenReturn(Serializer.serializeProtocolJsonNode(ModelUtil.CONTRACT_NEGOTIATION_OFFERED));
-		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.sendOffer(mapper.convertValue(map, JsonNode.class));
+		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.sendContractOffer(mapper.convertValue(map, JsonNode.class));
 	
 		assertNotNull(response);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -160,7 +140,7 @@ public class ContractNegotiationAPIControllerTest {
 			.thenThrow(new ContractNegotiationAPIException("Something not correct - tests"));
 
 		assertThrows(ContractNegotiationAPIException.class, () ->
-			controller.sendOffer(mapper.convertValue(map, JsonNode.class)));
+			controller.sendContractOffer(mapper.convertValue(map, JsonNode.class)));
 	}
 	
 	@Test
@@ -200,7 +180,7 @@ public class ContractNegotiationAPIControllerTest {
 				
 		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.finalizeNegotiation(mapper.convertValue(map, JsonNode.class));
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		verify(apiService).finalizeNegotiation(any(ContractNegotiationEventMessage.class));
+		verify(apiService).finalizeNegotiation(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID);
 	}
 	
 	@Test
@@ -211,20 +191,20 @@ public class ContractNegotiationAPIControllerTest {
 		map.put("providerPid", ModelUtil.PROVIDER_PID);
 				
 		doThrow(new ContractNegotiationAPIException("Something not correct - tests"))
-		.when(apiService).finalizeNegotiation(any(ContractNegotiationEventMessage.class));
+		.when(apiService).finalizeNegotiation(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID);
 		
 		assertThrows(ContractNegotiationAPIException.class, () ->
 		controller.finalizeNegotiation(mapper.convertValue(map, JsonNode.class)));
 	}
 	
 	@Test
-	@DisplayName("Provider accepts negotation")
+	@DisplayName("Provider approves negotation")
 	public void providerAcceptsCN() {
 		String contractNegotaitionId = UUID.randomUUID().toString();
 		when(apiService.handleContractNegotiationAgreed(contractNegotaitionId))
 			.thenReturn(ModelUtil.CONTRACT_NEGOTIATION_AGREED);
 		
-		ResponseEntity<GenericApiResponse<JsonNode>> response =  controller.handleContractNegotationAgreed(contractNegotaitionId);
+		ResponseEntity<GenericApiResponse<JsonNode>> response =  controller.approveContractNegotiation(contractNegotaitionId);
 		
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 	}
@@ -237,17 +217,17 @@ public class ContractNegotiationAPIControllerTest {
 			.thenThrow(ContractNegotiationNotFoundException.class);
 		
 		assertThrows(ContractNegotiationNotFoundException.class,
-				() -> controller.handleContractNegotationAgreed(contractNegotaitionId));
+				() -> controller.approveContractNegotiation(contractNegotaitionId));
 	}		
 	
 	@Test
 	@DisplayName("Provider terminates negotation")
 	public void providerTerminatesCN() {
 		String contractNegotaitionId = UUID.randomUUID().toString();
-		when(handlerService.handleContractNegotiationTerminated(contractNegotaitionId))
+		when(apiService.handleContractNegotiationTerminated(contractNegotaitionId))
 			.thenReturn(ModelUtil.CONTRACT_NEGOTIATION_TERMINATED);
 
-		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.handleContractNegotationTerminated(contractNegotaitionId);
+		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.terminateContractNegotiation(contractNegotaitionId);
 		
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 	}
@@ -256,20 +236,20 @@ public class ContractNegotiationAPIControllerTest {
 	@DisplayName("Provider terminates negotation - service error")
 	public void providerTerminatesCN_error() {
 		String contractNegotaitionId = UUID.randomUUID().toString();
-		when(handlerService.handleContractNegotiationTerminated(contractNegotaitionId))
+		when(apiService.handleContractNegotiationTerminated(contractNegotaitionId))
 			.thenThrow(ContractNegotiationNotFoundException.class);
 
 		assertThrows(ContractNegotiationNotFoundException.class,
-				() -> controller.handleContractNegotationTerminated(contractNegotaitionId));
+				() -> controller.terminateContractNegotiation(contractNegotaitionId));
 	}
 	
 	@Test
-	@DisplayName("Consumer acepts negotiation offered by provider")
+	@DisplayName("Consumer accepts negotiation offered by provider")
 	public void handleContractNegotationAccepted() {
 		String contractNegotaitionId = UUID.randomUUID().toString();
 		when(apiService.handleContractNegotiationAccepted(contractNegotaitionId)).thenReturn(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED);
 		
-		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.handleContractNegotationAccepted(contractNegotaitionId);
+		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.acceptContractNegotiation(contractNegotaitionId);
 		
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 	}
@@ -282,6 +262,6 @@ public class ContractNegotiationAPIControllerTest {
 			.thenThrow(ContractNegotiationNotFoundException.class);
 		
 		assertThrows(ContractNegotiationNotFoundException.class,
-					() -> controller.handleContractNegotationAccepted(contractNegotaitionId));
+					() -> controller.acceptContractNegotiation(contractNegotaitionId));
 	}
 }

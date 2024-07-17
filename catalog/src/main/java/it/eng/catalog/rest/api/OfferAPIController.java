@@ -15,7 +15,7 @@ import it.eng.catalog.service.CatalogService;
 import lombok.extern.java.Log;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/api/offer")
+@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/api/v1/offer")
 @Log
 public class OfferAPIController {
 	
