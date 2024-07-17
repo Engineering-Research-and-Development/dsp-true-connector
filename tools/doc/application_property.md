@@ -11,7 +11,7 @@ Same improvement, related with UI can be applied here, that part of the UI will 
 Request
 
 ```
-curl --location 'http://localhost:8080/api/connector_property/' \
+curl --location 'http://localhost:8080/api/connectorProperty/' \
 --header 'Content-Type: application/json' \
 --header 'Authorization: Basic YWRtaW5AbWFpbC5jb206cGFzc3dvcmQ='
 ```
@@ -45,7 +45,7 @@ Response
 Request
 
 ```
-curl --location 'http://localhost:8080/api/connector_property/?key_prefix=application.daps' \
+curl --location 'http://localhost:8080/api/connectorProperty/?key_prefix=application.daps' \
 --header 'Content-Type: application/json' \
 --header 'Authorization: Basic YWRtaW5AbWFpbC5jb206cGFzc3dvcmQ='
 ```
@@ -79,7 +79,7 @@ Response
 Request
 
 ```
-curl --location 'http://localhost:8080/api/connector_property/spring.ssl.bundle.jks.connector.keystore.location' \
+curl --location 'http://localhost:8080/api/connectorProperty/spring.ssl.bundle.jks.connector.keystore.location' \
 --header 'Content-Type: application/json' \
 --header 'Authorization: Basic YWRtaW5AbWFpbC5jb206cGFzc3dvcmQ='
 ```
@@ -102,7 +102,7 @@ Response
 Request
 
 ```
-curl --location --request PUT 'http://localhost:8080/api/connector_property/' \
+curl --location --request PUT 'http://localhost:8080/api/connectorProperty/' \
 --header 'Content-Type: application/json' \
 --header 'Authorization: Basic YWRtaW5AbWFpbC5jb206cGFzc3dvcmQ=' \
 --data '{
