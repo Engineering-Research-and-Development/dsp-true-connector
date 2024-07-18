@@ -5,7 +5,6 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.env.OriginTrackedMapPropertySource;
 import org.springframework.core.env.AbstractEnvironment;
 import org.springframework.core.env.Environment;
@@ -22,17 +21,17 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ApplicationPropertiesConfiguration {
 
-	@Autowired
+	//@Autowired
 	private Environment environment;
-
 
 	private final ApplicationPropertiesService service;
 
 	private final ApplicationPropertiesRepository repository;
 
 
-	public ApplicationPropertiesConfiguration(ApplicationPropertiesService service, ApplicationPropertiesRepository repository) {
+	public ApplicationPropertiesConfiguration(Environment environment, ApplicationPropertiesService service, ApplicationPropertiesRepository repository) {
 		super();
+		this.environment = environment;
 		this.repository = repository;
 		this.service = service;
 	}
@@ -66,7 +65,7 @@ public class ApplicationPropertiesConfiguration {
 
 		});
 	}
-	
+
 	private ApplicationProperty managePropertyOnEnv(String key, Object value) {
 		Optional<ApplicationProperty> propertyByMongo = repository.findById(key);
 		ApplicationProperty ap = null;
@@ -87,5 +86,5 @@ public class ApplicationPropertiesConfiguration {
 
 		return ap;
 	}
-	
+
 }
