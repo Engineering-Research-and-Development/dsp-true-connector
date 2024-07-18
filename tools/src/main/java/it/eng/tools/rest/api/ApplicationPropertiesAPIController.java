@@ -24,7 +24,7 @@ import it.eng.tools.service.ApplicationPropertiesService;
 import lombok.extern.java.Log;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/api/connectorProperty")
+@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/api/properties")
 @Log
 public class ApplicationPropertiesAPIController {
 

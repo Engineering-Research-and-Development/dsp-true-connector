@@ -1466,7 +1466,7 @@
 	"variable": [
 		{
 			"key": "CONSUMER_SERVER_API_APPLICATION_PROPERTY",
-			"value": "http://127.0.0.1/api/connectorProperty"
+			"value": "http://127.0.0.1/api/properties"
         },
 		{
 			"key": "consumerPid",
