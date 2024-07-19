@@ -9,7 +9,7 @@ import org.springframework.boot.env.OriginTrackedMapPropertySource;
 import org.springframework.core.env.AbstractEnvironment;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.PropertySource;
-import org.springframework.stereotype.Component;
+//import org.springframework.stereotype.Component;
 
 import it.eng.tools.model.ApplicationProperty;
 import it.eng.tools.repository.ApplicationPropertiesRepository;
@@ -17,11 +17,10 @@ import it.eng.tools.service.ApplicationPropertiesService;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 
-@Component
+//@Component
 @Slf4j
 public class ApplicationPropertiesConfiguration {
 
-	//@Autowired
 	private Environment environment;
 
 	private final ApplicationPropertiesService service;
