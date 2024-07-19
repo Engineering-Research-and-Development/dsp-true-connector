@@ -59,7 +59,7 @@ public class ProviderContractNegotiationController {
         
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest().path("/{id}")
-                .buildAndExpand("123").toUri();
+                .buildAndExpand(cn.getProviderPid()).toUri();
 
         return ResponseEntity.created(location).contentType(MediaType.APPLICATION_JSON).body(Serializer.serializeProtocolJsonNode(cn));
     }
@@ -82,12 +82,14 @@ public class ProviderContractNegotiationController {
     @PostMapping(path = "/{providerPid}/events")
     public ResponseEntity<JsonNode> handleNegotiationEventMessage(@PathVariable String providerPid, 
     		@RequestBody JsonNode contractNegotiationEventMessageJsonNode) {
-    	 ContractNegotiationEventMessage cnem = Serializer.deserializeProtocol(contractNegotiationEventMessageJsonNode, ContractNegotiationEventMessage.class);
-         log.info(cnem.toString());
+    	 ContractNegotiationEventMessage contractNegotiationEventMessage = Serializer.deserializeProtocol(contractNegotiationEventMessageJsonNode, ContractNegotiationEventMessage.class);
+         log.info(contractNegotiationEventMessage.toString());
          
-         ContractNegotiationErrorMessage error = methodNotYetImplemented();
-         return ResponseEntity.internalServerError().contentType(MediaType.APPLICATION_JSON).body(Serializer.serializeProtocolJsonNode(error));
-
+         ContractNegotiation contractNegotiation = providerService.handleContractNegotationEventMessage(contractNegotiationEventMessage);
+       
+         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+        		 .body(Serializer.serializeProtocolJsonNode(contractNegotiation));
+//        		 .build();
     }
 
     // 2.5 The provider negotiations/:providerPid/agreement/verification resource
