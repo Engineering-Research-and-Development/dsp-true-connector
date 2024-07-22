@@ -75,7 +75,7 @@
 									"\r",
 									"pm.test(\"Retrieve contract negotiation id\", function () {\r",
 									"    var jsonData = pm.response.json();\r",
-									"    pm.collectionVariables.set(\"provider_contractNegotiationId\", jsonData[\"data\"][0][\"id\"])\r",
+									"    pm.collectionVariables.set(\"provider_contractNegotiationId\", jsonData[\"data\"][1][\"id\"])\r",
 									"});"
 								],
 								"type": "text/javascript",
