@@ -15,7 +15,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
-import it.eng.negotiation.exception.OfferNotFoundException;
 import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.ContractAgreementMessage;
 import it.eng.negotiation.model.ContractAgreementVerificationMessage;
@@ -81,12 +80,13 @@ public class ContractNegotiationAPIService {
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(forwardTo, 
 				Serializer.serializeProtocolJsonNode(contractRequestMessage), credentialUtils.getConnectorCredentials());
 		log.info("Response received {}", response);
-		ContractNegotiation contractNegotiation = null;
+		ContractNegotiation contractNegotiationWithOffer = null;
 		if (response.isSuccess()) {
 			try {
 				JsonNode jsonNode = mapper.readTree(response.getData());
-				contractNegotiation = Serializer.deserializeProtocol(jsonNode, ContractNegotiation.class);
-				ContractNegotiation contractNegotiationWithOffer = ContractNegotiation.Builder.newInstance()
+				ContractNegotiation contractNegotiation = Serializer.deserializeProtocol(jsonNode, ContractNegotiation.class);
+				contractNegotiationWithOffer = ContractNegotiation.Builder.newInstance()
+						.id(contractNegotiation.getId())
 		    			.consumerPid(contractNegotiation.getConsumerPid())
 		    			.providerPid(contractNegotiation.getProviderPid())
 		    			.callbackAddress(contractNegotiation.getCallbackAddress())
@@ -106,7 +106,7 @@ public class ContractNegotiationAPIService {
 			log.info("Error response received!");
 			throw new ContractNegotiationAPIException(response.getMessage());
 		}
-		return Serializer.serializePlainJsonNode(contractNegotiation);
+		return Serializer.serializePlainJsonNode(contractNegotiationWithOffer);
 	}
 
 	/**
@@ -172,6 +172,7 @@ public class ContractNegotiationAPIService {
 		return jsonNode;
 	}
 
+	@Deprecated
 	public void sendAgreement(String consumerPid, String providerPid, JsonNode agreementNode) {
 		ContractNegotiation contractNegotiation = findContractNegotiationByPids(consumerPid, providerPid);
 		
@@ -230,13 +231,20 @@ public class ContractNegotiationAPIService {
 		}
 	}
 
-	public Collection<JsonNode> findContractNegotiations(String state) {
-		if(StringUtils.isNotBlank(state)) {
-			return contractNegotiationRepository.findByState(state).stream()
+	public Collection<JsonNode> findContractNegotiations(String contractNegotiationId, String state) {
+		if (StringUtils.isNotBlank(contractNegotiationId)) {
+			return contractNegotiationRepository.findById(contractNegotiationId)
+					.stream()
+					.map(cn -> Serializer.serializePlainJsonNode(cn))
+					.collect(Collectors.toList());
+		} else if (StringUtils.isNotBlank(state)) {
+			return contractNegotiationRepository.findByState(state)
+					.stream()
 					.map(cn -> Serializer.serializePlainJsonNode(cn))
 					.collect(Collectors.toList());
 		}
-		return contractNegotiationRepository.findAll().stream()
+		return contractNegotiationRepository.findAll()
+				.stream()
 				.map(cn -> Serializer.serializePlainJsonNode(cn))
 				.collect(Collectors.toList());
 	}
@@ -276,7 +284,7 @@ public class ContractNegotiationAPIService {
 	}
 	
 	/**
-	 * Negotiate status to AGREED after successful reponse from connector
+	 * Negotiate status to AGREED after successful response from connector
 	 * @param contractNegotiationId
 	 * @return
 	 */
@@ -285,16 +293,11 @@ public class ContractNegotiationAPIService {
 	
 		stateTransitionCheck(ContractNegotiationState.AGREED, contractNegotiation.getState());
 
-		Offer offer = contractNegotiation.getOffer();
-		offerRepository.findById(offer.getId())
-       		.orElseThrow(() ->
-       			new OfferNotFoundException("Offer with id " + offer.getId() + " binded to contract neogitation not found"));
-
 		ContractAgreementMessage agreementMessage = ContractAgreementMessage.Builder.newInstance()
 				.consumerPid(contractNegotiation.getConsumerPid())
 				.providerPid(contractNegotiation.getProviderPid())
 				.callbackAddress(properties.providerCallbackAddress())
-				.agreement(agreementFromOffer(offer, contractNegotiation.getAssigner()))
+				.agreement(agreementFromOffer(contractNegotiation.getOffer(), contractNegotiation.getAssigner()))
 				.build();
 		// TODO this one will fail because provider does not have consumer callbackAddress for sending agreement
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
@@ -314,20 +317,19 @@ public class ContractNegotiationAPIService {
 		}
 	}
 	
-	public void verifyNegotiation(String consumerPid, String providerPid) {
-		log.info("ConsumerPid - " + consumerPid + ", providerPid - " + providerPid);
-		ContractNegotiation contractNegotiation =  findContractNegotiationByPids(consumerPid, providerPid);
+	public void verifyNegotiation(String contractNegotiationId) {
+		ContractNegotiation contractNegotiation =  findContractNegotiationById(contractNegotiationId);
 		
 		stateTransitionCheck(ContractNegotiationState.VERIFIED, contractNegotiation.getState());
 		
 		ContractAgreementVerificationMessage verificationMessage = ContractAgreementVerificationMessage.Builder.newInstance()
-				.consumerPid(consumerPid)
-				.providerPid(providerPid)
+				.consumerPid(contractNegotiation.getConsumerPid())
+				.providerPid(contractNegotiation.getProviderPid())
 				.build();
 		
 		log.info("Found intial negotiation" + " - CallbackAddress " + contractNegotiation.getCallbackAddress());
 
-		String callbackAddress = ContractNegotiationCallback.getProviderAgreementVerificationCallback(contractNegotiation.getCallbackAddress(), providerPid);
+		String callbackAddress = ContractNegotiationCallback.getProviderAgreementVerificationCallback(contractNegotiation.getCallbackAddress(), contractNegotiation.getProviderPid());
 		log.info("Sending verification message to provider to {}", callbackAddress);
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(callbackAddress, 
 				Serializer.serializeProtocolJsonNode(verificationMessage),

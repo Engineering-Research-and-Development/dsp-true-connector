@@ -26,7 +26,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
-import it.eng.negotiation.exception.OfferNotFoundException;
 import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationState;
@@ -275,9 +274,19 @@ public class ContractNegotiationAPIServiceTest {
 				.thenReturn(Arrays.asList(
 						ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED,
 						ModelUtil.CONTRACT_NEGOTIATION_REQUESTED));
-		Collection<JsonNode> response = service.findContractNegotiations(null);
+		Collection<JsonNode> response = service.findContractNegotiations(null, null);
 		assertNotNull(response);
 		assertEquals(2, response.size());
+	}
+	
+	@Test
+	@DisplayName("Find contract negotiations by id")
+	public void findContractNegotiationById() {
+		when(contractNegotiationRepository.findById(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId()))
+				.thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+		Collection<JsonNode> response = service.findContractNegotiations(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId(), null);
+		assertNotNull(response);
+		assertEquals(1, response.size());
 	}
 	
 	@Test
@@ -285,7 +294,7 @@ public class ContractNegotiationAPIServiceTest {
 	public void findContractNegotiationByState() {
 		when(contractNegotiationRepository.findByState(ContractNegotiationState.ACCEPTED.name()))
 				.thenReturn(Arrays.asList(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
-		Collection<JsonNode> response = service.findContractNegotiations(ContractNegotiationState.ACCEPTED.name());
+		Collection<JsonNode> response = service.findContractNegotiations(null, ContractNegotiationState.ACCEPTED.name());
 		assertNotNull(response);
 		assertEquals(1, response.size());
 	}
@@ -338,7 +347,6 @@ public class ContractNegotiationAPIServiceTest {
 		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(properties.providerCallbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
 		when(properties.getAssignee()).thenReturn(ModelUtil.ASSIGNEE);
-		when(offerRepository.findById(any(String.class))).thenReturn(Optional.of(ModelUtil.OFFER));
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(true);
 		
@@ -359,17 +367,6 @@ public class ContractNegotiationAPIServiceTest {
 	}
 	
 	@Test
-	@DisplayName("Provider accepts contract negotiation - offer does not exists")
-	public void handleCNApproved_no_offer() {
-		String contractNegotaitionId = UUID.randomUUID().toString(); 
-		when(contractNegotiationRepository.findById(contractNegotaitionId)).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_REQUESTED));
-		when(offerRepository.findById(any(String.class))).thenReturn(Optional.empty());
-		
-		assertThrows(OfferNotFoundException.class, 
-				() -> service.handleContractNegotiationAgreed(contractNegotaitionId));
-	}
-	
-	@Test
 	@DisplayName("Provider accepts contract negotiation - error while contacting consumer")
 	public void handleCNApproved_error_consumer() {
 		String contractNegotaitionId = UUID.randomUUID().toString(); 
@@ -377,7 +374,6 @@ public class ContractNegotiationAPIServiceTest {
 		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(properties.providerCallbackAddress()).thenReturn(ModelUtil.CALLBACK_ADDRESS);
 		when(properties.getAssignee()).thenReturn(ModelUtil.ASSIGNEE);
-		when(offerRepository.findById(any(String.class))).thenReturn(Optional.of(ModelUtil.OFFER));
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(false);
 		
@@ -392,11 +388,11 @@ public class ContractNegotiationAPIServiceTest {
 	@DisplayName("Handle agreement verification message success")
 	public void contractAgreementVerificationMessage_success() {
 		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_AGREED));
+		when(contractNegotiationRepository.findById(ModelUtil.CONTRACT_NEGOTIATION_AGREED.getId())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_AGREED));
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(true);
 
-		service.verifyNegotiation(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID);
+		service.verifyNegotiation(ModelUtil.CONTRACT_NEGOTIATION_AGREED.getId());
 		
 		verify(contractNegotiationRepository).save(any(ContractNegotiation.class));
 	}
@@ -404,28 +400,28 @@ public class ContractNegotiationAPIServiceTest {
 	@Test
 	@DisplayName("Handle agreement verification message - contract negotiation not found")
 	public void contractAgreementVerificationMessage_contractNegotiationNotFound() {
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.empty());
+		when(contractNegotiationRepository.findById(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId())).thenReturn(Optional.empty());
 
-		assertThrows(ContractNegotiationAPIException.class, () -> service.verifyNegotiation(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID));
+		assertThrows(ContractNegotiationAPIException.class, () -> service.verifyNegotiation(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId()));
 	}
 	
 	@Test
 	@DisplayName("Handle agreement verification message - invalid state")
 	public void contractAgreementVerificationMessage_invalidState() {
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+		when(contractNegotiationRepository.findById(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 
-		assertThrows(ContractNegotiationAPIException.class, () -> service.verifyNegotiation(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID));
+		assertThrows(ContractNegotiationAPIException.class, () -> service.verifyNegotiation(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId()));
 	}
 	
 	@Test
 	@DisplayName("Handle agreement verification message - bad request")
 	public void contractAgreementVerificationMessage_badRequest() {
 		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_AGREED));
+		when(contractNegotiationRepository.findById(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_AGREED));
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		
 		assertThrows(ContractNegotiationAPIException.class, 
-				() -> service.verifyNegotiation(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID));
+				() -> service.verifyNegotiation(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId()));
 	}
 	
 	@Test

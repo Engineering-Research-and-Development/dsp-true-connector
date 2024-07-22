@@ -11,7 +11,7 @@ import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.tools.client.rest.OkHttpRestClient;
 
-public abstract class BaseService {
+public abstract class BaseProtocolService {
 	
 	protected final ContractNegotiationPublisher publisher;
 	protected final ContractNegotiationRepository contractNegotiationRepository;
@@ -19,7 +19,7 @@ public abstract class BaseService {
 	protected final ContractNegotiationProperties properties;
 	protected final OfferRepository offerRepository;
 
-    public BaseService(ContractNegotiationPublisher publisher,
+    public BaseProtocolService(ContractNegotiationPublisher publisher,
 			ContractNegotiationRepository contractNegotiationRepository, OkHttpRestClient okHttpRestClient,
 			ContractNegotiationProperties properties, OfferRepository offerRepository) {
 		super();

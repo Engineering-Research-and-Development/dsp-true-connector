@@ -31,7 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
-public class ContractNegotiationEventHandlerService extends BaseService {
+public class ContractNegotiationEventHandlerService extends BaseProtocolService {
 	
 	private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 	
@@ -47,6 +47,7 @@ public class ContractNegotiationEventHandlerService extends BaseService {
 		this.credentialUtils = credentialUtils;
 	}
 
+	@Deprecated
 	public void handleContractNegotiationOfferResponse(ContractNegotiationOfferResponseEvent offerResponse) {
 		String result = offerResponse.isOfferAccepted() ? "accepted" : "declined";
 		log.info("Contract offer " + result);

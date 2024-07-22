@@ -29,7 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
-public class ContractNegotiationConsumerService extends BaseService {
+public class ContractNegotiationConsumerService extends BaseProtocolService {
 
 	private final AgreementRepository agreementRepository;
 	

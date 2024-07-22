@@ -17,6 +17,11 @@
 							"listen": "test",
 							"script": {
 								"exec": [
+									"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.collectionVariables.set(\"contractNegotiationId\", jsonData[\"data\"][\"id\"])\r",
+									"});\r",
+									"\r",
 									"pm.test(\"Retrieve consumer pid\", function () {\r",
 									"    var jsonData = pm.response.json();\r",
 									"    pm.collectionVariables.set(\"consumerPid\", jsonData[\"data\"][\"consumerPid\"])\r",
@@ -77,7 +82,7 @@
 						}
 					],
 					"request": {
-						"method": "POST",
+						"method": "PUT",
 						"header": [
 							{
 								"key": "Content-Type",
@@ -102,12 +107,13 @@
 							}
 						},
 						"url": {
-							"raw": "{{PROVIDER_API_ENDPOINT}}/sendAgreement",
+							"raw": "{{PROVIDER_API_ENDPOINT}}/{{contractNegotiationId}}/approve",
 							"host": [
 								"{{PROVIDER_API_ENDPOINT}}"
 							],
 							"path": [
-								"sendAgreement"
+								"{{contractNegotiationId}}",
+								"approve"
 							]
 						}
 					},
@@ -130,7 +136,7 @@
 						}
 					],
 					"request": {
-						"method": "POST",
+						"method": "PUT",
 						"header": [
 							{
 								"key": "Content-Type",
@@ -147,12 +153,12 @@
 							}
 						},
 						"url": {
-							"raw": "{{CONSUMER_API_ENDPOINT}}/verifyNegotiation",
+							"raw": "{{CONSUMER_API_ENDPOINT}}{{contractNegotiationId}}/verify",
 							"host": [
-								"{{CONSUMER_API_ENDPOINT}}"
+								"{{CONSUMER_API_ENDPOINT}}{{contractNegotiationId}}"
 							],
 							"path": [
-								"verifyNegotiation"
+								"verify"
 							]
 						}
 					},
@@ -175,7 +181,7 @@
 						}
 					],
 					"request": {
-						"method": "POST",
+						"method": "PUT",
 						"header": [
 							{
 								"key": "Content-Type",
@@ -192,12 +198,13 @@
 							}
 						},
 						"url": {
-							"raw": "{{PROVIDER_API_ENDPOINT}}/finalizeNegotiation",
+							"raw": "{{PROVIDER_API_ENDPOINT}}/{{contractNegotiationId}}/finalize",
 							"host": [
 								"{{PROVIDER_API_ENDPOINT}}"
 							],
 							"path": [
-								"finalizeNegotiation"
+								"{{contractNegotiationId}}",
+								"finalize"
 							]
 						}
 					},
@@ -271,6 +278,11 @@
 		{
 			"key": "providerPid",
 			"value": ""
+		},
+		{
+			"key": "contractNegotiationId",
+			"value": null,
+			"type": "string"
 		}
 	]
 }

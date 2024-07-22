@@ -26,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
-public class ContractNegotiationProviderService extends BaseService{
+public class ContractNegotiationProviderService extends BaseProtocolService{
 	
 	protected final CredentialUtils credentialUtils;
 
