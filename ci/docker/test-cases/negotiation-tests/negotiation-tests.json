@@ -54,12 +54,9 @@
 							}
 						},
 						"url": {
-							"raw": "{{CONSUMER_API_ENDPOINT}}/startNegotiation",
+							"raw": "{{CONSUMER_API_ENDPOINT}}",
 							"host": [
 								"{{CONSUMER_API_ENDPOINT}}"
-							],
-							"path": [
-								"startNegotiation"
 							]
 						}
 					},
