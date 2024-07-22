@@ -38,6 +38,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class TransferSuspensionMessage extends AbstractTransferMessage {
 
+	private static final long serialVersionUID = 6065245999402269996L;
+
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_PROVIDER_PID)
 	private String providerPid;

@@ -9,7 +9,7 @@ public class ConstraintTest {
 
 	@Test
 	public void equalsTrue() {
-		assertTrue(ModelUtil.CONSTRAINT.equals(ModelUtil.CONSTRAINT));
+		assertTrue(MockObjectUtil.CONSTRAINT.equals(MockObjectUtil.CONSTRAINT));
 	}
 	
 	@Test

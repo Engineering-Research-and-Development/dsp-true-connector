@@ -28,7 +28,7 @@ import it.eng.negotiation.model.ContractAgreementVerificationMessage;
 import it.eng.negotiation.model.ContractNegotiationEventMessage;
 import it.eng.negotiation.model.ContractNegotiationEventType;
 import it.eng.negotiation.model.ContractRequestMessage;
-import it.eng.negotiation.model.ModelUtil;
+import it.eng.negotiation.model.MockObjectUtil;
 import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.model.DSpaceConstants;
@@ -52,7 +52,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isBadRequest())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(ModelUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())))
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())))
     	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
     }
 
@@ -64,14 +64,14 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     	//needs to match offer in initial.data
     	Offer offer = Offer.Builder.newInstance()
     			.id("fdc45798-a123-4955-8baf-ab7fd66ac4d5")
-    			.target(ModelUtil.TARGET)
-    			.assigner(ModelUtil.ASSIGNER)
-    			.permission(Arrays.asList(ModelUtil.PERMISSION_COUNT_5))
+    			.target(MockObjectUtil.TARGET)
+    			.assigner(MockObjectUtil.ASSIGNER)
+    			.permission(Arrays.asList(MockObjectUtil.PERMISSION_COUNT_5))
     			.build();
     	
     	ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
-    			.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
-    			.consumerPid(ModelUtil.CONSUMER_PID)
+    			.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
+    			.consumerPid(MockObjectUtil.CONSUMER_PID)
     			.offer(offer)
     			.build();
     	
@@ -82,7 +82,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isCreated())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())))
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())))
     	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
     	
     	JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
@@ -94,10 +94,10 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void negotiationExistsTests() throws Exception {
     	ContractRequestMessage crm = ContractRequestMessage.Builder.newInstance()
-			.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
+			.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
 			.consumerPid(TestUtil.CONSUMER_PID)
 			.providerPid(TestUtil.PROVIDER_PID)
-			.offer(ModelUtil.OFFER)
+			.offer(MockObjectUtil.OFFER)
 			.build();
 
     	final ResultActions result =
@@ -107,7 +107,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isBadRequest())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(ModelUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())))
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())))
     	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
     }
     
@@ -122,7 +122,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isOk())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())))
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())))
     	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
     }
     
@@ -137,7 +137,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isNotFound())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(ModelUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())))
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())))
     	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
     }
     
@@ -147,15 +147,15 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     public void handleAgreementTest() throws Exception {
 		
 		ContractAgreementMessage agreementMessage = ContractAgreementMessage.Builder.newInstance()
-				.consumerPid(ModelUtil.CONSUMER_PID)
+				.consumerPid(MockObjectUtil.CONSUMER_PID)
 				.providerPid(providerPid)
-				.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
-				.agreement(ModelUtil.AGREEMENT)
+				.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
+				.agreement(MockObjectUtil.AGREEMENT)
 				.build();
     	
     	final ResultActions result =
     			mockMvc.perform(
-    					post("/consumer/negotiations/" + ModelUtil.CONSUMER_PID + "/agreement")
+    					post("/consumer/negotiations/" + MockObjectUtil.CONSUMER_PID + "/agreement")
     					.content(Serializer.serializeProtocol(agreementMessage))
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isOk());
@@ -167,13 +167,13 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     public void handleVerifyAgreementTest() throws Exception {
 		
 		ContractAgreementVerificationMessage verificationMessage = ContractAgreementVerificationMessage.Builder.newInstance()
-				.consumerPid(ModelUtil.CONSUMER_PID)
+				.consumerPid(MockObjectUtil.CONSUMER_PID)
 				.providerPid(providerPid)
 				.build();
     	
     	final ResultActions result =
     			mockMvc.perform(
-    					post("/negotiations/" + ModelUtil.PROVIDER_PID + "/agreement/verification")
+    					post("/negotiations/" + MockObjectUtil.PROVIDER_PID + "/agreement/verification")
     					.content(Serializer.serializeProtocol(verificationMessage))
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isOk());
@@ -185,14 +185,14 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     public void handleFinalizeEventTest() throws Exception {
 		
 		ContractNegotiationEventMessage  contractNegotiationEventMessage = ContractNegotiationEventMessage.Builder.newInstance()
-				.consumerPid(ModelUtil.CONSUMER_PID)
+				.consumerPid(MockObjectUtil.CONSUMER_PID)
 				.providerPid(providerPid)
 				.eventType(ContractNegotiationEventType.FINALIZED)
 				.build();
     	
     	final ResultActions result =
     			mockMvc.perform(
-    					post("/consumer/negotiations/" + ModelUtil.CONSUMER_PID + "/events")
+    					post("/consumer/negotiations/" + MockObjectUtil.CONSUMER_PID + "/events")
     					.content(Serializer.serializeProtocol(contractNegotiationEventMessage))
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isOk());

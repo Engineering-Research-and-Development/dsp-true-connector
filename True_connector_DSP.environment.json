@@ -1,5 +1,5 @@
 {
-	"id": "cd693373-d4a6-4cfd-a97f-be2e0da3d728",
+	"id": "effbfb9d-feb4-4213-b5ef-f0916613c1f2",
 	"name": "TC_V2_ENV",
 	"values": [
 		{
@@ -34,7 +34,7 @@
 		},
 		{
 			"key": "CONSUMER_SERVER_API_NEGOTIATION",
-			"value": "{{CONSUMER}}/api/negotiations",
+			"value": "{{CONSUMER}}/api/v1/negotiations",
 			"type": "default",
 			"enabled": true
 		},
@@ -76,7 +76,7 @@
 		},
 		{
 			"key": "PROVIDER_SERVER_API_NEGOTIATION",
-			"value": "{{PROVIDER}}/api/negotiations",
+			"value": "{{PROVIDER}}/api/v1/negotiations",
 			"type": "default",
 			"enabled": true
 		},
@@ -99,6 +99,12 @@
 			"enabled": true
 		},
 		{
+			"key": "PROVIDER_SERVER_API_TRANSFERS",
+			"value": "{{PROVIDER}}/api/transfers",
+			"type": "default",
+			"enabled": true
+		},
+		{
 			"key": "PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER",
 			"value": "{{PROVIDER}}/transfers",
 			"type": "default",
@@ -109,9 +115,21 @@
 			"value": "{{CONSUMER}}/consumer/transfers",
 			"type": "default",
 			"enabled": true
+		},
+		{
+			"key": "transfer_consumerPid",
+			"value": "",
+			"type": "any",
+			"enabled": true
+		},
+		{
+			"key": "transfer_providerPid",
+			"value": "",
+			"type": "any",
+			"enabled": true
 		}
 	],
 	"_postman_variable_scope": "environment",
-	"_postman_exported_at": "2024-06-28T10:42:50.623Z",
-	"_postman_exported_using": "Postman/11.2.24"
+	"_postman_exported_at": "2024-07-22T11:00:47.529Z",
+	"_postman_exported_using": "Postman/11.4.0"
 }

@@ -1,22 +1,22 @@
 package it.eng.datatransfer.exceptions;
 
-public class AgreementNotFoundException extends RuntimeException {
+public class TransferProcessInvalidStateException extends RuntimeException {
 
-	private static final long serialVersionUID = -7682192238680210533L;
+	private static final long serialVersionUID = -8254537435588358784L;
 
 	private String consumerPid;
 	private String providerPid;
 	
-	public AgreementNotFoundException() {
+	public TransferProcessInvalidStateException() {
 		super();
 	}
-	
-	public AgreementNotFoundException(String message, String consumerPid, String providerPid) {
+
+	public TransferProcessInvalidStateException(String message, String consumerPid, String providerPid) {
 		super(message);
 		this.consumerPid = consumerPid;
 		this.providerPid = providerPid;
 	}
-	
+
 	public String getConsumerPid() {
 		return consumerPid;
 	}
@@ -24,4 +24,5 @@ public class AgreementNotFoundException extends RuntimeException {
 	public String getProviderPid() {
 		return providerPid;
 	}
+
 }

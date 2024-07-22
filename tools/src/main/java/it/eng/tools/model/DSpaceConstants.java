@@ -6,6 +6,10 @@ public interface DSpaceConstants {
 		REQUESTED, OFFERED, ACCEPTED, AGREED, VERIFIED, FINALIZED, TERMINATED
 	}
 	
+	public static enum DataTransferStates {
+		REQUESTED, STARTED, COMPLETED, SUSPENDED, TERMINATED
+	}
+	
 	public static enum ContractNegotiationEvent {
 		ACCEPTED, FINALIZED;
 	}

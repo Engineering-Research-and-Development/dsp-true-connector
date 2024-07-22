@@ -5,19 +5,26 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @Data
 @Builder
 @AllArgsConstructor
-public class GenericApiResponse<T> {
-    private boolean success;
+@NoArgsConstructor
+public class GenericApiResponse<T> implements Serializable {
+	
+	private static final long serialVersionUID = -1433451249888939134L;
+	
+	private boolean success;
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private String message;
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private T data;
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy hh:mm:ss")
+    //, pattern = "dd-MM-yyyy HH:mm:ss"
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private LocalDateTime timestamp;
     private int httpStatus;
 

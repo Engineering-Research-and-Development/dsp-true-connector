@@ -22,4 +22,18 @@ public class ModelUtil {
 			.providerPid(PROVIDER_PID)
 			.state(TransferState.REQUESTED)
 			.build();
+	
+	public static TransferProcess TRANSFER_PROCESS_STARTED = TransferProcess.Builder.newInstance()
+			.agreementId(AGREEMENT_ID)
+			.consumerPid(CONSUMER_PID)
+			.providerPid(PROVIDER_PID)
+			.state(TransferState.STARTED)
+			.build();
+	
+	public static TransferProcess TRANSFER_PROCESS_SUSPENDED = TransferProcess.Builder.newInstance()
+			.agreementId(AGREEMENT_ID)
+			.consumerPid(CONSUMER_PID)
+			.providerPid(PROVIDER_PID)
+			.state(TransferState.SUSPENDED)
+			.build();
 }

@@ -1,6 +1,33 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.0] - 2024-08-xx
+
+### Added
+ 
+ - Setup project structure (multimodule maven project:tools, catalog, negotiation, dataTransfer)
+ - Catalog protocol and API logic implementation (controller, service, model; junit and integration tests)
+ - Negotiation protocol and API logic implementation (controller, service, model; junit and integration tests) - Agreement enforcement is currently checking only if agreement is present, it does not check for constraints
+ - Data Transfer protocol and API logic implementation (controller, service, model; junit and integration tests) - REST pull implementation without authorization, with hardcoded value/artifact
+ - Postman collection for testing endpoints	
+ - Configured GitHub actions to run tests
+ 
+## [0.0.1] - 2024-07-22
+
+### Added
+
+ - TransferStartMessage logic for provider and consumer callback (controller and service layer)
+ - DataTransfer API controller, service, junit and integration tests (get TransferProcess, by state and all)
+ - Negotiation module - API endpoint for agreement check (valid or not)
+ - AbstractTransferMessage implements Serializable
+ 
+## Updated
+
+ - Code coverage (junit and integration)
+ - TransferRequestMessage - call to negotiation for agreement validity check before proceeding
+ - Negotiation module - renamed ModelUtil to MockObjectUtil (aligned with other modules)
+ - postman collection
+ 
 ## [0.0.1] - 2024-07-12
 
 ### Added

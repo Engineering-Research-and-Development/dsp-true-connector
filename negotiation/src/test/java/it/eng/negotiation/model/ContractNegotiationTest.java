@@ -21,8 +21,8 @@ import jakarta.validation.ValidationException;
 public class ContractNegotiationTest {
 
 	private ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
-			.consumerPid(ModelUtil.CONSUMER_PID)
-			.providerPid(ModelUtil.PROVIDER_PID)
+			.consumerPid(MockObjectUtil.CONSUMER_PID)
+			.providerPid(MockObjectUtil.PROVIDER_PID)
 			.state(ContractNegotiationState.ACCEPTED)
 			.build();
 	
@@ -73,8 +73,8 @@ public class ContractNegotiationTest {
 	@DisplayName("From Requestsed state")
 	public void requestedState() {
 		ContractNegotiation cn = ContractNegotiation.Builder.newInstance()
-			.consumerPid(ModelUtil.CONSUMER_PID)
-			.providerPid(ModelUtil.PROVIDER_PID)
+			.consumerPid(MockObjectUtil.CONSUMER_PID)
+			.providerPid(MockObjectUtil.PROVIDER_PID)
 			.state(ContractNegotiationState.REQUESTED)
 			.build();
 		assertTrue(cn.getState().nextState().containsAll(Arrays.asList(ContractNegotiationState.OFFERED, ContractNegotiationState.AGREED, ContractNegotiationState.TERMINATED)));
@@ -84,8 +84,8 @@ public class ContractNegotiationTest {
 	@DisplayName("From Offered state")
 	public void offeredState() {
 		ContractNegotiation cn = ContractNegotiation.Builder.newInstance()
-			.consumerPid(ModelUtil.CONSUMER_PID)
-			.providerPid(ModelUtil.PROVIDER_PID)
+			.consumerPid(MockObjectUtil.CONSUMER_PID)
+			.providerPid(MockObjectUtil.PROVIDER_PID)
 			.state(ContractNegotiationState.OFFERED)
 			.build();
 		assertTrue(cn.getState().nextState().containsAll(Arrays.asList(ContractNegotiationState.REQUESTED, ContractNegotiationState.ACCEPTED, ContractNegotiationState.TERMINATED)));
@@ -95,8 +95,8 @@ public class ContractNegotiationTest {
 	@DisplayName("From Accepted state")
 	public void acceptedState() {
 		ContractNegotiation cn = ContractNegotiation.Builder.newInstance()
-			.consumerPid(ModelUtil.CONSUMER_PID)
-			.providerPid(ModelUtil.PROVIDER_PID)
+			.consumerPid(MockObjectUtil.CONSUMER_PID)
+			.providerPid(MockObjectUtil.PROVIDER_PID)
 			.state(ContractNegotiationState.ACCEPTED)
 			.build();
 		assertTrue(cn.getState().nextState().containsAll(Arrays.asList(ContractNegotiationState.AGREED, ContractNegotiationState.TERMINATED)));
@@ -106,8 +106,8 @@ public class ContractNegotiationTest {
 	@DisplayName("From Agreed state")
 	public void agreedState() {
 		ContractNegotiation cn = ContractNegotiation.Builder.newInstance()
-			.consumerPid(ModelUtil.CONSUMER_PID)
-			.providerPid(ModelUtil.PROVIDER_PID)
+			.consumerPid(MockObjectUtil.CONSUMER_PID)
+			.providerPid(MockObjectUtil.PROVIDER_PID)
 			.state(ContractNegotiationState.AGREED)
 			.build();
 		assertTrue(cn.getState().nextState().containsAll(Arrays.asList(ContractNegotiationState.VERIFIED, ContractNegotiationState.TERMINATED)));
@@ -117,8 +117,8 @@ public class ContractNegotiationTest {
 	@DisplayName("From Verified state")
 	public void verifiedState() {
 		ContractNegotiation cn = ContractNegotiation.Builder.newInstance()
-			.consumerPid(ModelUtil.CONSUMER_PID)
-			.providerPid(ModelUtil.PROVIDER_PID)
+			.consumerPid(MockObjectUtil.CONSUMER_PID)
+			.providerPid(MockObjectUtil.PROVIDER_PID)
 			.state(ContractNegotiationState.VERIFIED)
 			.build();
 		assertTrue(cn.getState().nextState().containsAll(Arrays.asList(ContractNegotiationState.FINALIZED, ContractNegotiationState.TERMINATED)));
@@ -127,11 +127,11 @@ public class ContractNegotiationTest {
 	@Test
 	@DisplayName("From initial ContractNegotiation with new ContractNegotiationState")
 	public void withNewState() {
-		ContractNegotiation contractNegotiationOffered = ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.withNewContractNegotiationState(ContractNegotiationState.OFFERED);
-		assertEquals(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId(), contractNegotiationOffered.getId());
-		assertEquals(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getConsumerPid(), contractNegotiationOffered.getConsumerPid());
-		assertEquals(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getProviderPid(), contractNegotiationOffered.getProviderPid());
-		assertEquals(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getCallbackAddress(), contractNegotiationOffered.getCallbackAddress());
+		ContractNegotiation contractNegotiationOffered = MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.withNewContractNegotiationState(ContractNegotiationState.OFFERED);
+		assertEquals(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId(), contractNegotiationOffered.getId());
+		assertEquals(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getConsumerPid(), contractNegotiationOffered.getConsumerPid());
+		assertEquals(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getProviderPid(), contractNegotiationOffered.getProviderPid());
+		assertEquals(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getCallbackAddress(), contractNegotiationOffered.getCallbackAddress());
 		assertEquals(ContractNegotiationState.OFFERED, contractNegotiationOffered.getState());
 	}
 	

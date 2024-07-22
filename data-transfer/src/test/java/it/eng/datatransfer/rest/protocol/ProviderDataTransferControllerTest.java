@@ -3,6 +3,7 @@ package it.eng.datatransfer.rest.protocol;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.DisplayName;
@@ -20,6 +21,7 @@ import it.eng.datatransfer.exceptions.TransferProcessExistsException;
 import it.eng.datatransfer.exceptions.TransferProcessNotFoundException;
 import it.eng.datatransfer.model.Serializer;
 import it.eng.datatransfer.model.TransferRequestMessage;
+import it.eng.datatransfer.model.TransferStartMessage;
 import it.eng.datatransfer.service.DataTransferService;
 import it.eng.datatransfer.util.MockObjectUtil;
 import jakarta.validation.ValidationException;
@@ -80,17 +82,31 @@ public class ProviderDataTransferControllerTest {
 	@Test
 	@DisplayName("Start TransferProcess")
 	public void startDataTransfer() {
-		assertEquals(HttpStatus.NOT_IMPLEMENTED, 
-				controller.startDataTransfer(MockObjectUtil.PROVIDER_PID,
-						Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_START_MESSAGE)).getStatusCode());
+	when(dataTransferService.startDataTransfer(any(TransferStartMessage.class), isNull(), any(String.class)))
+		.thenReturn(MockObjectUtil.TRANSFER_PROCESS_STARTED);
+		
+	ResponseEntity<JsonNode> response = controller.startDataTransfer(MockObjectUtil.PROVIDER_PID,
+			Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_START_MESSAGE));
+	
+	assertEquals(HttpStatus.OK, response.getStatusCode());
 	}
 	
 	@Test
 	@DisplayName("Start TransferProcess - invalid request body")
 	public void startDataTransfer_invalidBody() {
 		assertThrows(ValidationException.class, () ->
-			controller.startDataTransfer(MockObjectUtil.PROVIDER_PID, Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_COMPLETION_MESSAGE))
-		);
+			controller.startDataTransfer(MockObjectUtil.PROVIDER_PID, 
+					Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_COMPLETION_MESSAGE)));
+	}
+	
+	@Test
+	@DisplayName("Start TransferProcess - error service")
+	public void startDataTransfer_errorService() {
+		when(dataTransferService.startDataTransfer(any(TransferStartMessage.class), isNull(), any(String.class)))
+			.thenThrow(new TransferProcessNotFoundException("TransferProcess not found test"));
+		assertThrows(TransferProcessNotFoundException.class, () ->
+			controller.startDataTransfer(MockObjectUtil.PROVIDER_PID, 
+					Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_START_MESSAGE)));
 	}
 	
 	@Test

@@ -20,6 +20,7 @@ import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
@@ -32,7 +33,7 @@ public class ContractNegotiationProviderService {
     private final ContractNegotiationPublisher publisher;
 	private final ContractNegotiationRepository contractNegotiationRepository;
 	private final OkHttpRestClient okHttpRestClient;
-	private final  ContractNegotiationProperties properties;
+	private final ContractNegotiationProperties properties;
 	private final OfferRepository offerRepository;
 	private final CredentialUtils credentialUtils;
 
@@ -99,7 +100,8 @@ public class ContractNegotiationProviderService {
                     throw new ContractNegotiationExistsException("PROVIDER - Contract request message with provider and consumer pid's exists", contractRequestMessage.getProviderPid(), contractRequestMessage.getConsumerPid());
                 });
 
-		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + properties.serverPort() + "/api/offer/validateOffer", 
+		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + properties.serverPort() + 
+				ApiEndpoints.CATALOG_OFFERS_V1 + "/validateOffer", 
 				Serializer.serializePlainJsonNode(contractRequestMessage.getOffer()), 
 				credentialUtils.getAPICredentials());
         

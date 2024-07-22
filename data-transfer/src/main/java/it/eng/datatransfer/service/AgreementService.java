@@ -34,7 +34,7 @@ public class AgreementService {
 		String agreementId = transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid)
 				.map(trm -> trm.getAgreementId())
 				.orElseThrow(() -> new AgreementNotFoundException("Agreement for cosnumerPid '"+ consumerPid +
-						"' and providerPid '" + providerPid + "' not found"));
+						"' and providerPid '" + providerPid + "' not found", consumerPid, providerPid));
 		
 		// TODO once usage policy enforcement is done, call should be made here
 		if(!agreementStorage.containsKey(agreementId)) {

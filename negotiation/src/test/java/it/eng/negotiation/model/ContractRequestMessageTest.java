@@ -19,10 +19,10 @@ import jakarta.validation.ValidationException;
 public class ContractRequestMessageTest {
 
 	private ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
-			.consumerPid(ModelUtil.CONSUMER_PID)
-			.providerPid(ModelUtil.PROVIDER_PID)
-			.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
-			.offer(ModelUtil.OFFER)
+			.consumerPid(MockObjectUtil.CONSUMER_PID)
+			.providerPid(MockObjectUtil.PROVIDER_PID)
+			.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
+			.offer(MockObjectUtil.OFFER)
 			.build();
 	
 	@Test
@@ -44,9 +44,9 @@ public class ContractRequestMessageTest {
 	@DisplayName("Verify valid plain object serialization - initial ContractRequestMessage")
 	public void testContractRequest_consumer() {
 		ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
-				.consumerPid(ModelUtil.CONSUMER_PID)
-				.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
-				.offer(ModelUtil.OFFER)
+				.consumerPid(MockObjectUtil.CONSUMER_PID)
+				.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
+				.offer(MockObjectUtil.OFFER)
 				.build();
 		String result = Serializer.serializePlain(contractRequestMessage);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
@@ -61,10 +61,10 @@ public class ContractRequestMessageTest {
 	@DisplayName("Verify valid plain object serialization - contains offer")
 	public void testPlain_offer() throws JsonProcessingException {
 		ContractRequestMessage contractRequestMessageOffer = ContractRequestMessage.Builder.newInstance()
-				.consumerPid(ModelUtil.CONSUMER_PID)
-				.providerPid(ModelUtil.PROVIDER_PID)
-				.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
-				.offer(ModelUtil.OFFER)
+				.consumerPid(MockObjectUtil.CONSUMER_PID)
+				.providerPid(MockObjectUtil.PROVIDER_PID)
+				.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
+				.offer(MockObjectUtil.OFFER)
 				.build();
 		String result = Serializer.serializePlain(contractRequestMessageOffer);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
@@ -124,9 +124,9 @@ public class ContractRequestMessageTest {
 	
 	private void validateJavaObj(ContractRequestMessage javaObj) {
 		assertNotNull(javaObj);
-		assertEquals(ModelUtil.CONSUMER_PID, javaObj.getConsumerPid());
-		assertEquals(ModelUtil.PROVIDER_PID, javaObj.getProviderPid());
-		assertEquals(ModelUtil.CALLBACK_ADDRESS, javaObj.getCallbackAddress());
+		assertEquals(MockObjectUtil.CONSUMER_PID, javaObj.getConsumerPid());
+		assertEquals(MockObjectUtil.PROVIDER_PID, javaObj.getProviderPid());
+		assertEquals(MockObjectUtil.CALLBACK_ADDRESS, javaObj.getCallbackAddress());
 		assertNotNull(javaObj.getOffer());
 	}
 }
