@@ -56,7 +56,9 @@ import lombok.NoArgsConstructor;
 @Document(collection = "transfer_request_messages")
 public class TransferRequestMessage extends AbstractTransferMessage {
 
-    @JsonIgnore
+	private static final long serialVersionUID = 8814457068103190252L;
+
+	@JsonIgnore
     @JsonProperty(DSpaceConstants.ID)
     @Id
     private String id;

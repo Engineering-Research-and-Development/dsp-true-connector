@@ -1,12 +1,14 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [0.0.1] - 2024-07-17
+## [0.0.1] - 2024-07-22
 
 ### Added
 
  - TransferStartMessage logic for provider and consumer callback (controller and service layer)
+ - DataTransfer API controller, service, junit and integration tests (get TransferProcess, by state and all)
  - Negotiation module - API endpoint for agreement check (valid or not)
+ - AbstractTransferMessage implements Serializable
  
 ## Updated
 
