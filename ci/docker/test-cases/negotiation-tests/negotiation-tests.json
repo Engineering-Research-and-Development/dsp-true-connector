@@ -63,7 +63,46 @@
 					"response": []
 				},
 				{
-					"name": "[P] Send Agreement",
+					"name": "[P] Find Contract Negotiation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.collectionVariables.set(\"provider_contractNegotiationId\", jsonData[\"data\"][0][\"id\"])\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{PROVIDER_API_ENDPOINT}}",
+							"host": [
+								"{{PROVIDER_API_ENDPOINT}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[P] Approve negotiation",
 					"event": [
 						{
 							"listen": "test",
@@ -96,7 +135,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"consumerPid\": \"{{consumerPid}}\",\n    \"providerPid\": \"{{providerPid}}\",\n    \"agreement\": {\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\n        \"target\": \"urn:uuid:TARGET\",\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\n        \"assignee\": \"urn:uuid:ASSIGNEE_CONSUMER\",\n        \"permission\": [\n            {\n                \"action\": \"USE\",\n                \"constraint\": [\n                    {\n                        \"leftOperand\": \"COUNT\",\n                        \"operator\": \"EQ\",\n                        \"rightOperand\": \"5\"\n                    }\n                ]\n            }\n        ]\n    }\n}",
+							"raw": "",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -104,12 +143,12 @@
 							}
 						},
 						"url": {
-							"raw": "{{PROVIDER_API_ENDPOINT}}/{{contractNegotiationId}}/approve",
+							"raw": "{{PROVIDER_API_ENDPOINT}}/{{provider_contractNegotiationId}}/approve",
 							"host": [
 								"{{PROVIDER_API_ENDPOINT}}"
 							],
 							"path": [
-								"{{contractNegotiationId}}",
+								"{{provider_contractNegotiationId}}",
 								"approve"
 							]
 						}
@@ -150,9 +189,9 @@
 							}
 						},
 						"url": {
-							"raw": "{{CONSUMER_API_ENDPOINT}}{{contractNegotiationId}}/verify",
+							"raw": "{{CONSUMER_API_ENDPOINT}}{{consumer_contractNegotiationId}}/verify",
 							"host": [
-								"{{CONSUMER_API_ENDPOINT}}{{contractNegotiationId}}"
+								"{{CONSUMER_API_ENDPOINT}}{{consumer_contractNegotiationId}}"
 							],
 							"path": [
 								"verify"
@@ -195,12 +234,12 @@
 							}
 						},
 						"url": {
-							"raw": "{{PROVIDER_API_ENDPOINT}}/{{contractNegotiationId}}/finalize",
+							"raw": "{{PROVIDER_API_ENDPOINT}}/{{provider_contractNegotiationId}}/finalize",
 							"host": [
 								"{{PROVIDER_API_ENDPOINT}}"
 							],
 							"path": [
-								"{{contractNegotiationId}}",
+								"{{provider_contractNegotiationId}}",
 								"finalize"
 							]
 						}
@@ -277,7 +316,12 @@
 			"value": ""
 		},
 		{
-			"key": "contractNegotiationId",
+			"key": "consumer_contractNegotiationId",
+			"value": null,
+			"type": "string"
+		},
+		{
+			"key": "provider_contractNegotiationId",
 			"value": null,
 			"type": "string"
 		}
