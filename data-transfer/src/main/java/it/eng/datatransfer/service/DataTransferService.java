@@ -16,6 +16,7 @@ import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -66,7 +67,7 @@ public class DataTransferService {
 		// check if agreement exists
 //		/{agreementId}/valid
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + 
-				properties.serverPort() + "/api/agreement/" + transferRequestMessage.getAgreementId() + "/valid", 
+				properties.serverPort() + ApiEndpoints.NEGOTIATION_AGREEMENTS_V1 + "/"+  transferRequestMessage.getAgreementId() + "/valid", 
 				null, 
 				credentialUtils.getAPICredentials());
 		if (!response.isSuccess()) {

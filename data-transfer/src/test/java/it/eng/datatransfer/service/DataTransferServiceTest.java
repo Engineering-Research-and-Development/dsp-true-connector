@@ -166,7 +166,7 @@ public class DataTransferServiceTest {
 	@DisplayName("StartDataTransfer from SUSPENDED - provider")
 	public void startDataTransfer_fromSuspended_provider() {
 		when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
-			.thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_SSUSPENDED));
+			.thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_SUSPENDED));
 		
 		TransferProcess transferProcessStarted = service.startDataTransfer(MockObjectUtil.TRANSFER_START_MESSAGE, null, MockObjectUtil.PROVIDER_PID);
 		
@@ -179,7 +179,7 @@ public class DataTransferServiceTest {
 	@DisplayName("StartDataTransfer from SUSPENDED - consumer callback")
 	public void startDataTransfer_fromSuspended_consumer() {
 		when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
-			.thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_SSUSPENDED));
+			.thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_SUSPENDED));
 		
 		TransferProcess transferProcessStarted = service.startDataTransfer(MockObjectUtil.TRANSFER_START_MESSAGE, MockObjectUtil.CONSUMER_PID, null);
 		

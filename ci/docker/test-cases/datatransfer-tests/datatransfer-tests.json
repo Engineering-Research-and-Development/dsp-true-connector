@@ -7,7 +7,7 @@
 	},
 	"item": [
 		{
-			"name": "Get TransfrProcess",
+			"name": "Get TransferProcess",
 			"event": [
 				{
 					"listen": "test",

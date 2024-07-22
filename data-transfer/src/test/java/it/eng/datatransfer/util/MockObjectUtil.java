@@ -42,7 +42,7 @@ public class MockObjectUtil {
     		.state(TransferState.STARTED)
     		.build();
     
-    public static TransferProcess TRANSFER_PROCESS_SSUSPENDED = TransferProcess.Builder.newInstance()
+    public static TransferProcess TRANSFER_PROCESS_SUSPENDED = TransferProcess.Builder.newInstance()
     		.consumerPid(CONSUMER_PID)
     		.providerPid(PROVIDER_PID)
     		.state(TransferState.SUSPENDED)

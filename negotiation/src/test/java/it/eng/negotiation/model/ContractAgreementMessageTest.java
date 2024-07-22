@@ -34,9 +34,9 @@ public class ContractAgreementMessageTest {
 			.build();
 	
 	private Agreement agreement = Agreement.Builder.newInstance()
-			.assignee(ModelUtil.ASSIGNEE)
-			.assigner(ModelUtil.ASSIGNER)
-			.target(ModelUtil.TARGET)
+			.assignee(MockObjectUtil.ASSIGNEE)
+			.assigner(MockObjectUtil.ASSIGNER)
+			.target(MockObjectUtil.TARGET)
 			.timestamp(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mmX")
                     .withZone(ZoneOffset.UTC)
                     .format(Instant.now()))
@@ -44,9 +44,9 @@ public class ContractAgreementMessageTest {
 			.build();
 	
 	private ContractAgreementMessage contractAgreementMessage = ContractAgreementMessage.Builder.newInstance()
-			.consumerPid(ModelUtil.CONSUMER_PID)
-			.providerPid(ModelUtil.PROVIDER_PID)
-			.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
+			.consumerPid(MockObjectUtil.CONSUMER_PID)
+			.providerPid(MockObjectUtil.PROVIDER_PID)
+			.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
 			.agreement(agreement)
 			.build();
 		
@@ -85,8 +85,8 @@ public class ContractAgreementMessageTest {
 	public void validateInvalid() {
 		assertThrows(ValidationException.class, 
 				() -> ContractAgreementMessage.Builder.newInstance()
-					.consumerPid(ModelUtil.CONSUMER_PID)
-					.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
+					.consumerPid(MockObjectUtil.CONSUMER_PID)
+					.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
 					.agreement(agreement)
 					.build());
 	}
@@ -119,9 +119,9 @@ public class ContractAgreementMessageTest {
 	}
 	
 	private void validateAgreement(Agreement agreement) {
-		assertEquals(ModelUtil.ASSIGNEE, agreement.getAssignee());
-		assertEquals(ModelUtil.ASSIGNER, agreement.getAssigner());
-		assertEquals(ModelUtil.TARGET, agreement.getTarget());
+		assertEquals(MockObjectUtil.ASSIGNEE, agreement.getAssignee());
+		assertEquals(MockObjectUtil.ASSIGNER, agreement.getAssigner());
+		assertEquals(MockObjectUtil.TARGET, agreement.getTarget());
 		
 		var permission = agreement.getPermission().get(0);
 		assertNotNull(permission);

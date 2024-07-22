@@ -39,6 +39,7 @@ import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferRequestMessage;
 import it.eng.datatransfer.model.TransferStartMessage;
 import it.eng.datatransfer.model.TransferState;
+import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.response.GenericApiResponse;
 
@@ -241,14 +242,14 @@ public class DataTransferTest extends BaseIntegrationTest {
                 .build();
 		
 		mockMvc.perform(
-    			get("/api/transfers").contentType(MediaType.APPLICATION_JSON))
+    			get(ApiEndpoints.TRANSFER_DATATRANSFER_V1).contentType(MediaType.APPLICATION_JSON))
 			.andExpect(status().isOk())
 	    	.andExpect(content().contentType(MediaType.APPLICATION_JSON));
 		
 		JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, ArrayList.class);
 
 		MvcResult resultStarted =mockMvc.perform(
-    			get("/api/transfers?state=STARTED").contentType(MediaType.APPLICATION_JSON))
+    			get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "?state=STARTED").contentType(MediaType.APPLICATION_JSON))
 			.andExpect(status().isOk())
 			.andExpect(content().contentType(MediaType.APPLICATION_JSON))
 			.andReturn();
@@ -261,7 +262,7 @@ public class DataTransferTest extends BaseIntegrationTest {
 		
 		String TRANSFER_PROCESS_ID = "abc45798-4444-4932-8baf-ab7fd66ql4d5";
 		MvcResult result = mockMvc.perform(
-    			get("/api/transfers/" + TRANSFER_PROCESS_ID).contentType(MediaType.APPLICATION_JSON))
+    			get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" +TRANSFER_PROCESS_ID).contentType(MediaType.APPLICATION_JSON))
 			.andExpect(status().isOk())
 			.andReturn();
 		json = result.getResponse().getContentAsString();

@@ -21,8 +21,8 @@ public class ContractNegotiationTerminationMessageTest {
 
 	private ContractNegotiationTerminationMessage contractNegotiationTerminationMessage = ContractNegotiationTerminationMessage.Builder
 			.newInstance()
-			.consumerPid(ModelUtil.CONSUMER_PID)
-			.providerPid(ModelUtil.PROVIDER_PID)
+			.consumerPid(MockObjectUtil.CONSUMER_PID)
+			.providerPid(MockObjectUtil.PROVIDER_PID)
 			.code("Termination CD_123")
 			.reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("Meaningful reas for term").build(),
 					Reason.Builder.newInstance().language("it").value("Meaningful reas for term but in Italian").build()))

@@ -12,10 +12,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.catalog.model.Offer;
 import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.service.CatalogService;
+import it.eng.tools.controller.ApiEndpoints;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/api/offer")
+@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, 
+	path = ApiEndpoints.CATALOG_OFFERS_V1)
 @Slf4j
 public class OfferAPIController {
 	

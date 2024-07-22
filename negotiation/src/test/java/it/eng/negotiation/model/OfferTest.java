@@ -16,8 +16,8 @@ public class OfferTest {
 	@Test
 	public void validOffer() {
 		Offer offer = Offer.Builder.newInstance()
-				.target(ModelUtil.TARGET)
-				.assigner(ModelUtil.ASSIGNER)
+				.target(MockObjectUtil.TARGET)
+				.assigner(MockObjectUtil.ASSIGNER)
 				.build();
 		assertNotNull(offer, "Offer should be created with mandatory fields");
 		assertNotNull(offer.getId());
@@ -27,7 +27,7 @@ public class OfferTest {
 	public void invalidOffer() {
 		assertThrows(ValidationException.class, 
 				() -> Offer.Builder.newInstance()
-					.assignee(ModelUtil.ASSIGNEE)
+					.assignee(MockObjectUtil.ASSIGNEE)
 					.build());
 	}	
 	
@@ -36,13 +36,13 @@ public class OfferTest {
 		String id = UUID.randomUUID().toString();
 		Offer offer = Offer.Builder.newInstance()
 				.id(id)
-				.assigner(ModelUtil.ASSIGNER)
-				.target(ModelUtil.TARGET)
+				.assigner(MockObjectUtil.ASSIGNER)
+				.target(MockObjectUtil.TARGET)
 				.build();
 		Offer offerB = Offer.Builder.newInstance()
 				.id(id)
-				.assigner(ModelUtil.ASSIGNER)
-				.target(ModelUtil.TARGET)
+				.assigner(MockObjectUtil.ASSIGNER)
+				.target(MockObjectUtil.TARGET)
 				.build();
 		assertTrue(offer.equals(offerB));
 	}
@@ -50,12 +50,12 @@ public class OfferTest {
 	@Test
 	public void equalsFalse() {
 		Offer offer = Offer.Builder.newInstance()
-				.target(ModelUtil.TARGET)
-				.assigner(ModelUtil.ASSIGNER)
+				.target(MockObjectUtil.TARGET)
+				.assigner(MockObjectUtil.ASSIGNER)
 				.build();
 		Offer offerB = Offer.Builder.newInstance()
 				.target("SomeDifferentTarget")
-				.assigner(ModelUtil.ASSIGNER)
+				.assigner(MockObjectUtil.ASSIGNER)
 				.build();
 		assertFalse(offer.equals(offerB));
 	}

@@ -16,7 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
-import it.eng.negotiation.model.ModelUtil;
+import it.eng.negotiation.model.MockObjectUtil;
 import it.eng.negotiation.service.ContractNegotiationAPIService;
 import it.eng.tools.response.GenericApiResponse;
 
@@ -33,7 +33,7 @@ class AgreementAPIControllerTest {
 	@DisplayName("Validate agreement")
 	void testValidateAgreement() {
 		doNothing().when(contractNegotiationAPIService).validateAgreement(any(String.class));
-		ResponseEntity<GenericApiResponse<String>> response = controller.validateAgreement(ModelUtil.AGREEMENT.getId());
+		ResponseEntity<GenericApiResponse<String>> response = controller.validateAgreement(MockObjectUtil.AGREEMENT.getId());
 		assertNotNull(response);
 		assertTrue(response.getBody().isSuccess());
 	}
@@ -44,7 +44,7 @@ class AgreementAPIControllerTest {
 		doThrow(new ContractNegotiationAPIException("Something not correct - tests"))
 		.when(contractNegotiationAPIService).validateAgreement(any(String.class));
 		assertThrows(ContractNegotiationAPIException.class, 
-				() -> controller.validateAgreement(ModelUtil.AGREEMENT.getId()));
+				() -> controller.validateAgreement(MockObjectUtil.AGREEMENT.getId()));
 	}
 
 }

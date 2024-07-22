@@ -21,7 +21,7 @@ public class ContractOfferMessageTest {
 	@Test
 	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() throws JsonProcessingException {
-		String result = Serializer.serializePlain(ModelUtil.CONTRACT_OFFER_MESSAGE);
+		String result = Serializer.serializePlain(MockObjectUtil.CONTRACT_OFFER_MESSAGE);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
 		assertFalse(result.contains(DSpaceConstants.ID));
@@ -36,7 +36,7 @@ public class ContractOfferMessageTest {
 	@Test
 	@DisplayName("Verify valid protocol object serialization")
 	public void testProtocol() throws JsonProcessingException {
-		JsonNode result = Serializer.serializeProtocolJsonNode(ModelUtil.CONTRACT_OFFER_MESSAGE);
+		JsonNode result = Serializer.serializeProtocolJsonNode(MockObjectUtil.CONTRACT_OFFER_MESSAGE);
 		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
 		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
 		assertNotNull(result.get(DSpaceConstants.DSPACE_CONSUMER_PID).asText());
@@ -62,7 +62,7 @@ public class ContractOfferMessageTest {
 	@Test
 	@DisplayName("Missing @context and @type")
 	public void missingContextAndType() {
-		JsonNode result = Serializer.serializePlainJsonNode(ModelUtil.CONTRACT_OFFER_MESSAGE);
+		JsonNode result = Serializer.serializePlainJsonNode(MockObjectUtil.CONTRACT_OFFER_MESSAGE);
 		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, ContractOfferMessage.class));
 	}
 	
@@ -79,9 +79,9 @@ public class ContractOfferMessageTest {
 	
 	private void validateJavaObj(ContractOfferMessage javaObj) {
 		assertNotNull(javaObj);
-		assertEquals(ModelUtil.CONSUMER_PID, javaObj.getConsumerPid());
-		assertEquals(ModelUtil.PROVIDER_PID, javaObj.getProviderPid());
-		assertEquals(ModelUtil.CALLBACK_ADDRESS, javaObj.getCallbackAddress());
+		assertEquals(MockObjectUtil.CONSUMER_PID, javaObj.getConsumerPid());
+		assertEquals(MockObjectUtil.PROVIDER_PID, javaObj.getProviderPid());
+		assertEquals(MockObjectUtil.CALLBACK_ADDRESS, javaObj.getCallbackAddress());
 		assertNotNull(javaObj.getOffer());
 	}
 	

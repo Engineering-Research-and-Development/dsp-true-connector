@@ -838,7 +838,7 @@
 									}
 								],
 								"url": {
-									"raw": "http://localhost:8090/api/agreement/urn:uuid:AGREEMENT_ID_OK/valid",
+									"raw": "http://localhost:8090/api/v1/agreement/urn:uuid:AGREEMENT_ID_OK/valid",
 									"protocol": "http",
 									"host": [
 										"localhost"
@@ -846,6 +846,7 @@
 									"port": "8090",
 									"path": [
 										"api",
+										"v1",
 										"agreement",
 										"urn:uuid:AGREEMENT_ID_OK",
 										"valid"
@@ -971,6 +972,34 @@
 									],
 									"path": [
 										"{$ID}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "DataTransfer",
+					"item": [
+						{
+							"name": "Get TransferProcess",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}/abc45798-5553-4932-8baf-ab7fd66ql4d5",
+									"host": [
+										"{{PROVIDER_SERVER_API_TRANSFERS}}"
+									],
+									"path": [
+										"abc45798-5553-4932-8baf-ab7fd66ql4d5"
 									]
 								}
 							},
