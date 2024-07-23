@@ -85,7 +85,7 @@ public class ContractNegotiationProviderService extends BaseProtocolService{
         
         checkIfContractNegotiationExists(contractRequestMessage.getConsumerPid(), contractRequestMessage.getProviderPid());
 
-		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + properties.serverPort() + "/api/v1/offer/validateOffer", 
+		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + properties.serverPort() + "/api/v1/offers/validateOffer", 
 				Serializer.serializePlainJsonNode(contractRequestMessage.getOffer()), 
 				credentialUtils.getAPICredentials());
         
