@@ -110,11 +110,6 @@
 								"exec": [
 									"pm.test(\"Check if status code is 200\", function () {\r",
 									"    pm.response.to.have.status(200);\r",
-									"});\r",
-									"\r",
-									"pm.test(\"Retrieve contract negotiation id\", function () {\r",
-									"    var jsonData = pm.response.json();\r",
-									"    pm.collectionVariables.set(\"provider_contractNegotiationId\", jsonData[\"data\"][1][\"id\"])\r",
 									"});"
 								],
 								"type": "text/javascript",
