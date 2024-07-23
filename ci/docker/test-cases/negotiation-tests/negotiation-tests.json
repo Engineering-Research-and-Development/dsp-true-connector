@@ -102,43 +102,6 @@
 					"response": []
 				},
 				{
-					"name": "[C] Find Contract Negotiation Consumer",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Check if status code is 200\", function () {\r",
-									"    pm.response.to.have.status(200);\r",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{CONSUMER_API_ENDPOINT}}/{{consumer_contractNegotiationId}}",
-							"host": [
-								"{{CONSUMER_API_ENDPOINT}}"
-							],
-							"path": [
-								"{{consumer_contractNegotiationId}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
 					"name": "[P] Approve negotiation",
 					"event": [
 						{
