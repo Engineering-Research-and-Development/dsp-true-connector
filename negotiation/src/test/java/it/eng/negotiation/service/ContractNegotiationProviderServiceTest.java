@@ -32,7 +32,7 @@ import it.eng.negotiation.listener.ContractNegotiationPublisher;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ContractRequestMessage;
-import it.eng.negotiation.model.ModelUtil;
+import it.eng.negotiation.model.MockObjectUtil;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
@@ -72,14 +72,14 @@ public class ContractNegotiationProviderServiceTest {
         when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.ofNullable(null));
     	when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
     	when(apiResponse.isSuccess()).thenReturn(true);
-        ContractNegotiation result = service.startContractNegotiation(ModelUtil.CONTRACT_REQUEST_MESSAGE);
+        ContractNegotiation result = service.startContractNegotiation(MockObjectUtil.CONTRACT_REQUEST_MESSAGE);
         assertNotNull(result);
         assertEquals(result.getType(), "dspace:ContractNegotiation");
         verify(repository).save(argCaptorContractNegotiation.capture());
 		//verify that status is updated to REQUESTED
 		assertEquals(ContractNegotiationState.REQUESTED, argCaptorContractNegotiation.getValue().getState());
-		assertEquals(ModelUtil.CALLBACK_ADDRESS, argCaptorContractNegotiation.getValue().getCallbackAddress());
-		assertEquals(ModelUtil.CONSUMER_PID, argCaptorContractNegotiation.getValue().getConsumerPid());
+		assertEquals(MockObjectUtil.CALLBACK_ADDRESS, argCaptorContractNegotiation.getValue().getCallbackAddress());
+		assertEquals(MockObjectUtil.CONSUMER_PID, argCaptorContractNegotiation.getValue().getConsumerPid());
 		assertNotNull(argCaptorContractNegotiation.getValue().getProviderPid());
 		verify(publisher).publishEvent(any(ContractNegotationOfferRequestEvent.class));
     }
@@ -91,14 +91,14 @@ public class ContractNegotiationProviderServiceTest {
         when(credentialUtils.getAPICredentials()).thenReturn("credentials");
     	when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
     	when(apiResponse.isSuccess()).thenReturn(true);
-        ContractNegotiation result = service.startContractNegotiation(ModelUtil.CONTRACT_REQUEST_MESSAGE);
+        ContractNegotiation result = service.startContractNegotiation(MockObjectUtil.CONTRACT_REQUEST_MESSAGE);
         assertNotNull(result);
         assertEquals(result.getType(), "dspace:ContractNegotiation");
         verify(repository).save(argCaptorContractNegotiation.capture());
 		//verify that status is updated to REQUESTED
         assertEquals(ContractNegotiationState.REQUESTED, argCaptorContractNegotiation.getValue().getState());
-		assertEquals(ModelUtil.CALLBACK_ADDRESS, argCaptorContractNegotiation.getValue().getCallbackAddress());
-		assertEquals(ModelUtil.CONSUMER_PID, argCaptorContractNegotiation.getValue().getConsumerPid());
+		assertEquals(MockObjectUtil.CALLBACK_ADDRESS, argCaptorContractNegotiation.getValue().getCallbackAddress());
+		assertEquals(MockObjectUtil.CONSUMER_PID, argCaptorContractNegotiation.getValue().getConsumerPid());
 		assertNotNull(argCaptorContractNegotiation.getValue().getProviderPid());
 		verify(publisher, times(0)).publishEvent(any(ContractNegotationOfferRequestEvent.class));
     }
@@ -107,10 +107,10 @@ public class ContractNegotiationProviderServiceTest {
     @DisplayName("Start contract negotiation failed - provider pid not blank")
     public void startContractNegotiation_providerPidNotBlank() throws InterruptedException {
     	ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
-    			.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
-    			.consumerPid(ModelUtil.CONSUMER_PID)
-    			.providerPid(ModelUtil.PROVIDER_PID)
-    			.offer(ModelUtil.OFFER)
+    			.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
+    			.consumerPid(MockObjectUtil.CONSUMER_PID)
+    			.providerPid(MockObjectUtil.PROVIDER_PID)
+    			.offer(MockObjectUtil.OFFER)
     			.build();
     	
         assertThrows(ProviderPidNotBlankException.class,()-> service.startContractNegotiation(contractRequestMessage));
@@ -120,9 +120,9 @@ public class ContractNegotiationProviderServiceTest {
     @Test
     @DisplayName("Start contract negotiation failed - contract negotiation exists")
     public void startContractNegotiation_contractNegotiationExists() throws InterruptedException {
-        when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+        when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
     	
-        assertThrows(ContractNegotiationExistsException.class,()-> service.startContractNegotiation(ModelUtil.CONTRACT_REQUEST_MESSAGE));
+        assertThrows(ContractNegotiationExistsException.class,()-> service.startContractNegotiation(MockObjectUtil.CONTRACT_REQUEST_MESSAGE));
         verify(repository, times(0)).save(any(ContractNegotiation.class));
     }
     
@@ -134,21 +134,21 @@ public class ContractNegotiationProviderServiceTest {
     	when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
     	when(apiResponse.isSuccess()).thenReturn(false);
     	
-        assertThrows(OfferNotValidException.class,()-> service.startContractNegotiation(ModelUtil.CONTRACT_REQUEST_MESSAGE));
+        assertThrows(OfferNotValidException.class,()-> service.startContractNegotiation(MockObjectUtil.CONTRACT_REQUEST_MESSAGE));
         verify(repository, times(0)).save(any(ContractNegotiation.class));
     }
 
     @Test
     @DisplayName("Get negotiation by provider pid - success")
     public void getNegotiationByProviderPid() {
-        when(repository.findByProviderPid(anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+        when(repository.findByProviderPid(anyString())).thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 
-        ContractNegotiation result = service.getNegotiationByProviderPid(ModelUtil.PROVIDER_PID);
+        ContractNegotiation result = service.getNegotiationByProviderPid(MockObjectUtil.PROVIDER_PID);
 
         assertNotNull(result);
 
-        assertEquals(result.getConsumerPid(), ModelUtil.CONSUMER_PID);
-        assertEquals(result.getProviderPid(), ModelUtil.PROVIDER_PID);
+        assertEquals(result.getConsumerPid(), MockObjectUtil.CONSUMER_PID);
+        assertEquals(result.getProviderPid(), MockObjectUtil.PROVIDER_PID);
         assertEquals(result.getState(), ContractNegotiationState.ACCEPTED);
     }
 
@@ -156,21 +156,21 @@ public class ContractNegotiationProviderServiceTest {
     @DisplayName("Get negotiation by provider pid - negotiation not found")
     public void getNegotiationByProviderPid_notFound() {
         when(repository.findByProviderPid(anyString())).thenReturn(Optional.ofNullable(null));
-        assertThrows(ContractNegotiationNotFoundException.class, () -> service.getNegotiationByProviderPid(ModelUtil.PROVIDER_PID),
+        assertThrows(ContractNegotiationNotFoundException.class, () -> service.getNegotiationByProviderPid(MockObjectUtil.PROVIDER_PID),
                 "Expected getNegotiationByProviderPid to throw, but it didn't");
     }
     
     @Test
     @DisplayName("Get negotiation by id - success")
     public void getNegotiationById() {
-        when(repository.findById(anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+        when(repository.findById(anyString())).thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 
-        ContractNegotiation result = service.getNegotiationById(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId());
+        ContractNegotiation result = service.getNegotiationById(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId());
 
         assertNotNull(result);
 
-        assertEquals(result.getConsumerPid(), ModelUtil.CONSUMER_PID);
-        assertEquals(result.getProviderPid(), ModelUtil.PROVIDER_PID);
+        assertEquals(result.getConsumerPid(), MockObjectUtil.CONSUMER_PID);
+        assertEquals(result.getProviderPid(), MockObjectUtil.PROVIDER_PID);
         assertEquals(result.getState(), ContractNegotiationState.ACCEPTED);
     }
 
@@ -178,16 +178,16 @@ public class ContractNegotiationProviderServiceTest {
     @DisplayName("Get negotiation by id - negotiation not found")
     public void getNegotiationById_notFound() {
         when(repository.findById(anyString())).thenReturn(Optional.empty());
-        assertThrows(ContractNegotiationNotFoundException.class, () -> service.getNegotiationById(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId()),
+        assertThrows(ContractNegotiationNotFoundException.class, () -> service.getNegotiationById(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId()),
                 "Expected getNegotiationByProviderPid to throw, but it didn't");
     }
     
     @Test
     @DisplayName("Verify negotiation - success")
     public void verifyNegotiation_success() {
-        when(repository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_AGREED));
+        when(repository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_AGREED));
 
-    	service.verifyNegotiation(ModelUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE);
+    	service.verifyNegotiation(MockObjectUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE);
     	
 		verify(repository).save(argCaptorContractNegotiation.capture());
 		
@@ -200,15 +200,15 @@ public class ContractNegotiationProviderServiceTest {
     public void verifyNegotiation_negotiationNotFound() {
         when(repository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.empty());
 
-        assertThrows(ContractNegotiationNotFoundException.class, () -> service.verifyNegotiation(ModelUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE));
+        assertThrows(ContractNegotiationNotFoundException.class, () -> service.verifyNegotiation(MockObjectUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE));
     }
     
     @Test
     @DisplayName("Verify negotiation - invalid state")
     public void verifyNegotiation_invalidState() {
-        when(repository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+        when(repository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 
-        assertThrows(ContractNegotiationInvalidStateException.class, () -> service.verifyNegotiation(ModelUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE));
+        assertThrows(ContractNegotiationInvalidStateException.class, () -> service.verifyNegotiation(MockObjectUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE));
     }
 
 }

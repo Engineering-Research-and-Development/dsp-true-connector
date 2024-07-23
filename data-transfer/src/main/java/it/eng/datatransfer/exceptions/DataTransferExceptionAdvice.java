@@ -13,9 +13,10 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 import it.eng.datatransfer.model.Serializer;
 import it.eng.datatransfer.model.TransferError;
 import it.eng.datatransfer.rest.protocol.ProviderDataTransferController;
+import it.eng.datatransfer.service.DataTransferService;
 import jakarta.validation.ValidationException;
 
-@RestControllerAdvice(basePackageClasses = { ProviderDataTransferController.class })
+@RestControllerAdvice(basePackageClasses = { ProviderDataTransferController.class, DataTransferService.class })
 public class DataTransferExceptionAdvice extends ResponseEntityExceptionHandler {
 
 	@ExceptionHandler(value = { ValidationException.class })
@@ -48,6 +49,32 @@ public class DataTransferExceptionAdvice extends ResponseEntityExceptionHandler 
 		TransferError errorMessage = TransferError.Builder.newInstance()
 				.consumerPid(ex.getConsumerPid())
 				.providerPid("COULD_NOT_PROCESS")
+				.code(HttpStatus.BAD_REQUEST.getReasonPhrase())
+				.reason(Collections.singletonList(ex.getLocalizedMessage()))
+				.build();
+		return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(),
+				HttpStatus.BAD_REQUEST, request);
+	}
+	
+	@ExceptionHandler(value = { TransferProcessInvalidStateException.class })
+	protected ResponseEntity<Object> handleTransferProcessInvalidStateException(TransferProcessInvalidStateException ex,
+			WebRequest request) {
+		TransferError errorMessage = TransferError.Builder.newInstance()
+				.consumerPid(ex.getConsumerPid())
+				.providerPid(ex.getProviderPid())
+				.code(HttpStatus.BAD_REQUEST.getReasonPhrase())
+				.reason(Collections.singletonList(ex.getLocalizedMessage()))
+				.build();
+		return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(),
+				HttpStatus.BAD_REQUEST, request);
+	}
+	
+	@ExceptionHandler(value = { AgreementNotFoundException.class })
+	protected ResponseEntity<Object> handleAgreementNotFoundException(AgreementNotFoundException ex,
+			WebRequest request) {
+		TransferError errorMessage = TransferError.Builder.newInstance()
+				.consumerPid(ex.getConsumerPid())
+				.providerPid(ex.getProviderPid())
 				.code(HttpStatus.BAD_REQUEST.getReasonPhrase())
 				.reason(Collections.singletonList(ex.getLocalizedMessage()))
 				.build();

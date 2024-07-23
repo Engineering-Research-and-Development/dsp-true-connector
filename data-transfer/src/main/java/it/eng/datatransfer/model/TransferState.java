@@ -1,21 +1,73 @@
 package it.eng.datatransfer.model;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.fasterxml.jackson.annotation.JsonValue;
+
+import it.eng.tools.model.DSpaceConstants;
+import it.eng.tools.model.DSpaceConstants.DataTransferStates;
 
 public enum TransferState {
 	
-	REQUESTED("dspace:REQUESTED"),
-	STARTED("dspace:STARTED"),
-	TERMINATED("dspace:TERMINATED"),
-	COMPLETED("dspace:COMPLETED"),
-	SUSPENDED("dspace:SUSPENDED");
+	REQUESTED(DSpaceConstants.DSPACE + DataTransferStates.REQUESTED) {
+		@Override
+		public List<TransferState> nextState() {
+			return Arrays.asList(STARTED, TERMINATED);
+		}
+	},
+	STARTED(DSpaceConstants.DSPACE + DataTransferStates.STARTED) {
+		@Override
+		public List<TransferState> nextState() {
+			return Arrays.asList(SUSPENDED, COMPLETED, TERMINATED);
+		}
+	},
+	TERMINATED(DSpaceConstants.DSPACE + DataTransferStates.TERMINATED) {
+		@Override
+		public List<TransferState> nextState() {
+			return Arrays.asList();
+		}
+	},
+	COMPLETED(DSpaceConstants.DSPACE + DataTransferStates.COMPLETED) {
+		@Override
+		public List<TransferState> nextState() {
+			return Arrays.asList();
+		}
+	},
+	SUSPENDED(DSpaceConstants.DSPACE + DataTransferStates.SUSPENDED) {
+		@Override
+		public List<TransferState> nextState() {
+			return Arrays.asList(STARTED, TERMINATED);
+		}
+	};
 	
 	private final String state;
+	private static final Map<String,TransferState> ENUM_MAP;
+	public abstract List<TransferState> nextState(); 
 
 	TransferState(final String state) {
 	        this.state = state;
 	    }
 
+	static {
+        Map<String,TransferState> map = new ConcurrentHashMap<String, TransferState>();
+        for (TransferState instance : TransferState.values()) {
+            map.put(instance.toString().toLowerCase(), instance);
+        }
+        ENUM_MAP = Collections.unmodifiableMap(map);
+    }
+	
+	public static TransferState fromContractNegotiationState(String state) {
+		return ENUM_MAP.get(state.toLowerCase());
+	}
+	
+	public boolean canTransitTo(TransferState state) {
+		return nextState().contains(state);
+	}
+	
 	@Override
 	@JsonValue
     public String toString() {

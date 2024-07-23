@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationState;
-import it.eng.negotiation.model.ModelUtil;
+import it.eng.negotiation.model.MockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
 
 public class JsonFromContractNegotiationTest {
@@ -18,8 +18,8 @@ public class JsonFromContractNegotiationTest {
 	public void transformToJson() {
 		ContractNegotiation message = 
 				ContractNegotiation.Builder.newInstance()
-				.consumerPid(ModelUtil.CONSUMER_PID)
-				.providerPid(ModelUtil.PROVIDER_PID)
+				.consumerPid(MockObjectUtil.CONSUMER_PID)
+				.providerPid(MockObjectUtil.PROVIDER_PID)
 				.state(ContractNegotiationState.ACCEPTED)
 				.build();
 		

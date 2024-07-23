@@ -1,10 +1,9 @@
 {
 	"info": {
-		"_postman_id": "67215636-7b7f-4eba-b31e-0145ee0680e8",
+		"_postman_id": "32c09097-d276-4f47-b0cb-305438f1a05d",
 		"name": "TC_V2",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "36278855",
-		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/36278855-67215636-7b7f-4eba-b31e-0145ee0680e8?action=share&source=collection_link&creator=36278855"
+		"_exporter_id": "36278855"
 	},
 	"item": [
 		{
@@ -978,6 +977,50 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "Check if agreement is valid",
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "admin@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://localhost:8090/api/v1/agreement/urn:uuid:AGREEMENT_ID_OK/valid",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "8090",
+									"path": [
+										"api",
+										"v1",
+										"agreement",
+										"urn:uuid:AGREEMENT_ID_OK",
+										"valid"
+									]
+								}
+							},
+							"response": []
 						}
 					]
 				},
@@ -1096,6 +1139,34 @@
 									],
 									"path": [
 										"{$ID}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "DataTransfer",
+					"item": [
+						{
+							"name": "Get TransferProcess",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}/abc45798-5553-4932-8baf-ab7fd66ql4d5",
+									"host": [
+										"{{PROVIDER_SERVER_API_TRANSFERS}}"
+									],
+									"path": [
+										"abc45798-5553-4932-8baf-ab7fd66ql4d5"
 									]
 								}
 							},
@@ -1345,6 +1416,24 @@
 								},
 								{
 									"name": "Provider Request transfer - initiate",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check if status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});\r",
+													"\r",
+													"let responseData = pm.response.json();\r",
+													"pm.environment.set(\"transfer_consumerPid\", responseData['dspace:consumerPid']);\r",
+													"pm.environment.set(\"transfer_providerPid\", responseData['dspace:providerPid']);"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
 									"request": {
 										"method": "POST",
 										"header": [
@@ -1355,7 +1444,7 @@
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferRequestMessage\",\r\n \"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dspace:agreementId\": \"urn:uuid:AGREEMENT_ID_NEW\",\r\n \"dct:format\": \"example:HTTP_PULL\",\r\n \"dspace:callbackAddress\": \"https://localhost:8080/consumer/transfers/urn:uuid:CONSUMER_PID_UUID_TRANSFER/start\"\r\n}",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferRequestMessage\",\r\n \"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dspace:agreementId\": \"urn:uuid:AGREEMENT_ID_OK\",\r\n \"dct:format\": \"example:HTTP_PULL\",\r\n \"dspace:callbackAddress\": \"https://localhost:8080/consumer/transfers/urn:uuid:CONSUMER_PID_UUID_TRANSFER/start\"\r\n}",
 											"options": {
 												"raw": {
 													"language": "json"
@@ -1376,12 +1465,26 @@
 								},
 								{
 									"name": "Provider Start transfer",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check if status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
 									"request": {
 										"method": "POST",
 										"header": [],
 										"body": {
 											"mode": "raw",
-											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferStartMessage\",\r\n \"dspace:providerPid\": \"urn:uuid:PROVIDER_PID_UUID_TRANSFER\",\r\n \"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\"\r\n}",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferStartMessage\",\r\n \"dspace:providerPid\": \"{{transfer_providerPid}}\",\r\n \"dspace:consumerPid\": \"{{transfer_consumerPid}}\"\r\n}",
 											"options": {
 												"raw": {
 													"language": "json"
@@ -1389,12 +1492,12 @@
 											}
 										},
 										"url": {
-											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/PROVIDER_PID_UUID_TRANSFER/start",
+											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/{{transfer_providerPid}}/start",
 											"host": [
 												"{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}"
 											],
 											"path": [
-												"PROVIDER_PID_UUID_TRANSFER",
+												"{{transfer_providerPid}}",
 												"start"
 											]
 										}

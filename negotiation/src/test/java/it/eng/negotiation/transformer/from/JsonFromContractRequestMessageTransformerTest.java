@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import org.junit.jupiter.api.Test;
 
 import it.eng.negotiation.model.ContractRequestMessage;
-import it.eng.negotiation.model.ModelUtil;
+import it.eng.negotiation.model.MockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
 
 public class JsonFromContractRequestMessageTransformerTest {
@@ -17,8 +17,8 @@ public class JsonFromContractRequestMessageTransformerTest {
 	public void transform() {
 		ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
 				.callbackAddress("https://callback.address.test.mock")
-				.offer(ModelUtil.OFFER)
-				.consumerPid(ModelUtil.CONSUMER_PID)
+				.offer(MockObjectUtil.OFFER)
+				.consumerPid(MockObjectUtil.CONSUMER_PID)
 				.build();
 		
 		var jsonNode = transformer.transform(contractRequestMessage);

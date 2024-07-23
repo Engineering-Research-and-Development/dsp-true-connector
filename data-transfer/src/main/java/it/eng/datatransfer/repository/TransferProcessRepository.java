@@ -1,5 +1,6 @@
 package it.eng.datatransfer.repository;
 
+import java.util.Collection;
 import java.util.Optional;
 
 import org.springframework.data.mongodb.repository.MongoRepository;
@@ -15,4 +16,6 @@ public interface TransferProcessRepository extends MongoRepository<TransferProce
     Optional<TransferProcess> findByProviderPid(String providerPid);
     
     Optional<TransferProcess> findByAgreementId(String agreementId);
+    
+    Collection<TransferProcess> findByState(String state);
 }

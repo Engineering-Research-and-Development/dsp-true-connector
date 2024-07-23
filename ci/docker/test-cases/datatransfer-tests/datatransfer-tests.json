@@ -1,14 +1,13 @@
 {
 	"info": {
-		"_postman_id": "c32a4af8-b522-4adc-81ec-8e9871bfd5ac",
+		"_postman_id": "bfa875f5-4ba9-49e2-8a1c-60c512308054",
 		"name": "datatransfer-tests",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "36278855",
-		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/36278855-c32a4af8-b522-4adc-81ec-8e9871bfd5ac?action=share&source=collection_link&creator=36278855"
+		"_exporter_id": "36278855"
 	},
 	"item": [
 		{
-			"name": "Get TransfrProcess",
+			"name": "Get TransferProcess",
 			"event": [
 				{
 					"listen": "test",
@@ -69,23 +68,23 @@
 			"response": []
 		},
 		{
-			"name": "Initiate transfer process - already exists agreement",
+			"name": "Initiate transfer process - agreement not found",
 			"event": [
 				{
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test(\"Status code is 201\", function () {\r",
-							"  pm.response.to.have.status(201);\r",
+							"pm.test(\"Status code is 400\", function () {\r",
+							"  pm.response.to.have.status(400);\r",
 							"});\r",
-							"pm.test(\"The response is TransferProcess\", () => {\r",
+							"pm.test(\"The response is TransferError\", () => {\r",
 							"    //parse the response JSON and test three properties\r",
 							"    const responseJson = pm.response.json();\r",
-							"    pm.expect(responseJson['@type']).to.eq('dspace:TransferProcess');\r",
+							"    pm.expect(responseJson['@type']).to.eq('dspace:TransferError');\r",
 							"    pm.expect(responseJson['@context']).to.eq('https://w3id.org/dspace/2024/1/context.json');\r",
 							"    pm.expect(responseJson['dspace:consumerPid']).is.not.empty;\r",
 							"    pm.expect(responseJson['dspace:providerPid']).is.not.empty;\r",
-							"    pm.expect(responseJson['dspace:state']).to.eq('dspace:REQUESTED');\r",
+							"    pm.expect(responseJson['dspace:code']).to.eq('Bad Request');\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -113,7 +112,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferRequestMessage\",\r\n \"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dspace:agreementId\": \"urn:uuid:AGREEMENT_ID_NEW5\",\r\n \"dct:format\": \"example:HTTP_PULL\",\r\n \"dspace:callbackAddress\": \"https://localhost:8080/consumer/transfers/urn:uuid:CONSUMER_PID_UUID_TRANSFER/start\"\r\n}",
+					"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferRequestMessage\",\r\n \"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dspace:agreementId\": \"urn:uuid:AGREEMENT_ID_NOT_FOUND\",\r\n \"dct:format\": \"example:HTTP_PULL\",\r\n \"dspace:callbackAddress\": \"https://localhost:8080/consumer/transfers/urn:uuid:CONSUMER_PID_UUID_TRANSFER/start\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -133,7 +132,7 @@
 			"response": []
 		},
 		{
-			"name": "Initiate transfer process - already exists agreement",
+			"name": "Initiate transfer process - data transfer already exists",
 			"event": [
 				{
 					"listen": "test",
@@ -191,6 +190,138 @@
 					],
 					"path": [
 						"request"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Initiate transfer process - OK",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201\", function () {\r",
+							"  pm.response.to.have.status(201);\r",
+							"});\r",
+							"pm.test(\"The response is TransferError\", () => {\r",
+							"    //parse the response JSON and test three properties\r",
+							"    const responseJson = pm.response.json();\r",
+							"    pm.expect(responseJson['@context']).to.eq('https://w3id.org/dspace/2024/1/context.json');\r",
+							"    pm.expect(responseJson['@type']).to.eq('dspace:TransferProcess');\r",
+							"    pm.expect(responseJson['dspace:consumerPid']).is.not.empty;\r",
+							"    pm.expect(responseJson['dspace:providerPid']).is.not.empty;\r",
+							"    pm.expect(responseJson['dspace:state']).to.eq('dspace:REQUESTED');\r",
+							"\r",
+							"    pm.environment.set(\"transfer_consumerPid\", responseJson['dspace:consumerPid']);\r",
+							"    pm.environment.set(\"transfer_providerPid\", responseJson['dspace:providerPid']);\r",
+							"});\r",
+							"\r",
+							"\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "password",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "connector@mail.com",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferRequestMessage\",\r\n \"dspace:consumerPid\": \"urn:uuid:{{$randomUUID}}\",\r\n \"dspace:agreementId\": \"urn:uuid:AGREEMENT_ID_OK\",\r\n \"dct:format\": \"example:HTTP_PULL\",\r\n \"dspace:callbackAddress\": \"https://localhost:8080/consumer/transfers/urn:uuid:CONSUMER_PID_UUID_TRANSFER/start\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{PROVIDER_PROTOCOL_ENDPOINT}}/request",
+					"host": [
+						"{{PROVIDER_PROTOCOL_ENDPOINT}}"
+					],
+					"path": [
+						"request"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Start data transfer",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "username",
+							"value": "connector@mail.com",
+							"type": "string"
+						},
+						{
+							"key": "password",
+							"value": "password",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferStartMessage\",\r\n \"dspace:providerPid\": \"{{transfer_providerPid}}\",\r\n \"dspace:consumerPid\": \"{{transfer_consumerPid}}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{PROVIDER_PROTOCOL_ENDPOINT}}/{{transfer_providerPid}}/start",
+					"host": [
+						"{{PROVIDER_PROTOCOL_ENDPOINT}}"
+					],
+					"path": [
+						"{{transfer_providerPid}}",
+						"start"
 					]
 				}
 			},

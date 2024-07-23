@@ -73,6 +73,33 @@ public class TransferProcessTest {
 		assertEquals(ModelUtil.AGREEMENT_ID, tpCopied.getAgreementId());
 		assertEquals(TransferState.STARTED, tpCopied.getState());
 	}
+	
+	@Test
+	@DisplayName("From Requested")
+	public void fromRequested() {
+		assertTrue(ModelUtil.TRANSFER_PROCESS_REQUESTED.getState().canTransitTo(TransferState.STARTED));
+		assertTrue(ModelUtil.TRANSFER_PROCESS_REQUESTED.getState().canTransitTo(TransferState.TERMINATED));
+		assertFalse(ModelUtil.TRANSFER_PROCESS_REQUESTED.getState().canTransitTo(TransferState.SUSPENDED));
+		assertFalse(ModelUtil.TRANSFER_PROCESS_REQUESTED.getState().canTransitTo(TransferState.COMPLETED));
+	}
+	
+	@Test
+	@DisplayName("From Started")
+	public void fromStarted() {
+		assertTrue(ModelUtil.TRANSFER_PROCESS_STARTED.getState().canTransitTo(TransferState.SUSPENDED));
+		assertTrue(ModelUtil.TRANSFER_PROCESS_STARTED.getState().canTransitTo(TransferState.TERMINATED));
+		assertTrue(ModelUtil.TRANSFER_PROCESS_STARTED.getState().canTransitTo(TransferState.COMPLETED));
+		assertFalse(ModelUtil.TRANSFER_PROCESS_STARTED.getState().canTransitTo(TransferState.REQUESTED));
+	}
+	
+	@Test
+	@DisplayName("From Suspended")
+	public void fromSuspended() {
+		assertTrue(ModelUtil.TRANSFER_PROCESS_SUSPENDED.getState().canTransitTo(TransferState.STARTED));
+		assertTrue(ModelUtil.TRANSFER_PROCESS_SUSPENDED.getState().canTransitTo(TransferState.TERMINATED));
+		assertFalse(ModelUtil.TRANSFER_PROCESS_SUSPENDED.getState().canTransitTo(TransferState.REQUESTED));
+		assertFalse(ModelUtil.TRANSFER_PROCESS_SUSPENDED.getState().canTransitTo(TransferState.COMPLETED));
+	}
 
 	private void validateJavaObject(TransferProcess javaObj) {
 		assertNotNull(javaObj);

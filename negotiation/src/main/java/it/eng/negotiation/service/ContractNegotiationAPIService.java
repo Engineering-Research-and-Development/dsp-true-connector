@@ -333,4 +333,13 @@ public class ContractNegotiationAPIService {
 				.permission(offer.getPermission())
 				.build();
 	}
+
+	public void validateAgreement(String agreementId) {
+		agreementRepository.findById(agreementId)
+				.orElseThrow(() -> new ContractNegotiationAPIException("Agreement with Id " + agreementId + " not found."));
+		// TODO add additional checks like contract dates
+		//		LocalDateTime agreementStartDate = LocalDateTime.parse(agreement.getTimestamp(), FORMATTER);
+//		agreementStartDate.isBefore(LocalDateTime.now());
+		
+	}
 }
