@@ -52,7 +52,7 @@ public class EndpointAvailableFilter extends OncePerRequestFilter {
 
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
-		log.info("Should filter this {}", request.getRequestURI());
+		log.debug("Should filter this {}", request.getRequestURI());
 		if(request.getRequestURI().contains("/artifact/")) {
 			return false;
 		}

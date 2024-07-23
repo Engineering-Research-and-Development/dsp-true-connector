@@ -1,15 +1,182 @@
 {
 	"info": {
-		"_postman_id": "64b375bc-942b-4984-b3ef-c0434c0fbc68",
+		"_postman_id": "32c09097-d276-4f47-b0cb-305438f1a05d",
 		"name": "TC_V2",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "21815221",
-		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-64b375bc-942b-4984-b3ef-c0434c0fbc68?action=share&source=collection_link&creator=21815221"
+		"_exporter_id": "36278855"
 	},
 	"item": [
 		{
 			"name": "API_FE",
 			"item": [
+				{
+					"name": "ApplicatioProperty",
+					"item": [
+						{
+							"name": "Get All Application Properties",
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "admin@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/",
+									"host": [
+										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
+									],
+									"path": [
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get All Application Properties with prefix",
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "admin@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/?key_prefix={{KEY_PREFIX}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
+									],
+									"path": [
+										""
+									],
+									"query": [
+										{
+											"key": "key_prefix",
+											"value": "{{KEY_PREFIX}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Application Property By Key",
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "admin@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/spring.ssl.bundle.jks.connector.keystore.location",
+									"host": [
+										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
+									],
+									"path": [
+										"spring.ssl.bundle.jks.connector.keystore.location"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Application Property",
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "admin@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n        \"key\": \"application.daps.enabledDapsInteraction\",\r\n        \"value\": \"true\",\r\n        \"mandatory\": false,\r\n        \"issued\": 1718629303.981000000,\r\n        \"modified\": 1718629303.981000000,\r\n        \"type\": \"ApplicationProperty\"\r\n    }",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/",
+									"host": [
+										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
+									],
+									"path": [
+										""
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
 				{
 					"name": "Catalog",
 					"item": [
@@ -265,8 +432,7 @@
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
+										"value": "application/json"
 									}
 								],
 								"url": {
@@ -811,6 +977,50 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "Check if agreement is valid",
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "admin@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://localhost:8090/api/v1/agreement/urn:uuid:AGREEMENT_ID_OK/valid",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "8090",
+									"path": [
+										"api",
+										"v1",
+										"agreement",
+										"urn:uuid:AGREEMENT_ID_OK",
+										"valid"
+									]
+								}
+							},
+							"response": []
 						}
 					]
 				},
@@ -929,6 +1139,34 @@
 									],
 									"path": [
 										"{$ID}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "DataTransfer",
+					"item": [
+						{
+							"name": "Get TransferProcess",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}/abc45798-5553-4932-8baf-ab7fd66ql4d5",
+									"host": [
+										"{{PROVIDER_SERVER_API_TRANSFERS}}"
+									],
+									"path": [
+										"abc45798-5553-4932-8baf-ab7fd66ql4d5"
 									]
 								}
 							},
@@ -1178,6 +1416,24 @@
 								},
 								{
 									"name": "Provider Request transfer - initiate",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check if status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});\r",
+													"\r",
+													"let responseData = pm.response.json();\r",
+													"pm.environment.set(\"transfer_consumerPid\", responseData['dspace:consumerPid']);\r",
+													"pm.environment.set(\"transfer_providerPid\", responseData['dspace:providerPid']);"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
 									"request": {
 										"method": "POST",
 										"header": [
@@ -1188,7 +1444,7 @@
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferRequestMessage\",\r\n \"dspace:providerPid\": \"urn:uuid:PROVIDER_PID_UUID_TRANSFER\",\r\n \"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dct:format\": \"example:HTTP_PULL\",\r\n \"dspace:callbackAddress\": \"https://localhost:8080/consumer/transfers/urn:uuid:CONSUMER_PID_UUID_TRANSFER/start\"\r\n}",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferRequestMessage\",\r\n \"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dspace:agreementId\": \"urn:uuid:AGREEMENT_ID_OK\",\r\n \"dct:format\": \"example:HTTP_PULL\",\r\n \"dspace:callbackAddress\": \"https://localhost:8080/consumer/transfers/urn:uuid:CONSUMER_PID_UUID_TRANSFER/start\"\r\n}",
 											"options": {
 												"raw": {
 													"language": "json"
@@ -1209,12 +1465,26 @@
 								},
 								{
 									"name": "Provider Start transfer",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check if status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
 									"request": {
 										"method": "POST",
 										"header": [],
 										"body": {
 											"mode": "raw",
-											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferStartMessage\",\r\n \"dspace:providerPid\": \"urn:uuid:PROVIDER_PID_UUID_TRANSFER\",\r\n \"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\"\r\n}",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferStartMessage\",\r\n \"dspace:providerPid\": \"{{transfer_providerPid}}\",\r\n \"dspace:consumerPid\": \"{{transfer_consumerPid}}\"\r\n}",
 											"options": {
 												"raw": {
 													"language": "json"
@@ -1222,12 +1492,12 @@
 											}
 										},
 										"url": {
-											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/PROVIDER_PID_UUID_TRANSFER/start",
+											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/{{transfer_providerPid}}/start",
 											"host": [
 												"{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}"
 											],
 											"path": [
-												"PROVIDER_PID_UUID_TRANSFER",
+												"{{transfer_providerPid}}",
 												"start"
 											]
 										}
@@ -1480,6 +1750,10 @@
 		}
 	],
 	"variable": [
+		{
+			"key": "CONSUMER_SERVER_API_APPLICATION_PROPERTY",
+			"value": "http://127.0.0.1/api/properties"
+        },
 		{
 			"key": "consumerPid",
 			"value": ""

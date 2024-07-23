@@ -5,6 +5,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.data.mongodb.core.mapping.Document;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -24,7 +26,8 @@ import lombok.NoArgsConstructor;
 @Getter
 @JsonDeserialize(builder = Agreement.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-@JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true) 
+@JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true)
+@Document(collection = "agreements")
 public class Agreement {
 
 	@JsonIgnore

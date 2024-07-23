@@ -47,7 +47,9 @@ public class ProviderDataTransferController {
 	public ResponseEntity<JsonNode> initiateDataTransfer(@RequestBody JsonNode transferRequestMessageJsonNode) {
 		TransferRequestMessage transferRequestMessage = Serializer.deserializeProtocol(transferRequestMessageJsonNode, TransferRequestMessage.class);
 		log.info("Initiating data transfer");
-		return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(notImplemented());
+		TransferProcess transferProcessRequested = dataTransferService.initiateDataTransfer(transferRequestMessage);
+		return ResponseEntity.status(HttpStatus.CREATED)
+				.body(Serializer.serializeProtocolJsonNode(transferProcessRequested));
 	}
 
 	@PostMapping(path = "/{providerPid}/start")
@@ -55,7 +57,9 @@ public class ProviderDataTransferController {
 			@RequestBody JsonNode transferStartMessageJsonNode) {
 		TransferStartMessage transferStartMessage = Serializer.deserializeProtocol(transferStartMessageJsonNode, TransferStartMessage.class);
 		log.info("Starting data transfer for providerPid {} and consumerPid {}", providerPid, transferStartMessage.getConsumerPid());
-		return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(notImplemented());
+		TransferProcess transferProcessStarted = dataTransferService.startDataTransfer(transferStartMessage, null, providerPid);
+		log.info("TransferProcess {} state changed to {}", transferProcessStarted.getId(), transferProcessStarted.getState());
+		return ResponseEntity.ok(null);
 	}
 
 	@PostMapping(path = "/{providerPid}/completion")

@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.datatransfer.model.Serializer;
 import it.eng.datatransfer.model.TransferCompletionMessage;
+import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferStartMessage;
 import it.eng.datatransfer.model.TransferSuspensionMessage;
 import it.eng.datatransfer.model.TransferTerminationMessage;
@@ -38,7 +39,9 @@ public class ConsumerDataTransferCallbackController {
 			@RequestBody JsonNode transferStartMessageJsonNode) {
 		TransferStartMessage transferStartMessage = Serializer.deserializeProtocol(transferStartMessageJsonNode, TransferStartMessage.class);
 		log.info("Starting data transfer for consumerPid {} and providerPid {}", consumerPid, transferStartMessage.getProviderPid());
-		return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(notImplemented());
+		TransferProcess transferProcessStarted = dataTransferService.startDataTransfer(transferStartMessage, consumerPid, null);
+		log.info("TransferProcess {} state changed to {}", transferProcessStarted.getId(), transferProcessStarted.getState());
+		return ResponseEntity.ok(null);
 	}
 
 	@PostMapping(path = "/{consumerPid}/completion")

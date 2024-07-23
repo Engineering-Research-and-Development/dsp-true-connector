@@ -14,6 +14,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.JsonProperty.Access;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
@@ -42,7 +43,9 @@ import lombok.NoArgsConstructor;
 @Document(collection = "transfer_process")
 public class TransferProcess extends AbstractTransferMessage {
 
-    @JsonIgnore
+	private static final long serialVersionUID = -6329135422869881158L;
+
+	@JsonIgnore
     @JsonProperty(DSpaceConstants.ID)
     @Id
     private String id;
@@ -143,6 +146,9 @@ public class TransferProcess extends AbstractTransferMessage {
 			if (message.id == null) {
 	               message.id = message.createNewId();
 	        }
+			if (message.providerPid == null) {
+                message.providerPid = message.createNewPid();
+            }
 			Set<ConstraintViolation<TransferProcess>> violations 
 				= Validation.buildDefaultValidatorFactory().getValidator().validate(message);
 			if(violations.isEmpty()) {
