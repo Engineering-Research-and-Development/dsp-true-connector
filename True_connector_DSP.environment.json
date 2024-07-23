@@ -93,11 +93,19 @@
 			"enabled": true
 		},
 		{
+			"key": "CONSUMER_SERVER_API_APPLICATION_PROPERTY",
+			"value": "{{CONSUMER}}/api/properties"
+        },
+		{
 			"key": "PROVIDER_SERVER_API_DISTRIBUTION",
 			"value": "{{PROVIDER}}/api/distribution",
 			"type": "default",
 			"enabled": true
 		},
+		{
+			"key": "KEY_PREFIX",
+			"value": "application.daps"
+    },
 		{
 			"key": "PROVIDER_SERVER_API_TRANSFERS",
 			"value": "{{PROVIDER}}/api/transfers",

@@ -189,6 +189,56 @@
       "version": 0
     }
   ],
+  "application_properties": [
+    {
+        "_id": "application.daps.dapsJWKSUrl",
+        "value": "https://daps.aisec.fraunhofer.de/.well-known/jwks.json",
+        "mandatory": false,
+        "issued": "2024-06-24T16:26:00.000Z",
+        "modified": "2024-06-24T16:26:00.000Z",
+        "version": 0
+    },
+    {
+        "_id": "application.daps.dapsUrl",
+        "value": "https://daps.aisec.fraunhofer.de/v2/token",
+        "mandatory": false,
+        "issued": "2024-06-24T16:26:00.000Z",
+        "modified": "2024-06-24T16:26:00.000Z",
+        "version": 0
+    },
+    {
+        "_id": "application.daps.enabledDapsInteraction",
+        "value": "false",
+        "mandatory": false,
+        "issued": "2024-06-24T16:26:00.000Z",
+        "modified": "2024-06-24T16:26:00.000Z",
+        "version": 0
+    },
+    {
+        "_id": "application.daps.extendedTokenValidation",
+        "value": "false",
+        "mandatory": false,
+        "issued": "2024-06-24T16:26:00.000Z",
+        "modified": "2024-06-24T16:26:00.000Z",
+        "version": 0
+    },
+    {
+        "_id": "application.daps.fetchTokenOnStartup",
+        "value": "false",
+        "mandatory": false,
+        "issued": "2024-06-24T16:26:00.000Z",
+        "modified": "2024-06-24T16:26:00.000Z",
+        "version": 0
+    },
+    {
+        "_id": "application.daps.tokenCaching",
+        "value": "false",
+        "mandatory": false,
+        "issued": "2024-06-24T16:26:00.000Z",
+        "modified": "2024-06-24T16:26:00.000Z",
+        "version": 0
+    }
+  ],
   "agreements" : [
   	{
   		"_id": "urn:uuid:AGREEMENT_ID_OK",

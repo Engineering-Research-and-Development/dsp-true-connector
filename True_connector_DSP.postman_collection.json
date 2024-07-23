@@ -10,6 +10,174 @@
 			"name": "API_FE",
 			"item": [
 				{
+					"name": "ApplicatioProperty",
+					"item": [
+						{
+							"name": "Get All Application Properties",
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "admin@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/",
+									"host": [
+										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
+									],
+									"path": [
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get All Application Properties with prefix",
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "admin@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/?key_prefix={{KEY_PREFIX}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
+									],
+									"path": [
+										""
+									],
+									"query": [
+										{
+											"key": "key_prefix",
+											"value": "{{KEY_PREFIX}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Application Property By Key",
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "admin@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/spring.ssl.bundle.jks.connector.keystore.location",
+									"host": [
+										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
+									],
+									"path": [
+										"spring.ssl.bundle.jks.connector.keystore.location"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Application Property",
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "admin@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n        \"key\": \"application.daps.enabledDapsInteraction\",\r\n        \"value\": \"true\",\r\n        \"mandatory\": false,\r\n        \"issued\": 1718629303.981000000,\r\n        \"modified\": 1718629303.981000000,\r\n        \"type\": \"ApplicationProperty\"\r\n    }",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/",
+									"host": [
+										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
+									],
+									"path": [
+										""
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
 					"name": "Catalog",
 					"item": [
 						{
@@ -264,8 +432,7 @@
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
+										"value": "application/json"
 									}
 								],
 								"url": {
@@ -1583,6 +1750,10 @@
 		}
 	],
 	"variable": [
+		{
+			"key": "CONSUMER_SERVER_API_APPLICATION_PROPERTY",
+			"value": "http://127.0.0.1/api/properties"
+        },
 		{
 			"key": "consumerPid",
 			"value": ""
