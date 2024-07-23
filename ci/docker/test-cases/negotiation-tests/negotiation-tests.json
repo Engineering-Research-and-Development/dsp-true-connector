@@ -19,7 +19,7 @@
 								"exec": [
 									"pm.test(\"Retrieve contract negotiation id\", function () {\r",
 									"    var jsonData = pm.response.json();\r",
-									"    pm.collectionVariables.set(\"contractNegotiationId\", jsonData[\"data\"][\"id\"])\r",
+									"    pm.collectionVariables.set(\"consumer_contractNegotiationId\", jsonData[\"data\"][\"id\"])\r",
 									"});\r",
 									"\r",
 									"pm.test(\"Retrieve consumer pid\", function () {\r",
@@ -96,6 +96,48 @@
 							"raw": "{{PROVIDER_API_ENDPOINT}}",
 							"host": [
 								"{{PROVIDER_API_ENDPOINT}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[C] Find Contract Negotiation Consumer",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.collectionVariables.set(\"provider_contractNegotiationId\", jsonData[\"data\"][1][\"id\"])\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{CONSUMER_API_ENDPOINT}}/{{consumer_contractNegotiationId}}",
+							"host": [
+								"{{CONSUMER_API_ENDPOINT}}"
+							],
+							"path": [
+								"{{consumer_contractNegotiationId}}"
 							]
 						}
 					},
@@ -181,7 +223,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"consumerPid\": \"{{consumerPid}}\",\r\n    \"providerPid\": \"{{providerPid}}\"\r\n}",
+							"raw": "",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -227,7 +269,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"consumerPid\": \"{{consumerPid}}\",\r\n    \"providerPid\": \"{{providerPid}}\"\r\n}",
+							"raw": "",
 							"options": {
 								"raw": {
 									"language": "json"
