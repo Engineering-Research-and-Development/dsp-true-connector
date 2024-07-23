@@ -209,9 +209,10 @@ public class ContractNegotiationAPIServiceTest {
 		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(true);
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_VERIFIED));
+		when(contractNegotiationRepository.findById(ModelUtil.CONTRACT_NEGOTIATION_VERIFIED.getId()))
+		.thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_VERIFIED));
 		
-		service.finalizeNegotiation(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID);
+		service.finalizeNegotiation(ModelUtil.CONTRACT_NEGOTIATION_VERIFIED.getId());
 		
 		verify(contractNegotiationRepository).save(any(ContractNegotiation.class));
 	}
@@ -219,7 +220,7 @@ public class ContractNegotiationAPIServiceTest {
 	@Test
 	@DisplayName("Finalize negotiation failed - negotiation not found")
 	public void finalizeNegotiation_failedNegotiationNotFound() {
-		assertThrows(ContractNegotiationAPIException.class, ()-> service.finalizeNegotiation(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID));
+		assertThrows(ContractNegotiationAPIException.class, ()-> service.finalizeNegotiation(ModelUtil.CONTRACT_NEGOTIATION_VERIFIED.getId()));
 		
 		verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
 		verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
@@ -230,12 +231,13 @@ public class ContractNegotiationAPIServiceTest {
 	@DisplayName("Finalize negotiation failed - wrong negotiation state")
 	public void finalizeNegotiation_wrongNegotiationState() {
 		
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(ModelUtil.PROVIDER_PID, ModelUtil.CONSUMER_PID)).thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_OFFERED));
+		when(contractNegotiationRepository.findById(ModelUtil.CONTRACT_NEGOTIATION_VERIFIED.getId()))
+				.thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_OFFERED));
 
 		assertThrows(ContractNegotiationAPIException.class, 
-				() -> service.finalizeNegotiation(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID));
+				() -> service.finalizeNegotiation(ModelUtil.CONTRACT_NEGOTIATION_VERIFIED.getId()));
 		
-		verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(ModelUtil.PROVIDER_PID, ModelUtil.CONSUMER_PID);
+		verify(contractNegotiationRepository).findById(ModelUtil.CONTRACT_NEGOTIATION_VERIFIED.getId());
 		verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
 		verify(agreementRepository, times(0)).save(any(Agreement.class));
 	}
@@ -243,11 +245,11 @@ public class ContractNegotiationAPIServiceTest {
 	@Test
 	@DisplayName("Finalize negotiation error - already finalized")
 	public void finalizeNegotiation_error_finalized_state() {
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString()))
+		when(contractNegotiationRepository.findById(ModelUtil.CONTRACT_NEGOTIATION_VERIFIED.getId()))
 			.thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_FINALIZED));
 		
 		assertThrows(ContractNegotiationAPIException.class,
-				() -> service.finalizeNegotiation(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID));
+				() -> service.finalizeNegotiation(ModelUtil.CONTRACT_NEGOTIATION_VERIFIED.getId()));
 		
 		verify(contractNegotiationRepository, times(0)).save(argCaptorContractNegotiation.capture());
 	}
@@ -258,10 +260,10 @@ public class ContractNegotiationAPIServiceTest {
 		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(false);
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString()))
+		when(contractNegotiationRepository.findById(ModelUtil.CONTRACT_NEGOTIATION_VERIFIED.getId()))
 			.thenReturn(Optional.of(ModelUtil.CONTRACT_NEGOTIATION_VERIFIED));
 		
-		assertThrows(ContractNegotiationAPIException.class, ()-> service.finalizeNegotiation(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID));
+		assertThrows(ContractNegotiationAPIException.class, ()-> service.finalizeNegotiation(ModelUtil.CONTRACT_NEGOTIATION_VERIFIED.getId()));
 	
 		verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
 		verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));

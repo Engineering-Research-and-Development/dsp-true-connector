@@ -204,14 +204,14 @@ public class ContractNegotiationAPIService {
 		}
 	}
 
-	public void finalizeNegotiation(String consumerPid, String providerPid) {
-		ContractNegotiation contractNegotiation = findContractNegotiationByPids(consumerPid, providerPid);
+	public void finalizeNegotiation(String contractNegotiationId) {
+		ContractNegotiation contractNegotiation = findContractNegotiationById(contractNegotiationId);
 
 		stateTransitionCheck(ContractNegotiationState.FINALIZED, contractNegotiation.getState());
 		
 		 ContractNegotiationEventMessage  contractNegotiationEventMessage = ContractNegotiationEventMessage.Builder.newInstance()
-					.consumerPid(consumerPid)
-					.providerPid(providerPid)
+					.consumerPid(contractNegotiation.getConsumerPid())
+					.providerPid(contractNegotiation.getProviderPid())
 					.eventType(ContractNegotiationEventType.FINALIZED)
 					.build();
 		

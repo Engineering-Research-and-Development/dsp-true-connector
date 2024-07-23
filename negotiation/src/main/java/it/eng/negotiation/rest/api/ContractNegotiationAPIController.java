@@ -120,10 +120,8 @@ public class ContractNegotiationAPIController {
     }
     
 	@PutMapping(path = "/{contractNegotiationId}/finalize")
-    public ResponseEntity<GenericApiResponse<JsonNode>> finalizeNegotiation(@RequestBody JsonNode finalizeNegotiationRequest) {
-    	String consumerPid = finalizeNegotiationRequest.get(DSpaceConstants.CONSUMER_PID).asText();
-        String providerPid = finalizeNegotiationRequest.get(DSpaceConstants.PROVIDER_PID).asText();
-    	apiService.finalizeNegotiation(consumerPid, providerPid);
+    public ResponseEntity<GenericApiResponse<JsonNode>> finalizeNegotiation(@PathVariable String contractNegotiationId) {
+    	apiService.finalizeNegotiation(contractNegotiationId);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
     			.body(GenericApiResponse.success(null, "Contract negotiation finalized", HttpStatus.OK.value()));
     }

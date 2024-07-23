@@ -178,27 +178,21 @@ public class ContractNegotiationAPIControllerTest {
 	@Test
 	@DisplayName("Finalize negotiation success")
 	public void finalizeNegotiation_success() {
-		Map<String, Object> map = new HashMap<>();
-		map.put("consumerPid", ModelUtil.CONSUMER_PID);
-		map.put("providerPid", ModelUtil.PROVIDER_PID);
 				
-		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.finalizeNegotiation(mapper.convertValue(map, JsonNode.class));
+		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.finalizeNegotiation(ModelUtil.CONTRACT_NEGOTIATION_VERIFIED.getId());
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		verify(apiService).finalizeNegotiation(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID);
+		verify(apiService).finalizeNegotiation(ModelUtil.CONTRACT_NEGOTIATION_VERIFIED.getId());
 	}
 	
 	@Test
 	@DisplayName("Finalize negotiation failed")
 	public void finalizeNegotiation_failed() {
-		Map<String, Object> map = new HashMap<>();
-		map.put("consumerPid", ModelUtil.CONSUMER_PID);
-		map.put("providerPid", ModelUtil.PROVIDER_PID);
 				
 		doThrow(new ContractNegotiationAPIException("Something not correct - tests"))
-		.when(apiService).finalizeNegotiation(ModelUtil.CONSUMER_PID, ModelUtil.PROVIDER_PID);
+		.when(apiService).finalizeNegotiation(ModelUtil.CONTRACT_NEGOTIATION_VERIFIED.getId());
 		
 		assertThrows(ContractNegotiationAPIException.class, () ->
-		controller.finalizeNegotiation(mapper.convertValue(map, JsonNode.class)));
+		controller.finalizeNegotiation(ModelUtil.CONTRACT_NEGOTIATION_VERIFIED.getId()));
 	}
 	
 	@Test
