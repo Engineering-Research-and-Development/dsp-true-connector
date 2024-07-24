@@ -21,11 +21,11 @@ import it.eng.tools.exception.ApplicationPropertyNotFoundAPIException;
 import it.eng.tools.model.ApplicationProperty;
 import it.eng.tools.model.Serializer;
 import it.eng.tools.service.ApplicationPropertiesService;
-import lombok.extern.java.Log;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/api/properties")
-@Log
+@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/api/v1/properties")
+@Slf4j
 public class ApplicationPropertiesAPIController {
 
 	private final ApplicationEventPublisher applicationEventPublisher;

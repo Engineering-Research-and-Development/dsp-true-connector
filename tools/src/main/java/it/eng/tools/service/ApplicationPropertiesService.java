@@ -18,13 +18,13 @@ import it.eng.tools.exception.ApplicationPropertyErrorException;
 import it.eng.tools.exception.ApplicationPropertyNotFoundAPIException;
 import it.eng.tools.model.ApplicationProperty;
 import it.eng.tools.repository.ApplicationPropertiesRepository;
-import lombok.extern.java.Log;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * The PropertiesService class provides methods to interact with properties, including saving, retrieving, and deleting properties.
  */
 @Service
-@Log
+@Slf4j
 public class ApplicationPropertiesService {
 
 	private static final String STORED_APPLICATION_PROPERTIES = "storedApplicationProperties";
@@ -62,7 +62,7 @@ public class ApplicationPropertiesService {
 	public Optional<ApplicationProperty> getPropertyByKey(String key) {
 		Optional<ApplicationProperty> propertyByMongo = repository.findById(key);
 		if(propertyByMongo.isEmpty()) {
-			log.warning(key + " not found in the db, try in application.properties");
+			log.warn(key + " not found in the db, try in application.properties");
 			//Try to keep value from applicatio.properties
 			String propertyValueByApplicationProperty = env.getProperty(key);
 
