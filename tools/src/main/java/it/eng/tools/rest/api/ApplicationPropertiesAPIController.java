@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.tools.exception.ApplicationPropertyNotChangedAPIException;
+import it.eng.tools.exception.ApplicationPropertyNotChangedAPIExceptionAdvice;
 import it.eng.tools.exception.ApplicationPropertyNotFoundAPIException;
 import it.eng.tools.model.ApplicationProperty;
 import it.eng.tools.model.Serializer;
@@ -33,6 +34,7 @@ public class ApplicationPropertiesAPIController {
 	private final ApplicationEventPublisher applicationEventPublisher;
 
 	private final ApplicationPropertiesService propertiesService;
+
 
 	public ApplicationPropertiesAPIController(ApplicationPropertiesService service, ApplicationEventPublisher applicationEventPublisher) {
 		super();
@@ -68,7 +70,7 @@ public class ApplicationPropertiesAPIController {
 	}
 
 	@PutMapping(path = "/")
-	public ResponseEntity<GenericApiResponse<JsonNode>> modifyProperty(@RequestBody ApplicationProperty property) {
+	public ResponseEntity<Object> modifyProperty(@RequestBody ApplicationProperty property) {
 		log.info("modifyProperty(...) ");
 		log.info("property = " + property);
 
@@ -81,7 +83,9 @@ public class ApplicationPropertiesAPIController {
 			storedProperty = propertiesService.updateProperty(property, oldOne);
 			log.info("Property changed!");
 		} else {
-			throw new ApplicationPropertyNotChangedAPIException("Application property not updated becouse it has not changed.");
+			ApplicationPropertyNotChangedAPIExceptionAdvice advice = new ApplicationPropertyNotChangedAPIExceptionAdvice();
+			ResponseEntity<Object> response = advice.handleApplicationPropertyAPIException(new ApplicationPropertyNotChangedAPIException("Application property not updated becouse it has not changed."));
+			return response;
 		}
 
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
