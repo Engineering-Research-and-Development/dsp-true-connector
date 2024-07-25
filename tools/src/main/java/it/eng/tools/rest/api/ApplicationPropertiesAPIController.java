@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +21,7 @@ import it.eng.tools.exception.ApplicationPropertyNotChangedAPIException;
 import it.eng.tools.exception.ApplicationPropertyNotFoundAPIException;
 import it.eng.tools.model.ApplicationProperty;
 import it.eng.tools.model.Serializer;
+import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.ApplicationPropertiesService;
 import lombok.extern.slf4j.Slf4j;
 
@@ -43,7 +45,7 @@ public class ApplicationPropertiesAPIController {
 	 */
 
 	@GetMapping(path = "/")
-	public ResponseEntity<List<JsonNode>> getProperties(@RequestParam(required = false) String key_prefix) {
+	public ResponseEntity<GenericApiResponse<List<JsonNode>>> getProperties(@RequestParam(required = false) String key_prefix) {
 		log.info("getProperties()");
 		if(key_prefix != null && !key_prefix.isBlank()) log.info(" with key_prefix " + key_prefix);
 		var properties = propertiesService.getProperties(key_prefix);
@@ -51,22 +53,22 @@ public class ApplicationPropertiesAPIController {
 		applicationEventPublisher.publishEvent(properties);
 
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-				.body(Serializer.serializeProtocolListOfJsonNode(properties));
+				.body(GenericApiResponse.success(Serializer.serializeProtocolListOfJsonNode(properties), "ok", HttpStatus.OK.value()));
 	}
 
 	@GetMapping(path = "/{key}")
-	public ResponseEntity<JsonNode> getPropertyByKey(@PathVariable String key) {
+	public ResponseEntity<GenericApiResponse<JsonNode>> getPropertyByKey(@PathVariable String key) {
 		log.info("Fetching property with key " + key);
 
 		ApplicationProperty property = propertiesService.getPropertyByKey(key).orElseThrow(() -> new ApplicationPropertyNotFoundAPIException("Property with key " + key + " not found"));
 
 		applicationEventPublisher.publishEvent(property);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-				.body(Serializer.serializeProtocolJsonNode(property));
+				.body(GenericApiResponse.success(Serializer.serializeProtocolJsonNode(property), "ok", HttpStatus.OK.value()));
 	}
 
 	@PutMapping(path = "/")
-	public ResponseEntity<JsonNode> modifyProperty(@RequestBody ApplicationProperty property) {
+	public ResponseEntity<GenericApiResponse<JsonNode>> modifyProperty(@RequestBody ApplicationProperty property) {
 		log.info("modifyProperty(...) ");
 		log.info("property = " + property);
 
@@ -83,7 +85,7 @@ public class ApplicationPropertiesAPIController {
 		}
 
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-				.body(Serializer.serializeProtocolJsonNode(storedProperty));
+				.body(GenericApiResponse.success(Serializer.serializeProtocolJsonNode(storedProperty), "Property changed!", HttpStatus.OK.value()));
 	}
 
 }
