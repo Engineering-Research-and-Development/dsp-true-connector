@@ -111,77 +111,13 @@ public class ApplicationPropertiesService {
 				.orElseThrow(() -> new ApplicationPropertyNotFoundAPIException("ApplicationProperty with key: " + key + " not found"));
 	}
 
-//	public Optional<ApplicationProperty> getStoredPropertyByKey(String key) {
-//		return repository.findById(key);
-//	}
 
-	/*
-	 * public void deleteProperty(String name) { repository.deleteById(name); }
-	 */
-
-	/**
-	 * Private method for creating base builder for application property update by its ID.
-	 *
-	 * @param id The ID of the application property for update.
-	 * @return The builder for the application property  with basic mandatory unchanged fields.
-	 * @throws ApplicationPropertyErrorException Thrown if the application property  with the specified ID is not found.
-	 */
-	/*
-	 * public void updateProperty(String key, String value) {
-	 *
-	 * System.out.println("\n\n\n" + env);
-	 *
-	 * ConfigurableEnvironment configurableEnvironment = (ConfigurableEnvironment)
-	 * env; MutablePropertySources propertySources =
-	 * configurableEnvironment.getPropertySources();
-	 *
-	 * PropertySource<?> ap = propertySources.get("applicationProperties"); if(ap !=
-	 * null) { System.out.println(ap.getSource().getClass().getName());
-	 *
-	 * Map aaa = (Map)ap.getSource();
-	 *
-	 * System.out.println(aaa.entrySet()); }
-	 *
-	 * Map map = new HashMap<String,String>(); map.put(key, value);
-	 *
-	 * propertySources.addFirst(new MapPropertySource("applicationProperties",
-	 * map));
-	 *
-	 * MutablePropertySources ps = ((AbstractEnvironment) env).getPropertySources();
-	 * Iterator<PropertySource<?>> ips = ps.iterator();
-	 *
-	 * while(ips.hasNext()) { PropertySource<?> currentps = ips.next();
-	 *
-	 * String name = currentps.getName(); Object source = currentps.getSource();
-	 * System.out.println("\n\n\nname=" + name +
-	 * (currentps.getProperty("spring.ssl.bundle.jks.connector.keystore.location")
-	 * != null ?" YES":" NO")); System.out.println("\n" +
-	 * currentps.getClass().getName() + "\t" + currentps.toString());
-	 * System.out.println("\n" + source.getClass().getName() + "\t" +
-	 * source.toString() + "\n\n\n"); }
-	 *
-	 * }
-	 */
-
-	/*
-	 * public void saveAllPropertiesOnEnv() { ConfigurableEnvironment
-	 * configurableEnvironment = (ConfigurableEnvironment) env;
-	 * MutablePropertySources propertySources =
-	 * configurableEnvironment.getPropertySources(); PropertySource<?>
-	 * customPropertySource = propertySources.get("customPropertySource"); if
-	 * (customPropertySource != null) { // Write properties to configuration file //
-	 * For example, write to application.properties
-	 *
-	 * //TODO: manage add on env when customPropertySource exists } }
-	 */
-
-	/*public String addPropertyToApplicationPropertySource(String key, Object value) {
-		log.info("addPropertyToApplicationPropertySource("+key+", "+value+")");
-
-		ConfigurableEnvironment configurableEnvironment = (ConfigurableEnvironment) env;
+	/* This method is used to overwrite property values ​​in the env */
+	public void addPropertyOnEnv(String key, Object value, Environment environment) {
+		ConfigurableEnvironment configurableEnvironment = (ConfigurableEnvironment) environment;
 		MutablePropertySources propertySources = configurableEnvironment.getPropertySources();
 
-		Map<String,Object> storedApplicationPropertiesMap = new HashMap<String,Object>();
+		Map storedApplicationPropertiesMap = new HashMap<String, String>();
 
 		PropertySource<?> storedApplicationPropertiesSource = propertySources.get(STORED_APPLICATION_PROPERTIES);
 		if(storedApplicationPropertiesSource != null) {
@@ -192,27 +128,7 @@ public class ApplicationPropertiesService {
 
 		propertySources.addFirst(new MapPropertySource(STORED_APPLICATION_PROPERTIES, storedApplicationPropertiesMap));
 
-		return env.getProperty(key);
-	}*/
-
-	public void addPropertyOnEnv(String key, Object value, Environment environment) {
-		///if(environment != null) {
-			ConfigurableEnvironment configurableEnvironment = (ConfigurableEnvironment) environment;
-			MutablePropertySources propertySources = configurableEnvironment.getPropertySources();
-
-			Map storedApplicationPropertiesMap = new HashMap<String, String>();
-
-			PropertySource<?> storedApplicationPropertiesSource = propertySources.get(STORED_APPLICATION_PROPERTIES);
-			if(storedApplicationPropertiesSource != null) {
-				storedApplicationPropertiesMap = (Map)storedApplicationPropertiesSource.getSource();
-			}
-
-			storedApplicationPropertiesMap.put(key, value);
-
-			propertySources.addFirst(new MapPropertySource(STORED_APPLICATION_PROPERTIES, storedApplicationPropertiesMap));
-		///}
-
-			log.info(key + "=" + environment.getProperty(key));
+		log.info(key + "=" + environment.getProperty(key));
 	}
 
 	public String get(String key) {
