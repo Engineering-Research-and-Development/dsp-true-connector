@@ -67,7 +67,9 @@ public class ProviderDataTransferController {
 			@RequestBody JsonNode transferCompletionMessageJsonNode) {
 		TransferCompletionMessage transferCompletionMessage = Serializer.deserializeProtocol(transferCompletionMessageJsonNode, TransferCompletionMessage.class);
 		log.info("Completing data transfer for providerPid {} and consumerPid {}", providerPid, transferCompletionMessage.getConsumerPid());
-		return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(notImplemented());
+		TransferProcess transferProcessCompleted = dataTransferService.completeDataTransfer(transferCompletionMessage, null, providerPid);
+		log.info("TransferProcess {} state changed to {}", transferProcessCompleted.getId(), transferProcessCompleted.getState());
+		return ResponseEntity.ok(null);
 	}
 
 	@PostMapping(path = "/{providerPid}/termination")

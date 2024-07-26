@@ -43,7 +43,9 @@ public class EndpointAvailableFilter extends OncePerRequestFilter {
 				&& agreementService.isAgreementValid(consumerPid, providerPid);
 		
 		if(!isAvailable) {
-			response.sendError(HttpStatus.SERVICE_UNAVAILABLE.value(), "Service unavailable");
+			log.info("Precondition not met - transfer process not started or agreement not valid!");
+			response.sendError(HttpStatus.PRECONDITION_FAILED.value(), 
+					"Precondition not met - transfer process not started or agreement not valid");
             return;
 		}
 		filterChain.doFilter(request, response);
@@ -53,7 +55,7 @@ public class EndpointAvailableFilter extends OncePerRequestFilter {
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
 		log.debug("Should filter this {}", request.getRequestURI());
-		if(request.getRequestURI().contains("/artifact/")) {
+		if(request.getRequestURI().contains("/artifacts/")) {
 			return false;
 		}
 		return true;

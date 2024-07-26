@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -114,6 +115,10 @@ public class Serializer {
 	 */
 	public static JsonNode serializeProtocolJsonNode(Object toSerialize) {
 		return jsonMapper.convertValue(toSerialize, JsonNode.class);
+	}
+	
+	public static JsonNode serializeStringToProtocolJsonNode(String toSerialize) throws JsonMappingException, JsonProcessingException {
+		return jsonMapper.readValue(toSerialize, JsonNode.class);
 	}
 	
 	/**
