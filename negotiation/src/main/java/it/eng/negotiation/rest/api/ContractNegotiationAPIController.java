@@ -19,12 +19,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.negotiation.service.ContractNegotiationAPIService;
+import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/api/v1/negotiations")
+@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = ApiEndpoints.NEGOTIATION_V1)
 @Slf4j
 public class ContractNegotiationAPIController {
 	

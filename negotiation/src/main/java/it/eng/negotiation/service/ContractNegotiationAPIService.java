@@ -377,6 +377,14 @@ public class ContractNegotiationAPIService {
 		}
 	}
 	
+	public void validateAgreement(String agreementId) {
+		agreementRepository.findById(agreementId)
+				.orElseThrow(() -> new ContractNegotiationAPIException("Agreement with Id " + agreementId + " not found."));
+		// TODO add additional checks like contract dates
+		//		LocalDateTime agreementStartDate = LocalDateTime.parse(agreement.getTimestamp(), FORMATTER);
+		//		agreementStartDate.isBefore(LocalDateTime.now());
+	}
+	
 	private Agreement agreementFromOffer(Offer offer, String assigner) {
 		return Agreement.Builder.newInstance()
 				.id(UUID.randomUUID().toString())
