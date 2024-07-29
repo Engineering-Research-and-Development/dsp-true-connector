@@ -22,7 +22,7 @@ import it.eng.tools.model.Serializer;
 public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 
 	private final String TEST_KEY = "application.daps.enabledDapsInteraction";
-	private final String END_POINT_PATH = "/api/v1/properties/";
+	private final String API_PATH = "/api/v1/properties/";
 
 	@Test
 	@WithUserDetails(TestUtil.ADMIN_USER)
@@ -30,7 +30,7 @@ public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 
 		final ResultActions result =
 				mockMvc.perform(
-						get(END_POINT_PATH)
+						get(API_PATH)
 						.contentType(MediaType.APPLICATION_JSON_VALUE)
 						.accept(MediaType.APPLICATION_JSON_VALUE));
 
@@ -46,7 +46,7 @@ public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 
 		final ResultActions result =
 				mockMvc.perform(
-						get(END_POINT_PATH + "{key}", this.TEST_KEY )
+						get(API_PATH + "{key}", this.TEST_KEY )
 						.contentType(MediaType.APPLICATION_JSON_VALUE));
 
 		result.andExpect(status().isOk())
@@ -70,7 +70,7 @@ public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 
 		final ResultActions result =
 				mockMvc.perform(
-						put(END_POINT_PATH)
+						put(API_PATH)
 						.contentType(MediaType.APPLICATION_JSON_VALUE)
 						.content(body)
 						.accept(MediaType.APPLICATION_JSON_VALUE));
