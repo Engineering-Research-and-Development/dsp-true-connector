@@ -197,5 +197,15 @@ public class ContractNegotiationConsumerServiceTest {
 				() -> service.handleTerminationResponse(MockObjectUtil.CONSUMER_PID, MockObjectUtil.TERMINATION_MESSAGE));
 	}
 	
+	@Test
+	@DisplayName("Process termination message failed - already terminated")
+	public void handleTerminationResponse_fail_alreadyTerminated() {
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class)))
+			.thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_TERMINATED));
+
+		assertThrows(ContractNegotiationInvalidStateException.class, 
+				() -> service.handleTerminationResponse(MockObjectUtil.CONSUMER_PID, MockObjectUtil.TERMINATION_MESSAGE));
+	}
+	
 	
 }

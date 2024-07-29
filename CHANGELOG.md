@@ -14,14 +14,18 @@ All notable changes to this project will be documented in this file.
  
 ## [0.0.1] - 2024-07-24
  
+### Added
+
+ - Added CORS configuration
+ 
 ### Changed
 
- - moved some common service logic to BaseService
- - renamed APIs to be REST compliant
+ - Moved some common service logic to BaseService
+ - Renamed APIs to be REST compliant
  
 ### Removed
 
- - removed EventHandlerService
+ - Removed transformers from Negotiation module
 
  
 ## [0.0.1] - 2024-07-22
