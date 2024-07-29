@@ -36,7 +36,8 @@ public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 
 		result.andExpect(status().isOk())
 		.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-		.andExpect(jsonPath("$.[0].['"+IConstants.TYPE+"']", is(ApplicationProperty.class.getSimpleName())));
+		.andExpect(jsonPath("$.success", is(true)))
+		.andExpect(jsonPath("$.data.[0]."+IConstants.TYPE, is(ApplicationProperty.class.getSimpleName())));
 	}
 
 	@Test
@@ -50,7 +51,8 @@ public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 
 		result.andExpect(status().isOk())
 		.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-		.andExpect(jsonPath("['" + IConstants.KEY + "']", is(this.TEST_KEY)));
+		.andExpect(jsonPath("$.success", is(true)))
+		.andExpect(jsonPath("$.data." + IConstants.KEY, is(this.TEST_KEY)));
 	}
 
 	@Test
@@ -75,8 +77,9 @@ public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 
 		result.andExpect(status().isOk())
 		.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-		.andExpect(jsonPath("['" + IConstants.KEY + "']", is(this.TEST_KEY)))
-		.andExpect(jsonPath("['" + IConstants.VALUE + "']", is(randomValue)));
+		.andExpect(jsonPath("$.success", is(true)))
+		.andExpect(jsonPath("$.data." + IConstants.KEY, is(this.TEST_KEY)))
+		.andExpect(jsonPath("$.data." + IConstants.VALUE, is(randomValue)));
 	}
 
 }
