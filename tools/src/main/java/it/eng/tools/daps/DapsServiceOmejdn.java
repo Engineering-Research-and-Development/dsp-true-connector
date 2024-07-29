@@ -33,6 +33,11 @@ public class DapsServiceOmejdn implements DapsService {
 	private DapsCertificateProviderOmejdn dapsCertificateProvider;
 	private OkHttpRestClient client;
 
+	@Override
+	public boolean isDapsEnabled() {
+		return dapsProperties.isEnabledDapsInteraction();
+	}
+
 	public DapsServiceOmejdn(DapsProperties dapsProperties, DapsCertificateProviderOmejdn dapsCertificateProvider,
 			OkHttpRestClient client) {
 		this.dapsProperties = dapsProperties;
@@ -56,7 +61,7 @@ public class DapsServiceOmejdn implements DapsService {
 					.add("client_assertion", jws)
 					.add("scope", "idsc:IDS_CONNECTOR_ATTRIBUTES_ALL");
 
-//			if(extendedTokenValidation) { 
+//			if(extendedTokenValidation) {
 //				String certsShaClaim = createCertsShaClaim();
 //				formBodyBuilder.add("claims", certsShaClaim);
 //			}

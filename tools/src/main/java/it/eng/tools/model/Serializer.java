@@ -25,6 +25,7 @@ public class Serializer {
 	private static Validator validator;
 
 	static {
+
 		jsonMapperPlain = JsonMapper.builder()
 				.configure(MapperFeature.USE_ANNOTATIONS, false)
 				.serializationInclusion(Include.NON_NULL)
@@ -40,6 +41,7 @@ public class Serializer {
 				.serializationInclusion(Include.NON_EMPTY)
 				.configure(SerializationFeature.INDENT_OUTPUT, true)
 				.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
+				.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
 				.addModule(new JavaTimeModule())
 				.build();
 

@@ -22,6 +22,7 @@ import it.eng.tools.model.Serializer;
 public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 
 	private final String TEST_KEY = "application.daps.enabledDapsInteraction";
+	private final String API_PATH = "/api/v1/properties/";
 
 	@Test
 	@WithUserDetails(TestUtil.ADMIN_USER)
@@ -29,13 +30,14 @@ public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 
 		final ResultActions result =
 				mockMvc.perform(
-						get("/api/properties/")
+						get(API_PATH)
 						.contentType(MediaType.APPLICATION_JSON_VALUE)
 						.accept(MediaType.APPLICATION_JSON_VALUE));
 
 		result.andExpect(status().isOk())
 		.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-		.andExpect(jsonPath("$.[0].['"+IConstants.TYPE+"']", is(ApplicationProperty.class.getSimpleName())));
+		.andExpect(jsonPath("$.success", is(true)))
+		.andExpect(jsonPath("$.data.[0]."+IConstants.TYPE, is(ApplicationProperty.class.getSimpleName())));
 	}
 
 	@Test
@@ -44,12 +46,13 @@ public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 
 		final ResultActions result =
 				mockMvc.perform(
-						get("/api/properties/{key}", this.TEST_KEY )
+						get(API_PATH + "{key}", this.TEST_KEY )
 						.contentType(MediaType.APPLICATION_JSON_VALUE));
 
 		result.andExpect(status().isOk())
 		.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-		.andExpect(jsonPath("['" + IConstants.KEY + "']", is(this.TEST_KEY)));
+		.andExpect(jsonPath("$.success", is(true)))
+		.andExpect(jsonPath("$.data." + IConstants.KEY, is(this.TEST_KEY)));
 	}
 
 	@Test
@@ -67,15 +70,16 @@ public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 
 		final ResultActions result =
 				mockMvc.perform(
-						put("/api/properties/")
+						put(API_PATH)
 						.contentType(MediaType.APPLICATION_JSON_VALUE)
 						.content(body)
 						.accept(MediaType.APPLICATION_JSON_VALUE));
 
 		result.andExpect(status().isOk())
 		.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-		.andExpect(jsonPath("['" + IConstants.KEY + "']", is(this.TEST_KEY)))
-		.andExpect(jsonPath("['" + IConstants.VALUE + "']", is(randomValue)));
+		.andExpect(jsonPath("$.success", is(true)))
+		.andExpect(jsonPath("$.data." + IConstants.KEY, is(this.TEST_KEY)))
+		.andExpect(jsonPath("$.data." + IConstants.VALUE, is(randomValue)));
 	}
 
 }

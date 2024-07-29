@@ -94,7 +94,7 @@
 		},
 		{
 			"key": "CONSUMER_SERVER_API_APPLICATION_PROPERTY",
-			"value": "{{CONSUMER}}/api/properties"
+			"value": "{{CONSUMER}}/api/v1/properties"
         },
 		{
 			"key": "PROVIDER_SERVER_API_DISTRIBUTION",
