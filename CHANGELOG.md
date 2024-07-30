@@ -12,7 +12,7 @@ All notable changes to this project will be documented in this file.
  - Postman collection for testing endpoints	
  - Configured GitHub actions to run tests
 
-## [0.0.1] - 29-07-2024
+## [0.0.1] - 30-07-2024
 
 ### Added
  
@@ -22,6 +22,22 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
  - ROLE_CONNECTOR to fix authorization for protocol endpoints using jwt
+
+## [0.0.1] - 2024-07-24
+ 
+### Added
+
+ - Added CORS configuration
+ 
+### Changed
+
+ - Moved some common service logic to BaseService
+ - Renamed APIs to be REST compliant
+ 
+### Removed
+
+ - Removed transformers from Negotiation module
+
 
 ## [0.0.1] - 2024-07-22
 

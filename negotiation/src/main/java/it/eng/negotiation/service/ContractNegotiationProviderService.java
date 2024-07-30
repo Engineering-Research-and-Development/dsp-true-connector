@@ -5,7 +5,6 @@ import org.springframework.stereotype.Service;
 
 import it.eng.negotiation.event.ContractNegotiationEvent;
 import it.eng.negotiation.exception.ContractNegotiationExistsException;
-import it.eng.negotiation.exception.ContractNegotiationInvalidStateException;
 import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
 import it.eng.negotiation.exception.OfferNotValidException;
 import it.eng.negotiation.exception.ProviderPidNotBlankException;
@@ -20,7 +19,6 @@ import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
@@ -28,23 +26,15 @@ import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
-public class ContractNegotiationProviderService {
+public class ContractNegotiationProviderService extends BaseProtocolService{
+	
+	protected final CredentialUtils credentialUtils;
 
-    private final ContractNegotiationPublisher publisher;
-	private final ContractNegotiationRepository contractNegotiationRepository;
-	private final OkHttpRestClient okHttpRestClient;
-	private final ContractNegotiationProperties properties;
-	private final OfferRepository offerRepository;
-	private final CredentialUtils credentialUtils;
-
-    public ContractNegotiationProviderService(ContractNegotiationPublisher publisher,
+	public ContractNegotiationProviderService(ContractNegotiationPublisher publisher,
 			ContractNegotiationRepository contractNegotiationRepository, OkHttpRestClient okHttpRestClient,
-			ContractNegotiationProperties properties, OfferRepository offerRepository, CredentialUtils credentialUtils) {
-		this.publisher = publisher;
-		this.contractNegotiationRepository = contractNegotiationRepository;
-		this.okHttpRestClient = okHttpRestClient;
-		this.properties = properties;
-		this.offerRepository = offerRepository;
+			ContractNegotiationProperties properties, OfferRepository offerRepository,
+			CredentialUtils credentialUtils) {
+		super(publisher, contractNegotiationRepository, okHttpRestClient, properties, offerRepository);
 		this.credentialUtils = credentialUtils;
 	}
 
@@ -58,9 +48,7 @@ public class ContractNegotiationProviderService {
      */
     public ContractNegotiation getNegotiationById(String id) {
         publisher.publishEvent(ContractNegotiationEvent.builder().action("Find by id").description("Searching with id").build());
-        return contractNegotiationRepository.findById(id)
-                .orElseThrow(() ->
-                        new ContractNegotiationNotFoundException("Contract negotiation with id " + id + " not found"));
+        return findContractNegotiationById(id);
     }
 
     /**
@@ -95,13 +83,9 @@ public class ContractNegotiationProviderService {
         	throw new ProviderPidNotBlankException("Contract negotiation failed - providerPid has to be blank", contractRequestMessage.getConsumerPid());
         }
         
-        contractNegotiationRepository.findByProviderPidAndConsumerPid(contractRequestMessage.getProviderPid(), contractRequestMessage.getConsumerPid())
-                .ifPresent(crm -> {
-                    throw new ContractNegotiationExistsException("PROVIDER - Contract request message with provider and consumer pid's exists", contractRequestMessage.getProviderPid(), contractRequestMessage.getConsumerPid());
-                });
+        checkIfContractNegotiationExists(contractRequestMessage.getConsumerPid(), contractRequestMessage.getProviderPid());
 
-		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + properties.serverPort() + 
-				ApiEndpoints.CATALOG_OFFERS_V1 + "/validateOffer", 
+		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + properties.serverPort() + "/api/v1/offers/validateOffer", 
 				Serializer.serializePlainJsonNode(contractRequestMessage.getOffer()), 
 				credentialUtils.getAPICredentials());
         
@@ -138,16 +122,9 @@ public class ContractNegotiationProviderService {
     }
 
 	public void verifyNegotiation(ContractAgreementVerificationMessage cavm) {
-		ContractNegotiation contractNegotiation = contractNegotiationRepository.findByProviderPidAndConsumerPid(cavm.getProviderPid(), cavm.getConsumerPid())
-				.orElseThrow(() -> new ContractNegotiationNotFoundException(
-						"Contract negotiation with providerPid " + cavm.getProviderPid() + 
-						" and consumerPid " + cavm.getConsumerPid() + " not found", cavm.getConsumerPid(), cavm.getProviderPid()));
-
-		if (!contractNegotiation.getState().canTransitTo(ContractNegotiationState.VERIFIED)) {
-			throw new ContractNegotiationInvalidStateException(
-					"Contract negotiation with providerPid " + cavm.getProviderPid() + 
-					" and consumerPid " + cavm.getConsumerPid() + " is not in AGREED state, aborting verification", cavm.getConsumerPid(), cavm.getProviderPid());
-		}
+		ContractNegotiation contractNegotiation = findContractNegotiationByPids(cavm.getConsumerPid(), cavm.getProviderPid());
+		
+		stateTransitionCheck(ContractNegotiationState.VERIFIED, contractNegotiation);
 
 		ContractNegotiation contractNegotiationUpdated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.VERIFIED);
 		contractNegotiationRepository.save(contractNegotiationUpdated);
@@ -168,10 +145,7 @@ public class ContractNegotiationProviderService {
 	}
 
 	private ContractNegotiation processAccepted(ContractNegotiationEventMessage contractNegotiationEventMessage) {
-		ContractNegotiation contractNegotiation = contractNegotiationRepository.findByProviderPidAndConsumerPid(contractNegotiationEventMessage.getProviderPid(), contractNegotiationEventMessage.getConsumerPid())
-				.orElseThrow(() -> new ContractNegotiationNotFoundException(
-						"Contract negotiation with providerPid " + contractNegotiationEventMessage.getProviderPid() + 
-						" and consumerPid " + contractNegotiationEventMessage.getConsumerPid() + " not found"));
+		ContractNegotiation contractNegotiation = findContractNegotiationByPids(contractNegotiationEventMessage.getConsumerPid(), contractNegotiationEventMessage.getProviderPid());
 		
 		log.info("Updating state to ACCEPTED for contract negotiation id {}", contractNegotiation.getId());
 		ContractNegotiation contractNegotiationAccepted = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.ACCEPTED);

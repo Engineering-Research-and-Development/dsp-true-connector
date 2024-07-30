@@ -11,7 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/api/catalog")
+@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/api/v1/catalogs")
 @Log
 public class CatalogAPIController {
 
@@ -22,7 +22,7 @@ public class CatalogAPIController {
         this.catalogService = service;
     }
 
-    @GetMapping(path = "/")
+    @GetMapping
     public ResponseEntity<JsonNode> getCatalog() {
         log.info("Fetching catalog");
 

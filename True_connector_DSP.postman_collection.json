@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "32c09097-d276-4f47-b0cb-305438f1a05d",
+		"_postman_id": "99fb8057-9c1f-4afb-8ea9-e9f09bc9b57e",
 		"name": "TC_V2",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "36278855"
@@ -10,31 +10,31 @@
 			"name": "API_FE",
 			"item": [
 				{
-					"name": "ApplicatioProperty",
+					"name": "ApplicationProperty",
 					"item": [
 						{
 							"name": "Get All Application Properties",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
 							"request": {
-								"auth": {
-									"type": "basic",
-									"basic": [
-										{
-											"key": "username",
-											"value": "admin@mail.com",
-											"type": "string"
-										},
-										{
-											"key": "password",
-											"value": "password",
-											"type": "string"
-										}
-									]
-								},
 								"method": "GET",
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json"
+										"value": "application/json",
+										"type": "text"
 									}
 								],
 								"url": {
@@ -51,27 +51,27 @@
 						},
 						{
 							"name": "Get All Application Properties with prefix",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
 							"request": {
-								"auth": {
-									"type": "basic",
-									"basic": [
-										{
-											"key": "username",
-											"value": "admin@mail.com",
-											"type": "string"
-										},
-										{
-											"key": "password",
-											"value": "password",
-											"type": "string"
-										}
-									]
-								},
 								"method": "GET",
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json"
+										"value": "application/json",
+										"type": "text"
 									}
 								],
 								"url": {
@@ -94,36 +94,36 @@
 						},
 						{
 							"name": "Get Application Property By Key",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
 							"request": {
-								"auth": {
-									"type": "basic",
-									"basic": [
-										{
-											"key": "username",
-											"value": "admin@mail.com",
-											"type": "string"
-										},
-										{
-											"key": "password",
-											"value": "password",
-											"type": "string"
-										}
-									]
-								},
 								"method": "GET",
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json"
+										"value": "application/json",
+										"type": "text"
 									}
 								],
 								"url": {
-									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/spring.ssl.bundle.jks.connector.keystore.location",
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/application.daps.dapsJWKSUrl",
 									"host": [
 										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
 									],
 									"path": [
-										"spring.ssl.bundle.jks.connector.keystore.location"
+										"application.daps.dapsJWKSUrl"
 									]
 								}
 							},
@@ -131,32 +131,32 @@
 						},
 						{
 							"name": "Update Application Property",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
 							"request": {
-								"auth": {
-									"type": "basic",
-									"basic": [
-										{
-											"key": "username",
-											"value": "admin@mail.com",
-											"type": "string"
-										},
-										{
-											"key": "password",
-											"value": "password",
-											"type": "string"
-										}
-									]
-								},
 								"method": "PUT",
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json"
+										"value": "application/json",
+										"type": "text"
 									}
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n        \"key\": \"application.daps.enabledDapsInteraction\",\r\n        \"value\": \"true\",\r\n        \"mandatory\": false,\r\n        \"issued\": 1718629303.981000000,\r\n        \"modified\": 1718629303.981000000,\r\n        \"type\": \"ApplicationProperty\"\r\n    }",
+									"raw": "{\r\n    \"key\": \"application.daps.enabledDapsInteraction\",\r\n    \"value\": \"true\",\r\n    \"mandatory\": false,\r\n    \"issued\": 1719246360.000000000,\r\n    \"modified\": 1719246360.000000000,\r\n    \"type\": \"ApplicationProperty\"\r\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -432,7 +432,8 @@
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json"
+										"value": "application/json",
+										"type": "text"
 									}
 								],
 								"url": {
@@ -581,6 +582,11 @@
 									"listen": "test",
 									"script": {
 										"exec": [
+											"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"consumer_contractNegotiationId\", jsonData[\"data\"][\"id\"])\r",
+											"});\r",
+											"\r",
 											"pm.test(\"Retrieve consumer pid\", function () {\r",
 											"    var jsonData = pm.response.json();\r",
 											"    pm.collectionVariables.set(\"consumerPid\", jsonData[\"data\"][\"consumerPid\"])\r",
@@ -613,12 +619,48 @@
 									}
 								},
 								"url": {
-									"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/startNegotiation",
+									"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}",
 									"host": [
 										"{{CONSUMER_SERVER_API_NEGOTIATION}}"
-									],
-									"path": [
-										"startNegotiation"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Find Contract Negotiation",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"provider_contractNegotiationId\", jsonData[\"data\"][jsonData.data.length-1][\"id\"])\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}",
+									"host": [
+										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
 									]
 								}
 							},
@@ -658,7 +700,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"Forward-To\": \"{{CONSUMER_SERVER_PROTOCOL_NEGOTIATION}}/request\",\n    \"offer\": {\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\n        \"target\" : \"target\",\n        \"permission\": [\n            {\n                \"action\": \"USE\",\n                \"constraint\": [\n                    {\n                        \"leftOperand\": \"COUNT\",\n                        \"operator\": \"EQ\",\n                        \"rightOperand\": \"5\"\n                    }\n                ]\n            }\n        ]\n    }\n}",
+									"raw": "{\n    \"Forward-To\": \"{{CONSUMER_SERVER_PROTOCOL_NEGOTIATION}}/offers\",\n    \"offer\": {\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\n        \"target\": \"target\",\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\n        \"permission\": [\n            {\n                \"action\": \"USE\",\n                \"constraint\": [\n                    {\n                        \"leftOperand\": \"COUNT\",\n                        \"operator\": \"EQ\",\n                        \"rightOperand\": \"5\"\n                    }\n                ]\n            }\n        ]\n    }\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -666,19 +708,19 @@
 									}
 								},
 								"url": {
-									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/sendOffer",
+									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/offers",
 									"host": [
 										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
 									],
 									"path": [
-										"sendOffer"
+										"offers"
 									]
 								}
 							},
 							"response": []
 						},
 						{
-							"name": "[C] Offer approved",
+							"name": "[P] Approve negotiation",
 							"event": [
 								{
 									"listen": "test",
@@ -694,82 +736,22 @@
 								}
 							],
 							"request": {
-								"method": "POST",
+								"method": "PUT",
 								"header": [
 									{
 										"key": "Content-Type",
-										"value": "application/json"
+										"value": "application/json",
+										"type": "text"
 									}
 								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\r\n    \"consumerPid\": \"{{consumerPid}}\",\r\n    \"providerPid\": \"{{providerPid}}\",\r\n    \"offerAccepted\": true,\r\n    \"offer\": {\r\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"target\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"EQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
 								"url": {
-									"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/offerApproved",
-									"host": [
-										"{{CONSUMER_SERVER_API_NEGOTIATION}}"
-									],
-									"path": [
-										"offerApproved"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "[P] Send Agreement",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Check if status code is 200\", function () {\r",
-											"    pm.response.to.have.status(200);\r",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									},
-									{
-										"key": "Authorization",
-										"value": "Basic YWRtaW5AbWFpbC5jb206cGFzc3dvcmQ="
-									},
-									{
-										"key": "Cookie",
-										"value": "JSESSIONID=1B172A0D2187794C8FA816EF096C69B8"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"consumerPid\": \"{{consumerPid}}\",\n    \"providerPid\": \"{{providerPid}}\",\n    \"agreement\": {\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\n        \"target\": \"urn:uuid:TARGET\",\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\n        \"assignee\": \"urn:uuid:ASSIGNEE_CONSUMER\",\n        \"permission\": [\n            {\n                \"action\": \"USE\",\n                \"constraint\": [\n                    {\n                        \"leftOperand\": \"COUNT\",\n                        \"operator\": \"EQ\",\n                        \"rightOperand\": \"5\"\n                    }\n                ]\n            }\n        ]\n    }\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/sendAgreement",
+									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/{{provider_contractNegotiationId}}/approve",
 									"host": [
 										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
 									],
 									"path": [
-										"sendAgreement"
+										"{{provider_contractNegotiationId}}",
+										"approve"
 									]
 								}
 							},
@@ -792,7 +774,7 @@
 								}
 							],
 							"request": {
-								"method": "POST",
+								"method": "PUT",
 								"header": [
 									{
 										"key": "Content-Type",
@@ -801,7 +783,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n    \"consumerPid\": \"{{consumerPid}}\",\r\n    \"providerPid\": \"{{providerPid}}\"\r\n}",
+									"raw": "",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -809,12 +791,13 @@
 									}
 								},
 								"url": {
-									"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/verifyNegotiation",
+									"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/{{consumer_contractNegotiationId}}/verify",
 									"host": [
 										"{{CONSUMER_SERVER_API_NEGOTIATION}}"
 									],
 									"path": [
-										"verifyNegotiation"
+										"{{consumer_contractNegotiationId}}",
+										"verify"
 									]
 								}
 							},
@@ -837,7 +820,7 @@
 								}
 							],
 							"request": {
-								"method": "POST",
+								"method": "PUT",
 								"header": [
 									{
 										"key": "Content-Type",
@@ -854,19 +837,20 @@
 									}
 								},
 								"url": {
-									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/finalizeNegotiation",
+									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/{{provider_contractNegotiationId}}/finalize",
 									"host": [
 										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
 									],
 									"path": [
-										"finalizeNegotiation"
+										"{{provider_contractNegotiationId}}",
+										"finalize"
 									]
 								}
 							},
 							"response": []
 						},
 						{
-							"name": "[P] Contract Negotiation approved",
+							"name": "[C/P] Terminate negotiation",
 							"event": [
 								{
 									"listen": "test",
@@ -882,7 +866,7 @@
 								}
 							],
 							"request": {
-								"method": "POST",
+								"method": "PUT",
 								"header": [
 									{
 										"key": "Content-Type",
@@ -891,88 +875,13 @@
 									}
 								],
 								"url": {
-									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/negotiationApproved/{{providerPid}}",
+									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/{{provider_contractNegotiationId}}/terminate",
 									"host": [
 										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
 									],
 									"path": [
-										"negotiationApproved",
-										"{{providerPid}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "[P] Contract Negotiation terminated",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Check if status code is 200\", function () {\r",
-											"    pm.response.to.have.status(200);\r",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"url": {
-									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/negotiationTerminated/{{providerPid}}",
-									"host": [
-										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
-									],
-									"path": [
-										"negotiationTerminated",
-										"{{providerPid}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Find Contract Negotiation",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Check if status code is 200\", function () {\r",
-											"    pm.response.to.have.status(200);\r",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"url": {
-									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/find",
-									"host": [
-										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
-									],
-									"path": [
-										"find"
+										"{{provider_contractNegotiationId}}",
+										"terminate"
 									]
 								}
 							},
@@ -981,43 +890,10 @@
 						{
 							"name": "Check if agreement is valid",
 							"request": {
-								"auth": {
-									"type": "basic",
-									"basic": [
-										{
-											"key": "username",
-											"value": "admin@mail.com",
-											"type": "string"
-										},
-										{
-											"key": "password",
-											"value": "password",
-											"type": "string"
-										}
-									]
-								},
 								"method": "POST",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
+								"header": [],
 								"url": {
-									"raw": "http://localhost:8090/api/v1/agreement/urn:uuid:AGREEMENT_ID_OK/valid",
-									"protocol": "http",
-									"host": [
-										"localhost"
-									],
-									"port": "8090",
-									"path": [
-										"api",
-										"v1",
-										"agreement",
-										"urn:uuid:AGREEMENT_ID_OK",
-										"valid"
-									]
+									"raw": ""
 								}
 							},
 							"response": []
@@ -1145,34 +1021,6 @@
 							"response": []
 						}
 					]
-				},
-				{
-					"name": "DataTransfer",
-					"item": [
-						{
-							"name": "Get TransferProcess",
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"url": {
-									"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}/abc45798-5553-4932-8baf-ab7fd66ql4d5",
-									"host": [
-										"{{PROVIDER_SERVER_API_TRANSFERS}}"
-									],
-									"path": [
-										"abc45798-5553-4932-8baf-ab7fd66ql4d5"
-									]
-								}
-							},
-							"response": []
-						}
-					]
 				}
 			],
 			"auth": {
@@ -1208,6 +1056,28 @@
 							""
 						]
 					}
+				}
+			]
+		},
+		{
+			"name": "DataTransfer",
+			"item": [
+				{
+					"name": "Get TransferProcess",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}/abc45798-5553-4932-8baf-ab7fd66ql4d5",
+							"host": [
+								"{{PROVIDER_SERVER_API_TRANSFERS}}"
+							],
+							"path": [
+								"abc45798-5553-4932-8baf-ab7fd66ql4d5"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		},
@@ -1394,6 +1264,20 @@
 							"item": [
 								{
 									"name": "Provider Get TransferProcess",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check if status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
 									"request": {
 										"method": "GET",
 										"header": [
@@ -1403,12 +1287,12 @@
 											}
 										],
 										"url": {
-											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/urn:uuid:PROVIDER_PID_UUID_TRANSFER",
+											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/urn:uuid:PROVIDER_PID_TRANSFER",
 											"host": [
 												"{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}"
 											],
 											"path": [
-												"urn:uuid:PROVIDER_PID_UUID_TRANSFER"
+												"urn:uuid:PROVIDER_PID_TRANSFER"
 											]
 										}
 									},
@@ -1421,13 +1305,34 @@
 											"listen": "test",
 											"script": {
 												"exec": [
-													"pm.test(\"Check if status code is 200\", function () {\r",
-													"    pm.response.to.have.status(200);\r",
+													"pm.test(\"Check if status code is 201\", function () {\r",
+													"    pm.response.to.have.status(201);\r",
 													"});\r",
 													"\r",
-													"let responseData = pm.response.json();\r",
-													"pm.environment.set(\"transfer_consumerPid\", responseData['dspace:consumerPid']);\r",
-													"pm.environment.set(\"transfer_providerPid\", responseData['dspace:providerPid']);"
+													"pm.test(\"Set providerPid\", ()=> {\r",
+													"    var jsonData = pm.response.json();\r",
+													"    pm.expect(jsonData['dspace:state']).to.eq('dspace:REQUESTED');\r",
+													"    pm.collectionVariables.set(\"providerPid\", jsonData[\"dspace:providerPid\"])\r",
+													"});\r",
+													"\r",
+													"pm.test(\"TransactionId\", ()=> {\r",
+													"    let trId = pm.collectionVariables.get(\"consumerPid\") + \"|\" + pm.collectionVariables.get(\"providerPid\");\r",
+													"    pm.collectionVariables.set(\"transactionId\", btoa(trId));\r",
+													"    console.log(pm.collectionVariables.get(\"transactionId\"));\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"pm.test(\"Set consumerPid\", ()=> {\r",
+													"   var cPid = \"urn:uuid:\" + pm.variables.replaceIn(\"{{$randomUUID}}\");\r",
+													"   pm.collectionVariables.set(\"consumerPid\", cPid);\r",
+													"});"
 												],
 												"type": "text/javascript",
 												"packages": {}
@@ -1444,7 +1349,7 @@
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferRequestMessage\",\r\n \"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dspace:agreementId\": \"urn:uuid:AGREEMENT_ID_OK\",\r\n \"dct:format\": \"example:HTTP_PULL\",\r\n \"dspace:callbackAddress\": \"https://localhost:8080/consumer/transfers/urn:uuid:CONSUMER_PID_UUID_TRANSFER/start\"\r\n}",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferRequestMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:agreementId\": \"urn:uuid:AGREEMENT_ID_COMPLETED_TRANSFER_TEST\",\r\n \"dct:format\": \"example:HTTP_PULL\",\r\n \"dspace:callbackAddress\": \"http://localhost:8080/consumer/transfers/callback/\"\r\n}",
 											"options": {
 												"raw": {
 													"language": "json"
@@ -1484,7 +1389,7 @@
 										"header": [],
 										"body": {
 											"mode": "raw",
-											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferStartMessage\",\r\n \"dspace:providerPid\": \"{{transfer_providerPid}}\",\r\n \"dspace:consumerPid\": \"{{transfer_consumerPid}}\"\r\n}",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferStartMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:providerPid\": \"{{providerPid}}\"\r\n}",
 											"options": {
 												"raw": {
 													"language": "json"
@@ -1492,12 +1397,12 @@
 											}
 										},
 										"url": {
-											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/{{transfer_providerPid}}/start",
+											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/{{providerPid}}/start",
 											"host": [
 												"{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}"
 											],
 											"path": [
-												"{{transfer_providerPid}}",
+												"{{providerPid}}",
 												"start"
 											]
 										}
@@ -1506,12 +1411,26 @@
 								},
 								{
 									"name": "Provider Complete transfer",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check if status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
 									"request": {
 										"method": "POST",
 										"header": [],
 										"body": {
 											"mode": "raw",
-											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferCompletionMessage\",\r\n \"dspace:providerPid\": \"urn:uuid:PROVIDER_PID_UUID_TRANSFER\",\r\n \"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\"\r\n}",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferCompletionMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:providerPid\": \"{{providerPid}}\"\r\n}",
 											"options": {
 												"raw": {
 													"language": "json"
@@ -1519,12 +1438,12 @@
 											}
 										},
 										"url": {
-											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/PROVIDER_PID_UUID_TRANSFER/completion",
+											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/{{providerPid}}/completion",
 											"host": [
 												"{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}"
 											],
 											"path": [
-												"PROVIDER_PID_UUID_TRANSFER",
+												"{{providerPid}}",
 												"completion"
 											]
 										}
@@ -1533,12 +1452,26 @@
 								},
 								{
 									"name": "Provider Suspend transfer",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check if status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
 									"request": {
 										"method": "POST",
 										"header": [],
 										"body": {
 											"mode": "raw",
-											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferSuspensionMessage\",\r\n \"dspace:providerPid\": \"urn:uuid:PROVIDER_PID_UUID_TRANSFER\",\r\n \"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dspace:code\": \"1\",\r\n \"dspace:reason\": [\r\n   \"Must suspens to take a break,I got tierd.\"\r\n ]\r\n}",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferSuspensionMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:providerPid\": \"{{providerPid}}\",\r\n \"dspace:code\": \"1\",\r\n \"dspace:reason\": [\r\n   \"Must suspens to take a break,I got tierd.\"\r\n ]\r\n}",
 											"options": {
 												"raw": {
 													"language": "json"
@@ -1546,12 +1479,12 @@
 											}
 										},
 										"url": {
-											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/PROVIDER_PID_UUID_TRANSFER/suspension",
+											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/{{providerPid}}/suspension",
 											"host": [
 												"{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}"
 											],
 											"path": [
-												"PROVIDER_PID_UUID_TRANSFER",
+												"{{providerPid}}",
 												"suspension"
 											]
 										}
@@ -1560,12 +1493,26 @@
 								},
 								{
 									"name": "Provider Terminate transfer",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check if status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
 									"request": {
 										"method": "POST",
 										"header": [],
 										"body": {
 											"mode": "raw",
-											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferTerminationMessage\",\r\n \"dspace:providerPid\": \"urn:uuid:PROVIDER_PID_UUID_TRANSFER\",\r\n \"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dspace:code\": \"123\",\r\n \"dspace:reason\": [\r\n   \"Must stop this transfer\"\r\n ]\r\n}",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferTerminationMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:providerPid\": \"{{providerPid}}\",\r\n \"dspace:code\": \"123\",\r\n \"dspace:reason\": [\r\n   \"Must stop this transfer\"\r\n ]\r\n}",
 											"options": {
 												"raw": {
 													"language": "json"
@@ -1573,13 +1520,50 @@
 											}
 										},
 										"url": {
-											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/PROVIDER_PID_UUID_TRANSFER/termination",
+											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/{{providerPid}}/termination",
 											"host": [
 												"{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}"
 											],
 											"path": [
-												"PROVIDER_PID_UUID_TRANSFER",
+												"{{providerPid}}",
 												"termination"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get test artifact",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check expected response\", ()=> {\r",
+													"    pm.response.to.have.status(200);\r",
+													"    var jsonData = pm.response.json();\r",
+													"    pm.expect(jsonData['firstName']).to.eq('John');\r",
+													"    pm.expect(jsonData['lastName']).to.eq('Doe');\r",
+													"    pm.expect(jsonData['address']).to.eq('591  Franklin Street, Pennsylvania');\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [],
+										"url": {
+											"raw": "{{PROVIDER}}/artifacts/{{transactionId}}/1",
+											"host": [
+												"{{PROVIDER}}"
+											],
+											"path": [
+												"artifacts",
+												"{{transactionId}}",
+												"1"
 											]
 										}
 									},
@@ -1592,12 +1576,26 @@
 							"item": [
 								{
 									"name": "Consumer Start transfer",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check if status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
 									"request": {
 										"method": "POST",
 										"header": [],
 										"body": {
 											"mode": "raw",
-											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferStartMessage\",\r\n \"dspace:providerPid\": \"urn:uuid:PROVIDER_PID_UUID_TRANSFER\",\r\n \"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dspace:dataAddress\": {\r\n   \"@type\": \"dspace:DataAddress\",\r\n   \"dspace:endpointType\": \"https://w3id.org/idsa/v4.1/HTTP\",\r\n   \"dspace:endpoint\": \"http://example.com\",\r\n   \"dspace:endpointProperties\": [\r\n     {\r\n       \"@type\": \"dspace:EndpointProperty\",\r\n       \"dspace:name\": \"authorization\",\r\n       \"dspace:value\": \"TOKEN-ABCDEFG\"\r\n     },\r\n     {\r\n       \"@type\": \"dspace:EndpointProperty\",\r\n       \"dspace:name\": \"authType\",\r\n       \"dspace:value\": \"bearer\"\r\n     }\r\n   ]\r\n }\r\n}",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferStartMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:providerPid\": \"{{providerPid}}\",\r\n \"dspace:dataAddress\": {\r\n   \"@type\": \"dspace:DataAddress\",\r\n   \"dspace:endpointType\": \"https://w3id.org/idsa/v4.1/HTTP\",\r\n   \"dspace:endpoint\": \"http://example.com\",\r\n   \"dspace:endpointProperties\": [\r\n     {\r\n       \"@type\": \"dspace:EndpointProperty\",\r\n       \"dspace:name\": \"authorization\",\r\n       \"dspace:value\": \"TOKEN-ABCDEFG\"\r\n     },\r\n     {\r\n       \"@type\": \"dspace:EndpointProperty\",\r\n       \"dspace:name\": \"authType\",\r\n       \"dspace:value\": \"bearer\"\r\n     }\r\n   ]\r\n }\r\n}",
 											"options": {
 												"raw": {
 													"language": "json"
@@ -1605,12 +1603,12 @@
 											}
 										},
 										"url": {
-											"raw": "{{CONSUMER_SERVER_PROTOCOL_DATA_TRANSFER}}/CONSUMER_PID_UUID_TRANSFER/start",
+											"raw": "{{CONSUMER_SERVER_PROTOCOL_DATA_TRANSFER}}/{{consumerPid}}/start",
 											"host": [
 												"{{CONSUMER_SERVER_PROTOCOL_DATA_TRANSFER}}"
 											],
 											"path": [
-												"CONSUMER_PID_UUID_TRANSFER",
+												"{{consumerPid}}",
 												"start"
 											]
 										}
@@ -1619,12 +1617,26 @@
 								},
 								{
 									"name": "Consumer Completion transfer",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check if status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
 									"request": {
 										"method": "POST",
 										"header": [],
 										"body": {
 											"mode": "raw",
-											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferCompletionMessage\",\r\n \"dspace:providerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dspace:consumerPid\": \"urn:uuid:PROVIDER_PID_UUID_TRANSFER\"\r\n}",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferCompletionMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:providerPid\": \"{{providerPid}}\"\r\n}",
 											"options": {
 												"raw": {
 													"language": "json"
@@ -1632,12 +1644,12 @@
 											}
 										},
 										"url": {
-											"raw": "{{CONSUMER_SERVER_PROTOCOL_DATA_TRANSFER}}/CONSUMER_PID_UUID_TRANSFER/completion",
+											"raw": "{{CONSUMER_SERVER_PROTOCOL_DATA_TRANSFER}}/{{consumerPid}}/completion",
 											"host": [
 												"{{CONSUMER_SERVER_PROTOCOL_DATA_TRANSFER}}"
 											],
 											"path": [
-												"CONSUMER_PID_UUID_TRANSFER",
+												"{{consumerPid}}",
 												"completion"
 											]
 										}
@@ -1646,12 +1658,26 @@
 								},
 								{
 									"name": "Consumer Suspension transfer",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check if status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
 									"request": {
 										"method": "POST",
 										"header": [],
 										"body": {
 											"mode": "raw",
-											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferSuspensionMessage\",\r\n \"dspace:providerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dspace:consumerPid\": \"urn:uuid:PROVIDER_PID_UUID_TRANSFER\",\r\n \"dspace:code\": \"2\",\r\n \"dspace:reason\": [\r\n   \"Pause please!\"\r\n ]\r\n}",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferSuspensionMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:providerPid\": \"{{providerPid}}\",\r\n \"dspace:code\": \"2\",\r\n \"dspace:reason\": [\r\n   \"Pause please!\"\r\n ]\r\n}",
 											"options": {
 												"raw": {
 													"language": "json"
@@ -1659,14 +1685,14 @@
 											}
 										},
 										"url": {
-											"raw": "{{CONSUMER}}/consumer/transfers/CONSUMER_PID_UUID_TRANSFER/suspension",
+											"raw": "{{CONSUMER}}/consumer/transfers/{{consumerPid}}/suspension",
 											"host": [
 												"{{CONSUMER}}"
 											],
 											"path": [
 												"consumer",
 												"transfers",
-												"CONSUMER_PID_UUID_TRANSFER",
+												"{{consumerPid}}",
 												"suspension"
 											]
 										}
@@ -1675,12 +1701,26 @@
 								},
 								{
 									"name": "Consumer Termination transfer",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check if status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
 									"request": {
 										"method": "POST",
 										"header": [],
 										"body": {
 											"mode": "raw",
-											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferTerminationMessage\",\r\n \"dspace:providerPid\": \"urn:uuid:CONSUMER_PID_UUID_TRANSFER\",\r\n \"dspace:consumerPid\": \"urn:uuid:PROVIDER_PID_UUID_TRANSFER\",\r\n \"dspace:code\": \"1\",\r\n \"dspace:reason\": [\r\n   \"Need to take a break\"\r\n ]\r\n}",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferTerminationMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:providerPid\": \"{{providerPid}}\",\r\n \"dspace:code\": \"1\",\r\n \"dspace:reason\": [\r\n   \"Need to take a break\"\r\n ]\r\n}",
 											"options": {
 												"raw": {
 													"language": "json"
@@ -1688,14 +1728,14 @@
 											}
 										},
 										"url": {
-											"raw": "{{CONSUMER}}/consumer/transfers/CONSUMER_PID_UUID_TRANSFER/termination",
+											"raw": "{{CONSUMER}}/consumer/transfers/{{consumerPid}}/termination",
 											"host": [
 												"{{CONSUMER}}"
 											],
 											"path": [
 												"consumer",
 												"transfers",
-												"CONSUMER_PID_UUID_TRANSFER",
+												"{{consumerPid}}",
 												"termination"
 											]
 										}
@@ -1749,17 +1789,47 @@
 			]
 		}
 	],
-	"variable": [
+	"event": [
 		{
-			"key": "CONSUMER_SERVER_API_APPLICATION_PROPERTY",
-			"value": "http://127.0.0.1/api/properties"
-        },
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
 		{
 			"key": "consumerPid",
 			"value": ""
 		},
 		{
 			"key": "providerPid",
+			"value": ""
+		},
+		{
+			"key": "provider_contractNegotiationId",
+			"value": ""
+		},
+		{
+			"key": "consumer_contractNegotiationId",
+			"value": ""
+		},
+		{
+			"key": "transactionId",
 			"value": ""
 		}
 	]
