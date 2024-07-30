@@ -21,6 +21,7 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import it.eng.datatransfer.exceptions.AgreementNotFoundException;
 import it.eng.datatransfer.exceptions.TransferProcessExistsException;
@@ -40,6 +41,8 @@ public class DataTransferServiceTest {
 
 	@Mock
 	private TransferProcessRepository transferProcessRepository;
+	@Mock
+	private ApplicationEventPublisher publisher;
 	@Mock
 	private OkHttpRestClient okHttpRestClient;
 	@Mock
@@ -136,6 +139,7 @@ public class DataTransferServiceTest {
 		verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
 	}
 	
+	// TransferStartMessage
 	@Test
 	@DisplayName("StartDataTransfer from REQUESTED - provider")
 	public void startDataTransfer_fromRequested_provider() {
@@ -220,5 +224,65 @@ public class DataTransferServiceTest {
 				() -> service.startDataTransfer(MockObjectUtil.TRANSFER_START_MESSAGE, null, MockObjectUtil.PROVIDER_PID));
 		verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
 	}
-
+	
+	// TransferCompletionMessage
+	@Test
+	@DisplayName("TransferCompletionMessage from STARTED - provider")
+	public void completeDataTransfer_fromRequested_provider() {
+		when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+			.thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_STARTED));
+		
+		TransferProcess transferProcessCompleted = service.completeDataTransfer(MockObjectUtil.TRANSFER_COMPLETION_MESSAGE, null, MockObjectUtil.PROVIDER_PID);
+		
+		assertEquals(TransferState.COMPLETED, transferProcessCompleted.getState());
+		verify(transferProcessRepository).save(argTransferProcess.capture());
+		assertEquals(TransferState.COMPLETED, argTransferProcess.getValue().getState());
+	}
+	
+	@Test
+	@DisplayName("TransferCompletionMessage from STARTED - consumer callback")
+	public void completeDataTransfer_fromRequested_consumer() {
+		when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+			.thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_STARTED));
+		
+		TransferProcess transferProcessCompleted = service.completeDataTransfer(MockObjectUtil.TRANSFER_COMPLETION_MESSAGE,
+				MockObjectUtil.CONSUMER_PID, null);
+		
+		assertEquals(TransferState.COMPLETED, transferProcessCompleted.getState());
+		verify(transferProcessRepository).save(argTransferProcess.capture());
+		assertEquals(TransferState.COMPLETED, argTransferProcess.getValue().getState());
+	}
+	
+	@Test
+	@DisplayName("TransferCompletionMessage - transfer process not found - provider")
+	public void completeDataTransfer_tpNotFound_provider() {
+		when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+			.thenReturn(Optional.empty());
+		
+		assertThrows(TransferProcessNotFoundException.class, 
+				() -> service.completeDataTransfer(MockObjectUtil.TRANSFER_COMPLETION_MESSAGE, null, MockObjectUtil.PROVIDER_PID));
+		verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
+	}
+	
+	@Test
+	@DisplayName("TransferCompletionMessage - transfer process not found - consumer callback")
+	public void completeDataTransfer_tpNotFound_consumer() {
+		when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+			.thenReturn(Optional.empty());
+		
+		assertThrows(TransferProcessNotFoundException.class, 
+				() -> service.completeDataTransfer(MockObjectUtil.TRANSFER_COMPLETION_MESSAGE, MockObjectUtil.CONSUMER_PID, null));
+		verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
+	}
+	
+	@Test
+	@DisplayName("TransferCompletionMessage - invalid state")
+	public void completeDataTransfer_invalidState() {
+		when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+			.thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_REQUESTED));
+		
+		assertThrows(TransferProcessInvalidStateException.class, 
+				() -> service.completeDataTransfer(MockObjectUtil.TRANSFER_COMPLETION_MESSAGE, null, MockObjectUtil.PROVIDER_PID));
+		verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
+	}
 }

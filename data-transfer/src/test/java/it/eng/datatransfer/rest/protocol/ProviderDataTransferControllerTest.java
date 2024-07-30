@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.exceptions.TransferProcessExistsException;
 import it.eng.datatransfer.exceptions.TransferProcessNotFoundException;
 import it.eng.datatransfer.model.Serializer;
+import it.eng.datatransfer.model.TransferCompletionMessage;
 import it.eng.datatransfer.model.TransferRequestMessage;
 import it.eng.datatransfer.model.TransferStartMessage;
 import it.eng.datatransfer.service.DataTransferService;
@@ -112,9 +113,11 @@ public class ProviderDataTransferControllerTest {
 	@Test
 	@DisplayName("Complete TransferProcess")
 	public void completeDataTransfer() {
-		assertEquals(HttpStatus.NOT_IMPLEMENTED, 
-				controller.completeDataTransfer(MockObjectUtil.PROVIDER_PID,
-						Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_COMPLETION_MESSAGE)).getStatusCode());
+		when(dataTransferService.completeDataTransfer(any(TransferCompletionMessage.class), isNull(), any(String.class)))
+			.thenReturn(MockObjectUtil.TRANSFER_PROCESS_COMPLETED);
+		ResponseEntity<JsonNode> response =  controller.completeDataTransfer(MockObjectUtil.PROVIDER_PID,
+				Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_COMPLETION_MESSAGE));
+		assertEquals(HttpStatus.OK, response.getStatusCode());
 	}
 	
 	@Test
@@ -123,6 +126,16 @@ public class ProviderDataTransferControllerTest {
 		assertThrows(ValidationException.class, () ->
 			controller.completeDataTransfer(MockObjectUtil.PROVIDER_PID, Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_START_MESSAGE))
 		);
+	}
+	
+	@Test
+	@DisplayName("Complete TransferProcess - error service")
+	public void completeDataTransfer_errorService() {
+		when(dataTransferService.completeDataTransfer(any(TransferCompletionMessage.class), isNull(), any(String.class)))
+			.thenThrow(TransferProcessNotFoundException.class);
+		assertThrows(TransferProcessNotFoundException.class, 
+				() -> controller.completeDataTransfer(MockObjectUtil.PROVIDER_PID,
+				Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_COMPLETION_MESSAGE)));
 	}
 	
 	@Test

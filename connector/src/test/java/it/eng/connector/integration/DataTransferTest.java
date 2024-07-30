@@ -10,13 +10,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.nio.charset.Charset;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.MvcResult;
@@ -24,6 +27,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
@@ -34,6 +38,7 @@ import it.eng.catalog.serializer.InstantSerializer;
 import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.model.Serializer;
+import it.eng.datatransfer.model.TransferCompletionMessage;
 import it.eng.datatransfer.model.TransferError;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferRequestMessage;
@@ -44,7 +49,7 @@ import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.response.GenericApiResponse;
 
 public class DataTransferTest extends BaseIntegrationTest {
-
+	
 	public static final String CONSUMER_PID = "urn:uuid:CONSUMER_PID";
 	public static final String PROVIDER_PID = "urn:uuid:PROVIDER_PID";
 	public static final String AGREEMENT_ID = "urn:uuid:" + UUID.randomUUID().toString();
@@ -225,6 +230,82 @@ public class DataTransferTest extends BaseIntegrationTest {
     	*/
 	}
 	
+	@Test
+	@DisplayName("Complete transfer process - provider")
+	@WithUserDetails(TestUtil.CONNECTOR_USER)
+	public void completeTransferProcess_request_start_complete() throws Exception {
+		String consumerPid = "urn:uuid" + UUID.randomUUID().toString();
+		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
+	    		.consumerPid(consumerPid)
+	    		.agreementId("urn:uuid:AGREEMENT_ID_COMPLETED_TRANSFER_TEST")
+	    		.format("HTTP_PULL")
+	    		.callbackAddress(CALLBACK_ADDRESS)
+	    		.build();
+		MvcResult mvcResult = mockMvc.perform(
+    					post("/transfers/request")
+    					.content(Serializer.serializeProtocol(transferRequestMessage))
+    					.contentType(MediaType.APPLICATION_JSON))
+    					.andExpect(status().isCreated())
+				    	.andReturn();
+    	String jsonTransferProcess = mvcResult.getResponse().getContentAsString();
+    	JsonNode jsonNode = Serializer.serializeStringToProtocolJsonNode(jsonTransferProcess);
+    	TransferProcess transferProcessRequested = Serializer.deserializeProtocol(jsonNode, TransferProcess.class);
+    	String providerPid = transferProcessRequested.getProviderPid();
+		String transactionId = Base64.getEncoder().encodeToString((consumerPid + "|" + providerPid).getBytes(Charset.forName("UTF-8")));
+
+    	// Try to access artifact before process is started - should result in error
+    	mockMvc.perform(post("/artifacts/" + transactionId + "/" + "artifactIdTest")
+				.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(status().is(HttpStatus.PRECONDITION_FAILED.value()));
+    	
+    	// send TransferStartMessage
+    	TransferStartMessage transferStartMessage = TransferStartMessage.Builder.newInstance()
+				.consumerPid(consumerPid)
+				.providerPid(providerPid)
+				.build();
+		mockMvc.perform(
+			post("/transfers/" + providerPid +"/start")
+			.content(Serializer.serializeProtocol(transferStartMessage))
+			.contentType(MediaType.APPLICATION_JSON))
+			.andExpect(status().isOk());	
+		
+		// TODO investigate how to download artifact!!!
+		MvcResult resultArtifact = mockMvc.perform(post("/artifacts/" + transactionId + "/" + "artifactIdTest")
+				.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(status().isOk())
+				.andReturn();
+		String artifact = resultArtifact.getResponse().getContentAsString();
+		assertTrue(artifact.contains("John"));
+		assertTrue(artifact.contains("Doe"));
+		
+    	// send transfer completed
+    	TransferCompletionMessage transferCompletionMessage = TransferCompletionMessage.Builder.newInstance()
+    			.consumerPid(consumerPid)
+    			.providerPid(providerPid)
+    			.build();
+    	mockMvc.perform(
+    			post("/transfers/" + providerPid +"/completion")
+    			.content(Serializer.serializeProtocol(transferCompletionMessage))
+    			.contentType(MediaType.APPLICATION_JSON))
+    			.andExpect(status().isOk());	
+        	
+       // check for transfer process status to be completed
+    	MvcResult resultCompletedMessage = mockMvc.perform(
+        			get("/transfers/" + providerPid)
+        			.contentType(MediaType.APPLICATION_JSON))
+    			.andExpect(status().isOk())
+            	.andReturn();	
+    	String jsonTransferProcessCompleted = resultCompletedMessage.getResponse().getContentAsString();
+    	JsonNode jsonNodeCompleted = Serializer.serializeStringToProtocolJsonNode(jsonTransferProcessCompleted);
+    	TransferProcess transferProcessCompleted = Serializer.deserializeProtocol(jsonNodeCompleted, TransferProcess.class);
+    	assertEquals(TransferState.COMPLETED, transferProcessCompleted.getState());
+    	
+    	// try again to access artifact - should result in 500
+    	mockMvc.perform(post("/artifacts/" + transactionId + "/" + "artifactIdTest")
+				.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(status().is(HttpStatus.PRECONDITION_FAILED.value()));
+	}
+	
 	
 	/* API Endpoints tests  */
 	@Test
@@ -276,6 +357,7 @@ public class DataTransferTest extends BaseIntegrationTest {
 		assertNotNull(transferProcess);
 		assertEquals(TRANSFER_PROCESS_ID, transferProcess.getId());
 	}
+	
 }
 
 

@@ -11,7 +11,18 @@ All notable changes to this project will be documented in this file.
  - Data Transfer protocol and API logic implementation (controller, service, model; junit and integration tests) - REST pull implementation without authorization, with hardcoded value/artifact
  - Postman collection for testing endpoints	
  - Configured GitHub actions to run tests
+
+## [0.0.1] - 30-07-2024
+
+### Added
  
+ - TransferCompletionMessage message provider and consumer callback logic (plus junit and integration tests)
+ - GitHub action to test request transfer, start, download artifact and send completion message
+ 
+### Changed
+
+ - ROLE_CONNECTOR to fix authorization for protocol endpoints using jwt
+
 ## [0.0.1] - 2024-07-24
  
 ### Added
@@ -27,7 +38,7 @@ All notable changes to this project will be documented in this file.
 
  - Removed transformers from Negotiation module
 
- 
+
 ## [0.0.1] - 2024-07-22
 
 ### Added

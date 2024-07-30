@@ -1,4 +1,4 @@
-package it.eng.datatransfer.rest;
+package it.eng.datatransfer.rest.api;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -15,43 +15,16 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
+import it.eng.datatransfer.model.Serializer;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE,
-path = "/artifact")
+	path = "/artifacts")
 @Slf4j
 public class RestArtifactController {
-	
-	private static JsonMapper jsonMapperPlain;
-	
-	static {
-		 SimpleModule instantConverterModule = new SimpleModule();
-//        instantConverterModule.addSerializer(Instant.class, new InstantSerializer());
-//        instantConverterModule.addDeserializer(Instant.class, new InstantDeserializer());
-	        
-		 jsonMapperPlain = JsonMapper.builder()
-	                .configure(MapperFeature.USE_ANNOTATIONS, false)
-	                .serializationInclusion(Include.NON_NULL)
-	                .serializationInclusion(Include.NON_EMPTY)
-	                .configure(SerializationFeature.INDENT_OUTPUT, true)
-	                .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
-	                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-	                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-	                .addModule(new JavaTimeModule())
-	                .addModule(instantConverterModule)
-	                .build();
-	}
 
 	/**
 	 * 
@@ -86,12 +59,6 @@ public class RestArtifactController {
 		jsonObject.put("dateOfBirth", formattedDate);
 		jsonObject.put("address", "591  Franklin Street, Pennsylvania");
 		jsonObject.put("checksum", "ABC123 " + formattedDate);
-		
-		try {
-			return jsonMapperPlain.writeValueAsString(jsonObject);
-		} catch (JsonProcessingException e) {
-			log.error(e.getLocalizedMessage());
-		}
-		return null;
+		return Serializer.serializePlain(jsonObject);
     }
 }

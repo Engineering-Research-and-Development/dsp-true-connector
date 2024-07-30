@@ -1,10 +1,11 @@
-package it.eng.datatransfer.filter;
+package it.eng.connector.configuration;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import it.eng.datatransfer.filter.EndpointAvailableFilter;
 import it.eng.datatransfer.service.AgreementService;
 import it.eng.datatransfer.service.DataTransferService;
 
@@ -18,10 +19,10 @@ public class FilterRegistrationConfig {
 	private DataTransferService dataTransferService;
 	
 	@Bean
-	public FilterRegistrationBean<EndpointAvailableFilter> endpointAvailableFilter() {
+	FilterRegistrationBean<EndpointAvailableFilter> endpointAvailableFilter() {
 		FilterRegistrationBean<EndpointAvailableFilter> registrationBean = new FilterRegistrationBean<>();
 		registrationBean.setFilter(new EndpointAvailableFilter(agreementService, dataTransferService));
-		registrationBean.addUrlPatterns("*");
+		registrationBean.addUrlPatterns("/artifacts/*");
 		return registrationBean;
 	}
 }

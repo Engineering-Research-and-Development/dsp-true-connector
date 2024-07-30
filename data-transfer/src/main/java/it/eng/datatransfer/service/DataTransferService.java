@@ -2,6 +2,7 @@ package it.eng.datatransfer.service;
 
 import java.util.UUID;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import it.eng.datatransfer.exceptions.AgreementNotFoundException;
@@ -9,6 +10,7 @@ import it.eng.datatransfer.exceptions.TransferProcessExistsException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.exceptions.TransferProcessNotFoundException;
 import it.eng.datatransfer.model.Serializer;
+import it.eng.datatransfer.model.TransferCompletionMessage;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferRequestMessage;
 import it.eng.datatransfer.model.TransferStartMessage;
@@ -26,15 +28,18 @@ import lombok.extern.slf4j.Slf4j;
 public class DataTransferService {
 
 	private final TransferProcessRepository transferProcessRepository;
+	private final ApplicationEventPublisher publisher;
 	
 	private final OkHttpRestClient okHttpRestClient;
 	private final CredentialUtils credentialUtils;
 	private final DataTransferProperties properties;
 	
-	public DataTransferService(TransferProcessRepository transferProcessRepository, OkHttpRestClient okHttpRestClient,
+	public DataTransferService(TransferProcessRepository transferProcessRepository, ApplicationEventPublisher publisher, 
+			OkHttpRestClient okHttpRestClient,
 			CredentialUtils credentialUtils, DataTransferProperties properties) {
 		super();
 		this.transferProcessRepository = transferProcessRepository;
+		this.publisher = publisher;
 		this.okHttpRestClient = okHttpRestClient;
 		this.credentialUtils = credentialUtils;
 		this.properties = properties;
@@ -101,14 +106,38 @@ public class DataTransferService {
 	public TransferProcess startDataTransfer(TransferStartMessage transferStartMessage, String consumerPid, String providerPid) {
 		String consumerPidFinal = consumerPid == null ? transferStartMessage.getConsumerPid() : consumerPid;
 		String providerPidFinal = providerPid == null ? transferStartMessage.getProviderPid() : providerPid;
-	
+		log.debug("Starting data transfer for consumerPid {} and providerPid {}", consumerPidFinal, providerPidFinal);
+
 		TransferProcess transferProcessRequested = findTransferProcess(consumerPidFinal, providerPidFinal);
 		stateTransitionCheck(transferProcessRequested, TransferState.STARTED);
 
-		// TODO publish event here to inform other parts of connector, if required
 		TransferProcess transferProcessStarted = transferProcessRequested.copyWithNewTransferState(TransferState.STARTED);
 		transferProcessRepository.save(transferProcessStarted);
+		publisher.publishEvent(transferProcessStarted);
 		return transferProcessStarted;
+	}
+	
+	/**
+	 * Finds transfer process, check if status is correct, publish event and update state to COMPLETED
+	 * @param transferCompletionMessage
+	 * @param consumerPid
+	 * @param providerPid
+	 * @return
+	 */
+	public TransferProcess completeDataTransfer(TransferCompletionMessage transferCompletionMessage, String consumerPid,
+			String providerPid) {
+		String consumerPidFinal = consumerPid == null ? transferCompletionMessage.getConsumerPid() : consumerPid;
+		String providerPidFinal = providerPid == null ? transferCompletionMessage.getProviderPid() : providerPid;
+		log.debug("Completing data transfer for consumerPid {} and providerPid {}", consumerPidFinal, providerPidFinal);
+
+		TransferProcess transferProcessStarted = findTransferProcess(consumerPidFinal, providerPidFinal);
+		stateTransitionCheck(transferProcessStarted, TransferState.COMPLETED);
+
+		TransferProcess transferProcessCompleted = transferProcessStarted.copyWithNewTransferState(TransferState.COMPLETED);
+		transferProcessRepository.save(transferProcessCompleted);
+		publisher.publishEvent(transferProcessCompleted);
+		return transferProcessCompleted;
+
 	}
 
 	private TransferProcess findTransferProcess(String consumerPid, String providerPidFinal) {
@@ -124,4 +153,5 @@ public class DataTransferService {
 					transferProcess.getConsumerPid(), transferProcess.getProviderPid());
 		}
 	}
+
 }

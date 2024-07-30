@@ -37,16 +37,18 @@ public class AgreementService {
 						"' and providerPid '" + providerPid + "' not found", consumerPid, providerPid));
 		
 		// TODO once usage policy enforcement is done, call should be made here
-		if(!agreementStorage.containsKey(agreementId)) {
-			boolean isVaid = checkIfAgreementIsValid(agreementId);
-			agreementStorage.put(agreementId, isVaid);
-		}
-		log.info("Validating agreement id {}", agreementId);
-		return agreementStorage.get(agreementId);
+		boolean isValid = checkIfAgreementIsValid(agreementId);
+		return isValid;
+//		if(!agreementStorage.containsKey(agreementId)) {
+//			agreementStorage.put(agreementId, isVaid);
+//		}
+//		log.info("Validating agreement id {}", agreementId);
+//		return agreementStorage.get(agreementId);
 	}
 
 	private boolean checkIfAgreementIsValid(String agreementId) {
-		if ("urn:uuid:AGREEMENT_ID".equals(agreementId)) {
+		if ("urn:uuid:AGREEMENT_ID".equals(agreementId) 
+				|| "urn:uuid:AGREEMENT_ID_COMPLETED_TRANSFER_TEST".equals(agreementId)) {
 			   return true;
 			} else {
 			   return false;

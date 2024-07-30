@@ -259,7 +259,27 @@
   				]
   			}
   		]
-  	}
+  	},
+	{
+	  		"_id": "urn:uuid:AGREEMENT_ID_COMPLETED_TRANSFER_TEST",
+	  		"_class": "it.eng.negotiation.model.Agreement",
+	  		"target": "urn:uuid:3dd1add4-4d2d-569e-d634-8394a8836d23",
+	  		"timestamp": "2023-01-01T01:00:00Z",
+	  		"assigner": "urn:tsdshhs636378",
+	  		"assignee": "urn:jashd766",
+	  		"permission": [
+	  			{
+	  				"action": "USE",
+	  				"constraint": [
+	  					{
+	  						"leftOperand": "COUNT",
+	  						"operator": "EQ",
+	  						"rightOperand": "5"
+	  					}
+	  				]
+	  			}
+	  		]
+	  	}
     ],
   "transfer_request_messages" : [
   	{
@@ -276,7 +296,7 @@
 	  "_class": "it.eng.datatransfer.model.TransferProcess",
       "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
       "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
-      "callbackAddress" : "http://localhost:8080/consumer/transfer/callback/",
+      "callbackAddress" : "http://localhost:8080/consumer/transfers/callback/",
       "agreementId" : "urn:uuid:AGREEMENT_ID",
 	  "state" : "STARTED",
 	  "createdBy": "admin@mail.com",
@@ -290,7 +310,7 @@
 	  "_class": "it.eng.datatransfer.model.TransferProcess",
       "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_REQ",
       "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_REQ",
-      "callbackAddress" : "http://localhost:8080/consumer/transfer/callback/",
+      "callbackAddress" : "http://localhost:8080/consumer/transfers/callback/",
       "agreementId" : "urn:uuid:AGREEMENT_ID_REQ",
 	  "state" : "REQUESTED",
 	  "createdBy": "admin@mail.com",
@@ -304,7 +324,7 @@
 	  "_class": "it.eng.datatransfer.model.TransferProcess",
       "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_SUSP",
       "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_SUSP",
-      "callbackAddress" : "http://localhost:8080/consumer/transfer/callback/",
+      "callbackAddress" : "http://localhost:8080/consumer/transfers/callback/",
       "agreementId" : "urn:uuid:AGREEMENT_ID_SUSP",
 	  "state" : "SUSPENDED",
 	  "createdBy": "admin@mail.com",
@@ -318,7 +338,7 @@
 		  "_class": "it.eng.datatransfer.model.TransferProcess",
 	      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_C_REQ",
 	      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_C_REQ",
-	      "callbackAddress" : "http://localhost:8080/consumer/transfer/callback/",
+	      "callbackAddress" : "http://localhost:8080/consumer/transfers/callback/",
 	      "agreementId" : "urn:uuid:AGREEMENT_ID_C_REQ",
 		  "state" : "REQUESTED",
 		  "createdBy": "admin@mail.com",

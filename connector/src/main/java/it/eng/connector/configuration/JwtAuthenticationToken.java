@@ -15,7 +15,7 @@ public class JwtAuthenticationToken implements Authentication {
 	private final String token;
 	private boolean isAuthenticated;
     private List<SimpleGrantedAuthority> authorities = new ArrayList<>();
-    private SimpleGrantedAuthority connectorAuthority = new SimpleGrantedAuthority("CONNECTOR");
+    private SimpleGrantedAuthority connectorAuthority = new SimpleGrantedAuthority("ROLE_CONNECTOR");
     
 	public JwtAuthenticationToken(String token) {
 		this.token = token;
