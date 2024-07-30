@@ -372,8 +372,8 @@ public class ContractNegotiationAPIService {
 			contractNegotiationRepository.save(contractNegtiationTerminated);
 			return contractNegtiationTerminated;
 		} else {
-			log.error("Response status not 200 - consumer did not process AgreementMessage correct");
-			throw new ContractNegotiationAPIException("consumer did not process AgreementMessage correct");
+			log.error("Response status not 200 - consumer did not process ContractNegotiationTerminationMessage correct");
+			throw new ContractNegotiationAPIException("consumer did not process ContractNegotiationTerminationMessage correct");
 		}
 	}
 	

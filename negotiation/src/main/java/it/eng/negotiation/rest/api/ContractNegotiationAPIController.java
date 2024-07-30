@@ -47,7 +47,7 @@ public class ContractNegotiationAPIController {
     		@RequestParam(required = false) String state){
     	Collection<JsonNode> contractNegotiations = apiService.findContractNegotiations(contractNegotiationId, state);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-    			.body(GenericApiResponse.success(contractNegotiations, "Fething contract negotiations", HttpStatus.OK.value()));
+    			.body(GenericApiResponse.success(contractNegotiations, "Fetching contract negotiations", HttpStatus.OK.value()));
     } 
 
     //consumer starts contract negotiation

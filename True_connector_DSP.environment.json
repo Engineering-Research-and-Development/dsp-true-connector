@@ -1,5 +1,5 @@
 {
-	"id": "effbfb9d-feb4-4213-b5ef-f0916613c1f2",
+	"id": "10570ac5-ac25-441c-8648-909fbab1f19c",
 	"name": "TC_V2_ENV",
 	"values": [
 		{
@@ -16,7 +16,7 @@
 		},
 		{
 			"key": "CONSUMER_SERVER_API_CATALOG",
-			"value": "{{CONSUMER}}/api/catalog",
+			"value": "{{CONSUMER}}/api/v1/catalog",
 			"type": "default",
 			"enabled": true
 		},
@@ -40,25 +40,25 @@
 		},
 		{
 			"key": "CONSUMER_SERVER_API_DATASET",
-			"value": "{{CONSUMER}}/api/dataset",
+			"value": "{{CONSUMER}}/api/v1/dataset",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "CONSUMER_SERVER_API_DATASERVICE",
-			"value": "{{CONSUMER}}/api/dataservice",
+			"value": "{{CONSUMER}}/api/v1/dataservice",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "PROVIDER_SERVER_API_CATALOG",
-			"value": "{{PROVIDER}}/api/catalog",
+			"value": "{{PROVIDER}}/api/v1/catalog",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "CONSUMER_SERVER_API_DISTRIBUTION",
-			"value": "{{CONSUMER}}/api/distribution",
+			"value": "{{CONSUMER}}/api/v1/distribution",
 			"type": "default",
 			"enabled": true
 		},
@@ -82,33 +82,19 @@
 		},
 		{
 			"key": "PROVIDER_SERVER_API_DATASET",
-			"value": "{{PROVIDER}}/api/dataset",
+			"value": "{{PROVIDER}}/api/v1/dataset",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "PROVIDER_SERVER_API_DATASERVICE",
-			"value": "{{PROVIDER}}/api/dataservice",
+			"value": "{{PROVIDER}}/api/v1/dataservice",
 			"type": "default",
 			"enabled": true
 		},
-		{
-			"key": "CONSUMER_SERVER_API_APPLICATION_PROPERTY",
-			"value": "{{CONSUMER}}/api/properties"
-        },
 		{
 			"key": "PROVIDER_SERVER_API_DISTRIBUTION",
-			"value": "{{PROVIDER}}/api/distribution",
-			"type": "default",
-			"enabled": true
-		},
-		{
-			"key": "KEY_PREFIX",
-			"value": "application.daps"
-    },
-		{
-			"key": "PROVIDER_SERVER_API_TRANSFERS",
-			"value": "{{PROVIDER}}/api/transfers",
+			"value": "{{PROVIDER}}/api/v1/distribution",
 			"type": "default",
 			"enabled": true
 		},
@@ -125,19 +111,13 @@
 			"enabled": true
 		},
 		{
-			"key": "transfer_consumerPid",
-			"value": "",
-			"type": "any",
-			"enabled": true
-		},
-		{
-			"key": "transfer_providerPid",
-			"value": "",
-			"type": "any",
+			"key": "CONSUMER_SERVER_API_APPLICATION_PROPERTY",
+			"value": "{{CONSUMER}}/api/properties",
+			"type": "default",
 			"enabled": true
 		}
 	],
 	"_postman_variable_scope": "environment",
-	"_postman_exported_at": "2024-07-22T11:00:47.529Z",
-	"_postman_exported_using": "Postman/11.4.0"
+	"_postman_exported_at": "2024-07-30T08:44:51.009Z",
+	"_postman_exported_using": "Postman/11.5.1"
 }
