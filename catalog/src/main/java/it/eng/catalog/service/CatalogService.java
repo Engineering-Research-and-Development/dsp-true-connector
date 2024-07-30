@@ -132,6 +132,7 @@ public class CatalogService {
                 .dataset(updatedCatalogData.getDataset())
                 .service(updatedCatalogData.getService())
                 .participantId(updatedCatalogData.getParticipantId())
+                .creator(updatedCatalogData.getCreator())
                 .homepage(updatedCatalogData.getHomepage());
 
         Catalog updatedCatalog = builder.build();

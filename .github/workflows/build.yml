@@ -52,6 +52,7 @@ jobs:
         with:
           context: ./connector
           file: ./connector/Dockerfile
+          no-cache: true
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:test
           labels: ${{ steps.meta.outputs.labels }}

@@ -12,6 +12,22 @@ All notable changes to this project will be documented in this file.
  - Postman collection for testing endpoints	
  - Configured GitHub actions to run tests
  
+## [0.0.1] - 2024-07-24
+ 
+### Added
+
+ - Added CORS configuration
+ 
+### Changed
+
+ - Moved some common service logic to BaseService
+ - Renamed APIs to be REST compliant
+ 
+### Removed
+
+ - Removed transformers from Negotiation module
+
+ 
 ## [0.0.1] - 2024-07-22
 
 ### Added
