@@ -1,11 +1,13 @@
 package it.eng.tools.service;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.MapPropertySource;
@@ -132,7 +134,27 @@ public class ApplicationPropertiesService {
 	}
 
 	public String get(String key) {
-		return env.getProperty(key);
+		String value = env.getProperty(key);
+		if(value == null) {
+			Optional<ApplicationProperty> propertyByMongo = repository.findById(key);
+			if(!propertyByMongo.isEmpty()) {
+				value = propertyByMongo.get().getValue();
+			}
+		}
+		return value;
+	}
+
+	public void copyApplicationPropertiesToEnvironment(Environment environment) {
+		try {
+			List<ApplicationProperty> allApplicationPropertiesOnMongo = getProperties(null);
+
+			for (Iterator<ApplicationProperty> iterator = allApplicationPropertiesOnMongo.iterator(); iterator.hasNext();) {
+				ApplicationProperty applicationProperty = (ApplicationProperty) iterator.next();
+				addPropertyOnEnv(applicationProperty.getKey(), applicationProperty.getValue(), environment);
+			}
+		} catch (ApplicationPropertyErrorException e) {
+			log.warn("Any property found in MongoDB!");
+		}
 	}
 
 }
