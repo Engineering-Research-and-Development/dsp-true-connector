@@ -1,7 +1,7 @@
 {
 	"info": {
 		"_postman_id": "bfa875f5-4ba9-49e2-8a1c-60c512308054",
-		"name": "datatransfer-tests",
+		"name": "Data Transfer tests",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "36278855"
 	},
@@ -993,12 +993,12 @@
 	"variable": [
 		{
 			"key": "CONSUMER_API_ENDPOINT",
-			"value": "http://localhost:8080/api/transfers",
+			"value": "http://172.17.0.1:8080/api/transfers",
 			"type": "string"
 		},
 		{
 			"key": "PROVIDER_API_ENDPOINT",
-			"value": "http://localhost:8090/api/transfers",
+			"value": "http://172.17.0.1:8090/api/transfers",
 			"type": "string"
 		},
 		{
