@@ -308,13 +308,13 @@
 							}
 						},
 						"url": {
-							"raw": "{{PROVIDER_PROTOCOL_ENDPOINT}}/{{providerPid}}/start",
+							"raw": "{{PROVIDER_PROTOCOL_ENDPOINT}}/{{providerPid}}/suspension",
 							"host": [
 								"{{PROVIDER_PROTOCOL_ENDPOINT}}"
 							],
 							"path": [
 								"{{providerPid}}",
-								"start"
+								"suspension"
 							]
 						}
 					},
