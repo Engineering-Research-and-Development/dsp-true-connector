@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -44,6 +45,7 @@ import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferRequestMessage;
 import it.eng.datatransfer.model.TransferStartMessage;
 import it.eng.datatransfer.model.TransferState;
+import it.eng.datatransfer.model.TransferSuspensionMessage;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.response.GenericApiResponse;
@@ -112,19 +114,8 @@ public class DataTransferTest extends BaseIntegrationTest {
 		String providerPid = "urn:uuid:PROVIDER_PID_TRANSFER_REQ";
 		String consumerPid = "urn:uuid:CONSUMER_PID_TRANSFER_REQ";
 	      
-		TransferStartMessage transferStartMessage = TransferStartMessage.Builder.newInstance()
-				.consumerPid(consumerPid)
-				.providerPid(providerPid)
-				.build();
-		
-		String body = Serializer.serializeProtocol(transferStartMessage);
-		
-		final ResultActions result =
-    			mockMvc.perform(
-    					post("/transfers/" + providerPid +"/start")
-    					.content(body)
-    					.contentType(MediaType.APPLICATION_JSON));
-    	result.andExpect(status().isOk());
+		sendTransferStartMessage(consumerPid, providerPid)
+			.andExpect(status().isOk());;
     	
     	ResultActions transferProcessStarted = mockMvc.perform(
     			get("/transfers/" + providerPid).contentType(MediaType.APPLICATION_JSON));
@@ -137,15 +128,12 @@ public class DataTransferTest extends BaseIntegrationTest {
     	.andExpect(jsonPath("['" + DSpaceConstants.CONTEXT + "']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
     	
     	// try again to start - error
-		mockMvc.perform(
-				post("/transfers/" + providerPid +"/start")
-				.content(body)
-				.contentType(MediaType.APPLICATION_JSON))
-		.andExpect(err -> assertTrue(err.getResolvedException() instanceof TransferProcessInvalidStateException))
-		.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['" + DSpaceConstants.TYPE + "']", 
-    			is(DSpaceConstants.DSPACE + TransferError.class.getSimpleName())))
-    	.andExpect(jsonPath("['" + DSpaceConstants.CONTEXT + "']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
+		sendTransferStartMessage(consumerPid, providerPid)
+			.andExpect(err -> assertTrue(err.getResolvedException() instanceof TransferProcessInvalidStateException))
+			.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+	    	.andExpect(jsonPath("['" + DSpaceConstants.TYPE + "']", 
+	    			is(DSpaceConstants.DSPACE + TransferError.class.getSimpleName())))
+	    	.andExpect(jsonPath("['" + DSpaceConstants.CONTEXT + "']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
 	}
 	
 	@Test
@@ -156,19 +144,8 @@ public class DataTransferTest extends BaseIntegrationTest {
 		String providerPid = "urn:uuid:PROVIDER_PID_TRANSFER_SUSP";
 		String consumerPid = "urn:uuid:CONSUMER_PID_TRANSFER_SUSP";
 	      
-		TransferStartMessage transferStartMessage = TransferStartMessage.Builder.newInstance()
-				.consumerPid(consumerPid)
-				.providerPid(providerPid)
-				.build();
-		
-		String body = Serializer.serializeProtocol(transferStartMessage);
-		
-		final ResultActions result =
-    			mockMvc.perform(
-    					post("/transfers/" + providerPid +"/start")
-    					.content(body)
-    					.contentType(MediaType.APPLICATION_JSON));
-    	result.andExpect(status().isOk());
+		sendTransferStartMessage(consumerPid, providerPid)
+			.andExpect(status().isOk());
     	
     	ResultActions transferProcessStarted = mockMvc.perform(
     			get("/transfers/" + providerPid).contentType(MediaType.APPLICATION_JSON));
@@ -179,6 +156,9 @@ public class DataTransferTest extends BaseIntegrationTest {
     			is(DSpaceConstants.DSPACE + TransferProcess.class.getSimpleName())))
     	.andExpect(jsonPath("['" + DSpaceConstants.DSPACE_STATE + "']", is(TransferState.STARTED.toString())))
     	.andExpect(jsonPath("['" + DSpaceConstants.CONTEXT + "']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
+    	
+    	String transactionId = Base64.getEncoder().encodeToString((consumerPid + "|" + providerPid).getBytes(Charset.forName("UTF-8")));
+    	downloadArifact(transactionId);
 	}
 	
 	// consumer callback start transfer
@@ -254,29 +234,37 @@ public class DataTransferTest extends BaseIntegrationTest {
 		String transactionId = Base64.getEncoder().encodeToString((consumerPid + "|" + providerPid).getBytes(Charset.forName("UTF-8")));
 
     	// Try to access artifact before process is started - should result in error
-    	mockMvc.perform(post("/artifacts/" + transactionId + "/" + "artifactIdTest")
-				.contentType(MediaType.APPLICATION_JSON))
-				.andExpect(status().is(HttpStatus.PRECONDITION_FAILED.value()));
+    	downloadArtifactFail(transactionId);
     	
     	// send TransferStartMessage
-    	TransferStartMessage transferStartMessage = TransferStartMessage.Builder.newInstance()
+    	sendTransferStartMessage(consumerPid, providerPid)
+    		.andExpect(status().isOk());
+		
+		// download artifact
+		downloadArifact(transactionId);
+		
+		// send suspend message
+		TransferSuspensionMessage transferSuspensionMessage = TransferSuspensionMessage.Builder.newInstance()
 				.consumerPid(consumerPid)
 				.providerPid(providerPid)
+				.code("1")
+//				.reason(Arrays.asList("Need to take a break."))
 				.build();
 		mockMvc.perform(
-			post("/transfers/" + providerPid +"/start")
-			.content(Serializer.serializeProtocol(transferStartMessage))
-			.contentType(MediaType.APPLICATION_JSON))
-			.andExpect(status().isOk());	
-		
-		// TODO investigate how to download artifact!!!
-		MvcResult resultArtifact = mockMvc.perform(post("/artifacts/" + transactionId + "/" + "artifactIdTest")
+				post("/transfers/" + providerPid +"/suspension")
+				.content(Serializer.serializeProtocol(transferSuspensionMessage))
 				.contentType(MediaType.APPLICATION_JSON))
-				.andExpect(status().isOk())
-				.andReturn();
-		String artifact = resultArtifact.getResponse().getContentAsString();
-		assertTrue(artifact.contains("John"));
-		assertTrue(artifact.contains("Doe"));
+				.andExpect(status().isOk());
+		
+		// download artifact - fail
+		downloadArtifactFail(transactionId);
+		
+		// send start message
+		sendTransferStartMessage(consumerPid, providerPid)
+			.andExpect(status().isOk());
+		
+		// download artifact
+		downloadArifact(transactionId);
 		
     	// send transfer completed
     	TransferCompletionMessage transferCompletionMessage = TransferCompletionMessage.Builder.newInstance()
@@ -300,10 +288,34 @@ public class DataTransferTest extends BaseIntegrationTest {
     	TransferProcess transferProcessCompleted = Serializer.deserializeProtocol(jsonNodeCompleted, TransferProcess.class);
     	assertEquals(TransferState.COMPLETED, transferProcessCompleted.getState());
     	
-    	// try again to access artifact - should result in 500
-    	mockMvc.perform(post("/artifacts/" + transactionId + "/" + "artifactIdTest")
+    	downloadArtifactFail(transactionId);
+	}
+
+	private ResultActions sendTransferStartMessage(String consumerPid, String providerPid) throws Exception {
+		TransferStartMessage transferStartMessage = TransferStartMessage.Builder.newInstance()
+				.consumerPid(consumerPid)
+				.providerPid(providerPid)
+				.build();
+		return mockMvc.perform(
+			post("/transfers/" + providerPid +"/start")
+			.content(Serializer.serializeProtocol(transferStartMessage))
+			.contentType(MediaType.APPLICATION_JSON));
+	}
+
+	private void downloadArtifactFail(String transactionId) throws Exception {
+		mockMvc.perform(post("/artifacts/" + transactionId + "/" + "artifactIdTest")
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().is(HttpStatus.PRECONDITION_FAILED.value()));
+	}
+
+	private void downloadArifact(String transactionId) throws Exception, UnsupportedEncodingException {
+		MvcResult resultArtifact = mockMvc.perform(post("/artifacts/" + transactionId + "/" + "artifactIdTest")
+				.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(status().isOk())
+				.andReturn();
+		String artifact = resultArtifact.getResponse().getContentAsString();
+		assertTrue(artifact.contains("John"));
+		assertTrue(artifact.contains("Doe"));
 	}
 	
 	

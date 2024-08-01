@@ -12,6 +12,17 @@ All notable changes to this project will be documented in this file.
  - Postman collection for testing endpoints	
  - Configured GitHub actions to run tests
 
+## [0.0.1] - 02-08-2024
+
+### Added
+
+ - TransferSuspensionMessage message provider and consumer callback logic (plus junit and integration tests)
+ - Added TransferProcessChangeEvent and listener to log transition change
+ 
+### Changed
+
+ - Updated GitHub action to include suspend message in transfer artifact
+ 
 ## [0.0.1] - 30-07-2024
 
 ### Added

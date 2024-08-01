@@ -177,6 +177,45 @@
 					"response": []
 				},
 				{
+					"name": "[3.1] TransferProcess - status STARTED",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if TransferProcess - started\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData['dspace:state']).to.eq('dspace:STARTED');\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{PROVIDER_PROTOCOL_ENDPOINT}}/{{providerPid}}",
+							"host": [
+								"{{PROVIDER_PROTOCOL_ENDPOINT}}"
+							],
+							"path": [
+								"{{providerPid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "[4] Download artifact - OK",
 					"event": [
 						{
@@ -235,7 +274,7 @@
 					"response": []
 				},
 				{
-					"name": "[5] TransferCompletionMessage",
+					"name": "[5.1] TransferSuspensionMessage",
 					"event": [
 						{
 							"listen": "test",
@@ -252,10 +291,16 @@
 					],
 					"request": {
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferCompletionMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:providerPid\": \"{{providerPid}}\"\r\n}\r\n",
+							"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferSuspensionMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:providerPid\": \"{{providerPid}}\",\r\n \"dspace:code\": \"1\",\r\n \"dspace:reason\": [\r\n   \"Must suspens to take a break,I got tierd.\"\r\n ]\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -263,20 +308,20 @@
 							}
 						},
 						"url": {
-							"raw": "{{PROVIDER_PROTOCOL_ENDPOINT}}/{{providerPid}}/completion",
+							"raw": "{{PROVIDER_PROTOCOL_ENDPOINT}}/{{providerPid}}/start",
 							"host": [
 								"{{PROVIDER_PROTOCOL_ENDPOINT}}"
 							],
 							"path": [
 								"{{providerPid}}",
-								"completion"
+								"start"
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "[6] Download artifact - fail, completed",
+					"name": "[5.2] Download artifact - fail, suspended",
 					"event": [
 						{
 							"listen": "prerequest",
@@ -330,7 +375,201 @@
 					"response": []
 				},
 				{
-					"name": "[7] TransferProcess - check status",
+					"name": "[5.3] TransferStartMessage",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferStartMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:providerPid\": \"{{providerPid}}\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{PROVIDER_PROTOCOL_ENDPOINT}}/{{providerPid}}/start",
+							"host": [
+								"{{PROVIDER_PROTOCOL_ENDPOINT}}"
+							],
+							"path": [
+								"{{providerPid}}",
+								"start"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[5.4] Download artifact - OK",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check expected response\", ()=> {\r",
+									"    pm.response.to.have.status(200);\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData['firstName']).to.eq('John');\r",
+									"    pm.expect(jsonData['lastName']).to.eq('Doe');\r",
+									"    pm.expect(jsonData['address']).to.eq('591  Franklin Street, Pennsylvania');\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://172.17.0.1:8090/artifacts/{{transactionId}}/artifact1",
+							"protocol": "http",
+							"host": [
+								"172",
+								"17",
+								"0",
+								"1"
+							],
+							"port": "8090",
+							"path": [
+								"artifacts",
+								"{{transactionId}}",
+								"artifact1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[6] TransferCompletionMessage",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferCompletionMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:providerPid\": \"{{providerPid}}\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{PROVIDER_PROTOCOL_ENDPOINT}}/{{providerPid}}/completion",
+							"host": [
+								"{{PROVIDER_PROTOCOL_ENDPOINT}}"
+							],
+							"path": [
+								"{{providerPid}}",
+								"completion"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[7] Download artifact - fail, completed",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check expected response\", ()=> {\r",
+									"    pm.response.to.have.status(412);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://172.17.0.1:8090/artifacts/{{transactionId}}/artifact1",
+							"protocol": "http",
+							"host": [
+								"172",
+								"17",
+								"0",
+								"1"
+							],
+							"port": "8090",
+							"path": [
+								"artifacts",
+								"{{transactionId}}",
+								"artifact1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[8] TransferProcess - check status",
 					"event": [
 						{
 							"listen": "test",

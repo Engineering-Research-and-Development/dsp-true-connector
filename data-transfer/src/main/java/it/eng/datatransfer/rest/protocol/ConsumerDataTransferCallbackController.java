@@ -54,20 +54,22 @@ public class ConsumerDataTransferCallbackController {
 		return ResponseEntity.ok(null);
 	}
 
-	@PostMapping(path = "/{comsumerPid}/termination")
-	public ResponseEntity<JsonNode> terminateDataTransfer(@PathVariable String comsumerPid,
+	@PostMapping(path = "/{consumerPid}/termination")
+	public ResponseEntity<JsonNode> terminateDataTransfer(@PathVariable String consumerPid,
 			@RequestBody JsonNode transferTerminationMessageJsonNode) {
 		TransferTerminationMessage transferTerminationMessage = Serializer.deserializeProtocol(transferTerminationMessageJsonNode, TransferTerminationMessage.class);
-		log.info("Terminating data transfer for comsumerPid {} and providerPid {}", comsumerPid, transferTerminationMessage.getProviderPid());
+		log.info("Terminating data transfer for comsumerPid {} and providerPid {}", consumerPid, transferTerminationMessage.getProviderPid());
 		return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(notImplemented());
 	}
 
-	@PostMapping(path = "/{comsumerPid}/suspension")
-	public ResponseEntity<JsonNode> suspenseDataTransfer(@PathVariable String comsumerPid,
+	@PostMapping(path = "/{consumerPid}/suspension")
+	public ResponseEntity<JsonNode> suspenseDataTransfer(@PathVariable String consumerPid,
 			@RequestBody JsonNode transferSuspensionMessageJsonNode) {
 		TransferSuspensionMessage transferSuspensionMessage = Serializer.deserializeProtocol(transferSuspensionMessageJsonNode, TransferSuspensionMessage.class);
-		log.info("Suspending data transfer for comsumerPid {} and providerPid {}", comsumerPid, transferSuspensionMessage.getProviderPid());
-		return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(notImplemented());
+		log.info("Suspending data transfer for comsumerPid {} and providerPid {}", consumerPid, transferSuspensionMessage.getProviderPid());
+		TransferProcess transferProcessSuspended = dataTransferService.suspendDataTransfer(transferSuspensionMessage, consumerPid, null);
+		log.info("TransferProcess {} state changed to {}", transferProcessSuspended.getId(), transferProcessSuspended.getState());
+		return ResponseEntity.ok(null);
 	}
 	
 	private JsonNode notImplemented() {

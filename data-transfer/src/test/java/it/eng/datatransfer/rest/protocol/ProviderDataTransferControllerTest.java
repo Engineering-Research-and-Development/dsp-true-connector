@@ -23,6 +23,7 @@ import it.eng.datatransfer.model.Serializer;
 import it.eng.datatransfer.model.TransferCompletionMessage;
 import it.eng.datatransfer.model.TransferRequestMessage;
 import it.eng.datatransfer.model.TransferStartMessage;
+import it.eng.datatransfer.model.TransferSuspensionMessage;
 import it.eng.datatransfer.service.DataTransferService;
 import it.eng.datatransfer.util.MockObjectUtil;
 import jakarta.validation.ValidationException;
@@ -138,6 +139,7 @@ public class ProviderDataTransferControllerTest {
 				Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_COMPLETION_MESSAGE)));
 	}
 	
+	// terminate data transfer
 	@Test
 	@DisplayName("Terminate TransferProcess")
 	public void terminateDataTransfer() {
@@ -154,19 +156,32 @@ public class ProviderDataTransferControllerTest {
 		);
 	}
 	
+	// suspend data transfer
 	@Test
 	@DisplayName("Suspend/pause TransferProcess")
 	public void suspenseDataTransfer() {
-		assertEquals(HttpStatus.NOT_IMPLEMENTED, 
-				controller.suspenseDataTransfer(MockObjectUtil.PROVIDER_PID,
-						Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_SUSPENSION_MESSAGE)).getStatusCode());
+		when(dataTransferService.suspendDataTransfer(any(TransferSuspensionMessage.class), isNull(), any(String.class)))
+			.thenReturn(MockObjectUtil.TRANSFER_PROCESS_SUSPENDED);
+		ResponseEntity<JsonNode> response =  controller.suspenseDataTransfer(MockObjectUtil.PROVIDER_PID,
+				Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_SUSPENSION_MESSAGE));
+		assertEquals(HttpStatus.OK, response.getStatusCode());
 	}
 	
 	@Test
-	@DisplayName("Terminate TransferProcess - invalid request body")
+	@DisplayName("Suspend TransferProcess - invalid request body")
 	public void suspenseDataTransfer_invalidBody() {
 		assertThrows(ValidationException.class, () ->
 			controller.suspenseDataTransfer(MockObjectUtil.PROVIDER_PID, Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_START_MESSAGE))
 		);
+	}
+	
+	@Test
+	@DisplayName("Suspend TransferProcess - error service")
+	public void suspendDataTransfer_errorService() {
+		when(dataTransferService.suspendDataTransfer(any(TransferSuspensionMessage.class), isNull(), any(String.class)))
+			.thenThrow(TransferProcessNotFoundException.class);
+		assertThrows(TransferProcessNotFoundException.class, 
+				() -> controller.suspenseDataTransfer(MockObjectUtil.PROVIDER_PID,
+				Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_SUSPENSION_MESSAGE)));
 	}
 }
