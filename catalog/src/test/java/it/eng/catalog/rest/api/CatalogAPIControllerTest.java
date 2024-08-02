@@ -36,10 +36,10 @@ public class CatalogAPIControllerTest {
     @Test
     @DisplayName("Get catalog - success")
     public void getCatalogSuccessfulTest() {
-        when(catalogService.getCatalog()).thenReturn(MockObjectUtil.CATALOG);
+        when(catalogService.getCatalogForApi()).thenReturn(MockObjectUtil.CATALOG);
         ResponseEntity<GenericApiResponse<JsonNode>> response = catalogAPIController.getCatalog();
 
-        verify(catalogService).getCatalog();
+        verify(catalogService).getCatalogForApi();
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
         assertTrue(StringUtils.contains(response.getBody().toString(), MockObjectUtil.CATALOG.getType()));

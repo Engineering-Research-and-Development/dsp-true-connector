@@ -72,7 +72,7 @@ public class DatasetServiceTest {
     public void getDatasetById_notFound() {
         when(repository.findById("1")).thenReturn(Optional.empty());
 
-        assertThrows(ResourceNotFoundAPIException.class, () -> datasetService.getDatasetById("1"));
+        assertThrows(CatalogErrorException.class, () -> datasetService.getDatasetById("1"));
 
         verify(repository).findById("1");
     }

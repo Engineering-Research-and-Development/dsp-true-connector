@@ -35,10 +35,10 @@ public class DatasetAPIControllerTest {
     @Test
     @DisplayName("Get dataset by id - success")
     public void getDatasetByIdSuccessfulTest() {
-        when(datasetService.getDatasetById(MockObjectUtil.DATASET.getId())).thenReturn(MockObjectUtil.DATASET);
+        when(datasetService.getDatasetByIdForApi(MockObjectUtil.DATASET.getId())).thenReturn(MockObjectUtil.DATASET);
         ResponseEntity<GenericApiResponse<JsonNode>> response = datasetAPIController.getDatasetById(MockObjectUtil.DATASET.getId());
 
-        verify(datasetService).getDatasetById(MockObjectUtil.DATASET.getId());
+        verify(datasetService).getDatasetByIdForApi(MockObjectUtil.DATASET.getId());
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
         assertTrue(StringUtils.contains(response.getBody().toString(), MockObjectUtil.DATASET.getType()));
