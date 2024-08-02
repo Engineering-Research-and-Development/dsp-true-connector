@@ -90,7 +90,7 @@ public class DistributionServiceTest {
         distributionService.deleteDistribution(distribution.getId());
 
         verify(repository).findById(distribution.getId());
-        verify(repository).delete(distribution);
+        verify(repository).deleteById(distribution.getId());
         verify(catalogService).updateCatalogDistributionAfterDelete(distribution);
     }
 
