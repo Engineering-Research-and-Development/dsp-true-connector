@@ -19,6 +19,7 @@ import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.model.TransferSuspensionMessage;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
+import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
@@ -30,17 +31,21 @@ import lombok.extern.slf4j.Slf4j;
 public class DataTransferService {
 
 	private final TransferProcessRepository transferProcessRepository;
+	private final TransferRequestMessageRepository transferRequestMessageRepository;
 	private final ApplicationEventPublisher publisher;
 	
 	private final OkHttpRestClient okHttpRestClient;
 	private final CredentialUtils credentialUtils;
 	private final DataTransferProperties properties;
 	
-	public DataTransferService(TransferProcessRepository transferProcessRepository, ApplicationEventPublisher publisher, 
+	public DataTransferService(TransferProcessRepository transferProcessRepository, 
+			TransferRequestMessageRepository transferRequestMessageRepository,
+			ApplicationEventPublisher publisher, 
 			OkHttpRestClient okHttpRestClient,
 			CredentialUtils credentialUtils, DataTransferProperties properties) {
 		super();
 		this.transferProcessRepository = transferProcessRepository;
+		this.transferRequestMessageRepository = transferRequestMessageRepository;
 		this.publisher = publisher;
 		this.okHttpRestClient = okHttpRestClient;
 		this.credentialUtils = credentialUtils;
@@ -83,6 +88,7 @@ public class DataTransferService {
 		}
 		
 		// TODO save also transferRequestMessage once we implement provider push data - will need information where to push
+		transferRequestMessageRepository.save(transferRequestMessage);
 		
 		TransferProcess transferProcessRequested = TransferProcess.Builder.newInstance()
 				.agreementId(transferRequestMessage.getAgreementId())
@@ -119,6 +125,8 @@ public class DataTransferService {
 				.oldTransferProcess(transferProcessRequested)
 				.newTransferProcess(transferProcessStarted)
 				.build());
+		// TODO check how to handle this on consumer side!!!
+		publisher.publishEvent(transferStartMessage);
 		return transferProcessStarted;
 	}
 	
@@ -144,6 +152,7 @@ public class DataTransferService {
 				.oldTransferProcess(transferProcessStarted)
 				.newTransferProcess(transferProcessCompleted)
 				.build());
+		publisher.publishEvent(transferCompletionMessage);
 		return transferProcessCompleted;
 	}
 

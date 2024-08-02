@@ -18,10 +18,12 @@ All notable changes to this project will be documented in this file.
 
  - TransferSuspensionMessage message provider and consumer callback logic (plus junit and integration tests)
  - Added TransferProcessChangeEvent and listener to log transition change
+ - DataTransferEventListener - placeholder logic for manipulating data transfers (start/stop/suspend)
  
 ### Changed
 
  - Updated GitHub action to include suspend message in transfer artifact
+ - SFTP server starting on event published (TransferStartMessage from TransferRequestMessage.foramt=example:SFTP
  
 ## [0.0.1] - 30-07-2024
 

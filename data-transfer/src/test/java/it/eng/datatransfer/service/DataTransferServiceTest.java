@@ -31,6 +31,7 @@ import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
+import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.datatransfer.util.MockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.response.GenericApiResponse;
@@ -41,6 +42,8 @@ public class DataTransferServiceTest {
 
 	@Mock
 	private TransferProcessRepository transferProcessRepository;
+	@Mock
+	private TransferRequestMessageRepository transferRequestMessageRepository;
 	@Mock
 	private ApplicationEventPublisher publisher;
 	@Mock
