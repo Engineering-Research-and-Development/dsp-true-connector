@@ -358,7 +358,7 @@
 		},
 		{
 			"key": "NEW_VALUE",
-			"value": "https://daps.eng.it/v2/token",
+			"value": "https://daps.eng.eu/v2/token",
 			"type": "string"
 		},
 		{
