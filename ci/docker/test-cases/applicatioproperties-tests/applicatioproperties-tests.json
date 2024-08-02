@@ -1,0 +1,369 @@
+{
+	"info": {
+		"_postman_id": "a94ccb60-5937-4d55-8e91-3e8bae4a0b84",
+		"name": "Application Property Tests",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "14367202"
+	},
+	"item": [
+		{
+			"name": "Application Property",
+			"item": [
+				{
+					"name": "Get All Application Properties",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{
+									"key": "username",
+									"value": "admin@mail.com",
+									"type": "string"
+								},
+								{
+									"key": "password",
+									"value": "password",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{CONSUMER_API_ENDPOINT}}/",
+							"host": [
+								"{{CONSUMER_API_ENDPOINT}}"
+							],
+							"path": [
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Application Properties with prefix Copy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{
+									"key": "username",
+									"value": "admin@mail.com",
+									"type": "string"
+								},
+								{
+									"key": "password",
+									"value": "password",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{CONSUMER_API_ENDPOINT}}/?key_prefix={{KEY_PREFIX}}",
+							"host": [
+								"{{CONSUMER_API_ENDPOINT}}"
+							],
+							"path": [
+								""
+							],
+							"query": [
+								{
+									"key": "key_prefix",
+									"value": "{{KEY_PREFIX}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Application Property By Key",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Retrieve if key is equal to \" + pm.variables.get(\"APPLICATION_PROPERTY_KEY\"), function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    \r",
+									"    pm.collectionVariables.set('OLD_VALUE', jsonData[\"data\"][\"value\"]);\r",
+									"\r",
+									"    pm.expect(jsonData[\"data\"][\"key\"]).to.eq(pm.variables.get(\"APPLICATION_PROPERTY_KEY\"));\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{
+									"key": "username",
+									"value": "admin@mail.com",
+									"type": "string"
+								},
+								{
+									"key": "password",
+									"value": "password",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{CONSUMER_API_ENDPOINT}}/{{APPLICATION_PROPERTY_KEY}}",
+							"host": [
+								"{{CONSUMER_API_ENDPOINT}}"
+							],
+							"path": [
+								"{{APPLICATION_PROPERTY_KEY}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Application Property Fail",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 400\", function () {\r",
+									"    pm.response.to.have.status(400);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{
+									"key": "username",
+									"value": "admin@mail.com",
+									"type": "string"
+								},
+								{
+									"key": "password",
+									"value": "password",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n        \"key\": \"{{APPLICATION_PROPERTY_KEY}}\",\r\n        \"value\": \"{{OLD_VALUE}}\",\r\n        \"mandatory\": false,\r\n        \"issued\": 1718629303.981000000,\r\n        \"modified\": 1718629303.981000000,\r\n        \"type\": \"ApplicationProperty\"\r\n    }",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{CONSUMER_API_ENDPOINT}}/",
+							"host": [
+								"{{CONSUMER_API_ENDPOINT}}"
+							],
+							"path": [
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Application Property Successfull",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"\r",
+									"pm.test(\"Retrieve if value is equal to \" + pm.variables.get(\"NEW_VALUE\"), function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    \r",
+									"    pm.expect(jsonData[\"data\"][\"value\"]).to.eq(pm.variables.get(\"NEW_VALUE\"));\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{
+									"key": "username",
+									"value": "admin@mail.com",
+									"type": "string"
+								},
+								{
+									"key": "password",
+									"value": "password",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n        \"key\": \"{{APPLICATION_PROPERTY_KEY}}\",\r\n        \"value\": \"{{NEW_VALUE}}\",\r\n        \"mandatory\": false,\r\n        \"issued\": 1718629303.981000000,\r\n        \"modified\": 1718629303.981000000,\r\n        \"type\": \"ApplicationProperty\"\r\n    }",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{CONSUMER_API_ENDPOINT}}/",
+							"host": [
+								"{{CONSUMER_API_ENDPOINT}}"
+							],
+							"path": [
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "basic",
+		"basic": [
+			{
+				"key": "password",
+				"value": "password",
+				"type": "string"
+			},
+			{
+				"key": "username",
+				"value": "admin@mail.com",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "CONSUMER_API_ENDPOINT",
+			"value": "http://localhost:8080/api/v1/properties"
+		},
+		{
+			"key": "KEY_PREFIX",
+			"value": "application.daps"
+		},
+		{
+			"key": "APPLICATION_PROPERTY_KEY",
+			"value": "application.daps.dapsUrl"
+		},
+		{
+			"key": "NEW_VALUE",
+			"value": "https://daps.eng.it/v2/token",
+			"type": "string"
+		},
+		{
+			"key": "OLD_VALUE",
+			"value": ""
+		}
+	]
+}
