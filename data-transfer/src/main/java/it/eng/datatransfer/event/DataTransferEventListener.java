@@ -6,6 +6,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+import it.eng.datatransfer.model.TransferCompletionMessage;
 import it.eng.datatransfer.model.TransferRequestMessage;
 import it.eng.datatransfer.model.TransferStartMessage;
 import it.eng.datatransfer.model.TransferSuspensionMessage;
@@ -46,6 +47,15 @@ public class DataTransferEventListener {
 	public void handleTransferSuspensionMessage(TransferSuspensionMessage transferSuspensionMessage) {
 		log.info("Suspending transfer with code {} and reason {}", transferSuspensionMessage.getCode(), transferSuspensionMessage.getReason());
 		Optional<TransferRequestMessage> transferRequestMessage = transferRequestMessageRepository.findByConsumerPid(transferSuspensionMessage.getConsumerPid());
+		if(transferRequestMessage.isPresent() && transferRequestMessage.get().getFormat().equals("example:SFTP")) {
+			publisher.publishEvent(new StopFTPServerEvent());
+		}
+	}
+	
+	@EventListener
+	public void handleTransferCompletionMessage(TransferCompletionMessage transferCompletionMessage) {
+		log.info("Completeing transfer with consumerPid {} and providerPid {}", transferCompletionMessage.getConsumerPid(), transferCompletionMessage.getProviderPid());
+		Optional<TransferRequestMessage> transferRequestMessage = transferRequestMessageRepository.findByConsumerPid(transferCompletionMessage.getConsumerPid());
 		if(transferRequestMessage.isPresent() && transferRequestMessage.get().getFormat().equals("example:SFTP")) {
 			publisher.publishEvent(new StopFTPServerEvent());
 		}
