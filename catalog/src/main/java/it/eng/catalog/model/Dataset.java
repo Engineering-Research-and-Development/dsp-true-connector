@@ -1,9 +1,29 @@
 package it.eng.catalog.model;
 
-import com.fasterxml.jackson.annotation.*;
+import java.time.Instant;
+import java.util.Collection;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -12,15 +32,6 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.*;
-import org.springframework.data.mongodb.core.mapping.DBRef;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-
-import java.time.Instant;
-import java.util.Collection;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -203,4 +214,28 @@ public class Dataset extends AbstractCatalogObject {
     public String getType() {
         return DSpaceConstants.DCAT + Dataset.class.getSimpleName();
     }
+    
+    /**
+     * Create new updated instance with new values from passed Dataset parameter</br>
+     * If fields are not present in updatedDataset, existing values will remain
+     * @param updatedDataset
+     * @return new updated dataset instance
+     */
+    public Dataset updateInstance(Dataset updatedDataset) {
+		return Dataset.Builder.newInstance()
+         .id(this.id)
+         .version(this.version)
+         .issued(this.issued)
+         .createdBy(this.createdBy)
+         .keyword(updatedDataset.getKeyword() != null ? updatedDataset.getKeyword() : this.keyword)
+         .theme(updatedDataset.getTheme() != null ? updatedDataset.getTheme() : this.theme)
+         .conformsTo(updatedDataset.getConformsTo() != null ? updatedDataset.getConformsTo() : this.conformsTo)
+         .creator(updatedDataset.getCreator() != null ? updatedDataset.getCreator() : this.creator)
+         .description(updatedDataset.getDescription() != null ? updatedDataset.getDescription() : this.description)
+         .identifier(updatedDataset.getIdentifier() != null ? updatedDataset.getIdentifier() : this.identifier)
+         .title(updatedDataset.getTitle() != null ? updatedDataset.getTitle() : this.title)
+         .distribution(updatedDataset.getDistribution() != null ? updatedDataset.getDistribution() : this.distribution)
+         .hasPolicy(updatedDataset.getHasPolicy() != null ? updatedDataset.getHasPolicy() : this.hasPolicy)
+         .build();
+  }
 }

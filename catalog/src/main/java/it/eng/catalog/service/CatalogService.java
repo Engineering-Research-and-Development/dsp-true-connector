@@ -2,14 +2,13 @@
 package it.eng.catalog.service;
 
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import it.eng.catalog.exceptions.CatalogErrorException;
-import it.eng.catalog.exceptions.CatalogNotFoundAPIException;
+import it.eng.catalog.exceptions.InternalServerErrorAPIException;
+import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.DataService;
 import it.eng.catalog.model.Dataset;
@@ -35,18 +34,8 @@ public class CatalogService {
         this.repository = repository;
         this.publisher = publisher;
     }
-
-    /**
-     * Saves the given catalog.
-     *
-     * @param catalog The catalog to be saved.
-     */
-    public Catalog saveCatalog(Catalog catalog) {
-        // TODO handle the situation when we insert catalog for the first time, and the object like dataSets, distributions, etc. should be stored into separate documents
-        Catalog storedCatalog = repository.save(catalog);
-        return storedCatalog;
-    }
-
+    
+    /********* PROTOCOL ***********/
     /**
      * Retrieves the catalog.
      *
@@ -62,6 +51,42 @@ public class CatalogService {
             return allCatalogs.get(0);
         }
     }
+    
+
+    /********* API ***********/
+    
+    /**
+	 * Private method for fetching the catalog for further API processing purposes
+	 * It throws ResourceNotFoundAPIException instead of CatalogErrorException used in protocol requests
+	 * 
+	 * @return Catalog
+	 * @throws ResourceNotFoundAPIException Thrown if the catalog is not found.
+	 */
+	public Catalog getCatalogForApi() {
+        List<Catalog> allCatalogs = repository.findAll();
+
+        if (allCatalogs.isEmpty()) {
+            throw new ResourceNotFoundAPIException("Catalog not found");
+        } else {
+            return allCatalogs.get(0);
+        }
+    }
+
+    /**
+     * Saves the given catalog.
+     *
+     * @param catalog The catalog to be saved.
+     */
+    public Catalog saveCatalog(Catalog catalog) {
+        // TODO handle the situation when we insert catalog for the first time, and the object like dataSets, distributions, etc. should be stored into separate documents
+        Catalog storedCatalog = null;
+        try {
+        	storedCatalog = repository.save(catalog);
+		} catch (Exception e) {
+			throw new InternalServerErrorAPIException("Catalog could not be saved");
+		}
+        return storedCatalog;
+    }
 
     /**
      * Retrieves the catalog by its ID.
@@ -69,38 +94,26 @@ public class CatalogService {
      * @param id The ID of the catalog to retrieve.
      * @return An optional containing the retrieved catalog, or empty if not found.
      */
-    public Optional<Catalog> getCatalogById(String id) {
-        return repository.findById(id);
+    public Catalog getCatalogById(String id) {
+        return repository.findById(id).orElseThrow(() -> new ResourceNotFoundAPIException("Catalog with id" + id + " not found"));
     }
-
-    //NOTE: Still present in service, because different types of errors are thrown for protocol and API
-    // TODO: Find an elegant way to adapt same method in DataSetService, to throw different types of error based on Protocol/API flow
-
-    /**
-     * Retrieves a dataset by its ID.
-     *
-     * @param id The ID of the dataset to retrieve.
-     * @return An optional containing the retrieved dataset, or empty if not found.
-     */
-    public Dataset getDataSetById(String id) {
-        Optional<Catalog> catalog = repository.findCatalogByDatasetId(id);
-        return catalog.flatMap(c -> c.getDataset()
-                        .stream()
-                        .filter(d -> d.getId().equals(id))
-                        .findFirst())
-                .orElseThrow(() -> new CatalogErrorException("Data Set with id: " + id + " not found"));
-    }
-
 
     /**
      * Deletes the catalog with the specified ID.
      *
      * @param id The ID of the catalog to delete.
      */
-    public void deleteCatalog(String id) {
-        repository.deleteById(id);
-    }
+	public void deleteCatalog(String id) {
+		getCatalogById(id);
+		try {
+			repository.deleteById(id);
+		} catch (Exception e) {
+			throw new InternalServerErrorAPIException("Catalog could not be deleted");
 
+		}
+	}
+
+	@Deprecated
     public void validateOffer(ContractNegotationOfferRequestEvent offerRequest) {
         log.info("Comparing if offer is valid or not");
         Offer offer = Serializer.deserializeProtocol(offerRequest.getOffer(), Offer.class);
@@ -120,23 +133,28 @@ public class CatalogService {
     public Catalog updateCatalog(String id, Catalog updatedCatalogData) {
 
         Catalog.Builder builder = returnBaseCatalogForUpdate(id);
-        builder
-                .keyword(updatedCatalogData.getKeyword())
-                .theme(updatedCatalogData.getTheme())
-                .conformsTo(updatedCatalogData.getConformsTo())
-                .description(updatedCatalogData.getDescription())
-                .identifier(updatedCatalogData.getIdentifier())
-                .title(updatedCatalogData.getTitle())
-                .distribution(updatedCatalogData.getDistribution())
-                .hasPolicy(updatedCatalogData.getHasPolicy())
-                .dataset(updatedCatalogData.getDataset())
-                .service(updatedCatalogData.getService())
-                .participantId(updatedCatalogData.getParticipantId())
-                .creator(updatedCatalogData.getCreator())
-                .homepage(updatedCatalogData.getHomepage());
+        Catalog storedCatalog = null;
+		try {
+			builder
+			        .keyword(updatedCatalogData.getKeyword())
+			        .theme(updatedCatalogData.getTheme())
+			        .conformsTo(updatedCatalogData.getConformsTo())
+			        .description(updatedCatalogData.getDescription())
+			        .identifier(updatedCatalogData.getIdentifier())
+			        .title(updatedCatalogData.getTitle())
+			        .distribution(updatedCatalogData.getDistribution())
+			        .hasPolicy(updatedCatalogData.getHasPolicy())
+			        .dataset(updatedCatalogData.getDataset())
+			        .service(updatedCatalogData.getService())
+			        .participantId(updatedCatalogData.getParticipantId())
+			        .creator(updatedCatalogData.getCreator())
+			        .homepage(updatedCatalogData.getHomepage());
 
-        Catalog updatedCatalog = builder.build();
-        Catalog storedCatalog = repository.save(updatedCatalog);
+			Catalog updatedCatalog = builder.build();
+			storedCatalog = saveCatalog(updatedCatalog);
+		} catch (Exception e) {
+			throw new InternalServerErrorAPIException("Could not update catalog");
+		}
         return storedCatalog;
     }
 
@@ -149,9 +167,9 @@ public class CatalogService {
      */
     public void updateCatalogDatasetAfterSave(Dataset newDataset) {
         // TODO handle the situation when new dataset have distribution which is not present in catalog
-        Catalog c = getCatalog();
+        Catalog c = getCatalogForApi();
         c.getDataset().add(newDataset);
-        repository.save(c);
+        saveCatalog(c);
     }
 
     /**
@@ -161,9 +179,9 @@ public class CatalogService {
      * @param dataset The dataset to be removed from the catalog.
      */
     public void updateCatalogDatasetAfterDelete(Dataset dataset) {
-        Catalog c = getCatalog();
+        Catalog c = getCatalogForApi();
         c.getDataset().remove(dataset);
-        repository.save(c);
+        saveCatalog(c);
     }
 
     /**
@@ -174,9 +192,9 @@ public class CatalogService {
      * @param dataService
      */
     public void updateCatalogDataServiceAfterSave(DataService dataService) {
-        Catalog c = getCatalog();
+        Catalog c = getCatalogForApi();
         c.getService().add(dataService);
-        repository.save(c);
+        saveCatalog(c);
     }
 
 
@@ -188,12 +206,9 @@ public class CatalogService {
      */
 
     public void updateCatalogDataServiceAfterDelete(DataService dataService) {
-        Catalog c = getCatalog();
-//        c.getService().remove(dataService);
-        c.getService().stream()
-        	.filter(ds -> ds.equals(dataService))
-        	.collect(Collectors.toSet());
-        repository.save(c);
+        Catalog c = getCatalogForApi();
+        c.getService().remove(dataService);
+        saveCatalog(c);
     }
 
     /**
@@ -203,9 +218,9 @@ public class CatalogService {
      * @param newDistribution The new distribution reference to be added to the catalog.
      */
     public void updateCatalogDistributionAfterSave(Distribution newDistribution) {
-        Catalog c = getCatalog();
+        Catalog c = getCatalogForApi();
         c.getDistribution().add(newDistribution);
-        repository.save(c);
+        saveCatalog(c);
     }
 
     /**
@@ -216,28 +231,19 @@ public class CatalogService {
      */
 
     public void updateCatalogDistributionAfterDelete(Distribution distribution) {
-        Catalog c = getCatalog();
+        Catalog c = getCatalogForApi();
         c.getDistribution().remove(distribution);
-        repository.save(c);
+        saveCatalog(c);
     }
+
 
     /**
-     * Private method for creating base builder for catalog update by its ID.
-     *
-     * @param id The ID of the catalog for update.
-     * @return The builder for the catalog with basic mandatory unchanged fields.
-     * @throws CatalogErrorException Thrown if the catalog with the specified ID is not found.
+     * Used by the protocol business logic to check if such offer exists
+     * because of that reason it throws CatalogErrorException instead of ResourceNotFoundAPIException
+     * 
+     * @param offer
+     * @return boolean
      */
-    private Catalog.Builder returnBaseCatalogForUpdate(String id) {
-        return repository.findById(id)
-                .map(c -> Catalog.Builder.newInstance()
-                        .id(c.getId())
-                        .version(c.getVersion())
-                        .issued(c.getIssued())
-                        .createdBy(c.getCreatedBy()))
-                .orElseThrow(() -> new CatalogNotFoundAPIException("Catalog with id: " + id + " not found"));
-    }
-
 	public boolean validateOffer(Offer offer) {
 		boolean valid = false;
 		Catalog catalog = getCatalog();
@@ -259,5 +265,21 @@ public class CatalogService {
 		}
 		log.info("Offer evaluated as {}", valid ? "valid" : "invalid");
 		return valid;
+	}
+	/**
+	 * Private method for creating base builder for catalog update by its ID.
+	 *
+	 * @param id The ID of the catalog for update.
+	 * @return The builder for the catalog with basic mandatory unchanged fields.
+	 * @throws CatalogErrorException Thrown if the catalog with the specified ID is not found.
+	 */
+	private Catalog.Builder returnBaseCatalogForUpdate(String id) {
+		return repository.findById(id)
+				.map(c -> Catalog.Builder.newInstance()
+						.id(c.getId())
+						.version(c.getVersion())
+						.issued(c.getIssued())
+						.createdBy(c.getCreatedBy()))
+				.orElseThrow(() -> new ResourceNotFoundAPIException("Catalog with id: " + id + " not found"));
 	}
 }

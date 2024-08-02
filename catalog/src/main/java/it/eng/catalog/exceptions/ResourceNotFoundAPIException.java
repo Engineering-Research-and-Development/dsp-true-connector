@@ -2,16 +2,16 @@ package it.eng.catalog.exceptions;
 
 import java.io.Serial;
 
-public class DatasetNotFoundAPIException extends RuntimeException {
+public class ResourceNotFoundAPIException extends RuntimeException {
+
     @Serial
     private static final long serialVersionUID = 1L;
 
-    public DatasetNotFoundAPIException() {
+    public ResourceNotFoundAPIException() {
         super();
     }
 
-    public DatasetNotFoundAPIException(String message) {
+    public ResourceNotFoundAPIException(String message) {
         super(message);
     }
 }
-

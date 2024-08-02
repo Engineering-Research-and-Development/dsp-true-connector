@@ -1,11 +1,13 @@
 package it.eng.catalog.service;
 
-import it.eng.catalog.exceptions.DataServiceNotFoundAPIException;
-import it.eng.catalog.model.DataService;
-import it.eng.catalog.repository.DataServiceRepository;
+import java.util.Collection;
+
 import org.springframework.stereotype.Service;
 
-import java.util.Collection;
+import it.eng.catalog.exceptions.InternalServerErrorAPIException;
+import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
+import it.eng.catalog.model.DataService;
+import it.eng.catalog.repository.DataServiceRepository;
 
 /**
  * The DataServiceService class provides methods to interact with DataService data, including saving, retrieving, and deleting dataServices.
@@ -26,10 +28,10 @@ public class DataServiceService {
      *
      * @param id the unique ID of the data service
      * @return the dataService corresponding to the provided ID
-     * @throws DataServiceNotFoundAPIException if no dataService is found with the provided ID
+     * @throws ResourceNotFoundAPIException if no dataService is found with the provided ID
      */
     public DataService getDataServiceById(String id) {
-        return repository.findById(id).orElseThrow(() -> new DataServiceNotFoundAPIException("Data Service with id: " + id + " not found"));
+        return repository.findById(id).orElseThrow(() -> new ResourceNotFoundAPIException("Data Service with id: " + id + " not found"));
     }
 
     /**
@@ -45,9 +47,16 @@ public class DataServiceService {
      * Saves a dataService to the repository and updates the catalog.
      *
      * @param dataService the dataService to be saved
+     * @return saved dataService
+     * @throws InternalServerErrorAPIException if saving fails
      */
     public DataService saveDataService(DataService dataService) {
-        DataService savedDataService = repository.save(dataService);
+    	DataService savedDataService = null;
+        try {
+        	savedDataService = repository.save(dataService);
+		} catch (Exception e) {
+			throw new InternalServerErrorAPIException("Data service could not be saved");
+		}
         catalogService.updateCatalogDataServiceAfterSave(savedDataService);
         return dataService;
     }
@@ -56,25 +65,37 @@ public class DataServiceService {
      * Deletes a dataService by its ID and updates the catalog.
      *
      * @param id the unique ID of the dataService to be deleted
-     * @throws DataServiceNotFoundAPIException if no data service is found with the provided ID
+     * @throws ResourceNotFoundAPIException if no data service is found with the provided ID
+     * @throws InternalServerErrorAPIException if deleting fails
      */
     public void deleteDataService(String id) {
-        DataService dataService = repository.findById(id).orElseThrow(() -> new DataServiceNotFoundAPIException("Data Service with id: " + id + " not found"));
-        repository.deleteById(id);
-        catalogService.updateCatalogDataServiceAfterDelete(dataService);
+        DataService existingDataService = getDataServiceById(id);
+        try {
+			repository.deleteById(id);
+		} catch (Exception e) {
+			throw new InternalServerErrorAPIException("Data service could not be deleted");
+		}
+        catalogService.updateCatalogDataServiceAfterDelete(existingDataService);
     }
 
     /**
-     * Updates a dataService in the repository and updates the catalog.
+     * Updates a dataService in the repository.
      *
-     * @param id          the unique ID of the dataService to be updated
+     * @param id the unique ID of the dataService to be updated
      * @param dataService the data service to be updated
      * @return the updated dataService
+     * @throws ResourceNotFoundAPIException if no data service is found with the provided ID
+     * @throws InternalServerErrorAPIException if updating fails
      */
     public DataService updateDataService(String id, DataService dataService) {
-        DataService existingDataService = repository.findById(id).orElseThrow(() -> new DataServiceNotFoundAPIException("Data Service with id: " + id + " not found"));
-        DataService updatedDataService = existingDataService.updateInstance(dataService);//.Builder.updateInstance(, dataService).build();
-        DataService storedDataService = repository.save(updatedDataService);
+        DataService existingDataService = getDataServiceById(id);
+        DataService storedDataService = null;;
+		try {
+			DataService updatedDataService = existingDataService.updateInstance(dataService);
+			storedDataService = repository.save(updatedDataService);
+		} catch (Exception e) {
+			throw new InternalServerErrorAPIException("Data service could not be updated");
+		}
 
         return storedDataService;
     }

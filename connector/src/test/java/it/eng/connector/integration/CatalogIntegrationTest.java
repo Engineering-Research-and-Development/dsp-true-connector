@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithUserDetails;
@@ -21,6 +22,7 @@ import it.eng.tools.model.DSpaceConstants;
 class CatalogIntegrationTest extends BaseIntegrationTest {
 
     @Test
+    @DisplayName("Get catalog - success")
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void getCatalogSuccessfulTest() throws Exception {
     	
@@ -38,6 +40,7 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
     }
     
     @Test
+    @DisplayName("Get catalog - not valid catalog request message")
     @WithUserDetails(TestUtil.CONNECTOR_USER)
 	public void notValidCatalogRequestMessageTest() throws Exception {
     	
@@ -56,6 +59,7 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
 	}
 	
 	@Test
+    @DisplayName("Get dataset - success")
 	@WithUserDetails(TestUtil.CONNECTOR_USER)
 	public void getDatasetSuccessfulTest() throws Exception {
 		
@@ -73,6 +77,7 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
 	}
 	
 	@Test
+    @DisplayName("Get dataset - not valid dataset request message")
 	@WithUserDetails(TestUtil.CONNECTOR_USER)
 	public void notValidDatasetRequestMessageTest() throws Exception {
 		
@@ -91,6 +96,7 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
 	}
 	
 	@Test
+    @DisplayName("Get dataset - no dataset found")
 	@WithUserDetails(TestUtil.CONNECTOR_USER)
 	public void noDatasetFoundTest() throws Exception {
 		

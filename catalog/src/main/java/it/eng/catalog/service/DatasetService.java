@@ -1,12 +1,14 @@
 package it.eng.catalog.service;
 
-import it.eng.catalog.exceptions.CatalogErrorException;
-import it.eng.catalog.exceptions.DatasetNotFoundAPIException;
-import it.eng.catalog.model.Dataset;
-import it.eng.catalog.repository.DatasetRepository;
+import java.util.Collection;
+
 import org.springframework.stereotype.Service;
 
-import java.util.Collection;
+import it.eng.catalog.exceptions.CatalogErrorException;
+import it.eng.catalog.exceptions.InternalServerErrorAPIException;
+import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
+import it.eng.catalog.model.Dataset;
+import it.eng.catalog.repository.DatasetRepository;
 
 /**
  * The DataSetService class provides methods to interact with Dataset data, including saving, retrieving, and deleting datasets.
@@ -24,15 +26,29 @@ public class DatasetService {
         this.catalogService = catalogService;
     }
 
+    /********* PROTOCOL ***********/
     /**
-     * Retrieves a dataset by its unique ID.
+     * Retrieves a dataset by its unique ID, intended for protocol use.
      *
      * @param id the unique ID of the dataset
      * @return the dataset corresponding to the provided ID
      * @throws CatalogErrorException if no dataset is found with the provided ID
      */
     public Dataset getDatasetById(String id) {
-        return repository.findById(id).orElseThrow(() -> new DatasetNotFoundAPIException("Data Set with id: " + id + " not found"));
+        return repository.findById(id).orElseThrow(() -> new CatalogErrorException("Data Set with id: " + id + " not found"));
+
+    }
+    
+    /********* API ***********/
+    /**
+     * Retrieves a dataset by its unique ID, intended for API use.
+     *
+     * @param id the unique ID of the dataset
+     * @return the dataset corresponding to the provided ID
+     * @throws ResourceNotFoundAPIException if no dataset is found with the provided ID
+     */
+    public Dataset getDatasetByIdForApi(String id) {
+        return repository.findById(id).orElseThrow(() -> new ResourceNotFoundAPIException("Data Set with id: " + id + " not found"));
 
     }
 
@@ -49,9 +65,16 @@ public class DatasetService {
      * Saves a dataset to the repository and updates the catalog.
      *
      * @param dataset the dataset to be saved
+     * @return saved dataset
+     * @throws InternalServerErrorAPIException if saving fails
      */
     public Dataset saveDataset(Dataset dataset) {
-        Dataset savedDataSet = repository.save(dataset);
+        Dataset savedDataSet = null;
+        try {
+        	savedDataSet = repository.save(dataset);
+		} catch (Exception e) {
+			throw new InternalServerErrorAPIException("Dataset could not be saved");
+		}
         catalogService.updateCatalogDatasetAfterSave(savedDataSet);
         return dataset;
     }
@@ -60,51 +83,38 @@ public class DatasetService {
      * Deletes a dataset by its ID and updates the catalog.
      *
      * @param id the unique ID of the dataset to delete
+     * @throws ResourceNotFoundAPIException if no dataset is found with the provided ID
+     * @throws InternalServerErrorAPIException if deleting fails
      */
     public void deleteDataset(String id) {
-        Dataset ds = repository.findById(id).orElseThrow(() -> new DatasetNotFoundAPIException("Data Set with id: " + id + " not found"));
-        repository.deleteById(id);
+        Dataset ds = getDatasetByIdForApi(id);
+        try {
+			repository.deleteById(id);
+		} catch (Exception e) {
+			throw new InternalServerErrorAPIException("Dataset could not be deleted");
+		}
         catalogService.updateCatalogDatasetAfterDelete(ds);
     }
 
     /**
-     * Updates a dataset in the repository and the catalog.
+     * Updates a dataset in the repository.
      *
-     * @param updatedDatasetData the dataset to update
+     * @param id the unique ID of the dataset to be updated
+     * @param dataset the dataset to update
+     * @return the updated dataset
+     * @throws ResourceNotFoundAPIException if no data service is found with the provided ID
+     * @throws InternalServerErrorAPIException if updating fails
      */
-    public Dataset updateDataset(String id, Dataset updatedDatasetData) {
-        Dataset.Builder builder = returnBaseDatasetForUpdate(id);
+    public Dataset updateDataset(String id, Dataset dataset) {
+    	Dataset existingDataset = getDatasetByIdForApi(id);
+    	Dataset storedDataset = null;;
+		try {
+			Dataset updatedDataset= existingDataset.updateInstance(dataset);
+			storedDataset = repository.save(updatedDataset);
+		} catch (Exception e) {
+			throw new InternalServerErrorAPIException("Dataset could not be updated");
+		}
 
-        builder.keyword(updatedDatasetData.getKeyword())
-                .creator(updatedDatasetData.getCreator())
-                .theme(updatedDatasetData.getTheme())
-                .conformsTo(updatedDatasetData.getConformsTo())
-                .description(updatedDatasetData.getDescription())
-                .identifier(updatedDatasetData.getIdentifier())
-                .title(updatedDatasetData.getTitle())
-                .distribution(updatedDatasetData.getDistribution())
-                .hasPolicy(updatedDatasetData.getHasPolicy());
-
-        Dataset updatedDataset = builder.build();
-        Dataset storedDataset = repository.save(updatedDataset);
         return storedDataset;
-    }
-
-
-    /**
-     * Private method for creating base builder for dataset update by its ID.
-     *
-     * @param id The ID of the catalog for update.
-     * @return The builder for the dataset with basic mandatory unchanged fields.
-     * @throws CatalogErrorException Thrown if the catalog with the specified ID is not found.
-     */
-    private Dataset.Builder returnBaseDatasetForUpdate(String id) {
-        return repository.findById(id)
-                .map(ds -> Dataset.Builder.newInstance()
-                        .id(ds.getId())
-                        .version(ds.getVersion())
-                        .issued(ds.getIssued())
-                        .createdBy(ds.getCreatedBy()))
-                .orElseThrow(() -> new CatalogErrorException("Dataset with id: " + id + " not found"));
     }
 }

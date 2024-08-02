@@ -1,6 +1,5 @@
 package it.eng.catalog.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -28,7 +27,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.DataService;
-import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.Offer;
 import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.serializer.Serializer;
@@ -50,7 +48,7 @@ public class CatalogServiceTest {
     @InjectMocks
     private CatalogService service;
 
-    private Catalog catalog = MockObjectUtil.CATALOG;
+    private Catalog catalog = new MockObjectUtil().CATALOG;
 
     @Test
     @DisplayName("Save catalog successfully")
@@ -81,31 +79,15 @@ public class CatalogServiceTest {
     @DisplayName("Get catalog by ID successfully")
     void getCatalogById_success() {
         when(repository.findById(anyString())).thenReturn(Optional.of(catalog));
-        Optional<Catalog> retrievedCatalog = service.getCatalogById(catalog.getId());
-        assertTrue(retrievedCatalog.isPresent());
+        Catalog retrievedCatalog = service.getCatalogById(catalog.getId());
+        assertNotNull(retrievedCatalog);
         verify(repository).findById(catalog.getId());
-    }
-
-    @Test
-    @DisplayName("Get dataset by ID successfully")
-    void getDataSetById_success() {
-        catalog.getDataset();
-        when(repository.findCatalogByDatasetId(anyString())).thenReturn(Optional.of(catalog));
-        Dataset retrievedDataset = service.getDataSetById(MockObjectUtil.DATASET.getId());
-        assertNotNull(retrievedDataset);
-        assertEquals(MockObjectUtil.DATASET.getId(), retrievedDataset.getId());
-    }
-
-    @Test
-    @DisplayName("Get dataset by ID throws exception when not found")
-    void getDataSetById_notFound() {
-        when(repository.findCatalogByDatasetId(anyString())).thenReturn(Optional.empty());
-        assertThrows(CatalogErrorException.class, () -> service.getDataSetById("datasetId"));
     }
 
     @Test
     @DisplayName("Delete catalog successfully")
     void deleteCatalog_success() {
+        when(repository.findById(anyString())).thenReturn(Optional.of(catalog));
         service.deleteCatalog(catalog.getId());
         verify(repository).deleteById(catalog.getId());
     }
@@ -128,6 +110,7 @@ public class CatalogServiceTest {
     @Test
     @DisplayName("Update catalog data service after delete successfully")
     void updateCatalogDataServiceAfterDelete_success() {
+    	
         DataService dataService = MockObjectUtil.DATA_SERVICE;
         when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
         when(repository.save(any(Catalog.class))).thenReturn(catalog);
@@ -142,7 +125,7 @@ public class CatalogServiceTest {
     	when(repository.findAll()).thenReturn(new ArrayList<>(MockObjectUtil.CATALOGS));
     	ContractNegotationOfferRequestEvent offerRequest = new ContractNegotationOfferRequestEvent(MockObjectUtil.CONSUMER_PID,
     			MockObjectUtil.PROVIDER_PID, Serializer.serializeProtocolJsonNode(MockObjectUtil.OFFER_WITH_TARGET));
-    	service.validateOffer(offerRequest);;
+    	service.validateOffer(offerRequest);
     	
     	verify(publisher).publishEvent(argCaptorContractNegotiationOfferResponse.capture());
     	assertTrue(argCaptorContractNegotiationOfferResponse.getValue().isOfferAccepted());
