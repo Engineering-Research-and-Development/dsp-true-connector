@@ -2,6 +2,7 @@ package it.eng.datatransfer.util;
 
 import java.time.Instant;
 
+import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.TransferCompletionMessage;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferRequestMessage;
@@ -57,7 +58,14 @@ public class MockObjectUtil {
     public static TransferRequestMessage TRANSFER_REQUEST_MESSAGE = TransferRequestMessage.Builder.newInstance()
     		.consumerPid(CONSUMER_PID)
     		.agreementId(AGREEMENT_ID)
-    		.format("HTTP_PULL")
+    		.format(DataTransferFormat.HTTP_PULL.name())
+    		.callbackAddress(CALLBACK_ADDRESS)
+    		.build();
+    
+    public static TransferRequestMessage TRANSFER_REQUEST_MESSAGE_SFTP = TransferRequestMessage.Builder.newInstance()
+    		.consumerPid(CONSUMER_PID)
+    		.agreementId(AGREEMENT_ID)
+    		.format(DataTransferFormat.SFTP.name())
     		.callbackAddress(CALLBACK_ADDRESS)
     		.build();
     

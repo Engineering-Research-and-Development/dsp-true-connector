@@ -24,7 +24,6 @@ import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.util.MockObjectUtil;
 
 @ExtendWith(MockitoExtension.class)
-
 class DataTransferAPIServiceTest {
 
 	@Mock

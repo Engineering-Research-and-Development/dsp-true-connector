@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
  - TransferSuspensionMessage message provider and consumer callback logic (plus junit and integration tests)
  - Added TransferProcessChangeEvent and listener to log transition change
  - DataTransferEventListener - placeholder logic for manipulating data transfers (start/stop/suspend)
+ - DataTransferFormat enum
  
 ### Changed
 

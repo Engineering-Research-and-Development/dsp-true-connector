@@ -6,6 +6,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.TransferCompletionMessage;
 import it.eng.datatransfer.model.TransferRequestMessage;
 import it.eng.datatransfer.model.TransferStartMessage;
@@ -37,7 +38,7 @@ public class DataTransferEventListener {
 	public void handleTransferStartMessage(TransferStartMessage transferStartMessage) {
 		log.info("Transfer Start message event received");
 		Optional<TransferRequestMessage> transferRequestMessage = transferRequestMessageRepository.findByConsumerPid(transferStartMessage.getConsumerPid());
-		if(transferRequestMessage.isPresent() && transferRequestMessage.get().getFormat().equals("example:SFTP")) {
+		if(transferRequestMessage.isPresent() && transferRequestMessage.get().getFormat().equals(DataTransferFormat.SFTP.name())) {
 			log.info("Publishing event to start SFTP server...");
 			publisher.publishEvent(new StartFTPServerEvent());
 		}
@@ -47,7 +48,7 @@ public class DataTransferEventListener {
 	public void handleTransferSuspensionMessage(TransferSuspensionMessage transferSuspensionMessage) {
 		log.info("Suspending transfer with code {} and reason {}", transferSuspensionMessage.getCode(), transferSuspensionMessage.getReason());
 		Optional<TransferRequestMessage> transferRequestMessage = transferRequestMessageRepository.findByConsumerPid(transferSuspensionMessage.getConsumerPid());
-		if(transferRequestMessage.isPresent() && transferRequestMessage.get().getFormat().equals("example:SFTP")) {
+		if(transferRequestMessage.isPresent() && transferRequestMessage.get().getFormat().equals(DataTransferFormat.SFTP.name())) {
 			publisher.publishEvent(new StopFTPServerEvent());
 		}
 	}
@@ -56,7 +57,7 @@ public class DataTransferEventListener {
 	public void handleTransferCompletionMessage(TransferCompletionMessage transferCompletionMessage) {
 		log.info("Completeing transfer with consumerPid {} and providerPid {}", transferCompletionMessage.getConsumerPid(), transferCompletionMessage.getProviderPid());
 		Optional<TransferRequestMessage> transferRequestMessage = transferRequestMessageRepository.findByConsumerPid(transferCompletionMessage.getConsumerPid());
-		if(transferRequestMessage.isPresent() && transferRequestMessage.get().getFormat().equals("example:SFTP")) {
+		if(transferRequestMessage.isPresent() && transferRequestMessage.get().getFormat().equals(DataTransferFormat.SFTP.name())) {
 			publisher.publishEvent(new StopFTPServerEvent());
 		}
 	}
