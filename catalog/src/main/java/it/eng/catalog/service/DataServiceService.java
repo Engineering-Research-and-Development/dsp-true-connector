@@ -8,11 +8,13 @@ import it.eng.catalog.exceptions.InternalServerErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.DataService;
 import it.eng.catalog.repository.DataServiceRepository;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * The DataServiceService class provides methods to interact with DataService data, including saving, retrieving, and deleting dataServices.
  */
 @Service
+@Slf4j
 public class DataServiceService {
 
     private final DataServiceRepository repository;
@@ -55,6 +57,7 @@ public class DataServiceService {
         try {
         	savedDataService = repository.save(dataService);
 		} catch (Exception e) {
+			log.error(e.getMessage(), e);
 			throw new InternalServerErrorAPIException("Data service could not be saved");
 		}
         catalogService.updateCatalogDataServiceAfterSave(savedDataService);
@@ -73,6 +76,7 @@ public class DataServiceService {
         try {
 			repository.deleteById(id);
 		} catch (Exception e) {
+			log.error(e.getMessage(), e);
 			throw new InternalServerErrorAPIException("Data service could not be deleted");
 		}
         catalogService.updateCatalogDataServiceAfterDelete(existingDataService);
@@ -94,6 +98,7 @@ public class DataServiceService {
 			DataService updatedDataService = existingDataService.updateInstance(dataService);
 			storedDataService = repository.save(updatedDataService);
 		} catch (Exception e) {
+			log.error(e.getMessage(), e);
 			throw new InternalServerErrorAPIException("Data service could not be updated");
 		}
 

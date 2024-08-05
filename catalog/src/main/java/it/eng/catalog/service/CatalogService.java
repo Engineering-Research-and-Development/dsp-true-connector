@@ -83,6 +83,7 @@ public class CatalogService {
         try {
         	storedCatalog = repository.save(catalog);
 		} catch (Exception e) {
+			log.error(e.getMessage(), e);
 			throw new InternalServerErrorAPIException("Catalog could not be saved");
 		}
         return storedCatalog;
@@ -108,6 +109,7 @@ public class CatalogService {
 		try {
 			repository.deleteById(id);
 		} catch (Exception e) {
+			log.error(e.getMessage(), e);
 			throw new InternalServerErrorAPIException("Catalog could not be deleted");
 
 		}
@@ -153,6 +155,7 @@ public class CatalogService {
 			Catalog updatedCatalog = builder.build();
 			storedCatalog = saveCatalog(updatedCatalog);
 		} catch (Exception e) {
+			log.error(e.getMessage(), e);
 			throw new InternalServerErrorAPIException("Could not update catalog");
 		}
         return storedCatalog;

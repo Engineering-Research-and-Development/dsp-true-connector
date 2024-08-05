@@ -2,6 +2,7 @@ package it.eng.catalog.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -12,12 +13,15 @@ import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.DataService;
+import it.eng.catalog.model.Dataset;
 import it.eng.catalog.repository.DataServiceRepository;
 import it.eng.catalog.util.MockObjectUtil;
 
@@ -29,13 +33,14 @@ public class DataServiceServiceTest {
 
     @Mock
     private CatalogService catalogService;
+    
+    @Captor
+	private ArgumentCaptor<DataService> argCaptorDataService;
 
     @InjectMocks
     private DataServiceService dataServiceService;
 
     private DataService dataService = MockObjectUtil.DATA_SERVICE;
-    private DataService updatedDataService = MockObjectUtil.DATA_SERVICE_FOR_UPDATE;
-
 
     @Test
     @DisplayName("Get data service by id - success")
@@ -107,10 +112,23 @@ public class DataServiceServiceTest {
         when(repository.findById(dataService.getId())).thenReturn(Optional.of(dataService));
         when(repository.save(any(DataService.class))).thenReturn(dataService);
 
-        DataService result = dataServiceService.updateDataService(dataService.getId(), updatedDataService);
+        DataService result = dataServiceService.updateDataService(dataService.getId(), MockObjectUtil.DATA_SERVICE_FOR_UPDATE);
 
         assertEquals(dataService.getId(), result.getId());
         verify(repository).findById(dataService.getId());
-        verify(repository).save(any(DataService.class));
+        verify(repository).save(argCaptorDataService.capture());
+        // createor, description, title, serveDataSet
+        assertTrue(argCaptorDataService.getValue().getCreator().contains("update"));
+        assertTrue(argCaptorDataService.getValue().getTitle().contains("update"));
+        assertTrue(argCaptorDataService.getValue().getDescription().stream().filter(d -> d.getValue().contains("update")).findFirst().isPresent());
+        
+        Dataset dataset = argCaptorDataService.getValue().getServesDataset().stream().findFirst().get();
+        assertTrue(dataset.getCreator().contains("update"));
+        assertTrue(dataset.getTitle().contains("update"));
+        assertTrue(dataset.getDescription().stream().filter(d -> d.getValue().contains("update")).findFirst().isPresent());
+        
+        assertTrue(dataset.getDistribution().stream().findFirst().get().getTitle().contains("update"));
+        assertTrue(dataset.getHasPolicy().stream().findFirst().get().getId().contains("update"));
+
     }
 }

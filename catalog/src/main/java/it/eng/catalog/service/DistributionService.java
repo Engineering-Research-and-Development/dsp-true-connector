@@ -9,11 +9,13 @@ import it.eng.catalog.exceptions.InternalServerErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.Distribution;
 import it.eng.catalog.repository.DistributionRepository;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * The DistributionService class provides methods to interact with Distribution data, including saving, retrieving, and deleting distributions.
  */
 @Service
+@Slf4j
 public class DistributionService {
 
     private final DistributionRepository repository;
@@ -56,6 +58,7 @@ public class DistributionService {
 		try {
 			savedDistribution = repository.save(distribution);
 		} catch (Exception e) {
+			log.error(e.getMessage(), e);
 			throw new InternalServerErrorAPIException("Distribution could not be deleted");
 		}
         catalogService.updateCatalogDistributionAfterSave(savedDistribution);
@@ -74,6 +77,7 @@ public class DistributionService {
         try {
 			repository.deleteById(id);
 		} catch (Exception e) {
+			log.error(e.getMessage(), e);
 			throw new InternalServerErrorAPIException("Distribution could not be deleted");
 		}
         catalogService.updateCatalogDistributionAfterDelete(distribution);
@@ -95,6 +99,7 @@ public class DistributionService {
 			Distribution updatedDistribution = existingDistribution.updateInstance(distribution);
 			storedDistribution = repository.save(updatedDistribution);
 		} catch (Exception e) {
+			log.error(e.getMessage(), e);
 			throw new InternalServerErrorAPIException("Dataset could not be updated");
 		}
 

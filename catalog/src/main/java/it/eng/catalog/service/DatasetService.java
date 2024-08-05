@@ -9,11 +9,13 @@ import it.eng.catalog.exceptions.InternalServerErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.repository.DatasetRepository;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * The DataSetService class provides methods to interact with Dataset data, including saving, retrieving, and deleting datasets.
  */
 @Service
+@Slf4j
 public class DatasetService {
 
 
@@ -73,6 +75,7 @@ public class DatasetService {
         try {
         	savedDataSet = repository.save(dataset);
 		} catch (Exception e) {
+			log.error(e.getMessage(), e);
 			throw new InternalServerErrorAPIException("Dataset could not be saved");
 		}
         catalogService.updateCatalogDatasetAfterSave(savedDataSet);
@@ -91,6 +94,7 @@ public class DatasetService {
         try {
 			repository.deleteById(id);
 		} catch (Exception e) {
+			log.error(e.getMessage(), e);
 			throw new InternalServerErrorAPIException("Dataset could not be deleted");
 		}
         catalogService.updateCatalogDatasetAfterDelete(ds);
@@ -112,6 +116,7 @@ public class DatasetService {
 			Dataset updatedDataset= existingDataset.updateInstance(dataset);
 			storedDataset = repository.save(updatedDataset);
 		} catch (Exception e) {
+			log.error(e.getMessage(), e);
 			throw new InternalServerErrorAPIException("Dataset could not be updated");
 		}
 
