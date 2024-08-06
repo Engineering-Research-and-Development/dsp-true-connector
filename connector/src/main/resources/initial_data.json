@@ -261,25 +261,45 @@
   		]
   	},
 	{
-	  		"_id": "urn:uuid:AGREEMENT_ID_COMPLETED_TRANSFER_TEST",
-	  		"_class": "it.eng.negotiation.model.Agreement",
-	  		"target": "urn:uuid:3dd1add4-4d2d-569e-d634-8394a8836d23",
-	  		"timestamp": "2023-01-01T01:00:00Z",
-	  		"assigner": "urn:tsdshhs636378",
-	  		"assignee": "urn:jashd766",
-	  		"permission": [
-	  			{
-	  				"action": "USE",
-	  				"constraint": [
-	  					{
-	  						"leftOperand": "COUNT",
-	  						"operator": "EQ",
-	  						"rightOperand": "5"
-	  					}
-	  				]
-	  			}
-	  		]
-	  	}
+  		"_id": "urn:uuid:AGREEMENT_ID_COMPLETED_TRANSFER_TEST",
+  		"_class": "it.eng.negotiation.model.Agreement",
+  		"target": "urn:uuid:3dd1add4-4d2d-569e-d634-8394a8836d23",
+  		"timestamp": "2023-01-01T01:00:00Z",
+  		"assigner": "urn:tsdshhs636378",
+  		"assignee": "urn:jashd766",
+  		"permission": [
+  			{
+  				"action": "USE",
+  				"constraint": [
+  					{
+  						"leftOperand": "COUNT",
+  						"operator": "EQ",
+  						"rightOperand": "5"
+  					}
+  				]
+  			}
+  		]
+  	},
+	{
+  		"_id": "urn:uuid:AGREEMENT_ID_TERMINATE_TRANSFER_TEST",
+  		"_class": "it.eng.negotiation.model.Agreement",
+  		"target": "urn:uuid:3dd1add4-4d2d-569e-d634-8394a8836d23",
+  		"timestamp": "2023-01-01T01:00:00Z",
+  		"assigner": "urn:tsdshhs636378",
+  		"assignee": "urn:jashd766",
+  		"permission": [
+  			{
+  				"action": "USE",
+  				"constraint": [
+  					{
+  						"leftOperand": "COUNT",
+  						"operator": "EQ",
+  						"rightOperand": "5"
+  					}
+  				]
+  			}
+  		]
+  	}
     ],
   "transfer_request_messages" : [
   	{
@@ -341,6 +361,20 @@
 	      "callbackAddress" : "http://localhost:8080/consumer/transfers/callback/",
 	      "agreementId" : "urn:uuid:AGREEMENT_ID_C_REQ",
 		  "state" : "REQUESTED",
+		  "createdBy": "admin@mail.com",
+	      "lastModifiedBy": "admin@mail.com",
+	      "issued": "2024-04-23T16:26:00.000Z",
+	      "modified": "2024-04-23T16:26:00.000Z",
+	      "version": 0
+		},
+		{
+		  "_id": "abc45798-5553-4932-TERM-ab7fd66ql4d5",
+		  "_class": "it.eng.datatransfer.model.TransferProcess",
+	      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_C_TERM",
+	      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_C_TERM",
+	      "callbackAddress" : "http://localhost:8080/consumer/transfers/callback/",
+	      "agreementId" : "urn:uuid:AGREEMENT_ID_C_REQ",
+		  "state" : "STARTED",
 		  "createdBy": "admin@mail.com",
 	      "lastModifiedBy": "admin@mail.com",
 	      "issued": "2024-04-23T16:26:00.000Z",

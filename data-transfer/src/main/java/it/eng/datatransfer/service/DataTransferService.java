@@ -17,6 +17,7 @@ import it.eng.datatransfer.model.TransferRequestMessage;
 import it.eng.datatransfer.model.TransferStartMessage;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.model.TransferSuspensionMessage;
+import it.eng.datatransfer.model.TransferTerminationMessage;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
@@ -55,21 +56,31 @@ public class DataTransferService {
 	/**
 	 * If TransferProcess for given consumerPid and providerPid exists and state is STARTED<br>
 	 * Note: those 2 Pid's are not to be mixed with Contract Negotiation ones. They are unique
-	 * @param consumerPid
+	 * @param consumerPid 
 	 * @param providerPid
-	 * @return
+	 * @return true if there is transferProces with state STARTED for cosnumerPid and providerPid
 	 */
-	public boolean isDataTransferStarted(String consumerPid ,String providerPid ) {
+	public boolean isDataTransferStarted(String consumerPid ,String providerPid) {
 		return transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid)
 				.map(tp -> TransferState.STARTED.equals(tp.getState()))
 				.orElse(false);
 	}
 
+	/**
+	 * Find transferProcess for given providerPid
+	 * @param providerPid providerPid to search by
+	 * @return TransferProcess
+	 */
 	public TransferProcess findTransferProcessByProviderPid(String providerPid) {
 		return transferProcessRepository.findByProviderPid(providerPid)
 				.orElseThrow(() -> new TransferProcessNotFoundException("TransferProcess with providerPid " + providerPid + " not found"));
 	}
 
+	/**
+	 * Initiate data transfer
+	 * @param transferRequestMessage message
+	 * @return TransferProcess with status REQUESTED
+	 */
 	public TransferProcess initiateDataTransfer(TransferRequestMessage transferRequestMessage) {
 		transferProcessRepository.findByAgreementId(transferRequestMessage.getAgreementId())
 			.ifPresent(tp -> {
@@ -107,9 +118,9 @@ public class DataTransferService {
 	/**
 	 * Transfer from REQUESTED or SUSPENDED to STARTED state
 	 * @param transferStartMessage TransferStartMessage
-	 * @param consumerPid null in case of provider side 
-	 * @param providerPid null in case of consumer callback controller
-	 * @return TransferProcess with STARTED state
+	 * @param consumerPid consumerPid in case of consumer callback usage
+	 * @param providerPid providerPid in case of provider usage
+	 * @return TransferProcess with status STARTED
 	 */
 	public TransferProcess startDataTransfer(TransferStartMessage transferStartMessage, String consumerPid, String providerPid) {
 		String consumerPidFinal = consumerPid == null ? transferStartMessage.getConsumerPid() : consumerPid;
@@ -133,9 +144,9 @@ public class DataTransferService {
 	/**
 	 * Finds transfer process, check if status is correct, publish event and update state to COMPLETED
 	 * @param transferCompletionMessage
-	 * @param consumerPid
-	 * @param providerPid
-	 * @return
+	 * @param consumerPid consumerPid in case of consumer callback usage
+	 * @param providerPid providerPid in case of provider usage
+	 * @return TransferProcess with status COMPLETED
 	 */
 	public TransferProcess completeDataTransfer(TransferCompletionMessage transferCompletionMessage, String consumerPid,
 			String providerPid) {
@@ -156,6 +167,14 @@ public class DataTransferService {
 		return transferProcessCompleted;
 	}
 
+	/**
+	 * Transition data transfer to SUSPENDED state
+	 * @param transferSuspensionMessage message
+	 * @param consumerPid consumerPid in case of consumer callback usage
+	 * @param providerPid providerPid in case of provider usage
+	 * @return TransferProcess with status SUSPENDED
+	 *  
+	 */
 	public TransferProcess suspendDataTransfer(TransferSuspensionMessage transferSuspensionMessage, String consumerPid,
 			String providerPid) {
 		String consumerPidFinal = consumerPid == null ? transferSuspensionMessage.getConsumerPid() : consumerPid;
@@ -173,6 +192,33 @@ public class DataTransferService {
 				.build());
 		publisher.publishEvent(transferSuspensionMessage);
 		return transferProcessSuspended;
+	}
+	
+	/**
+	 * Transition data transfer to TERMINATED state
+	 * @param transferTerminationMessage message
+	 * @param consumerPid consumerPid in case of consumer callback usage
+	 * @param providerPid providerPid in case of provider usage
+	 * @return TransferProcess with status TERMINATED
+	 */
+	public TransferProcess terminateDataTransfer(TransferTerminationMessage transferTerminationMessage, String consumerPid,
+			String providerPid) {
+		String consumerPidFinal = consumerPid == null ? transferTerminationMessage.getConsumerPid() : consumerPid;
+		String providerPidFinal = providerPid == null ? transferTerminationMessage.getProviderPid() : providerPid;
+		log.debug("Terminating data transfer for consumerPid {} and providerPid {}", consumerPidFinal, providerPidFinal);
+
+		// can be in any state except TERMINATED
+		TransferProcess transferProcess = findTransferProcess(consumerPidFinal, providerPidFinal);
+		stateTransitionCheck(transferProcess, TransferState.TERMINATED);
+
+		TransferProcess transferProcessTerminated = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);
+		transferProcessRepository.save(transferProcessTerminated);
+		publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()
+				.oldTransferProcess(transferProcess)
+				.newTransferProcess(transferProcessTerminated)
+				.build());
+		publisher.publishEvent(transferTerminationMessage);
+		return transferProcessTerminated;
 	}
 	
 	private TransferProcess findTransferProcess(String consumerPid, String providerPidFinal) {

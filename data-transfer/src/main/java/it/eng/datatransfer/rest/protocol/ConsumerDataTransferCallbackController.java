@@ -1,6 +1,5 @@
 package it.eng.datatransfer.rest.protocol;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -9,9 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.datatransfer.model.Serializer;
 import it.eng.datatransfer.model.TransferCompletionMessage;
@@ -59,7 +56,9 @@ public class ConsumerDataTransferCallbackController {
 			@RequestBody JsonNode transferTerminationMessageJsonNode) {
 		TransferTerminationMessage transferTerminationMessage = Serializer.deserializeProtocol(transferTerminationMessageJsonNode, TransferTerminationMessage.class);
 		log.info("Terminating data transfer for comsumerPid {} and providerPid {}", consumerPid, transferTerminationMessage.getProviderPid());
-		return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(notImplemented());
+		TransferProcess transferProcessTerminated = dataTransferService.terminateDataTransfer(transferTerminationMessage, consumerPid, null);
+		log.info("TransferProcess {} state changed to {}", transferProcessTerminated.getId(), transferProcessTerminated.getState());
+		return ResponseEntity.ok(null);
 	}
 
 	@PostMapping(path = "/{consumerPid}/suspension")
@@ -70,15 +69,5 @@ public class ConsumerDataTransferCallbackController {
 		TransferProcess transferProcessSuspended = dataTransferService.suspendDataTransfer(transferSuspensionMessage, consumerPid, null);
 		log.info("TransferProcess {} state changed to {}", transferProcessSuspended.getId(), transferProcessSuspended.getState());
 		return ResponseEntity.ok(null);
-	}
-	
-	private JsonNode notImplemented() {
-		ObjectMapper mapper = new ObjectMapper();
-		String newString = "{\"response\": \"Method not implemented\"}";
-	    try {
-			return mapper.readTree(newString);
-		} catch (JsonProcessingException e) {
-		}
-	    return null;
 	}
 }

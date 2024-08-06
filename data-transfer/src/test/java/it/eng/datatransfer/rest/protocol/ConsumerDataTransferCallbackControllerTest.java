@@ -22,6 +22,7 @@ import it.eng.datatransfer.model.Serializer;
 import it.eng.datatransfer.model.TransferCompletionMessage;
 import it.eng.datatransfer.model.TransferStartMessage;
 import it.eng.datatransfer.model.TransferSuspensionMessage;
+import it.eng.datatransfer.model.TransferTerminationMessage;
 import it.eng.datatransfer.service.DataTransferService;
 import it.eng.datatransfer.util.MockObjectUtil;
 import jakarta.validation.ValidationException;
@@ -63,6 +64,7 @@ public class ConsumerDataTransferCallbackControllerTest {
 					Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_START_MESSAGE)));
 	}
 	
+	// complete
 	@Test
 	@DisplayName("Complete TransferProcess")
 	public void completeDataTransfer() {
@@ -87,7 +89,7 @@ public class ConsumerDataTransferCallbackControllerTest {
 		when(dataTransferService.completeDataTransfer(any(TransferCompletionMessage.class), any(String.class), isNull()))
 			.thenThrow(TransferProcessNotFoundException.class);
 		assertThrows(TransferProcessNotFoundException.class, 
-				() -> controller.completeDataTransfer(MockObjectUtil.PROVIDER_PID,
+				() -> controller.completeDataTransfer(MockObjectUtil.CONSUMER_PID,
 				Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_COMPLETION_MESSAGE)));
 	}
 	
@@ -95,9 +97,11 @@ public class ConsumerDataTransferCallbackControllerTest {
 	@Test
 	@DisplayName("Terminate TransferProcess")
 	public void terminateDataTransfer() {
-		assertEquals(HttpStatus.NOT_IMPLEMENTED, 
-				controller.terminateDataTransfer(MockObjectUtil.CONSUMER_PID,
-						Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_TERMINATION_MESSAGE)).getStatusCode());
+		when(dataTransferService.terminateDataTransfer(any(TransferTerminationMessage.class), any(String.class), isNull()))
+			.thenReturn(MockObjectUtil.TRANSFER_PROCESS_TERMINATED);
+		ResponseEntity<JsonNode> response = controller.terminateDataTransfer(MockObjectUtil.CONSUMER_PID,
+				Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_TERMINATION_MESSAGE));
+		assertEquals(HttpStatus.OK, response.getStatusCode());	
 	}
 	
 	@Test
@@ -106,6 +110,16 @@ public class ConsumerDataTransferCallbackControllerTest {
 		assertThrows(ValidationException.class, () ->
 			controller.terminateDataTransfer(MockObjectUtil.CONSUMER_PID, 
 					Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_START_MESSAGE)));
+	}
+	
+	@Test
+	@DisplayName("Terminate TransferProcess - error service")
+	public void terminateDataTransfer_errorService() {
+		when(dataTransferService.terminateDataTransfer(any(TransferTerminationMessage.class), any(String.class), isNull()))
+			.thenThrow(TransferProcessNotFoundException.class);
+		assertThrows(TransferProcessNotFoundException.class, 
+				() -> controller.terminateDataTransfer(MockObjectUtil.CONSUMER_PID,
+				Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_TERMINATION_MESSAGE)));
 	}
 	
 	// suspend transfer
@@ -133,7 +147,7 @@ public class ConsumerDataTransferCallbackControllerTest {
 		when(dataTransferService.suspendDataTransfer(any(TransferSuspensionMessage.class), any(String.class), isNull()))
 			.thenThrow(TransferProcessNotFoundException.class);
 		assertThrows(TransferProcessNotFoundException.class, 
-				() -> controller.suspenseDataTransfer(MockObjectUtil.PROVIDER_PID,
+				() -> controller.suspenseDataTransfer(MockObjectUtil.CONSUMER_PID,
 				Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_SUSPENSION_MESSAGE)));
 	}
 }

@@ -12,10 +12,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
@@ -348,6 +352,86 @@ public class DataTransferServiceTest {
 		
 		assertThrows(TransferProcessInvalidStateException.class, 
 				() -> service.suspendDataTransfer(MockObjectUtil.TRANSFER_SUSPENSION_MESSAGE, null, MockObjectUtil.PROVIDER_PID));
+		verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
+	}
+	
+	private static Stream<Arguments> provideTransferProcess() {
+	    return Stream.of(
+	      Arguments.of(MockObjectUtil.TRANSFER_PROCESS_REQUESTED),
+	      Arguments.of(MockObjectUtil.TRANSFER_PROCESS_STARTED),
+	      Arguments.of(MockObjectUtil.TRANSFER_PROCESS_SUSPENDED)
+	    );
+	}
+	
+	// terminate
+	@DisplayName("TransferTerminationMessage - provider")
+	@ParameterizedTest
+	@MethodSource("provideTransferProcess")
+	public void terminateDataTransfer_provider(TransferProcess input) {
+		when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+			.thenReturn(Optional.of(input));
+		
+		TransferProcess transferProcessSuspended = service.terminateDataTransfer(MockObjectUtil.TRANSFER_TERMINATION_MESSAGE, 
+				null, MockObjectUtil.PROVIDER_PID);
+		
+		assertEquals(TransferState.TERMINATED, transferProcessSuspended.getState());
+		verify(transferProcessRepository).save(argTransferProcess.capture());
+		assertEquals(TransferState.TERMINATED, argTransferProcess.getValue().getState());
+	}
+	
+	@DisplayName("TransferTerminationMessage - consumer callback")
+	@ParameterizedTest
+	@MethodSource("provideTransferProcess")
+	public void terminateDataTransfer_consumer(TransferProcess input) {
+		when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+			.thenReturn(Optional.of(input));
+		
+		TransferProcess transferProcessSuspended = service.terminateDataTransfer(MockObjectUtil.TRANSFER_TERMINATION_MESSAGE,
+				MockObjectUtil.CONSUMER_PID, null);
+		
+		assertEquals(TransferState.TERMINATED, transferProcessSuspended.getState());
+		verify(transferProcessRepository).save(argTransferProcess.capture());
+		assertEquals(TransferState.TERMINATED, argTransferProcess.getValue().getState());
+	}
+	
+	@Test
+	@DisplayName("TransferTerminationMessage - transfer process not found - provider")
+	public void terminateDataTransfer_tpNotFound_provider() {
+		when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+			.thenReturn(Optional.empty());
+		
+		assertThrows(TransferProcessNotFoundException.class, 
+				() -> service.terminateDataTransfer(MockObjectUtil.TRANSFER_TERMINATION_MESSAGE, null, MockObjectUtil.PROVIDER_PID));
+		verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
+	}
+	
+	@Test
+	@DisplayName("TransferTerminationMessage - transfer process not found - consumer callback")
+	public void terminateDataTransfer_tpNotFound_consumer() {
+		when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+			.thenReturn(Optional.empty());
+		
+		assertThrows(TransferProcessNotFoundException.class, 
+				() -> service.terminateDataTransfer(MockObjectUtil.TRANSFER_TERMINATION_MESSAGE, MockObjectUtil.CONSUMER_PID, null));
+		verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
+	}
+	
+	private static Stream<Arguments> provideInvalidTransferProcess() {
+	    return Stream.of(
+	      Arguments.of(MockObjectUtil.TRANSFER_PROCESS_COMPLETED),
+	      Arguments.of(MockObjectUtil.TRANSFER_PROCESS_TERMINATED)
+	    );
+	}
+	
+	@DisplayName("TransferTerminationMessage - invalid state")
+	@ParameterizedTest
+	@MethodSource("provideInvalidTransferProcess")
+	public void terminateDataTransfer_invalidState(TransferProcess input) {
+		when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+			.thenReturn(Optional.of(input));
+		
+		assertThrows(TransferProcessInvalidStateException.class, 
+				() -> service.terminateDataTransfer(MockObjectUtil.TRANSFER_TERMINATION_MESSAGE, null, MockObjectUtil.PROVIDER_PID));
 		verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
 	}
 }
