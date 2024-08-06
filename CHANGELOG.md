@@ -12,22 +12,7 @@ All notable changes to this project will be documented in this file.
  - Postman collection for testing endpoints	
  - Configured GitHub actions to run tests
  
-## [0.0.1] - 02-08-2024
-
-### Added
- 
- - New catalog API exceptions
- 
-### Changed
-
- - Catalog API exceptions now wrapped in GenericApiResponse
- 
-### Removed
-
- - Status code from GenericApiResponse
- 
-
-## [0.0.1] - 02-08-2024
+## [0.0.1] - 06-08-2024
 
 ### Added
 
@@ -41,6 +26,20 @@ All notable changes to this project will be documented in this file.
  - Updated GitHub action to include suspend message in transfer artifact
  - SFTP server starting on event published (TransferStartMessage from TransferRequestMessage.foramt=example:SFTP
  
+## [0.0.1] - 02-08-2024
+
+### Added
+ 
+ - New catalog API exceptions
+ 
+### Changed
+
+ - Catalog API exceptions now wrapped in GenericApiResponse
+ 
+### Removed
+
+ - Status code from GenericApiResponse
+
 ## [0.0.1] - 30-07-2024
 
 ### Added
