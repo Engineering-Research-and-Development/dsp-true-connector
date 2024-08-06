@@ -37,11 +37,21 @@ public class ApplicationPropertiesService {
 		return Sort.by("id");
 	}
 
+	/**
+	 * Constructor
+	 * @param repository ApplicationPropertiesRepository
+	 * @param env Environment
+	 */
 	public ApplicationPropertiesService(ApplicationPropertiesRepository repository, Environment env) {
 		this.repository = repository;
 		this.env = env;
 	}
 
+	/**
+	 * Get all properties by jey_prefix
+	 * @param key_prefix filter
+	 * @return List of ApplicationProperty
+	 */
 	public List<ApplicationProperty> getProperties(String key_prefix) {
 
 		List<ApplicationProperty> allProperties = null;
@@ -59,6 +69,11 @@ public class ApplicationPropertiesService {
 		}
 	}
 
+	/**
+	 * Get ApplicationProperty by key
+	 * @param key identifier
+	 * @return ApplicationProperty
+	 */
 	public Optional<ApplicationProperty> getPropertyByKey(String key) {
 		Optional<ApplicationProperty> propertyByMongo = repository.findById(key);
 		if(propertyByMongo.isEmpty()) {
@@ -86,6 +101,12 @@ public class ApplicationPropertiesService {
 		return repository.save(property);
 	}
 
+	/**
+	 * Update application property
+	 * @param property new ApplicationProperty value
+	 * @param oldOne old ApplicationProperty
+	 * @return updated ApplicationProperty
+	 */
 	public ApplicationProperty updateProperty(ApplicationProperty property, ApplicationProperty oldOne) {
 
 		ApplicationProperty.Builder builder = returnBaseApplicationPropertyForUpdate(oldOne.getKey());
@@ -119,13 +140,13 @@ public class ApplicationPropertiesService {
 	 * public void deleteProperty(String name) { repository.deleteById(name); }
 	 */
 
-	/**
-	 * Private method for creating base builder for application property update by its ID.
-	 *
-	 * @param id The ID of the application property for update.
-	 * @return The builder for the application property  with basic mandatory unchanged fields.
-	 * @throws ApplicationPropertyErrorException Thrown if the application property  with the specified ID is not found.
-	 */
+//	/**
+//	 * Private method for creating base builder for application property update by its ID.
+//	 *
+//	 * @param id The ID of the application property for update.
+//	 * @return The builder for the application property  with basic mandatory unchanged fields.
+//	 * @throws ApplicationPropertyErrorException Thrown if the application property  with the specified ID is not found.
+//	 */
 	/*
 	 * public void updateProperty(String key, String value) {
 	 *
@@ -195,6 +216,12 @@ public class ApplicationPropertiesService {
 		return env.getProperty(key);
 	}*/
 
+	/**
+	 * addPropertyOnEnv
+	 * @param key property key
+	 * @param value property value
+	 * @param environment environment for updating
+	 */
 	public void addPropertyOnEnv(String key, Object value, Environment environment) {
 		///if(environment != null) {
 			ConfigurableEnvironment configurableEnvironment = (ConfigurableEnvironment) environment;
@@ -215,6 +242,11 @@ public class ApplicationPropertiesService {
 			log.info(key + "=" + environment.getProperty(key));
 	}
 
+	/**
+	 * Get property from env
+	 * @param key identifier
+	 * @return property
+	 */
 	public String get(String key) {
 		return env.getProperty(key);
 	}

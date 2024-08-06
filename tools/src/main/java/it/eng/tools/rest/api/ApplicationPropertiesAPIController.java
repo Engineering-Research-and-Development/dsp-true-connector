@@ -23,6 +23,9 @@ import it.eng.tools.model.Serializer;
 import it.eng.tools.service.ApplicationPropertiesService;
 import lombok.extern.java.Log;
 
+/**
+ * Controller for managing application properties; get and update
+ */
 @RestController
 @RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/api/properties")
 @Log
@@ -32,16 +35,22 @@ public class ApplicationPropertiesAPIController {
 
 	private final ApplicationPropertiesService propertiesService;
 
+	/**
+	 * Constructor
+	 * @param service ApplicationPropertiesService
+	 * @param applicationEventPublisher ApplicationEventPublisher
+	 */
 	public ApplicationPropertiesAPIController(ApplicationPropertiesService service, ApplicationEventPublisher applicationEventPublisher) {
 		super();
 		this.propertiesService = service;
 		this.applicationEventPublisher = applicationEventPublisher;
 	}
 
-	/*
-	 * @Autowired private Environment environment;
+	/**
+	 * GET properties by prefix
+	 * @param key_prefix prefix to filter
+	 * @return List of properties
 	 */
-
 	@GetMapping(path = "/")
 	public ResponseEntity<List<JsonNode>> getProperties(@RequestParam(required = false) String key_prefix) {
 		log.info("getProperties()");
@@ -54,6 +63,11 @@ public class ApplicationPropertiesAPIController {
 				.body(Serializer.serializeProtocolListOfJsonNode(properties));
 	}
 
+	/**
+	 * Get property by key
+	 * @param key property key/id
+	 * @return property
+	 */
 	@GetMapping(path = "/{key}")
 	public ResponseEntity<JsonNode> getPropertyByKey(@PathVariable String key) {
 		log.info("Fetching property with key " + key);
@@ -65,6 +79,11 @@ public class ApplicationPropertiesAPIController {
 				.body(Serializer.serializeProtocolJsonNode(property));
 	}
 
+	/**
+	 * Update property
+	 * @param property updated property for persisting
+	 * @return Response
+	 */
 	@PutMapping(path = "/")
 	public ResponseEntity<JsonNode> modifyProperty(@RequestBody ApplicationProperty property) {
 		log.info("modifyProperty(...) ");

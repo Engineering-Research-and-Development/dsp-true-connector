@@ -51,7 +51,6 @@ public class DatasetService {
      */
     public Dataset getDatasetByIdForApi(String id) {
         return repository.findById(id).orElseThrow(() -> new ResourceNotFoundAPIException("Data Set with id: " + id + " not found"));
-
     }
 
     /**

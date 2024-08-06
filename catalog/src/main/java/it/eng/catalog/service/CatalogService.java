@@ -56,7 +56,7 @@ public class CatalogService {
     /********* API ***********/
     
     /**
-	 * Private method for fetching the catalog for further API processing purposes
+	 * Public method for fetching the catalog for further API processing purposes
 	 * It throws ResourceNotFoundAPIException instead of CatalogErrorException used in protocol requests
 	 * 
 	 * @return Catalog
@@ -70,6 +70,10 @@ public class CatalogService {
         } else {
             return allCatalogs.get(0);
         }
+    }
+	
+    private Catalog getCatalogByIdForApi(String id) {
+        return repository.findById(id).orElseThrow(() -> new ResourceNotFoundAPIException("Catalog with id: " + id + " not found"));
     }
 
     /**
@@ -111,8 +115,20 @@ public class CatalogService {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			throw new InternalServerErrorAPIException("Catalog could not be deleted");
-
 		}
+	}
+	
+	public Catalog updateCatalog(String id, Catalog cat) {
+		Catalog existingCatalog = getCatalogByIdForApi(id);
+		Catalog storedCatalog = null;;
+		try {
+			Catalog updatedCatalog= existingCatalog.updateInstance(cat);
+			storedCatalog = repository.save(updatedCatalog);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			throw new InternalServerErrorAPIException("Catalog could not be updated");
+		}
+        return storedCatalog;
 	}
 
 	@Deprecated
@@ -124,43 +140,6 @@ public class CatalogService {
                 offerRequest.getProviderPid(), valid, Serializer.serializeProtocolJsonNode(offer));
         publisher.publishEvent(contractNegotiationOfferResponse);
     }
-
-
-    /**
-     * Updates the catalog with the specified ID using the updated data.
-     *
-     * @param id                 The ID of the catalog to update.
-     * @param updatedCatalogData The updated catalog data.
-     */
-    public Catalog updateCatalog(String id, Catalog updatedCatalogData) {
-
-        Catalog.Builder builder = returnBaseCatalogForUpdate(id);
-        Catalog storedCatalog = null;
-		try {
-			builder
-			        .keyword(updatedCatalogData.getKeyword())
-			        .theme(updatedCatalogData.getTheme())
-			        .conformsTo(updatedCatalogData.getConformsTo())
-			        .description(updatedCatalogData.getDescription())
-			        .identifier(updatedCatalogData.getIdentifier())
-			        .title(updatedCatalogData.getTitle())
-			        .distribution(updatedCatalogData.getDistribution())
-			        .hasPolicy(updatedCatalogData.getHasPolicy())
-			        .dataset(updatedCatalogData.getDataset())
-			        .service(updatedCatalogData.getService())
-			        .participantId(updatedCatalogData.getParticipantId())
-			        .creator(updatedCatalogData.getCreator())
-			        .homepage(updatedCatalogData.getHomepage());
-
-			Catalog updatedCatalog = builder.build();
-			storedCatalog = saveCatalog(updatedCatalog);
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-			throw new InternalServerErrorAPIException("Could not update catalog");
-		}
-        return storedCatalog;
-    }
-
 
     /**
      * Updates the catalog with a newly saved dataset reference.
@@ -268,21 +247,5 @@ public class CatalogService {
 		}
 		log.info("Offer evaluated as {}", valid ? "valid" : "invalid");
 		return valid;
-	}
-	/**
-	 * Private method for creating base builder for catalog update by its ID.
-	 *
-	 * @param id The ID of the catalog for update.
-	 * @return The builder for the catalog with basic mandatory unchanged fields.
-	 * @throws CatalogErrorException Thrown if the catalog with the specified ID is not found.
-	 */
-	private Catalog.Builder returnBaseCatalogForUpdate(String id) {
-		return repository.findById(id)
-				.map(c -> Catalog.Builder.newInstance()
-						.id(c.getId())
-						.version(c.getVersion())
-						.issued(c.getIssued())
-						.createdBy(c.getCreatedBy()))
-				.orElseThrow(() -> new ResourceNotFoundAPIException("Catalog with id: " + id + " not found"));
 	}
 }

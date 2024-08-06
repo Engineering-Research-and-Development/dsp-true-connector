@@ -257,4 +257,33 @@ public class Catalog extends AbstractCatalogObject {
     public String getType() {
         return DSpaceConstants.DCAT + Catalog.class.getSimpleName();
     }
+    
+    /**
+     * Create new updated instance with new values from passed Catalog parameter<br>
+     * If fields are not present in updatedCatalogData, existing values will remain
+     * @param updatedCatalogData
+     * @return
+     */
+    public Catalog updateInstance(Catalog updatedCatalogData) {
+			return Catalog.Builder.newInstance()
+					.id(this.id)
+			        .version(this.version)
+			        .issued(this.issued)
+			        .createdBy(this.createdBy)
+			        .keyword(updatedCatalogData.getKeyword() != null ? updatedCatalogData.getKeyword() : this.keyword)
+			        .theme(updatedCatalogData.getTheme() != null ? updatedCatalogData.getTheme() : this.theme)
+			        .conformsTo(updatedCatalogData.getConformsTo() != null ? updatedCatalogData.getConformsTo() : this.conformsTo)
+			        .creator(updatedCatalogData.getCreator() != null ? updatedCatalogData.getCreator() : this.creator)
+			        .description(updatedCatalogData.getDescription() != null ? updatedCatalogData.getDescription() : this.description)
+			        .identifier(updatedCatalogData.getIdentifier() != null ? updatedCatalogData.getIdentifier() : this.identifier)
+			        .title(updatedCatalogData.getTitle() != null ? updatedCatalogData.getTitle() : this.title)
+			        .distribution(updatedCatalogData.getDistribution() != null ? updatedCatalogData.getDistribution() : this.distribution)
+			        .hasPolicy(updatedCatalogData.getHasPolicy() != null ? updatedCatalogData.getHasPolicy() : this.hasPolicy)
+			        .dataset(updatedCatalogData.getDataset() != null ? updatedCatalogData.getDataset() : this.dataset)
+			        .service(updatedCatalogData.getService() != null ? updatedCatalogData.getService() : this.service)
+			        .participantId(updatedCatalogData.getParticipantId() != null ? updatedCatalogData.getParticipantId() : this.participantId)
+			        .creator(updatedCatalogData.getCreator() != null ? updatedCatalogData.getCreator() : this.creator)
+			        .homepage(updatedCatalogData.getHomepage() != null ? updatedCatalogData.getHomepage() : this.homepage)
+			        .build();
+    }
 }

@@ -17,6 +17,10 @@ public abstract class AbstractCatalogObject {
      * side and the consumer selects an appropriate consumerPid
      */
 
+    /**
+     * Return Dataspace protocol @type
+     * @return
+     */
     @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
     public abstract String getType();
 

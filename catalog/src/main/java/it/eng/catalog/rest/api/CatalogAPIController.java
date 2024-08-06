@@ -78,7 +78,7 @@ public class CatalogAPIController {
         Catalog c = Serializer.deserializePlain(catalog, Catalog.class);
 
         log.info("Updating catalog with id: " + id);
-
+        
         Catalog updatedCatalog = catalogService.updateCatalog(id, c);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
