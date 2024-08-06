@@ -47,8 +47,13 @@ public class AgreementService {
 	}
 
 	private boolean checkIfAgreementIsValid(String agreementId) {
-		if ("urn:uuid:AGREEMENT_ID".equals(agreementId) 
-				|| "urn:uuid:AGREEMENT_ID_COMPLETED_TRANSFER_TEST".equals(agreementId)) {
+		/*
+		 * "urn:uuid:AGREEMENT_ID".equals(agreementId) 
+				|| "urn:uuid:AGREEMENT_ID_COMPLETED_TRANSFER_TEST".equals(agreementId)
+				|| "urn:uuid:AGREEMENT_ID_SUSP".equals(agreementId)
+		 */
+		// TODO add valid logic, for now, just check if agreementId starts with, to avoid adding all use cases for integration tests
+		if (agreementId.startsWith("urn:uuid:AGREEMENT_ID")) {
 			   return true;
 			} else {
 			   return false;

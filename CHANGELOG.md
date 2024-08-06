@@ -12,6 +12,20 @@ All notable changes to this project will be documented in this file.
  - Postman collection for testing endpoints	
  - Configured GitHub actions to run tests
  
+## [0.0.1] - 06-08-2024
+
+### Added
+
+ - TransferSuspensionMessage message provider and consumer callback logic (plus junit and integration tests)
+ - Added TransferProcessChangeEvent and listener to log transition change
+ - DataTransferEventListener - placeholder logic for manipulating data transfers (start/stop/suspend)
+ - DataTransferFormat enum
+ 
+### Changed
+
+ - Updated GitHub action to include suspend message in transfer artifact
+ - SFTP server starting on event published (TransferStartMessage from TransferRequestMessage.foramt=example:SFTP
+ 
 ## [0.0.1] - 02-08-2024
 
 ### Added
@@ -25,7 +39,6 @@ All notable changes to this project will be documented in this file.
 ### Removed
 
  - Status code from GenericApiResponse
- 
 
 ## [0.0.1] - 30-07-2024
 

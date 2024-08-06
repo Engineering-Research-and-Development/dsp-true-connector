@@ -26,6 +26,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import it.eng.datatransfer.config.AuthenticatorTestUtil;
 import it.eng.datatransfer.config.TestSSLConfiguration;
+import it.eng.datatransfer.event.StartFTPServerEvent;
 import it.eng.datatransfer.ftp.configuration.FTPConfiguration;
 import it.eng.datatransfer.ftp.server.FTPAuthenticator;
 import it.eng.datatransfer.ftp.server.FTPServer;
@@ -97,7 +98,8 @@ public class FTPServerTestUtil {
 		when(ftpConfiguration.getServerPort()).thenReturn(2222);
 		when(ftpConfiguration.getDefaultTimeoutSeconds()).thenReturn(1000L);
 		when(ftpConfiguration.getServerFolder()).thenReturn("src/test/resources/ftp_server");
-		new FTPServer(globalSSLConfiguration, authenitcatorTestUtil, ftpConfiguration);
+		new FTPServer(globalSSLConfiguration, authenitcatorTestUtil, ftpConfiguration).start(new StartFTPServerEvent());
+		
 	}
 	
 }

@@ -31,6 +31,7 @@ import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
+import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.datatransfer.util.MockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.response.GenericApiResponse;
@@ -41,6 +42,8 @@ public class DataTransferServiceTest {
 
 	@Mock
 	private TransferProcessRepository transferProcessRepository;
+	@Mock
+	private TransferRequestMessageRepository transferRequestMessageRepository;
 	@Mock
 	private ApplicationEventPublisher publisher;
 	@Mock
@@ -228,7 +231,7 @@ public class DataTransferServiceTest {
 	// TransferCompletionMessage
 	@Test
 	@DisplayName("TransferCompletionMessage from STARTED - provider")
-	public void completeDataTransfer_fromRequested_provider() {
+	public void completeDataTransfer_fromStarted_provider() {
 		when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
 			.thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_STARTED));
 		
@@ -241,7 +244,7 @@ public class DataTransferServiceTest {
 	
 	@Test
 	@DisplayName("TransferCompletionMessage from STARTED - consumer callback")
-	public void completeDataTransfer_fromRequested_consumer() {
+	public void completeDataTransfer_fromStarted_consumer() {
 		when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
 			.thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_STARTED));
 		
@@ -283,6 +286,68 @@ public class DataTransferServiceTest {
 		
 		assertThrows(TransferProcessInvalidStateException.class, 
 				() -> service.completeDataTransfer(MockObjectUtil.TRANSFER_COMPLETION_MESSAGE, null, MockObjectUtil.PROVIDER_PID));
+		verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
+	}
+	
+	// suspend
+	@Test
+	@DisplayName("TransferSuspensionMessage from STARTED - provider")
+	public void suspendDataTransfer_fromStarted_provider() {
+		when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+			.thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_STARTED));
+		
+		TransferProcess transferProcessSuspended = service.suspendDataTransfer(MockObjectUtil.TRANSFER_SUSPENSION_MESSAGE, 
+				null, MockObjectUtil.PROVIDER_PID);
+		
+		assertEquals(TransferState.SUSPENDED, transferProcessSuspended.getState());
+		verify(transferProcessRepository).save(argTransferProcess.capture());
+		assertEquals(TransferState.SUSPENDED, argTransferProcess.getValue().getState());
+	}
+	
+	@Test
+	@DisplayName("TransferSuspensionMessage from STARTED - consumer callback")
+	public void suspendDataTransfer_fromStarted_consumer() {
+		when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+			.thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_STARTED));
+		
+		TransferProcess transferProcessSuspended = service.suspendDataTransfer(MockObjectUtil.TRANSFER_SUSPENSION_MESSAGE,
+				MockObjectUtil.CONSUMER_PID, null);
+		
+		assertEquals(TransferState.SUSPENDED, transferProcessSuspended.getState());
+		verify(transferProcessRepository).save(argTransferProcess.capture());
+		assertEquals(TransferState.SUSPENDED, argTransferProcess.getValue().getState());
+	}
+	
+	@Test
+	@DisplayName("TransferSuspensionMessage - transfer process not found - provider")
+	public void suspendDataTransfer_tpNotFound_provider() {
+		when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+			.thenReturn(Optional.empty());
+		
+		assertThrows(TransferProcessNotFoundException.class, 
+				() -> service.suspendDataTransfer(MockObjectUtil.TRANSFER_SUSPENSION_MESSAGE, null, MockObjectUtil.PROVIDER_PID));
+		verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
+	}
+	
+	@Test
+	@DisplayName("TransferSuspensionMessage - transfer process not found - consumer callback")
+	public void suspendDataTransfer_tpNotFound_consumer() {
+		when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+			.thenReturn(Optional.empty());
+		
+		assertThrows(TransferProcessNotFoundException.class, 
+				() -> service.suspendDataTransfer(MockObjectUtil.TRANSFER_SUSPENSION_MESSAGE, MockObjectUtil.CONSUMER_PID, null));
+		verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
+	}
+	
+	@Test
+	@DisplayName("TransferSuspensionMessage - invalid state")
+	public void suspendDataTransfer_invalidState() {
+		when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+			.thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_REQUESTED));
+		
+		assertThrows(TransferProcessInvalidStateException.class, 
+				() -> service.suspendDataTransfer(MockObjectUtil.TRANSFER_SUSPENSION_MESSAGE, null, MockObjectUtil.PROVIDER_PID));
 		verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
 	}
 }

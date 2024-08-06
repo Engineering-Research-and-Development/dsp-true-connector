@@ -12,8 +12,11 @@ import org.apache.sshd.server.SshServer;
 import org.apache.sshd.server.auth.keyboard.KeyboardInteractiveAuthenticator;
 import org.apache.sshd.server.auth.pubkey.PublickeyAuthenticator;
 import org.apache.sshd.sftp.server.SftpSubsystemFactory;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
+import it.eng.datatransfer.event.StartFTPServerEvent;
+import it.eng.datatransfer.event.StopFTPServerEvent;
 import it.eng.datatransfer.ftp.configuration.FTPConfiguration;
 import it.eng.tools.configuration.GlobalSSLConfiguration;
 import jakarta.annotation.PreDestroy;
@@ -34,10 +37,11 @@ public class FTPServer {
 		this.sslConfiguration = sslConfiguration;
 		this.ftpConfiguration = ftpConfiguration;
 		this.authenticator = authenticator;
-		start();
+//		start();
 	}
 
-	private void start() throws IOException, URISyntaxException {
+	@EventListener
+	public void start(StartFTPServerEvent startFtpEvent) throws IOException, URISyntaxException {
 		log.info("Starting SFTP server...");
 		sshd = SshServer.setUpDefaultServer();
 		sshd.setPort(ftpConfiguration.getServerPort());
@@ -58,9 +62,18 @@ public class FTPServer {
 		log.info("SFTP server started");
 	}
 	
+	@EventListener
+	public void shutdown(StopFTPServerEvent stopFtpEvent) throws IOException {
+		shutdownFtp();
+	}
+
 	@PreDestroy
-	public void shutdown() throws IOException {
-		log.info("Shutting down SFTP server...");
-		sshd.stop();
+	public void shutdownFtp() throws IOException {
+		if(sshd != null && sshd.isStarted()) {
+			sshd.stop();
+			log.info("Shutting down SFTP server...");
+		} else {
+			log.info("FTP not started - not stopping it");
+		}
 	}
 }

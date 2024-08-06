@@ -85,7 +85,9 @@ public class ProviderDataTransferController {
 			@RequestBody JsonNode transferSuspensionMessageJsonNode) {
 		TransferSuspensionMessage transferSuspensionMessage = Serializer.deserializeProtocol(transferSuspensionMessageJsonNode, TransferSuspensionMessage.class);
 		log.info("Suspending data transfer for providerPid {} and consumerPid {}", providerPid, transferSuspensionMessage.getConsumerPid());
-		return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(notImplemented());
+		TransferProcess transferProcessSuspended = dataTransferService.suspendDataTransfer(transferSuspensionMessage, null, providerPid);
+		log.info("TransferProcess {} state changed to {}", transferProcessSuspended.getId(), transferProcessSuspended.getState());
+		return ResponseEntity.ok(null);
 	}
 	
 	

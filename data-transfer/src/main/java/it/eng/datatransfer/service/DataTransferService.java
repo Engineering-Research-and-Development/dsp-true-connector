@@ -5,6 +5,7 @@ import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
+import it.eng.datatransfer.event.TransferProcessChangeEvent;
 import it.eng.datatransfer.exceptions.AgreementNotFoundException;
 import it.eng.datatransfer.exceptions.TransferProcessExistsException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
@@ -15,8 +16,10 @@ import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferRequestMessage;
 import it.eng.datatransfer.model.TransferStartMessage;
 import it.eng.datatransfer.model.TransferState;
+import it.eng.datatransfer.model.TransferSuspensionMessage;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
+import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
@@ -28,17 +31,21 @@ import lombok.extern.slf4j.Slf4j;
 public class DataTransferService {
 
 	private final TransferProcessRepository transferProcessRepository;
+	private final TransferRequestMessageRepository transferRequestMessageRepository;
 	private final ApplicationEventPublisher publisher;
 	
 	private final OkHttpRestClient okHttpRestClient;
 	private final CredentialUtils credentialUtils;
 	private final DataTransferProperties properties;
 	
-	public DataTransferService(TransferProcessRepository transferProcessRepository, ApplicationEventPublisher publisher, 
+	public DataTransferService(TransferProcessRepository transferProcessRepository, 
+			TransferRequestMessageRepository transferRequestMessageRepository,
+			ApplicationEventPublisher publisher, 
 			OkHttpRestClient okHttpRestClient,
 			CredentialUtils credentialUtils, DataTransferProperties properties) {
 		super();
 		this.transferProcessRepository = transferProcessRepository;
+		this.transferRequestMessageRepository = transferRequestMessageRepository;
 		this.publisher = publisher;
 		this.okHttpRestClient = okHttpRestClient;
 		this.credentialUtils = credentialUtils;
@@ -81,6 +88,7 @@ public class DataTransferService {
 		}
 		
 		// TODO save also transferRequestMessage once we implement provider push data - will need information where to push
+		transferRequestMessageRepository.save(transferRequestMessage);
 		
 		TransferProcess transferProcessRequested = TransferProcess.Builder.newInstance()
 				.agreementId(transferRequestMessage.getAgreementId())
@@ -113,7 +121,12 @@ public class DataTransferService {
 
 		TransferProcess transferProcessStarted = transferProcessRequested.copyWithNewTransferState(TransferState.STARTED);
 		transferProcessRepository.save(transferProcessStarted);
-		publisher.publishEvent(transferProcessStarted);
+		publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()
+				.oldTransferProcess(transferProcessRequested)
+				.newTransferProcess(transferProcessStarted)
+				.build());
+		// TODO check how to handle this on consumer side!!!
+		publisher.publishEvent(transferStartMessage);
 		return transferProcessStarted;
 	}
 	
@@ -135,11 +148,33 @@ public class DataTransferService {
 
 		TransferProcess transferProcessCompleted = transferProcessStarted.copyWithNewTransferState(TransferState.COMPLETED);
 		transferProcessRepository.save(transferProcessCompleted);
-		publisher.publishEvent(transferProcessCompleted);
+		publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()
+				.oldTransferProcess(transferProcessStarted)
+				.newTransferProcess(transferProcessCompleted)
+				.build());
+		publisher.publishEvent(transferCompletionMessage);
 		return transferProcessCompleted;
-
 	}
 
+	public TransferProcess suspendDataTransfer(TransferSuspensionMessage transferSuspensionMessage, String consumerPid,
+			String providerPid) {
+		String consumerPidFinal = consumerPid == null ? transferSuspensionMessage.getConsumerPid() : consumerPid;
+		String providerPidFinal = providerPid == null ? transferSuspensionMessage.getProviderPid() : providerPid;
+		log.debug("Suspending data transfer for consumerPid {} and providerPid {}", consumerPidFinal, providerPidFinal);
+
+		TransferProcess transferProcessStarted = findTransferProcess(consumerPidFinal, providerPidFinal);
+		stateTransitionCheck(transferProcessStarted, TransferState.SUSPENDED);
+
+		TransferProcess transferProcessSuspended = transferProcessStarted.copyWithNewTransferState(TransferState.SUSPENDED);
+		transferProcessRepository.save(transferProcessSuspended);
+		publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()
+				.oldTransferProcess(transferProcessStarted)
+				.newTransferProcess(transferProcessSuspended)
+				.build());
+		publisher.publishEvent(transferSuspensionMessage);
+		return transferProcessSuspended;
+	}
+	
 	private TransferProcess findTransferProcess(String consumerPid, String providerPidFinal) {
 		TransferProcess transferProcessRequested = transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPidFinal)
 			.orElseThrow(() -> new TransferProcessNotFoundException("Transfer process for consumerPid " + consumerPid
