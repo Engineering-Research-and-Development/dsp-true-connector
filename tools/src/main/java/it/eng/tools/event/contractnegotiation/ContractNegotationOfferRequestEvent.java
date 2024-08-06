@@ -6,7 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 /**
- * Used in automatic negotiation to send offer from negotiation module to catalog for evaluation</br>
+ * Used in automatic negotiation to send offer from negotiation module to catalog for evaluation<br>
  * Serialized offer from negotiation will be deserialized into catalog offer and compared with one from catalog.
  *
  */

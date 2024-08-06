@@ -53,7 +53,7 @@ public class ContractRequestMessageTest {
 		assertFalse(result.contains(DSpaceConstants.TYPE));
 		assertFalse(result.contains(DSpaceConstants.ID));
 		assertTrue(result.contains(DSpaceConstants.CONSUMER_PID));
-		assertFalse(result.contains(DSpaceConstants.PROVIDER_PID));
+		assertTrue(result.contains(DSpaceConstants.PROVIDER_PID));
 		assertTrue(result.contains(DSpaceConstants.CALLBACK_ADDRESS));
 	}
 	

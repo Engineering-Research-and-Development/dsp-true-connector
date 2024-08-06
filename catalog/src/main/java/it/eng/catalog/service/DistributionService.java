@@ -1,17 +1,21 @@
 
 package it.eng.catalog.service;
 
-import it.eng.catalog.exceptions.DistributionNotFoundAPIException;
-import it.eng.catalog.model.Distribution;
-import it.eng.catalog.repository.DistributionRepository;
+import java.util.Collection;
+
 import org.springframework.stereotype.Service;
 
-import java.util.Collection;
+import it.eng.catalog.exceptions.InternalServerErrorAPIException;
+import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
+import it.eng.catalog.model.Distribution;
+import it.eng.catalog.repository.DistributionRepository;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * The DistributionService class provides methods to interact with Distribution data, including saving, retrieving, and deleting distributions.
  */
 @Service
+@Slf4j
 public class DistributionService {
 
     private final DistributionRepository repository;
@@ -30,7 +34,7 @@ public class DistributionService {
      * @throws DistributionNotFoundAPIException if no distribution is found with the provided ID
      */
     public Distribution getDistributionById(String id) {
-        return repository.findById(id).orElseThrow(() -> new DistributionNotFoundAPIException("Distribution with id: " + id + " not found"));
+        return repository.findById(id).orElseThrow(() -> new ResourceNotFoundAPIException("Distribution with id: " + id + " not found"));
     }
 
     /**
@@ -46,9 +50,17 @@ public class DistributionService {
      * Saves a distribution to the repository and updates the catalog.
      *
      * @param distribution the distribution to be saved
+     * @return saved distribution
+     * @throws InternalServerErrorAPIException if saving fails
      */
     public Distribution saveDistribution(Distribution distribution) {
-        Distribution savedDistribution = repository.save(distribution);
+        Distribution savedDistribution = null;
+		try {
+			savedDistribution = repository.save(distribution);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			throw new InternalServerErrorAPIException("Distribution could not be deleted");
+		}
         catalogService.updateCatalogDistributionAfterSave(savedDistribution);
         return distribution;
     }
@@ -57,24 +69,39 @@ public class DistributionService {
      * Deletes a distribution by its ID and updates the catalog.
      *
      * @param id the unique ID of the distribution to be deleted
-     * @throws DistributionNotFoundAPIException if no distribution is found with the provided ID
+     * @throws ResourceNotFoundAPIException if no distribution is found with the provided ID
+     * @throws InternalServerErrorAPIException if deleting fails
      */
     public void deleteDistribution(String id) {
         Distribution distribution = getDistributionById(id);
-        repository.delete(distribution);
+        try {
+			repository.deleteById(id);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			throw new InternalServerErrorAPIException("Distribution could not be deleted");
+		}
         catalogService.updateCatalogDistributionAfterDelete(distribution);
     }
 
     /**
-     * Updates a distribution in the repository and updates the catalog.
+     * Updates a distribution in the repository.
      *
+     * @param id          the unique ID of the distribution to be updated
      * @param distribution the distribution to be updated
+     * @return the updated distribution
+     * @throws ResourceNotFoundAPIException if no distribution is found with the provided ID
+     * @throws InternalServerErrorAPIException if updating fails
      */
     public Distribution updateDistribution(String id, Distribution distribution) {
-
-        Distribution existingDistribution = repository.findById(id).orElseThrow(() -> new DistributionNotFoundAPIException("Distribution with id: " + id + " not found"));
-        Distribution updatedDistribution = Distribution.Builder.updateInstance(existingDistribution, distribution).build();
-        Distribution storedDistribution = repository.save(updatedDistribution);
+        Distribution existingDistribution = getDistributionById(id);
+        Distribution storedDistribution;
+		try {
+			Distribution updatedDistribution = existingDistribution.updateInstance(distribution);
+			storedDistribution = repository.save(updatedDistribution);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			throw new InternalServerErrorAPIException("Dataset could not be updated");
+		}
 
         return storedDistribution;
     }

@@ -1,22 +1,31 @@
 package it.eng.catalog.service;
 
-import it.eng.catalog.exceptions.DatasetNotFoundAPIException;
-import it.eng.catalog.model.Dataset;
-import it.eng.catalog.repository.DatasetRepository;
-import it.eng.catalog.util.MockObjectUtil;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.Optional;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import it.eng.catalog.exceptions.CatalogErrorException;
+import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
+import it.eng.catalog.model.Dataset;
+import it.eng.catalog.repository.DatasetRepository;
+import it.eng.catalog.util.MockObjectUtil;
 
 @ExtendWith(MockitoExtension.class)
 public class DatasetServiceTest {
@@ -26,13 +35,30 @@ public class DatasetServiceTest {
 
     @Mock
     private CatalogService catalogService;
+    
+    @Captor
+  	private ArgumentCaptor<Dataset> argCaptorDataset;
 
     @InjectMocks
     private DatasetService datasetService;
 
     private Dataset dataset = MockObjectUtil.DATASET;
 
-    private Dataset updatedDataset = MockObjectUtil.DATASET_FOR_UPDATE;
+    @Test
+    @DisplayName("Get dataset by ID successfully")
+    void getDataSetById_success() {
+        when(repository.findById(anyString())).thenReturn(Optional.of(dataset));
+        Dataset retrievedDataset = datasetService.getDatasetById(dataset.getId());
+        assertNotNull(retrievedDataset);
+        assertEquals(dataset.getId(), retrievedDataset.getId());
+    }
+    
+    @Test
+    @DisplayName("Get dataset by ID throws exception when not found")
+    void getDataSetById_notFound() {
+        when(repository.findById(anyString())).thenReturn(Optional.empty());
+        assertThrows(CatalogErrorException.class, () -> datasetService.getDatasetById("datasetId"));
+    }
 
     @Test
     @DisplayName("Get dataset by id - success")
@@ -50,7 +76,7 @@ public class DatasetServiceTest {
     public void getDatasetById_notFound() {
         when(repository.findById("1")).thenReturn(Optional.empty());
 
-        assertThrows(DatasetNotFoundAPIException.class, () -> datasetService.getDatasetById("1"));
+        assertThrows(CatalogErrorException.class, () -> datasetService.getDatasetById("1"));
 
         verify(repository).findById("1");
     }
@@ -91,7 +117,7 @@ public class DatasetServiceTest {
     public void deleteDataset_notFound() {
         when(repository.findById("1")).thenReturn(Optional.empty());
 
-        assertThrows(DatasetNotFoundAPIException.class, () -> datasetService.deleteDataset("1"));
+        assertThrows(ResourceNotFoundAPIException.class, () -> datasetService.deleteDataset("1"));
 
         verify(repository).findById("1");
         verify(repository, never()).deleteById("1");
@@ -104,10 +130,15 @@ public class DatasetServiceTest {
         when(repository.findById(dataset.getId())).thenReturn(Optional.of(dataset));
         when(repository.save(any(Dataset.class))).thenReturn(dataset);
 
-        Dataset result = datasetService.updateDataset(dataset.getId(), updatedDataset);
+        Dataset result = datasetService.updateDataset(dataset.getId(), MockObjectUtil.DATASET_FOR_UPDATE);
 
         assertEquals(dataset.getId(), result.getId());
         verify(repository).findById(dataset.getId());
-        verify(repository).save(any(Dataset.class));
+        verify(repository).save(argCaptorDataset.capture());
+        
+        assertTrue(argCaptorDataset.getValue().getCreator().contains("update"));
+        assertTrue(argCaptorDataset.getValue().getTitle().contains("update"));
+        assertTrue(argCaptorDataset.getValue().getDescription().stream().filter(d -> d.getValue().contains("update")).findFirst().isPresent());
+        assertTrue(argCaptorDataset.getValue().getHasPolicy().stream().findFirst().get().getId().contains("update"));
     }
 }

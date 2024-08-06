@@ -1,6 +1,5 @@
 package it.eng.catalog.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -28,7 +27,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.DataService;
-import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.Offer;
 import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.serializer.Serializer;
@@ -46,25 +44,26 @@ public class CatalogServiceTest {
     
     @Captor
 	private ArgumentCaptor<ContractNegotiationOfferResponseEvent> argCaptorContractNegotiationOfferResponse;
+    
+	@Captor
+	private ArgumentCaptor<Catalog> argCaptorCatalog;
 
     @InjectMocks
     private CatalogService service;
 
-    private Catalog catalog = MockObjectUtil.CATALOG;
-
     @Test
     @DisplayName("Save catalog successfully")
     void saveCatalog_success() {
-        when(repository.save(any(Catalog.class))).thenReturn(catalog);
-        Catalog savedCatalog = service.saveCatalog(catalog);
+        when(repository.save(any(Catalog.class))).thenReturn(MockObjectUtil.CATALOG);
+        Catalog savedCatalog = service.saveCatalog(MockObjectUtil.CATALOG);
         assertNotNull(savedCatalog);
-        verify(repository).save(catalog);
+        verify(repository).save(MockObjectUtil.CATALOG);
     }
 
     @Test
     @DisplayName("Get catalog successfully")
     void getCatalog_success() {
-        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
+        when(repository.findAll()).thenReturn(Collections.singletonList(MockObjectUtil.CATALOG));
         Catalog retrievedCatalog = service.getCatalog();
         assertNotNull(retrievedCatalog);
         verify(repository).findAll();
@@ -80,57 +79,53 @@ public class CatalogServiceTest {
     @Test
     @DisplayName("Get catalog by ID successfully")
     void getCatalogById_success() {
-        when(repository.findById(anyString())).thenReturn(Optional.of(catalog));
-        Optional<Catalog> retrievedCatalog = service.getCatalogById(catalog.getId());
-        assertTrue(retrievedCatalog.isPresent());
-        verify(repository).findById(catalog.getId());
-    }
-
-    @Test
-    @DisplayName("Get dataset by ID successfully")
-    void getDataSetById_success() {
-        catalog.getDataset();
-        when(repository.findCatalogByDatasetId(anyString())).thenReturn(Optional.of(catalog));
-        Dataset retrievedDataset = service.getDataSetById(MockObjectUtil.DATASET.getId());
-        assertNotNull(retrievedDataset);
-        assertEquals(MockObjectUtil.DATASET.getId(), retrievedDataset.getId());
-    }
-
-    @Test
-    @DisplayName("Get dataset by ID throws exception when not found")
-    void getDataSetById_notFound() {
-        when(repository.findCatalogByDatasetId(anyString())).thenReturn(Optional.empty());
-        assertThrows(CatalogErrorException.class, () -> service.getDataSetById("datasetId"));
+        when(repository.findById(anyString())).thenReturn(Optional.of(MockObjectUtil.CATALOG));
+        Catalog retrievedCatalog = service.getCatalogById(MockObjectUtil.CATALOG.getId());
+        assertNotNull(retrievedCatalog);
+        verify(repository).findById(MockObjectUtil.CATALOG.getId());
     }
 
     @Test
     @DisplayName("Delete catalog successfully")
     void deleteCatalog_success() {
-        service.deleteCatalog(catalog.getId());
-        verify(repository).deleteById(catalog.getId());
+        when(repository.findById(anyString())).thenReturn(Optional.of(MockObjectUtil.CATALOG));
+        service.deleteCatalog(MockObjectUtil.CATALOG.getId());
+        verify(repository).deleteById(MockObjectUtil.CATALOG.getId());
     }
 
     @Test
     @DisplayName("Update catalog successfully")
     void updateCatalog_success() {
-        when(repository.findById(anyString())).thenReturn(Optional.of(catalog));
-        when(repository.save(any(Catalog.class))).thenReturn(catalog);
+        when(repository.findById(anyString())).thenReturn(Optional.of(MockObjectUtil.CATALOG));
+        when(repository.save(any(Catalog.class))).thenReturn(MockObjectUtil.CATALOG);
 
         Catalog updatedCatalogData = MockObjectUtil.CATALOG_FOR_UPDATE;
-
-        Catalog updatedCatalog = service.updateCatalog(catalog.getId(), updatedCatalogData);
+        
+        Catalog updatedCatalog = service.updateCatalog(MockObjectUtil.CATALOG.getId(), updatedCatalogData);
         assertNotNull(updatedCatalog);
-        verify(repository).findById(catalog.getId());
-        verify(repository).save(any(Catalog.class));
+        verify(repository).findById(MockObjectUtil.CATALOG.getId());
+        verify(repository).save(argCaptorCatalog.capture());
+        assertTrue(argCaptorCatalog.getValue().getDescription().stream().filter(d -> d.getValue().contains("update")).findFirst().isPresent());
+        assertTrue(argCaptorCatalog.getValue().getDistribution().stream().filter(d -> d.getTitle().contains("update")).findFirst().isPresent());
+       
+        assertTrue(argCaptorCatalog.getValue().getDistribution().stream().findFirst().get().getHasPolicy()
+        		.stream()
+        		.filter(p -> p.getId().equals("urn:offer_id_update"))
+        		.findFirst().isPresent());
+        
+        DataService dataServiceUpdated = argCaptorCatalog.getValue().getService().stream().findFirst().get();
+        assertTrue(dataServiceUpdated.getCreator().contains("update"));
+        assertTrue(dataServiceUpdated.getEndpointURL().contains("update"));
+        assertTrue(dataServiceUpdated.getEndpointDescription().contains("update"));
     }
-
 
     @Test
     @DisplayName("Update catalog data service after delete successfully")
     void updateCatalogDataServiceAfterDelete_success() {
+    	
         DataService dataService = MockObjectUtil.DATA_SERVICE;
-        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
-        when(repository.save(any(Catalog.class))).thenReturn(catalog);
+        when(repository.findAll()).thenReturn(Collections.singletonList(MockObjectUtil.CATALOG));
+        when(repository.save(any(Catalog.class))).thenReturn(MockObjectUtil.CATALOG);
 
         service.updateCatalogDataServiceAfterDelete(dataService);
 
@@ -142,7 +137,7 @@ public class CatalogServiceTest {
     	when(repository.findAll()).thenReturn(new ArrayList<>(MockObjectUtil.CATALOGS));
     	ContractNegotationOfferRequestEvent offerRequest = new ContractNegotationOfferRequestEvent(MockObjectUtil.CONSUMER_PID,
     			MockObjectUtil.PROVIDER_PID, Serializer.serializeProtocolJsonNode(MockObjectUtil.OFFER_WITH_TARGET));
-    	service.validateOffer(offerRequest);;
+    	service.validateOffer(offerRequest);
     	
     	verify(publisher).publishEvent(argCaptorContractNegotiationOfferResponse.capture());
     	assertTrue(argCaptorContractNegotiationOfferResponse.getValue().isOfferAccepted());

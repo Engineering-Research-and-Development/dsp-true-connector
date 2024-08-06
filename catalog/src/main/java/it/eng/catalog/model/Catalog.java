@@ -1,5 +1,19 @@
 package it.eng.catalog.model;
 
+import java.time.Instant;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -7,6 +21,7 @@ import com.fasterxml.jackson.annotation.JsonProperty.Access;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -14,15 +29,6 @@ import jakarta.validation.ValidationException;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.*;
-import org.springframework.data.mongodb.core.mapping.DBRef;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-
-import java.time.Instant;
-import java.util.Collection;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 
 @Getter
@@ -43,13 +49,13 @@ public class Catalog extends AbstractCatalogObject {
     @JsonProperty(DSpaceConstants.DCAT_KEYWORD)
     private Set<String> keyword;
     @JsonProperty(DSpaceConstants.DCAT_THEME)
-    private Collection<String> theme;
+    private Set<String> theme;
     @JsonProperty(DSpaceConstants.DCT_CONFORMSTO)
     private String conformsTo;
     @JsonProperty(DSpaceConstants.DCT_CREATOR)
     private String creator;
     @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
-    private Collection<Multilanguage> description;
+    private Set<Multilanguage> description;
     @JsonProperty(DSpaceConstants.DCT_IDENTIFIER)
     private String identifier;
     @JsonProperty(DSpaceConstants.DCT_ISSUED)
@@ -64,18 +70,18 @@ public class Catalog extends AbstractCatalogObject {
     // from Dataset definition
     @JsonProperty(DSpaceConstants.DCAT_DISTRIBUTION)
     @DBRef
-    private Collection<Distribution> distribution;
+    private Set<Distribution> distribution;
     // assumption - policy for allowing catalog usage/display - not mandatory for catalog
     @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
-    private Collection<Offer> hasPolicy;
+    private Set<Offer> hasPolicy;
     // end Dataset definition
 
     @JsonProperty(DSpaceConstants.DCAT_DATASET)
     @DBRef
-    private Collection<Dataset> dataset;
+    private Set<Dataset> dataset;
     @JsonProperty(DSpaceConstants.DCAT_SERVICE)
     @DBRef
-    private Collection<DataService> service;
+    private Set<DataService> service;
 
     @JsonProperty(DSpaceConstants.DSPACE_PARTICIPANT_ID)
     private String participantId;
@@ -109,13 +115,11 @@ public class Catalog extends AbstractCatalogObject {
             return new Builder();
         }
 
-
         @JsonProperty(DSpaceConstants.ID)
         public Builder id(String id) {
             catalog.id = id;
             return this;
         }
-
 
         @JsonProperty(DSpaceConstants.DCAT_KEYWORD)
         @JsonDeserialize(as = Set.class)
@@ -126,7 +130,7 @@ public class Catalog extends AbstractCatalogObject {
 
         @JsonProperty(DSpaceConstants.DCAT_THEME)
         @JsonDeserialize(as = Set.class)
-        public Builder theme(Collection<String> theme) {
+        public Builder theme(Set<String> theme) {
             catalog.theme = theme;
             return this;
         }
@@ -145,7 +149,7 @@ public class Catalog extends AbstractCatalogObject {
 
         @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
         @JsonDeserialize(as = Set.class)
-        public Builder description(Collection<Multilanguage> description) {
+        public Builder description(Set<Multilanguage> description) {
             catalog.description = description;
             return this;
         }
@@ -176,28 +180,28 @@ public class Catalog extends AbstractCatalogObject {
 
         @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
         @JsonDeserialize(as = Set.class)
-        public Builder hasPolicy(Collection<Offer> policies) {
+        public Builder hasPolicy(Set<Offer> policies) {
             catalog.hasPolicy = policies;
             return this;
         }
 
         @JsonProperty(DSpaceConstants.DCAT_DISTRIBUTION)
         @JsonDeserialize(as = Set.class)
-        public Builder distribution(Collection<Distribution> distribution) {
+        public Builder distribution(Set<Distribution> distribution) {
             catalog.distribution = distribution;
             return this;
         }
 
         @JsonProperty(DSpaceConstants.DCAT_DATASET)
         @JsonDeserialize(as = Set.class)
-        public Builder dataset(Collection<Dataset> datasets) {
+        public Builder dataset(Set<Dataset> datasets) {
             catalog.dataset = datasets;
             return this;
         }
 
         @JsonProperty(DSpaceConstants.DCAT_SERVICE)
         @JsonDeserialize(as = Set.class)
-        public Builder service(Collection<DataService> service) {
+        public Builder service(Set<DataService> service) {
             catalog.service = service;
             return this;
         }
@@ -252,5 +256,34 @@ public class Catalog extends AbstractCatalogObject {
     @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
     public String getType() {
         return DSpaceConstants.DCAT + Catalog.class.getSimpleName();
+    }
+    
+    /**
+     * Create new updated instance with new values from passed Catalog parameter<br>
+     * If fields are not present in updatedCatalogData, existing values will remain
+     * @param updatedCatalogData
+     * @return
+     */
+    public Catalog updateInstance(Catalog updatedCatalogData) {
+			return Catalog.Builder.newInstance()
+					.id(this.id)
+			        .version(this.version)
+			        .issued(this.issued)
+			        .createdBy(this.createdBy)
+			        .keyword(updatedCatalogData.getKeyword() != null ? updatedCatalogData.getKeyword() : this.keyword)
+			        .theme(updatedCatalogData.getTheme() != null ? updatedCatalogData.getTheme() : this.theme)
+			        .conformsTo(updatedCatalogData.getConformsTo() != null ? updatedCatalogData.getConformsTo() : this.conformsTo)
+			        .creator(updatedCatalogData.getCreator() != null ? updatedCatalogData.getCreator() : this.creator)
+			        .description(updatedCatalogData.getDescription() != null ? updatedCatalogData.getDescription() : this.description)
+			        .identifier(updatedCatalogData.getIdentifier() != null ? updatedCatalogData.getIdentifier() : this.identifier)
+			        .title(updatedCatalogData.getTitle() != null ? updatedCatalogData.getTitle() : this.title)
+			        .distribution(updatedCatalogData.getDistribution() != null ? updatedCatalogData.getDistribution() : this.distribution)
+			        .hasPolicy(updatedCatalogData.getHasPolicy() != null ? updatedCatalogData.getHasPolicy() : this.hasPolicy)
+			        .dataset(updatedCatalogData.getDataset() != null ? updatedCatalogData.getDataset() : this.dataset)
+			        .service(updatedCatalogData.getService() != null ? updatedCatalogData.getService() : this.service)
+			        .participantId(updatedCatalogData.getParticipantId() != null ? updatedCatalogData.getParticipantId() : this.participantId)
+			        .creator(updatedCatalogData.getCreator() != null ? updatedCatalogData.getCreator() : this.creator)
+			        .homepage(updatedCatalogData.getHomepage() != null ? updatedCatalogData.getHomepage() : this.homepage)
+			        .build();
     }
 }

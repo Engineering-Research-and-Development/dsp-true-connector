@@ -1,10 +1,31 @@
 
 package it.eng.catalog.model;
 
-import com.fasterxml.jackson.annotation.*;
+import java.time.Instant;
+import java.util.Collection;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -13,16 +34,6 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.*;
-import org.springframework.data.mongodb.core.mapping.DBRef;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-
-import java.time.Instant;
-import java.util.Collection;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -80,22 +91,6 @@ public class Distribution {
         @JsonCreator
         public static Builder newInstance() {
             return new Builder();
-        }
-
-        public static Builder updateInstance(Distribution existingDistribution, Distribution updatedDistribution) {
-
-            Distribution.Builder builder = newInstance();
-            builder.id(existingDistribution.getId());
-            builder.version(existingDistribution.getVersion());
-            builder.issued(existingDistribution.getIssued());
-            builder.createdBy(existingDistribution.getCreatedBy());
-            builder.modified(updatedDistribution.getModified() != null ? updatedDistribution.getModified() : existingDistribution.getModified());
-            builder.title(updatedDistribution.getTitle() != null ? updatedDistribution.getTitle() : existingDistribution.getTitle());
-            builder.description(updatedDistribution.getDescription() != null ? updatedDistribution.getDescription() : existingDistribution.getDescription());
-            builder.accessService(updatedDistribution.getAccessService() != null ? updatedDistribution.getAccessService() : existingDistribution.getAccessService());
-            builder.hasPolicy(updatedDistribution.getHasPolicy() != null ? updatedDistribution.getHasPolicy() : existingDistribution.getHasPolicy());
-
-            return builder;
         }
 
         @JsonProperty(DSpaceConstants.ID)
@@ -185,5 +180,26 @@ public class Distribution {
     @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
     public String getType() {
         return DSpaceConstants.DSPACE + Distribution.class.getSimpleName();
+    }
+    
+    /**
+     * Create new updated instance with new values from passed Distribution parameter<br>
+     * If fields are not present in updatedDistribution, existing values will remain
+     * @param updatedDistribution
+     * @return new updated distribution instance
+     */
+    public Distribution updateInstance(Distribution updatedDistribution) {
+        return Distribution.Builder.newInstance()
+        		.id(this.id)
+        		.version(this.version)
+        		.issued(this.issued)
+        		.createdBy(this.createdBy)
+        		.modified(updatedDistribution.getModified() != null ? updatedDistribution.getModified() : this.modified)
+        		.title(updatedDistribution.getTitle() != null ? updatedDistribution.getTitle() : this.title)
+        		.description(updatedDistribution.getDescription() != null ? updatedDistribution.getDescription() : this.description)
+        		.accessService(updatedDistribution.getAccessService() != null ? updatedDistribution.getAccessService() : this.accessService)
+        		.hasPolicy(updatedDistribution.getHasPolicy() != null ? updatedDistribution.getHasPolicy() : this.hasPolicy)
+        		.build();
+
     }
 }

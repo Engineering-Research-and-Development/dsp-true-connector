@@ -6,7 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 
 /**
- * Used in automatic negotiation response from catalog to negotiation module</br>
+ * Used in automatic negotiation response from catalog to negotiation module<br>
  * Containing response if offer is accepted or not
  *
  */

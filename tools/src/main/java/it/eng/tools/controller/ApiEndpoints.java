@@ -1,9 +1,42 @@
 package it.eng.tools.controller;
 
+/**
+ * URL values for API controllers
+ */
 public interface ApiEndpoints {
 
-	public static final String NEGOTIATION_V1 ="/api/v1/negotiations";
-	public static final String NEGOTIATION_AGREEMENTS_V1 ="/api/v1/agreements";
+	/**
+	 * Catalog module - v1 API endpoint for catalogs
+	 */
+	public static final String CATALOG_CATALOGS_V1 = "/api/v1/catalogs";
+	/**
+	 * Catalog module - v1 API endpoint for dataServices
+	 */
+	public static final String CATALOG_DATA_SERVICES_V1 = "/api/v1/dataservices";
+	/**
+	 * Catalog module - v1 API endpoint for dataset
+	 */
+	public static final String CATALOG_DATASETS_V1 = "/api/v1/datasets";
+	/**
+	 * Catalog module - v1 API endpoint for distributions
+	 */
+	public static final String CATALOG_DISTRIBUTIONS_V1 = "/api/v1/distributions";
+	/**
+	 * Catalog module - v1 API endpoint for offers
+	 */
 	public static final String CATALOG_OFFERS_V1 = "/api/v1/offers";
+	
+	/**
+	 * Negotation module - v1 API endpoint for negotations
+	 */
+	public static final String NEGOTIATION_V1 ="/api/v1/negotiations";
+	/**
+	 * Negotation module - v1 API endpoint for agreements
+	 */
+	public static final String NEGOTIATION_AGREEMENTS_V1 ="/api/v1/agreements";
+	
+	/**
+	 * DataTransfer module - v1 API endpoint for transfers
+	 */
 	public static final String TRANSFER_DATATRANSFER_V1 = "/api/v1/transfers";
 }
