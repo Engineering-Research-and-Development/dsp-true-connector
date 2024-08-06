@@ -1,9 +1,14 @@
 package it.eng.catalog.service;
 
-import it.eng.catalog.exceptions.DistributionNotFoundAPIException;
-import it.eng.catalog.model.Distribution;
-import it.eng.catalog.repository.DistributionRepository;
-import it.eng.catalog.util.MockObjectUtil;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.Optional;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,12 +17,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
+import it.eng.catalog.model.Distribution;
+import it.eng.catalog.repository.DistributionRepository;
+import it.eng.catalog.util.MockObjectUtil;
 
 @ExtendWith(MockitoExtension.class)
 public class DistributionServiceTest {
@@ -55,7 +58,7 @@ public class DistributionServiceTest {
     void getDistributionById_notFound() {
         when(repository.findById("1")).thenReturn(Optional.empty());
 
-        assertThrows(DistributionNotFoundAPIException.class, () -> distributionService.getDistributionById("1"));
+        assertThrows(ResourceNotFoundAPIException.class, () -> distributionService.getDistributionById("1"));
 
         verify(repository).findById("1");
     }
@@ -87,7 +90,7 @@ public class DistributionServiceTest {
         distributionService.deleteDistribution(distribution.getId());
 
         verify(repository).findById(distribution.getId());
-        verify(repository).delete(distribution);
+        verify(repository).deleteById(distribution.getId());
         verify(catalogService).updateCatalogDistributionAfterDelete(distribution);
     }
 
@@ -96,7 +99,7 @@ public class DistributionServiceTest {
     void deleteDistribution_notFound() {
         when(repository.findById("1")).thenReturn(Optional.empty());
 
-        assertThrows(DistributionNotFoundAPIException.class, () -> distributionService.deleteDistribution("1"));
+        assertThrows(ResourceNotFoundAPIException.class, () -> distributionService.deleteDistribution("1"));
 
         verify(repository).findById("1");
         verify(repository, never()).delete(any(Distribution.class));

@@ -1,14 +1,15 @@
 package it.eng.tools.response;
 
+import java.io.Serializable;
+import java.time.LocalDateTime;
+
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.io.Serializable;
-import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -26,27 +27,24 @@ public class GenericApiResponse<T> implements Serializable {
     //, pattern = "dd-MM-yyyy HH:mm:ss"
     @JsonFormat(shape = JsonFormat.Shape.STRING)
     private LocalDateTime timestamp;
-    private int httpStatus;
 
 
     //TODO Finish success after discussion with the team
-    public static <T> GenericApiResponse<T> success(T data, String message, int httpStatus) {
+    public static <T> GenericApiResponse<T> success(T data, String message) {
         return GenericApiResponse.<T>builder()
                 .message(message)
                 .data(data)
                 .success(true)
                 .timestamp(LocalDateTime.now())
-                .httpStatus(httpStatus)
                 .build();
     }
 
 
-    public static <T> GenericApiResponse<T> error(String message, int httpStatus) {
+    public static <T> GenericApiResponse<T> error(String message) {
         return GenericApiResponse.<T>builder()
                 .message(message)
                 .success(false)
                 .timestamp(LocalDateTime.now())
-                .httpStatus(httpStatus)
                 .build();
     }
 }

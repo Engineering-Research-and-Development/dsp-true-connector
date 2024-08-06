@@ -2,7 +2,6 @@ package it.eng.negotiation.rest.api;
 
 import java.util.Collection;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -47,7 +46,7 @@ public class ContractNegotiationAPIController {
     		@RequestParam(required = false) String state){
     	Collection<JsonNode> contractNegotiations = apiService.findContractNegotiations(contractNegotiationId, state);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-    			.body(GenericApiResponse.success(contractNegotiations, "Fetching contract negotiations", HttpStatus.OK.value()));
+    			.body(GenericApiResponse.success(contractNegotiations, "Fetching contract negotiations"));
     } 
 
     //consumer starts contract negotiation
@@ -58,7 +57,7 @@ public class ContractNegotiationAPIController {
     	log.info("Consumer starts negotaition with {}", targetConnector);
     	JsonNode response = apiService.startNegotiation(targetConnector, offerNode);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-    			.body(GenericApiResponse.success(response, "Contract negotiation initiated", HttpStatus.OK.value()));
+    			.body(GenericApiResponse.success(response, "Contract negotiation initiated"));
     }
 	
 	@PutMapping(path = "/{contractNegotiationId}/accept")
@@ -67,7 +66,7 @@ public class ContractNegotiationAPIController {
         ContractNegotiation contractNegotiationApproved = apiService.handleContractNegotiationAccepted(contractNegotiationId);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
         		.body(GenericApiResponse.success(Serializer.serializeProtocolJsonNode(contractNegotiationApproved),
-        				"Contract negotiation approved", HttpStatus.OK.value()));
+        				"Contract negotiation approved"));
     }
     
 	@PutMapping(path = "/{contractNegotiationId}/terminate")
@@ -77,7 +76,7 @@ public class ContractNegotiationAPIController {
         
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
         		.body(GenericApiResponse.success(Serializer.serializeProtocolJsonNode(contractNegotiationTerminated),
-        				"Contract negotiation terminated", HttpStatus.OK.value()));
+        				"Contract negotiation terminated"));
     }
     
 	@PutMapping(path = "/{contractNegotiationId}/verify")
@@ -86,7 +85,7 @@ public class ContractNegotiationAPIController {
     	
         apiService.verifyNegotiation(contractNegotiationId);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-    			.body(GenericApiResponse.success(null, "Verified negotiation", HttpStatus.OK.value()));
+    			.body(GenericApiResponse.success(null, "Verified negotiation"));
     }
     
     /********* PROVIDER ***********/
@@ -97,7 +96,7 @@ public class ContractNegotiationAPIController {
     	log.info("Provider posts offer - starts negotaition with {}", targetConnector);
     	JsonNode response = apiService.sendContractOffer(targetConnector, offerNode);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-    			.body(GenericApiResponse.success(response, "Contract negotiation posted", HttpStatus.OK.value()));
+    			.body(GenericApiResponse.success(response, "Contract negotiation posted"));
     }
     
 	@Deprecated
@@ -108,7 +107,7 @@ public class ContractNegotiationAPIController {
         String providerPid = contractAgreementRequest.get(DSpaceConstants.PROVIDER_PID).asText();
     	apiService.sendAgreement(consumerPid, providerPid, agreementNode);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-    			.body(GenericApiResponse.success(null, "Contract agreement sent", HttpStatus.OK.value()));
+    			.body(GenericApiResponse.success(null, "Contract agreement sent"));
     }
 	
 	@PutMapping(path = "/{contractNegotiationId}/approve")
@@ -117,14 +116,14 @@ public class ContractNegotiationAPIController {
         ContractNegotiation contractNegotiationApproved = apiService.handleContractNegotiationAgreed(contractNegotiationId);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
         		.body(GenericApiResponse.success(Serializer.serializeProtocolJsonNode(contractNegotiationApproved),
-        				"Contract negotiation approved", HttpStatus.OK.value()));
+        				"Contract negotiation approved"));
     }
     
 	@PutMapping(path = "/{contractNegotiationId}/finalize")
     public ResponseEntity<GenericApiResponse<JsonNode>> finalizeNegotiation(@PathVariable String contractNegotiationId) {
     	apiService.finalizeNegotiation(contractNegotiationId);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-    			.body(GenericApiResponse.success(null, "Contract negotiation finalized", HttpStatus.OK.value()));
+    			.body(GenericApiResponse.success(null, "Contract negotiation finalized"));
     }
 
 }

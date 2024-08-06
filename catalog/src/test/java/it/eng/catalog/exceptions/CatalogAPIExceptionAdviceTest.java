@@ -1,6 +1,7 @@
 package it.eng.catalog.exceptions;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -22,34 +23,17 @@ class CatalogAPIExceptionAdviceTest {
 	
 	@Test
 	public void handleCatalogNotFoundException() {
-		CatalogNotFoundAPIException ex = new CatalogNotFoundAPIException(TEST_ERROR_MESSAGE);
-		ResponseEntity<Object> response = advice.handleCatalogNotFoundException(ex, request);
+		ResourceNotFoundAPIException ex = new ResourceNotFoundAPIException(TEST_ERROR_MESSAGE);
+		ResponseEntity<Object> response = advice.handleResourceNotFoundAPIException(ex, request);
 		assertNotNull(response);
 		assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
 	}
 
 	@Test
 	public void handleDatasetNotFoundException() {
-		DatasetNotFoundAPIException ex = new DatasetNotFoundAPIException(TEST_ERROR_MESSAGE);
-		ResponseEntity<Object> response = advice.handleDatasetNotFoundException(ex, request);
+		InternalServerErrorAPIException ex = new InternalServerErrorAPIException(TEST_ERROR_MESSAGE);
+		ResponseEntity<Object> response = advice.handleInternalServerErrorAPIException(ex, request);
 		assertNotNull(response);
-		assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+		assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
 	}
-
-	@Test
-	public void testHandleDataServiceNotFoundException() {
-		DataServiceNotFoundAPIException ex = new DataServiceNotFoundAPIException(TEST_ERROR_MESSAGE);
-		ResponseEntity<Object> response = advice.handleDataServiceNotFoundException(ex, request);
-		assertNotNull(response);
-		assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
-	}
-
-	@Test
-	public void testHandleDistributionNotFoundException() {
-		DistributionNotFoundAPIException ex = new DistributionNotFoundAPIException(TEST_ERROR_MESSAGE);
-		ResponseEntity<Object> response = advice.handleDistributionNotFoundException(ex, request);
-		assertNotNull(response);
-		assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
-	}
-
 }

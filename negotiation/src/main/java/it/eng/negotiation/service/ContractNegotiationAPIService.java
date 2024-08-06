@@ -64,7 +64,7 @@ public class ContractNegotiationAPIService {
 	}
 
 	/**
-	 * Start negotiation as consumer</br>
+	 * Start negotiation as consumer<br>
 	 * Contract request message will be created and sent to connector behind forwardTo URL
 	 * @param forwardTo - target connector URL
 	 * @param offerNode - offer

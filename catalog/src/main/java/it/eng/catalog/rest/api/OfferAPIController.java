@@ -7,16 +7,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fasterxml.jackson.databind.JsonNode;
-
 import it.eng.catalog.model.Offer;
 import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.service.CatalogService;
-import lombok.extern.java.Log;
+import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.response.GenericApiResponse;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/api/v1/offers")
-@Log
+@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = ApiEndpoints.CATALOG_OFFERS_V1)
+@Slf4j
 public class OfferAPIController {
 	
 	private final CatalogService catalogService;
@@ -27,7 +27,7 @@ public class OfferAPIController {
     }
 	
     @PostMapping(path = "/validateOffer")
-    public ResponseEntity<JsonNode> validateOffer(@RequestBody String offerString) {
+    public ResponseEntity<GenericApiResponse<String>> validateOffer(@RequestBody String offerString) {
         log.info("Validating offer");
         
         Offer offer = Serializer.deserializePlain(offerString, Offer.class);
@@ -35,11 +35,12 @@ public class OfferAPIController {
         boolean isValid = catalogService.validateOffer(offer);
         
         if (isValid) {
-        	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).build();
+        	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+        			.body(GenericApiResponse.success("Offer is valid", "Offer is valid"));
 		}
         
-        return ResponseEntity.badRequest().contentType(MediaType.APPLICATION_JSON).build();
-        
+        return ResponseEntity.badRequest().contentType(MediaType.APPLICATION_JSON)
+        		.body(GenericApiResponse.error("Offer not valid"));
 
     }
 

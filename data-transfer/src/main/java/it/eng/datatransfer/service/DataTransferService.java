@@ -46,7 +46,7 @@ public class DataTransferService {
 	}
 
 	/**
-	 * If TransferProcess for given consumerPid and providerPid exists and state is STARTED</br>
+	 * If TransferProcess for given consumerPid and providerPid exists and state is STARTED<br>
 	 * Note: those 2 Pid's are not to be mixed with Contract Negotiation ones. They are unique
 	 * @param consumerPid
 	 * @param providerPid

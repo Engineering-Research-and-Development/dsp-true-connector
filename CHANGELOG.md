@@ -11,6 +11,21 @@ All notable changes to this project will be documented in this file.
  - Data Transfer protocol and API logic implementation (controller, service, model; junit and integration tests) - REST pull implementation without authorization, with hardcoded value/artifact
  - Postman collection for testing endpoints	
  - Configured GitHub actions to run tests
+ 
+## [0.0.1] - 02-08-2024
+
+### Added
+ 
+ - New catalog API exceptions
+ 
+### Changed
+
+ - Catalog API exceptions now wrapped in GenericApiResponse
+ 
+### Removed
+
+ - Status code from GenericApiResponse
+ 
 
 ## [0.0.1] - 30-07-2024
 

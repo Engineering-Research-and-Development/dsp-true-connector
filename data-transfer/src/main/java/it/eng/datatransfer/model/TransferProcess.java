@@ -168,7 +168,7 @@ public class TransferProcess extends AbstractTransferMessage {
 	}
 	
 	/**
-	 * Create new TransferProcess from origin, with new TransferState.</br>
+	 * Create new TransferProcess from origin, with new TransferState.<br>
 	 * Used to update state when transition happens.
 	 * @param newTransferState
 	 * @return new TransferProcess object from initial, with new state

@@ -5,7 +5,6 @@ import java.io.IOException;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -68,13 +67,13 @@ public class OkHttpRestClient {
 			String resp = response.body().string();
 			log.info("Response received: {}", resp);
 			if(response.isSuccessful()) { // code in 200..299
-				return GenericApiResponse.success(resp, "Response received from " + targetAddress, code);
+				return GenericApiResponse.success(resp, "Response received from " + targetAddress);
 			} else {
-				return GenericApiResponse.error(resp, code);
+				return GenericApiResponse.error(resp);
 			}
         } catch (IOException e) {
 			log.error(e.getLocalizedMessage());
-			return GenericApiResponse.error(e.getLocalizedMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value());
+			return GenericApiResponse.error(e.getLocalizedMessage());
 		}
 	}
 }

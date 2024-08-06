@@ -1,7 +1,9 @@
 package it.eng.catalog.util;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import it.eng.catalog.model.DataService;
 
@@ -9,8 +11,8 @@ public class DataServiceUtil {
 
 	public static final DataService DATA_SERVICE = DataService.Builder.newInstance()
 			.id(UUID.randomUUID().toString())
-			.keyword(Arrays.asList("DataService keyword1", "DataService keyword2"))
-			.theme(Arrays.asList("DataService theme1", "DataService theme2"))
+			.keyword(Arrays.asList("DataService keyword1", "DataService keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
+			.theme(Arrays.asList("DataService theme1", "DataService theme2").stream().collect(Collectors.toCollection(HashSet::new)))
 			.conformsTo(MockObjectUtil.CONFORMSTO)
 			.creator(MockObjectUtil.CREATOR)
 			.description(Arrays.asList(MockObjectUtil.MULTILANGUAGE))
@@ -21,5 +23,21 @@ public class DataServiceUtil {
 			.endpointURL("http://dataservice.com")
 			.endpointDescription("endpoint description")
 			.servesDataset(Arrays.asList(MockObjectUtil.DATASET))
+			.build();
+	
+	public static final DataService DATA_SERVICE_UPDATE = DataService.Builder.newInstance()
+			.id(UUID.randomUUID().toString())
+			.keyword(Arrays.asList("DataService keyword1 update", "DataService keyword2 update").stream().collect(Collectors.toCollection(HashSet::new)))
+			.theme(Arrays.asList("DataService theme1 update").stream().collect(Collectors.toCollection(HashSet::new)))
+			.conformsTo(MockObjectUtil.CONFORMSTO)
+			.creator(MockObjectUtil.CREATOR + " update")
+			.description(Arrays.asList(MockObjectUtil.MULTILANGUAGE))
+			.identifier(MockObjectUtil.IDENTIFIER)
+			.issued(MockObjectUtil.ISSUED)
+			.modified(MockObjectUtil.MODIFIED)
+			.title(MockObjectUtil.TITLE + " update")
+			.endpointURL("http://dataservice.com/update")
+			.endpointDescription("endpoint description update")
+			.servesDataset(Arrays.asList(MockObjectUtil.DATASET_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
 			.build();
 }

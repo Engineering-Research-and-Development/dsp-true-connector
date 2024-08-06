@@ -2,16 +2,16 @@ package it.eng.catalog.exceptions;
 
 import java.io.Serial;
 
-public class CatalogNotFoundAPIException extends RuntimeException {
+public class InternalServerErrorAPIException extends RuntimeException {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
-    public CatalogNotFoundAPIException() {
+    public InternalServerErrorAPIException() {
         super();
     }
 
-    public CatalogNotFoundAPIException(String message) {
+    public InternalServerErrorAPIException(String message) {
         super(message);
     }
 }
