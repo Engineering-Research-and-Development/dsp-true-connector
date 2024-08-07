@@ -2,7 +2,6 @@ package it.eng.connector.integration;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -12,10 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
-import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Base64;
-import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
@@ -26,16 +22,10 @@ import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
-import it.eng.catalog.serializer.InstantDeserializer;
-import it.eng.catalog.serializer.InstantSerializer;
 import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.model.Serializer;
@@ -46,10 +36,12 @@ import it.eng.datatransfer.model.TransferRequestMessage;
 import it.eng.datatransfer.model.TransferStartMessage;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.model.TransferSuspensionMessage;
-import it.eng.tools.controller.ApiEndpoints;
+import it.eng.datatransfer.model.TransferTerminationMessage;
 import it.eng.tools.model.DSpaceConstants;
-import it.eng.tools.response.GenericApiResponse;
 
+/**
+ * Data Transfer integration test - provider endpoints
+ */
 public class DataTransferTest extends BaseIntegrationTest {
 	
 	public static final String CONSUMER_PID = "urn:uuid:CONSUMER_PID";
@@ -278,7 +270,15 @@ public class DataTransferTest extends BaseIntegrationTest {
     			.andExpect(status().isOk());	
         	
        // check for transfer process status to be completed
-    	MvcResult resultCompletedMessage = mockMvc.perform(
+    	TransferProcess transferProcessCompleted = getTransferProcessForProviderPid(providerPid);
+    	assertEquals(TransferState.COMPLETED, transferProcessCompleted.getState());
+    	
+    	downloadArtifactFail(transactionId);
+	}
+
+	private TransferProcess getTransferProcessForProviderPid(String providerPid)
+			throws Exception, UnsupportedEncodingException, JsonMappingException, JsonProcessingException {
+		MvcResult resultCompletedMessage = mockMvc.perform(
         			get("/transfers/" + providerPid)
         			.contentType(MediaType.APPLICATION_JSON))
     			.andExpect(status().isOk())
@@ -286,9 +286,7 @@ public class DataTransferTest extends BaseIntegrationTest {
     	String jsonTransferProcessCompleted = resultCompletedMessage.getResponse().getContentAsString();
     	JsonNode jsonNodeCompleted = Serializer.serializeStringToProtocolJsonNode(jsonTransferProcessCompleted);
     	TransferProcess transferProcessCompleted = Serializer.deserializeProtocol(jsonNodeCompleted, TransferProcess.class);
-    	assertEquals(TransferState.COMPLETED, transferProcessCompleted.getState());
-    	
-    	downloadArtifactFail(transactionId);
+		return transferProcessCompleted;
 	}
 
 	private ResultActions sendTransferStartMessage(String consumerPid, String providerPid) throws Exception {
@@ -318,58 +316,44 @@ public class DataTransferTest extends BaseIntegrationTest {
 		assertTrue(artifact.contains("Doe"));
 	}
 	
-	
-	/* API Endpoints tests  */
 	@Test
-	@DisplayName("TransferProcess API - get")
-	@WithUserDetails(TestUtil.API_USER)
-	public void getTransferProcess() throws Exception {
-		SimpleModule instantConverterModule = new SimpleModule();
-		instantConverterModule.addSerializer(Instant.class, new InstantSerializer());
-		instantConverterModule.addDeserializer(Instant.class, new InstantDeserializer());
-		JsonMapper jsonMapper = JsonMapper.builder()
-        		.addModule(new JavaTimeModule())
-        		.configure(MapperFeature.USE_ANNOTATIONS, false)
-        		.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-        		.addModule(instantConverterModule)
-                .build();
-		
-		mockMvc.perform(
-    			get(ApiEndpoints.TRANSFER_DATATRANSFER_V1).contentType(MediaType.APPLICATION_JSON))
-			.andExpect(status().isOk())
-	    	.andExpect(content().contentType(MediaType.APPLICATION_JSON));
-		
-		JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, ArrayList.class);
-
-		MvcResult resultStarted =mockMvc.perform(
-    			get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "?state=STARTED").contentType(MediaType.APPLICATION_JSON))
-			.andExpect(status().isOk())
-			.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-			.andReturn();
-		String json = resultStarted.getResponse().getContentAsString();
-		GenericApiResponse<List<TransferProcess>> genericApiResponse = jsonMapper.readValue(json, javaType);
-		// so far, must do like this because List<LinkedHashMap> was not able to get it to be List<TransferProcess>
-		TransferProcess transferProcess = jsonMapper.convertValue(genericApiResponse.getData().get(0), TransferProcess.class);
-		assertNotNull(transferProcess);
-		assertEquals(TransferState.STARTED, transferProcess.getState());
-		
-		String TRANSFER_PROCESS_ID = "abc45798-4444-4932-8baf-ab7fd66ql4d5";
-		MvcResult result = mockMvc.perform(
-    			get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" +TRANSFER_PROCESS_ID).contentType(MediaType.APPLICATION_JSON))
-			.andExpect(status().isOk())
-			.andReturn();
-		json = result.getResponse().getContentAsString();
-		genericApiResponse = jsonMapper.readValue(json, javaType);
-
-		assertNotNull(genericApiResponse);
-		assertTrue(genericApiResponse.isSuccess());
-		assertEquals(1, genericApiResponse.getData().size());
-		// so far, must do like this because List<LinkedHashMap> was not able to get it to be List<TransferProcess>
-		transferProcess = jsonMapper.convertValue(genericApiResponse.getData().get(0), TransferProcess.class);
-		assertNotNull(transferProcess);
-		assertEquals(TRANSFER_PROCESS_ID, transferProcess.getId());
+	@DisplayName("Terminate transfer process - provider")
+	@WithUserDetails(TestUtil.CONNECTOR_USER)
+	public void termianteTransferProcess_provider() throws Exception {
+		String consumerPid = "urn:uuid" + UUID.randomUUID().toString();
+		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
+	    		.consumerPid(consumerPid)
+	    		.agreementId("urn:uuid:AGREEMENT_ID_TERMINATE_TRANSFER_TEST")
+	    		.format("HTTP_PULL")
+	    		.callbackAddress(CALLBACK_ADDRESS)
+	    		.build();
+		MvcResult mvcResult = mockMvc.perform(
+    					post("/transfers/request")
+    					.content(Serializer.serializeProtocol(transferRequestMessage))
+    					.contentType(MediaType.APPLICATION_JSON))
+    					.andExpect(status().isCreated())
+				    	.andReturn();
+    	String jsonTransferProcess = mvcResult.getResponse().getContentAsString();
+    	JsonNode jsonNode = Serializer.serializeStringToProtocolJsonNode(jsonTransferProcess);
+    	TransferProcess transferProcessRequested = Serializer.deserializeProtocol(jsonNode, TransferProcess.class);
+    	String providerPid = transferProcessRequested.getProviderPid();
+    	
+    	// send terminate message
+    	TransferTerminationMessage transferTerminationMessage = TransferTerminationMessage.Builder.newInstance()
+	    		.consumerPid(consumerPid)
+	    		.providerPid(providerPid)
+	    		.code("1")
+	    		.build();
+    	mvcResult = mockMvc.perform(
+				post("/transfers/" + providerPid + "/termination")
+				.content(Serializer.serializeProtocol(transferTerminationMessage))
+				.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(status().isOk())
+		    	.andReturn();
+    	
+    	// check TransferProcess status for providerPid
+    	TransferProcess transferProcessTerminated = getTransferProcessForProviderPid(providerPid);
+    	assertEquals(transferProcessTerminated.getState(), TransferState.TERMINATED);
 	}
 	
 }
-
-

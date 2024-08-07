@@ -10,9 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.datatransfer.model.Serializer;
 import it.eng.datatransfer.model.TransferCompletionMessage;
@@ -77,7 +75,9 @@ public class ProviderDataTransferController {
 			@RequestBody JsonNode transferTerminationMessageJsonNode) {
 		TransferTerminationMessage transferTerminationMessage = Serializer.deserializeProtocol(transferTerminationMessageJsonNode, TransferTerminationMessage.class);
 		log.info("Terminating data transfer for providerPid {} and comsumerPid {}", providerPid, transferTerminationMessage.getConsumerPid());
-		return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(notImplemented());
+		TransferProcess transferProcessTerminated = dataTransferService.terminateDataTransfer(transferTerminationMessage, null, providerPid);
+		log.info("TransferProcess {} state changed to {}", transferProcessTerminated.getId(), transferProcessTerminated.getState());
+		return ResponseEntity.ok(null);
 	}
 
 	@PostMapping(path = "/{providerPid}/suspension")
@@ -88,16 +88,5 @@ public class ProviderDataTransferController {
 		TransferProcess transferProcessSuspended = dataTransferService.suspendDataTransfer(transferSuspensionMessage, null, providerPid);
 		log.info("TransferProcess {} state changed to {}", transferProcessSuspended.getId(), transferProcessSuspended.getState());
 		return ResponseEntity.ok(null);
-	}
-	
-	
-	private JsonNode notImplemented() {
-		ObjectMapper mapper = new ObjectMapper();
-		String newString = "{\"response\": \"Method not implemented\"}";
-	    try {
-			return mapper.readTree(newString);
-		} catch (JsonProcessingException e) {
-		}
-	    return null;
 	}
 }

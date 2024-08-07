@@ -55,6 +55,12 @@ public class MockObjectUtil {
     		.state(TransferState.SUSPENDED)
     		.build();
     
+    public static final TransferProcess TRANSFER_PROCESS_TERMINATED = TransferProcess.Builder.newInstance()
+    		.consumerPid(CONSUMER_PID)
+    		.providerPid(PROVIDER_PID)
+    		.state(TransferState.TERMINATED)
+    		.build();
+    
     public static TransferRequestMessage TRANSFER_REQUEST_MESSAGE = TransferRequestMessage.Builder.newInstance()
     		.consumerPid(CONSUMER_PID)
     		.agreementId(AGREEMENT_ID)

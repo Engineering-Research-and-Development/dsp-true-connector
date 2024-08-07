@@ -387,7 +387,7 @@ public class ContractNegotiationAPIService {
 	
 	private Agreement agreementFromOffer(Offer offer, String assigner) {
 		return Agreement.Builder.newInstance()
-				.id(UUID.randomUUID().toString())
+				.id("urn:uuid:" + UUID.randomUUID().toString())
 				.assignee(properties.getAssignee())
 				.assigner(assigner)
 				.target(offer.getTarget())

@@ -11,7 +11,19 @@ All notable changes to this project will be documented in this file.
  - Data Transfer protocol and API logic implementation (controller, service, model; junit and integration tests) - REST pull implementation without authorization, with hardcoded value/artifact
  - Postman collection for testing endpoints	
  - Configured GitHub actions to run tests
+
+## [0.0.1] - 07-08-2024
+
+### Added
+
+ - TransferTerminationMessage message provider and consumer callback logic (plus junit and integration tests)
+ - DataTransferConsumerCallbackTest - integration test class for consumer callback logic
+ - DataTransferApiTest - integration test for API logic
  
+### Changed
+
+ - Agreement service (filter download url) in data transfer module sends request to check if agreement is valid 
+
 ## [0.0.1] - 06-08-2024
 
 ### Added

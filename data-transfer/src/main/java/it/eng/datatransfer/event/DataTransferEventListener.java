@@ -11,6 +11,7 @@ import it.eng.datatransfer.model.TransferCompletionMessage;
 import it.eng.datatransfer.model.TransferRequestMessage;
 import it.eng.datatransfer.model.TransferStartMessage;
 import it.eng.datatransfer.model.TransferSuspensionMessage;
+import it.eng.datatransfer.model.TransferTerminationMessage;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import lombok.extern.slf4j.Slf4j;
 
@@ -60,6 +61,11 @@ public class DataTransferEventListener {
 		if(transferRequestMessage.isPresent() && transferRequestMessage.get().getFormat().equals(DataTransferFormat.SFTP.name())) {
 			publisher.publishEvent(new StopFTPServerEvent());
 		}
+	}
+	
+	@EventListener
+	public void handleTransferTerminationMessage(TransferTerminationMessage transferTerminationMessage) {
+		log.info("Completeing transfer with consumerPid {} and providerPid {}", transferTerminationMessage.getConsumerPid(), transferTerminationMessage.getProviderPid());
 	}
 
 }
