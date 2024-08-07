@@ -19,6 +19,10 @@ All notable changes to this project will be documented in this file.
  - TransferTerminationMessage message provider and consumer callback logic (plus junit and integration tests)
  - DataTransferConsumerCallbackTest - integration test class for consumer callback logic
  - DataTransferApiTest - integration test for API logic
+ 
+### Changed
+
+ - Agreement service (filter download url) in data transfer module sends request to check if agreement is valid 
 
 ## [0.0.1] - 06-08-2024
 
