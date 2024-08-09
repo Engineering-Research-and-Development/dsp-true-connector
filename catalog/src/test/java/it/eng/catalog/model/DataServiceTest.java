@@ -1,5 +1,6 @@
 package it.eng.catalog.model;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -114,6 +115,24 @@ public class DataServiceTest {
 		assertEquals(MockObjectUtil.DATASETS, updated.getServesDataset());
 		assertEquals(MockObjectUtil.ISSUED, updated.getIssued());
 		assertEquals(MockObjectUtil.TITLE, updated.getTitle());
+	}
+	
+	@Test
+	@DisplayName("Plain serialize/deserialize")
+	public void equalsTestPlain() {
+		DataService dataService = MockObjectUtil.DATA_SERVICE;
+		String ss = Serializer.serializePlain(dataService);
+		DataService dataService2 = Serializer.deserializePlain(ss, DataService.class);
+		assertThat(dataService).usingRecursiveComparison().isEqualTo(dataService2);
+	}
+	
+	@Test
+	@DisplayName("Protocol serialize/deserialize")
+	public void equalsTestProtocol() {
+		DataService dataService = MockObjectUtil.DATA_SERVICE;
+		String ss = Serializer.serializeProtocol(dataService);
+		DataService dataService2 = Serializer.deserializeProtocol(ss, DataService.class);
+		assertThat(dataService).usingRecursiveComparison().isEqualTo(dataService2);
 	}
 	
 	private void validateDataService(DataService dataService) {

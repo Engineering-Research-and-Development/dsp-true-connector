@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import it.eng.tools.model.Serializer;
 import jakarta.validation.ValidationException;
 
 public class OfferTest {
@@ -58,6 +59,14 @@ public class OfferTest {
 				.assigner(MockObjectUtil.ASSIGNER)
 				.build();
 		assertFalse(offer.equals(offerB));
+	}
+	
+	@Test
+	public void equalsTest() {
+		Offer offer = MockObjectUtil.OFFER;
+		String ss = Serializer.serializePlain(offer);
+		Offer offer2 = Serializer.deserializePlain(ss, Offer.class);
+		assertTrue(offer.equals(offer2));
 	}
 	
 }

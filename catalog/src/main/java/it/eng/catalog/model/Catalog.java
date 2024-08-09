@@ -40,7 +40,9 @@ import lombok.NoArgsConstructor;
 @Document(collection = "catalogs")
 public class Catalog extends AbstractCatalogObject {
 
-    @JsonProperty(DSpaceConstants.ID)
+	private static final long serialVersionUID = -7550855731500209188L;
+
+	@JsonProperty(DSpaceConstants.ID)
     @Id
     private String id;
 

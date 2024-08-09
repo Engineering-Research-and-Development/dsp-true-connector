@@ -154,7 +154,7 @@ public class MockObjectUtil {
             .modified(MODIFIED)
             .build();
 
-    public static final Collection<Dataset> DATASETS = Arrays.asList(DATASET);
+    public static final Set<Dataset> DATASETS = Arrays.asList(DATASET).stream().collect(Collectors.toCollection(HashSet::new));
     
     public static final Catalog CATALOG = Catalog.Builder.newInstance()
             .conformsTo(CONFORMSTO)

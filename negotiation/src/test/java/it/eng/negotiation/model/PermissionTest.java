@@ -9,6 +9,7 @@ import java.util.Arrays;
 
 import org.junit.jupiter.api.Test;
 
+import it.eng.tools.model.Serializer;
 import jakarta.validation.ValidationException;
 
 public class PermissionTest {
@@ -55,6 +56,14 @@ public class PermissionTest {
 				.constraint(Arrays.asList(MockObjectUtil.CONSTRAINT))
 				.build();
 		assertFalse(permissionA.equals(permissionB));
+	}
+	
+	@Test
+	public void serializePlain() {
+		String permissionString = Serializer.serializePlain(MockObjectUtil.PERMISSION_COUNT_5);
+		assertNotNull(permissionString);
+		Permission p = Serializer.deserializePlain(permissionString, Permission.class);
+		assertNotNull(p);
 	}
 }
 

@@ -8,6 +8,7 @@ import jakarta.validation.ValidationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class CatalogTest {
@@ -82,6 +83,24 @@ public class CatalogTest {
 		offerExists = MockObjectUtil.CATALOG.getDataset().stream()
 				.flatMap(dataset -> dataset.getHasPolicy().stream()).anyMatch(of -> of.getId().equals("urn:offer_id_not_found"));
 		assertFalse(offerExists);
+	}
+	
+	@Test
+	@DisplayName("Plain serialize/deserialize")
+	public void equalsTestPlain() {
+		Catalog catalog = MockObjectUtil.CATALOG;
+		String ss = Serializer.serializePlain(catalog);
+		Catalog catalog2 = Serializer.deserializePlain(ss, Catalog.class);
+		assertThat(catalog).usingRecursiveComparison().isEqualTo(catalog2);
+	}
+	
+	@Test
+	@DisplayName("Protocol serialize/deserialize")
+	public void equalsTestProtocol() {
+		Catalog catalog = MockObjectUtil.CATALOG;
+		String ss = Serializer.serializeProtocol(catalog);
+		Catalog catalog2 = Serializer.deserializeProtocol(ss, Catalog.class);
+		assertThat(catalog).usingRecursiveComparison().isEqualTo(catalog2);
 	}
 	
 	public void validateDataset(Dataset javaObj) {
