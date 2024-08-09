@@ -1,12 +1,12 @@
 package it.eng.datatransfer.model;
 
+import java.io.Serializable;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
-import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
@@ -22,8 +22,10 @@ import lombok.NoArgsConstructor;
 @Getter
 @JsonDeserialize(builder = EndpointProperty.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class EndpointProperty {
+public class EndpointProperty implements Serializable {
 
+	private static final long serialVersionUID = -1709802825239302678L;
+	
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_NAME)
 	private String name;
@@ -45,13 +47,13 @@ public class EndpointProperty {
 			return new Builder();
 		}
 		
-		@JsonSetter(DSpaceConstants.DSPACE_NAME)
+		@JsonProperty(DSpaceConstants.DSPACE_NAME)
 		public Builder name(String name) {
 			message.name = name;
 			return this;
 		}
 
-		@JsonSetter((DSpaceConstants.DSPACE_VALUE))
+		@JsonProperty((DSpaceConstants.DSPACE_VALUE))
 		public Builder vaule(String value) {
 			message.value = value;
 			return this;

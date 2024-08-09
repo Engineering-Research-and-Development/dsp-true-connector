@@ -9,7 +9,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
@@ -115,13 +114,13 @@ public class TransferRequestMessage extends AbstractTransferMessage {
 			return this;
 		}
 		
-		@JsonSetter(DSpaceConstants.DSPACE_CONSUMER_PID)
+		@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
 		public Builder consumerPid(String consumerPid) {
 			message.consumerPid = consumerPid;
 			return this;
 		}
 		
-		@JsonSetter(DSpaceConstants.DSPACE_CALLBACK_ADDRESS)
+		@JsonProperty(DSpaceConstants.DSPACE_CALLBACK_ADDRESS)
 		public Builder callbackAddress(String callbackAddress) {
 			message.callbackAddress = callbackAddress;
 			return this;
