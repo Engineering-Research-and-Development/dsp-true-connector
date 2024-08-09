@@ -1,16 +1,23 @@
 package it.eng.negotiation.serializer;
 
+import java.lang.annotation.Annotation;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.cfg.MapperConfig;
+import com.fasterxml.jackson.databind.introspect.Annotated;
+import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.jsontype.TypeResolverBuilder;
+import com.fasterxml.jackson.databind.jsontype.impl.StdTypeResolverBuilder;
 
 import it.eng.negotiation.model.Offer;
 import it.eng.tools.model.DSpaceConstants;
@@ -26,13 +33,34 @@ public class Serializer {
 	private static Validator validator;
 	
 	static {
+		JacksonAnnotationIntrospector ignoreJsonPropertyIntrospector = new JacksonAnnotationIntrospector() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+            protected TypeResolverBuilder<?> _findTypeResolver(MapperConfig<?> config, Annotated ann, JavaType baseType) {
+                if (!ann.hasAnnotation(JsonProperty.class)) {  // || !ann.hasAnnotation(JsonValue.class)
+                    return super._findTypeResolver(config, ann, baseType);
+                }
+                return StdTypeResolverBuilder.noTypeInfoBuilder();
+            }
+			
+			@Override
+			protected <A extends Annotation> A _findAnnotation(Annotated ann, Class<A> annoClass) {
+				if (annoClass == JsonProperty.class) {
+					return null;
+				}
+				return super._findAnnotation(ann, annoClass);
+			}
+			
+        };
 		jsonMapperPlain = JsonMapper.builder()
-				.configure(MapperFeature.USE_ANNOTATIONS, false)
+//				.configure(MapperFeature.USE_ANNOTATIONS, false)
 //				.serializationInclusion(Include.NON_NULL)
 //				.serializationInclusion(Include.NON_EMPTY)
 				.configure(SerializationFeature.INDENT_OUTPUT, true)
 				.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
 				.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+				.annotationIntrospector(ignoreJsonPropertyIntrospector)
 				.build();
 		
 		jsonMapper = JsonMapper.builder()
@@ -167,4 +195,22 @@ public class Serializer {
 			throw new ValidationException("Missing mandatory protocol fields @context and/or @type or value not correct");
 		}
 	}
+
+    public static <T> T deserializeProtocol(String jsonStringPlain, Class<T> clazz) {
+    try {
+        T obj = jsonMapper.readValue(jsonStringPlain, clazz);
+        Set<ConstraintViolation<T>> violations = validator.validate(obj);
+        if (violations.isEmpty()) {
+            return obj;
+        }
+        throw new ValidationException(
+                violations
+                        .stream()
+                        .map(v -> v.getPropertyPath() + " " + v.getMessage())
+                        .collect(Collectors.joining(",")));
+    } catch (JsonProcessingException e) {
+        e.printStackTrace();
+    }
+    return null;
+    }
 }

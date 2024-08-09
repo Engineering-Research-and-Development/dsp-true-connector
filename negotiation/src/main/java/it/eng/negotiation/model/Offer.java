@@ -1,11 +1,15 @@
 package it.eng.negotiation.model;
 
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
@@ -18,11 +22,6 @@ import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 /*
 	"odrl:offer": {
@@ -103,13 +102,13 @@ public class Offer {
 			return new Builder();
 		}
 
-		@JsonSetter(DSpaceConstants.ID)
+		@JsonProperty(DSpaceConstants.ID)
 		public Builder id(String id) {
 			offer.id = id;
 			return this;
 		}
 		
-		@JsonSetter(DSpaceConstants.ODRL_TARGET)
+		@JsonProperty(DSpaceConstants.ODRL_TARGET)
 		public Builder target(String target) {
 			offer.target = target;
 			return this;
@@ -137,7 +136,7 @@ public class Offer {
 			return this;
 		}
 		
-		@JsonSetter(DSpaceConstants.ODRL_PERMISSION)
+		@JsonProperty(DSpaceConstants.ODRL_PERMISSION)
 		public Builder permission(List<Permission> permission) {
 			offer.permission = permission;
 			return this;

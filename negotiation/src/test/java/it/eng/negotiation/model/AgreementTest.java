@@ -1,5 +1,6 @@
 package it.eng.negotiation.model;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -50,7 +51,23 @@ public class AgreementTest {
 	@DisplayName("Missing @context and @type")
 	public void missingContextAndType() {
 		JsonNode result = Serializer.serializePlainJsonNode(agreement);
-		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, ContractAgreementMessage.class));
+		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, Agreement.class));
+	}
+	
+	@Test
+	@DisplayName("Plain serialize/deserialize")
+	public void equalsTestPlain() {
+		String ss = Serializer.serializePlain(agreement);
+		Agreement obj = Serializer.deserializePlain(ss, Agreement.class);
+		assertThat(agreement).usingRecursiveComparison().isEqualTo(obj);
+	}
+	
+	@Test
+	@DisplayName("Protocol serialize/deserialize")
+	public void equalsTestProtocol() {
+		String ss = Serializer.serializeProtocol(agreement);
+		Agreement obj = Serializer.deserializeProtocol(ss, Agreement.class);
+		assertThat(agreement).usingRecursiveComparison().isEqualTo(obj);
 	}
 	
 }
