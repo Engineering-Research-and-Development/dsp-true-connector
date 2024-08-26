@@ -64,11 +64,6 @@ public class ContractNegotiationConsumerServiceTest {
 		assertEquals(ContractNegotiationState.OFFERED, argCaptorContractNegotiation.getValue().getState());
 	}
 	
-	@Test
-	@DisplayName("Process negotiation offer consumer success")
-	public void handleNegotiationOfferConsumer_success() {
-		service.handleNegotiationOfferConsumer(MockObjectUtil.CONSUMER_PID, MockObjectUtil.CONTRACT_OFFER_MESSAGE);
-	}
 	
 	@Test
 	@DisplayName("Process agreement message - automatic negotiation - ON success")

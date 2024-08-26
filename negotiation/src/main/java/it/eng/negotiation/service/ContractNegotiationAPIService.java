@@ -337,14 +337,8 @@ public class ContractNegotiationAPIService {
 		
 		if(response.isSuccess()) {
 			log.info("Updating status for negotiation {} to verified", contractNegotiation.getId());
-			ContractNegotiation contractNegtiationUpdate = ContractNegotiation.Builder.newInstance()
-					.id(contractNegotiation.getId())
-					.callbackAddress(contractNegotiation.getCallbackAddress())
-					.consumerPid(contractNegotiation.getConsumerPid())
-					.providerPid(contractNegotiation.getProviderPid())
-					.state(ContractNegotiationState.VERIFIED)
-					.build();
-			contractNegotiationRepository.save(contractNegtiationUpdate);
+			ContractNegotiation contractNegtiationVerified = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.VERIFIED);
+			contractNegotiationRepository.save(contractNegtiationVerified);
 		} else {
 			log.error("Response status not 200 - provider did not process Verification message correct");
 			throw new ContractNegotiationAPIException("provider did not process Verification message correct");

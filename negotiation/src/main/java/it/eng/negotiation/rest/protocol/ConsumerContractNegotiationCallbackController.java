@@ -1,9 +1,11 @@
 package it.eng.negotiation.rest.protocol;
 
 import java.net.URI;
+import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,9 +17,11 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.negotiation.model.ContractAgreementMessage;
+import it.eng.negotiation.model.ContractNegotiationErrorMessage;
 import it.eng.negotiation.model.ContractNegotiationEventMessage;
 import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
 import it.eng.negotiation.model.ContractOfferMessage;
+import it.eng.negotiation.model.Description;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.negotiation.service.ContractNegotiationConsumerService;
@@ -64,16 +68,17 @@ public class ConsumerContractNegotiationCallbackController {
     @PostMapping("/consumer/negotiations/{consumerPid}/offers")
     public ResponseEntity<JsonNode> handleNegotiationOfferConsumerPid(@PathVariable String consumerPid,
                                                                       @RequestBody JsonNode contractOfferMessageJsonNode) throws InterruptedException, ExecutionException {
-        ContractOfferMessage contractOfferMessage = Serializer.deserializeProtocol(contractOfferMessageJsonNode,
-                ContractOfferMessage.class);
-
-        JsonNode responseNode =
-                contractNegotiationConsumerService.handleNegotiationOfferConsumer(consumerPid, contractOfferMessage);
+        ContractOfferMessage contractOfferMessage = 
+        		Serializer.deserializeProtocol(contractOfferMessageJsonNode, ContractOfferMessage.class);
 
 //		callbackAddress = callbackAddress.endsWith("/") ? callbackAddress : callbackAddress + "/";
 //		String finalCallback = callbackAddress + ContactNegotiationCallback.getNegotiationOfferConsumer(callbackAddress);
-        log.info("Sending response OK in callback case");
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).build();
+        log.info("NOT IPLEMENTED YET!!!");
+//        return ResponseEntity.of().contentType(MediaType.APPLICATION_JSON).build();
+        ContractNegotiationErrorMessage error = methodNotYetImplemented();
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
+        		.contentType(MediaType.APPLICATION_JSON)
+        		.body(Serializer.serializeProtocolJsonNode(error));
     }
 
     // https://consumer.com/:callback/negotiations/:consumerPid/agreement	POST	ContractAgreementMessage
@@ -131,4 +136,15 @@ public class ConsumerContractNegotiationCallbackController {
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON.toString())
                 .build();
     }
+    
+
+	private ContractNegotiationErrorMessage methodNotYetImplemented() {
+		ContractNegotiationErrorMessage cnem = ContractNegotiationErrorMessage.Builder.newInstance()
+        		.code("1")
+        		.consumerPid("NOT IMPLEMENTED")
+        		.providerPid("NOT IMPLEMENTED")
+        		.description(Arrays.asList(Description.Builder.newInstance().language("en").value("Not implemented").build()))
+        		.build();
+		return cnem;
+	}
 }
