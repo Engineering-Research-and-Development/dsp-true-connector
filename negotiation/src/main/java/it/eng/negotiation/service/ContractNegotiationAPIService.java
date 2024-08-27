@@ -92,7 +92,7 @@ public class ContractNegotiationAPIService {
 		    			.consumerPid(contractNegotiation.getConsumerPid())
 		    			.providerPid(contractNegotiation.getProviderPid())
 		    			.callbackAddress(contractNegotiation.getCallbackAddress())
-		    			.assigner(offer.getAssigner())
+		    			.assigner(contractNegotiation.getAssigner())
 		    			.state(contractNegotiation.getState())
 		    			.role(IConstants.ROLE_CONSUMER)
 		    			.offer(offer)

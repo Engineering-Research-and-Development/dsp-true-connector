@@ -57,12 +57,6 @@ import lombok.NoArgsConstructor;
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true) 
 public class Offer {
 	
-//	@JsonIgnore
-//	private String consumerPid;
-	
-//	@JsonIgnore
-//	private String providerPid;
-
 //	@NotNull
 	@JsonProperty(DSpaceConstants.ID)
 	private String id;
@@ -119,16 +113,6 @@ public class Offer {
 			offer.assigner = assigner;
 			return this;
 		}
-		
-//		public Builder consumerPid(String consumerPid) {
-//			offer.consumerPid = consumerPid;
-//			return this;
-//		}
-//		
-//		public Builder providerPid(String providerPid) {
-//			offer.providerPid = providerPid;
-//			return this;
-//		}
 		
 		@JsonProperty(DSpaceConstants.ODRL_ASSIGNEE)
 		public Builder assignee(String assignee) {
