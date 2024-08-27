@@ -38,6 +38,7 @@ import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
+import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
 
@@ -80,6 +81,7 @@ public class ContractNegotiationProviderServiceTest {
 		assertEquals(ContractNegotiationState.REQUESTED, argCaptorContractNegotiation.getValue().getState());
 		assertEquals(MockObjectUtil.CALLBACK_ADDRESS, argCaptorContractNegotiation.getValue().getCallbackAddress());
 		assertEquals(MockObjectUtil.CONSUMER_PID, argCaptorContractNegotiation.getValue().getConsumerPid());
+		assertEquals(IConstants.ROLE_PROVIDER, argCaptorContractNegotiation.getValue().getRole());
 		assertNotNull(argCaptorContractNegotiation.getValue().getProviderPid());
 		verify(publisher).publishEvent(any(ContractNegotationOfferRequestEvent.class));
     }

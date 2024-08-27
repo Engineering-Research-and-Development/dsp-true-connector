@@ -1,6 +1,10 @@
 package it.eng.negotiation.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
@@ -18,11 +22,6 @@ import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 /*
 	"odrl:offer": {
@@ -58,11 +57,11 @@ import java.util.stream.Collectors;
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true) 
 public class Offer {
 	
-	@JsonIgnore
-	private String consumerPid;
+//	@JsonIgnore
+//	private String consumerPid;
 	
-	@JsonIgnore
-	private String providerPid;
+//	@JsonIgnore
+//	private String providerPid;
 
 //	@NotNull
 	@JsonProperty(DSpaceConstants.ID)
@@ -121,15 +120,15 @@ public class Offer {
 			return this;
 		}
 		
-		public Builder consumerPid(String consumerPid) {
-			offer.consumerPid = consumerPid;
-			return this;
-		}
-		
-		public Builder providerPid(String providerPid) {
-			offer.providerPid = providerPid;
-			return this;
-		}
+//		public Builder consumerPid(String consumerPid) {
+//			offer.consumerPid = consumerPid;
+//			return this;
+//		}
+//		
+//		public Builder providerPid(String providerPid) {
+//			offer.providerPid = providerPid;
+//			return this;
+//		}
 		
 		@JsonProperty(DSpaceConstants.ODRL_ASSIGNEE)
 		public Builder assignee(String assignee) {

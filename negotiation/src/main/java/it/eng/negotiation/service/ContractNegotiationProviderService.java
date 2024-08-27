@@ -20,6 +20,7 @@ import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
+import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -93,11 +94,13 @@ public class ContractNegotiationProviderService extends BaseProtocolService {
 			throw new OfferNotValidException("Contract offer is not valid", contractRequestMessage.getConsumerPid(), contractRequestMessage.getProviderPid());
 		}
 		
+		
         ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
                 .state(ContractNegotiationState.REQUESTED)
                 .consumerPid(contractRequestMessage.getConsumerPid())
                 .callbackAddress(contractRequestMessage.getCallbackAddress())
                 .assigner(contractRequestMessage.getOffer().getAssigner())
+                .role(IConstants.ROLE_PROVIDER)
                 .offer(contractRequestMessage.getOffer())
                 .build();
         

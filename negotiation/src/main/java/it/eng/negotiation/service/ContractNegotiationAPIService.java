@@ -34,6 +34,7 @@ import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.rest.protocol.ContractNegotiationCallback;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -85,13 +86,15 @@ public class ContractNegotiationAPIService {
 			try {
 				JsonNode jsonNode = mapper.readTree(response.getData());
 				ContractNegotiation contractNegotiation = Serializer.deserializeProtocol(jsonNode, ContractNegotiation.class);
+				
 				contractNegotiationWithOffer = ContractNegotiation.Builder.newInstance()
 						.id(contractNegotiation.getId())
 		    			.consumerPid(contractNegotiation.getConsumerPid())
 		    			.providerPid(contractNegotiation.getProviderPid())
 		    			.callbackAddress(contractNegotiation.getCallbackAddress())
-		    			.assigner(contractNegotiation.getAssigner())
+		    			.assigner(offer.getAssigner())
 		    			.state(contractNegotiation.getState())
+		    			.role(IConstants.ROLE_CONSUMER)
 		    			.offer(offer)
 						.build();
 				contractNegotiationRepository.save(contractNegotiationWithOffer);
@@ -156,6 +159,7 @@ public class ContractNegotiationAPIService {
 						// callbackAddress is the same because it is now Consumer's turn to respond
 //						.callbackAddress(forwardTo)
 						.assigner(offer.getAssigner())
+						.role(IConstants.ROLE_PROVIDER)
 						.offer(offer)
 						.state(contractNegotiation.getState())
 						.build();
@@ -337,13 +341,7 @@ public class ContractNegotiationAPIService {
 		
 		if(response.isSuccess()) {
 			log.info("Updating status for negotiation {} to verified", contractNegotiation.getId());
-			ContractNegotiation contractNegtiationUpdate = ContractNegotiation.Builder.newInstance()
-					.id(contractNegotiation.getId())
-					.callbackAddress(contractNegotiation.getCallbackAddress())
-					.consumerPid(contractNegotiation.getConsumerPid())
-					.providerPid(contractNegotiation.getProviderPid())
-					.state(ContractNegotiationState.VERIFIED)
-					.build();
+			ContractNegotiation contractNegtiationUpdate = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.VERIFIED);
 			contractNegotiationRepository.save(contractNegtiationUpdate);
 		} else {
 			log.error("Response status not 200 - provider did not process Verification message correct");

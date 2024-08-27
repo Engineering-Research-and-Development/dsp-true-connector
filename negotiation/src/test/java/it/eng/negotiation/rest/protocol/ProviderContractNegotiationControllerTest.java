@@ -84,13 +84,8 @@ public class ProviderContractNegotiationControllerTest {
 	@Test
 	public void createNegotiation_success() throws InterruptedException, ExecutionException {
 	   when(attrs.getRequest()).thenReturn(request);
-		ContractNegotiation cn = ContractNegotiation.Builder.newInstance()
-                .state(ContractNegotiationState.REQUESTED)
-                .consumerPid(MockObjectUtil.CONSUMER_PID)
-                .providerPid(MockObjectUtil.PROVIDER_PID)
-                .build();
-		when(contractNegotiationService.startContractNegotiation(any(ContractRequestMessage.class)))
-			.thenReturn(cn);
+	   when(contractNegotiationService.startContractNegotiation(any(ContractRequestMessage.class)))
+			.thenReturn(MockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED);
 		
 		ResponseEntity<JsonNode> response = controller.createNegotiation(Serializer.serializeProtocolJsonNode(MockObjectUtil.CONTRACT_REQUEST_MESSAGE));
 		

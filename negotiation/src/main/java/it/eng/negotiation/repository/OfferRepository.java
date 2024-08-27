@@ -10,6 +10,6 @@ import it.eng.negotiation.model.Offer;
 @Repository
 public interface OfferRepository extends MongoRepository<Offer, String>{
 
-	Optional<Offer> findByConsumerPidAndProviderPidAndTarget(String consumerPid, String providerPid, String target);
+//	Optional<Offer> findByConsumerPidAndProviderPidAndTarget(String consumerPid, String providerPid, String target);
 
 }
