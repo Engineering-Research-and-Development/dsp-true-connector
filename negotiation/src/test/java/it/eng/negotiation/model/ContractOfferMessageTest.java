@@ -1,5 +1,6 @@
 package it.eng.negotiation.model;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -64,6 +65,24 @@ public class ContractOfferMessageTest {
 	public void missingContextAndType() {
 		JsonNode result = Serializer.serializePlainJsonNode(MockObjectUtil.CONTRACT_OFFER_MESSAGE);
 		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, ContractOfferMessage.class));
+	}
+	
+	@Test
+	@DisplayName("Plain serialize/deserialize")
+	public void equalsTestPlain() {
+		ContractOfferMessage contractOfferMessage = MockObjectUtil.CONTRACT_OFFER_MESSAGE;
+		String ss = Serializer.serializePlain(contractOfferMessage);
+		ContractOfferMessage obj = Serializer.deserializePlain(ss, ContractOfferMessage.class);
+		assertThat(contractOfferMessage).usingRecursiveComparison().isEqualTo(obj);
+	}
+	
+	@Test
+	@DisplayName("Protocol serialize/deserialize")
+	public void equalsTestProtocol() {
+		ContractOfferMessage contractOfferMessage = MockObjectUtil.CONTRACT_OFFER_MESSAGE;
+		String ss = Serializer.serializeProtocol(contractOfferMessage);
+		ContractOfferMessage obj = Serializer.deserializeProtocol(ss, ContractOfferMessage.class);
+		assertThat(contractOfferMessage).usingRecursiveComparison().isEqualTo(obj);
 	}
 	
 	private void validateOfferProtocol(JsonNode offer) {

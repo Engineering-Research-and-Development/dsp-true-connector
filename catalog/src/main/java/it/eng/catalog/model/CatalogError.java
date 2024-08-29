@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
@@ -38,11 +39,14 @@ import lombok.NoArgsConstructor;
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true)
 public class CatalogError extends AbstractCatalogObject {
 
+	private static final long serialVersionUID = -5538644369452254847L;
+
 	@JsonProperty(DSpaceConstants.DSPACE_CODE)
 	private String code;
 	@JsonProperty(DSpaceConstants.DSPACE_REASON)
 	private List<Reason> reason;
 	
+	@JsonPOJOBuilder(withPrefix = "")
 	@JsonIgnoreProperties(ignoreUnknown = true)
 	public static class Builder {
 		private final CatalogError catalogError;

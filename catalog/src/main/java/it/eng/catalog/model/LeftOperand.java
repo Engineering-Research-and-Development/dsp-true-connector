@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 import it.eng.tools.model.DSpaceConstants;
@@ -47,17 +48,18 @@ public enum LeftOperand {
 	
 	private final String operand;
 
-	private static final Map<String,LeftOperand> ENUM_MAP;
+	private static final Map<String,LeftOperand> BY_LABEL;
 	static {
         Map<String,LeftOperand> map = new ConcurrentHashMap<String, LeftOperand>();
         for (LeftOperand instance : LeftOperand.values()) {
-            map.put(instance.toString().toLowerCase(), instance);
-        }
-        ENUM_MAP = Collections.unmodifiableMap(map);
+            map.put(instance.toString(), instance);
+            map.put(instance.name(), instance);
+            }
+        BY_LABEL = Collections.unmodifiableMap(map);
     }
 	
 	public static LeftOperand fromLeftOperand(String leftOperand) {
-		return ENUM_MAP.get(leftOperand.toLowerCase());
+		return BY_LABEL.get(leftOperand);
 	}
 	
 	LeftOperand(final String operand) {
@@ -69,4 +71,13 @@ public enum LeftOperand {
     public String toString() {
         return operand;
     }
+	
+	@JsonCreator
+	public static LeftOperand fromString(String string) {
+		LeftOperand leftOperand = BY_LABEL.get(string);
+		if (leftOperand == null) {
+			throw new IllegalArgumentException(string + " has no corresponding value");
+		}
+		return leftOperand;
+	}
 }

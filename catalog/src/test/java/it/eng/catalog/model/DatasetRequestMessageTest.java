@@ -1,13 +1,19 @@
 package it.eng.catalog.model;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import it.eng.catalog.serializer.Serializer;
-import it.eng.tools.model.DSpaceConstants;
-import jakarta.validation.ValidationException;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import com.fasterxml.jackson.databind.JsonNode;
+
+import it.eng.catalog.serializer.Serializer;
+import it.eng.tools.model.DSpaceConstants;
+import jakarta.validation.ValidationException;
 
 public class DatasetRequestMessageTest {
 
@@ -52,6 +58,22 @@ public class DatasetRequestMessageTest {
 		assertThrows(ValidationException.class,
 				() -> DatasetRequestMessage.Builder.newInstance()
 					.build());
+	}
+	
+	@Test
+	@DisplayName("Plain serialize/deserialize")
+	public void equalsTestPlain() {
+		String ss = Serializer.serializePlain(datasetRequestMessage);
+		DatasetRequestMessage DatasetRequestMessage2 = Serializer.deserializePlain(ss, DatasetRequestMessage.class);
+		assertThat(datasetRequestMessage).usingRecursiveComparison().isEqualTo(DatasetRequestMessage2);
+	}
+	
+	@Test
+	@DisplayName("Protocol serialize/deserialize")
+	public void equalsTestProtocol() {
+		String ss = Serializer.serializeProtocol(datasetRequestMessage);
+		DatasetRequestMessage DatasetRequestMessage2 = Serializer.deserializeProtocol(ss, DatasetRequestMessage.class);
+		assertThat(datasetRequestMessage).usingRecursiveComparison().isEqualTo(DatasetRequestMessage2);
 	}
 	
 	private void validateJavaObj(DatasetRequestMessage javaObj) {

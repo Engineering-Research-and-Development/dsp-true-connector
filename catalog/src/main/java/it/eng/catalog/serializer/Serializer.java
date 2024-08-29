@@ -1,17 +1,24 @@
 package it.eng.catalog.serializer;
 
+import java.lang.annotation.Annotation;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.cfg.MapperConfig;
+import com.fasterxml.jackson.databind.introspect.Annotated;
+import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.jsontype.TypeResolverBuilder;
+import com.fasterxml.jackson.databind.jsontype.impl.StdTypeResolverBuilder;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
@@ -38,17 +45,45 @@ public class Serializer {
         instantConverterModule.addSerializer(Instant.class, new InstantSerializer());
         instantConverterModule.addDeserializer(Instant.class, new InstantDeserializer());
 
+        JacksonAnnotationIntrospector ignoreJsonPropertyIntrospector = new JacksonAnnotationIntrospector() {
+			private static final long serialVersionUID = 1L;
 
+			@Override
+            protected TypeResolverBuilder<?> _findTypeResolver(MapperConfig<?> config, Annotated ann, JavaType baseType) {
+                if (!ann.hasAnnotation(JsonProperty.class)) {  // || !ann.hasAnnotation(JsonValue.class)
+                    return super._findTypeResolver(config, ann, baseType);
+                }
+                return StdTypeResolverBuilder.noTypeInfoBuilder();
+            }
+			
+			@Override
+			protected <A extends Annotation> A _findAnnotation(Annotated ann, Class<A> annoClass) {
+				if (annoClass == JsonProperty.class) {
+					return null;
+				}
+				return super._findAnnotation(ann, annoClass);
+			}
+			
+        };
+        
         jsonMapperPlain = JsonMapper.builder()
-                .configure(MapperFeature.USE_ANNOTATIONS, false)
+//                .configure(MapperFeature.USE_ANNOTATIONS, false)
 //                .serializationInclusion(Include.NON_NULL)
 //                .serializationInclusion(Include.NON_EMPTY)
                 .configure(SerializationFeature.INDENT_OUTPUT, true)
                 .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                //
+//                .configure(MapperFeature.AUTO_DETECT_GETTERS, false)
+//                .configure(MapperFeature.AUTO_DETECT_CREATORS, false)
+//                .configure(MapperFeature.AUTO_DETECT_FIELDS, false)
+//                .configure(MapperFeature.AUTO_DETECT_IS_GETTERS, false)
+//                .configure(MapperFeature.AUTO_DETECT_SETTERS, false)
+        		//
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
                 .addModule(new JavaTimeModule())
                 .addModule(instantConverterModule)
+                .annotationIntrospector(ignoreJsonPropertyIntrospector)
                 .build();
 
         jsonMapper = JsonMapper.builder()
@@ -162,6 +197,24 @@ public class Serializer {
                         .stream()
                         .map(v -> v.getPropertyPath() + " " + v.getMessage())
                         .collect(Collectors.joining(",")));
+    }
+    
+    public static <T> T deserializeProtocol(String jsonStringPlain, Class<T> clazz) {
+        try {
+            T obj = jsonMapper.readValue(jsonStringPlain, clazz);
+            Set<ConstraintViolation<T>> violations = validator.validate(obj);
+            if (violations.isEmpty()) {
+                return obj;
+            }
+            throw new ValidationException(
+                    violations
+                            .stream()
+                            .map(v -> v.getPropertyPath() + " " + v.getMessage())
+                            .collect(Collectors.joining(",")));
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     /**

@@ -41,7 +41,6 @@ public class OfferAPIController {
         
         return ResponseEntity.badRequest().contentType(MediaType.APPLICATION_JSON)
         		.body(GenericApiResponse.error("Offer not valid"));
-
     }
 
 }

@@ -11,6 +11,20 @@ All notable changes to this project will be documented in this file.
  - Data Transfer protocol and API logic implementation (controller, service, model; junit and integration tests) - REST pull implementation without authorization, with hardcoded value/artifact
  - Postman collection for testing endpoints	
  - Configured GitHub actions to run tests
+ 
+## [0.0.1] - xx-08-2024
+
+### Added 
+
+ - Junit tests to cover Catalog module classes java->String->java2 java.equals(java2) 
+
+### Changed
+
+ - Plain Serializer - JacksonAnnotationIntrospector to skip JsonProperty annotation
+ - Model classes implements Serializable
+ - Enum classes JsonCreator - create enum from String (plain and protocol string)
+ - Builder creates 'id' in "urn:uuid" + UUID.randomUUID() format if 'id' not present
+ - Collections reverted to Set
 
 ## [0.0.1] - 07-08-2024
 

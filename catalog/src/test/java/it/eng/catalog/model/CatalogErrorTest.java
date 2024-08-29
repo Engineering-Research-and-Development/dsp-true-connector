@@ -1,5 +1,6 @@
 package it.eng.catalog.model;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -8,12 +9,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
 
-import it.eng.catalog.serializer.Serializer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import it.eng.catalog.serializer.Serializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 
@@ -70,6 +71,22 @@ public class CatalogErrorTest {
 	public void validateInvalid() {
 		assertDoesNotThrow(() -> CatalogError.Builder.newInstance()
 					.build());
+	}
+	
+	@Test
+	@DisplayName("Plain serialize/deserialize")
+	public void equalsTestPlain() {
+		String ss = Serializer.serializePlain(catalogError);
+		CatalogError catalogError2 = Serializer.deserializePlain(ss, CatalogError.class);
+		assertThat(catalogError).usingRecursiveComparison().isEqualTo(catalogError2);
+	}
+	
+	@Test
+	@DisplayName("Protocol serialize/deserialize")
+	public void equalsTestProtocol() {
+		String ss = Serializer.serializeProtocol(catalogError);
+		CatalogError catalogError2 = Serializer.deserializeProtocol(ss, CatalogError.class);
+		assertThat(catalogError).usingRecursiveComparison().isEqualTo(catalogError2);
 	}
 
 	private void validateJavaObj(CatalogError javaObj) {

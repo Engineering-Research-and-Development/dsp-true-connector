@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 import it.eng.tools.model.DSpaceConstants;
@@ -66,7 +67,8 @@ public enum Action {
 	static {
 		 Map<String,Action> map = new ConcurrentHashMap<String, Action>();
 	        for (Action instance : Action.values()) {
-	            map.put(instance.toString().toLowerCase(), instance);
+	            map.put(instance.toString(), instance);
+	            map.put(instance.name(), instance);
 	        }
 	        BY_LABEL = Collections.unmodifiableMap(map);
 	}
@@ -84,4 +86,13 @@ public enum Action {
     public String toString() {
         return action;
     }
+	
+	@JsonCreator
+	public static Action fromString(String string) {
+		Action action = BY_LABEL.get(string);
+		if (action == null) {
+			throw new IllegalArgumentException(string + " has no corresponding value");
+		}
+		return action;
+	}
 }

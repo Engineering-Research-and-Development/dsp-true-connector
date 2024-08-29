@@ -5,6 +5,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -31,10 +33,13 @@ import java.util.stream.Collectors;
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true)
 public class DatasetRequestMessage extends AbstractCatalogObject {
 
+	private static final long serialVersionUID = 8681130342830944384L;
+	
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_DATASET)
 	private String dataset;
 	
+	@JsonPOJOBuilder(withPrefix = "")
 	@JsonIgnoreProperties(ignoreUnknown = true)
 	public static class Builder {
 		private final DatasetRequestMessage datasetRequestMessage;

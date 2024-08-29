@@ -5,7 +5,6 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.negotiation.exception.ContractNegotiationInvalidEventTypeException;
 import it.eng.negotiation.exception.OfferNotFoundException;
@@ -79,20 +78,6 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
 
 	protected String createNewPid() {
         return "urn:uuid:" + UUID.randomUUID();
-    }
-
-    /**
-     * The response body is not specified and clients are not required to process it.
-     *
-     * @param consumerPid
-     * @param contractOfferMessage
-     * @return
-     */
-
-    public JsonNode handleNegotiationOfferConsumer(String consumerPid, ContractOfferMessage contractOfferMessage) {
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode testNode = mapper.createObjectNode();
-        return testNode;
     }
 
     /**

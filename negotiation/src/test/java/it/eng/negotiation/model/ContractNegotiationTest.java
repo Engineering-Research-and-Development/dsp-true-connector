@@ -1,5 +1,6 @@
 package it.eng.negotiation.model;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -8,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
+import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,6 +23,7 @@ import jakarta.validation.ValidationException;
 public class ContractNegotiationTest {
 
 	private ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
+			.id("urn:uuid:" + UUID.randomUUID())
 			.consumerPid(MockObjectUtil.CONSUMER_PID)
 			.providerPid(MockObjectUtil.PROVIDER_PID)
 			.state(ContractNegotiationState.ACCEPTED)
@@ -133,6 +136,24 @@ public class ContractNegotiationTest {
 		assertEquals(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getProviderPid(), contractNegotiationOffered.getProviderPid());
 		assertEquals(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getCallbackAddress(), contractNegotiationOffered.getCallbackAddress());
 		assertEquals(ContractNegotiationState.OFFERED, contractNegotiationOffered.getState());
+	}
+	
+	@Test
+	@DisplayName("Plain serialize/deserialize")
+	public void equalsTestPlain() {
+		String ss = Serializer.serializePlain(contractNegotiation);
+		ContractNegotiation obj = Serializer.deserializePlain(ss, ContractNegotiation.class);
+		// must exclude id since it is not according to protocol but internally
+		assertThat(contractNegotiation).usingRecursiveComparison().ignoringFieldsMatchingRegexes("id").isEqualTo(obj);
+	}
+	
+	@Test
+	@DisplayName("Protocol serialize/deserialize")
+	public void equalsTestProtocol() {
+		String ss = Serializer.serializeProtocol(contractNegotiation);
+		ContractNegotiation obj = Serializer.deserializeProtocol(ss, ContractNegotiation.class);
+		// must exclude id since it is not according to protocol but internally
+		assertThat(contractNegotiation).usingRecursiveComparison().ignoringFieldsMatchingRegexes("id").isEqualTo(obj);
 	}
 	
 	private void validateJavaObj(ContractNegotiation javaObj) {
