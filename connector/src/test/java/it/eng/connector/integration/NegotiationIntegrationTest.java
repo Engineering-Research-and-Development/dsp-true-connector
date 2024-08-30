@@ -63,7 +63,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     	
     	//needs to match offer in initial.data
     	Offer offer = Offer.Builder.newInstance()
-    			.id("fdc45798-a123-4955-8baf-ab7fd66ac4d5")
+    			.id("urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5")
     			.target(MockObjectUtil.TARGET)
     			.assigner(MockObjectUtil.ASSIGNER)
     			.permission(Arrays.asList(MockObjectUtil.PERMISSION_COUNT_5))

@@ -24,7 +24,7 @@
   "catalogs": [
     {
       "_class": "it.eng.catalog.model.Catalog",
-      "_id": "1dc45797-3333-4955-8baf-ab7fd66ac4d5",
+      "_id": "urn:uuid:1dc45797-3333-4955-8baf-ab7fd66ac4d5",
       "context": "https://w3id.org/dspace/2024/1/context.json",
       "keyword": [
         "Employee",
@@ -51,7 +51,7 @@
       "distribution": [
         {
           "$ref": "distributions",
-          "$id": "1dc45797-pdff-4932-8baf-ab7fd66ql4d5"
+          "$id": "urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5"
         },
 		{
 			"$ref": "distributions",
@@ -61,17 +61,17 @@
       "dataset": [
         {
           "$ref": "datasets",
-          "$id": "fdc45798-a222-4955-8baf-ab7fd66ac4d5"
+          "$id": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
         }
       ],
       "service": [
         {
           "$ref": "dataservices",
-          "$id": "1dc45797-4444-rest-8baf-ab7fd66ac4d5"
+          "$id": "urn:uuid:1dc45797-4444-rest-8baf-ab7fd66ac4d5"
         },
 		{
 			"$ref": "dataservices",
-	        "$id": "1dc45797-4444-sftp-8baf-ab7fd66ac4d5"
+	        "$id": "urn:uuid:1dc45797-4444-sftp-8baf-ab7fd66ac4d5"
 		}
       ],
       "participantId": "urn:example:DataProviderA",
@@ -94,7 +94,7 @@
     {
       "_class": "it.eng.catalog.model.Dataset",
       "context": "https://w3id.org/dspace/2024/1/context.json",
-      "_id": "fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "_id": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "keyword": [
         "Personal information",
         "Employee",
@@ -122,7 +122,7 @@
       "title": "TRUEConnector team information dataset",
       "hasPolicy": [
         {
-          "_id": "fdc45798-a123-4955-8baf-ab7fd66ac4d5",
+          "_id": "urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5",
           "_class": "it.eng.catalog.model.Offer",
           "permission": [
             {
@@ -141,7 +141,7 @@
       "distribution": [
         {
           "$ref": "distributions",
-          "$id": "1dc45797-pdff-4932-8baf-ab7fd66ql4d5"
+          "$id": "urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5"
         }, {
 		  "$ref": "distributions",
 	      "$id": "1dc45797-json-4932-8baf-ab7fd66ql4d5"
@@ -154,7 +154,7 @@
   ],
   "dataservices": [
     {
-      "_id": "1dc45797-4444-rest-8baf-ab7fd66ac4d5",
+      "_id": "urn:uuid:1dc45797-4444-rest-8baf-ab7fd66ac4d5",
       "_class": "it.eng.catalog.model.DataService",
       "keyword": [
         "REST",
@@ -184,7 +184,7 @@
       "version": 0
     },
 	{
-      "_id": "1dc45797-4444-sftp-8baf-ab7fd66ac4d5",
+      "_id": "urn:uuid:1dc45797-4444-sftp-8baf-ab7fd66ac4d5",
       "_class": "it.eng.catalog.model.DataService",
       "keyword": [
         "SFTP",
@@ -216,7 +216,7 @@
   ],
   "distributions": [
     {
-      "_id": "1dc45797-pdff-4932-8baf-ab7fd66ql4d5",
+      "_id": "urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5",
       "_class": "it.eng.catalog.model.Distribution",
       "title": "PDF file",
       "format": {
@@ -225,10 +225,10 @@
       "accessService": [
         {
           "$ref": "dataservices",
-          "$id": "1dc45797-4444-rest-8baf-ab7fd66ac4d5"
+          "$id": "urn:uuid:1dc45797-4444-rest-8baf-ab7fd66ac4d5"
         }, {
 			"$ref": "dataservices",
-			"$id": "1dc45797-4444-sftp-8baf-ab7fd66ac4d5"
+			"$id": "urn:uuid:1dc45797-4444-sftp-8baf-ab7fd66ac4d5"
 		}
       ],
       "createdBy": "admin@mail.com",
@@ -247,11 +247,11 @@
       "accessService": [
         {
           "$ref": "dataservices",
-          "$id": "1dc45797-4444-rest-8baf-ab7fd66ac4d5"
+          "$id": "urn:uuid:1dc45797-4444-rest-8baf-ab7fd66ac4d5"
         },
 		{
 			"$ref": "dataservices",
-			"$id": "1dc45797-4444-sftp-8baf-ab7fd66ac4d5"
+			"$id": "urn:uuid:1dc45797-4444-sftp-8baf-ab7fd66ac4d5"
 		}
       ],
       "createdBy": "admin@mail.com",
