@@ -33,6 +33,7 @@ import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.MockObjectUtil;
+import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
@@ -64,6 +65,8 @@ public class ContractNegotiationProviderServiceTest {
     
 	@Captor
 	private ArgumentCaptor<ContractNegotiation> argCaptorContractNegotiation;
+	@Captor
+	private ArgumentCaptor<Offer> argCaptorOffer;
 
     @Test
     @DisplayName("Start contract negotiation success - automatic negotiation ON")
@@ -73,15 +76,20 @@ public class ContractNegotiationProviderServiceTest {
         when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.ofNullable(null));
     	when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
     	when(apiResponse.isSuccess()).thenReturn(true);
+		when(offerRepository.save(any(Offer.class))).thenReturn(MockObjectUtil.OFFER_WITH_ORIGINAL_ID);
+    	
         ContractNegotiation result = service.startContractNegotiation(MockObjectUtil.CONTRACT_REQUEST_MESSAGE);
+        
         assertNotNull(result);
         assertEquals(result.getType(), "dspace:ContractNegotiation");
         verify(repository).save(argCaptorContractNegotiation.capture());
+        verify(offerRepository).save(argCaptorOffer.capture());
 		//verify that status is updated to REQUESTED
 		assertEquals(ContractNegotiationState.REQUESTED, argCaptorContractNegotiation.getValue().getState());
 		assertEquals(MockObjectUtil.CALLBACK_ADDRESS, argCaptorContractNegotiation.getValue().getCallbackAddress());
 		assertEquals(MockObjectUtil.CONSUMER_PID, argCaptorContractNegotiation.getValue().getConsumerPid());
 		assertEquals(IConstants.ROLE_PROVIDER, argCaptorContractNegotiation.getValue().getRole());
+		assertEquals(MockObjectUtil.CONTRACT_REQUEST_MESSAGE.getOffer().getId(), argCaptorOffer.getValue().getOriginalId());
 		assertNotNull(argCaptorContractNegotiation.getValue().getProviderPid());
 		verify(publisher).publishEvent(any(ContractNegotationOfferRequestEvent.class));
     }
@@ -93,14 +101,20 @@ public class ContractNegotiationProviderServiceTest {
         when(credentialUtils.getAPICredentials()).thenReturn("credentials");
     	when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
     	when(apiResponse.isSuccess()).thenReturn(true);
+    	when(offerRepository.save(any(Offer.class))).thenReturn(MockObjectUtil.OFFER_WITH_ORIGINAL_ID);
+    	
         ContractNegotiation result = service.startContractNegotiation(MockObjectUtil.CONTRACT_REQUEST_MESSAGE);
+        
         assertNotNull(result);
         assertEquals(result.getType(), "dspace:ContractNegotiation");
         verify(repository).save(argCaptorContractNegotiation.capture());
+        verify(offerRepository).save(argCaptorOffer.capture());
 		//verify that status is updated to REQUESTED
         assertEquals(ContractNegotiationState.REQUESTED, argCaptorContractNegotiation.getValue().getState());
 		assertEquals(MockObjectUtil.CALLBACK_ADDRESS, argCaptorContractNegotiation.getValue().getCallbackAddress());
 		assertEquals(MockObjectUtil.CONSUMER_PID, argCaptorContractNegotiation.getValue().getConsumerPid());
+		assertEquals(IConstants.ROLE_PROVIDER, argCaptorContractNegotiation.getValue().getRole());
+		assertEquals(MockObjectUtil.CONTRACT_REQUEST_MESSAGE.getOffer().getId(), argCaptorOffer.getValue().getOriginalId());
 		assertNotNull(argCaptorContractNegotiation.getValue().getProviderPid());
 		verify(publisher, times(0)).publishEvent(any(ContractNegotationOfferRequestEvent.class));
     }

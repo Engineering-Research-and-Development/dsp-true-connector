@@ -122,8 +122,9 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
     			.callbackAddress(contractAgreementMessage.getCallbackAddress())
     			.assigner(contractNegotiation.getAssigner())
     			.state(ContractNegotiationState.AGREED)
-    			.role(IConstants.ROLE_CONSUMER)
+    			.role(contractNegotiation.getRole())
     			.offer(contractNegotiation.getOffer())
+    			.agreement(contractAgreementMessage.getAgreement())
     			.build();
     	log.info("CONSUMER - updating negotiation with state AGREED");
     	contractNegotiationRepository.save(contractNegotiationAgreed);

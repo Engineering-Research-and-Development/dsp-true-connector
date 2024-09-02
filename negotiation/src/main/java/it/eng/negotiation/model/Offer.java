@@ -5,6 +5,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
@@ -76,6 +77,12 @@ public class Offer {
 	@JsonProperty(DSpaceConstants.ODRL_PERMISSION)
 	private List<Permission> permission;
 	
+	/**
+	 * The original ID as in the provider's Catalog
+	 */
+	@JsonIgnore
+	private String originalId;
+	
 	@JsonIgnoreProperties(value={ "type" }, allowGetters=true)
 	@JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
 	private String getType() {
@@ -117,6 +124,11 @@ public class Offer {
 		@JsonProperty(DSpaceConstants.ODRL_ASSIGNEE)
 		public Builder assignee(String assignee) {
 			offer.assignee = assignee;
+			return this;
+		}
+		
+		public Builder originalId(String originalId) {
+			offer.originalId = originalId;
 			return this;
 		}
 		

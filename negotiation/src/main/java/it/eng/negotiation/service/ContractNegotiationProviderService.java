@@ -14,6 +14,7 @@ import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationEventMessage;
 import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ContractRequestMessage;
+import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
@@ -94,6 +95,17 @@ public class ContractNegotiationProviderService extends BaseProtocolService {
 			throw new OfferNotValidException("Contract offer is not valid", contractRequestMessage.getConsumerPid(), contractRequestMessage.getProviderPid());
 		}
 		
+		Offer offerToBeInserted = Offer.Builder.newInstance()
+				.assignee(contractRequestMessage.getOffer().getAssignee())
+				.assigner(contractRequestMessage.getOffer().getAssigner())
+				.originalId(contractRequestMessage.getOffer().getId())
+				.permission(contractRequestMessage.getOffer().getPermission())
+				.target(contractRequestMessage.getOffer().getTarget())
+				.build();
+		
+		Offer savedOffer = offerRepository.save(offerToBeInserted);
+		log.info("PROVIDER - Offer {} saved", savedOffer.getId());
+		
 		
         ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
                 .state(ContractNegotiationState.REQUESTED)
@@ -101,16 +113,14 @@ public class ContractNegotiationProviderService extends BaseProtocolService {
                 .callbackAddress(contractRequestMessage.getCallbackAddress())
                 .assigner(contractRequestMessage.getOffer().getAssigner())
                 .role(IConstants.ROLE_PROVIDER)
-                .offer(contractRequestMessage.getOffer())
+                .offer(savedOffer)
                 .build();
         
         contractNegotiationRepository.save(contractNegotiation);
         log.info("PROVIDER - Contract negotiation {} saved", contractNegotiation.getId());
-
-        offerRepository.findById(contractRequestMessage.getOffer().getId())
-        	.ifPresentOrElse(o -> log.info("Offer already exists"),
-        		() -> offerRepository.save(contractRequestMessage.getOffer()));
-		log.info("PROVIDER - Offer {} saved", contractRequestMessage.getOffer().getId());
+//        offerRepository.findById(contractRequestMessage.getOffer().getId())
+//        	.ifPresentOrElse(o -> log.info("Offer already exists"),
+//        		() -> offerRepository.save(contractRequestMessage.getOffer()));
 		
 		if (properties.isAutomaticNegotiation()) {
 			log.debug("PROVIDER - Performing automatic negotiation");

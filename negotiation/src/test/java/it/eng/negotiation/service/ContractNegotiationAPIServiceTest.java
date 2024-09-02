@@ -63,6 +63,8 @@ public class ContractNegotiationAPIServiceTest {
 	private ArgumentCaptor<ContractNegotiation> argCaptorContractNegotiation;
 	@Captor
 	private ArgumentCaptor<Agreement> argCaptorAgreement;
+	@Captor
+	private ArgumentCaptor<Offer> argCaptorOffer;
 
 	@InjectMocks
 	private ContractNegotiationAPIService service;
@@ -75,12 +77,14 @@ public class ContractNegotiationAPIServiceTest {
 		when(apiResponse.getData()).thenReturn(Serializer.serializeProtocol(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 		when(apiResponse.isSuccess()).thenReturn(true);
 		when(properties.consumerCallbackAddress()).thenReturn(MockObjectUtil.CALLBACK_ADDRESS);
+		when(offerRepository.save(any(Offer.class))).thenReturn(MockObjectUtil.OFFER_WITH_ORIGINAL_ID);
 		
 		service.startNegotiation(MockObjectUtil.FORWARD_TO, Serializer.serializePlainJsonNode(MockObjectUtil.OFFER));
 		
+		verify(offerRepository).save(argCaptorOffer.capture());
 		verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
 		assertEquals(IConstants.ROLE_CONSUMER, argCaptorContractNegotiation.getValue().getRole());
-		verify(offerRepository).save(any(Offer.class));
+		assertEquals(MockObjectUtil.OFFER.getId(), argCaptorOffer.getValue().getOriginalId());
 	}
 	
 	@Test
@@ -354,10 +358,12 @@ public class ContractNegotiationAPIServiceTest {
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(true);
 		
-		service.handleContractNegotiationAgreed(contractNegotaitionId);
+		service.approveContractNegotiation(contractNegotaitionId);
 		
+		verify(agreementRepository).save(argCaptorAgreement.capture());
 		verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
 		assertEquals(ContractNegotiationState.AGREED, argCaptorContractNegotiation.getValue().getState());
+		assertEquals(argCaptorAgreement.getValue().getId(), argCaptorContractNegotiation.getValue().getAgreement().getId());
 	}
 	
 	@Test
@@ -367,7 +373,7 @@ public class ContractNegotiationAPIServiceTest {
 		when(contractNegotiationRepository.findById(contractNegotaitionId)).thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_AGREED));
 		
 		assertThrows(ContractNegotiationAPIException.class, 
-				() -> service.handleContractNegotiationAgreed(contractNegotaitionId));
+				() -> service.approveContractNegotiation(contractNegotaitionId));
 	}
 	
 	@Test
@@ -382,7 +388,7 @@ public class ContractNegotiationAPIServiceTest {
 		when(apiResponse.isSuccess()).thenReturn(false);
 		
 		assertThrows(ContractNegotiationAPIException.class, 
-				() -> service.handleContractNegotiationAgreed(contractNegotaitionId));
+				() -> service.approveContractNegotiation(contractNegotaitionId));
 		
 		verify(contractNegotiationRepository, times(0)).save(argCaptorContractNegotiation.capture());
 		verify(agreementRepository, times(0)).save(argCaptorAgreement.capture());

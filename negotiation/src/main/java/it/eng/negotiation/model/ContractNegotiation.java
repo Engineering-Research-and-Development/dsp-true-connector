@@ -1,8 +1,22 @@
 package it.eng.negotiation.model;
 
-import com.fasterxml.jackson.annotation.*;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -11,13 +25,6 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.DBRef;
-import org.springframework.data.mongodb.core.mapping.Document;
-
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /*
 {
@@ -52,6 +59,10 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     @JsonIgnore
     @DBRef
     private Offer offer;
+    
+    @JsonIgnore
+    @DBRef
+    private Agreement agreement;
     
     @NotNull
     @JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
@@ -107,8 +118,14 @@ public class ContractNegotiation extends AbstractNegotiationObject {
         	message.role = role;
         	return this;
         }
+        
         public Builder offer(Offer offer) {
         	message.offer = offer;
+        	return this;
+        }
+        
+        public Builder agreement(Agreement agreement) {
+        	message.agreement = agreement;
         	return this;
         }
 
@@ -169,6 +186,7 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     			.offer(this.offer)
     			.assigner(this.assigner)
     			.role(this.role)
+    			.agreement(this.agreement)
     			// not yet auditable fields
 //    			.createdBy(this.createdBy)
 //				.lastModifiedBy(this.lastModifiedBy)
