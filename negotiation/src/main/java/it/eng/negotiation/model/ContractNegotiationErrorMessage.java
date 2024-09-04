@@ -1,11 +1,15 @@
 package it.eng.negotiation.model;
 
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -14,10 +18,6 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /*
 {
@@ -79,13 +79,13 @@ public class ContractNegotiationErrorMessage extends AbstractNegotiationObject {
             return new Builder();
         }
 
-        @JsonSetter((DSpaceConstants.DSPACE_PROVIDER_PID))
+        @JsonProperty((DSpaceConstants.DSPACE_PROVIDER_PID))
         public Builder providerPid(String providerPid) {
             message.providerPid = providerPid;
             return this;
         }
 
-        @JsonSetter(DSpaceConstants.DSPACE_CONSUMER_PID)
+        @JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
         public Builder consumerPid(String consumerPid) {
             message.consumerPid = consumerPid;
             return this;

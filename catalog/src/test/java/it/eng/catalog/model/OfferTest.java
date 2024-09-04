@@ -1,13 +1,17 @@
 package it.eng.catalog.model;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.util.MockObjectUtil;
 
 public class OfferTest {
@@ -95,5 +99,74 @@ public class OfferTest {
 				.permission(Set.of(permission2, permission1))
 				.build();
 		assertTrue(offerA.equals(offerB));
+	}
+	
+	@Test
+	public void collection() {
+		Set<Permission> permissions = new HashSet<>();
+		permissions.add(MockObjectUtil.PERMISSION);
+		Offer o = Offer.Builder.newInstance()
+				.assignee(ASSIGNEE)
+				.assigner(ASSIGNER)
+				.permission(permissions)
+				.build();
+		
+		o.getPermission().add(MockObjectUtil.PERMISSION_ANONYMIZE);
+		o.getPermission();
+		
+		
+		String oString = "{\r\n"
+				+ "                    \"action\": \"USE\",\r\n"
+				+ "                    \"constraint\": [\r\n"
+				+ "                        {\r\n"
+				+ "                            \"leftOperand\": \"COUNT\",\r\n"
+				+ "                            \"operator\": \"EQ\",\r\n"
+				+ "                            \"rightOperand\": \"5\"\r\n"
+				+ "                        }\r\n"
+				+ "                    ]\r\n"
+				+ "                }";
+		Permission p = Serializer.deserializePlain(oString, Permission.class);
+		p.getConstraint();
+		p.getConstraint().add(Constraint.Builder.newInstance().leftOperand(LeftOperand.ABSOLUTE_POSITION).operator(Operator.GT).rightOperand("DesniOperand").build());
+		p.getConstraint();
+	}
+	
+	@Test
+	public void equalsTestPlain() {
+		Offer offer = MockObjectUtil.OFFER;
+		String ss = Serializer.serializePlain(offer);
+		Offer offer2 = Serializer.deserializePlain(ss, Offer.class);
+		assertThat(offer).usingRecursiveComparison().isEqualTo(offer2);
+	}
+	
+	@Test
+	public void equalsTestProtocol() {
+		Offer offer = MockObjectUtil.OFFER;
+		String ss = Serializer.serializeProtocol(offer);
+		Offer offer2 = Serializer.deserializeProtocol(ss, Offer.class);
+		assertThat(offer).usingRecursiveComparison().isEqualTo(offer2);
+	}
+	
+	@Test
+	public void aaaaa() {
+		String str = "{\r\n"
+				+ "  \"id\" : \"urn:offer_id\",\r\n"
+				+ "  \"target\" : null,\r\n"
+				+ "  \"assigner\" : \"assigner\",\r\n"
+				+ "  \"assignee\" : \"assignee\",\r\n"
+				+ "  \"permission\" : [ {\r\n"
+				+ "    \"assigner\" : null,\r\n"
+				+ "    \"assignee\" : null,\r\n"
+				+ "    \"target\" : null,\r\n"
+				+ "    \"action\" : \"USE\",\r\n"
+				+ "    \"constraint\" : [ {\r\n"
+				+ "      \"leftOperand\" : \"ABSOLUTE_POSITION\",\r\n"
+				+ "      \"operator\" : \"EQ\",\r\n"
+				+ "      \"rightOperand\" : \"EU\"\r\n"
+				+ "    } ]\r\n"
+				+ "  } ]\r\n"
+				+ "}";
+		Offer off = Serializer.deserializePlain(str, Offer.class);
+		assertNotNull(off);
 	}
 }

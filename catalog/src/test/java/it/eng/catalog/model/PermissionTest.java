@@ -1,11 +1,16 @@
 package it.eng.catalog.model;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Set;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.util.MockObjectUtil;
 
 public class PermissionTest {
 
@@ -79,6 +84,24 @@ public class PermissionTest {
 				.build();
 
 		assertTrue(permissionA.equals(permissionB));
+	}
+	
+	@Test
+	@DisplayName("Plain serialize/deserialize")
+	public void equalsTestPlain() {
+		Permission permission = MockObjectUtil.PERMISSION;
+		String ss = Serializer.serializePlain(permission);
+		Permission permission2 = Serializer.deserializePlain(ss, Permission.class);
+		assertThat(permission).usingRecursiveComparison().isEqualTo(permission2);
+	}
+	
+	@Test
+	@DisplayName("Protocol serialize/deserialize")
+	public void equalsTestProtocol() {
+		Permission permission = MockObjectUtil.PERMISSION;
+		String ss = Serializer.serializeProtocol(permission);
+		Permission permission2 = Serializer.deserializeProtocol(ss, Permission.class);
+		assertThat(permission).usingRecursiveComparison().isEqualTo(permission2);
 	}
 	
 }

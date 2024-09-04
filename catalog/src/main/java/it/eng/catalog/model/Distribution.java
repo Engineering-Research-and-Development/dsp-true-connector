@@ -1,8 +1,8 @@
 
 package it.eng.catalog.model;
 
+import java.io.Serializable;
 import java.time.Instant;
-import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -25,6 +25,7 @@ import com.fasterxml.jackson.annotation.JsonProperty.Access;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
@@ -41,24 +42,27 @@ import lombok.NoArgsConstructor;
 @JsonPropertyOrder(value = {DSpaceConstants.TYPE, DSpaceConstants.DCT_FORMAT, DSpaceConstants.DCAT_ACCESS_SERVICE}
         , alphabetic = true)
 @Document(collection = "distributions")
-public class Distribution {
+public class Distribution implements Serializable {
 
-    @Id
+	private static final long serialVersionUID = 1L;
+
+	@Id
     @JsonProperty(DSpaceConstants.ID)
     private String id;
 
     @JsonProperty(DSpaceConstants.DCT_TITLE)
     private String title;
     @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
-    private Collection<Multilanguage> description;
+    private Set<Multilanguage> description;
     @JsonProperty(DSpaceConstants.DCT_ISSUED)
     @CreatedDate
     private Instant issued;
     @JsonProperty(DSpaceConstants.DCT_MODIFIED)
     @LastModifiedDate
     private Instant modified;
+    
     @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
-    private Collection<Offer> hasPolicy;
+    private Set<Offer> hasPolicy;
 
 //	@JsonProperty(DSpaceConstants.DCT_FORMAT)
 //	private Reference format;
@@ -77,10 +81,11 @@ public class Distribution {
     @NotNull
     @DBRef
     @JsonProperty(DSpaceConstants.DCAT_ACCESS_SERVICE)
-    private Collection<DataService> accessService;
+    private Set<DataService> accessService;
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
+//    @JsonIgnoreProperties(value={ "type" }, allowGetters=true)
     public static class Builder {
         private final Distribution distribution;
 
@@ -106,7 +111,8 @@ public class Distribution {
         }
 
         @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
-        public Builder description(Collection<Multilanguage> description) {
+        @JsonDeserialize(as = Set.class)
+        public Builder description(Set<Multilanguage> description) {
             distribution.description = description;
             return this;
         }
@@ -124,7 +130,8 @@ public class Distribution {
         }
 
         @JsonProperty(DSpaceConstants.DCAT_ACCESS_SERVICE)
-        public Builder accessService(Collection<DataService> dataService) {
+        @JsonDeserialize(as = Set.class)
+        public Builder accessService(Set<DataService> dataService) {
             distribution.accessService = dataService;
             return this;
         }
@@ -137,8 +144,9 @@ public class Distribution {
 
         @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
         @JsonDeserialize(as = Set.class)
-        public Builder hasPolicy(Collection<Offer> policies) {
-            distribution.hasPolicy = policies;
+        @JsonSerialize(as = Set.class)
+        public Builder hasPolicy(Set<Offer> hasPolicy) {
+            distribution.hasPolicy = hasPolicy;
             return this;
         }
 
@@ -162,7 +170,7 @@ public class Distribution {
 
         public Distribution build() {
             if (distribution.id == null) {
-                distribution.id = UUID.randomUUID().toString();
+                distribution.id = "urn:uuid" + UUID.randomUUID().toString();
             }
             Set<ConstraintViolation<Distribution>> violations
                     = Validation.buildDefaultValidatorFactory().getValidator().validate(distribution);

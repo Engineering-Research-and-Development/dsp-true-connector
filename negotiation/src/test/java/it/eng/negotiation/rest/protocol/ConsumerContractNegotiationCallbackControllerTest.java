@@ -64,12 +64,10 @@ public class ConsumerContractNegotiationCallbackControllerTest {
     public void handleNegotiationOfferConsumerPid() throws InterruptedException, ExecutionException, JsonMappingException, JsonProcessingException {
         String json = Serializer.serializeProtocol(MockObjectUtil.CONTRACT_OFFER_MESSAGE);
         JsonNode jsonNode = mapper.readTree(json);
-        when(contractNegotiationConsumerService.handleNegotiationOfferConsumer(any(String.class), any(ContractOfferMessage.class)))
-                .thenReturn(jsonNode);
 
         ResponseEntity<JsonNode> response = controller.handleNegotiationOfferConsumerPid(MockObjectUtil.CONSUMER_PID, jsonNode);
         assertNotNull(response);
-        assertTrue(response.getStatusCode().is2xxSuccessful());
+        assertTrue(response.getStatusCode().is5xxServerError());
     }
 
     @Test

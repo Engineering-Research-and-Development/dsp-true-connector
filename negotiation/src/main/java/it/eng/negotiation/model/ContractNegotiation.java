@@ -3,7 +3,6 @@ package it.eng.negotiation.model;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -13,7 +12,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
@@ -129,13 +127,13 @@ public class ContractNegotiation extends AbstractNegotiationObject {
         	return this;
         }
 
-        @JsonSetter(DSpaceConstants.DSPACE_PROVIDER_PID)
+        @JsonProperty(DSpaceConstants.DSPACE_PROVIDER_PID)
         public Builder providerPid(String providerPid) {
             message.providerPid = providerPid;
             return this;
         }
 
-        @JsonSetter(DSpaceConstants.DSPACE_CONSUMER_PID)
+        @JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
         public Builder consumerPid(String consumerPid) {
             message.consumerPid = consumerPid;
             return this;
@@ -143,7 +141,7 @@ public class ContractNegotiation extends AbstractNegotiationObject {
 
         public ContractNegotiation build() {
             if (message.id == null) {
-                message.id = message.createNewId();
+                message.id = message.createNewPid();
             }
             if (message.providerPid == null) {
                 message.providerPid = message.createNewPid();
@@ -159,11 +157,6 @@ public class ContractNegotiation extends AbstractNegotiationObject {
                             .map(v -> v.getPropertyPath() + " " + v.getMessage())
                             .collect(Collectors.joining(", ")));
         }
-    }
-
-    @Override
-    public String toString() {
-        return ToStringBuilder.getDefaultStyle().toString();
     }
 
     @Override

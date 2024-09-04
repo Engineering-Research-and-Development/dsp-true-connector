@@ -1,9 +1,30 @@
 package it.eng.catalog.model;
 
-import com.fasterxml.jackson.annotation.*;
+import java.io.Serializable;
+import java.time.Instant;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -11,37 +32,30 @@ import jakarta.validation.ValidationException;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.*;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-
-import java.time.Instant;
-import java.util.Collection;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = DataService.Builder.class)
 @JsonPropertyOrder(value = {"@id", "@type"}, alphabetic = true)
 @Document(collection = "dataservices")
-public class DataService {
+public class DataService implements Serializable {
 
-    @JsonProperty(DSpaceConstants.ID)
+	private static final long serialVersionUID = -7490596351222880611L;
+
+	@JsonProperty(DSpaceConstants.ID)
     @Id
     private String id;
     // Resource
     @JsonProperty(DSpaceConstants.DCAT_KEYWORD)
-    private Collection<String> keyword;
+    private Set<String> keyword;
     @JsonProperty(DSpaceConstants.DCAT_THEME)
-    private Collection<String> theme;
+    private Set<String> theme;
     @JsonProperty(DSpaceConstants.DCT_CONFORMSTO)
     private String conformsTo;
     @JsonProperty(DSpaceConstants.DCT_CREATOR)
     private String creator;
     @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
-    private Collection<Multilanguage> description;
+    private Set<Multilanguage> description;
     @JsonProperty(DSpaceConstants.DCT_IDENTIFIER)
     private String identifier;
     @JsonProperty(DSpaceConstants.DCT_ISSUED)
@@ -57,8 +71,8 @@ public class DataService {
     @JsonProperty(DSpaceConstants.DCAT_ENDPOINT_URL)
     private String endpointURL;
     @JsonProperty(DSpaceConstants.DCAT_SERVES_DATASET)
-    // @DBRef// Check if this is correct
-    private Collection<Dataset> servesDataset;
+    @DBRef
+    private Set<Dataset> servesDataset;
     @JsonIgnore
     @CreatedBy
     private String createdBy;
@@ -91,13 +105,13 @@ public class DataService {
         }
 
         @JsonProperty(DSpaceConstants.DCAT_KEYWORD)
-        public Builder keyword(Collection<String> keyword) {
+        public Builder keyword(Set<String> keyword) {
             service.keyword = keyword;
             return this;
         }
 
         @JsonProperty(DSpaceConstants.DCAT_THEME)
-        public Builder theme(Collection<String> theme) {
+        public Builder theme(Set<String> theme) {
             service.theme = theme;
             return this;
         }
@@ -115,7 +129,7 @@ public class DataService {
         }
 
         @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
-        public Builder description(Collection<Multilanguage> description) {
+        public Builder description(Set<Multilanguage> description) {
             service.description = description;
             return this;
         }
@@ -157,7 +171,7 @@ public class DataService {
         }
 
         @JsonProperty(DSpaceConstants.DCAT_SERVES_DATASET)
-        public Builder servesDataset(Collection<Dataset> servesDataset) {
+        public Builder servesDataset(Set<Dataset> servesDataset) {
             service.servesDataset = servesDataset;
             return this;
         }
@@ -182,7 +196,7 @@ public class DataService {
 
         public DataService build() {
             if (service.id == null) {
-                service.id = UUID.randomUUID().toString();
+                service.id = "urn:uuid" + UUID.randomUUID().toString();
             }
             Set<ConstraintViolation<DataService>> violations
                     = Validation.buildDefaultValidatorFactory().getValidator().validate(service);

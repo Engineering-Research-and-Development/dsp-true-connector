@@ -1,7 +1,6 @@
 package it.eng.catalog.model;
 
 import java.time.Instant;
-import java.util.Collection;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -42,21 +41,23 @@ import lombok.NoArgsConstructor;
 @Document(collection = "datasets")
 public class Dataset extends AbstractCatalogObject {
 
-    @Id
+	private static final long serialVersionUID = 8927419074799593178L;
+
+	@Id
     @JsonProperty(DSpaceConstants.ID)
     private String id;
 
     // Resource
     @JsonProperty(DSpaceConstants.DCAT_KEYWORD)
-    private Collection<String> keyword;
+    private Set<String> keyword;
     @JsonProperty(DSpaceConstants.DCAT_THEME)
-    private Collection<String> theme;
+    private Set<String> theme;
     @JsonProperty(DSpaceConstants.DCT_CONFORMSTO)
     private String conformsTo;
     @JsonProperty(DSpaceConstants.DCT_CREATOR)
     private String creator;
     @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
-    private Collection<Multilanguage> description;
+    private Set<Multilanguage> description;
     @JsonProperty(DSpaceConstants.DCT_IDENTIFIER)
     private String identifier;
     @JsonProperty(DSpaceConstants.DCT_ISSUED)
@@ -72,7 +73,7 @@ public class Dataset extends AbstractCatalogObject {
     private Set<Offer> hasPolicy;
     @JsonProperty(DSpaceConstants.DCAT_DISTRIBUTION)
     @DBRef
-    private Collection<Distribution> distribution;
+    private Set<Distribution> distribution;
     @JsonIgnore
     @CreatedBy
     private String createdBy;
@@ -106,14 +107,14 @@ public class Dataset extends AbstractCatalogObject {
 
         @JsonProperty(DSpaceConstants.DCAT_KEYWORD)
         @JsonDeserialize(as = Set.class)
-        public Builder keyword(Collection<String> keyword) {
+        public Builder keyword(Set<String> keyword) {
             dataset.keyword = keyword;
             return this;
         }
 
         @JsonProperty(DSpaceConstants.DCAT_THEME)
         @JsonDeserialize(as = Set.class)
-        public Builder theme(Collection<String> theme) {
+        public Builder theme(Set<String> theme) {
             dataset.theme = theme;
             return this;
         }
@@ -132,7 +133,7 @@ public class Dataset extends AbstractCatalogObject {
 
         @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
         @JsonDeserialize(as = Set.class)
-        public Builder description(Collection<Multilanguage> description) {
+        public Builder description(Set<Multilanguage> description) {
             dataset.description = description;
             return this;
         }
@@ -170,7 +171,7 @@ public class Dataset extends AbstractCatalogObject {
 
         @JsonProperty(DSpaceConstants.DCAT_DISTRIBUTION)
         @JsonDeserialize(as = Set.class)
-        public Builder distribution(Collection<Distribution> distribution) {
+        public Builder distribution(Set<Distribution> distribution) {
             dataset.distribution = distribution;
             return this;
         }
@@ -195,7 +196,7 @@ public class Dataset extends AbstractCatalogObject {
 
         public Dataset build() {
             if (dataset.id == null) {
-                dataset.id = dataset.createNewId();
+                dataset.id = dataset.createNewPid();
             }
             Set<ConstraintViolation<Dataset>> violations
                     = Validation.buildDefaultValidatorFactory().getValidator().validate(dataset);

@@ -1,5 +1,6 @@
 package it.eng.catalog.model;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -76,6 +77,24 @@ public class DatasetTest {
 		assertThrows(ValidationException.class,
 				() -> Dataset.Builder.newInstance()
 					.build());
+	}
+	
+	@Test
+	@DisplayName("Plain serialize/deserialize")
+	public void equalsTestPlain() {
+		Dataset dataset = MockObjectUtil.DATASET;
+		String ss = Serializer.serializePlain(dataset);
+		Dataset dataset2 = Serializer.deserializePlain(ss, Dataset.class);
+		assertThat(dataset).usingRecursiveComparison().isEqualTo(dataset2);
+	}
+	
+	@Test
+	@DisplayName("Protocol serialize/deserialize")
+	public void equalsTestProtocol() {
+		Dataset dataset = MockObjectUtil.DATASET;
+		String ss = Serializer.serializeProtocol(dataset);
+		Dataset dataset2 = Serializer.deserializeProtocol(ss, Dataset.class);
+		assertThat(dataset).usingRecursiveComparison().isEqualTo(dataset2);
 	}
 	
 	private void validateDataset(Dataset javaObj) {

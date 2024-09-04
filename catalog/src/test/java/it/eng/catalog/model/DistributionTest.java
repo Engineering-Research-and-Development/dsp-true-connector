@@ -1,5 +1,6 @@
 package it.eng.catalog.model;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -63,6 +64,24 @@ public class DistributionTest {
 		assertThrows(ValidationException.class,
 				() -> Distribution.Builder.newInstance()
 					.build());
+	}
+	
+	@Test
+	@DisplayName("Plain serialize/deserialize")
+	public void equalsTestPlain() {
+		Distribution distribution = MockObjectUtil.DISTRIBUTION;
+		String ss = Serializer.serializePlain(distribution);
+		Distribution distribution2 = Serializer.deserializePlain(ss, Distribution.class);
+		assertThat(distribution).usingRecursiveComparison().isEqualTo(distribution2);
+	}
+	
+	@Test
+	@DisplayName("Protocol serialize/deserialize")
+	public void equalsTestProtocol() {
+		Distribution distribution = MockObjectUtil.DISTRIBUTION;
+		String ss = Serializer.serializeProtocol(distribution);
+		Distribution distribution2 = Serializer.deserializeProtocol(ss, Distribution.class);
+		assertThat(distribution).usingRecursiveComparison().isEqualTo(distribution2);
 	}
 	
 	private void validateDistribution(Distribution distribution) {

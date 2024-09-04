@@ -1,5 +1,6 @@
 package it.eng.catalog.model;
 
+import java.io.Serializable;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -19,10 +20,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
-@EqualsAndHashCode(exclude = {"target", "assigner", "assignee"})
+@EqualsAndHashCode(exclude = {"target", "assigner", "assignee"}) // requires for offer check in negotiation flow
 @JsonDeserialize(builder = Permission.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class Permission {
+public class Permission implements Serializable {
+
+	private static final long serialVersionUID = -6221623714296723036L;
 
 	@JsonProperty(DSpaceConstants.ODRL_ASSIGNER)
 	private String assigner;
