@@ -17,10 +17,11 @@ All notable changes to this project will be documented in this file.
 ### Added
 
  - Added role (consumer or provider) to Contract Negotiation
+ - Added Agreement reference to to Contract Negotiation
  
 ### Removed
 
- - Removed consumerPid and providerPid from Offer
+ - Removed consumerPid and providerPid from Offer and Agreement
 
 ## [0.0.1] - 07-08-2024
 
