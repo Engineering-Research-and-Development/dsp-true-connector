@@ -113,3 +113,30 @@ jobs:
       - name: Stop docker container datatransfer-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
 
+  api-endpoints-tests:
+    needs: build-and-push-image
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+        
+      - name: Run docker container for api-endpoints-tests
+        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
+        
+      - name: Wait for container starting
+        run: sleep 30
+
+      - name: Check if the container is up and running
+        run: docker ps -a
+
+      - uses: matt-ball/newman-action@v2.0.0
+        with:
+          collection: ./ci/docker/test-cases/api-tests/api-endpoints-tests.json
+          
+      - name: Dump docker api-endpoints-tests
+        if: failure()
+        uses: jwalton/gh-docker-logs@v2
+
+      - name: Stop docker container api-endpoints-tests
+        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
