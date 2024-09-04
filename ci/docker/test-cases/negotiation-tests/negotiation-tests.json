@@ -294,9 +294,9 @@
 							}
 						],
 						"url": {
-							"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}",
+							"raw": "{{CONSUMER_API_ENDPOINT}}",
 							"host": [
-								"{{CONSUMER_SERVER_API_NEGOTIATION}}"
+								"{{CONSUMER_API_ENDPOINT}}"
 							]
 						}
 					},
@@ -319,7 +319,7 @@
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"provider\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
-									"\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"AGREED\");\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -337,9 +337,9 @@
 							}
 						],
 						"url": {
-							"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}",
+							"raw": "{{PROVIDER_API_ENDPOINT}}",
 							"host": [
-								"{{PROVIDER_SERVER_API_NEGOTIATION}}"
+								"{{PROVIDER_API_ENDPOINT}}"
 							]
 						}
 					},
@@ -408,7 +408,7 @@
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"consumer\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"AGREED\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"VERIFIED\");\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -436,9 +436,9 @@
 							}
 						],
 						"url": {
-							"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}",
+							"raw": "{{CONSUMER_API_ENDPOINT}}",
 							"host": [
-								"{{CONSUMER_SERVER_API_NEGOTIATION}}"
+								"{{CONSUMER_API_ENDPOINT}}"
 							]
 						}
 					},
@@ -479,9 +479,9 @@
 							}
 						],
 						"url": {
-							"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}",
+							"raw": "{{PROVIDER_API_ENDPOINT}}",
 							"host": [
-								"{{PROVIDER_SERVER_API_NEGOTIATION}}"
+								"{{PROVIDER_API_ENDPOINT}}"
 							]
 						}
 					},
@@ -578,9 +578,9 @@
 							}
 						],
 						"url": {
-							"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}",
+							"raw": "{{CONSUMER_API_ENDPOINT}}",
 							"host": [
-								"{{CONSUMER_SERVER_API_NEGOTIATION}}"
+								"{{CONSUMER_API_ENDPOINT}}"
 							]
 						}
 					},
@@ -621,9 +621,9 @@
 							}
 						],
 						"url": {
-							"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}",
+							"raw": "{{PROVIDER_API_ENDPOINT}}",
 							"host": [
-								"{{PROVIDER_SERVER_API_NEGOTIATION}}"
+								"{{PROVIDER_API_ENDPOINT}}"
 							]
 						}
 					},
