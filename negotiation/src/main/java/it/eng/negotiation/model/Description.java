@@ -1,5 +1,7 @@
 package it.eng.negotiation.model;
 
+import java.io.Serializable;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -13,7 +15,9 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = Description.Builder.class)
-public class Description {
+public class Description implements Serializable {
+
+	private static final long serialVersionUID = 8696117607150478089L;
 
 	/*
 	 { "@language": "en", "@value": "The parsing of the input parameters failed." }

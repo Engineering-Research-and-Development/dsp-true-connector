@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JavaType;
@@ -63,7 +64,8 @@ public class Serializer {
 			
 			@Override
 			protected <A extends Annotation> A _findAnnotation(Annotated ann, Class<A> annoClass) {
-				if (annoClass == JsonProperty.class && !ann.getName().equals("id")) {
+				//  annoClass == JsonValue.class - enum returned without prefix for plain
+				if ((annoClass == JsonProperty.class && !ann.getName().equals("id")) || annoClass == JsonValue.class) {
 					return null;
 				}
 //				log.info("JsonProperty and id field " + ann.getName());

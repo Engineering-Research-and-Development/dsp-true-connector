@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-import it.eng.datatransfer.model.Serializer;
+import it.eng.datatransfer.serializer.Serializer;
 import it.eng.datatransfer.model.TransferError;
 import it.eng.datatransfer.rest.protocol.ProviderDataTransferController;
 import it.eng.datatransfer.service.DataTransferService;

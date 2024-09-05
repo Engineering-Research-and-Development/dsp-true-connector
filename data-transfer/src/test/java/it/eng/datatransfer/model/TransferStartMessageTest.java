@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import it.eng.datatransfer.serializer.Serializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 
@@ -21,8 +22,8 @@ public class TransferStartMessageTest {
 			.endpoint(ModelUtil.ENDPOINT)
 			.endpointType(ModelUtil.ENDPOINT_TYPE)
 			.endpointProperties(Arrays.asList(
-					EndpointProperty.Builder.newInstance().name("username").vaule("John").build(),
-					EndpointProperty.Builder.newInstance().name("password").vaule("encodedPassword").build())
+					EndpointProperty.Builder.newInstance().name("username").value("John").build(),
+					EndpointProperty.Builder.newInstance().name("password").value("encodedPassword").build())
 				)
 			.build();
 	

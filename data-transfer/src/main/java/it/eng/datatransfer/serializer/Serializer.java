@@ -8,9 +8,11 @@ import java.util.stream.Collectors;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.cfg.MapperConfig;
@@ -33,7 +35,6 @@ public class Serializer {
 	private static Validator validator;
 	
 	static {
-		
 		JacksonAnnotationIntrospector ignoreJsonPropertyIntrospector = new JacksonAnnotationIntrospector() {
 			private static final long serialVersionUID = 1L;
 	
@@ -42,7 +43,6 @@ public class Serializer {
 				 if (!ann.hasAnnotation(JsonProperty.class)) {  // || !ann.hasAnnotation(JsonValue.class)
 	                    return super._findTypeResolver(config, ann, baseType);
 	                } else if(ann.hasAnnotation(JsonProperty.class) && ann.getName().equals("getId")) {
-	//	                	log.info(ann.getName());
 	                	return super._findTypeResolver(config, ann, baseType);
 	                }
 	            return StdTypeResolverBuilder.noTypeInfoBuilder();
@@ -51,7 +51,8 @@ public class Serializer {
 			@Override
 			// used when converting from Java to String; must exclude JsonIgnore for ContractNegotiation.id
 			protected <A extends Annotation> A _findAnnotation(Annotated ann, Class<A> annoClass) {
-				if ((annoClass == JsonProperty.class || annoClass == JsonIgnore.class) && !ann.getName().equals("id")) {
+				//  annoClass == JsonValue.class - enum returned without prefix for plain
+				if ((annoClass == JsonProperty.class && !ann.getName().equals("id")) || annoClass == JsonIgnore.class || annoClass == JsonValue.class) {
 					return null;
 				}
 				return super._findAnnotation(ann, annoClass);
@@ -151,6 +152,10 @@ public class Serializer {
 		return jsonMapper.convertValue(toSerialize, JsonNode.class);
 	}
 	
+	public static JsonNode serializeStringToProtocolJsonNode(String toSerialize) throws JsonMappingException, JsonProcessingException {
+		return jsonMapper.readValue(toSerialize, JsonNode.class);
+	}
+	
 	/**
 	 * Convert Dataspace json (with prefixes) to java object, performs validation for @context and @type before converting to java
 	 * Enforce validation for mandatory fields
@@ -184,6 +189,9 @@ public class Serializer {
 		try { 
 			Objects.requireNonNull(jsonNode.get(DSpaceConstants.TYPE));
 			Objects.requireNonNull(jsonNode.get(DSpaceConstants.CONTEXT));
+			if(!Objects.equals(DSpaceConstants.DSPACE + clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
+				throw new ValidationException("@type field not correct, expected " + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
+			}
 			if(!Objects.equals(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE, jsonNode.get(DSpaceConstants.CONTEXT).asText())) {
 				throw new ValidationException("@context field not valid - was " + jsonNode.get(DSpaceConstants.CONTEXT).asText());
 			}

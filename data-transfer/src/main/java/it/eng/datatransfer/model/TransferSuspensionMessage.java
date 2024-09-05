@@ -92,7 +92,7 @@ public class TransferSuspensionMessage extends AbstractTransferMessage {
 			if(violations.isEmpty()) {
 				return message;
 			}
-			throw new ValidationException(
+			throw new ValidationException("TransferSuspensionMessage - " +
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())

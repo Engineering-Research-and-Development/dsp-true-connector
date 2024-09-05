@@ -10,7 +10,7 @@ import it.eng.datatransfer.exceptions.AgreementNotFoundException;
 import it.eng.datatransfer.exceptions.TransferProcessExistsException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.exceptions.TransferProcessNotFoundException;
-import it.eng.datatransfer.model.Serializer;
+import it.eng.datatransfer.serializer.Serializer;
 import it.eng.datatransfer.model.TransferCompletionMessage;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferRequestMessage;

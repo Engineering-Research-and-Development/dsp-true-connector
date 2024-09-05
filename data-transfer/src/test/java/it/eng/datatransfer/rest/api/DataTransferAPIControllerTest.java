@@ -19,7 +19,7 @@ import org.springframework.http.ResponseEntity;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import it.eng.datatransfer.model.Serializer;
+import it.eng.datatransfer.serializer.Serializer;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.service.DataTransferAPIService;
 import it.eng.datatransfer.util.MockObjectUtil;

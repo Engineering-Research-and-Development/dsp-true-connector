@@ -68,7 +68,7 @@ public class TransferCompletionMessage extends AbstractTransferMessage {
 			if(violations.isEmpty()) {
 				return message;
 			}
-			throw new ValidationException(
+			throw new ValidationException("TransferCompletionMessage - " +
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())

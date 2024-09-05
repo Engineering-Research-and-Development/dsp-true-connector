@@ -92,7 +92,7 @@ public class TransferTerminationMessage extends AbstractTransferMessage {
 			if(violations.isEmpty()) {
 				return message;
 			}
-			throw new ValidationException(
+			throw new ValidationException("TransferTerminationMessage - " +
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())

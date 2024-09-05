@@ -20,8 +20,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
-@JsonDeserialize(builder = EndpointProperty.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
+@JsonDeserialize(builder = EndpointProperty.Builder.class)
 public class EndpointProperty implements Serializable {
 
 	private static final long serialVersionUID = -1709802825239302678L;
@@ -29,6 +29,7 @@ public class EndpointProperty implements Serializable {
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_NAME)
 	private String name;
+	
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_VALUE)
 	private String value;
@@ -53,8 +54,8 @@ public class EndpointProperty implements Serializable {
 			return this;
 		}
 
-		@JsonProperty((DSpaceConstants.DSPACE_VALUE))
-		public Builder vaule(String value) {
+		@JsonProperty(DSpaceConstants.DSPACE_VALUE)
+		public Builder value(String value) {
 			message.value = value;
 			return this;
 		}
@@ -65,7 +66,7 @@ public class EndpointProperty implements Serializable {
 			if(violations.isEmpty()) {
 				return message;
 			}
-			throw new ValidationException(
+			throw new ValidationException("EndpointProperty - " + 
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())

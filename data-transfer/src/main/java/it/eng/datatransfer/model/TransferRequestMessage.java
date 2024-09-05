@@ -135,7 +135,7 @@ public class TransferRequestMessage extends AbstractTransferMessage {
 			if(violations.isEmpty()) {
 				return message;
 			}
-			throw new ValidationException(
+			throw new ValidationException("TransferRequestMessage - " +
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())

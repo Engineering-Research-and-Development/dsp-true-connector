@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import it.eng.datatransfer.model.Serializer;
+import it.eng.datatransfer.serializer.Serializer;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController

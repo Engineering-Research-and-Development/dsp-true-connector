@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 import it.eng.tools.model.DSpaceConstants;
@@ -55,7 +56,8 @@ public enum TransferState {
 	static {
         Map<String,TransferState> map = new ConcurrentHashMap<String, TransferState>();
         for (TransferState instance : TransferState.values()) {
-            map.put(instance.toString().toLowerCase(), instance);
+            map.put(instance.toString(), instance);
+            map.put(instance.name(), instance);
         }
         ENUM_MAP = Collections.unmodifiableMap(map);
     }
@@ -73,4 +75,13 @@ public enum TransferState {
     public String toString() {
         return state;
     }
+	
+	@JsonCreator
+	public static TransferState fromString(String string) {
+		TransferState transferState = ENUM_MAP.get(string);
+		if (transferState == null) {
+			throw new IllegalArgumentException(string + " has no corresponding value");
+		}
+		return transferState;
+	}
 }

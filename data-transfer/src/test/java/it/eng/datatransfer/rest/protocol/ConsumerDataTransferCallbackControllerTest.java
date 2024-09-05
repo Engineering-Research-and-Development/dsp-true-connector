@@ -18,7 +18,7 @@ import org.springframework.http.ResponseEntity;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.datatransfer.exceptions.TransferProcessNotFoundException;
-import it.eng.datatransfer.model.Serializer;
+import it.eng.datatransfer.serializer.Serializer;
 import it.eng.datatransfer.model.TransferCompletionMessage;
 import it.eng.datatransfer.model.TransferStartMessage;
 import it.eng.datatransfer.model.TransferSuspensionMessage;
