@@ -34,7 +34,7 @@
 							"\r",
 							"pm.test(\"Retrieve catalog id\", function () {\r",
 							"    var jsonData = pm.response.json();\r",
-							"    pm.collectionVariables.set(\"catalogId\", jsonData[\"data\"][\"id\"])\r",
+							"    pm.collectionVariables.set(\"catalogId\", jsonData[\"data\"][\"@id\"])\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -125,7 +125,7 @@
 							"\r",
 							"pm.test(\"Retrieve dataservice id\", function () {\r",
 							"    var jsonData = pm.response.json();\r",
-							"    pm.collectionVariables.set(\"dataserviceId\", jsonData[\"data\"][0][\"id\"])\r",
+							"    pm.collectionVariables.set(\"dataserviceId\", jsonData[\"data\"][0][\"@id\"])\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -217,7 +217,7 @@
 							"\r",
 							"pm.test(\"Retrieve dataset id\", function () {\r",
 							"    var jsonData = pm.response.json();\r",
-							"    pm.collectionVariables.set(\"datasetId\", jsonData[\"data\"][0][\"id\"])\r",
+							"    pm.collectionVariables.set(\"datasetId\", jsonData[\"data\"][0][\"@id\"])\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -309,7 +309,7 @@
 							"\r",
 							"pm.test(\"Retrieve distribution id\", function () {\r",
 							"    var jsonData = pm.response.json();\r",
-							"    pm.collectionVariables.set(\"distributionId\", jsonData[\"data\"][0][\"id\"])\r",
+							"    pm.collectionVariables.set(\"distributionId\", jsonData[\"data\"][0][\"@id\"])\r",
 							"});"
 						],
 						"type": "text/javascript",
