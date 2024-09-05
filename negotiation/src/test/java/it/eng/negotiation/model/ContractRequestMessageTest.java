@@ -32,7 +32,7 @@ public class ContractRequestMessageTest {
 		String result = Serializer.serializePlain(contractRequestMessage);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
-		assertFalse(result.contains(DSpaceConstants.ID));
+		assertTrue(result.contains(DSpaceConstants.ID));
 		assertTrue(result.contains(DSpaceConstants.CONSUMER_PID));
 		assertTrue(result.contains(DSpaceConstants.PROVIDER_PID));
 		assertTrue(result.contains(DSpaceConstants.CALLBACK_ADDRESS));
@@ -52,7 +52,7 @@ public class ContractRequestMessageTest {
 		String result = Serializer.serializePlain(contractRequestMessage);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
-		assertFalse(result.contains(DSpaceConstants.ID));
+		assertTrue(result.contains(DSpaceConstants.ID));
 		assertTrue(result.contains(DSpaceConstants.CONSUMER_PID));
 		assertTrue(result.contains(DSpaceConstants.PROVIDER_PID));
 		assertTrue(result.contains(DSpaceConstants.CALLBACK_ADDRESS));
@@ -70,7 +70,7 @@ public class ContractRequestMessageTest {
 		String result = Serializer.serializePlain(contractRequestMessageOffer);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
-		assertFalse(result.contains(DSpaceConstants.ID));
+		assertTrue(result.contains(DSpaceConstants.ID));
 		assertTrue(result.contains(DSpaceConstants.CONSUMER_PID));
 		assertTrue(result.contains(DSpaceConstants.PROVIDER_PID));
 		assertTrue(result.contains(DSpaceConstants.CALLBACK_ADDRESS));

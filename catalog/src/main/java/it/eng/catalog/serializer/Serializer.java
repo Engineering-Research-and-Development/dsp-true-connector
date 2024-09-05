@@ -32,7 +32,9 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
 import jakarta.validation.Validator;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class Serializer {
 
     private static JsonMapper jsonMapperPlain;
@@ -52,15 +54,19 @@ public class Serializer {
             protected TypeResolverBuilder<?> _findTypeResolver(MapperConfig<?> config, Annotated ann, JavaType baseType) {
                 if (!ann.hasAnnotation(JsonProperty.class)) {  // || !ann.hasAnnotation(JsonValue.class)
                     return super._findTypeResolver(config, ann, baseType);
+                } else if(ann.hasAnnotation(JsonProperty.class) && ann.getName().equals("getId")) {
+//                	log.info(ann.getName());
+                	return super._findTypeResolver(config, ann, baseType);
                 }
                 return StdTypeResolverBuilder.noTypeInfoBuilder();
             }
 			
 			@Override
 			protected <A extends Annotation> A _findAnnotation(Annotated ann, Class<A> annoClass) {
-				if (annoClass == JsonProperty.class) {
+				if (annoClass == JsonProperty.class && !ann.getName().equals("id")) {
 					return null;
 				}
+//				log.info("JsonProperty and id field " + ann.getName());
 				return super._findAnnotation(ann, annoClass);
 			}
 			

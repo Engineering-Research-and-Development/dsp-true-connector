@@ -230,8 +230,11 @@ public class CatalogService {
 		boolean valid = false;
 		Catalog catalog = getCatalog();
 
-		Offer existingOffer = catalog.getDataset().stream().flatMap(dataset -> dataset.getHasPolicy().stream())
-				.filter(of -> of.getId().equals(offer.getId())).findFirst().orElse(null);
+		Offer existingOffer = catalog.getDataset().stream()
+				.flatMap(dataset -> dataset.getHasPolicy().stream())
+				.filter(of -> of.getId().equals(offer.getId()))
+				.findFirst()
+				.orElse(null);
 
 		log.debug("Offer with id '{}' {}", offer.getId(), existingOffer != null ? " found." : "not found.");
 

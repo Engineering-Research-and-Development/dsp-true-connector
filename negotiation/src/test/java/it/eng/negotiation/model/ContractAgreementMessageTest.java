@@ -57,7 +57,7 @@ public class ContractAgreementMessageTest {
 		String result = Serializer.serializePlain(contractAgreementMessage);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
-		assertFalse(result.contains(DSpaceConstants.ID));
+		assertTrue(result.contains(DSpaceConstants.ID));
 		assertTrue(result.contains(DSpaceConstants.CONSUMER_PID));
 		assertTrue(result.contains(DSpaceConstants.PROVIDER_PID));
 		assertTrue(result.contains(DSpaceConstants.AGREEMENT));

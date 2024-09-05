@@ -17,11 +17,13 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
@@ -66,10 +68,13 @@ public class DataService implements Serializable {
     private Instant modified;
     @JsonProperty(DSpaceConstants.DCT_TITLE)
     private String title;
+    
     @JsonProperty(DSpaceConstants.DCAT_ENDPOINT_DESCRIPTION)
     private String endpointDescription;
     @JsonProperty(DSpaceConstants.DCAT_ENDPOINT_URL)
     private String endpointURL;
+    
+    @JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class) //, property = "id"
     @JsonProperty(DSpaceConstants.DCAT_SERVES_DATASET)
     @DBRef
     private Set<Dataset> servesDataset;

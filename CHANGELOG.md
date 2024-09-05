@@ -12,6 +12,12 @@ All notable changes to this project will be documented in this file.
  - Postman collection for testing endpoints	
  - Configured GitHub actions to run tests
  
+## [0.0.1] - xx-09-2024
+
+### Changed
+
+ - Plain serialisers returns '@id' 
+
 ## [0.0.1] - xx-08-2024
 
 ### Added 

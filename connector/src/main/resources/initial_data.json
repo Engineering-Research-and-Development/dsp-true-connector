@@ -178,7 +178,12 @@
       "title": "REST Data Service",
       "endpointDescription": "endpoint description",
       "endpointURL": "https://provider-a.com/connector",
-	  "servesDataset": [],
+	  "servesDataset": [
+		{
+			"$ref": "datasets",
+	        "$id": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
+		}
+	  ],
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": 0
@@ -208,7 +213,12 @@
       "title": "SFTP Data Service",
       "endpointDescription": "endpoint description",
       "endpointURL": "sftp://provider-a.com/connector",
-	  "servesDataset": [],
+	  "servesDataset": [
+		{
+			"$ref": "datasets",
+         	"$id": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
+		}
+	  ],
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": 0

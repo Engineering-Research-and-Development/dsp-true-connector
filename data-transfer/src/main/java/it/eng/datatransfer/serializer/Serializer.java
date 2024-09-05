@@ -1,16 +1,24 @@
 package it.eng.datatransfer.serializer;
 
+import java.lang.annotation.Annotation;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.cfg.MapperConfig;
+import com.fasterxml.jackson.databind.introspect.Annotated;
+import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.jsontype.TypeResolverBuilder;
+import com.fasterxml.jackson.databind.jsontype.impl.StdTypeResolverBuilder;
 
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
@@ -25,13 +33,40 @@ public class Serializer {
 	private static Validator validator;
 	
 	static {
+		
+		JacksonAnnotationIntrospector ignoreJsonPropertyIntrospector = new JacksonAnnotationIntrospector() {
+			private static final long serialVersionUID = 1L;
+	
+			@Override
+	        protected TypeResolverBuilder<?> _findTypeResolver(MapperConfig<?> config, Annotated ann, JavaType baseType) {
+				 if (!ann.hasAnnotation(JsonProperty.class)) {  // || !ann.hasAnnotation(JsonValue.class)
+	                    return super._findTypeResolver(config, ann, baseType);
+	                } else if(ann.hasAnnotation(JsonProperty.class) && ann.getName().equals("getId")) {
+	//	                	log.info(ann.getName());
+	                	return super._findTypeResolver(config, ann, baseType);
+	                }
+	            return StdTypeResolverBuilder.noTypeInfoBuilder();
+	        }
+			
+			@Override
+			// used when converting from Java to String; must exclude JsonIgnore for ContractNegotiation.id
+			protected <A extends Annotation> A _findAnnotation(Annotated ann, Class<A> annoClass) {
+				if ((annoClass == JsonProperty.class || annoClass == JsonIgnore.class) && !ann.getName().equals("id")) {
+					return null;
+				}
+				return super._findAnnotation(ann, annoClass);
+			}
+			
+        };
+        
 		jsonMapperPlain = JsonMapper.builder()
-				.configure(MapperFeature.USE_ANNOTATIONS, false)
-				.serializationInclusion(Include.NON_NULL)
-				.serializationInclusion(Include.NON_EMPTY)
+//				.configure(MapperFeature.USE_ANNOTATIONS, false)
+//				.serializationInclusion(Include.NON_NULL)
+//				.serializationInclusion(Include.NON_EMPTY)
 				.configure(SerializationFeature.INDENT_OUTPUT, true)
 				.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
 				.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+				.annotationIntrospector(ignoreJsonPropertyIntrospector)
 				.build();
 		
 		jsonMapper = JsonMapper.builder()

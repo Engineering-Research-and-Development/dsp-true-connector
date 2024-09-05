@@ -39,16 +39,19 @@ public class Serializer {
 
 			@Override
             protected TypeResolverBuilder<?> _findTypeResolver(MapperConfig<?> config, Annotated ann, JavaType baseType) {
-                if (!ann.hasAnnotation(JsonProperty.class)) {  // || !ann.hasAnnotation(JsonValue.class)
-                    return super._findTypeResolver(config, ann, baseType);
-                }
+				 if (!ann.hasAnnotation(JsonProperty.class)) {  // || !ann.hasAnnotation(JsonValue.class)
+	                    return super._findTypeResolver(config, ann, baseType);
+	                } else if(ann.hasAnnotation(JsonProperty.class) && ann.getName().equals("getId")) {
+//	                	log.info(ann.getName());
+	                	return super._findTypeResolver(config, ann, baseType);
+	                }
                 return StdTypeResolverBuilder.noTypeInfoBuilder();
             }
 			
 			@Override
 			// used when converting from Java to String; must exclude JsonIgnore for ContractNegotiation.id
 			protected <A extends Annotation> A _findAnnotation(Annotated ann, Class<A> annoClass) {
-				if (annoClass == JsonProperty.class || annoClass == JsonIgnore.class) {
+				if ((annoClass == JsonProperty.class && !ann.getName().equals("id")) || annoClass == JsonIgnore.class) { // && !ann.getName().equals("id")
 					return null;
 				}
 				return super._findAnnotation(ann, annoClass);
