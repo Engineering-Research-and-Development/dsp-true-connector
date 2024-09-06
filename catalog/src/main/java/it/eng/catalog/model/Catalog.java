@@ -240,7 +240,7 @@ public class Catalog extends AbstractCatalogObject {
 
         public Catalog build() {
             if (catalog.id == null) {
-                catalog.id = catalog.createNewId();
+                catalog.id = catalog.createNewPid();
             }
             Set<ConstraintViolation<Catalog>> violations
                     = Validation.buildDefaultValidatorFactory().getValidator().validate(catalog);

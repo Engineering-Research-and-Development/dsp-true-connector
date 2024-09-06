@@ -170,7 +170,7 @@ public class Distribution implements Serializable {
 
         public Distribution build() {
             if (distribution.id == null) {
-                distribution.id = "urn:uuid" + UUID.randomUUID().toString();
+                distribution.id = "urn:uuid:" + UUID.randomUUID().toString();
             }
             Set<ConstraintViolation<Distribution>> violations
                     = Validation.buildDefaultValidatorFactory().getValidator().validate(distribution);
