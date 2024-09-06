@@ -69,9 +69,16 @@ public class ContractNegotiationConsumerServiceTest {
 	@DisplayName("Process agreement message - automatic negotiation - ON success")
 	public void handleAgreement_success() {
 		when(properties.isAutomaticNegotiation()).thenReturn(true);
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
-
+when(contractNegotiationRepository.findByProviderPidAndConsumerPid(MockObjectUtil.PROVIDER_PID, MockObjectUtil.CONSUMER_PID)).thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+		
 		service.handleAgreement(MockObjectUtil.CONTRACT_AGREEMENT_MESSAGE);
+		
+		verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(MockObjectUtil.PROVIDER_PID, MockObjectUtil.CONSUMER_PID);
+		verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
+		verify(agreementRepository).save(any(Agreement.class));
+		//verify that status is updated to AGREED
+		assertEquals(ContractNegotiationState.AGREED, argCaptorContractNegotiation.getValue().getState());
+		assertEquals(MockObjectUtil.CONTRACT_AGREEMENT_MESSAGE.getAgreement().getId(), argCaptorContractNegotiation.getValue().getAgreement().getId());
 		
 		verify(publisher).publishEvent(any(ContractAgreementVerificationMessage.class));
 	}
@@ -82,13 +89,15 @@ public class ContractNegotiationConsumerServiceTest {
 		when(properties.isAutomaticNegotiation()).thenReturn(false);
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(MockObjectUtil.PROVIDER_PID, MockObjectUtil.CONSUMER_PID)).thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 		
-		service.handleAgreement( MockObjectUtil.CONTRACT_AGREEMENT_MESSAGE);
+		service.handleAgreement(MockObjectUtil.CONTRACT_AGREEMENT_MESSAGE);
 		
 		verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(MockObjectUtil.PROVIDER_PID, MockObjectUtil.CONSUMER_PID);
 		verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
 		verify(agreementRepository).save(any(Agreement.class));
 		//verify that status is updated to AGREED
 		assertEquals(ContractNegotiationState.AGREED, argCaptorContractNegotiation.getValue().getState());
+		assertEquals(MockObjectUtil.CONTRACT_AGREEMENT_MESSAGE.getAgreement().getId(), argCaptorContractNegotiation.getValue().getAgreement().getId());
+
 		verify(publisher, times(0)).publishEvent(any(ContractAgreementVerificationMessage.class));
 	}
 	

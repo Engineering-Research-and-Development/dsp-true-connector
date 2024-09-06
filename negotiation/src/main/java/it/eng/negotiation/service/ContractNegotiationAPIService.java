@@ -34,6 +34,7 @@ import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.rest.protocol.ContractNegotiationCallback;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -85,6 +86,18 @@ public class ContractNegotiationAPIService {
 			try {
 				JsonNode jsonNode = mapper.readTree(response.getData());
 				ContractNegotiation contractNegotiation = Serializer.deserializeProtocol(jsonNode, ContractNegotiation.class);
+				
+				Offer offerToBeInserted = Offer.Builder.newInstance()
+						.assignee(offer.getAssignee())
+						.assigner(offer.getAssigner())
+						.originalId(offer.getId())
+						.permission(offer.getPermission())
+						.target(offer.getTarget())
+						.build();
+				
+				Offer savedOffer = offerRepository.save(offerToBeInserted);
+				log.info("Offer {} saved", savedOffer.getId());
+				
 				contractNegotiationWithOffer = ContractNegotiation.Builder.newInstance()
 						.id(contractNegotiation.getId())
 		    			.consumerPid(contractNegotiation.getConsumerPid())
@@ -92,12 +105,11 @@ public class ContractNegotiationAPIService {
 		    			.callbackAddress(contractNegotiation.getCallbackAddress())
 		    			.assigner(contractNegotiation.getAssigner())
 		    			.state(contractNegotiation.getState())
-		    			.offer(offer)
+		    			.role(IConstants.ROLE_CONSUMER)
+		    			.offer(savedOffer)
 						.build();
 				contractNegotiationRepository.save(contractNegotiationWithOffer);
 				log.info("Contract negotiation {} saved", contractNegotiationWithOffer.getId());
-				offerRepository.save(offer);
-				log.info("Offer {} saved", offer.getId());
 			} catch (JsonProcessingException e) {
 				log.error("Contract negotiation from response not valid");
 				throw new ContractNegotiationAPIException(e.getLocalizedMessage(), e);
@@ -156,6 +168,7 @@ public class ContractNegotiationAPIService {
 						// callbackAddress is the same because it is now Consumer's turn to respond
 //						.callbackAddress(forwardTo)
 						.assigner(offer.getAssigner())
+						.role(IConstants.ROLE_PROVIDER)
 						.offer(offer)
 						.state(contractNegotiation.getState())
 						.build();
@@ -288,7 +301,7 @@ public class ContractNegotiationAPIService {
 	 * @param contractNegotiationId
 	 * @return
 	 */
-	public ContractNegotiation handleContractNegotiationAgreed(String contractNegotiationId) {
+	public ContractNegotiation approveContractNegotiation(String contractNegotiationId) {
 		ContractNegotiation contractNegotiation = findContractNegotiationById(contractNegotiationId);
 	
 		stateTransitionCheck(ContractNegotiationState.AGREED, contractNegotiation.getState());
@@ -306,10 +319,22 @@ public class ContractNegotiationAPIService {
 				credentialUtils.getConnectorCredentials());
 		if(response.isSuccess()) {
 			log.info("Updating status for negotiation {} to agreed", contractNegotiation.getId());
-			ContractNegotiation contractNegtiationAgreed = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.AGREED);
-			contractNegotiationRepository.save(contractNegtiationAgreed);
 			log.info("Saving agreement..." + agreementMessage.getAgreement().getId());
 			agreementRepository.save(agreementMessage.getAgreement());
+			
+			ContractNegotiation contractNegtiationAgreed = ContractNegotiation.Builder.newInstance()
+					.id(contractNegotiation.getId())
+	    			.consumerPid(contractNegotiation.getConsumerPid())
+	    			.providerPid(contractNegotiation.getProviderPid())
+	    			.callbackAddress(contractNegotiation.getCallbackAddress())
+	    			.assigner(contractNegotiation.getAssigner())
+	    			.state(ContractNegotiationState.AGREED)
+	    			.role(contractNegotiation.getRole())
+	    			.offer(contractNegotiation.getOffer())
+	    			.agreement(agreementMessage.getAgreement())
+					.build();
+					
+			contractNegotiationRepository.save(contractNegtiationAgreed);
 			return contractNegtiationAgreed;
 		} else {
 			log.error("Response status not 200 - consumer did not process AgreementMessage correct");

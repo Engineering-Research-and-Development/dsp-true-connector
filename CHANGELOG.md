@@ -26,6 +26,17 @@ All notable changes to this project will be documented in this file.
  - Builder creates 'id' in "urn:uuid" + UUID.randomUUID() format if 'id' not present
  - Collections reverted to Set
 
+## [0.0.1] - 27-08-2024
+
+### Added
+
+ - Added role (consumer or provider) to Contract Negotiation
+ - Added Agreement reference to to Contract Negotiation
+ 
+### Removed
+
+ - Removed consumerPid and providerPid from Offer and Agreement
+
 ## [0.0.1] - 07-08-2024
 
 ### Added
@@ -36,8 +47,8 @@ All notable changes to this project will be documented in this file.
  
 ### Changed
 
- - Agreement service (filter download url) in data transfer module sends request to check if agreement is valid 
-
+ - Agreement service (filter download url) in data transfer module sends request to check if agreement is valid
+ 
 ## [0.0.1] - 06-08-2024
 
 ### Added

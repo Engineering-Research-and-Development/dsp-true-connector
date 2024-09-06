@@ -113,7 +113,7 @@ public class ContractNegotiationAPIController {
 	@PutMapping(path = "/{contractNegotiationId}/approve")
     public ResponseEntity<GenericApiResponse<JsonNode>> approveContractNegotiation(@PathVariable String contractNegotiationId) {
         log.info("Handling contract negotiation approved");
-        ContractNegotiation contractNegotiationApproved = apiService.handleContractNegotiationAgreed(contractNegotiationId);
+        ContractNegotiation contractNegotiationApproved = apiService.approveContractNegotiation(contractNegotiationId);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
         		.body(GenericApiResponse.success(Serializer.serializeProtocolJsonNode(contractNegotiationApproved),
         				"Contract negotiation approved"));

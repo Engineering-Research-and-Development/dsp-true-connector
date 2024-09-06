@@ -10,6 +10,8 @@ public interface IConstants {
 	public static final String SAMPLE_VALUE = "sampleValue";
 	public static final String TYPE = "type";
 	public static final String VALUE = "value";
+	public static final String ROLE_CONSUMER = "consumer";
+	public static final String ROLE_PROVIDER = "provider";
 	
 	
 }

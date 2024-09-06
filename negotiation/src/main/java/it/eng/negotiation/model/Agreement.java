@@ -30,11 +30,11 @@ import lombok.NoArgsConstructor;
 @Document(collection = "agreements")
 public class Agreement {
 
-	@JsonIgnore
-	private String consumerPid;
-	
-	@JsonIgnore
-	private String providerPid;
+//	@JsonIgnore
+//	private String consumerPid;
+//	
+//	@JsonIgnore
+//	private String providerPid;
 	/*
 	"dspace:agreement": {
     "@id": "urn:uuid:e8dc8655-44c2-46ef-b701-4cffdc2faa44",
@@ -109,15 +109,15 @@ public class Agreement {
 			return this;
 		}
 		
-		public Builder consumerPid(String consumerPid) {
-			agreement.consumerPid = consumerPid;
-			return this;
-		}
-		
-		public Builder providerPid(String providerPid) {
-			agreement.providerPid = providerPid;
-			return this;
-		}
+//		public Builder consumerPid(String consumerPid) {
+//			agreement.consumerPid = consumerPid;
+//			return this;
+//		}
+//		
+//		public Builder providerPid(String providerPid) {
+//			agreement.providerPid = providerPid;
+//			return this;
+//		}
 
 		@JsonProperty(DSpaceConstants.ODRL_TARGET)
 		public Builder target(String target) {

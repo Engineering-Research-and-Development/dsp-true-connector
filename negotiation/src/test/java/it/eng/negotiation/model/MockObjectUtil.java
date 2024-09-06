@@ -76,6 +76,14 @@ public class MockObjectUtil {
 			.permission(Arrays.asList(MockObjectUtil.PERMISSION))
 			.build();
 	
+	public static final Offer OFFER_WITH_ORIGINAL_ID = Offer.Builder.newInstance()
+			.target(MockObjectUtil.TARGET)
+			.assignee(MockObjectUtil.ASSIGNEE)
+			.assigner(MockObjectUtil.ASSIGNER)
+			.permission(Arrays.asList(MockObjectUtil.PERMISSION))
+			.originalId("some-original-id")
+			.build();
+	
 	public static final Offer OFFER_COUNT_5 = Offer.Builder.newInstance()
 			.target(MockObjectUtil.TARGET)
 			.assignee(MockObjectUtil.ASSIGNEE)
