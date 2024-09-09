@@ -207,7 +207,7 @@
 									"\r",
 									"pm.test(\"Status AGREED\", function () {\r",
 									"    var jsonData = pm.response.json();\r",
-									"    pm.expect(jsonData[\"data\"][jsonData][\"dspace:state\"]).to.eql(\"dspace:AGREED\");\r",
+									"    pm.expect(jsonData[\"data\"][\"dspace:state\"]).to.eql(\"dspace:AGREED\");\r",
 									"});"
 								],
 								"type": "text/javascript",
