@@ -101,6 +101,100 @@
 					"response": []
 				},
 				{
+					"name": "[C] Requested check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Your test name\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    // find out how to get the id from the start negotiation request body\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:REQUESTED\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"consumer\");\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{CONSUMER_API_ENDPOINT}}",
+							"host": [
+								"{{CONSUMER_API_ENDPOINT}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[P] Requested check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Check if offer and role are present\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    // find out how to get the id from the start negotiation request body\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:REQUESTED\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"provider\");\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{PROVIDER_API_ENDPOINT}}",
+							"host": [
+								"{{PROVIDER_API_ENDPOINT}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "[P] Approve negotiation",
 					"event": [
 						{
@@ -155,6 +249,102 @@
 					"response": []
 				},
 				{
+					"name": "[C] Agreed check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Your test name\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    // find out how to get the id from the start negotiation request body\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"consumer\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:AGREED\");\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{CONSUMER_API_ENDPOINT}}",
+							"host": [
+								"{{CONSUMER_API_ENDPOINT}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[P] Agreed check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Check if offer and role are present\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    // find out how to get the id from the start negotiation request body\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"provider\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:AGREED\");\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{PROVIDER_API_ENDPOINT}}",
+							"host": [
+								"{{PROVIDER_API_ENDPOINT}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "[C] Verify negotiation",
 					"event": [
 						{
@@ -201,6 +391,102 @@
 					"response": []
 				},
 				{
+					"name": "[C] Verify check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Your test name\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    // find out how to get the id from the start negotiation request body\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"consumer\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:VERIFIED\");\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{CONSUMER_API_ENDPOINT}}",
+							"host": [
+								"{{CONSUMER_API_ENDPOINT}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[P] Verify check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Check if offer and role are present\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    // find out how to get the id from the start negotiation request body\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"provider\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:VERIFIED\");\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{PROVIDER_API_ENDPOINT}}",
+							"host": [
+								"{{PROVIDER_API_ENDPOINT}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "[P] Finalize negotiation",
 					"event": [
 						{
@@ -241,6 +527,102 @@
 							"path": [
 								"{{provider_contractNegotiationId}}",
 								"finalize"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[C] Finalize check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Your test name\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    // find out how to get the id from the start negotiation request body\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"consumer\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:FINALIZED\");\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{CONSUMER_API_ENDPOINT}}",
+							"host": [
+								"{{CONSUMER_API_ENDPOINT}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[P] Finalize check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Check if offer and role are present\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    // find out how to get the id from the start negotiation request body\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"provider\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:FINALIZED\");\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{PROVIDER_API_ENDPOINT}}",
+							"host": [
+								"{{PROVIDER_API_ENDPOINT}}"
 							]
 						}
 					},

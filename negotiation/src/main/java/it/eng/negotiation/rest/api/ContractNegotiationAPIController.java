@@ -43,8 +43,8 @@ public class ContractNegotiationAPIController {
      */
     @GetMapping(path = {"", "/{contractNegotiationId}"})
     public ResponseEntity<GenericApiResponse<Collection<JsonNode>>> getContractNegotiations(@PathVariable(required = false) String contractNegotiationId,
-    		@RequestParam(required = false) String state){
-    	Collection<JsonNode> contractNegotiations = apiService.findContractNegotiations(contractNegotiationId, state);
+    		@RequestParam(required = false) String state, @RequestParam(required = false) String role){
+    	Collection<JsonNode> contractNegotiations = apiService.findContractNegotiations(contractNegotiationId, state, role);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
     			.body(GenericApiResponse.success(contractNegotiations, "Fetching contract negotiations"));
     } 
@@ -113,7 +113,7 @@ public class ContractNegotiationAPIController {
 	@PutMapping(path = "/{contractNegotiationId}/approve")
     public ResponseEntity<GenericApiResponse<JsonNode>> approveContractNegotiation(@PathVariable String contractNegotiationId) {
         log.info("Handling contract negotiation approved");
-        ContractNegotiation contractNegotiationApproved = apiService.handleContractNegotiationAgreed(contractNegotiationId);
+        ContractNegotiation contractNegotiationApproved = apiService.approveContractNegotiation(contractNegotiationId);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
         		.body(GenericApiResponse.success(Serializer.serializeProtocolJsonNode(contractNegotiationApproved),
         				"Contract negotiation approved"));

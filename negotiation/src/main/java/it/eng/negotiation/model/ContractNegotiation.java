@@ -51,9 +51,16 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     private String callbackAddress;
     @JsonIgnore
     private String assigner;
+    // determins which role the connector is for that contract negotiation (consumer or provider)
+    @JsonIgnore
+    private String role;
     @JsonIgnore
     @DBRef
     private Offer offer;
+    
+    @JsonIgnore
+    @DBRef
+    private Agreement agreement;
     
     @NotNull
     @JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
@@ -104,8 +111,19 @@ public class ContractNegotiation extends AbstractNegotiationObject {
         	message.assigner = assigner;
         	return this;
         }
+        
+        public Builder role(String role) {
+        	message.role = role;
+        	return this;
+        }
+        
         public Builder offer(Offer offer) {
         	message.offer = offer;
+        	return this;
+        }
+        
+        public Builder agreement(Agreement agreement) {
+        	message.agreement = agreement;
         	return this;
         }
 
@@ -160,6 +178,8 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     			.callbackAddress(this.callbackAddress)
     			.offer(this.offer)
     			.assigner(this.assigner)
+    			.role(this.role)
+    			.agreement(this.agreement)
     			// not yet auditable fields
 //    			.createdBy(this.createdBy)
 //				.lastModifiedBy(this.lastModifiedBy)

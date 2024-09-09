@@ -24,6 +24,7 @@ import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.model.IConstants;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -62,6 +63,7 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
                 .consumerPid("urn:uuid:" + UUID.randomUUID())
                 .providerPid(contractOfferMessage.getProviderPid())
                 .state(ContractNegotiationState.OFFERED)
+                .role(IConstants.ROLE_CONSUMER)
                 .offer(contractOfferMessage.getOffer())
                 .assigner(contractOfferMessage.getOffer().getAssigner())
                 .callbackAddress(contractOfferMessage.getCallbackAddress())
@@ -105,7 +107,9 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
     			.callbackAddress(contractAgreementMessage.getCallbackAddress())
     			.assigner(contractNegotiation.getAssigner())
     			.state(ContractNegotiationState.AGREED)
+    			.role(contractNegotiation.getRole())
     			.offer(contractNegotiation.getOffer())
+    			.agreement(contractAgreementMessage.getAgreement())
     			.build();
     	log.info("CONSUMER - updating negotiation with state AGREED");
     	contractNegotiationRepository.save(contractNegotiationAgreed);

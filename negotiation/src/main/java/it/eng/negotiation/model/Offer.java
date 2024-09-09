@@ -57,12 +57,6 @@ import lombok.NoArgsConstructor;
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true) 
 public class Offer {
 	
-	@JsonIgnore
-	private String consumerPid;
-	
-	@JsonIgnore
-	private String providerPid;
-
 //	@NotNull
 	@JsonProperty(DSpaceConstants.ID)
 	private String id;
@@ -81,6 +75,12 @@ public class Offer {
 //	@NotNull
 	@JsonProperty(DSpaceConstants.ODRL_PERMISSION)
 	private List<Permission> permission;
+	
+	/**
+	 * The original ID as in the provider's Catalog
+	 */
+	@JsonIgnore
+	private String originalId;
 	
 	@JsonIgnoreProperties(value={ "type" }, allowGetters=true)
 	@JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
@@ -120,19 +120,14 @@ public class Offer {
 			return this;
 		}
 		
-		public Builder consumerPid(String consumerPid) {
-			offer.consumerPid = consumerPid;
-			return this;
-		}
-		
-		public Builder providerPid(String providerPid) {
-			offer.providerPid = providerPid;
-			return this;
-		}
-		
 		@JsonProperty(DSpaceConstants.ODRL_ASSIGNEE)
 		public Builder assignee(String assignee) {
 			offer.assignee = assignee;
+			return this;
+		}
+		
+		public Builder originalId(String originalId) {
+			offer.originalId = originalId;
 			return this;
 		}
 		
@@ -144,7 +139,7 @@ public class Offer {
 		
 		public Offer build() {
 			if (offer.id == null) {
-				offer.id = UUID.randomUUID().toString();
+				offer.id = "urn:uuid:" + UUID.randomUUID().toString();
 			}
 			Set<ConstraintViolation<Offer>> violations 
 				= Validation.buildDefaultValidatorFactory().getValidator().validate(offer);

@@ -1,12 +1,16 @@
 package it.eng.connector.integration;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
@@ -19,6 +23,8 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -31,12 +37,14 @@ import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.MockObjectUtil;
 import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.serializer.Serializer;
+import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.DSpaceConstants;
 
 @TestMethodOrder(OrderAnnotation.class)
 public class NegotiationIntegrationTest extends BaseIntegrationTest {
 	
 	private static String providerPid;
+	private static String offerID = "urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5";
 	private final ObjectMapper mapper = new ObjectMapper();
 	
 	@Order(1)
@@ -63,7 +71,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     	
     	//needs to match offer in initial.data
     	Offer offer = Offer.Builder.newInstance()
-    			.id("urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5")
+    			.id(offerID)
     			.target(MockObjectUtil.TARGET)
     			.assigner(MockObjectUtil.ASSIGNER)
     			.permission(Arrays.asList(MockObjectUtil.PERMISSION_COUNT_5))
@@ -87,8 +95,11 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     	
     	JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
     	providerPid = jsonNode.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText();
+
+    	offerCheck(getContractNegotiationOverAPI());
     }
-    
+
+	
 	@Order(3) 
     @Test
     @WithUserDetails(TestUtil.CONNECTOR_USER)
@@ -159,6 +170,10 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     					.content(Serializer.serializeProtocol(agreementMessage))
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isOk());
+    	
+    	JsonNode contractNegotiation = getContractNegotiationOverAPI();
+    	offerCheck(contractNegotiation);
+    	agreementCheck(contractNegotiation);
     }
 	
 	@Order(7) 
@@ -177,6 +192,10 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     					.content(Serializer.serializeProtocol(verificationMessage))
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isOk());
+    	
+    	JsonNode contractNegotiation = getContractNegotiationOverAPI();
+    	offerCheck(contractNegotiation);
+    	agreementCheck(contractNegotiation);
     }
 	
 	@Order(8) 
@@ -196,6 +215,32 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     					.content(Serializer.serializeProtocol(contractNegotiationEventMessage))
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isOk());
+    	
+    	JsonNode contractNegotiation = getContractNegotiationOverAPI();
+    	offerCheck(contractNegotiation);
+    	agreementCheck(contractNegotiation);
     }
 
+	private JsonNode getContractNegotiationOverAPI()
+			throws Exception, JsonProcessingException, JsonMappingException, UnsupportedEncodingException {
+		final ResultActions result =
+				mockMvc.perform(
+						get(ApiEndpoints.NEGOTIATION_V1)
+						.with(user(TestUtil.CONNECTOR_USER).password("password").roles("ADMIN"))
+						.contentType(MediaType.APPLICATION_JSON));
+		
+		result.andExpect(status().isOk())
+		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
+		
+		JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
+		return jsonNode.findValues("data").get(0).get(1);
+	}
+	
+	private void offerCheck(JsonNode contractNegotiation) {
+		assertEquals(offerID, contractNegotiation.get("offer").get("originalId").asText());
+	}
+	
+	private void agreementCheck(JsonNode contractNegotiation) {
+		assertNotNull(contractNegotiation.get("agreement"));
+	}
 }

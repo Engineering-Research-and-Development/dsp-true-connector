@@ -16,8 +16,20 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
- - Plain serialisers returns '@id' 
+ - Plain serializers returns '@id'
+ - Using @id in servesDataset instead whole object which causes endless loop
 
+## [0.0.1] - 27-08-2024
+
+### Added
+
+ - Added role (consumer or provider) to Contract Negotiation
+ - Added Agreement reference to to Contract Negotiation
+ 
+### Removed
+
+ - Removed consumerPid and providerPid from Offer and Agreement
+ 
 ## [0.0.1] - xx-08-2024
 
 ### Added 
@@ -42,8 +54,8 @@ All notable changes to this project will be documented in this file.
  
 ### Changed
 
- - Agreement service (filter download url) in data transfer module sends request to check if agreement is valid 
-
+ - Agreement service (filter download url) in data transfer module sends request to check if agreement is valid
+ 
 ## [0.0.1] - 06-08-2024
 
 ### Added
