@@ -104,7 +104,7 @@ public class ContractNegotiationAPIService {
 		    			.consumerPid(contractNegotiation.getConsumerPid())
 		    			.providerPid(contractNegotiation.getProviderPid())
 		    			.callbackAddress(contractNegotiation.getCallbackAddress())
-		    			.assigner(contractNegotiation.getAssigner())
+		    			.assigner(offer.getAssigner())
 		    			.state(contractNegotiation.getState())
 		    			.role(IConstants.ROLE_CONSUMER)
 		    			.offer(savedOffer)
@@ -237,8 +237,8 @@ public class ContractNegotiationAPIService {
 				Serializer.serializeProtocolJsonNode(contractNegotiationEventMessage), credentialUtils.getConnectorCredentials());
 		
 		if (response.isSuccess()) {
-			ContractNegotiation contractNegotiationUpdated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.FINALIZED);
-			contractNegotiationRepository.save(contractNegotiationUpdated);
+			ContractNegotiation contractNegotiationFinalized = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.FINALIZED);
+			contractNegotiationRepository.save(contractNegotiationFinalized);
 		} else {
 			log.error("Error response received!");
 			throw new ContractNegotiationAPIException(response.getMessage());
