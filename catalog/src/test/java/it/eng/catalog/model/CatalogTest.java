@@ -20,7 +20,7 @@ public class CatalogTest {
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
 		
-		assertFalse(result.contains(DSpaceConstants.ID));
+		assertTrue(result.contains(DSpaceConstants.ID));
 		assertTrue(result.contains(DSpaceConstants.KEYWORD));
 		assertTrue(result.contains(DSpaceConstants.THEME));
 		assertTrue(result.contains(DSpaceConstants.CONFORMSTO));
