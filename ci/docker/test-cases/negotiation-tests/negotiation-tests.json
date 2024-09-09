@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "2dda98ce-2946-4b3f-bbd7-48ee31d1b4da",
+		"_postman_id": "f8ff3033-cc02-457c-bc05-d56c66045a1e",
 		"name": "Negotiation tests",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "36278855"
@@ -115,7 +115,7 @@
 									"    var jsonData = pm.response.json();\r",
 									"    // find out how to get the id from the start negotiation request body\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:REQUESTED\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"REQUESTED\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"consumer\");\r",
 									"});"
 								],
@@ -167,7 +167,7 @@
 									"    var jsonData = pm.response.json();\r",
 									"    // find out how to get the id from the start negotiation request body\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:REQUESTED\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"REQUESTED\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"provider\");\r",
 									"});"
 								],
@@ -203,6 +203,11 @@
 								"exec": [
 									"pm.test(\"Check if status code is 200\", function () {\r",
 									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Status AGREED\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData[\"data\"][jsonData][\"dspace:state\"]).to.eql(\"dspace:AGREED\");\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -265,7 +270,7 @@
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"consumer\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:AGREED\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"AGREED\");\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -318,7 +323,7 @@
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"provider\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:AGREED\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"AGREED\");\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -407,7 +412,7 @@
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"consumer\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:VERIFIED\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"VERIFIED\");\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -460,7 +465,7 @@
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"provider\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:VERIFIED\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"VERIFIED\");\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -549,7 +554,7 @@
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"consumer\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:FINALIZED\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"FINALIZED\");\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -602,7 +607,7 @@
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"provider\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:FINALIZED\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"FINALIZED\");\r",
 									"});"
 								],
 								"type": "text/javascript",
