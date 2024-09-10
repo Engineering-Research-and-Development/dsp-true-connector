@@ -126,12 +126,37 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     @Test
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void getNegotiationByProviderPidTests() throws Exception {
+    	// insert data into db
+		Offer offer = Offer.Builder.newInstance()
+    			.id(offerID)
+    			.target(MockObjectUtil.TARGET)
+    			.assigner(MockObjectUtil.ASSIGNER)
+    			.permission(Arrays.asList(MockObjectUtil.PERMISSION_COUNT_5))
+    			.build();
+    	
+    	ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
+    			.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
+    			.consumerPid(MockObjectUtil.CONSUMER_PID)
+    			.offer(offer)
+    			.build();
     	
     	final ResultActions result =
     			mockMvc.perform(
-    					get("/negotiations/" + TestUtil.PROVIDER_PID)
+    					post("/negotiations/request")
+    					.content(Serializer.serializeProtocol(contractRequestMessage))
     					.contentType(MediaType.APPLICATION_JSON));
-    	result.andExpect(status().isOk())
+    	result.andExpect(status().isCreated())
+    	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())))
+    	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
+    	
+    	JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
+    	providerPid = jsonNode.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText();
+    	
+		mockMvc.perform(
+			get("/negotiations/" + providerPid)
+			.contentType(MediaType.APPLICATION_JSON));
+    	result.andExpect(status().isCreated())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
     	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())))
     	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
@@ -233,7 +258,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
 		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
 		
 		JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
-		return jsonNode.findValues("data").get(0).get(1);
+		return jsonNode.findValues("data").get(0).get(0);
 	}
 	
 	private void offerCheck(JsonNode contractNegotiation) {

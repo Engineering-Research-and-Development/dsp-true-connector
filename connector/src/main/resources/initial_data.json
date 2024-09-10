@@ -72,15 +72,6 @@
       "version": 0
     }
   ],
-  "contract_negotiations": [
-    {
-      "_class": "it.eng.negotiation.model.ContractNegotiation",
-      "_id": "fdc45797-e957-4955-8baf-ab7fd66ac4d3",
-      "providerPid": "urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aab",
-      "consumerPid": "urn:uuid:32541fe6-c580-409e-85a8-8a9a32fbe833",
-      "state": "REQUESTED"
-    }
-  ],
   "datasets": [
     {
       "_class": "it.eng.catalog.model.Dataset",
@@ -162,7 +153,7 @@
       "modified": "2024-04-23T16:26:00.000Z",
       "title": "Title for testing Data Service",
       "endpointDescription": "endpoint description",
-      "endpointURL": "https://provider-a.com/connector",
+      "endpointURL": "http://localhost:8090",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": 0
@@ -189,6 +180,9 @@
       "version": 0
     }
   ],
+  "contract_negotiations": [  
+	
+	],
   "application_properties": [
     {
         "_id": "application.daps.dapsJWKSUrl",
