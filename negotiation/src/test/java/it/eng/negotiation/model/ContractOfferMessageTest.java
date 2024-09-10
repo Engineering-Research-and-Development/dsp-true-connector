@@ -25,7 +25,7 @@ public class ContractOfferMessageTest {
 		String result = Serializer.serializePlain(MockObjectUtil.CONTRACT_OFFER_MESSAGE);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
-		assertFalse(result.contains(DSpaceConstants.ID));
+		assertTrue(result.contains(DSpaceConstants.ID));
 		assertTrue(result.contains(DSpaceConstants.CONSUMER_PID));
 		assertTrue(result.contains(DSpaceConstants.PROVIDER_PID));
 		assertTrue(result.contains(DSpaceConstants.CALLBACK_ADDRESS));
