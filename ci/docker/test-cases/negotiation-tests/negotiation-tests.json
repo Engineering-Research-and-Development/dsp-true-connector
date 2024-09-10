@@ -116,7 +116,7 @@
 									"    var jsonData = pm.response.json();\r",
 									"    // find out how to get the id from the start negotiation request body\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:REQUESTED\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"REQUESTED\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"consumer\");\r",
 									"});"
 								],
@@ -168,7 +168,7 @@
 									"    var jsonData = pm.response.json();\r",
 									"    // find out how to get the id from the start negotiation request body\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:REQUESTED\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"REQUESTED\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"provider\");\r",
 									"});"
 								],
@@ -266,7 +266,7 @@
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"consumer\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:AGREED\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"AGREED\");\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -319,7 +319,7 @@
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"provider\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:AGREED\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"AGREED\");\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -408,7 +408,7 @@
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"consumer\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:VERIFIED\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"VERIFIED\");\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -461,7 +461,7 @@
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"provider\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:VERIFIED\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"VERIFIED\");\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -550,7 +550,7 @@
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"consumer\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:FINALIZED\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"FINALIZED\");\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -603,7 +603,7 @@
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"provider\");\r",
 									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"dspace:FINALIZED\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"FINALIZED\");\r",
 									"});"
 								],
 								"type": "text/javascript",
