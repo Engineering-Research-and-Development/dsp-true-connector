@@ -162,7 +162,7 @@
       "modified": "2024-04-23T16:26:00.000Z",
       "title": "Title for testing Data Service",
       "endpointDescription": "endpoint description",
-      "endpointURL": "https://provider-a.com/connector",
+      "endpointURL": "http://localhost:8090",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": 0
