@@ -7,7 +7,6 @@ import java.util.Collection;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
@@ -270,7 +269,7 @@ public class ContractNegotiationAPIService {
 		if(role == null) {
 			return true;
 		} else {
-			return cn.getRole().equals(role);
+			return role.equalsIgnoreCase(cn.getRole());//.equals(role);
 		}
 	}
 

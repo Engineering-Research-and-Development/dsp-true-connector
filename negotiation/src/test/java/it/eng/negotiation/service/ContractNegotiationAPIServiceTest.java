@@ -300,6 +300,36 @@ public class ContractNegotiationAPIServiceTest {
 	}
 	
 	@Test
+	@DisplayName("Find contract negotiations by role mixed")
+	public void findContractNegotiationByRole_mixed() {
+		when(contractNegotiationRepository.findAll())
+				.thenReturn(Arrays.asList(
+						ContractNegotiation.Builder.newInstance()
+							.consumerPid(MockObjectUtil.CONSUMER_PID)
+							.providerPid(MockObjectUtil.PROVIDER_PID)
+							.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
+							.state(ContractNegotiationState.ACCEPTED)
+							.offer(MockObjectUtil.OFFER_COUNT_5)
+							.role(IConstants.ROLE_CONSUMER)
+							.build(),
+							ContractNegotiation.Builder.newInstance()
+								.consumerPid(MockObjectUtil.CONSUMER_PID)
+								.providerPid(MockObjectUtil.PROVIDER_PID)
+								.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
+								.state(ContractNegotiationState.ACCEPTED)
+								.offer(MockObjectUtil.OFFER_COUNT_5)
+								.role(IConstants.ROLE_PROVIDER)
+								.build()));
+		Collection<JsonNode> response = service.findContractNegotiations(null, null, IConstants.ROLE_CONSUMER);
+		assertNotNull(response);
+		assertEquals(1, response.size());
+		
+		response = service.findContractNegotiations(null, null, IConstants.ROLE_PROVIDER);
+		assertNotNull(response);
+		assertEquals(1, response.size());
+	}
+	
+	@Test
 	@DisplayName("Find contract negotiations by role - not found")
 	public void findContractNegotiationByRole_other() {
 		when(contractNegotiationRepository.findAll())
