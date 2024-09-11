@@ -166,7 +166,7 @@
 							"pm.test(\"Response is dataservice\", function () {\r",
 							"\r",
 							"    result = false;\r",
-							"    var arr = [\"REST service offering TRUEConnector team information\", \"endpointDescription\", \"endpointURL\", \"SFTP\", \"REST\", \"transfer\"];\r",
+							"    var arr = [\"DSP TRUEConnector service offering team information\", \"endpointDescription\", \"endpointURL\", \"SFTP\", \"REST\", \"transfer\"];\r",
 							"    responseText = pm.response.text();\r",
 							"\r",
 							"    arr.forEach((x) => {\r",
@@ -350,7 +350,7 @@
 							"pm.test(\"Response is dataset\", function () {\r",
 							"\r",
 							"    result = false;\r",
-							"    var arr = [\"REST service offering TRUEConnector team information\", \"endpointDescription\", \"endpointURL\", \"accessService\", \"SFTP\", \"REST\", \"transfer\"];\r",
+							"    var arr = [\"DSP TRUEConnector service offering team information\", \"endpointDescription\", \"endpointURL\", \"accessService\", \"SFTP\", \"REST\", \"transfer\"];\r",
 							"    responseText = pm.response.text();\r",
 							"\r",
 							"    arr.forEach((x) => {\r",
@@ -452,6 +452,22 @@
 			"key": "CONSUMER_SERVER_API_DISTRIBUTION",
 			"value": "{{CONSUMER}}/api/v1/distributions",
 			"type": "string"
+		},
+		{
+			"key": "catalogId",
+			"value": ""
+		},
+		{
+			"key": "dataserviceId",
+			"value": ""
+		},
+		{
+			"key": "datasetId",
+			"value": ""
+		},
+		{
+			"key": "distributionId",
+			"value": ""
 		}
 	]
 }
