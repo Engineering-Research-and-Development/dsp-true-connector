@@ -1,9 +1,10 @@
 {
 	"info": {
-		"_postman_id": "d1195332-f170-4056-8883-4ba6b55dc3e9",
+		"_postman_id": "65ff3ae3-2f08-4594-a08c-215c8ca3aa65",
 		"name": "API tests",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "36278855"
+		"_exporter_id": "21815221",
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-65ff3ae3-2f08-4594-a08c-215c8ca3aa65?action=share&source=collection_link&creator=21815221"
 	},
 	"item": [
 		{
@@ -165,7 +166,7 @@
 							"pm.test(\"Response is dataservice\", function () {\r",
 							"\r",
 							"    result = false;\r",
-							"    var arr = [\"REST service offering TRUEConnector team information\", \"endpointDescription\", \"endpointURL\", \"SFTP\", \"REST\", \"transfer\", \"servesDataset\"];\r",
+							"    var arr = [\"REST service offering TRUEConnector team information\", \"endpointDescription\", \"endpointURL\", \"SFTP\", \"REST\", \"transfer\"];\r",
 							"    responseText = pm.response.text();\r",
 							"\r",
 							"    arr.forEach((x) => {\r",
@@ -349,7 +350,7 @@
 							"pm.test(\"Response is dataset\", function () {\r",
 							"\r",
 							"    result = false;\r",
-							"    var arr = [\"REST service offering TRUEConnector team information\", \"endpointDescription\", \"endpointURL\", \"accessService\", \"SFTP\", \"REST\", \"transfer\", \"servesDataset\"];\r",
+							"    var arr = [\"REST service offering TRUEConnector team information\", \"endpointDescription\", \"endpointURL\", \"accessService\", \"SFTP\", \"REST\", \"transfer\"];\r",
 							"    responseText = pm.response.text();\r",
 							"\r",
 							"    arr.forEach((x) => {\r",
