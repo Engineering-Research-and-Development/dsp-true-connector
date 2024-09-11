@@ -11,12 +11,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Set;
 
-import it.eng.catalog.serializer.Serializer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.util.DataServiceUtil;
 import it.eng.catalog.util.MockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
@@ -71,7 +71,6 @@ public class DataServiceTest {
 		
 		assertNotNull(result.get(DSpaceConstants.DCAT_ENDPOINT_URL).asText());
 		assertNotNull(result.get(DSpaceConstants.DCAT_ENDPOINT_DESCRIPTION).asText());
-		assertNotNull(result.get(DSpaceConstants.DCAT_SERVES_DATASET).asText());
 		
 		DataService javaObj = Serializer.deserializeProtocol(result, DataService.class);
 		validateDataService(javaObj);
@@ -100,7 +99,6 @@ public class DataServiceTest {
 	            .description(Set.of(MockObjectUtil.MULTILANGUAGE))
 	            .endpointDescription("Description for test")
 	            .endpointURL("updatedEndpointUrl")
-	            .servesDataset(MockObjectUtil.DATASETS)
 	            .build();
 		
 		DataService updated = MockObjectUtil.DATA_SERVICE.updateInstance(dataServiceForUpdate);
@@ -112,7 +110,6 @@ public class DataServiceTest {
 		assertTrue(updated.getTheme().contains("black"));
 		assertEquals("updatedEndpointUrl", updated.getEndpointURL());
 		assertEquals("Description for test", updated.getEndpointDescription());
-		assertEquals(MockObjectUtil.DATASETS, updated.getServesDataset());
 		assertEquals(MockObjectUtil.ISSUED, updated.getIssued());
 		assertEquals(MockObjectUtil.TITLE, updated.getTitle());
 	}
@@ -150,6 +147,5 @@ public class DataServiceTest {
 		
 		assertNotNull(dataService.getEndpointDescription());
 		assertNotNull(dataService.getEndpointURL());
-		assertNotNull(dataService.getServesDataset());
 	}
 }

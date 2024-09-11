@@ -22,7 +22,7 @@ public class DataServiceUtil {
 			.title(MockObjectUtil.TITLE)
 			.endpointURL("http://dataservice.com")
 			.endpointDescription("endpoint description")
-			.servesDataset(Arrays.asList(MockObjectUtil.DATASET).stream().collect(Collectors.toCollection(HashSet::new)))
+//			.servesDataset(Arrays.asList(MockObjectUtil.DATASET).stream().collect(Collectors.toCollection(HashSet::new)))
 			.build();
 	
 	public static final DataService DATA_SERVICE_UPDATE = DataService.Builder.newInstance()
@@ -38,6 +38,6 @@ public class DataServiceUtil {
 			.title(MockObjectUtil.TITLE + " update")
 			.endpointURL("http://dataservice.com/update")
 			.endpointDescription("endpoint description update")
-			.servesDataset(Arrays.asList(MockObjectUtil.DATASET_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
+//			.servesDataset(Arrays.asList(MockObjectUtil.DATASET_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
 			.build();
 }

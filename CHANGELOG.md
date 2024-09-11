@@ -17,7 +17,10 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
  - Plain serializers returns '@id'
- - Using @id in servesDataset instead whole object which causes endless loop
+ 
+ ### Removed
+ 
+  - removed servesDataset from DataService as per protocol (https://docs.internationaldataspaces.org/ids-knowledgebase/v/dataspace-protocol/catalog/catalog.protocol#id-1.1.3-data-service)
 
 ## [0.0.1] - 27-08-2024
 

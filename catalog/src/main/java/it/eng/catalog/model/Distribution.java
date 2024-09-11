@@ -64,8 +64,8 @@ public class Distribution implements Serializable {
     @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
     private Set<Offer> hasPolicy;
 
-//	@JsonProperty(DSpaceConstants.DCT_FORMAT)
-//	private Reference format;
+	@JsonProperty(DSpaceConstants.DCT_FORMAT)
+	private Reference format;
 
     @JsonIgnore
     @CreatedBy
@@ -136,11 +136,11 @@ public class Distribution implements Serializable {
             return this;
         }
 
-//		@JsonProperty(DSpaceConstants.DCT_FORMAT)
-//		public Builder format(Reference format) {
-//			distribution.format = format;
-//			return this;
-//		}
+		@JsonProperty(DSpaceConstants.DCT_FORMAT)
+		public Builder format(Reference format) {
+			distribution.format = format;
+			return this;
+		}
 
         @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
         @JsonDeserialize(as = Set.class)
@@ -207,6 +207,7 @@ public class Distribution implements Serializable {
         		.description(updatedDistribution.getDescription() != null ? updatedDistribution.getDescription() : this.description)
         		.accessService(updatedDistribution.getAccessService() != null ? updatedDistribution.getAccessService() : this.accessService)
         		.hasPolicy(updatedDistribution.getHasPolicy() != null ? updatedDistribution.getHasPolicy() : this.hasPolicy)
+        		.format(updatedDistribution.getFormat() != null ? updatedDistribution.getFormat() : this.format)
         		.build();
 
     }

@@ -55,7 +55,7 @@
         },
 		{
 			"$ref": "distributions",
-	        "$id": "1dc45797-json-4932-8baf-ab7fd66ql4d5"
+	        "$id": "urn:uuid:1dc45797-json-4932-8baf-ab7fd66ql4d5"
 		}
       ],
       "dataset": [
@@ -67,12 +67,8 @@
       "service": [
         {
           "$ref": "dataservices",
-          "$id": "urn:uuid:1dc45797-4444-rest-8baf-ab7fd66ac4d5"
-        },
-		{
-			"$ref": "dataservices",
-	        "$id": "urn:uuid:1dc45797-4444-sftp-8baf-ab7fd66ac4d5"
-		}
+          "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
+        }
       ],
       "participantId": "urn:example:DataProviderA",
       "homepage": "https://www.homepage.com/test",
@@ -144,7 +140,7 @@
           "$id": "urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5"
         }, {
 		  "$ref": "distributions",
-	      "$id": "1dc45797-json-4932-8baf-ab7fd66ql4d5"
+	      "$id": "urn:uuid:1dc45797-json-4932-8baf-ab7fd66ql4d5"
 		}
       ],
       "createdBy": "admin@mail.com",
@@ -154,10 +150,11 @@
   ],
   "dataservices": [
     {
-      "_id": "urn:uuid:1dc45797-4444-rest-8baf-ab7fd66ac4d5",
+      "_id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5",
       "_class": "it.eng.catalog.model.DataService",
       "keyword": [
         "REST",
+		"SFTP",
         "transfer"
       ],
       "theme": [
@@ -168,57 +165,16 @@
       "creator": "Engineering Informatica S.p.A.",
       "description": [
         {
-          "value": "REST service offering TRUEConnector team information",
+          "value": "DSP TRUEConnector service offering team information",
           "language": "en"
         }
       ],
-      "identifier": "REST Unique identifier for testing Data Service",
+      "identifier": "DSP TRUE Connector Unique identifier for testing",
       "issued": "2024-04-23T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "title": "REST Data Service",
-      "endpointDescription": "endpoint description",
-      "endpointURL": "https://provider-a.com/connector",
-	  "servesDataset": [
-		{
-			"$ref": "datasets",
-	        "$id": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
-		}
-	  ],
-      "createdBy": "admin@mail.com",
-      "lastModifiedBy": "admin@mail.com",
-      "version": 0
-    },
-	{
-      "_id": "urn:uuid:1dc45797-4444-sftp-8baf-ab7fd66ac4d5",
-      "_class": "it.eng.catalog.model.DataService",
-      "keyword": [
-        "SFTP",
-        "transfer"
-      ],
-      "theme": [
-        "dark theme",
-        "light theme"
-      ],
-      "conformsTo": "conformsToSomething",
-      "creator": "Engineering Informatica S.p.A.",
-      "description": [
-        {
-          "value": "SFTP service offering TRUEConnector team information",
-          "language": "en"
-        }
-      ],
-      "identifier": "SFTP Unique identifier for testing Data Service",
-      "issued": "2024-04-23T16:26:00.000Z",
-      "modified": "2024-04-23T16:26:00.000Z",
-      "title": "SFTP Data Service",
-      "endpointDescription": "endpoint description",
-      "endpointURL": "sftp://provider-a.com/connector",
-	  "servesDataset": [
-		{
-			"$ref": "datasets",
-         	"$id": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
-		}
-	  ],
+      "title": "DSP TRUE Connector",
+      "endpointDescription": "dspace:connector",
+      "endpointURL": "http://localhost:8090/",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": 0
@@ -230,16 +186,13 @@
       "_class": "it.eng.catalog.model.Distribution",
       "title": "PDF file",
       "format": {
-        "_id": "dspace:s3+push"
+        "@id": "HTTP-pull"
       },
       "accessService": [
         {
           "$ref": "dataservices",
-          "$id": "urn:uuid:1dc45797-4444-rest-8baf-ab7fd66ac4d5"
-        }, {
-			"$ref": "dataservices",
-			"$id": "urn:uuid:1dc45797-4444-sftp-8baf-ab7fd66ac4d5"
-		}
+          "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
+        }
       ],
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
@@ -252,17 +205,13 @@
       "_class": "it.eng.catalog.model.Distribution",
       "title": "JSON file",
       "format": {
-        "_id": "dspace:s3+push"
+        "@id": "HTTP-pull"
       },
       "accessService": [
         {
           "$ref": "dataservices",
-          "$id": "urn:uuid:1dc45797-4444-rest-8baf-ab7fd66ac4d5"
-        },
-		{
-			"$ref": "dataservices",
-			"$id": "urn:uuid:1dc45797-4444-sftp-8baf-ab7fd66ac4d5"
-		}
+          "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
+        }
       ],
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",

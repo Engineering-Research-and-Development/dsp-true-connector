@@ -36,7 +36,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonPropertyOrder(value = {DSpaceConstants.CONTEXT, DSpaceConstants.ID, DSpaceConstants.TYPE, DSpaceConstants.DCT_TITLE,
         DSpaceConstants.DCT_DESCRIPTION, DSpaceConstants.DSPACE_PARTICIPANT_ID, DSpaceConstants.DCAT_KEYWORD,
-        DSpaceConstants.DCAT_SERVICE, DSpaceConstants.DCAT_DATASET}, alphabetic = true)
+        DSpaceConstants.DCAT_DATASET, DSpaceConstants.DCAT_DISTRIBUTION, DSpaceConstants.DCAT_SERVICE}, alphabetic = true)
 @Document(collection = "catalogs")
 public class Catalog extends AbstractCatalogObject {
 

@@ -220,7 +220,7 @@ public class MockObjectUtil {
             .title(TITLE)
             .endpointDescription("Description for test")
             .endpointURL(ENDPOINT_URL)
-            .servesDataset(DATASETS)
+//            .servesDataset(DATASETS)
             .build();
 
     public static final DataService DATA_SERVICE_FOR_UPDATE = DataService.Builder.newInstance()
@@ -235,7 +235,7 @@ public class MockObjectUtil {
             .title(TITLE + " update")
             .endpointDescription("Description for test update")
             .endpointURL(ENDPOINT_URL)
-            .servesDataset(Arrays.asList(DATASET_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
+//            .servesDataset(Arrays.asList(DATASET_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
             .version(0L)
             .createdBy("admin@mail.com")
             .lastModifiedBy("admin@mail.com")
