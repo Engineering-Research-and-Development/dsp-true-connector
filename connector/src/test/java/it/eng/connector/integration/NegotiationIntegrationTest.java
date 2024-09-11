@@ -96,6 +96,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     	JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
     	providerPid = jsonNode.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText();
 
+    	//TODO add protocol call using providerPid
     	offerCheck(getContractNegotiationOverAPI());
     }
 

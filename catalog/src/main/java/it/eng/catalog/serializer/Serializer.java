@@ -7,6 +7,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -53,22 +54,22 @@ public class Serializer {
 
 			@Override
             protected TypeResolverBuilder<?> _findTypeResolver(MapperConfig<?> config, Annotated ann, JavaType baseType) {
-                if (!ann.hasAnnotation(JsonProperty.class)) {  // || !ann.hasAnnotation(JsonValue.class)
-                    return super._findTypeResolver(config, ann, baseType);
-                } else if(ann.hasAnnotation(JsonProperty.class) && ann.getName().equals("getId")) {
-//                	log.info(ann.getName());
-                	return super._findTypeResolver(config, ann, baseType);
-                }
+				 if (!ann.hasAnnotation(JsonProperty.class)) {  // || !ann.hasAnnotation(JsonValue.class)
+	                    return super._findTypeResolver(config, ann, baseType);
+	                } else if(ann.hasAnnotation(JsonProperty.class) && ann.getName().equals("getId")) {
+	                	return super._findTypeResolver(config, ann, baseType);
+	                }
                 return StdTypeResolverBuilder.noTypeInfoBuilder();
             }
 			
 			@Override
+			// used when converting from Java to String; must exclude JsonIgnore for ContractNegotiation.id
 			protected <A extends Annotation> A _findAnnotation(Annotated ann, Class<A> annoClass) {
 				//  annoClass == JsonValue.class - enum returned without prefix for plain
-				if ((annoClass == JsonProperty.class && !ann.getName().equals("id")) || annoClass == JsonValue.class) {
+				if ((annoClass == JsonProperty.class && !ann.getName().equals("id")) || annoClass == JsonIgnore.class 
+						|| annoClass == JsonValue.class) {
 					return null;
 				}
-//				log.info("JsonProperty and id field " + ann.getName());
 				return super._findAnnotation(ann, annoClass);
 			}
 			
