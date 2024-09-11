@@ -70,7 +70,7 @@ public class DataTransferApiTest extends BaseIntegrationTest {
 		assertNotNull(transferProcess);
 		assertEquals(TransferState.STARTED, transferProcess.getState());
 		
-		String TRANSFER_PROCESS_ID = "abc45798-4444-4932-8baf-ab7fd66ql4d5";
+		String TRANSFER_PROCESS_ID = "urn:uuid:abc45798-4444-4932-8baf-ab7fd66ql4d5";
 		MvcResult result = mockMvc.perform(
     			get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" +TRANSFER_PROCESS_ID).contentType(MediaType.APPLICATION_JSON))
 			.andExpect(status().isOk())
