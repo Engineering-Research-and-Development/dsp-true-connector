@@ -191,7 +191,7 @@
 									}
 								],
 								"url": {
-									"raw": "{{CONSUMER_SERVER_API_CATALOG}}/",
+									"raw": "{{CONSUMER_SERVER_API_CATALOG}}",
 									"host": [
 										"{{CONSUMER_SERVER_API_CATALOG}}"
 									],

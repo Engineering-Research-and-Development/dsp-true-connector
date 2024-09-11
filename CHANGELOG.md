@@ -18,7 +18,7 @@ All notable changes to this project will be documented in this file.
 
  - Plain serializers returns '@id'
  
- ### Removed
+### Removed
  
   - removed servesDataset from DataService as per protocol (https://docs.internationaldataspaces.org/ids-knowledgebase/v/dataspace-protocol/catalog/catalog.protocol#id-1.1.3-data-service)
 

@@ -192,7 +192,7 @@
       "version": 0
     },
 	{
-      "_id": "1dc45797-json-4932-8baf-ab7fd66ql4d5",
+      "_id": "urn:uuid:1dc45797-json-4932-8baf-ab7fd66ql4d5",
       "_class": "it.eng.catalog.model.Distribution",
       "title": "JSON file",
       "format": {
@@ -346,7 +346,7 @@
     ],
   "transfer_request_messages" : [
   	{
-	  "_id": "abc45797-pdff-4932-8baf-ab7fd66ql4d5",
+	  "_id": "urn:uuid:abc45797-pdff-4932-8baf-ab7fd66ql4d5",
 	  "_class": "it.eng.datatransfer.model.TransferRequestMessage",
 	  "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
 	  "format": "example:HTTP_PULL",
@@ -355,7 +355,7 @@
   ],
   "transfer_process" : [
     {
-	  "_id": "abc45798-4444-4932-8baf-ab7fd66ql4d5",
+	  "_id": "urn:uuid:abc45798-4444-4932-8baf-ab7fd66ql4d5",
 	  "_class": "it.eng.datatransfer.model.TransferProcess",
       "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
       "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
@@ -369,7 +369,7 @@
       "version": 0
 	},
 	{
-	  "_id": "abc45798-5555-4932-8baf-ab7fd66ql4d5",
+	  "_id": "urn:uuid:abc45798-5555-4932-8baf-ab7fd66ql4d5",
 	  "_class": "it.eng.datatransfer.model.TransferProcess",
       "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_REQ",
       "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_REQ",
@@ -383,7 +383,7 @@
       "version": 0
 	},
 	{
-	  "_id": "abc45798-5551-4932-8baf-ab7fd66ql4d5",
+	  "_id": "urn:uuid:abc45798-5551-4932-8baf-ab7fd66ql4d5",
 	  "_class": "it.eng.datatransfer.model.TransferProcess",
       "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_SUSP",
       "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_SUSP",
@@ -397,7 +397,7 @@
       "version": 0
 	},
 	{
-	  "_id": "abc45798-5553-4932-8baf-ab7fd66ql4d5",
+	  "_id": "urn:uuid:abc45798-5553-4932-8baf-ab7fd66ql4d5",
 	  "_class": "it.eng.datatransfer.model.TransferProcess",
       "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_C_REQ",
       "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_C_REQ",
@@ -411,7 +411,7 @@
       "version": 0
 	},
 	{
-	  "_id": "abc45798-5553-4932-TERM-ab7fd66ql4d5",
+	  "_id": "urn:uuid:abc45798-5553-4932-TERM-ab7fd66ql4d5",
 	  "_class": "it.eng.datatransfer.model.TransferProcess",
       "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_C_TERM",
       "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_C_TERM",
@@ -427,7 +427,7 @@
   ],
    "transfer_start_messages" : [
     {
-	  "_id": "abc45799-4444-4932-8baf-ab7fd66ql4d5",
+	  "_id": "urn:uuid:abc45799-4444-4932-8baf-ab7fd66ql4d5",
 	  "_class": "it.eng.datatransfer.model.TransferStartMessage",
       "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
       "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
