@@ -31,4 +31,4 @@ Project is structured as multi module maven project:
 
 ## GUI tool for DSP TRUEConnector
 
-* [GUI frontend](https://github.com/Engineering-Research-and-Development/dsp-true-connector/tree/develop)
+* [GUI frontend](https://github.com/Engineering-Research-and-Development/dsp-true-connector-ui)

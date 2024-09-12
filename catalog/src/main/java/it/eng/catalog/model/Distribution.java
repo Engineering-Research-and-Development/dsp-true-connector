@@ -85,7 +85,6 @@ public class Distribution implements Serializable {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-//    @JsonIgnoreProperties(value={ "type" }, allowGetters=true)
     public static class Builder {
         private final Distribution distribution;
 
@@ -137,6 +136,7 @@ public class Distribution implements Serializable {
         }
 
 		@JsonProperty(DSpaceConstants.DCT_FORMAT)
+		@JsonDeserialize(as = Reference.class)
 		public Builder format(Reference format) {
 			distribution.format = format;
 			return this;

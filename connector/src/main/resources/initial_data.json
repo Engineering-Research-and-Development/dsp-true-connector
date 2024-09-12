@@ -177,7 +177,7 @@
       "_class": "it.eng.catalog.model.Distribution",
       "title": "PDF file",
       "format": {
-        "@id": "HTTP-pull"
+        "_id": "HTTP-pull"
       },
       "accessService": [
         {
@@ -196,7 +196,7 @@
       "_class": "it.eng.catalog.model.Distribution",
       "title": "JSON file",
       "format": {
-        "@id": "HTTP-pull"
+        "_id": "HTTP-pull"
       },
       "accessService": [
         {

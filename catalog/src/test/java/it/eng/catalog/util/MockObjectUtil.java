@@ -27,6 +27,7 @@ import it.eng.catalog.model.Multilanguage;
 import it.eng.catalog.model.Offer;
 import it.eng.catalog.model.Operator;
 import it.eng.catalog.model.Permission;
+import it.eng.catalog.model.Reference;
 import it.eng.catalog.serializer.Serializer;
 
 public class MockObjectUtil {
@@ -104,6 +105,7 @@ public class MockObjectUtil {
             .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
             .issued(ISSUED)
             .modified(MODIFIED)
+            .format(Reference.Builder.newInstance().id("HTTP:PULL").build())
             .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
             .accessService(Arrays.asList(DataServiceUtil.DATA_SERVICE).stream().collect(Collectors.toCollection(HashSet::new)))
             .build();

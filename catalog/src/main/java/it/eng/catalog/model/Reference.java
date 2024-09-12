@@ -1,6 +1,5 @@
 package it.eng.catalog.model;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -28,7 +27,6 @@ public class Reference {
 			reference = new Reference();
 		}
 		
-		@JsonCreator
 		public static Builder newInstance() {
 			return new Builder();
 		}
