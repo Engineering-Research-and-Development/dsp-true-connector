@@ -57,13 +57,9 @@ public class Serializer {
 				}
 				return super._findAnnotation(ann, annoClass);
 			}
-			
         };
         
 		jsonMapperPlain = JsonMapper.builder()
-//				.configure(MapperFeature.USE_ANNOTATIONS, false)
-//				.serializationInclusion(Include.NON_NULL)
-//				.serializationInclusion(Include.NON_EMPTY)
 				.configure(SerializationFeature.INDENT_OUTPUT, true)
 				.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
 				.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
@@ -75,7 +71,6 @@ public class Serializer {
 				.serializationInclusion(Include.NON_EMPTY)
 				.configure(SerializationFeature.INDENT_OUTPUT, true)
 				.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
-//			.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
 				.build();
 		
 		validator = Validation.buildDefaultValidatorFactory().getValidator();

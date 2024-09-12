@@ -108,7 +108,7 @@ public class TransferStartMessage extends AbstractTransferMessage {
 		
 		public TransferStartMessage build() {
 			if (message.id == null) {
-	               message.id = message.createNewId();
+	               message.id = message.createNewPid();
 	        }
 			Set<ConstraintViolation<TransferStartMessage>> violations 
 				= Validation.buildDefaultValidatorFactory().getValidator().validate(message);

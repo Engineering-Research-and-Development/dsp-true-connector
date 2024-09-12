@@ -76,19 +76,9 @@ public class Serializer {
         };
         
         jsonMapperPlain = JsonMapper.builder()
-//                .configure(MapperFeature.USE_ANNOTATIONS, false)
-//                .serializationInclusion(Include.NON_NULL)
-//                .serializationInclusion(Include.NON_EMPTY)
                 .configure(SerializationFeature.INDENT_OUTPUT, true)
                 .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-                //
-//                .configure(MapperFeature.AUTO_DETECT_GETTERS, false)
-//                .configure(MapperFeature.AUTO_DETECT_CREATORS, false)
-//                .configure(MapperFeature.AUTO_DETECT_FIELDS, false)
-//                .configure(MapperFeature.AUTO_DETECT_IS_GETTERS, false)
-//                .configure(MapperFeature.AUTO_DETECT_SETTERS, false)
-        		//
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
                 .addModule(new JavaTimeModule())
                 .addModule(instantConverterModule)
@@ -100,7 +90,6 @@ public class Serializer {
                 .serializationInclusion(Include.NON_EMPTY)
                 .configure(SerializationFeature.INDENT_OUTPUT, true)
                 .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
-//			.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
                 .addModule(new JavaTimeModule())
                 .addModule(instantConverterModule)

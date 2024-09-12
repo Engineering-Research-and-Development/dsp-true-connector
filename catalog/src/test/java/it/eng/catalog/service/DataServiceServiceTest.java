@@ -21,7 +21,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.DataService;
-import it.eng.catalog.model.Dataset;
 import it.eng.catalog.repository.DataServiceRepository;
 import it.eng.catalog.util.MockObjectUtil;
 
@@ -121,14 +120,5 @@ public class DataServiceServiceTest {
         assertTrue(argCaptorDataService.getValue().getCreator().contains("update"));
         assertTrue(argCaptorDataService.getValue().getTitle().contains("update"));
         assertTrue(argCaptorDataService.getValue().getDescription().stream().filter(d -> d.getValue().contains("update")).findFirst().isPresent());
-        
-//        Dataset dataset = argCaptorDataService.getValue().getServesDataset().stream().findFirst().get();
-//        assertTrue(dataset.getCreator().contains("update"));
-//        assertTrue(dataset.getTitle().contains("update"));
-//        assertTrue(dataset.getDescription().stream().filter(d -> d.getValue().contains("update")).findFirst().isPresent());
-//        
-//        assertTrue(dataset.getDistribution().stream().findFirst().get().getTitle().contains("update"));
-//        assertTrue(dataset.getHasPolicy().stream().findFirst().get().getId().contains("update"));
-
     }
 }
