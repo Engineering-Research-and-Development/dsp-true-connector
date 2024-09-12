@@ -17,10 +17,14 @@ All notable changes to this project will be documented in this file.
 ### Added
 
  - GHA test for API endpoints
+ - Distribution - format as reference
  
 ### Changed
 
+ - DataService is connector
  - Plain serializers returns '@id'
+ - Postman collection updated
+ - generated identifiers have 'urn:uuid' as prefix (catalog, negotiation and dataTransfer)
  
 ### Removed
  
