@@ -1,6 +1,6 @@
 {
-	"id": "10570ac5-ac25-441c-8648-909fbab1f19c",
-	"name": "TC_V2_ENV",
+	"id": "389265dd-0ab5-4563-af93-805988b95306",
+	"name": "True_connector_DSP",
 	"values": [
 		{
 			"key": "CONSUMER",
@@ -11,12 +11,6 @@
 		{
 			"key": "PROVIDER",
 			"value": "http://localhost:8090",
-			"type": "default",
-			"enabled": true
-		},
-		{
-			"key": "CONSUMER_SERVER_API_CATALOG",
-			"value": "{{CONSUMER}}/api/v1/catalogs",
 			"type": "default",
 			"enabled": true
 		},
@@ -33,6 +27,18 @@
 			"enabled": true
 		},
 		{
+			"key": "CONSUMER_SERVER_PROTOCOL_DATA_TRANSFER",
+			"value": "{{CONSUMER}}/consumer/transfers",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_API_CATALOG",
+			"value": "{{CONSUMER}}/api/v1/catalogs",
+			"type": "default",
+			"enabled": true
+		},
+		{
 			"key": "CONSUMER_SERVER_API_NEGOTIATION",
 			"value": "{{CONSUMER}}/api/v1/negotiations",
 			"type": "default",
@@ -45,20 +51,20 @@
 			"enabled": true
 		},
 		{
+			"key": "CONSUMER_SERVER_API_DISTRIBUTION",
+			"value": "{{CONSUMER}}/api/v1/distributions",
+			"type": "default",
+			"enabled": true
+		},
+		{
 			"key": "CONSUMER_SERVER_API_DATASERVICE",
 			"value": "{{CONSUMER}}/api/v1/dataservices",
 			"type": "default",
 			"enabled": true
 		},
 		{
-			"key": "PROVIDER_SERVER_API_CATALOG",
-			"value": "{{PROVIDER}}/api/v1/catalogs",
-			"type": "default",
-			"enabled": true
-		},
-		{
-			"key": "CONSUMER_SERVER_API_DISTRIBUTION",
-			"value": "{{CONSUMER}}/api/v1/distributions",
+			"key": "CONSUMER_SERVER_API_APPLICATION_PROPERTY",
+			"value": "{{CONSUMER}}/api/v1/properties",
 			"type": "default",
 			"enabled": true
 		},
@@ -69,8 +75,20 @@
 			"enabled": true
 		},
 		{
+			"key": "PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER",
+			"value": "{{PROVIDER}}/transfers",
+			"type": "default",
+			"enabled": true
+		},
+		{
 			"key": "PROVIDER_SERVER_PROTOCOL_NEGOTIATION",
 			"value": "{{PROVIDER}}/negotiations",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "PROVIDER_SERVER_API_CATALOG",
+			"value": "{{PROVIDER}}/api/v1/catalogs",
 			"type": "default",
 			"enabled": true
 		},
@@ -93,31 +111,19 @@
 			"enabled": true
 		},
 		{
+			"key": "PROVIDER_SERVER_API_TRANSFERS",
+			"value": "{{PROVIDER}}/api/v1/transfers",
+			"type": "default",
+			"enabled": true
+		},
+		{
 			"key": "PROVIDER_SERVER_API_DISTRIBUTION",
 			"value": "{{PROVIDER}}/api/v1/distributions",
-			"type": "default",
-			"enabled": true
-		},
-		{
-			"key": "PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER",
-			"value": "{{PROVIDER}}/transfers",
-			"type": "default",
-			"enabled": true
-		},
-		{
-			"key": "CONSUMER_SERVER_PROTOCOL_DATA_TRANSFER",
-			"value": "{{CONSUMER}}/consumer/transfers",
-			"type": "default",
-			"enabled": true
-		},
-		{
-			"key": "CONSUMER_SERVER_API_APPLICATION_PROPERTY",
-			"value": "{{CONSUMER}}/api/v1/properties",
 			"type": "default",
 			"enabled": true
 		}
 	],
 	"_postman_variable_scope": "environment",
-	"_postman_exported_at": "2024-07-30T08:44:51.009Z",
-	"_postman_exported_using": "Postman/11.5.1"
+	"_postman_exported_at": "2024-09-12T09:19:08.294Z",
+	"_postman_exported_using": "Postman/11.12.0"
 }

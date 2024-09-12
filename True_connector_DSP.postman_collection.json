@@ -1,7 +1,7 @@
 {
 	"info": {
-		"_postman_id": "99fb8057-9c1f-4afb-8ea9-e9f09bc9b57e",
-		"name": "TC_V2",
+		"_postman_id": "3c6078d6-1d67-4061-b8be-9040970a6714",
+		"name": "True_connector_DSP",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "36278855"
 	},
@@ -194,9 +194,6 @@
 									"raw": "{{CONSUMER_SERVER_API_CATALOG}}",
 									"host": [
 										"{{CONSUMER_SERVER_API_CATALOG}}"
-									],
-									"path": [
-										""
 									]
 								}
 							},
@@ -584,7 +581,7 @@
 										"exec": [
 											"pm.test(\"Retrieve contract negotiation id\", function () {\r",
 											"    var jsonData = pm.response.json();\r",
-											"    pm.collectionVariables.set(\"consumer_contractNegotiationId\", jsonData[\"data\"][\"id\"])\r",
+											"    pm.collectionVariables.set(\"consumer_contractNegotiationId\", jsonData[\"data\"][\"@id\"])\r",
 											"});\r",
 											"\r",
 											"pm.test(\"Retrieve consumer pid\", function () {\r",
@@ -611,7 +608,7 @@
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER_SERVER_PROTOCOL_NEGOTIATION}}/request\",\r\n    \"offer\": {\r\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"urn:uuid:TARGET\",\r\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"EQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+									"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER_SERVER_PROTOCOL_NEGOTIATION}}/request\",\r\n    \"offer\": {\r\n        \"@id\": \"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"urn:uuid:TARGET\",\r\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"EQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -640,7 +637,7 @@
 											"\r",
 											"pm.test(\"Retrieve contract negotiation id\", function () {\r",
 											"    var jsonData = pm.response.json();\r",
-											"    pm.collectionVariables.set(\"provider_contractNegotiationId\", jsonData[\"data\"][jsonData.data.length-1][\"id\"])\r",
+											"    pm.collectionVariables.set(\"provider_contractNegotiationId\", jsonData[\"data\"][0][\"@id\"])\r",
 											"});"
 										],
 										"type": "text/javascript",
@@ -700,7 +697,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"Forward-To\": \"{{CONSUMER_SERVER_PROTOCOL_NEGOTIATION}}/offers\",\n    \"offer\": {\n        \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\n        \"target\": \"target\",\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\n        \"permission\": [\n            {\n                \"action\": \"USE\",\n                \"constraint\": [\n                    {\n                        \"leftOperand\": \"COUNT\",\n                        \"operator\": \"EQ\",\n                        \"rightOperand\": \"5\"\n                    }\n                ]\n            }\n        ]\n    }\n}",
+									"raw": "{\n    \"Forward-To\": \"{{CONSUMER_SERVER_PROTOCOL_NEGOTIATION}}/offers\",\n    \"offer\": {\n        \"@id\": \"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\n        \"target\": \"target\",\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\n        \"permission\": [\n            {\n                \"action\": \"USE\",\n                \"constraint\": [\n                    {\n                        \"leftOperand\": \"COUNT\",\n                        \"operator\": \"EQ\",\n                        \"rightOperand\": \"5\"\n                    }\n                ]\n            }\n        ]\n    }\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -1065,8 +1062,29 @@
 				{
 					"name": "Get TransferProcess",
 					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{
+									"key": "username",
+									"value": "admin@mail.com",
+									"type": "string"
+								},
+								{
+									"key": "password",
+									"value": "password",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
 						"url": {
 							"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}/abc45798-5553-4932-8baf-ab7fd66ql4d5",
 							"host": [
@@ -1349,7 +1367,7 @@
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferRequestMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:agreementId\": \"urn:uuid:AGREEMENT_ID_COMPLETED_TRANSFER_TEST\",\r\n \"dct:format\": \"example:HTTP_PULL\",\r\n \"dspace:callbackAddress\": \"http://localhost:8080/consumer/transfers/callback/\"\r\n}",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferRequestMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:agreementId\": \"{{agreementID_from_contract_negotiation_API_REPLACE}}\",\r\n \"dct:format\": \"example:HTTP_PULL\",\r\n \"dspace:callbackAddress\": \"http://localhost:8080/consumer/transfers/callback/\"\r\n}",
 											"options": {
 												"raw": {
 													"language": "json"
@@ -1809,28 +1827,6 @@
 					""
 				]
 			}
-		}
-	],
-	"variable": [
-		{
-			"key": "consumerPid",
-			"value": ""
-		},
-		{
-			"key": "providerPid",
-			"value": ""
-		},
-		{
-			"key": "provider_contractNegotiationId",
-			"value": ""
-		},
-		{
-			"key": "consumer_contractNegotiationId",
-			"value": ""
-		},
-		{
-			"key": "transactionId",
-			"value": ""
 		}
 	]
 }

@@ -27,7 +27,7 @@ import lombok.extern.java.Log;
  * Controller for managing application properties; get and update
  */
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/api/properties")
+@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/api/v1/properties")
 @Log
 public class ApplicationPropertiesAPIController {
 
