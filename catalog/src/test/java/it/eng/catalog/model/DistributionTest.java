@@ -28,6 +28,7 @@ public class DistributionTest {
 		assertTrue(result.contains(DSpaceConstants.TITLE));
 		assertTrue(result.contains(DSpaceConstants.DESCRIPTION));
 		assertTrue(result.contains(DSpaceConstants.ISSUED));
+		assertTrue(result.contains(DSpaceConstants.FORMAT));
 		assertTrue(result.contains(DSpaceConstants.MODIFIED));
 		assertTrue(result.contains(DSpaceConstants.ACCESS_SERVICE));
 		
@@ -45,6 +46,7 @@ public class DistributionTest {
 		assertNotNull(result.get(DSpaceConstants.DCT_DESCRIPTION).asText());
 		assertNotNull(result.get(DSpaceConstants.DCT_MODIFIED).asText());
 		assertNotNull(result.get(DSpaceConstants.DCT_ISSUED).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_FORMAT));
 		assertNotNull(result.get(DSpaceConstants.DCAT_ACCESS_SERVICE).asText());
 		
 		Distribution javaObj = Serializer.deserializeProtocol(result, Distribution.class);
@@ -91,5 +93,6 @@ public class DistributionTest {
 		assertNotNull(distribution.getHasPolicy());
 		assertNotNull(distribution.getIssued());
 		assertNotNull(distribution.getModified());
+		assertNotNull(distribution.getFormat().getId());
 	}
 }

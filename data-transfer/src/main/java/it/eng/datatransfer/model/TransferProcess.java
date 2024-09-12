@@ -142,7 +142,7 @@ public class TransferProcess extends AbstractTransferMessage {
 
 		public TransferProcess build() {
 			if (message.id == null) {
-	               message.id = message.createNewId();
+	               message.id = message.createNewPid();
 	        }
 			if (message.providerPid == null) {
                 message.providerPid = message.createNewPid();
@@ -152,7 +152,7 @@ public class TransferProcess extends AbstractTransferMessage {
 			if(violations.isEmpty()) {
 				return message;
 			}
-			throw new ValidationException(
+			throw new ValidationException("TransferProcess - " +
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())

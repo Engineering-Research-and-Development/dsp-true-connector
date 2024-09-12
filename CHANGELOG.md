@@ -12,6 +12,35 @@ All notable changes to this project will be documented in this file.
  - Postman collection for testing endpoints	
  - Configured GitHub actions to run tests
  
+## [0.0.1] - xx-09-2024
+
+### Added
+
+ - GHA test for API endpoints
+ - Distribution - format as reference
+ 
+### Changed
+
+ - DataService is connector
+ - Plain serializers returns '@id'
+ - Postman collection updated
+ - generated identifiers have 'urn:uuid' as prefix (catalog, negotiation and dataTransfer)
+ 
+### Removed
+ 
+  - removed servesDataset from DataService as per protocol (https://docs.internationaldataspaces.org/ids-knowledgebase/v/dataspace-protocol/catalog/catalog.protocol#id-1.1.3-data-service)
+
+## [0.0.1] - 27-08-2024
+
+### Added
+
+ - Added role (consumer or provider) to Contract Negotiation
+ - Added Agreement reference to to Contract Negotiation
+ 
+### Removed
+
+ - Removed consumerPid and providerPid from Offer and Agreement
+ 
 ## [0.0.1] - xx-08-2024
 
 ### Added 
@@ -25,17 +54,6 @@ All notable changes to this project will be documented in this file.
  - Enum classes JsonCreator - create enum from String (plain and protocol string)
  - Builder creates 'id' in "urn:uuid" + UUID.randomUUID() format if 'id' not present
  - Collections reverted to Set
-
-## [0.0.1] - 27-08-2024
-
-### Added
-
- - Added role (consumer or provider) to Contract Negotiation
- - Added Agreement reference to to Contract Negotiation
- 
-### Removed
-
- - Removed consumerPid and providerPid from Offer and Agreement
 
 ## [0.0.1] - 07-08-2024
 

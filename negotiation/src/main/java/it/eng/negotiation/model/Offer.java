@@ -139,7 +139,7 @@ public class Offer {
 		
 		public Offer build() {
 			if (offer.id == null) {
-				offer.id = UUID.randomUUID().toString();
+				offer.id = "urn:uuid:" + UUID.randomUUID().toString();
 			}
 			Set<ConstraintViolation<Offer>> violations 
 				= Validation.buildDefaultValidatorFactory().getValidator().validate(offer);

@@ -282,9 +282,63 @@ public class ContractNegotiationAPIServiceTest {
 				.thenReturn(Arrays.asList(
 						MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED,
 						MockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
-		Collection<JsonNode> response = service.findContractNegotiations(null, null);
+		Collection<JsonNode> response = service.findContractNegotiations(null, null, null);
 		assertNotNull(response);
 		assertEquals(2, response.size());
+	}
+	
+	@Test
+	@DisplayName("Find contract negotiations by role")
+	public void findContractNegotiationByRole() {
+		when(contractNegotiationRepository.findAll())
+				.thenReturn(Arrays.asList(
+						MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED,
+						MockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
+		Collection<JsonNode> response = service.findContractNegotiations(null, null, IConstants.ROLE_CONSUMER);
+		assertNotNull(response);
+		assertEquals(2, response.size());
+	}
+	
+	@Test
+	@DisplayName("Find contract negotiations by role mixed")
+	public void findContractNegotiationByRole_mixed() {
+		when(contractNegotiationRepository.findAll())
+				.thenReturn(Arrays.asList(
+						ContractNegotiation.Builder.newInstance()
+							.consumerPid(MockObjectUtil.CONSUMER_PID)
+							.providerPid(MockObjectUtil.PROVIDER_PID)
+							.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
+							.state(ContractNegotiationState.ACCEPTED)
+							.offer(MockObjectUtil.OFFER_COUNT_5)
+							.role(IConstants.ROLE_CONSUMER)
+							.build(),
+							ContractNegotiation.Builder.newInstance()
+								.consumerPid(MockObjectUtil.CONSUMER_PID)
+								.providerPid(MockObjectUtil.PROVIDER_PID)
+								.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
+								.state(ContractNegotiationState.ACCEPTED)
+								.offer(MockObjectUtil.OFFER_COUNT_5)
+								.role(IConstants.ROLE_PROVIDER)
+								.build()));
+		Collection<JsonNode> response = service.findContractNegotiations(null, null, IConstants.ROLE_CONSUMER);
+		assertNotNull(response);
+		assertEquals(1, response.size());
+		
+		response = service.findContractNegotiations(null, null, IConstants.ROLE_PROVIDER);
+		assertNotNull(response);
+		assertEquals(1, response.size());
+	}
+	
+	@Test
+	@DisplayName("Find contract negotiations by role - not found")
+	public void findContractNegotiationByRole_other() {
+		when(contractNegotiationRepository.findAll())
+				.thenReturn(Arrays.asList(
+						MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED,
+						MockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
+		Collection<JsonNode> response = service.findContractNegotiations(null, null, IConstants.ROLE_PROVIDER);
+		assertNotNull(response);
+		assertEquals(0, response.size());
 	}
 	
 	@Test
@@ -292,7 +346,7 @@ public class ContractNegotiationAPIServiceTest {
 	public void findContractNegotiationById() {
 		when(contractNegotiationRepository.findById(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId()))
 				.thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
-		Collection<JsonNode> response = service.findContractNegotiations(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId(), null);
+		Collection<JsonNode> response = service.findContractNegotiations(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId(), null, null);
 		assertNotNull(response);
 		assertEquals(1, response.size());
 	}
@@ -302,7 +356,7 @@ public class ContractNegotiationAPIServiceTest {
 	public void findContractNegotiationByState() {
 		when(contractNegotiationRepository.findByState(ContractNegotiationState.ACCEPTED.name()))
 				.thenReturn(Arrays.asList(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
-		Collection<JsonNode> response = service.findContractNegotiations(null, ContractNegotiationState.ACCEPTED.name());
+		Collection<JsonNode> response = service.findContractNegotiations(null, ContractNegotiationState.ACCEPTED.name(), null);
 		assertNotNull(response);
 		assertEquals(1, response.size());
 	}

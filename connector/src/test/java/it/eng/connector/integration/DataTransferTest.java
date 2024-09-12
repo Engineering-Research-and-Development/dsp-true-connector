@@ -28,7 +28,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
-import it.eng.datatransfer.model.Serializer;
 import it.eng.datatransfer.model.TransferCompletionMessage;
 import it.eng.datatransfer.model.TransferError;
 import it.eng.datatransfer.model.TransferProcess;
@@ -37,6 +36,7 @@ import it.eng.datatransfer.model.TransferStartMessage;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.model.TransferSuspensionMessage;
 import it.eng.datatransfer.model.TransferTerminationMessage;
+import it.eng.datatransfer.serializer.Serializer;
 import it.eng.tools.model.DSpaceConstants;
 
 /**

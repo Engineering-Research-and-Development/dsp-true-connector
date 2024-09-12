@@ -12,7 +12,6 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.annotation.Version;
-import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -66,13 +65,12 @@ public class DataService implements Serializable {
     private Instant modified;
     @JsonProperty(DSpaceConstants.DCT_TITLE)
     private String title;
+    
     @JsonProperty(DSpaceConstants.DCAT_ENDPOINT_DESCRIPTION)
     private String endpointDescription;
     @JsonProperty(DSpaceConstants.DCAT_ENDPOINT_URL)
     private String endpointURL;
-    @JsonProperty(DSpaceConstants.DCAT_SERVES_DATASET)
-    @DBRef
-    private Set<Dataset> servesDataset;
+    
     @JsonIgnore
     @CreatedBy
     private String createdBy;
@@ -170,12 +168,6 @@ public class DataService implements Serializable {
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCAT_SERVES_DATASET)
-        public Builder servesDataset(Set<Dataset> servesDataset) {
-            service.servesDataset = servesDataset;
-            return this;
-        }
-
         @JsonProperty("createdBy")
         public Builder createdBy(String createdBy) {
             service.createdBy = createdBy;
@@ -237,7 +229,6 @@ public class DataService implements Serializable {
          .title(updatedDataService.getTitle() != null ? updatedDataService.getTitle() : this.title)
          .endpointDescription(updatedDataService.getEndpointDescription() != null ? updatedDataService.getEndpointDescription() : this.endpointDescription)
          .endpointURL(updatedDataService.getEndpointURL() != null ? updatedDataService.getEndpointURL() : this.endpointURL)
-         .servesDataset(updatedDataService.getServesDataset() != null ? updatedDataService.getServesDataset() : this.servesDataset)
          .build();
   }
 }

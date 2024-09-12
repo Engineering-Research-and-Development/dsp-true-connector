@@ -29,7 +29,7 @@ public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 
 		final ResultActions result =
 				mockMvc.perform(
-						get("/api/properties/")
+						get("/api/v1/properties/")
 						.contentType(MediaType.APPLICATION_JSON_VALUE)
 						.accept(MediaType.APPLICATION_JSON_VALUE));
 
@@ -44,7 +44,7 @@ public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 
 		final ResultActions result =
 				mockMvc.perform(
-						get("/api/properties/{key}", this.TEST_KEY )
+						get("/api/v1/properties/{key}", this.TEST_KEY )
 						.contentType(MediaType.APPLICATION_JSON_VALUE));
 
 		result.andExpect(status().isOk())
@@ -67,7 +67,7 @@ public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 
 		final ResultActions result =
 				mockMvc.perform(
-						put("/api/properties/")
+						put("/api/v1/properties/")
 						.contentType(MediaType.APPLICATION_JSON_VALUE)
 						.content(body)
 						.accept(MediaType.APPLICATION_JSON_VALUE));

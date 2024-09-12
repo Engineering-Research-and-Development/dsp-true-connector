@@ -76,7 +76,7 @@ public class DataAddress implements Serializable {
 			if(violations.isEmpty()) {
 				return dataAddress;
 			}
-			throw new ValidationException(
+			throw new ValidationException("DataAddress - " + 
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())

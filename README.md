@@ -11,7 +11,7 @@ Implementation of the new [Dataspace protocol](https://docs.internationaldataspa
  - Libraries: lombok, fasterxml.jackson, okhttp3, com.auth0:java-jwt, org.apache.commons:commons-lang3, org.apache.sshd:sshd-core, org.apache.sshd:sshd-sftp
   - Testing: Junit, Mockito; integration tests - MockMvc
   - Debugging tools: IDE debug
-  - FE Technologies: Angular 16
+  - FE Technologies: Angular 17
   - Other technologies/Protocols used: Dataspace Protocol, HTTPS, sftp, DCAT-AP
   - Useful Tools: Postman, Docker, Robo 3T (or any other MongoDb visualization tool)
   - [Repository source code and versioning](https://github.com/Engineering-Research-and-Development/dsp-true-connector)
@@ -26,6 +26,9 @@ Project is structured as multi module maven project:
 * catalog - module containing logic for processing catalog document
 * negotiation - module containing logic for performing contract negotiation
 * connector - wrapper module for starting application
-* statemachine - module for finite state machine (negotiation and transfer process)
 * data-transfer - module maintaining transfer of the data
 * tools - various tools and utilities needed across modules
+
+## GUI tool for DSP TRUEConnector
+
+* [GUI frontend](https://github.com/Engineering-Research-and-Development/dsp-true-connector-ui)

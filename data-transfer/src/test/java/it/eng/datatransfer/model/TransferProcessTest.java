@@ -3,6 +3,7 @@ package it.eng.datatransfer.model;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import it.eng.datatransfer.serializer.Serializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 
@@ -28,6 +30,7 @@ public class TransferProcessTest {
 		String result = Serializer.serializePlain(transferProcess);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
+		assertTrue(result.contains(DSpaceConstants.ID));
 		assertTrue(result.contains(DSpaceConstants.CONSUMER_PID));
 		assertTrue(result.contains(DSpaceConstants.PROVIDER_PID));
 		
@@ -39,6 +42,7 @@ public class TransferProcessTest {
 	@DisplayName("Verify valid protocol object serialization")
 	public void testPlain_protocol() {
 		JsonNode result = Serializer.serializeProtocolJsonNode(transferProcess);
+		assertNull(result.get(DSpaceConstants.ID));
 		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
 		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
 		assertNotNull(result.get(DSpaceConstants.DSPACE_CONSUMER_PID).asText());

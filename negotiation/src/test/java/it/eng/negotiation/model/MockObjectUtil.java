@@ -8,6 +8,8 @@ import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 
+import it.eng.tools.model.IConstants;
+
 public class MockObjectUtil {
 
 	public static final String CONSUMER_PID = "urn:uuid:CONSUMER_PID";
@@ -147,6 +149,7 @@ public class MockObjectUtil {
 			.state(ContractNegotiationState.ACCEPTED)
 			.offer(MockObjectUtil.OFFER_COUNT_5)
 			.assigner(ASSIGNER)
+			.role(IConstants.ROLE_CONSUMER)
 			.build();
 	
 	public static final ContractNegotiation CONTRACT_NEGOTIATION_ACCEPTED_NO_OFFER = ContractNegotiation.Builder.newInstance()
@@ -163,6 +166,7 @@ public class MockObjectUtil {
 			.state(ContractNegotiationState.REQUESTED)
 			.offer(OFFER)
 			.assigner(ASSIGNER)
+			.role(IConstants.ROLE_CONSUMER)
 			.build();
 	
 	public static final ContractNegotiation CONTRACT_NEGOTIATION_AGREED = ContractNegotiation.Builder.newInstance()

@@ -18,10 +18,10 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.connector.util.TestUtil;
-import it.eng.datatransfer.model.Serializer;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.model.TransferTerminationMessage;
+import it.eng.datatransfer.serializer.Serializer;
 
 /**
  * Data Transfer integration test - callback consumer endpoints

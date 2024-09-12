@@ -43,8 +43,8 @@ public class ContractNegotiationAPIController {
      */
     @GetMapping(path = {"", "/{contractNegotiationId}"})
     public ResponseEntity<GenericApiResponse<Collection<JsonNode>>> getContractNegotiations(@PathVariable(required = false) String contractNegotiationId,
-    		@RequestParam(required = false) String state){
-    	Collection<JsonNode> contractNegotiations = apiService.findContractNegotiations(contractNegotiationId, state);
+    		@RequestParam(required = false) String state, @RequestParam(required = false) String role){
+    	Collection<JsonNode> contractNegotiations = apiService.findContractNegotiations(contractNegotiationId, state, role);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
     			.body(GenericApiResponse.success(contractNegotiations, "Fetching contract negotiations"));
     } 

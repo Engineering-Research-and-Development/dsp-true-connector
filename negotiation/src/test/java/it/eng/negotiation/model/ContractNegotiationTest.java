@@ -35,6 +35,7 @@ public class ContractNegotiationTest {
 		String result = Serializer.serializePlain(contractNegotiation);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
+		assertTrue(result.contains(DSpaceConstants.ID));
 		assertTrue(result.contains(DSpaceConstants.CONSUMER_PID));
 		assertTrue(result.contains(DSpaceConstants.PROVIDER_PID));
 		assertTrue(result.contains("ACCEPTED"));

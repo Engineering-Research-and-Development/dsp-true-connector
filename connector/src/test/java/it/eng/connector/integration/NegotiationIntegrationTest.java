@@ -44,7 +44,7 @@ import it.eng.tools.model.DSpaceConstants;
 public class NegotiationIntegrationTest extends BaseIntegrationTest {
 	
 	private static String providerPid;
-	private static String offerID = "fdc45798-a123-4955-8baf-ab7fd66ac4d5";
+	private static String offerID = "urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5";
 	private final ObjectMapper mapper = new ObjectMapper();
 	
 	@Order(1)
@@ -96,6 +96,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     	JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
     	providerPid = jsonNode.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText();
 
+    	//TODO add protocol call using providerPid
     	offerCheck(getContractNegotiationOverAPI());
     }
 

@@ -236,30 +236,41 @@ public class ContractNegotiationAPIService {
 				Serializer.serializeProtocolJsonNode(contractNegotiationEventMessage), credentialUtils.getConnectorCredentials());
 		
 		if (response.isSuccess()) {
-			ContractNegotiation contractNegotiationUpdated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.FINALIZED);
-			contractNegotiationRepository.save(contractNegotiationUpdated);
+			ContractNegotiation contractNegotiationFinalized = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.FINALIZED);
+			contractNegotiationRepository.save(contractNegotiationFinalized);
 		} else {
 			log.error("Error response received!");
 			throw new ContractNegotiationAPIException(response.getMessage());
 		}
 	}
 
-	public Collection<JsonNode> findContractNegotiations(String contractNegotiationId, String state) {
+	public Collection<JsonNode> findContractNegotiations(String contractNegotiationId, String state, String role) {
 		if (StringUtils.isNotBlank(contractNegotiationId)) {
 			return contractNegotiationRepository.findById(contractNegotiationId)
 					.stream()
+					.filter(cn -> getContractNegotiation(cn, role))
 					.map(cn -> Serializer.serializePlainJsonNode(cn))
 					.collect(Collectors.toList());
 		} else if (StringUtils.isNotBlank(state)) {
 			return contractNegotiationRepository.findByState(state)
 					.stream()
+					.filter(cn -> getContractNegotiation(cn, role))
 					.map(cn -> Serializer.serializePlainJsonNode(cn))
 					.collect(Collectors.toList());
 		}
 		return contractNegotiationRepository.findAll()
 				.stream()
+				.filter(cn -> getContractNegotiation(cn, role))
 				.map(cn -> Serializer.serializePlainJsonNode(cn))
 				.collect(Collectors.toList());
+	}
+
+	private boolean getContractNegotiation(ContractNegotiation cn, String role) {
+		if(role == null) {
+			return true;
+		} else {
+			return role.equalsIgnoreCase(cn.getRole());//.equals(role);
+		}
 	}
 
 	/**

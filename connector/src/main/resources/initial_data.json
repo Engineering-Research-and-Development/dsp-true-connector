@@ -24,12 +24,13 @@
   "catalogs": [
     {
       "_class": "it.eng.catalog.model.Catalog",
-      "_id": "1dc45797-3333-4955-8baf-ab7fd66ac4d5",
+      "_id": "urn:uuid:1dc45797-3333-4955-8baf-ab7fd66ac4d5",
       "context": "https://w3id.org/dspace/2024/1/context.json",
       "keyword": [
-        "keyword1",
-        "keyword2",
-        "keyword3"
+        "Employee",
+        "Information",
+        "Test",
+		"TRUEConnector team information"
       ],
       "theme": [
         "dark theme",
@@ -39,30 +40,34 @@
       "creator": "Engineering Informatica S.p.A.",
       "description": [
         {
-          "value": "Some text for multi language",
+          "value": "Sample catalog offering TRUEConnector team information",
           "language": "en"
         }
       ],
-      "identifier": "Unique identifier for testing Catalog",
+      "identifier": "Unique identifier for test Catalog",
       "issued": "2024-04-23T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "title": "Title for testing catalog",
+      "title": "Testcatalog - TRUEConnector team information",
       "distribution": [
         {
           "$ref": "distributions",
-          "$id": "1dc45797-4444-4932-8baf-ab7fd66ql4d5"
-        }
+          "$id": "urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5"
+        },
+		{
+			"$ref": "distributions",
+	        "$id": "urn:uuid:1dc45797-json-4932-8baf-ab7fd66ql4d5"
+		}
       ],
       "dataset": [
         {
           "$ref": "datasets",
-          "$id": "fdc45798-a222-4955-8baf-ab7fd66ac4d5"
+          "$id": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
         }
       ],
       "service": [
         {
           "$ref": "dataservices",
-          "$id": "1dc45797-4444-4955-8baf-ab7fd66ac4d5"
+          "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
         }
       ],
       "participantId": "urn:example:DataProviderA",
@@ -76,11 +81,15 @@
     {
       "_class": "it.eng.catalog.model.Dataset",
       "context": "https://w3id.org/dspace/2024/1/context.json",
-      "_id": "fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "_id": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "keyword": [
-        "keyword1",
-        "keyword2",
-        "keyword3"
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+		"REST",
+		"SFTP",
+		"json",
+		"pdf"
       ],
       "theme": [
         "dark theme",
@@ -88,19 +97,19 @@
       ],
       "description": [
         {
-          "value": "Some text for multi language Dataset",
+          "value": "Dataset offering TRUEConnector team information",
           "language": "en"
         }
       ],
       "conformsTo": "conformsToSomething",
       "creator": "Engineering Informatica S.p.A.",
-      "identifier": "Unique identifier for testing Dataset",
+      "identifier": "Unique identifier for test Dataset",
       "issued": "2024-04-23T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "title": "Title for test Dataset",
+      "title": "TRUEConnector team information dataset",
       "hasPolicy": [
         {
-          "_id": "fdc45798-a123-4955-8baf-ab7fd66ac4d5",
+          "_id": "urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5",
           "_class": "it.eng.catalog.model.Offer",
           "permission": [
             {
@@ -119,8 +128,11 @@
       "distribution": [
         {
           "$ref": "distributions",
-          "$id": "1dc45797-4444-4932-8baf-ab7fd66ql4d5"
-        }
+          "$id": "urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5"
+        }, {
+		  "$ref": "distributions",
+	      "$id": "urn:uuid:1dc45797-json-4932-8baf-ab7fd66ql4d5"
+		}
       ],
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
@@ -129,12 +141,12 @@
   ],
   "dataservices": [
     {
-      "_id": "1dc45797-4444-4955-8baf-ab7fd66ac4d5",
+      "_id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5",
       "_class": "it.eng.catalog.model.DataService",
       "keyword": [
-        "keyword1",
-        "keyword2",
-        "keyword3"
+        "REST",
+		"SFTP",
+        "transfer"
       ],
       "theme": [
         "dark theme",
@@ -144,16 +156,16 @@
       "creator": "Engineering Informatica S.p.A.",
       "description": [
         {
-          "value": "Some text for multi language",
+          "value": "DSP TRUEConnector service offering team information",
           "language": "en"
         }
       ],
-      "identifier": "Unique identifier for testing Data Service",
+      "identifier": "DSP TRUE Connector Unique identifier for testing",
       "issued": "2024-04-23T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "title": "Title for testing Data Service",
-      "endpointDescription": "endpoint description",
-      "endpointURL": "http://localhost:8090",
+      "title": "DSP TRUE Connector",
+      "endpointDescription": "dspace:connector",
+      "endpointURL": "http://localhost:8090/",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": 0
@@ -161,16 +173,35 @@
   ],
   "distributions": [
     {
-      "_id": "1dc45797-4444-4932-8baf-ab7fd66ql4d5",
+      "_id": "urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5",
       "_class": "it.eng.catalog.model.Distribution",
-      "title": "Flash lightning distribution",
+      "title": "PDF file",
       "format": {
-        "_id": "dspace:s3+push"
+        "_id": "HTTP-pull"
       },
       "accessService": [
         {
           "$ref": "dataservices",
-          "$id": "1dc45797-4444-4955-8baf-ab7fd66ac4d5"
+          "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
+        }
+      ],
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    },
+	{
+      "_id": "urn:uuid:1dc45797-json-4932-8baf-ab7fd66ql4d5",
+      "_class": "it.eng.catalog.model.Distribution",
+      "title": "JSON file",
+      "format": {
+        "_id": "HTTP-pull"
+      },
+      "accessService": [
+        {
+          "$ref": "dataservices",
+          "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
         }
       ],
       "createdBy": "admin@mail.com",
@@ -180,9 +211,7 @@
       "version": 0
     }
   ],
-  "contract_negotiations": [  
-	
-	],
+  "contract_negotiations": [],
   "application_properties": [
     {
         "_id": "application.daps.dapsJWKSUrl",
@@ -317,7 +346,7 @@
     ],
   "transfer_request_messages" : [
   	{
-	  "_id": "abc45797-4444-4932-8baf-ab7fd66ql4d5",
+	  "_id": "urn:uuid:abc45797-pdff-4932-8baf-ab7fd66ql4d5",
 	  "_class": "it.eng.datatransfer.model.TransferRequestMessage",
 	  "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
 	  "format": "example:HTTP_PULL",
@@ -326,7 +355,7 @@
   ],
   "transfer_process" : [
     {
-	  "_id": "abc45798-4444-4932-8baf-ab7fd66ql4d5",
+	  "_id": "urn:uuid:abc45798-4444-4932-8baf-ab7fd66ql4d5",
 	  "_class": "it.eng.datatransfer.model.TransferProcess",
       "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
       "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
@@ -340,7 +369,7 @@
       "version": 0
 	},
 	{
-	  "_id": "abc45798-5555-4932-8baf-ab7fd66ql4d5",
+	  "_id": "urn:uuid:abc45798-5555-4932-8baf-ab7fd66ql4d5",
 	  "_class": "it.eng.datatransfer.model.TransferProcess",
       "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_REQ",
       "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_REQ",
@@ -354,7 +383,7 @@
       "version": 0
 	},
 	{
-	  "_id": "abc45798-5551-4932-8baf-ab7fd66ql4d5",
+	  "_id": "urn:uuid:abc45798-5551-4932-8baf-ab7fd66ql4d5",
 	  "_class": "it.eng.datatransfer.model.TransferProcess",
       "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_SUSP",
       "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_SUSP",
@@ -368,7 +397,7 @@
       "version": 0
 	},
 	{
-	  "_id": "abc45798-5553-4932-8baf-ab7fd66ql4d5",
+	  "_id": "urn:uuid:abc45798-5553-4932-8baf-ab7fd66ql4d5",
 	  "_class": "it.eng.datatransfer.model.TransferProcess",
       "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_C_REQ",
       "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_C_REQ",
@@ -382,7 +411,7 @@
       "version": 0
 	},
 	{
-	  "_id": "abc45798-5553-4932-TERM-ab7fd66ql4d5",
+	  "_id": "urn:uuid:abc45798-5553-4932-TERM-ab7fd66ql4d5",
 	  "_class": "it.eng.datatransfer.model.TransferProcess",
       "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_C_TERM",
       "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_C_TERM",
@@ -398,7 +427,7 @@
   ],
    "transfer_start_messages" : [
     {
-	  "_id": "abc45799-4444-4932-8baf-ab7fd66ql4d5",
+	  "_id": "urn:uuid:abc45799-4444-4932-8baf-ab7fd66ql4d5",
 	  "_class": "it.eng.datatransfer.model.TransferStartMessage",
       "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
       "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",

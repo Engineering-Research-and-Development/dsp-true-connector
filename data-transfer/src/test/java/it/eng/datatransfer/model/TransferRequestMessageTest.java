@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import it.eng.datatransfer.serializer.Serializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 
@@ -21,8 +22,8 @@ public class TransferRequestMessageTest {
 			.endpoint(ModelUtil.ENDPOINT)
 			.endpointType(ModelUtil.ENDPOINT_TYPE)
 			.endpointProperties(Arrays.asList(
-					EndpointProperty.Builder.newInstance().name("username").vaule("John").build(),
-					EndpointProperty.Builder.newInstance().name("password").vaule("encodedPassword").build())
+					EndpointProperty.Builder.newInstance().name("username").value("John").build(),
+					EndpointProperty.Builder.newInstance().name("password").value("encodedPassword").build())
 				)
 			.build();
 	
@@ -41,8 +42,12 @@ public class TransferRequestMessageTest {
 		String result = Serializer.serializePlain(transferRequestMessage);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
+		assertTrue(result.contains(DSpaceConstants.ID));
 		assertTrue(result.contains(DSpaceConstants.CONSUMER_PID));
 		assertTrue(result.contains(DSpaceConstants.AGREEMENT_ID));
+		assertTrue(result.contains(DSpaceConstants.CALLBACK_ADDRESS));
+		assertTrue(result.contains(DSpaceConstants.DATA_ADDRESS));
+		assertTrue(result.contains(DSpaceConstants.ENDPOINT_PROPERTIES));
 		
 		TransferRequestMessage javaObj = Serializer.deserializePlain(result, TransferRequestMessage.class);
 		validateJavaObject(javaObj);
