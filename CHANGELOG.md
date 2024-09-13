@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
  - Setup project structure (multimodule maven project:tools, catalog, negotiation, dataTransfer)
  - Catalog protocol and API logic implementation (controller, service, model; junit and integration tests)
  - Negotiation protocol and API logic implementation (controller, service, model; junit and integration tests) - Agreement enforcement is currently checking only if agreement is present, it does not check for constraints
- - Data Transfer protocol and API logic implementation (controller, service, model; junit and integration tests) - REST pull implementation without authorization, with hardcoded value/artifact
+ - Data Transfer protocol logic implementation (controller, service, model; junit and integration tests) - REST pull implementation without authorization, with hardcoded value/artifact
  - Postman collection for testing endpoints	
  - Configured GitHub actions to run tests
  
