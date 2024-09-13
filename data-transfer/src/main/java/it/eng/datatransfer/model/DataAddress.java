@@ -1,5 +1,6 @@
 package it.eng.datatransfer.model;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -22,7 +23,9 @@ import lombok.NoArgsConstructor;
 @Getter
 @JsonDeserialize(builder = DataAddress.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class DataAddress {
+public class DataAddress implements Serializable {
+
+	private static final long serialVersionUID = -2851504722128056767L;
 
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_ENDPOINT_TYPE)
@@ -73,7 +76,7 @@ public class DataAddress {
 			if(violations.isEmpty()) {
 				return dataAddress;
 			}
-			throw new ValidationException(
+			throw new ValidationException("DataAddress - " + 
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())

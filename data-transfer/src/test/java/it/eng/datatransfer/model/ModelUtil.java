@@ -16,4 +16,24 @@ public class ModelUtil {
 	
 	public static final String TARGET = "urn:uuid:TARGET";
 	
+	public static TransferProcess TRANSFER_PROCESS_REQUESTED = TransferProcess.Builder.newInstance()
+			.agreementId(AGREEMENT_ID)
+			.consumerPid(CONSUMER_PID)
+			.providerPid(PROVIDER_PID)
+			.state(TransferState.REQUESTED)
+			.build();
+	
+	public static TransferProcess TRANSFER_PROCESS_STARTED = TransferProcess.Builder.newInstance()
+			.agreementId(AGREEMENT_ID)
+			.consumerPid(CONSUMER_PID)
+			.providerPid(PROVIDER_PID)
+			.state(TransferState.STARTED)
+			.build();
+	
+	public static TransferProcess TRANSFER_PROCESS_SUSPENDED = TransferProcess.Builder.newInstance()
+			.agreementId(AGREEMENT_ID)
+			.consumerPid(CONSUMER_PID)
+			.providerPid(PROVIDER_PID)
+			.state(TransferState.SUSPENDED)
+			.build();
 }

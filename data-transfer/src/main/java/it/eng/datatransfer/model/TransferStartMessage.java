@@ -3,9 +3,12 @@ package it.eng.datatransfer.model;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
@@ -47,12 +50,22 @@ import lombok.NoArgsConstructor;
 @Getter
 @JsonDeserialize(builder = TransferStartMessage.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
+@Document(collection = "transfer_start_messages")
 public class TransferStartMessage extends AbstractTransferMessage {
 
+	private static final long serialVersionUID = 7918949682633114473L;
+
+	@JsonIgnore
+    @JsonProperty(DSpaceConstants.ID)
+    @Id
+    private String id;
+    
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_PROVIDER_PID)
 	private String providerPid;
 	
+	//	The dataAddress is only provided if the current transfer is a pull transfer 
+	//	and contains a transport-specific endpoint address for obtaining the data.
 	@JsonProperty(DSpaceConstants.DSPACE_DATA_ADDRESS)
 	private DataAddress dataAddress;
 	
@@ -70,13 +83,18 @@ public class TransferStartMessage extends AbstractTransferMessage {
 			return new Builder();
 		}
 		
-		@JsonSetter(DSpaceConstants.DSPACE_CONSUMER_PID)
+		public Builder id(String id) {
+        	message.id = id;
+        	return this;
+        }
+
+		@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
 		public Builder consumerPid(String consumerPid) {
 			message.consumerPid = consumerPid;
 			return this;
 		}
 
-		@JsonSetter((DSpaceConstants.DSPACE_PROVIDER_PID))
+		@JsonProperty((DSpaceConstants.DSPACE_PROVIDER_PID))
 		public Builder providerPid(String providerPid) {
 			message.providerPid = providerPid;
 			return this;
@@ -89,12 +107,15 @@ public class TransferStartMessage extends AbstractTransferMessage {
 		}
 		
 		public TransferStartMessage build() {
+			if (message.id == null) {
+	               message.id = message.createNewPid();
+	        }
 			Set<ConstraintViolation<TransferStartMessage>> violations 
 				= Validation.buildDefaultValidatorFactory().getValidator().validate(message);
 			if(violations.isEmpty()) {
 				return message;
 			}
-			throw new ValidationException(
+			throw new ValidationException("TransferStartMessage - " +
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())

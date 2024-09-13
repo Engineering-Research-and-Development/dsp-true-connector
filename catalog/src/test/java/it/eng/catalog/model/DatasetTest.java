@@ -1,67 +1,31 @@
 package it.eng.catalog.model;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.Arrays;
-
+import it.eng.catalog.serializer.Serializer;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
+import it.eng.catalog.util.MockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 
 public class DatasetTest {
 
-	private Constraint constraint = Constraint.Builder.newInstance()
-			.leftOperand(LeftOperand.COUNT)
-			.operator(Operator.EQ)
-			.rightOperand("5")
-			.build();
-	
-	private Permission permission = Permission.Builder.newInstance()
-			.action(Action.USE)
-			.constraint(Arrays.asList(constraint))
-			.build();
-	
-	private Offer offer = Offer.Builder.newInstance()
-			.target(CatalogUtil.TARGET)
-			.assignee(CatalogUtil.ASSIGNEE)
-			.assigner(CatalogUtil.ASSIGNER)
-			.permission(Arrays.asList(permission))
-			.build();
-	
-	private Dataset dataset = Dataset.Builder.newInstance()
-			.conformsTo(CatalogUtil.CONFORMSTO)
-			.creator(CatalogUtil.CREATOR)
-			.description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("For test").build(),
-					Multilanguage.Builder.newInstance().language("it").value("For test but in Italian").build()))
-			.distribution(Arrays.asList(Distribution.Builder.newInstance()
-					.dataService(null)
-//					.description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("DS descr for test").build()))
-//					.issued(CatalogUtil.ISSUED)
-//					.modified(CatalogUtil.MODIFIED)
-//					.title("Distribution title for tests")
-					.format(Reference.Builder.newInstance().id("dspace:s3+push").build())
-					.build()))
-			.identifier(CatalogUtil.IDENTIFIER)
-			.issued(CatalogUtil.ISSUED)
-			.keyword(Arrays.asList("keyword1", "keyword2"))
-			.modified(CatalogUtil.MODIFIED)
-			.theme(Arrays.asList("white", "blue", "aqua"))
-			.title(CatalogUtil.TITLE)
-			.hasPolicy(Arrays.asList(offer))
-			.build();
-	
-	
 	@Test
+	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() {
-		String result = Serializer.serializePlain(dataset);
+		String result = Serializer.serializePlain(MockObjectUtil.DATASET);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
-		assertFalse(result.contains(DSpaceConstants.ID));
+		assertTrue(result.contains(DSpaceConstants.ID));
 		assertTrue(result.contains(DSpaceConstants.KEYWORD));
 		assertTrue(result.contains(DSpaceConstants.THEME));
 		assertTrue(result.contains(DSpaceConstants.CONFORMSTO));
@@ -79,39 +43,66 @@ public class DatasetTest {
 	}
 
 	@Test
+	@DisplayName("Verify valid protocol object serialization")
 	public void testProtocol() {
-		String result = Serializer.serializeProtocol(dataset);
-		assertTrue(result.contains(DSpaceConstants.CONTEXT));
-		assertTrue(result.contains(DSpaceConstants.TYPE));
-		assertTrue(result.contains(DSpaceConstants.DCAT_KEYWORD));
-		assertTrue(result.contains(DSpaceConstants.DCAT_THEME));
-		assertTrue(result.contains(DSpaceConstants.DCT_CONFORMSTO));
+		JsonNode result = Serializer.serializeProtocolJsonNode(MockObjectUtil.DATASET);
+		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
+		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
+		assertNotNull(result.get(DSpaceConstants.DCAT_KEYWORD).asText());
+		assertNotNull(result.get(DSpaceConstants.DCAT_THEME).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_CONFORMSTO).asText());
 		
-		assertTrue(result.contains(DSpaceConstants.DCT_CREATOR));
-		assertTrue(result.contains(DSpaceConstants.DCT_DESCRIPTION));
-		assertTrue(result.contains(DSpaceConstants.DCT_IDENTIFIER));
-		assertTrue(result.contains(DSpaceConstants.DCT_ISSUED));
-		assertTrue(result.contains(DSpaceConstants.DCT_MODIFIED));
-		assertTrue(result.contains(DSpaceConstants.DCT_MODIFIED));
-		assertTrue(result.contains(DSpaceConstants.DCAT_DISTRIBUTION));
+		assertNotNull(result.get(DSpaceConstants.DCT_CREATOR).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_DESCRIPTION).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_IDENTIFIER).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_ISSUED).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_MODIFIED).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_MODIFIED).asText());
+		assertNotNull(result.get(DSpaceConstants.DCAT_DISTRIBUTION).asText());
 		
 		Dataset javaObj = Serializer.deserializeProtocol(result, Dataset.class);
 		validateDataset(javaObj);
 	}
+
+	@Test
+	@DisplayName("Missing @context and @type")
+	public void missingContextAndType() {
+		JsonNode result = Serializer.serializePlainJsonNode(MockObjectUtil.DATASET);
+		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, Dataset.class));
+	}
 	
 	@Test
+	@DisplayName("No required fields")
 	public void validateInvalid() {
 		assertThrows(ValidationException.class,
 				() -> Dataset.Builder.newInstance()
 					.build());
 	}
 	
+	@Test
+	@DisplayName("Plain serialize/deserialize")
+	public void equalsTestPlain() {
+		Dataset dataset = MockObjectUtil.DATASET;
+		String ss = Serializer.serializePlain(dataset);
+		Dataset dataset2 = Serializer.deserializePlain(ss, Dataset.class);
+		assertThat(dataset).usingRecursiveComparison().isEqualTo(dataset2);
+	}
+	
+	@Test
+	@DisplayName("Protocol serialize/deserialize")
+	public void equalsTestProtocol() {
+		Dataset dataset = MockObjectUtil.DATASET;
+		String ss = Serializer.serializeProtocol(dataset);
+		Dataset dataset2 = Serializer.deserializeProtocol(ss, Dataset.class);
+		assertThat(dataset).usingRecursiveComparison().isEqualTo(dataset2);
+	}
+	
 	private void validateDataset(Dataset javaObj) {
 		assertNotNull(javaObj);
 		assertNotNull(javaObj.getConformsTo());
 		assertNotNull(javaObj.getCreator());
-		assertNotNull(javaObj.getDescription().get(0));
-		assertNotNull(javaObj.getDistribution().get(0));
+		assertNotNull(javaObj.getDescription().iterator().next());
+		assertNotNull(javaObj.getDistribution().iterator().next());
 		assertNotNull(javaObj.getIdentifier());
 		assertNotNull(javaObj.getIssued());
 		assertNotNull(javaObj.getKeyword());

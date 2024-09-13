@@ -23,7 +23,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -34,7 +33,6 @@ import org.springframework.boot.ssl.SslBundle;
 import org.springframework.boot.ssl.SslBundles;
 import org.springframework.boot.ssl.SslStoreBundle;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import it.eng.datatransfer.config.AuthenticatorTestUtil;
 import it.eng.datatransfer.config.TestSSLConfiguration;
@@ -42,8 +40,8 @@ import it.eng.datatransfer.ftp.client.FTPClient;
 import it.eng.datatransfer.ftp.configuration.FTPConfiguration;
 import it.eng.datatransfer.server.FTPServerTestUtil;
 import it.eng.tools.configuration.GlobalSSLConfiguration;
+
 @TestInstance(Lifecycle.PER_CLASS)
-@ExtendWith(SpringExtension.class)
 @SpringBootTest(classes = {FTPServerTestUtil.class, AuthenticatorTestUtil.class, TestSSLConfiguration.class})
 public class FTPClientTest {
 	

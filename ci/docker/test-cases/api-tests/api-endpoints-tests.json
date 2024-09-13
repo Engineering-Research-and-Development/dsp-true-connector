@@ -1,0 +1,473 @@
+{
+	"info": {
+		"_postman_id": "65ff3ae3-2f08-4594-a08c-215c8ca3aa65",
+		"name": "API tests",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "21815221",
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-65ff3ae3-2f08-4594-a08c-215c8ca3aa65?action=share&source=collection_link&creator=21815221"
+	},
+	"item": [
+		{
+			"name": "Get all catalogs",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Response is catalog\", function () {\r",
+							"\r",
+							"    result = false;\r",
+							"    var arr = [\"Engineering Informatica S.p.A.\", \"TRUEConnector\", \"REST\", \"SFTP\", \"dataset\", \"distribution\", \"accessService\"];\r",
+							"    responseText = pm.response.text();\r",
+							"\r",
+							"    arr.forEach((x) => {\r",
+							"      if (responseText.includes(x)){\r",
+							"      result = true;\r",
+							"    }\r",
+							"\r",
+							"    pm.expect(result).to.be.true;\r",
+							"    });\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Retrieve catalog id\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.collectionVariables.set(\"catalogId\", jsonData[\"data\"][\"@id\"])\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{CONSUMER_SERVER_API_CATALOG}}",
+					"host": [
+						"{{CONSUMER_SERVER_API_CATALOG}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get catalog by id",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Response is catalog\", function () {\r",
+							"\r",
+							"    result = false;\r",
+							"    var arr = [\"Engineering Informatica S.p.A.\", \"TRUEConnector\", \"REST\", \"SFTP\", \"dataset\", \"distribution\", \"accessService\"];\r",
+							"    responseText = pm.response.text();\r",
+							"\r",
+							"    arr.forEach((x) => {\r",
+							"      if (responseText.includes(x)){\r",
+							"      result = true;\r",
+							"    }\r",
+							"\r",
+							"    pm.expect(result).to.be.true;\r",
+							"    });\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{CONSUMER_SERVER_API_CATALOG}}/{{catalogId}}",
+					"host": [
+						"{{CONSUMER_SERVER_API_CATALOG}}"
+					],
+					"path": [
+						"{{catalogId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get all dataservices",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Retrieve dataservice id\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.collectionVariables.set(\"dataserviceId\", jsonData[\"data\"][0][\"@id\"])\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{CONSUMER_SERVER_API_DATASERVICE}}",
+					"host": [
+						"{{CONSUMER_SERVER_API_DATASERVICE}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get dataservice by id",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Response is dataservice\", function () {\r",
+							"\r",
+							"    result = false;\r",
+							"    var arr = [\"DSP TRUEConnector service offering team information\", \"endpointDescription\", \"endpointURL\", \"SFTP\", \"REST\", \"transfer\"];\r",
+							"    responseText = pm.response.text();\r",
+							"\r",
+							"    arr.forEach((x) => {\r",
+							"      if (responseText.includes(x)){\r",
+							"      result = true;\r",
+							"    }\r",
+							"\r",
+							"    pm.expect(result).to.be.true;\r",
+							"    });\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{CONSUMER_SERVER_API_DATASERVICE}}/{{dataserviceId}}",
+					"host": [
+						"{{CONSUMER_SERVER_API_DATASERVICE}}"
+					],
+					"path": [
+						"{{dataserviceId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get all datasets",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Retrieve dataset id\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.collectionVariables.set(\"datasetId\", jsonData[\"data\"][0][\"@id\"])\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{CONSUMER_SERVER_API_DATASET}}",
+					"host": [
+						"{{CONSUMER_SERVER_API_DATASET}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get dataset by id",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Response is dataset\", function () {\r",
+							"\r",
+							"    result = false;\r",
+							"    var arr = [\"Dataset offering TRUEConnector team information\", \"distribution\", \"accessService\", \"SFTP\", \"REST\", \"transfer\", \"servesDataset\"];\r",
+							"    responseText = pm.response.text();\r",
+							"\r",
+							"    arr.forEach((x) => {\r",
+							"      if (responseText.includes(x)){\r",
+							"      result = true;\r",
+							"    }\r",
+							"\r",
+							"    pm.expect(result).to.be.true;\r",
+							"    });\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{CONSUMER_SERVER_API_DATASET}}/{{datasetId}}",
+					"host": [
+						"{{CONSUMER_SERVER_API_DATASET}}"
+					],
+					"path": [
+						"{{datasetId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get all distributions",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Retrieve distribution id\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.collectionVariables.set(\"distributionId\", jsonData[\"data\"][0][\"@id\"])\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{CONSUMER_SERVER_API_DISTRIBUTION}}",
+					"host": [
+						"{{CONSUMER_SERVER_API_DISTRIBUTION}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get distribution by id",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Response is dataset\", function () {\r",
+							"\r",
+							"    result = false;\r",
+							"    var arr = [\"DSP TRUEConnector service offering team information\", \"endpointDescription\", \"endpointURL\", \"accessService\", \"SFTP\", \"REST\", \"transfer\"];\r",
+							"    responseText = pm.response.text();\r",
+							"\r",
+							"    arr.forEach((x) => {\r",
+							"      if (responseText.includes(x)){\r",
+							"      result = true;\r",
+							"    }\r",
+							"\r",
+							"    pm.expect(result).to.be.true;\r",
+							"    });\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{CONSUMER_SERVER_API_DISTRIBUTION}}/{{distributionId}}",
+					"host": [
+						"{{CONSUMER_SERVER_API_DISTRIBUTION}}"
+					],
+					"path": [
+						"{{distributionId}}"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "basic",
+		"basic": [
+			{
+				"key": "password",
+				"value": "password",
+				"type": "string"
+			},
+			{
+				"key": "username",
+				"value": "admin@mail.com",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "CONSUMER",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "CONSUMER_SERVER_API_CATALOG",
+			"value": "{{CONSUMER}}/api/v1/catalogs",
+			"type": "string"
+		},
+		{
+			"key": "CONSUMER_SERVER_API_DATASERVICE",
+			"value": "{{CONSUMER}}/api/v1/dataservices",
+			"type": "string"
+		},
+		{
+			"key": "CONSUMER_SERVER_API_DATASET",
+			"value": "{{CONSUMER}}/api/v1/datasets",
+			"type": "string"
+		},
+		{
+			"key": "CONSUMER_SERVER_API_DISTRIBUTION",
+			"value": "{{CONSUMER}}/api/v1/distributions",
+			"type": "string"
+		},
+		{
+			"key": "catalogId",
+			"value": ""
+		},
+		{
+			"key": "dataserviceId",
+			"value": ""
+		},
+		{
+			"key": "datasetId",
+			"value": ""
+		},
+		{
+			"key": "distributionId",
+			"value": ""
+		}
+	]
+}

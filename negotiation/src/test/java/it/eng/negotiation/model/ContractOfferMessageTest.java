@@ -1,54 +1,31 @@
 package it.eng.negotiation.model;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.Arrays;
-
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 
+import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 
 public class ContractOfferMessageTest {
 	
-	private Constraint constraint = Constraint.Builder.newInstance()
-			.leftOperand(LeftOperand.DATE_TIME)
-			.operator(Operator.GT)
-			.rightOperand("2024-02-29T00:00:01+01:00")
-			.build();
-	
-	private Permission permission = Permission.Builder.newInstance()
-			.action(Action.USE)
-			.target(ModelUtil.TARGET)
-			.constraint(Arrays.asList(constraint))
-			.build();
-	
-	private Offer offer = Offer.Builder.newInstance()
-			.target(ModelUtil.TARGET)
-			.assignee(ModelUtil.ASSIGNEE)
-			.assigner(ModelUtil.ASSIGNER)
-			.permission(Arrays.asList(permission))
-			.build();
-
-	private ContractOfferMessage contractOfferMessage = ContractOfferMessage.Builder.newInstance()
-			.consumerPid(ModelUtil.CONSUMER_PID)
-			.providerPid(ModelUtil.PROVIDER_PID)
-			.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
-			.offer(offer)
-			.build();
-	
 	@Test
+	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() throws JsonProcessingException {
-		String result = Serializer.serializePlain(contractOfferMessage);
+		String result = Serializer.serializePlain(MockObjectUtil.CONTRACT_OFFER_MESSAGE);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
-		assertFalse(result.contains(DSpaceConstants.ID));
+		assertTrue(result.contains(DSpaceConstants.ID));
 		assertTrue(result.contains(DSpaceConstants.CONSUMER_PID));
 		assertTrue(result.contains(DSpaceConstants.PROVIDER_PID));
 		assertTrue(result.contains(DSpaceConstants.CALLBACK_ADDRESS));
@@ -58,32 +35,72 @@ public class ContractOfferMessageTest {
 	}
 
 	@Test
+	@DisplayName("Verify valid protocol object serialization")
 	public void testProtocol() throws JsonProcessingException {
-		String result = Serializer.serializeProtocol(contractOfferMessage);
-		assertTrue(result.contains(DSpaceConstants.CONTEXT));
-		assertTrue(result.contains(DSpaceConstants.TYPE));
-		assertTrue(result.contains(DSpaceConstants.ID));
-		assertTrue(result.contains(DSpaceConstants.DSPACE_CONSUMER_PID));
-		assertTrue(result.contains(DSpaceConstants.DSPACE_PROVIDER_PID));
-		assertTrue(result.contains(DSpaceConstants.DSPACE_CALLBACK_ADDRESS));
-		assertTrue(result.contains(DSpaceConstants.DSPACE_OFFER));
+		JsonNode result = Serializer.serializeProtocolJsonNode(MockObjectUtil.CONTRACT_OFFER_MESSAGE);
+		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
+		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
+		assertNotNull(result.get(DSpaceConstants.DSPACE_CONSUMER_PID).asText());
+		assertNotNull(result.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText());
+		assertNotNull(result.get(DSpaceConstants.DSPACE_CALLBACK_ADDRESS).asText());
+		
+		JsonNode offer = result.get(DSpaceConstants.DSPACE_OFFER);
+		assertNotNull(offer);
+		validateOfferProtocol(offer);
 
 		ContractOfferMessage javaObj = Serializer.deserializeProtocol(result, ContractOfferMessage.class);
 		validateJavaObj(javaObj);
 	}
 	
 	@Test
+	@DisplayName("No required fields")
 	public void validateInvalid() {
 		assertThrows(ValidationException.class, 
 				() -> ContractOfferMessage.Builder.newInstance()
 					.build());
 	}
 	
+	@Test
+	@DisplayName("Missing @context and @type")
+	public void missingContextAndType() {
+		JsonNode result = Serializer.serializePlainJsonNode(MockObjectUtil.CONTRACT_OFFER_MESSAGE);
+		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, ContractOfferMessage.class));
+	}
+	
+	@Test
+	@DisplayName("Plain serialize/deserialize")
+	public void equalsTestPlain() {
+		ContractOfferMessage contractOfferMessage = MockObjectUtil.CONTRACT_OFFER_MESSAGE;
+		String ss = Serializer.serializePlain(contractOfferMessage);
+		ContractOfferMessage obj = Serializer.deserializePlain(ss, ContractOfferMessage.class);
+		assertThat(contractOfferMessage).usingRecursiveComparison().isEqualTo(obj);
+	}
+	
+	@Test
+	@DisplayName("Protocol serialize/deserialize")
+	public void equalsTestProtocol() {
+		ContractOfferMessage contractOfferMessage = MockObjectUtil.CONTRACT_OFFER_MESSAGE;
+		String ss = Serializer.serializeProtocol(contractOfferMessage);
+		ContractOfferMessage obj = Serializer.deserializeProtocol(ss, ContractOfferMessage.class);
+		assertThat(contractOfferMessage).usingRecursiveComparison().isEqualTo(obj);
+	}
+	
+	private void validateOfferProtocol(JsonNode offer) {
+		assertNotNull(offer.get(DSpaceConstants.ODRL_ASSIGNEE).asText());
+		assertNotNull(offer.get(DSpaceConstants.ODRL_ASSIGNER).asText());
+		JsonNode permission = offer.get(DSpaceConstants.ODRL_PERMISSION).get(0);
+		assertNotNull(permission.get(DSpaceConstants.ODRL_ACTION).asText());
+		JsonNode constraint = permission.get(DSpaceConstants.ODRL_CONSTRAINT).get(0);
+		assertNotNull(constraint.get(DSpaceConstants.ODRL_LEFT_OPERAND).asText());
+		assertNotNull(constraint.get(DSpaceConstants.ODRL_OPERATOR).asText());
+		assertNotNull(constraint.get(DSpaceConstants.ODRL_RIGHT_OPERAND).asText());
+	}
+	
 	private void validateJavaObj(ContractOfferMessage javaObj) {
 		assertNotNull(javaObj);
-		assertEquals(ModelUtil.CONSUMER_PID, javaObj.getConsumerPid());
-		assertEquals(ModelUtil.PROVIDER_PID, javaObj.getProviderPid());
-		assertEquals(ModelUtil.CALLBACK_ADDRESS, javaObj.getCallbackAddress());
+		assertEquals(MockObjectUtil.CONSUMER_PID, javaObj.getConsumerPid());
+		assertEquals(MockObjectUtil.PROVIDER_PID, javaObj.getProviderPid());
+		assertEquals(MockObjectUtil.CALLBACK_ADDRESS, javaObj.getCallbackAddress());
 		assertNotNull(javaObj.getOffer());
 	}
 	

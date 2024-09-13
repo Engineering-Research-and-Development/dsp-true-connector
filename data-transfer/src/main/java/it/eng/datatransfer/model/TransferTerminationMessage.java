@@ -6,7 +6,6 @@ import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
@@ -38,6 +37,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class TransferTerminationMessage extends AbstractTransferMessage {
 
+	private static final long serialVersionUID = 7638790814588039703L;
+
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_PROVIDER_PID)
 	private String providerPid;
@@ -62,13 +63,13 @@ public class TransferTerminationMessage extends AbstractTransferMessage {
 			return new Builder();
 		}
 		
-		@JsonSetter(DSpaceConstants.DSPACE_CONSUMER_PID)
+		@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
 		public Builder consumerPid(String consumerPid) {
 			message.consumerPid = consumerPid;
 			return this;
 		}
 
-		@JsonSetter((DSpaceConstants.DSPACE_PROVIDER_PID))
+		@JsonProperty((DSpaceConstants.DSPACE_PROVIDER_PID))
 		public Builder providerPid(String providerPid) {
 			message.providerPid = providerPid;
 			return this;
@@ -91,7 +92,7 @@ public class TransferTerminationMessage extends AbstractTransferMessage {
 			if(violations.isEmpty()) {
 				return message;
 			}
-			throw new ValidationException(
+			throw new ValidationException("TransferTerminationMessage - " +
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())
@@ -101,7 +102,7 @@ public class TransferTerminationMessage extends AbstractTransferMessage {
 	
 	@Override
 	public String getType() {
-		return DSpaceConstants.DSPACE + TransferSuspensionMessage.class.getSimpleName();
+		return DSpaceConstants.DSPACE + TransferTerminationMessage.class.getSimpleName();
 	}
 
 }

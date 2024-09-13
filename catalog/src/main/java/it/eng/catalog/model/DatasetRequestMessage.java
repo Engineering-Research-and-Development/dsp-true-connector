@@ -1,13 +1,11 @@
 package it.eng.catalog.model;
 
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
@@ -18,7 +16,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/**
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/*
  * {
   "@context":  "https://w3id.org/dspace/2024/1/context.json",
   "@type": "dspace:DatasetRequestMessage",
@@ -30,12 +31,15 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = DatasetRequestMessage.Builder.class)
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true)
-public class DatasetRequestMessage extends AbstractCatalogMessage {
+public class DatasetRequestMessage extends AbstractCatalogObject {
 
+	private static final long serialVersionUID = 8681130342830944384L;
+	
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_DATASET)
 	private String dataset;
 	
+	@JsonPOJOBuilder(withPrefix = "")
 	@JsonIgnoreProperties(ignoreUnknown = true)
 	public static class Builder {
 		private final DatasetRequestMessage datasetRequestMessage;
@@ -56,12 +60,12 @@ public class DatasetRequestMessage extends AbstractCatalogMessage {
 		}
 		
 		public DatasetRequestMessage build() {
-			Set<ConstraintViolation<DatasetRequestMessage>> violations 
+			Set<ConstraintViolation<DatasetRequestMessage>> violations
 				= Validation.buildDefaultValidatorFactory().getValidator().validate(datasetRequestMessage);
 			if(violations.isEmpty()) {
 				return datasetRequestMessage;
 			}
-			throw new ValidationException(
+			throw new ValidationException("DatasetRequestMessage - " +
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())

@@ -1,9 +1,11 @@
 package it.eng.negotiation.model;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
-import org.springframework.lang.NonNull;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -12,6 +14,10 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
 import it.eng.tools.model.DSpaceConstants;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidationException;
+import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -19,7 +25,8 @@ import lombok.NoArgsConstructor;
 @Getter
 @JsonDeserialize(builder = Agreement.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-@JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true) 
+@JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true)
+@Document(collection = "agreements")
 public class Agreement {
 
 	/*
@@ -42,20 +49,25 @@ public class Agreement {
   
   "required": ["@type",	"@id", "@target", "odrl:assignee", "odrl:assigner"]
 	 */
-	@NonNull
+	@NotNull
 	@JsonProperty(DSpaceConstants.ID)
 	private String id;
-	@NonNull
+	
+	@NotNull
 	@JsonProperty(DSpaceConstants.ODRL_ASSIGNER)
 	private String assigner;
-	@NonNull
+	
+	@NotNull
 	@JsonProperty(DSpaceConstants.ODRL_ASSIGNEE)
 	private String assignee;
-	@NonNull
+	
+	@NotNull
 	@JsonProperty(DSpaceConstants.ODRL_TARGET)
 	private String target;
+	
 	@JsonProperty(DSpaceConstants.DSPACE_TIMESTAMP)
 	private String timestamp;
+	
 	@JsonProperty(DSpaceConstants.ODRL_PERMISSION)
 	private List<Permission> permission;
 
@@ -90,7 +102,7 @@ public class Agreement {
 			agreement.assignee = assignee;
 			return this;
 		}
-
+		
 		@JsonProperty(DSpaceConstants.ODRL_TARGET)
 		public Builder target(String target) {
 			agreement.target = target;
@@ -111,11 +123,19 @@ public class Agreement {
 		
 		public Agreement build() {
 			if (agreement.id == null) {
-				agreement.id = UUID.randomUUID().toString();
+				agreement.id = "urn:uuid:" + UUID.randomUUID().toString();
 			}
-			return agreement;
-		}
-		
+			Set<ConstraintViolation<Agreement>> violations 
+				= Validation.buildDefaultValidatorFactory().getValidator().validate(agreement);
+			if(violations.isEmpty()) {
+				return agreement;
+			}
+			throw new ValidationException("Agreement - " + 
+					violations
+						.stream()
+						.map(v -> v.getPropertyPath() + " " + v.getMessage())
+						.collect(Collectors.joining(", ")));
+			}
 	}
 
 	@JsonIgnoreProperties(value={ "type" }, allowGetters=true)

@@ -1,157 +1,114 @@
 package it.eng.catalog.model;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.util.Arrays;
-import java.util.UUID;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.util.MockObjectUtil;
+import it.eng.tools.model.DSpaceConstants;
+import jakarta.validation.ValidationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import it.eng.tools.model.DSpaceConstants;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class CatalogTest {
-
-	private String dataServiceId = UUID.randomUUID().toString();
-	private DataService dataService = DataService.Builder.newInstance()
-			.id(dataServiceId)
-			.endpointURL(CatalogUtil.ENDPOINT_URL)
-			.endpointDescription("endpoint description")
-			.build();
-	
-	private Constraint constraint = Constraint.Builder.newInstance()
-			.leftOperand(LeftOperand.COUNT)
-			.operator(Operator.EQ)
-			.rightOperand("5")
-			.build();
-	
-	private Permission permission = Permission.Builder.newInstance()
-			.action(Action.USE)
-			.constraint(Arrays.asList(constraint))
-			.build();
-	
-	private Offer offer = Offer.Builder.newInstance()
-			.target(CatalogUtil.TARGET)
-//			.assignee(CatalogUtil.ASSIGNEE)
-//			.assigner(CatalogUtil.ASSIGNER)
-			.permission(Arrays.asList(permission))
-			.build();
-	
-	private Dataset dataset = Dataset.Builder.newInstance()
-			.conformsTo(CatalogUtil.CONFORMSTO)
-			.creator(CatalogUtil.CREATOR)
-			.description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("For test").build(),
-					Multilanguage.Builder.newInstance().language("it").value("For test but in Italian").build()))
-			.distribution(Arrays.asList(Distribution.Builder.newInstance()
-					.dataService(null)
-//					.description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("DS descr for test").build()))
-//					.issued(CatalogUtil.ISSUED)
-//					.modified(CatalogUtil.MODIFIED)
-//					.title("Distribution title for tests")
-					.format(Reference.Builder.newInstance().id("dspace:s3+push").build())
-					.build()))
-			.identifier(CatalogUtil.IDENTIFIER)
-			.issued(CatalogUtil.ISSUED)
-			.keyword(Arrays.asList("keyword1", "keyword2"))
-			.modified(CatalogUtil.MODIFIED)
-			.theme(Arrays.asList("white", "blue", "aqua"))
-			.title(CatalogUtil.TITLE)
-			.hasPolicy(Arrays.asList(offer))
-			.build();
-	
-	Distribution distribution = Distribution.Builder.newInstance()
-		.dataService(null)
-		.format(Reference.Builder.newInstance().id("dspace:s3+push").build())
-		.dataService(Arrays.asList(dataService))
-		.build();
-	
-	private Catalog catalog = Catalog.Builder.newInstance()
-			.conformsTo(CatalogUtil.CONFORMSTO)
-			.creator(CatalogUtil.CREATOR)
-			.description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Catalog test").build(),
-					Multilanguage.Builder.newInstance().language("it").value("Catalog test but in Italian").build()))
-			.distribution(Arrays.asList(Distribution.Builder.newInstance()
-					.dataService(null)
-//					.description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("DS descr for test").build()))
-//					.issued(CatalogUtil.ISSUED)
-//					.modified(CatalogUtil.MODIFIED)
-//					.title("Distribution title for tests")
-					.format(Reference.Builder.newInstance().id("dspace:s3+push").build())
-					.build()))
-			.identifier(CatalogUtil.IDENTIFIER)
-			.issued(CatalogUtil.ISSUED)
-			.keyword(Arrays.asList("keyword1", "keyword2"))
-			.modified(CatalogUtil.MODIFIED)
-			.theme(Arrays.asList("white", "blue", "aqua"))
-			.title(CatalogUtil.TITLE)
-			.participantId("urn:example:DataProviderA")
-			.service(Arrays.asList(dataService))
-			.dataset(Arrays.asList(dataset))
-			.distribution(Arrays.asList(distribution))
-			.build();
-	
 	
 	@Test
+	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() {
-		String result = Serializer.serializePlain(catalog);
+		String result = Serializer.serializePlain(MockObjectUtil.CATALOG);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
-		assertFalse(result.contains(DSpaceConstants.ID));
+		
+		assertTrue(result.contains(DSpaceConstants.ID));
 		assertTrue(result.contains(DSpaceConstants.KEYWORD));
 		assertTrue(result.contains(DSpaceConstants.THEME));
 		assertTrue(result.contains(DSpaceConstants.CONFORMSTO));
-		
 		assertTrue(result.contains(DSpaceConstants.CREATOR));
 		assertTrue(result.contains(DSpaceConstants.DESCRIPTION));
 		assertTrue(result.contains(DSpaceConstants.IDENTIFIER));
 		assertTrue(result.contains(DSpaceConstants.ISSUED));
 		assertTrue(result.contains(DSpaceConstants.MODIFIED));
-		assertTrue(result.contains(DSpaceConstants.MODIFIED));
+		assertTrue(result.contains(DSpaceConstants.TITLE));
+		
 		assertTrue(result.contains(DSpaceConstants.DISTRIBUTION));
 		
 		Catalog javaObj = Serializer.deserializePlain(result, Catalog.class);
-		validateDataset(javaObj.getDataset().get(0));
+		
+		Dataset dataset = javaObj.getDataset().iterator().next();
+		validateDataset(dataset);
 	}
 	
 	@Test
+	@DisplayName("Verify valid protocol object serialization")
 	public void testProtocol() {
-		String result = Serializer.serializeProtocol(catalog);
-		System.out.println(result);
-		assertTrue(result.contains(DSpaceConstants.CONTEXT));
-		assertTrue(result.contains(DSpaceConstants.TYPE));
-		assertTrue(result.contains(DSpaceConstants.DCAT_KEYWORD));
-		assertTrue(result.contains(DSpaceConstants.DCAT_THEME));
-		assertTrue(result.contains(DSpaceConstants.DCT_CONFORMSTO));
+		JsonNode result = Serializer.serializeProtocolJsonNode(MockObjectUtil.CATALOG);
+		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
+		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
+		assertNotNull(result.get(DSpaceConstants.DCAT_KEYWORD).asText());
+		assertNotNull(result.get(DSpaceConstants.DCAT_THEME).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_CONFORMSTO).asText());
 		
-		assertTrue(result.contains(DSpaceConstants.DCT_CREATOR));
-		assertTrue(result.contains(DSpaceConstants.DCT_DESCRIPTION));
-		assertTrue(result.contains(DSpaceConstants.DCT_IDENTIFIER));
-		assertTrue(result.contains(DSpaceConstants.DCT_ISSUED));
-		assertTrue(result.contains(DSpaceConstants.DCT_MODIFIED));
-		assertTrue(result.contains(DSpaceConstants.DCT_MODIFIED));
-		assertTrue(result.contains(DSpaceConstants.DCAT_DISTRIBUTION));
+		assertNotNull(result.get(DSpaceConstants.DCT_CREATOR).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_DESCRIPTION).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_IDENTIFIER).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_ISSUED).asText());
+		assertNotNull(result.get(DSpaceConstants.DCT_MODIFIED).asText());
+		assertNotNull(result.get(DSpaceConstants.DCAT_DISTRIBUTION).asText());
 		
 		Catalog javaObj = Serializer.deserializeProtocol(result, Catalog.class);
-		validateDataset(javaObj.getDataset().get(0));
+		validateDataset(javaObj.getDataset().iterator().next());
 	}
 	
 	@Test
-	@DisplayName("no required fields")
+	@DisplayName("Missing @context and @type")
+	public void missingContextAndType() {
+		JsonNode result = Serializer.serializePlainJsonNode(MockObjectUtil.CATALOG);
+		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, Catalog.class));
+	}
+	
+	@Test
+	@DisplayName("No required fields")
 	public void validateInvalid() {
 		assertDoesNotThrow(() -> Catalog.Builder.newInstance()
 					.build());
+	}
+	
+	@Test
+	public void findOffer() {
+		boolean offerExists = MockObjectUtil.CATALOG.getDataset().stream()
+				.flatMap(dataset -> dataset.getHasPolicy().stream()).anyMatch(of -> of.getId().equals("urn:offer_id"));
+		assertTrue(offerExists);
+
+		offerExists = MockObjectUtil.CATALOG.getDataset().stream()
+				.flatMap(dataset -> dataset.getHasPolicy().stream()).anyMatch(of -> of.getId().equals("urn:offer_id_not_found"));
+		assertFalse(offerExists);
+	}
+	
+	@Test
+	@DisplayName("Plain serialize/deserialize")
+	public void equalsTestPlain() {
+		Catalog catalog = MockObjectUtil.CATALOG;
+		String ss = Serializer.serializePlain(catalog);
+		Catalog catalog2 = Serializer.deserializePlain(ss, Catalog.class);
+		assertThat(catalog).usingRecursiveComparison().isEqualTo(catalog2);
+	}
+	
+	@Test
+	@DisplayName("Protocol serialize/deserialize")
+	public void equalsTestProtocol() {
+		Catalog catalog = MockObjectUtil.CATALOG;
+		String ss = Serializer.serializeProtocol(catalog);
+		Catalog catalog2 = Serializer.deserializeProtocol(ss, Catalog.class);
+		assertThat(catalog).usingRecursiveComparison().isEqualTo(catalog2);
 	}
 	
 	public void validateDataset(Dataset javaObj) {
 		assertNotNull(javaObj);
 		assertNotNull(javaObj.getConformsTo());
 		assertNotNull(javaObj.getCreator());
-		assertNotNull(javaObj.getDescription().get(0));
-		assertNotNull(javaObj.getDistribution().get(0));
+		assertNotNull(javaObj.getDescription().iterator().next());
+		assertNotNull(javaObj.getDistribution().iterator().next());
 		assertNotNull(javaObj.getIdentifier());
 		assertNotNull(javaObj.getIssued());
 		assertNotNull(javaObj.getKeyword());

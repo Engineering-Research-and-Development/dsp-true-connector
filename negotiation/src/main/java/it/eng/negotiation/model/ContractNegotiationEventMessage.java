@@ -6,7 +6,6 @@ import java.util.stream.Collectors;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
@@ -35,7 +34,7 @@ import lombok.NoArgsConstructor;
 @JsonDeserialize(builder = ContractNegotiationEventMessage.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true) 
-public class ContractNegotiationEventMessage extends AbstractNegotiationModel {
+public class ContractNegotiationEventMessage extends AbstractNegotiationObject {
 	
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
@@ -43,8 +42,7 @@ public class ContractNegotiationEventMessage extends AbstractNegotiationModel {
 	
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_EVENT_TYPE)
-	@JsonIgnoreProperties(ignoreUnknown = true)
-	private String eventType;
+	private ContractNegotiationEventType eventType;
 	
 	@JsonPOJOBuilder(withPrefix = "")
 	@JsonIgnoreProperties(ignoreUnknown = true)
@@ -60,20 +58,20 @@ public class ContractNegotiationEventMessage extends AbstractNegotiationModel {
 			return new Builder();
 		}
 
-		@JsonSetter((DSpaceConstants.DSPACE_PROVIDER_PID))
+		@JsonProperty((DSpaceConstants.DSPACE_PROVIDER_PID))
 		public Builder providerPid(String providerPid) {
 			message.providerPid = providerPid;
 			return this;
 		}
 		
-		@JsonSetter((DSpaceConstants.DSPACE_CONSUMER_PID))
+		@JsonProperty((DSpaceConstants.DSPACE_CONSUMER_PID))
 		public Builder consumerPid(String consumerPid) {
 			message.consumerPid = consumerPid;
 			return this;
 		}
 		
 		@JsonProperty(DSpaceConstants.DSPACE_EVENT_TYPE)
-		public Builder eventType(String eventType) {
+		public Builder eventType(ContractNegotiationEventType eventType) {
 			message.eventType = eventType;
 			return this;
 		}
@@ -84,11 +82,11 @@ public class ContractNegotiationEventMessage extends AbstractNegotiationModel {
 			if(violations.isEmpty()) {
 				return message;
 			}
-			throw new ValidationException(
+			throw new ValidationException("ContractNegotiationEventMessage - " +
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())
-						.collect(Collectors.joining(",")));
+						.collect(Collectors.joining(", ")));
 			}
 	}
 

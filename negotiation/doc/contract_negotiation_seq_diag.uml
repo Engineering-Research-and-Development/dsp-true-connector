@@ -1,0 +1,102 @@
+@startuml
+
+participant CONSUMER as c
+participant PROVIDER as p
+
+== ContractRequestMessage ==
+
+c->p : https://provider.com/negotiations/request
+note left
+	ContractRequestMessage
+	consumerPid
+	callbackAddress: https://consumer.com/
+end note
+
+p->p: validate message and offer
+p->p: create ContractNegotiation, uses consumePid, generates providerPid;\n state **REQUESTED**
+p->p: saves contract negotiation and offer
+p->c: 201 with body ContractNegotiation state **REQUESTED**
+note left
+	ContractNegotiation - state **REQUESTED**
+end note
+
+c->c: saves contract negotiation and offer
+
+== ContractOfferMessage ==
+alt Provider
+note over p
+	ContractNegotiation.state: **OFFERED**
+end note
+
+p->p: create ContractOfferMessage; callbackAddress https://provider.com
+p->c: https://consumer.com/negotiations/offers
+note over c
+	ContractNegotiation.state **OFFERED**
+end note
+c->p: 201 Created with body ContractNegotiation state **OFFERED**
+p->p: Handle f request not 200
+
+	alt accepts
+		c<-c: ContractNegotiationEventMessage,\n state **ACCEPTED**
+		c->p: callbackAddress + negotiations/:providerPid/events
+		p->c: 200 OK
+	else provider - current offer created by consumer?
+		p->c : 400, ContractNegotiationError
+	end alt accepts
+end alt provider
+
+alt Consumer
+	c<-c: ContractRequestMessage,\ncalbackAddress https://consumer.com/
+	c->p: https://provider.com/negotiations/:providerPid/request
+	p->c: 200 OK
+end alt consumer
+
+== Provider decide what to do with offer ==
+note over p
+	Provider decide what to do 
+	with requested offer -> accepts it
+end note
+
+== ContractAgreementMessage ==
+
+
+p->p: ContractAgreementMessage \ncallbackAddress: https://provider.com
+p->c: callbackAddress + /negotiations/:consumerPid/agreement
+
+c<-c: check if previous state was **REQUESTED** or **ACCEPTED**
+c<-c: validate agreement
+note over c
+	Consumer update state of
+	ContractNegotiation to **AGREED**
+end note
+c<-c: ContractNegotiation.state **AGREED**
+c<-c: save agreement
+c->p: 200 OK
+
+p->p: handle if not 200 OK\n update ContractNegotiation.state
+p->p: save agreement
+
+== ContractAgreementVerificationMessage ==
+note over c
+ ContractNegotiation.state = **VERIFIED**
+end note
+c<-c: ContractAgreementVerificationMessage
+c->p: callbackAddress + /negotiations/:providerPid/agreement/verification
+
+p->p: ContractNegotiation.state **VERIFIED**
+p->c: 200 OK 
+c<-c: handle if not 200 OK\n update ContractNegotiation.state
+
+== ContractNegotiationEventMessage ==
+note over p
+	ContractNegotiation.state **FINALIZED**
+end note
+
+p->p: ContractNegotiationEventMessage, eventType **FINALIZED**
+
+p->c: callback + /negotiations/:consumerPid/events
+c<-c: ContractNEgotation.state **FINALIZED**
+c->p: 200 OK
+p->p: handle if not 200 OK\n update ContractNegotiation.state
+
+@enduml

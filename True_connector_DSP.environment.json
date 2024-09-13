@@ -1,0 +1,129 @@
+{
+	"id": "389265dd-0ab5-4563-af93-805988b95306",
+	"name": "True_connector_DSP",
+	"values": [
+		{
+			"key": "CONSUMER",
+			"value": "http://localhost:8080",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "PROVIDER",
+			"value": "http://localhost:8090",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_PROTOCOL_CATALOG",
+			"value": "{{CONSUMER}}/catalog",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_PROTOCOL_NEGOTIATION",
+			"value": "{{CONSUMER}}/negotiations",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_PROTOCOL_DATA_TRANSFER",
+			"value": "{{CONSUMER}}/consumer/transfers",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_API_CATALOG",
+			"value": "{{CONSUMER}}/api/v1/catalogs",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_API_NEGOTIATION",
+			"value": "{{CONSUMER}}/api/v1/negotiations",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_API_DATASET",
+			"value": "{{CONSUMER}}/api/v1/datasets",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_API_DISTRIBUTION",
+			"value": "{{CONSUMER}}/api/v1/distributions",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_API_DATASERVICE",
+			"value": "{{CONSUMER}}/api/v1/dataservices",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_API_APPLICATION_PROPERTY",
+			"value": "{{CONSUMER}}/api/v1/properties",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "PROVIDER_SERVER_PROTOCOL_CATALOG",
+			"value": "{{PROVIDER}}/catalog",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER",
+			"value": "{{PROVIDER}}/transfers",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "PROVIDER_SERVER_PROTOCOL_NEGOTIATION",
+			"value": "{{PROVIDER}}/negotiations",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "PROVIDER_SERVER_API_CATALOG",
+			"value": "{{PROVIDER}}/api/v1/catalogs",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "PROVIDER_SERVER_API_NEGOTIATION",
+			"value": "{{PROVIDER}}/api/v1/negotiations",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "PROVIDER_SERVER_API_DATASET",
+			"value": "{{PROVIDER}}/api/v1/datasets",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "PROVIDER_SERVER_API_DATASERVICE",
+			"value": "{{PROVIDER}}/api/v1/dataservices",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "PROVIDER_SERVER_API_TRANSFERS",
+			"value": "{{PROVIDER}}/api/v1/transfers",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "PROVIDER_SERVER_API_DISTRIBUTION",
+			"value": "{{PROVIDER}}/api/v1/distributions",
+			"type": "default",
+			"enabled": true
+		}
+	],
+	"_postman_variable_scope": "environment",
+	"_postman_exported_at": "2024-09-12T09:19:08.294Z",
+	"_postman_exported_using": "Postman/11.12.0"
+}

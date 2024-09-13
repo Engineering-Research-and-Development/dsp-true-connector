@@ -1,67 +1,87 @@
 package it.eng.catalog.rest.api;
 
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
-import it.eng.catalog.entity.CatalogEntity;
+import com.fasterxml.jackson.databind.JsonNode;
+
 import it.eng.catalog.model.Catalog;
-import it.eng.catalog.model.Serializer;
+import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.service.CatalogService;
-import it.eng.tools.exception.ResourceNotFoundException;
-import lombok.extern.java.Log;
+import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.response.GenericApiResponse;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/api/catalog")
-@Log
+@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = ApiEndpoints.CATALOG_CATALOGS_V1)
+@Slf4j
 public class CatalogAPIController {
-	
-	@Autowired
-    private ApplicationEventPublisher applicationEventPublisher;
 
-	private final CatalogService service;
-	
-	public CatalogAPIController(CatalogService service) {
-		super();
-		this.service = service;
-	}
+    private final CatalogService catalogService;
 
-//	@GetMapping(path = "/")
-//	public ResponseEntity<List<Catalog>> getAllCatalogs() {
-//		log.info("Fetching all catalogs");
-//		return ResponseEntity.ok().header("id", "bar").contentType(MediaType.APPLICATION_JSON)
-//				.body(service.findAll());
-//	}
-	
-	@GetMapping(path = "/{id}")
-	public ResponseEntity<String> getCatalogEntityById(@PathVariable String id) {
-		try {
-			log.info("Fetching catalog with id '" + id + "'");
-			Catalog c = service.findById(id);
-			applicationEventPublisher.publishEvent(c);
-			return ResponseEntity.ok().header("id", "bar").contentType(MediaType.APPLICATION_JSON)
-					.body(Serializer.serializePlain(c));
-		} catch (ResourceNotFoundException exc) {
-			log.info("Catalog with id '" + id + "' not found");
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Catalog Not Found", exc);
-		}
-	}
-	
-	@PostMapping
-	public ResponseEntity<CatalogEntity> createCatalog(@RequestBody Catalog catalog) {
-		service.save(catalog);
-		return ResponseEntity.ok().body(new CatalogEntity());
-	}
+    public CatalogAPIController(CatalogService service) {
+        super();
+        this.catalogService = service;
+    }
 
+    @GetMapping
+    public ResponseEntity<GenericApiResponse<JsonNode>> getCatalog() {
+        log.info("Fetching catalog");
+
+        Catalog catalog = catalogService.getCatalogForApi();
+
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(catalog), "Fetched catalog"));
+    }
+
+    @GetMapping(path = "/{id}")
+    public ResponseEntity<GenericApiResponse<JsonNode>> getCatalogById(@PathVariable String id) {
+        log.info("Fetching catalog with id '" + id + "'");
+
+        Catalog catalog = catalogService.getCatalogById(id);
+
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(catalog), "Fetched catalog"));
+    }
+
+    @PostMapping
+    public ResponseEntity<GenericApiResponse<JsonNode>> createCatalog(@RequestBody String catalog) {
+        Catalog c = Serializer.deserializePlain(catalog, Catalog.class);
+
+        log.info("Saving new catalog");
+
+        Catalog storedCatalog = catalogService.saveCatalog(c);
+
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(storedCatalog), "Catalog saved"));
+    }
+
+    @DeleteMapping(path = "/{id}")
+    public ResponseEntity<GenericApiResponse<Object>> deleteCatalog(@PathVariable String id) {
+        log.info("Deleting catalog with id: " + id);
+
+        catalogService.deleteCatalog(id);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+        		.body(GenericApiResponse.success(null, "Catalog deleted successfully"));
+    }
+
+    @PutMapping(path = "/{id}")
+    public ResponseEntity<GenericApiResponse<JsonNode>> updateCatalog(@PathVariable String id, @RequestBody String catalog) {
+        Catalog c = Serializer.deserializePlain(catalog, Catalog.class);
+
+        log.info("Updating catalog with id: " + id);
+        
+        Catalog updatedCatalog = catalogService.updateCatalog(id, c);
+
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(updatedCatalog), "Catalog updated"));
+    }
 }

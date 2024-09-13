@@ -6,7 +6,6 @@ import java.util.stream.Collectors;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
@@ -33,7 +32,7 @@ import lombok.NoArgsConstructor;
 @JsonDeserialize(builder = ContractAgreementVerificationMessage.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true) 
-public class ContractAgreementVerificationMessage extends AbstractNegotiationModel {
+public class ContractAgreementVerificationMessage extends AbstractNegotiationObject {
 
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
@@ -53,13 +52,13 @@ public class ContractAgreementVerificationMessage extends AbstractNegotiationMod
 			return new Builder();
 		}
 		
-		@JsonSetter((DSpaceConstants.DSPACE_PROVIDER_PID))
+		@JsonProperty((DSpaceConstants.DSPACE_PROVIDER_PID))
 		public Builder providerPid(String providerPid) {
 			message.providerPid = providerPid;
 			return this;
 		}
 		
-		@JsonSetter(DSpaceConstants.DSPACE_CONSUMER_PID)
+		@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
 		public Builder consumerPid(String consumerPid) {
 			message.consumerPid = consumerPid;
 			return this;
@@ -71,11 +70,11 @@ public class ContractAgreementVerificationMessage extends AbstractNegotiationMod
 			if(violations.isEmpty()) {
 				return message;
 			}
-			throw new ValidationException(
+			throw new ValidationException("ContractAgreementVerificationMessage - " +
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())
-						.collect(Collectors.joining(",")));
+						.collect(Collectors.joining(", ")));
 		}
 	}
 

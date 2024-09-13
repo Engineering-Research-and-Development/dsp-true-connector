@@ -1,14 +1,20 @@
 package it.eng.catalog.model;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
 import it.eng.tools.model.DSpaceConstants;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidationException;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -31,13 +37,16 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = CatalogError.Builder.class)
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true)
-public class CatalogError extends AbstractCatalogMessage {
+public class CatalogError extends AbstractCatalogObject {
+
+	private static final long serialVersionUID = -5538644369452254847L;
 
 	@JsonProperty(DSpaceConstants.DSPACE_CODE)
 	private String code;
 	@JsonProperty(DSpaceConstants.DSPACE_REASON)
 	private List<Reason> reason;
 	
+	@JsonPOJOBuilder(withPrefix = "")
 	@JsonIgnoreProperties(ignoreUnknown = true)
 	public static class Builder {
 		private final CatalogError catalogError;
@@ -64,8 +73,17 @@ public class CatalogError extends AbstractCatalogMessage {
 		}
 		
 		public CatalogError build() {
-			return catalogError;
-		}
+			Set<ConstraintViolation<CatalogError>> violations 
+				= Validation.buildDefaultValidatorFactory().getValidator().validate(catalogError);
+			if(violations.isEmpty()) {
+				return catalogError;
+			}
+			throw new ValidationException("CatalogError - " +
+					violations
+						.stream()
+						.map(v -> v.getPropertyPath() + " " + v.getMessage())
+						.collect(Collectors.joining(",")));
+			}
 	}
 
 	@Override

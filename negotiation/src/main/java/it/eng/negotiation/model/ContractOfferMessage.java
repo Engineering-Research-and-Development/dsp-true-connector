@@ -8,7 +8,6 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
@@ -52,14 +51,16 @@ import lombok.NoArgsConstructor;
 @JsonDeserialize(builder = ContractOfferMessage.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true) 
-public class ContractOfferMessage extends AbstractNegotiationModel {
+public class ContractOfferMessage extends AbstractNegotiationObject {
 
 	// not mandatory in initial offer message
 	@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
 	private String consumerPid;
+	
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_OFFER)
 	private Offer offer;
+	
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_CALLBACK_ADDRESS)
 	private String callbackAddress;
@@ -78,21 +79,24 @@ public class ContractOfferMessage extends AbstractNegotiationModel {
 			return new Builder();
 		}
 		
-		@JsonSetter((DSpaceConstants.DSPACE_CONSUMER_PID))
+		@JsonProperty((DSpaceConstants.DSPACE_CONSUMER_PID))
 		public Builder consumerPid(String consumerPid) {
 			message.consumerPid = consumerPid;
 			return this;
 		}
-		@JsonSetter((DSpaceConstants.DSPACE_PROVIDER_PID))
+		
+		@JsonProperty((DSpaceConstants.DSPACE_PROVIDER_PID))
 		public Builder providerPid(String providerPid) {
 			message.providerPid = providerPid;
 			return this;
 		}
+		
 		@JsonProperty(DSpaceConstants.DSPACE_CALLBACK_ADDRESS)
 		public Builder callbackAddress(String callbackAddress) {
 			message.callbackAddress = callbackAddress;
 			return this;
 		}
+		
 		@JsonProperty(DSpaceConstants.DSPACE_OFFER)
 		public Builder offer(Offer offer) {
 			message.offer = offer;
@@ -105,11 +109,11 @@ public class ContractOfferMessage extends AbstractNegotiationModel {
 			if(violations.isEmpty()) {
 				return message;
 			}
-			throw new ValidationException(
+			throw new ValidationException("ContractOfferMessage - " +
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())
-						.collect(Collectors.joining(",")));
+						.collect(Collectors.joining(", ")));
 			}
 	}
 

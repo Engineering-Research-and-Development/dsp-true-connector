@@ -6,7 +6,6 @@ import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
@@ -40,7 +39,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @JsonDeserialize(builder = ContractNegotiationTerminationMessage.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class ContractNegotiationTerminationMessage extends AbstractNegotiationModel {
+public class ContractNegotiationTerminationMessage extends AbstractNegotiationObject {
 	
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
@@ -48,6 +47,7 @@ public class ContractNegotiationTerminationMessage extends AbstractNegotiationMo
 	
 	@JsonProperty(DSpaceConstants.DSPACE_CODE)
 	private String code;
+	
 	@JsonProperty(DSpaceConstants.DSPACE_REASON)
 	private List<Reason> reason;
 	
@@ -64,12 +64,12 @@ public class ContractNegotiationTerminationMessage extends AbstractNegotiationMo
 		public static Builder newInstance() {
 			return new Builder();
 		}
-		@JsonSetter((DSpaceConstants.DSPACE_PROVIDER_PID))
+		@JsonProperty((DSpaceConstants.DSPACE_PROVIDER_PID))
 		public Builder providerPid(String providerPid) {
 			message.providerPid = providerPid;
 			return this;
 		}
-		@JsonSetter(DSpaceConstants.DSPACE_CONSUMER_PID)
+		@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
 		public Builder consumerPid(String consumerPid) {
 			message.consumerPid = consumerPid;
 			return this;
@@ -91,11 +91,11 @@ public class ContractNegotiationTerminationMessage extends AbstractNegotiationMo
 			if(violations.isEmpty()) {
 				return message;
 			}
-			throw new ValidationException(
+			throw new ValidationException("ContractNegotiationTerminationMessage - " +
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())
-						.collect(Collectors.joining(",")));
+						.collect(Collectors.joining(", ")));
 			}
 		
 	}

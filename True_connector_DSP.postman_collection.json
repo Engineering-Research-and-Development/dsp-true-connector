@@ -1,0 +1,1832 @@
+{
+	"info": {
+		"_postman_id": "3c6078d6-1d67-4061-b8be-9040970a6714",
+		"name": "True_connector_DSP",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "36278855"
+	},
+	"item": [
+		{
+			"name": "API_FE",
+			"item": [
+				{
+					"name": "ApplicationProperty",
+					"item": [
+						{
+							"name": "Get All Application Properties",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/",
+									"host": [
+										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
+									],
+									"path": [
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get All Application Properties with prefix",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/?key_prefix={{KEY_PREFIX}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
+									],
+									"path": [
+										""
+									],
+									"query": [
+										{
+											"key": "key_prefix",
+											"value": "{{KEY_PREFIX}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Application Property By Key",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/application.daps.dapsJWKSUrl",
+									"host": [
+										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
+									],
+									"path": [
+										"application.daps.dapsJWKSUrl"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Application Property",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"key\": \"application.daps.enabledDapsInteraction\",\r\n    \"value\": \"true\",\r\n    \"mandatory\": false,\r\n    \"issued\": 1719246360.000000000,\r\n    \"modified\": 1719246360.000000000,\r\n    \"type\": \"ApplicationProperty\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/",
+									"host": [
+										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
+									],
+									"path": [
+										""
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Catalog",
+					"item": [
+						{
+							"name": "Get All Catalogs",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_CATALOG}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_CATALOG}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Catalog by ID",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_CATALOG}}/{$ID}",
+									"host": [
+										"{{CONSUMER_SERVER_API_CATALOG}}"
+									],
+									"path": [
+										"{$ID}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Add Catalog",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"keyword\": [\n        \"keyword1\",\n        \"keyword2\",\n        \"keyword3\"\n    ],\n    \"theme\": [\n        \"dark theme\",\n        \"light theme\"\n    ],\n    \"conformsTo\": \"conformsToSomething\",\n    \"creator\": \"Engineering Informatica S.p.A.\",\n    \"description\": [\n        {\n            \"value\": \"Some text for multi language\",\n            \"language\": \"en\"\n        }\n    ],\n    \"identifier\": \"Unique identifier for testing Catalog\",\n    \"title\": \"Title for testing catalog\",\n    \"distribution\": [\n        {\n            \"id\": \"1dc45797-4444-4932-8baf-ab7fd66ql4d5\",\n            \"title\": \"Flash lightning distribution\",\n            \"issued\": \"2024-04-23T16:26:00Z\",\n            \"modified\": \"2024-04-23T16:26:00Z\",\n            \"accessService\": [\n                {\n                    \"id\": \"1dc45797-4444-4955-8baf-ab7fd66ac4d5\",\n                    \"keyword\": [\n                        \"keyword1\",\n                        \"keyword2\",\n                        \"keyword3\"\n                    ],\n                    \"theme\": [\n                        \"dark theme\",\n                        \"light theme\"\n                    ],\n                    \"conformsTo\": \"conformsToSomething\",\n                    \"creator\": \"Engineering Informatica S.p.A.\",\n                    \"description\": [\n                        {\n                            \"value\": \"Some text for multi language\",\n                            \"language\": \"en\"\n                        }\n                    ],\n                    \"identifier\": \"Unique identifier for testing Data Service\",\n                    \"issued\": \"2024-04-23T16:26:00Z\",\n                    \"modified\": \"2024-04-23T16:26:00Z\",\n                    \"title\": \"Title for testing Data Service\",\n                    \"endpointDescription\": \"endpoint description\",\n                    \"endpointURL\": \"https://provider-a.com/connector\",\n                    \"createdBy\": \"admin@mail.com\",\n                    \"lastModifiedBy\": \"admin@mail.com\",\n                    \"version\": 0,\n                    \"type\": \"dcat:DataService\"\n                }\n            ],\n            \"type\": \"dspace:Distribution\"\n        }\n    ],\n    \"dataset\": [\n        {\n            \"id\": \"fdc45798-a222-4955-8baf-ab7fd66ac4d5\",\n            \"keyword\": [\n                \"keyword1\",\n                \"keyword2\",\n                \"keyword3\"\n            ],\n            \"theme\": [\n                \"dark theme\",\n                \"light theme\"\n            ],\n            \"conformsTo\": \"conformsToSomething\",\n            \"creator\": \"Engineering Informatica S.p.A.\",\n            \"description\": [\n                {\n                    \"value\": \"Some text for multi language Dataset\",\n                    \"language\": \"en\"\n                }\n            ],\n            \"identifier\": \"Unique identifier for testing Dataset\",\n            \"issued\": \"2024-04-23T16:26:00Z\",\n            \"modified\": \"2024-04-23T16:26:00Z\",\n            \"title\": \"Title for test Dataset\",\n            \"hasPolicy\": [\n                {\n                    \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\n                    \"permission\": [\n                        {\n                            \"action\": \"USE\",\n                            \"constraint\": [\n                                {\n                                    \"leftOperand\": \"COUNT\",\n                                    \"operator\": \"EQ\",\n                                    \"rightOperand\": \"5\"\n                                }\n                            ]\n                        }\n                    ]\n                }\n            ],\n            \"distribution\": [\n                {\n                    \"id\": \"1dc45797-4444-4932-8baf-ab7fd66ql4d5\",\n                    \"title\": \"Flash lightning distribution\",\n                    \"issued\": \"2024-04-23T16:26:00Z\",\n                    \"modified\": \"2024-04-23T16:26:00Z\",\n                    \"accessService\": [\n                        {\n                            \"id\": \"1dc45797-4444-4955-8baf-ab7fd66ac4d5\",\n                            \"keyword\": [\n                                \"keyword1\",\n                                \"keyword2\",\n                                \"keyword3\"\n                            ],\n                            \"theme\": [\n                                \"dark theme\",\n                                \"light theme\"\n                            ],\n                            \"conformsTo\": \"conformsToSomething\",\n                            \"creator\": \"Engineering Informatica S.p.A.\",\n                            \"description\": [\n                                {\n                                    \"value\": \"Some text for multi language\",\n                                    \"language\": \"en\"\n                                }\n                            ],\n                            \"identifier\": \"Unique identifier for testing Data Service\",\n                            \"issued\": \"2024-04-23T16:26:00Z\",\n                            \"modified\": \"2024-04-23T16:26:00Z\",\n                            \"title\": \"Title for testing Data Service\",\n                            \"endpointDescription\": \"endpoint description\",\n                            \"endpointURL\": \"https://provider-a.com/connector\",\n                            \"createdBy\": \"admin@mail.com\",\n                            \"lastModifiedBy\": \"admin@mail.com\",\n                            \"version\": 0,\n                            \"type\": \"dcat:DataService\"\n                        }\n                    ],\n                    \"type\": \"dspace:Distribution\"\n                }\n            ],\n            \"createdBy\": \"admin@mail.com\",\n            \"lastModifiedBy\": \"admin@mail.com\",\n            \"version\": 0,\n            \"type\": \"dcat:Dataset\"\n        }\n    ],\n    \"service\": [\n        {\n            \"id\": \"1dc45797-4444-4955-8baf-ab7fd66ac4d5\",\n            \"keyword\": [\n                \"keyword1\",\n                \"keyword2\",\n                \"keyword3\"\n            ],\n            \"theme\": [\n                \"dark theme\",\n                \"light theme\"\n            ],\n            \"conformsTo\": \"conformsToSomething\",\n            \"creator\": \"Engineering Informatica S.p.A.\",\n            \"description\": [\n                {\n                    \"value\": \"Some text for multi language\",\n                    \"language\": \"en\"\n                }\n            ],\n            \"identifier\": \"Unique identifier for testing Data Service\",\n            \"issued\": \"2024-04-23T16:26:00Z\",\n            \"modified\": \"2024-04-23T16:26:00Z\",\n            \"title\": \"Title for testing Data Service\",\n            \"endpointDescription\": \"endpoint description\",\n            \"endpointURL\": \"https://provider-a.com/connector\",\n            \"createdBy\": \"admin@mail.com\",\n            \"lastModifiedBy\": \"admin@mail.com\",\n            \"version\": 0,\n            \"type\": \"dcat:DataService\"\n        }\n    ],\n    \"participantId\": \"urn:example:DataProviderA\",\n    \"homepage\": \"https://www.homepage.com/test\",\n    \"type\": \"dcat:Catalog\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_CATALOG}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_CATALOG}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Catalog",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"keyword\": [\n        \"keyword1\",\n        \"keyword2\",\n        \"keyword3\"\n    ],\n    \"theme\": [\n        \"dark theme\",\n        \"light theme\"\n    ],\n    \"conformsTo\": \"conformsToSomethingEdit\",\n    \"creator\": \"Engineering Informatica S.p.A.\",\n    \"description\": [\n        {\n            \"value\": \"Some text for multi language\",\n            \"language\": \"en\"\n        }\n    ],\n    \"identifier\": \"Unique identifier for testing Catalog\",\n    \"issued\": \"2024-04-23T16:26:00Z\",\n    \"modified\": \"2024-04-23T16:26:00Z\",\n    \"title\": \"Title for testing catalog\",\n    \"distribution\": [\n        {\n            \"id\": \"1dc45797-4444-4932-8baf-ab7fd66ql4d5\",\n            \"title\": \"Flash lightning distribution\",\n            \"issued\": \"2024-04-23T16:26:00Z\",\n            \"modified\": \"2024-04-23T16:26:00Z\",\n            \"accessService\": [\n                {\n                    \"id\": \"1dc45797-4444-4955-8baf-ab7fd66ac4d5\",\n                    \"keyword\": [\n                        \"keyword1\",\n                        \"keyword2\",\n                        \"keyword3\"\n                    ],\n                    \"theme\": [\n                        \"dark theme\",\n                        \"light theme\"\n                    ],\n                    \"conformsTo\": \"conformsToSomething\",\n                    \"creator\": \"Engineering Informatica S.p.A.\",\n                    \"description\": [\n                        {\n                            \"value\": \"Some text for multi language\",\n                            \"language\": \"en\"\n                        }\n                    ],\n                    \"identifier\": \"Unique identifier for testing Data Service\",\n                    \"issued\": \"2024-04-23T16:26:00Z\",\n                    \"modified\": \"2024-04-23T16:26:00Z\",\n                    \"title\": \"Title for testing Data Service\",\n                    \"endpointDescription\": \"endpoint description\",\n                    \"endpointURL\": \"https://provider-a.com/connector\",\n                    \"createdBy\": \"admin@mail.com\",\n                    \"lastModifiedBy\": \"admin@mail.com\",\n                    \"version\": 0,\n                    \"type\": \"dcat:DataService\"\n                }\n            ],\n            \"type\": \"dspace:Distribution\"\n        }\n    ],\n    \"dataset\": [\n        {\n            \"id\": \"fdc45798-a222-4955-8baf-ab7fd66ac4d5\",\n            \"keyword\": [\n                \"keyword1\",\n                \"keyword2\",\n                \"keyword3\"\n            ],\n            \"theme\": [\n                \"dark theme\",\n                \"light theme\"\n            ],\n            \"conformsTo\": \"conformsToSomething\",\n            \"creator\": \"Engineering Informatica S.p.A.\",\n            \"description\": [\n                {\n                    \"value\": \"Some text for multi language Dataset\",\n                    \"language\": \"en\"\n                }\n            ],\n            \"identifier\": \"Unique identifier for testing Dataset\",\n            \"issued\": \"2024-04-23T16:26:00Z\",\n            \"modified\": \"2024-04-23T16:26:00Z\",\n            \"title\": \"Title for test Dataset\",\n            \"hasPolicy\": [\n                {\n                    \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\n                    \"permission\": [\n                        {\n                            \"action\": \"USE\",\n                            \"constraint\": [\n                                {\n                                    \"leftOperand\": \"COUNT\",\n                                    \"operator\": \"EQ\",\n                                    \"rightOperand\": \"5\"\n                                }\n                            ]\n                        }\n                    ]\n                }\n            ],\n            \"distribution\": [\n                {\n                    \"id\": \"1dc45797-4444-4932-8baf-ab7fd66ql4d5\",\n                    \"title\": \"Flash lightning distribution\",\n                    \"issued\": \"2024-04-23T16:26:00Z\",\n                    \"modified\": \"2024-04-23T16:26:00Z\",\n                    \"accessService\": [\n                        {\n                            \"id\": \"1dc45797-4444-4955-8baf-ab7fd66ac4d5\",\n                            \"keyword\": [\n                                \"keyword1\",\n                                \"keyword2\",\n                                \"keyword3\"\n                            ],\n                            \"theme\": [\n                                \"dark theme\",\n                                \"light theme\"\n                            ],\n                            \"conformsTo\": \"conformsToSomething\",\n                            \"creator\": \"Engineering Informatica S.p.A.\",\n                            \"description\": [\n                                {\n                                    \"value\": \"Some text for multi language\",\n                                    \"language\": \"en\"\n                                }\n                            ],\n                            \"identifier\": \"Unique identifier for testing Data Service\",\n                            \"issued\": \"2024-04-23T16:26:00Z\",\n                            \"modified\": \"2024-04-23T16:26:00Z\",\n                            \"title\": \"Title for testing Data Service\",\n                            \"endpointDescription\": \"endpoint description\",\n                            \"endpointURL\": \"https://provider-a.com/connector\",\n                            \"createdBy\": \"admin@mail.com\",\n                            \"lastModifiedBy\": \"admin@mail.com\",\n                            \"version\": 0,\n                            \"type\": \"dcat:DataService\"\n                        }\n                    ],\n                    \"type\": \"dspace:Distribution\"\n                }\n            ],\n            \"createdBy\": \"admin@mail.com\",\n            \"lastModifiedBy\": \"admin@mail.com\",\n            \"version\": 0,\n            \"type\": \"dcat:Dataset\"\n        }\n    ],\n    \"service\": [\n        {\n            \"id\": \"1dc45797-4444-4955-8baf-ab7fd66ac4d5\",\n            \"keyword\": [\n                \"keyword1\",\n                \"keyword2\",\n                \"keyword3\"\n            ],\n            \"theme\": [\n                \"dark theme\",\n                \"light theme\"\n            ],\n            \"conformsTo\": \"conformsToSomething\",\n            \"creator\": \"Engineering Informatica S.p.A.\",\n            \"description\": [\n                {\n                    \"value\": \"Some text for multi language\",\n                    \"language\": \"en\"\n                }\n            ],\n            \"identifier\": \"Unique identifier for testing Data Service\",\n            \"issued\": \"2024-04-23T16:26:00Z\",\n            \"modified\": \"2024-04-23T16:26:00Z\",\n            \"title\": \"Title for testing Data Service\",\n            \"endpointDescription\": \"endpoint description\",\n            \"endpointURL\": \"https://provider-a.com/connector\",\n            \"createdBy\": \"admin@mail.com\",\n            \"lastModifiedBy\": \"admin@mail.com\",\n            \"version\": 0,\n            \"type\": \"dcat:DataService\"\n        }\n    ],\n    \"participantId\": \"urn:example:DataProviderA\",\n    \"homepage\": \"https://www.homepage.com/test\",\n    \"createdBy\": \"admin@mail.com\",\n    \"lastModifiedBy\": \"admin@mail.com\",\n    \"version\": 0,\n    \"type\": \"dcat:Catalog\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_CATALOG}}/{$ID}",
+									"host": [
+										"{{CONSUMER_SERVER_API_CATALOG}}"
+									],
+									"path": [
+										"{$ID}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Catalog",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_CATALOG}}/{$ID}",
+									"host": [
+										"{{CONSUMER_SERVER_API_CATALOG}}"
+									],
+									"path": [
+										"{$ID}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "DataService",
+					"item": [
+						{
+							"name": "Get All DataServices",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_DATASERVICE}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_DATASERVICE}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get DataService by ID",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_DATASERVICE}}/$ID",
+									"host": [
+										"{{CONSUMER_SERVER_API_DATASERVICE}}"
+									],
+									"path": [
+										"$ID"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Add DataService to Catalog",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"keyword\": [\r\n        \"keyword1\",\r\n        \"keyword2\",\r\n        \"keyword3\"\r\n    ],\r\n    \"theme\": [\r\n        \"dark theme\",\r\n        \"light theme\"\r\n    ],\r\n    \"conformsTo\": \"conformsToSomething\",\r\n    \"creator\": \"Engineering Informatica S.p.A.\",\r\n    \"description\": [\r\n        {\r\n            \"value\": \"Some text for multi language\",\r\n            \"language\": \"en\"\r\n        }\r\n    ],\r\n    \"identifier\": \"Unique identifier for testing Data Service New\",\r\n    \"title\": \"Title for testing Data Service\",\r\n    \"endpointDescription\": \"endpoint description\",\r\n    \"endpointURL\": \"https://provider-a.com/connector\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_DATASERVICE}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_DATASERVICE}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update DataService",
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "    {\r\n        \"keyword\": [\r\n            \"keyword1\",\r\n            \"keyword2\",\r\n            \"keyword3\"\r\n        ],\r\n        \"theme\": [\r\n            \"dark theme\",\r\n            \"light theme\"\r\n        ],\r\n        \"conformsTo\": \"conformsToSomething\",\r\n        \"creator\": \"Engineering Informatica S.p.A.\",\r\n        \"description\": [\r\n            {\r\n                \"value\": \"Some text for multi language\",\r\n                \"language\": \"en\"\r\n            }\r\n        ],\r\n        \"identifier\": \"Unique identifier for testing Data Service\",\r\n        \"title\": \"Title for testing Data Service Edit\",\r\n        \"endpointDescription\": \"endpoint description\",\r\n        \"endpointURL\": \"https://provider-a.com/connector\"\r\n    }",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_DATASERVICE}}/1dc45797-4444-4955-8baf-ab7fd66ac4d5",
+									"host": [
+										"{{CONSUMER_SERVER_API_DATASERVICE}}"
+									],
+									"path": [
+										"1dc45797-4444-4955-8baf-ab7fd66ac4d5"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete DataService",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_DATASERVICE}}/$ID",
+									"host": [
+										"{{CONSUMER_SERVER_API_DATASERVICE}}"
+									],
+									"path": [
+										"$ID"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "DataSet",
+					"item": [
+						{
+							"name": "Get All Datasets",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_DATASET}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_DATASET}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Dataset by ID",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_DATASET}}/{$ID}",
+									"host": [
+										"{{CONSUMER_SERVER_API_DATASET}}"
+									],
+									"path": [
+										"{$ID}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Add Dataset",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"keyword\": [\r\n        \"keyword1\",\r\n        \"keyword2\",\r\n        \"keyword3\"\r\n    ],\r\n    \"theme\": [\r\n        \"dark theme\",\r\n        \"light theme\"\r\n    ],\r\n    \"conformsTo\": \"conformsToSomethingNew\",\r\n    \"creator\": \"Engineering Informatica S.p.A.\",\r\n    \"description\": [\r\n        {\r\n            \"value\": \"Some text for multi language Dataset\",\r\n            \"language\": \"en\"\r\n        }\r\n    ],\r\n    \"identifier\": \"Unique identifier for testing Dataset\",\r\n    \"title\": \"Title for test Dataset new created\",\r\n    \"hasPolicy\": [\r\n        {\r\n            \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n            \"permission\": [\r\n                {\r\n                    \"action\": \"USE\",\r\n                    \"constraint\": [\r\n                        {\r\n                            \"leftOperand\": \"COUNT\",\r\n                            \"operator\": \"EQ\",\r\n                            \"rightOperand\": \"5\"\r\n                        }\r\n                    ]\r\n                }\r\n            ]\r\n        }\r\n    ],\r\n    \"distribution\": [\r\n        {\r\n            \"id\": \"1dc45797-4444-4932-8baf-ab7fd66ql4d5\",\r\n            \"title\": \"Flash lightning distribution\",\r\n            \"issued\": \"2024-04-23T16:26:00Z\",\r\n            \"modified\": \"2024-04-23T16:26:00Z\",\r\n            \"type\": \"dspace:Distribution\"\r\n        }\r\n    ]\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_DATASET}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_DATASET}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Dataset",
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"keyword\": [\r\n        \"keyword1\",\r\n        \"keyword2\",\r\n        \"keyword3\"\r\n    ],\r\n    \"theme\": [\r\n        \"dark theme\",\r\n        \"light theme\"\r\n    ],\r\n    \"conformsTo\": \"conformsToSomethingEdit\",\r\n    \"creator\": \"Engineering Informatica S.p.A.\",\r\n    \"description\": [\r\n        {\r\n            \"value\": \"Some text for multi language Dataset\",\r\n            \"language\": \"en\"\r\n        }\r\n    ],\r\n    \"identifier\": \"Unique identifier for testing Dataset\",\r\n    \"title\": \"Title for test Dataset\",\r\n    \"hasPolicy\": [\r\n        {\r\n            \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n            \"permission\": [\r\n                {\r\n                    \"action\": \"USE\",\r\n                    \"constraint\": [\r\n                        {\r\n                            \"leftOperand\": \"COUNT\",\r\n                            \"operator\": \"EQ\",\r\n                            \"rightOperand\": \"5\"\r\n                        }\r\n                    ]\r\n                }\r\n            ]\r\n        }\r\n    ],\r\n    \"distribution\": [\r\n        {\r\n            \"id\": \"1dc45797-4444-4932-8baf-ab7fd66ql4d5\",\r\n            \"title\": \"Flash lightning distribution\",\r\n            \"issued\": \"2024-04-23T16:26:00Z\",\r\n            \"modified\": \"2024-04-23T16:26:00Z\",\r\n            \"accessService\": [\r\n                {\r\n                    \"id\": \"1dc45797-4444-4955-8baf-ab7fd66ac4d5\",\r\n                    \"keyword\": [\r\n                        \"keyword1\",\r\n                        \"keyword2\",\r\n                        \"keyword3\"\r\n                    ],\r\n                    \"theme\": [\r\n                        \"dark theme\",\r\n                        \"light theme\"\r\n                    ],\r\n                    \"conformsTo\": \"conformsToSomething\",\r\n                    \"creator\": \"Engineering Informatica S.p.A.\",\r\n                    \"description\": [\r\n                        {\r\n                            \"value\": \"Some text for multi language\",\r\n                            \"language\": \"en\"\r\n                        }\r\n                    ],\r\n                    \"identifier\": \"Unique identifier for testing Data Service\",\r\n                    \"issued\": \"2024-04-23T16:26:00Z\",\r\n                    \"modified\": \"2024-04-23T16:26:00Z\",\r\n                    \"title\": \"Title for testing Data Service\",\r\n                    \"endpointDescription\": \"endpoint description\",\r\n                    \"endpointURL\": \"https://provider-a.com/connector\",\r\n                    \"createdBy\": \"admin@mail.com\",\r\n                    \"lastModifiedBy\": \"admin@mail.com\",\r\n                    \"version\": 0,\r\n                    \"type\": \"dcat:DataService\"\r\n                }\r\n            ],\r\n            \"type\": \"dspace:Distribution\"\r\n        }\r\n    ]\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_DATASET}}/{$ID}",
+									"host": [
+										"{{CONSUMER_SERVER_API_DATASET}}"
+									],
+									"path": [
+										"{$ID}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Dataset",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_DATASET}}/{$ID}",
+									"host": [
+										"{{CONSUMER_SERVER_API_DATASET}}"
+									],
+									"path": [
+										"{$ID}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Negotiation",
+					"item": [
+						{
+							"name": "[C] Start negotiation",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"consumer_contractNegotiationId\", jsonData[\"data\"][\"@id\"])\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Retrieve consumer pid\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"consumerPid\", jsonData[\"data\"][\"consumerPid\"])\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Retrieve provider pid\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"providerPid\", jsonData[\"data\"][\"providerPid\"])\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER_SERVER_PROTOCOL_NEGOTIATION}}/request\",\r\n    \"offer\": {\r\n        \"@id\": \"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"urn:uuid:TARGET\",\r\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"EQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_NEGOTIATION}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Find Contract Negotiation",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"provider_contractNegotiationId\", jsonData[\"data\"][0][\"@id\"])\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}",
+									"host": [
+										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[C/P] Send offer",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Basic YWRtaW5AbWFpbC5jb206cGFzc3dvcmQ="
+									},
+									{
+										"key": "Cookie",
+										"value": "JSESSIONID=1B172A0D2187794C8FA816EF096C69B8"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Forward-To\": \"{{CONSUMER_SERVER_PROTOCOL_NEGOTIATION}}/offers\",\n    \"offer\": {\n        \"@id\": \"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\n        \"target\": \"target\",\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\n        \"permission\": [\n            {\n                \"action\": \"USE\",\n                \"constraint\": [\n                    {\n                        \"leftOperand\": \"COUNT\",\n                        \"operator\": \"EQ\",\n                        \"rightOperand\": \"5\"\n                    }\n                ]\n            }\n        ]\n    }\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/offers",
+									"host": [
+										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
+									],
+									"path": [
+										"offers"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Approve negotiation",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/{{provider_contractNegotiationId}}/approve",
+									"host": [
+										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
+									],
+									"path": [
+										"{{provider_contractNegotiationId}}",
+										"approve"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[C] Verify negotiation",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/{{consumer_contractNegotiationId}}/verify",
+									"host": [
+										"{{CONSUMER_SERVER_API_NEGOTIATION}}"
+									],
+									"path": [
+										"{{consumer_contractNegotiationId}}",
+										"verify"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Finalize negotiation",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"consumerPid\": \"{{consumerPid}}\",\r\n    \"providerPid\": \"{{providerPid}}\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/{{provider_contractNegotiationId}}/finalize",
+									"host": [
+										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
+									],
+									"path": [
+										"{{provider_contractNegotiationId}}",
+										"finalize"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[C/P] Terminate negotiation",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/{{provider_contractNegotiationId}}/terminate",
+									"host": [
+										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
+									],
+									"path": [
+										"{{provider_contractNegotiationId}}",
+										"terminate"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Check if agreement is valid",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": ""
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Distribution",
+					"item": [
+						{
+							"name": "Get All Distributions",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_DISTRIBUTION}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_DISTRIBUTION}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Distribution by ID",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_DISTRIBUTION}}/{$ID}",
+									"host": [
+										"{{CONSUMER_SERVER_API_DISTRIBUTION}}"
+									],
+									"path": [
+										"{$ID}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Add Distribution",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"title\": \"Flash lightning distribution\",\r\n    \"accessService\": [\r\n        {\r\n            \"id\": \"1dc45797-4444-4955-8baf-ab7fd66ac4d5\",\r\n            \"keyword\": [\r\n                \"keyword1\",\r\n                \"keyword2\",\r\n                \"keyword3\"\r\n            ],\r\n            \"theme\": [\r\n                \"dark theme\",\r\n                \"light theme\"\r\n            ],\r\n            \"conformsTo\": \"conformsToSomething\",\r\n            \"creator\": \"Engineering Informatica S.p.A.\",\r\n            \"description\": [\r\n                {\r\n                    \"value\": \"Some text for multi language\",\r\n                    \"language\": \"en\"\r\n                }\r\n            ],\r\n            \"identifier\": \"Unique identifier for testing Data Service\",\r\n            \"issued\": \"2024-04-23T18:26:00+02:00[Europe/Berlin]\",\r\n            \"modified\": \"2024-04-23T18:26:00+02:00[Europe/Berlin]\",\r\n            \"title\": \"Title for testing Data Service\",\r\n            \"endpointDescription\": \"endpoint description\",\r\n            \"endpointURL\": \"https://provider-a.com/connector\",\r\n            \"createdBy\": \"admin@mail.com\",\r\n            \"lastModifiedBy\": \"admin@mail.com\",\r\n            \"version\": 0,\r\n            \"type\": \"dcat:DataService\"\r\n        }\r\n    ]\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_DISTRIBUTION}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_DISTRIBUTION}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Distribution",
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"title\": \"Flash lightning distribution Edit\",\r\n    \"accessService\": [\r\n        {\r\n            \"id\": \"1dc45797-4444-4955-8baf-ab7fd66ac4d5\",\r\n            \"keyword\": [\r\n                \"keyword1\",\r\n                \"keyword2\",\r\n                \"keyword3\"\r\n            ],\r\n            \"theme\": [\r\n                \"dark theme\",\r\n                \"light theme\"\r\n            ],\r\n            \"conformsTo\": \"conformsToSomething\",\r\n            \"creator\": \"Engineering Informatica S.p.A.\",\r\n            \"description\": [\r\n                {\r\n                    \"value\": \"Some text for multi language\",\r\n                    \"language\": \"en\"\r\n                }\r\n            ],\r\n            \"identifier\": \"Unique identifier for testing Data Service\",\r\n            \"issued\": \"2024-04-23T18:26:00+02:00[Europe/Berlin]\",\r\n            \"modified\": \"2024-04-23T18:26:00+02:00[Europe/Berlin]\",\r\n            \"title\": \"Title for testing Data Service\",\r\n            \"endpointDescription\": \"endpoint description\",\r\n            \"endpointURL\": \"https://provider-a.com/connector\",\r\n            \"createdBy\": \"admin@mail.com\",\r\n            \"lastModifiedBy\": \"admin@mail.com\",\r\n            \"version\": 0,\r\n            \"type\": \"dcat:DataService\"\r\n        }\r\n    ]\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_DISTRIBUTION}}/{$ID}",
+									"host": [
+										"{{CONSUMER_SERVER_API_DISTRIBUTION}}"
+									],
+									"path": [
+										"{$ID}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Distribution",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_DISTRIBUTION}}/{$ID}",
+									"host": [
+										"{{CONSUMER_SERVER_API_DISTRIBUTION}}"
+									],
+									"path": [
+										"{$ID}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			],
+			"auth": {
+				"type": "basic",
+				"basic": [
+					{
+						"key": "username",
+						"value": "admin@mail.com",
+						"type": "string"
+					},
+					{
+						"key": "password",
+						"value": "password",
+						"type": "string"
+					}
+				]
+			},
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "DataTransfer",
+			"item": [
+				{
+					"name": "Get TransferProcess",
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{
+									"key": "username",
+									"value": "admin@mail.com",
+									"type": "string"
+								},
+								{
+									"key": "password",
+									"value": "password",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}/abc45798-5553-4932-8baf-ab7fd66ql4d5",
+							"host": [
+								"{{PROVIDER_SERVER_API_TRANSFERS}}"
+							],
+							"path": [
+								"abc45798-5553-4932-8baf-ab7fd66ql4d5"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Protocol",
+			"item": [
+				{
+					"name": "Catalog",
+					"item": [
+						{
+							"name": "Get Catalog",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\n  \"@type\": \"dspace:CatalogRequestMessage\",\n  \"dspace:filter\": []\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_PROTOCOL_CATALOG}}/request",
+									"host": [
+										"{{CONSUMER_SERVER_PROTOCOL_CATALOG}}"
+									],
+									"path": [
+										"request"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Catalog by Dataset ID",
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\n  \"@type\": \"dspace:DatasetRequestMessage\",\n  \"dspace:dataset\": \"fdc45798-a222-4955-8baf-ab7fd66ac4d5\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_PROTOCOL_CATALOG}}/datasets/fdc45798-a222-4955-8baf-ab7fd66ac4d",
+									"host": [
+										"{{CONSUMER_SERVER_PROTOCOL_CATALOG}}"
+									],
+									"path": [
+										"datasets",
+										"fdc45798-a222-4955-8baf-ab7fd66ac4d"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"auth": {
+						"type": "basic",
+						"basic": [
+							{
+								"key": "password",
+								"value": "password",
+								"type": "string"
+							},
+							{
+								"key": "username",
+								"value": "connector@mail.com",
+								"type": "string"
+							}
+						]
+					},
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"packages": {},
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"packages": {},
+								"exec": [
+									""
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Negotiation",
+					"item": [
+						{
+							"name": "Get negotiation by ProviderPid",
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_PROTOCOL_NEGOTIATION}}/urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aa",
+									"host": [
+										"{{CONSUMER_SERVER_PROTOCOL_NEGOTIATION}}"
+									],
+									"path": [
+										"urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aa"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"auth": {
+						"type": "noauth"
+					},
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"packages": {},
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"packages": {},
+								"exec": [
+									""
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "DataTransfer",
+					"item": [
+						{
+							"name": "Provider",
+							"item": [
+								{
+									"name": "Provider Get TransferProcess",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check if status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/urn:uuid:PROVIDER_PID_TRANSFER",
+											"host": [
+												"{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}"
+											],
+											"path": [
+												"urn:uuid:PROVIDER_PID_TRANSFER"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Provider Request transfer - initiate",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check if status code is 201\", function () {\r",
+													"    pm.response.to.have.status(201);\r",
+													"});\r",
+													"\r",
+													"pm.test(\"Set providerPid\", ()=> {\r",
+													"    var jsonData = pm.response.json();\r",
+													"    pm.expect(jsonData['dspace:state']).to.eq('dspace:REQUESTED');\r",
+													"    pm.collectionVariables.set(\"providerPid\", jsonData[\"dspace:providerPid\"])\r",
+													"});\r",
+													"\r",
+													"pm.test(\"TransactionId\", ()=> {\r",
+													"    let trId = pm.collectionVariables.get(\"consumerPid\") + \"|\" + pm.collectionVariables.get(\"providerPid\");\r",
+													"    pm.collectionVariables.set(\"transactionId\", btoa(trId));\r",
+													"    console.log(pm.collectionVariables.get(\"transactionId\"));\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"pm.test(\"Set consumerPid\", ()=> {\r",
+													"   var cPid = \"urn:uuid:\" + pm.variables.replaceIn(\"{{$randomUUID}}\");\r",
+													"   pm.collectionVariables.set(\"consumerPid\", cPid);\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferRequestMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:agreementId\": \"{{agreementID_from_contract_negotiation_API_REPLACE}}\",\r\n \"dct:format\": \"example:HTTP_PULL\",\r\n \"dspace:callbackAddress\": \"http://localhost:8080/consumer/transfers/callback/\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/request",
+											"host": [
+												"{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}"
+											],
+											"path": [
+												"request"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Provider Start transfer",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check if status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferStartMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:providerPid\": \"{{providerPid}}\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/{{providerPid}}/start",
+											"host": [
+												"{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}"
+											],
+											"path": [
+												"{{providerPid}}",
+												"start"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Provider Complete transfer",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check if status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferCompletionMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:providerPid\": \"{{providerPid}}\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/{{providerPid}}/completion",
+											"host": [
+												"{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}"
+											],
+											"path": [
+												"{{providerPid}}",
+												"completion"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Provider Suspend transfer",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check if status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferSuspensionMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:providerPid\": \"{{providerPid}}\",\r\n \"dspace:code\": \"1\",\r\n \"dspace:reason\": [\r\n   \"Must suspens to take a break,I got tierd.\"\r\n ]\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/{{providerPid}}/suspension",
+											"host": [
+												"{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}"
+											],
+											"path": [
+												"{{providerPid}}",
+												"suspension"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Provider Terminate transfer",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check if status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferTerminationMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:providerPid\": \"{{providerPid}}\",\r\n \"dspace:code\": \"123\",\r\n \"dspace:reason\": [\r\n   \"Must stop this transfer\"\r\n ]\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}/{{providerPid}}/termination",
+											"host": [
+												"{{PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER}}"
+											],
+											"path": [
+												"{{providerPid}}",
+												"termination"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get test artifact",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check expected response\", ()=> {\r",
+													"    pm.response.to.have.status(200);\r",
+													"    var jsonData = pm.response.json();\r",
+													"    pm.expect(jsonData['firstName']).to.eq('John');\r",
+													"    pm.expect(jsonData['lastName']).to.eq('Doe');\r",
+													"    pm.expect(jsonData['address']).to.eq('591  Franklin Street, Pennsylvania');\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [],
+										"url": {
+											"raw": "{{PROVIDER}}/artifacts/{{transactionId}}/1",
+											"host": [
+												"{{PROVIDER}}"
+											],
+											"path": [
+												"artifacts",
+												"{{transactionId}}",
+												"1"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						},
+						{
+							"name": "Consumer",
+							"item": [
+								{
+									"name": "Consumer Start transfer",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check if status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferStartMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:providerPid\": \"{{providerPid}}\",\r\n \"dspace:dataAddress\": {\r\n   \"@type\": \"dspace:DataAddress\",\r\n   \"dspace:endpointType\": \"https://w3id.org/idsa/v4.1/HTTP\",\r\n   \"dspace:endpoint\": \"http://example.com\",\r\n   \"dspace:endpointProperties\": [\r\n     {\r\n       \"@type\": \"dspace:EndpointProperty\",\r\n       \"dspace:name\": \"authorization\",\r\n       \"dspace:value\": \"TOKEN-ABCDEFG\"\r\n     },\r\n     {\r\n       \"@type\": \"dspace:EndpointProperty\",\r\n       \"dspace:name\": \"authType\",\r\n       \"dspace:value\": \"bearer\"\r\n     }\r\n   ]\r\n }\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{CONSUMER_SERVER_PROTOCOL_DATA_TRANSFER}}/{{consumerPid}}/start",
+											"host": [
+												"{{CONSUMER_SERVER_PROTOCOL_DATA_TRANSFER}}"
+											],
+											"path": [
+												"{{consumerPid}}",
+												"start"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Consumer Completion transfer",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check if status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferCompletionMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:providerPid\": \"{{providerPid}}\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{CONSUMER_SERVER_PROTOCOL_DATA_TRANSFER}}/{{consumerPid}}/completion",
+											"host": [
+												"{{CONSUMER_SERVER_PROTOCOL_DATA_TRANSFER}}"
+											],
+											"path": [
+												"{{consumerPid}}",
+												"completion"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Consumer Suspension transfer",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check if status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferSuspensionMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:providerPid\": \"{{providerPid}}\",\r\n \"dspace:code\": \"2\",\r\n \"dspace:reason\": [\r\n   \"Pause please!\"\r\n ]\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{CONSUMER}}/consumer/transfers/{{consumerPid}}/suspension",
+											"host": [
+												"{{CONSUMER}}"
+											],
+											"path": [
+												"consumer",
+												"transfers",
+												"{{consumerPid}}",
+												"suspension"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Consumer Termination transfer",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Check if status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n \"@context\":  \"https://w3id.org/dspace/2024/1/context.json\",\r\n \"@type\": \"dspace:TransferTerminationMessage\",\r\n \"dspace:consumerPid\": \"{{consumerPid}}\",\r\n \"dspace:providerPid\": \"{{providerPid}}\",\r\n \"dspace:code\": \"1\",\r\n \"dspace:reason\": [\r\n   \"Need to take a break\"\r\n ]\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{CONSUMER}}/consumer/transfers/{{consumerPid}}/termination",
+											"host": [
+												"{{CONSUMER}}"
+											],
+											"path": [
+												"consumer",
+												"transfers",
+												"{{consumerPid}}",
+												"termination"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						}
+					],
+					"auth": {
+						"type": "basic",
+						"basic": [
+							{
+								"key": "password",
+								"value": "password",
+								"type": "string"
+							},
+							{
+								"key": "username",
+								"value": "connector@mail.com",
+								"type": "string"
+							}
+						]
+					}
+				}
+			],
+			"auth": {
+				"type": "noauth"
+			},
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"packages": {},
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"packages": {},
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}

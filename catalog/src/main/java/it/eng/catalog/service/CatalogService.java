@@ -1,141 +1,254 @@
+
 package it.eng.catalog.service;
 
-import java.util.Arrays;
-import java.util.UUID;
+import java.util.List;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
-import it.eng.catalog.entity.CatalogEntity;
-import it.eng.catalog.mapper.CatalogMapper;
-import it.eng.catalog.model.Action;
+import it.eng.catalog.exceptions.CatalogErrorException;
+import it.eng.catalog.exceptions.InternalServerErrorAPIException;
+import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.Catalog;
-import it.eng.catalog.model.Constraint;
 import it.eng.catalog.model.DataService;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.Distribution;
-import it.eng.catalog.model.LeftOperand;
-import it.eng.catalog.model.Multilanguage;
 import it.eng.catalog.model.Offer;
-import it.eng.catalog.model.Operator;
-import it.eng.catalog.model.Permission;
-import it.eng.catalog.model.Reference;
-import it.eng.catalog.model.Serializer;
 import it.eng.catalog.repository.CatalogRepository;
+import it.eng.catalog.serializer.Serializer;
+import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
+import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
+import lombok.extern.slf4j.Slf4j;
 
+/**
+ * The CatalogService class provides methods to interact with catalog data, including saving, retrieving, and deleting catalogs.
+ */
 @Service
+@Slf4j
 public class CatalogService {
+
+    private final CatalogRepository repository;
+    private final ApplicationEventPublisher publisher;
+
+    public CatalogService(CatalogRepository repository, ApplicationEventPublisher publisher) {
+        this.repository = repository;
+        this.publisher = publisher;
+    }
+    
+    /********* PROTOCOL ***********/
+    /**
+     * Retrieves the catalog.
+     *
+     * @return The retrieved catalog.
+     * @throws CatalogErrorException Thrown if the catalog is not found.
+     */
+    public Catalog getCatalog() {
+        List<Catalog> allCatalogs = repository.findAll();
+
+        if (allCatalogs.isEmpty()) {
+            throw new CatalogErrorException("Catalog not found");
+        } else {
+            return allCatalogs.get(0);
+        }
+    }
+    
+
+    /********* API ***********/
+    
+    /**
+	 * Public method for fetching the catalog for further API processing purposes
+	 * It throws ResourceNotFoundAPIException instead of CatalogErrorException used in protocol requests
+	 * 
+	 * @return Catalog
+	 * @throws ResourceNotFoundAPIException Thrown if the catalog is not found.
+	 */
+	public Catalog getCatalogForApi() {
+        List<Catalog> allCatalogs = repository.findAll();
+
+        if (allCatalogs.isEmpty()) {
+            throw new ResourceNotFoundAPIException("Catalog not found");
+        } else {
+            return allCatalogs.get(0);
+        }
+    }
 	
-	private CatalogRepository catalogRepository;
+    private Catalog getCatalogByIdForApi(String id) {
+        return repository.findById(id).orElseThrow(() -> new ResourceNotFoundAPIException("Catalog with id: " + id + " not found"));
+    }
+
+    /**
+     * Saves the given catalog.
+     *
+     * @param catalog The catalog to be saved.
+     */
+    public Catalog saveCatalog(Catalog catalog) {
+        // TODO handle the situation when we insert catalog for the first time, and the object like dataSets, distributions, etc. should be stored into separate documents
+        Catalog storedCatalog = null;
+        try {
+        	storedCatalog = repository.save(catalog);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			throw new InternalServerErrorAPIException("Catalog could not be saved");
+		}
+        return storedCatalog;
+    }
+
+    /**
+     * Retrieves the catalog by its ID.
+     *
+     * @param id The ID of the catalog to retrieve.
+     * @return An optional containing the retrieved catalog, or empty if not found.
+     */
+    public Catalog getCatalogById(String id) {
+        return repository.findById(id).orElseThrow(() -> new ResourceNotFoundAPIException("Catalog with id" + id + " not found"));
+    }
+
+    /**
+     * Deletes the catalog with the specified ID.
+     *
+     * @param id The ID of the catalog to delete.
+     */
+	public void deleteCatalog(String id) {
+		getCatalogById(id);
+		try {
+			repository.deleteById(id);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			throw new InternalServerErrorAPIException("Catalog could not be deleted");
+		}
+	}
 	
-	public CatalogService(CatalogRepository catalogRepository) {
-		super();
-		this.catalogRepository = catalogRepository;
+	public Catalog updateCatalog(String id, Catalog cat) {
+		Catalog existingCatalog = getCatalogByIdForApi(id);
+		Catalog storedCatalog = null;;
+		try {
+			Catalog updatedCatalog= existingCatalog.updateInstance(cat);
+			storedCatalog = repository.save(updatedCatalog);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			throw new InternalServerErrorAPIException("Catalog could not be updated");
+		}
+        return storedCatalog;
 	}
 
-	public Catalog findAll() {
-		return new CatalogMapper().entityToModel(catalogRepository.findAll().get(0));
-	}
+	@Deprecated
+    public void validateOffer(ContractNegotationOfferRequestEvent offerRequest) {
+        log.info("Comparing if offer is valid or not");
+        Offer offer = Serializer.deserializeProtocol(offerRequest.getOffer(), Offer.class);
+        boolean valid = validateOffer(offer);
+        ContractNegotiationOfferResponseEvent contractNegotiationOfferResponse = new ContractNegotiationOfferResponseEvent(offerRequest.getConsumerPid(),
+                offerRequest.getProviderPid(), valid, Serializer.serializeProtocolJsonNode(offer));
+        publisher.publishEvent(contractNegotiationOfferResponse);
+    }
 
-	public Catalog findById(String id) {
-		return getDemoCatalog();
-	}
+    /**
+     * Updates the catalog with a newly saved dataset reference.
+     * This method adds the new dataset reference to the catalog's dataset list and saves the updated catalog.
+     *
+     * @param newDataset The new dataset reference to be added to the catalog.
+     */
+    public void updateCatalogDatasetAfterSave(Dataset newDataset) {
+        // TODO handle the situation when new dataset have distribution which is not present in catalog
+        Catalog c = getCatalogForApi();
+        c.getDataset().add(newDataset);
+        saveCatalog(c);
+    }
 
-	public void save(Catalog catalog) {
-		// TODO Auto-generated method stub
-		
-	}
+    /**
+     * Removes a dataset reference from the catalog and saves the updated catalog.
+     * This method removes the specified dataset reference from the catalog's dataset collection and saves the updated catalog.
+     *
+     * @param dataset The dataset to be removed from the catalog.
+     */
+    public void updateCatalogDatasetAfterDelete(Dataset dataset) {
+        Catalog c = getCatalogForApi();
+        c.getDataset().remove(dataset);
+        saveCatalog(c);
+    }
 
-	private Catalog getDemoCatalog() {
-		final String CONFORMSTO = "conformsToSomething";
-		final String CREATOR = "Chuck Norris";
-		final String IDENTIFIER = "Uniwue identifier for tests";
-		final String ISSUED = "yesterday";
-		final String MODIFIED = "today";
-		final String TITLE = "Title for test";
-		final String ENDPOINT_URL = "https://provider-a.com/connector";
-		
-		CatalogEntity cc = catalogRepository.findById("1dc45797-3333-4955-8baf-ab7fd66ac4d5").get();
-		System.out.println(Serializer.serializePlain(cc));
-		System.out.println("---------------------");
-//		System.out.println(Serializer.serializeProtocol(cc));
-		
-		String dataServiceId = UUID.randomUUID().toString();
-		 DataService dataService = DataService.Builder.newInstance()
-				.id(dataServiceId)
-				.endpointURL(ENDPOINT_URL)
-				.endpointDescription("endpoint description")
-				.build();
-		
-		 Constraint constraint = Constraint.Builder.newInstance()
-				.leftOperand(LeftOperand.COUNT)
-				.operator(Operator.EQ)
-				.rightOperand("5")
-				.build();
-		
-		 Permission permission = Permission.Builder.newInstance()
-				.action(Action.USE)
-				.constraint(Arrays.asList(constraint))
-				.build();
-		
-		 Offer offer = Offer.Builder.newInstance()
-//				.target(TARGET)
-//				.assignee(CatalogUtil.ASSIGNEE)
-//				.assigner(CatalogUtil.ASSIGNER)
-				.permission(Arrays.asList(permission))
-				.build();
-		
-		 Dataset dataset = Dataset.Builder.newInstance()
-				.conformsTo(CONFORMSTO)
-				.creator(CREATOR)
-				.description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("For test").build(),
-						Multilanguage.Builder.newInstance().language("it").value("For test but in Italian").build()))
-				.distribution(Arrays.asList(Distribution.Builder.newInstance()
-						.dataService(null)
-//						.description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("DS descr for test").build()))
-//						.issued(CatalogUtil.ISSUED)
-//						.modified(CatalogUtil.MODIFIED)
-//						.title("Distribution title for tests")
-						.format(Reference.Builder.newInstance().id("dspace:s3+push").build())
-						.build()))
-				.identifier(IDENTIFIER)
-				.issued(ISSUED)
-				.keyword(Arrays.asList("keyword1", "keyword2"))
-				.modified(MODIFIED)
-				.theme(Arrays.asList("white", "blue", "aqua"))
-				.title(TITLE)
-				.hasPolicy(Arrays.asList(offer))
-				.build();
-		
-		Distribution distribution = Distribution.Builder.newInstance()
-			.dataService(null)
-			.format(Reference.Builder.newInstance().id("dspace:s3+push").build())
-			.dataService(Arrays.asList(dataService))
-			.build();
-		
-		 Catalog catalog = Catalog.Builder.newInstance()
-				.conformsTo(CONFORMSTO)
-				.creator(CREATOR)
-				.description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Catalog test").build(),
-						Multilanguage.Builder.newInstance().language("it").value("Catalog test but in Italian").build()))
-				.distribution(Arrays.asList(Distribution.Builder.newInstance()
-						.dataService(null)
-//						.description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("DS descr for test").build()))
-//						.issued(CatalogUtil.ISSUED)
-//						.modified(CatalogUtil.MODIFIED)
-//						.title("Distribution title for tests")
-						.format(Reference.Builder.newInstance().id("dspace:s3+push").build())
-						.build()))
-				.identifier(IDENTIFIER)
-				.issued(ISSUED)
-				.keyword(Arrays.asList("keyword1", "keyword2"))
-				.modified(MODIFIED)
-				.theme(Arrays.asList("white", "blue", "aqua"))
-				.title(TITLE)
-				.participantId("urn:example:DataProviderA")
-				.service(Arrays.asList(dataService))
-				.dataset(Arrays.asList(dataset))
-				.distribution(Arrays.asList(distribution))
-				.build();
-		 return catalog;
+    /**
+     * Updates the catalog with a newly saved dataService reference.
+     * This method adds the new dataService reference to the catalog's dataService list and saves the updated catalog.
+     *
+     * @param dataService The new data service reference to be added to the catalog.
+     * @param dataService
+     */
+    public void updateCatalogDataServiceAfterSave(DataService dataService) {
+        Catalog c = getCatalogForApi();
+        c.getService().add(dataService);
+        saveCatalog(c);
+    }
+
+
+    /**
+     * Removes a dataService reference from the catalog and saves the updated catalog.
+     * This method removes the specified dataService reference from the catalog's dataService collection and saves the updated catalog.
+     *
+     * @param dataService The dataService to be removed from the catalog.
+     */
+
+    public void updateCatalogDataServiceAfterDelete(DataService dataService) {
+        Catalog c = getCatalogForApi();
+        c.getService().remove(dataService);
+        saveCatalog(c);
+    }
+
+    /**
+     * Updates the catalog with a newly saved distribution reference.
+     * This method adds the new distribution reference to the catalog's distribution list and saves the updated catalog.
+     *
+     * @param newDistribution The new distribution reference to be added to the catalog.
+     */
+    public void updateCatalogDistributionAfterSave(Distribution newDistribution) {
+        Catalog c = getCatalogForApi();
+        c.getDistribution().add(newDistribution);
+        saveCatalog(c);
+    }
+
+    /**
+     * Removes a distribution reference from the catalog and saves the updated catalog.
+     * This method removes the specified distribution reference from the catalog's distribution collection and saves the updated catalog.
+     *
+     * @param distribution The distribution to be removed from the catalog.
+     */
+
+    public void updateCatalogDistributionAfterDelete(Distribution distribution) {
+        Catalog c = getCatalogForApi();
+        c.getDistribution().remove(distribution);
+        saveCatalog(c);
+    }
+
+
+    /**
+     * Used by the protocol business logic to check if such offer exists
+     * because of that reason it throws CatalogErrorException instead of ResourceNotFoundAPIException
+     * 
+     * @param offer
+     * @return boolean
+     */
+	public boolean validateOffer(Offer offer) {
+		boolean valid = false;
+		Catalog catalog = getCatalog();
+
+		Offer existingOffer = catalog.getDataset().stream()
+				.flatMap(dataset -> dataset.getHasPolicy().stream())
+				.filter(of -> of.getId().equals(offer.getId()))
+				.findFirst()
+				.orElse(null);
+
+		log.debug("Offer with id '{}' {}", offer.getId(), existingOffer != null ? " found." : "not found.");
+
+		if (existingOffer == null) {
+			log.warn("Offer with id {} not found in catalog", offer.getId());
+			valid = false;
+		} else {
+//	    		 check if offers are equals
+			if (offer.equals(existingOffer)) {
+				log.debug("Existing and prvided offers are same");
+				valid = true;
+			}
+		}
+		log.info("Offer evaluated as {}", valid ? "valid" : "invalid");
+		return valid;
 	}
 }

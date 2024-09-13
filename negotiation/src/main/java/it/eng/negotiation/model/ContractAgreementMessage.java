@@ -6,7 +6,6 @@ import java.util.stream.Collectors;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
@@ -50,8 +49,7 @@ import lombok.NoArgsConstructor;
 @JsonDeserialize(builder = ContractAgreementMessage.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true) 
-public class ContractAgreementMessage extends AbstractNegotiationModel {
-
+public class ContractAgreementMessage extends AbstractNegotiationObject {
 	
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
@@ -60,6 +58,7 @@ public class ContractAgreementMessage extends AbstractNegotiationModel {
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_CALLBACK_ADDRESS)
 	private String callbackAddress;
+	
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_AGREEMENT)
 	private Agreement agreement;
@@ -78,25 +77,25 @@ public class ContractAgreementMessage extends AbstractNegotiationModel {
 			return new Builder();
 		}
 		
-		@JsonSetter(DSpaceConstants.DSPACE_CONSUMER_PID)
+		@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
 		public Builder consumerPid(String consumerPid) {
 			message.consumerPid = consumerPid;
 			return this;
 		}
 		
-		@JsonSetter((DSpaceConstants.DSPACE_PROVIDER_PID))
+		@JsonProperty((DSpaceConstants.DSPACE_PROVIDER_PID))
 		public Builder providerPid(String providerPid) {
 			message.providerPid = providerPid;
 			return this;
 		}
 		
-		@JsonSetter(DSpaceConstants.DSPACE_CALLBACK_ADDRESS)
+		@JsonProperty(DSpaceConstants.DSPACE_CALLBACK_ADDRESS)
 		public Builder callbackAddress(String callbackAddress) {
 			message.callbackAddress = callbackAddress;
 			return this;
 		}
 		
-		@JsonSetter(DSpaceConstants.DSPACE_AGREEMENT)		
+		@JsonProperty(DSpaceConstants.DSPACE_AGREEMENT)		
 		public Builder agreement(Agreement agreement) {
 			message.agreement = agreement;
 			return this;
@@ -107,11 +106,11 @@ public class ContractAgreementMessage extends AbstractNegotiationModel {
 			if(violations.isEmpty()) {
 				return message;
 			}
-			throw new ValidationException(
+			throw new ValidationException("ContractAgreementMessage - " + 
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())
-						.collect(Collectors.joining(",")));
+						.collect(Collectors.joining(", ")));
 		}
 	}
 

@@ -3,9 +3,12 @@ package it.eng.datatransfer.model;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
@@ -49,8 +52,16 @@ import lombok.NoArgsConstructor;
 @Getter
 @JsonDeserialize(builder = TransferRequestMessage.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
+@Document(collection = "transfer_request_messages")
 public class TransferRequestMessage extends AbstractTransferMessage {
 
+	private static final long serialVersionUID = 8814457068103190252L;
+
+	@JsonIgnore
+    @JsonProperty(DSpaceConstants.ID)
+    @Id
+    private String id;
+    
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_AGREEMENT_ID)
 	private String agreementId;
@@ -59,7 +70,6 @@ public class TransferRequestMessage extends AbstractTransferMessage {
 	@JsonProperty(DSpaceConstants.DCT_FORMAT)
 	private String format;
 	
-	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_DATA_ADDRESS)
 	private DataAddress dataAddress;
 	
@@ -81,6 +91,11 @@ public class TransferRequestMessage extends AbstractTransferMessage {
 			return new Builder();
 		}
 		
+		public Builder id(String id) {
+        	message.id = id;
+        	return this;
+        }
+		
 		@JsonProperty(DSpaceConstants.DSPACE_AGREEMENT_ID)
 		public Builder agreementId(String agreementId) {
 			message.agreementId = agreementId;
@@ -99,25 +114,28 @@ public class TransferRequestMessage extends AbstractTransferMessage {
 			return this;
 		}
 		
-		@JsonSetter(DSpaceConstants.DSPACE_CONSUMER_PID)
+		@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
 		public Builder consumerPid(String consumerPid) {
 			message.consumerPid = consumerPid;
 			return this;
 		}
 		
-		@JsonSetter(DSpaceConstants.DSPACE_CALLBACK_ADDRESS)
+		@JsonProperty(DSpaceConstants.DSPACE_CALLBACK_ADDRESS)
 		public Builder callbackAddress(String callbackAddress) {
 			message.callbackAddress = callbackAddress;
 			return this;
 		}
 
 		public TransferRequestMessage build() {
+			if (message.id == null) {
+	               message.id = message.createNewId();
+	        }
 			Set<ConstraintViolation<TransferRequestMessage>> violations 
 				= Validation.buildDefaultValidatorFactory().getValidator().validate(message);
 			if(violations.isEmpty()) {
 				return message;
 			}
-			throw new ValidationException(
+			throw new ValidationException("TransferRequestMessage - " +
 					violations
 						.stream()
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())
@@ -127,7 +145,7 @@ public class TransferRequestMessage extends AbstractTransferMessage {
 	
 	@Override
 	public String getType() {
-		return DSpaceConstants.DSPACE + TransferProcess.class.getSimpleName();
+		return DSpaceConstants.DSPACE + TransferRequestMessage.class.getSimpleName();
 	}
 	
 }

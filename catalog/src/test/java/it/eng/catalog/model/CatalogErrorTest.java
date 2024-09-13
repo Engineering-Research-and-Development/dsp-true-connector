@@ -1,8 +1,10 @@
 package it.eng.catalog.model;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
@@ -10,7 +12,11 @@ import java.util.Arrays;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
+import it.eng.catalog.serializer.Serializer;
 import it.eng.tools.model.DSpaceConstants;
+import jakarta.validation.ValidationException;
 
 public class CatalogErrorTest {
 
@@ -28,6 +34,7 @@ public class CatalogErrorTest {
 			.build();
 	
 	@Test
+	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() {
 		String result = Serializer.serializePlain(catalogError);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
@@ -40,15 +47,23 @@ public class CatalogErrorTest {
 	}
 	
 	@Test
+	@DisplayName("Verify valid protocol object serialization")
 	public void testPlain_protocol() {
-		String result = Serializer.serializeProtocol(catalogError);
-		assertTrue(result.contains(DSpaceConstants.CONTEXT));
-		assertTrue(result.contains(DSpaceConstants.TYPE));
-		assertTrue(result.contains(DSpaceConstants.DSPACE_CODE));
-		assertTrue(result.contains(DSpaceConstants.DSPACE_REASON));
+		JsonNode result = Serializer.serializeProtocolJsonNode(catalogError);
+		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
+		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
+		assertNotNull(result.get(DSpaceConstants.DSPACE_CODE).asText());
+		assertNotNull(result.get(DSpaceConstants.DSPACE_REASON).asText());
 		
 		CatalogError javaObj = Serializer.deserializeProtocol(result, CatalogError.class);
 		validateJavaObj(javaObj);
+	}
+	
+	@Test
+	@DisplayName("Missing @context and @type")
+	public void missingContextAndType() {
+		JsonNode result = Serializer.serializePlainJsonNode(catalogError);
+		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, CatalogError.class));
 	}
 	
 	@Test
@@ -56,6 +71,22 @@ public class CatalogErrorTest {
 	public void validateInvalid() {
 		assertDoesNotThrow(() -> CatalogError.Builder.newInstance()
 					.build());
+	}
+	
+	@Test
+	@DisplayName("Plain serialize/deserialize")
+	public void equalsTestPlain() {
+		String ss = Serializer.serializePlain(catalogError);
+		CatalogError catalogError2 = Serializer.deserializePlain(ss, CatalogError.class);
+		assertThat(catalogError).usingRecursiveComparison().isEqualTo(catalogError2);
+	}
+	
+	@Test
+	@DisplayName("Protocol serialize/deserialize")
+	public void equalsTestProtocol() {
+		String ss = Serializer.serializeProtocol(catalogError);
+		CatalogError catalogError2 = Serializer.deserializeProtocol(ss, CatalogError.class);
+		assertThat(catalogError).usingRecursiveComparison().isEqualTo(catalogError2);
 	}
 
 	private void validateJavaObj(CatalogError javaObj) {

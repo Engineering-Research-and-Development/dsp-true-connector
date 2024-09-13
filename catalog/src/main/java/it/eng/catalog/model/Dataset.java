@@ -1,11 +1,21 @@
 package it.eng.catalog.model;
 
-import java.util.List;
+import java.time.Instant;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
@@ -25,148 +35,208 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = Dataset.Builder.class)
-@JsonPropertyOrder(value = { DSpaceConstants.CONTEXT, DSpaceConstants.ID, DSpaceConstants.TYPE, DSpaceConstants.DCT_TITLE,
-		DSpaceConstants.DCT_DESCRIPTION, DSpaceConstants.DCAT_KEYWORD, DSpaceConstants.ODRL_HAS_POLICY, 
-		DSpaceConstants.DCAT_DISTRIBUTION}, alphabetic = true)
-public class Dataset {
+@JsonPropertyOrder(value = {DSpaceConstants.CONTEXT, DSpaceConstants.ID, DSpaceConstants.TYPE, DSpaceConstants.DCT_TITLE,
+        DSpaceConstants.DCT_DESCRIPTION, DSpaceConstants.DCAT_KEYWORD, DSpaceConstants.ODRL_HAS_POLICY,
+        DSpaceConstants.DCAT_DISTRIBUTION}, alphabetic = true)
+@Document(collection = "datasets")
+public class Dataset extends AbstractCatalogObject {
 
-	@JsonProperty(value = DSpaceConstants.CONTEXT, access = Access.READ_ONLY)
-	private String context = DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE;
-	
-	@JsonProperty(DSpaceConstants.ID)
-	private String id;
-	
-	// Resource
-	@JsonProperty(DSpaceConstants.DCAT_KEYWORD)
-	private List<String> keyword;
-	@JsonProperty(DSpaceConstants.DCAT_THEME)
-	private List<String> theme;
-	@JsonProperty(DSpaceConstants.DCT_CONFORMSTO)
-	private String conformsTo;
-	@JsonProperty(DSpaceConstants.DCT_CREATOR)
-	private String creator;
-	@JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
-	private List<Multilanguage> description;
-	@JsonProperty(DSpaceConstants.DCT_IDENTIFIER)
-	private String identifier;
-	@JsonProperty(DSpaceConstants.DCT_ISSUED)
-	private String issued;
-	@JsonProperty(DSpaceConstants.DCT_MODIFIED)
-	private String modified;
-	@JsonProperty(DSpaceConstants.DCT_TITLE)
-	private String title;
+	private static final long serialVersionUID = 8927419074799593178L;
 
-	@NotNull
-	@JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
-	private List<Offer> hasPolicy;
-	@JsonProperty(DSpaceConstants.DCAT_DISTRIBUTION)
-	private List<Distribution> distribution;
+	@Id
+    @JsonProperty(DSpaceConstants.ID)
+    private String id;
 
-	@JsonPOJOBuilder(withPrefix = "")
-	@JsonIgnoreProperties(ignoreUnknown = true)
-	public static class Builder {
-		private final Dataset dataset;
+    // Resource
+    @JsonProperty(DSpaceConstants.DCAT_KEYWORD)
+    private Set<String> keyword;
+    @JsonProperty(DSpaceConstants.DCAT_THEME)
+    private Set<String> theme;
+    @JsonProperty(DSpaceConstants.DCT_CONFORMSTO)
+    private String conformsTo;
+    @JsonProperty(DSpaceConstants.DCT_CREATOR)
+    private String creator;
+    @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
+    private Set<Multilanguage> description;
+    @JsonProperty(DSpaceConstants.DCT_IDENTIFIER)
+    private String identifier;
+    @JsonProperty(DSpaceConstants.DCT_ISSUED)
+    @CreatedDate
+    private Instant issued;
+    @JsonProperty(DSpaceConstants.DCT_MODIFIED)
+    @LastModifiedDate
+    private Instant modified;
+    @JsonProperty(DSpaceConstants.DCT_TITLE)
+    private String title;
+    @NotNull
+    @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
+    private Set<Offer> hasPolicy;
+    @JsonProperty(DSpaceConstants.DCAT_DISTRIBUTION)
+    @DBRef
+    private Set<Distribution> distribution;
+    @JsonIgnore
+    @CreatedBy
+    private String createdBy;
+    @JsonIgnore
+    @LastModifiedBy
+    private String lastModifiedBy;
+    @JsonIgnore
+    @Version
+    @Field("version")
+    private Long version;
 
-		private Builder() {
-			dataset = new Dataset();
-		}
+    @JsonPOJOBuilder(withPrefix = "")
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Builder {
+        private final Dataset dataset;
 
-		@JsonCreator
-		public static Builder newInstance() {
-			return new Builder();
-		}
-		
-		@JsonProperty(DSpaceConstants.ID)
-		public Builder id(String id) {
-			dataset.id = id;
-			return this;
-		}
+        private Builder() {
+            dataset = new Dataset();
+        }
 
-		@JsonProperty(DSpaceConstants.DCAT_KEYWORD)
-		public Builder keyword(List<String> keyword) {
-			dataset.keyword = keyword;
-			return this;
-		}
+        @JsonCreator
+        public static Builder newInstance() {
+            return new Builder();
+        }
 
-		@JsonProperty(DSpaceConstants.DCAT_THEME)
-		public Builder theme(List<String> theme) {
-			dataset.theme = theme;
-			return this;
-		}
+        @JsonProperty(DSpaceConstants.ID)
+        public Builder id(String id) {
+            dataset.id = id;
+            return this;
+        }
 
-		@JsonProperty(DSpaceConstants.DCT_CONFORMSTO)
-		public Builder conformsTo(String conformsTo) {
-			dataset.conformsTo = conformsTo;
-			return this;
-		}
+        @JsonProperty(DSpaceConstants.DCAT_KEYWORD)
+        @JsonDeserialize(as = Set.class)
+        public Builder keyword(Set<String> keyword) {
+            dataset.keyword = keyword;
+            return this;
+        }
 
-		@JsonProperty(DSpaceConstants.DCT_CREATOR)
-		public Builder creator(String creator) {
-			dataset.creator = creator;
-			return this;
-		}
+        @JsonProperty(DSpaceConstants.DCAT_THEME)
+        @JsonDeserialize(as = Set.class)
+        public Builder theme(Set<String> theme) {
+            dataset.theme = theme;
+            return this;
+        }
 
-		@JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
-		public Builder description(List<Multilanguage> description) {
-			dataset.description = description;
-			return this;
-		}
+        @JsonProperty(DSpaceConstants.DCT_CONFORMSTO)
+        public Builder conformsTo(String conformsTo) {
+            dataset.conformsTo = conformsTo;
+            return this;
+        }
 
-		@JsonProperty(DSpaceConstants.DCT_IDENTIFIER)
-		public Builder identifier(String identifier) {
-			dataset.identifier = identifier;
-			return this;
-		}
+        @JsonProperty(DSpaceConstants.DCT_CREATOR)
+        public Builder creator(String creator) {
+            dataset.creator = creator;
+            return this;
+        }
 
-		@JsonProperty(DSpaceConstants.DCT_ISSUED)
-		public Builder issued(String issued) {
-			dataset.issued = issued;
-			return this;
-		}
+        @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
+        @JsonDeserialize(as = Set.class)
+        public Builder description(Set<Multilanguage> description) {
+            dataset.description = description;
+            return this;
+        }
 
-		@JsonProperty(DSpaceConstants.DCT_MODIFIED)
-		public Builder modified(String modified) {
-			dataset.modified = modified;
-			return this;
-		}
+        @JsonProperty(DSpaceConstants.DCT_IDENTIFIER)
+        public Builder identifier(String identifier) {
+            dataset.identifier = identifier;
+            return this;
+        }
 
-		@JsonProperty(DSpaceConstants.DCT_TITLE)
-		public Builder title(String title) {
-			dataset.title = title;
-			return this;
-		}
+        @JsonProperty(DSpaceConstants.DCT_ISSUED)
+        public Builder issued(Instant issued) {
+            dataset.issued = issued;
+            return this;
+        }
 
-		@JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
-		public Builder hasPolicy(List<Offer> policies) {
-			dataset.hasPolicy = policies;
-			return this;
-		}
-		
-		@JsonProperty(DSpaceConstants.DCAT_DISTRIBUTION)
-		public Builder distribution(List<Distribution> distribution) {
-			dataset.distribution = distribution;
-			return this;
-		}
+        @JsonProperty(DSpaceConstants.DCT_MODIFIED)
+        public Builder modified(Instant modified) {
+            dataset.modified = modified;
+            return this;
+        }
 
-		public Dataset build() {
-			if(dataset.id == null) {
-				dataset.id = UUID.randomUUID().toString();
-			}
-			Set<ConstraintViolation<Dataset>> violations 
-				= Validation.buildDefaultValidatorFactory().getValidator().validate(dataset);
-			if(violations.isEmpty()) {
-				return dataset;
-			}
-			throw new ValidationException(
-					violations
-						.stream()
-						.map(v -> v.getPropertyPath() + " " + v.getMessage())
-						.collect(Collectors.joining(",")));
-			}
-	}
+        @JsonProperty(DSpaceConstants.DCT_TITLE)
+        public Builder title(String title) {
+            dataset.title = title;
+            return this;
+        }
 
-	@JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
-	public String getType() {
-		return DSpaceConstants.DCAT + Dataset.class.getSimpleName();
-	}
+        @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
+        @JsonDeserialize(as = Set.class)
+        public Builder hasPolicy(Set<Offer> policies) {
+            dataset.hasPolicy = policies;
+            return this;
+        }
+
+        @JsonProperty(DSpaceConstants.DCAT_DISTRIBUTION)
+        @JsonDeserialize(as = Set.class)
+        public Builder distribution(Set<Distribution> distribution) {
+            dataset.distribution = distribution;
+            return this;
+        }
+
+        @JsonProperty("createdBy")
+        public Builder createdBy(String createdBy) {
+            dataset.createdBy = createdBy;
+            return this;
+        }
+
+        @JsonProperty("lastModifiedBy")
+        public Builder lastModifiedBy(String lastModifiedBy) {
+            dataset.lastModifiedBy = lastModifiedBy;
+            return this;
+        }
+
+        @JsonProperty("version")
+        public Builder version(Long version) {
+            dataset.version = version;
+            return this;
+        }
+
+        public Dataset build() {
+            if (dataset.id == null) {
+                dataset.id = dataset.createNewPid();
+            }
+            Set<ConstraintViolation<Dataset>> violations
+                    = Validation.buildDefaultValidatorFactory().getValidator().validate(dataset);
+            if (violations.isEmpty()) {
+                return dataset;
+            }
+            throw new ValidationException(
+                    violations
+                            .stream()
+                            .map(v -> v.getPropertyPath() + " " + v.getMessage())
+                            .collect(Collectors.joining(",")));
+        }
+    }
+
+    @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
+    public String getType() {
+        return DSpaceConstants.DCAT + Dataset.class.getSimpleName();
+    }
+    
+    /**
+     * Create new updated instance with new values from passed Dataset parameter<br>
+     * If fields are not present in updatedDataset, existing values will remain
+     * @param updatedDataset
+     * @return new updated dataset instance
+     */
+    public Dataset updateInstance(Dataset updatedDataset) {
+		return Dataset.Builder.newInstance()
+         .id(this.id)
+         .version(this.version)
+         .issued(this.issued)
+         .createdBy(this.createdBy)
+         .keyword(updatedDataset.getKeyword() != null ? updatedDataset.getKeyword() : this.keyword)
+         .theme(updatedDataset.getTheme() != null ? updatedDataset.getTheme() : this.theme)
+         .conformsTo(updatedDataset.getConformsTo() != null ? updatedDataset.getConformsTo() : this.conformsTo)
+         .creator(updatedDataset.getCreator() != null ? updatedDataset.getCreator() : this.creator)
+         .description(updatedDataset.getDescription() != null ? updatedDataset.getDescription() : this.description)
+         .identifier(updatedDataset.getIdentifier() != null ? updatedDataset.getIdentifier() : this.identifier)
+         .title(updatedDataset.getTitle() != null ? updatedDataset.getTitle() : this.title)
+         .distribution(updatedDataset.getDistribution() != null ? updatedDataset.getDistribution() : this.distribution)
+         .hasPolicy(updatedDataset.getHasPolicy() != null ? updatedDataset.getHasPolicy() : this.hasPolicy)
+         .build();
+  }
 }
