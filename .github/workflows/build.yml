@@ -2,7 +2,7 @@ name: Feature or hotfix build
 
 on:
   push:
-    branches: [ "feature/*", "hotfix/*", "develop", "master"]
+    branches: [ "feature/*", "hotfix/*", "develop", "main"]
   
 jobs:
   build-and-push-image:
