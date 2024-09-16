@@ -1,6 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.0] - 16-09-2024
+
+### Changed
+
+ - @context element for all protocol serialized object is map, not string
+
+
 ## [0.1.0] - 13-09-2024
 
 ### Added
