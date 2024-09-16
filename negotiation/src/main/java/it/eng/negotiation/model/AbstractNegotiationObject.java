@@ -5,12 +5,13 @@ import com.fasterxml.jackson.annotation.JsonProperty.Access;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.constraints.NotNull;
 
+import java.util.Map;
 import java.util.UUID;
 
 public abstract class AbstractNegotiationObject {
 
     @JsonProperty(value = DSpaceConstants.CONTEXT, access = Access.READ_ONLY)
-    private String context = DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE;
+    private Map<String, String> context = DSpaceConstants.CONTEXT_MAP;
 
     /**
      * Can be optional.

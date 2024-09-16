@@ -191,9 +191,9 @@ public class Serializer {
 					throw new ValidationException("@type field not correct, expected " + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
 				}
 				Objects.requireNonNull(jsonNode.get(DSpaceConstants.CONTEXT));
-				if(!Objects.equals(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE, jsonNode.get(DSpaceConstants.CONTEXT).asText())) {
-					throw new ValidationException("@context field not valid - was " + jsonNode.get(DSpaceConstants.CONTEXT).asText());
-				}
+				if (!DSpaceConstants.validateContext(jsonNode.get(DSpaceConstants.CONTEXT))) {
+                    throw new ValidationException("@context field not valid - was " + jsonNode.get(DSpaceConstants.CONTEXT));
+                }
 			}
 		} catch (NullPointerException npe) {
 			throw new ValidationException("Missing mandatory protocol fields @context and/or @type or value not correct");

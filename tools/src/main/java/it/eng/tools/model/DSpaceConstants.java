@@ -2,6 +2,8 @@ package it.eng.tools.model;
 
 import java.util.Map;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 public interface DSpaceConstants {
 
 	public static enum ContractNegotiationStates {
@@ -167,5 +169,10 @@ public interface DSpaceConstants {
 	public static final String DSPACE_FILTER = DSPACE + FILTER;
 	public static final String PUBLISHER = DCT + "publisher";
 	public static final String CATALOG_REQUEST_MESSAGE = DSPACE + "CatalogRequestMessage";
-
+	
+	public static boolean validateContext(JsonNode jsonNode) {
+		return DSpaceConstants.CONTEXT_MAP.keySet().stream()
+			.map(key -> jsonNode.get(key).asText().equals(DSpaceConstants.CONTEXT_MAP.get(key)))
+			.findFirst().get();
+	}
 }

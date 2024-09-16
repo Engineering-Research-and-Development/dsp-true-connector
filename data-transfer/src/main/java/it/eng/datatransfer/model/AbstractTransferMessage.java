@@ -1,6 +1,7 @@
 package it.eng.datatransfer.model;
 
 import java.io.Serializable;
+import java.util.Map;
 import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -14,7 +15,7 @@ public abstract class AbstractTransferMessage implements Serializable {
 	private static final long serialVersionUID = -3150306747585657302L;
 
 	@JsonProperty(value = DSpaceConstants.CONTEXT, access = Access.READ_ONLY)
-	private String context = DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE;
+    private Map<String, String> context = DSpaceConstants.CONTEXT_MAP;
 
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)

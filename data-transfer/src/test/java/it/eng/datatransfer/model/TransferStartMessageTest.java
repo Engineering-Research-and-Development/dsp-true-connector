@@ -51,7 +51,8 @@ public class TransferStartMessageTest {
 	@DisplayName("Verify valid protocol object serialization")
 	public void testProtocol() {
 		JsonNode result = Serializer.serializeProtocolJsonNode(transferStartMessage);
-		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
+		assertNotNull(result.get(DSpaceConstants.CONTEXT));
+		assertTrue(DSpaceConstants.validateContext(result.get(DSpaceConstants.CONTEXT)));
 		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
 		assertNotNull(result.get(DSpaceConstants.DSPACE_CONSUMER_PID).asText());
 		assertNotNull(result.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText());

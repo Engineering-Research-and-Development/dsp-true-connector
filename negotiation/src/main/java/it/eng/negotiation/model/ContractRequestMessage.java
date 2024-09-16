@@ -1,5 +1,6 @@
 package it.eng.negotiation.model;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -44,7 +45,7 @@ public class ContractRequestMessage {
 // does not extends AbstractNegotiationModel because providerPid is not mandatory
 	
 	@JsonProperty(value = DSpaceConstants.CONTEXT, access = Access.READ_ONLY)
-	private String context = DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE;
+    private Map<String, String> context = DSpaceConstants.CONTEXT_MAP;
 
 	@JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
 	public String type = DSpaceConstants.DSPACE + ContractRequestMessage.class.getSimpleName();

@@ -3,6 +3,7 @@ package it.eng.connector.integration;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -60,9 +61,12 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isBadRequest())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())))
-    	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
-    }
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())));
+
+    	JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
+		JsonNode contextNode = jsonNode.get(DSpaceConstants.CONTEXT);
+		assertTrue(DSpaceConstants.validateContext(contextNode));
+	}
 
 	@Order(2) 
     @Test
@@ -90,12 +94,12 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isCreated())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())))
-    	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())));
     	
     	JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
     	providerPid = jsonNode.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText();
-
+		assertTrue(DSpaceConstants.validateContext(jsonNode.get(DSpaceConstants.CONTEXT)));
+		
     	//TODO add protocol call using providerPid
     	offerCheck(getContractNegotiationOverAPI());
     }
@@ -119,9 +123,12 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isBadRequest())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())))
-    	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
-    }
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())));
+
+    	JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
+		JsonNode contextNode = jsonNode.get(DSpaceConstants.CONTEXT);
+		assertTrue(DSpaceConstants.validateContext(contextNode));
+	}
     
 	@Order(4) 
     @Test
@@ -148,20 +155,23 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isCreated())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())))
-    	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
-    	
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())));
+
     	JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
     	providerPid = jsonNode.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText();
+    	assertTrue(DSpaceConstants.validateContext(jsonNode.get(DSpaceConstants.CONTEXT)));
     	
 		mockMvc.perform(
 			get("/negotiations/" + providerPid)
 			.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isCreated())
-    	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())))
-    	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
-    }
+	    	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+	    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())));
+
+    	jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
+		JsonNode contextNode = jsonNode.get(DSpaceConstants.CONTEXT);
+		assertTrue(DSpaceConstants.validateContext(contextNode));
+	}
     
 	@Order(5) 
     @Test
@@ -174,9 +184,12 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isNotFound())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())))
-    	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
-    }
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())));
+
+    	JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
+		JsonNode contextNode = jsonNode.get(DSpaceConstants.CONTEXT);
+		assertTrue(DSpaceConstants.validateContext(contextNode));
+	}
     
 	@Order(6) 
     @Test

@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
@@ -49,6 +50,8 @@ public class DataTransferTest extends BaseIntegrationTest {
 	public static final String AGREEMENT_ID = "urn:uuid:" + UUID.randomUUID().toString();
 	public static final String CALLBACK_ADDRESS = "https://example.com/callback";
 	
+	private final ObjectMapper mapper = new ObjectMapper();
+	
 	@Test
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void initiateDataTransfer() throws Exception {
@@ -70,9 +73,12 @@ public class DataTransferTest extends BaseIntegrationTest {
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
     	.andExpect(jsonPath("['" + DSpaceConstants.TYPE + "']", 
     			is(DSpaceConstants.DSPACE + TransferProcess.class.getSimpleName())))
-    	.andExpect(jsonPath("['" + DSpaceConstants.DSPACE_STATE + "']", is(TransferState.REQUESTED.toString())))
-    	.andExpect(jsonPath("['" + DSpaceConstants.CONTEXT + "']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
-    }
+    	.andExpect(jsonPath("['" + DSpaceConstants.DSPACE_STATE + "']", is(TransferState.REQUESTED.toString())));
+    	
+    	JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
+		JsonNode contextNode = jsonNode.get(DSpaceConstants.CONTEXT);
+		assertTrue(DSpaceConstants.validateContext(contextNode));
+	}
 	
 	@Test
     @WithUserDetails(TestUtil.CONNECTOR_USER)
@@ -94,9 +100,12 @@ public class DataTransferTest extends BaseIntegrationTest {
     	result.andExpect(status().isBadRequest())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
     	.andExpect(jsonPath("['" + DSpaceConstants.TYPE + "']", 
-    			is(DSpaceConstants.DSPACE + TransferError.class.getSimpleName())))
-    	.andExpect(jsonPath("['" + DSpaceConstants.CONTEXT + "']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
-    }
+    			is(DSpaceConstants.DSPACE + TransferError.class.getSimpleName())));
+
+    	JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
+		JsonNode contextNode = jsonNode.get(DSpaceConstants.CONTEXT);
+		assertTrue(DSpaceConstants.validateContext(contextNode));
+	}
 	
 	@Test
 	@DisplayName("Start transfer process - from requested")
@@ -113,19 +122,25 @@ public class DataTransferTest extends BaseIntegrationTest {
     			get("/transfers/" + providerPid).contentType(MediaType.APPLICATION_JSON));
     	// check if status is STARTED
     	transferProcessStarted.andExpect(status().isOk())
-    	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['" + DSpaceConstants.TYPE + "']", 
-    			is(DSpaceConstants.DSPACE + TransferProcess.class.getSimpleName())))
-    	.andExpect(jsonPath("['" + DSpaceConstants.DSPACE_STATE + "']", is(TransferState.STARTED.toString())))
-    	.andExpect(jsonPath("['" + DSpaceConstants.CONTEXT + "']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
+	    	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+	    	.andExpect(jsonPath("['" + DSpaceConstants.TYPE + "']", 
+	    			is(DSpaceConstants.DSPACE + TransferProcess.class.getSimpleName())))
+	    	.andExpect(jsonPath("['" + DSpaceConstants.DSPACE_STATE + "']", is(TransferState.STARTED.toString())));
     	
+    	JsonNode jsonNode = mapper.readTree(transferProcessStarted.andReturn().getResponse().getContentAsString());
+		JsonNode contextNode = jsonNode.get(DSpaceConstants.CONTEXT);
+		assertTrue(DSpaceConstants.validateContext(contextNode));
+		
     	// try again to start - error
 		sendTransferStartMessage(consumerPid, providerPid)
 			.andExpect(err -> assertTrue(err.getResolvedException() instanceof TransferProcessInvalidStateException))
 			.andExpect(content().contentType(MediaType.APPLICATION_JSON))
 	    	.andExpect(jsonPath("['" + DSpaceConstants.TYPE + "']", 
-	    			is(DSpaceConstants.DSPACE + TransferError.class.getSimpleName())))
-	    	.andExpect(jsonPath("['" + DSpaceConstants.CONTEXT + "']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
+	    			is(DSpaceConstants.DSPACE + TransferError.class.getSimpleName())));
+
+		jsonNode = mapper.readTree(transferProcessStarted.andReturn().getResponse().getContentAsString());
+		contextNode = jsonNode.get(DSpaceConstants.CONTEXT);
+		assertTrue(DSpaceConstants.validateContext(contextNode));
 	}
 	
 	@Test
@@ -143,12 +158,15 @@ public class DataTransferTest extends BaseIntegrationTest {
     			get("/transfers/" + providerPid).contentType(MediaType.APPLICATION_JSON));
     	// check if status is STARTED
     	transferProcessStarted.andExpect(status().isOk())
-    	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['" + DSpaceConstants.TYPE + "']", 
-    			is(DSpaceConstants.DSPACE + TransferProcess.class.getSimpleName())))
-    	.andExpect(jsonPath("['" + DSpaceConstants.DSPACE_STATE + "']", is(TransferState.STARTED.toString())))
-    	.andExpect(jsonPath("['" + DSpaceConstants.CONTEXT + "']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
-    	
+	    	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+	    	.andExpect(jsonPath("['" + DSpaceConstants.TYPE + "']", 
+	    			is(DSpaceConstants.DSPACE + TransferProcess.class.getSimpleName())))
+	    	.andExpect(jsonPath("['" + DSpaceConstants.DSPACE_STATE + "']", is(TransferState.STARTED.toString())));
+
+    	JsonNode jsonNode = mapper.readTree(transferProcessStarted.andReturn().getResponse().getContentAsString());
+		JsonNode contextNode = jsonNode.get(DSpaceConstants.CONTEXT);
+		assertTrue(DSpaceConstants.validateContext(contextNode));
+		
     	String transactionId = Base64.getEncoder().encodeToString((consumerPid + "|" + providerPid).getBytes(Charset.forName("UTF-8")));
     	downloadArifact(transactionId);
 	}
@@ -177,8 +195,11 @@ public class DataTransferTest extends BaseIntegrationTest {
 		error.andExpect(status().is4xxClientError())
 			.andExpect(content().contentType(MediaType.APPLICATION_JSON))
 	    	.andExpect(jsonPath("['" + DSpaceConstants.TYPE + "']", 
-	    			is(DSpaceConstants.DSPACE + TransferError.class.getSimpleName())))
-	    	.andExpect(jsonPath("['" + DSpaceConstants.CONTEXT + "']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
+	    			is(DSpaceConstants.DSPACE + TransferError.class.getSimpleName())));
+
+		JsonNode jsonNode = mapper.readTree(error.andReturn().getResponse().getContentAsString());
+		JsonNode contextNode = jsonNode.get(DSpaceConstants.CONTEXT);
+		assertTrue(DSpaceConstants.validateContext(contextNode));
 		
 		final ResultActions result =
     			mockMvc.perform(

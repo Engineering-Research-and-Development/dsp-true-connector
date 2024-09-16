@@ -3,6 +3,7 @@ package it.eng.negotiation.rest.protocol;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
@@ -70,7 +71,7 @@ public class ProviderContractNegotiationControllerTest {
 		assertNotNull(response, "Response is not null");
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 		assertEquals(response.getBody().get(DSpaceConstants.TYPE).asText(), DSpaceConstants.DSPACE + ContractNegotiation.class.getSimpleName());
-		assertEquals(response.getBody().get(DSpaceConstants.CONTEXT).asText(), DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE);
+		assertTrue(DSpaceConstants.validateContext(response.getBody().get(DSpaceConstants.CONTEXT)));
 	}
 	
 	@Test
@@ -92,7 +93,7 @@ public class ProviderContractNegotiationControllerTest {
 		assertNotNull(response, "Response is not null");
 		assertEquals(HttpStatus.CREATED, response.getStatusCode());
 		assertEquals(response.getBody().get(DSpaceConstants.TYPE).asText(), DSpaceConstants.DSPACE + ContractNegotiation.class.getSimpleName());
-		assertEquals(response.getBody().get(DSpaceConstants.CONTEXT).asText(), DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE);
+		assertTrue(DSpaceConstants.validateContext(response.getBody().get(DSpaceConstants.CONTEXT)));
 	}
 	
 	@Test
