@@ -63,7 +63,7 @@ public class Agreement {
 	
 	@NotNull
 	@JsonProperty(DSpaceConstants.ODRL_TARGET)
-	private String target;
+	private Object target;
 	
 	@JsonProperty(DSpaceConstants.DSPACE_TIMESTAMP)
 	private String timestamp;
@@ -104,7 +104,7 @@ public class Agreement {
 		}
 		
 		@JsonProperty(DSpaceConstants.ODRL_TARGET)
-		public Builder target(String target) {
+		public Builder target(Object target) {
 			agreement.target = target;
 			return this;
 		}

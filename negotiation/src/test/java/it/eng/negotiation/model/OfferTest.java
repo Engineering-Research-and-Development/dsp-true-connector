@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.Serial;
+import java.util.Arrays;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
@@ -89,4 +91,105 @@ public class OfferTest {
 		assertThat(offer).usingRecursiveComparison().isEqualTo(obj);
 	}
 	
+	@Test
+	public void targetAsObject() {
+		String crmStr = "{\r\n"
+				+ "	\"@context\": {\r\n"
+				+ "		\"dspace\": \"https://w3id.org/dspace/2024/1/context.json\",\r\n"
+				+ "		\"dcat\": \"http://www.w3.org/ns/dcat#\",\r\n"
+				+ "		\"odrl\": \"http://www.w3.org/ns/odrl/2/\",\r\n"
+				+ "		\"dct\": \"http://purl.org/dc/terms/\",\r\n"
+				+ "		\"@vocab\": \"https://w3id.org/edc/v0.0.1/ns/\"\r\n"
+				+ "	},\r\n"
+				+ "	\"@type\": \"dspace:ContractRequestMessage\",\r\n"
+				+ "	\"dspace:callbackAddress\": \"https://callback.address/callback\",\r\n"
+				+ "	\"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID\",\r\n"
+				+ "	\"dspace:offer\": {\r\n"
+				+ "		\"@type\": \"odrl:Offer\",\r\n"
+				+ "		\"@id\": \"urn:uuid:bc99db42-3473-49f8-8583-11f6dca03318\",\r\n"
+				+ "		\"odrl:assignee\": \"urn:uuid:ASSIGNEE_CONSUMER\",\r\n"
+				+ "		\"odrl:assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n"
+				+ "		\"odrl:permission\": [\r\n"
+				+ "			{\r\n"
+				+ "				\"odrl:target\": \"urn:uuid:TARGET\",\r\n"
+				+ "				\"odrl:action\": \"odrl:use\",\r\n"
+				+ "				\"odrl:constraint\": [\r\n"
+				+ "					{\r\n"
+				+ "						\"odrl:leftOperand\": \"odrl:dateTime\",\r\n"
+				+ "						\"odrl:operator\": \"odrl:GT\",\r\n"
+				+ "						\"odrl:rightOperand\": \"2024-02-29T00:00:01+01:00\"\r\n"
+				+ "					}\r\n"
+				+ "				]\r\n"
+				+ "			}\r\n"
+				+ "		],\r\n"
+				+ "		\"odrl:target\": {\r\n"
+				+ "            \"@id\": \"urn:uuid:TARGET\"\r\n"
+				+ "        }\r\n"
+				+ "	},\r\n"
+				+ "	\"dspace:providerPid\": \"urn:uuid:PROVIDER_PID\"\r\n"
+				+ "}";
+		
+		String crmStrTargetStr = "{\r\n"
+				+ "	\"@context\": {\r\n"
+				+ "		\"dspace\": \"https://w3id.org/dspace/2024/1/context.json\",\r\n"
+				+ "		\"dcat\": \"http://www.w3.org/ns/dcat#\",\r\n"
+				+ "		\"odrl\": \"http://www.w3.org/ns/odrl/2/\",\r\n"
+				+ "		\"dct\": \"http://purl.org/dc/terms/\",\r\n"
+				+ "		\"@vocab\": \"https://w3id.org/edc/v0.0.1/ns/\"\r\n"
+				+ "	},\r\n"
+				+ "	\"@type\": \"dspace:ContractRequestMessage\",\r\n"
+				+ "	\"dspace:callbackAddress\": \"https://callback.address/callback\",\r\n"
+				+ "	\"dspace:consumerPid\": \"urn:uuid:CONSUMER_PID\",\r\n"
+				+ "	\"dspace:offer\": {\r\n"
+				+ "		\"@type\": \"odrl:Offer\",\r\n"
+				+ "		\"@id\": \"urn:uuid:bc99db42-3473-49f8-8583-11f6dca03318\",\r\n"
+				+ "		\"odrl:assignee\": \"urn:uuid:ASSIGNEE_CONSUMER\",\r\n"
+				+ "		\"odrl:assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n"
+				+ "		\"odrl:permission\": [\r\n"
+				+ "			{\r\n"
+				+ "				\"odrl:target\": \"urn:uuid:TARGET\",\r\n"
+				+ "				\"odrl:action\": \"odrl:use\",\r\n"
+				+ "				\"odrl:constraint\": [\r\n"
+				+ "					{\r\n"
+				+ "						\"odrl:leftOperand\": \"odrl:dateTime\",\r\n"
+				+ "						\"odrl:operator\": \"odrl:GT\",\r\n"
+				+ "						\"odrl:rightOperand\": \"2024-02-29T00:00:01+01:00\"\r\n"
+				+ "					}\r\n"
+				+ "				]\r\n"
+				+ "			}\r\n"
+				+ "		],\r\n"
+				+ "		\"odrl:target\": \"urn:uuid:TARGET\"\r\n"
+				+ "	},\r\n"
+				+ "	\"dspace:providerPid\": \"urn:uuid:PROVIDER_PID\"\r\n"
+				+ "}";
+		
+		ContractRequestMessage crm = Serializer.deserializeProtocol(crmStr, ContractRequestMessage.class);
+		System.out.println(crm.getOffer().getTarget());
+		
+		ContractRequestMessage crm2 = Serializer.deserializeProtocol(crmStrTargetStr, ContractRequestMessage.class);
+		System.out.println(crm2.getOffer().getTarget());
+	}
+	
+	@Test
+	public void crm() {
+		Offer OFFER = Offer.Builder.newInstance()
+				.target(Reference.Builder.newInstance().id("urn:uuid:TARGET").build())
+				.assignee(MockObjectUtil.ASSIGNEE)
+				.assigner(MockObjectUtil.ASSIGNER)
+				.permission(Arrays.asList(MockObjectUtil.PERMISSION))
+				.build();
+		
+		 ContractRequestMessage CONTRACT_REQUEST_MESSAGE = ContractRequestMessage.Builder.newInstance()
+					.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
+					.consumerPid(MockObjectUtil.CONSUMER_PID)
+					.offer(OFFER)
+					.build();
+		 
+		 String ss = Serializer.serializeProtocol(CONTRACT_REQUEST_MESSAGE);
+		 System.out.println(ss);
+		 
+		 ContractRequestMessage crm = Serializer.deserializeProtocol(ss, ContractRequestMessage.class);
+		 System.out.println(crm.getOffer().getTarget());
+		 
+	}
 }

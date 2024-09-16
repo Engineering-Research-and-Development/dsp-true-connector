@@ -63,7 +63,7 @@ public class Offer {
 
 	@NotNull
 	@JsonProperty(DSpaceConstants.ODRL_TARGET)
-	private String target;
+	private Object target;
 	
 	@NotNull
 	@JsonProperty(DSpaceConstants.ODRL_ASSIGNER)
@@ -109,7 +109,7 @@ public class Offer {
 		}
 		
 		@JsonProperty(DSpaceConstants.ODRL_TARGET)
-		public Builder target(String target) {
+		public Builder target(Object target) {
 			offer.target = target;
 			return this;
 		}
