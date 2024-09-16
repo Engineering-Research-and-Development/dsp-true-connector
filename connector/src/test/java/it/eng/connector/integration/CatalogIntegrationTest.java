@@ -2,6 +2,7 @@ package it.eng.connector.integration;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -14,12 +15,17 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.util.MockObjectUtil;
 import it.eng.connector.util.TestUtil;
 import it.eng.tools.model.DSpaceConstants;
 
 class CatalogIntegrationTest extends BaseIntegrationTest {
+	
+	private final ObjectMapper mapper = new ObjectMapper();
 
     @Test
     @DisplayName("Get catalog - success")
@@ -34,9 +40,12 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
     					.content(body)
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isOk())
-    	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CATALOG.getType())))
-    	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
+	    	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+	    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CATALOG.getType())));
+    	
+    	JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
+		JsonNode contextNode = jsonNode.get(DSpaceConstants.CONTEXT);
+		assertTrue(validateContext(contextNode));
     }
     
     @Test
@@ -54,8 +63,18 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
 		    result.andExpect(status().isBadRequest())
 		        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
 		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CATALOG_ERROR.getType())))
-		        .andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)))
-		        .andExpect(jsonPath("['"+DSpaceConstants.DSPACE_REASON+"'][0]['"+DSpaceConstants.VALUE+"']", containsString("@type field not correct, expected dspace:CatalogRequestMessage")));
+		        .andExpect(jsonPath("['"+DSpaceConstants.DSPACE_REASON+"'][0]['"+DSpaceConstants.VALUE+"']", 
+		        		containsString("@type field not correct, expected dspace:CatalogRequestMessage")));
+		    
+			JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
+			JsonNode contextNode = jsonNode.get(DSpaceConstants.CONTEXT);
+			assertTrue(validateContext(contextNode));
+	}
+    
+    private boolean validateContext(JsonNode jsonNode) {
+		return DSpaceConstants.CONTEXT_MAP.keySet().stream()
+			.map(key -> jsonNode.get(key).asText().equals(DSpaceConstants.CONTEXT_MAP.get(key)))
+			.findFirst().get();
 	}
 	
 	@Test
@@ -72,8 +91,11 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
 		            .contentType(MediaType.APPLICATION_JSON));
 		    result.andExpect(status().isOk())
 		        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.DATASET.getType())))
-		        .andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
+		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.DATASET.getType())));
+		    
+		    JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
+			JsonNode contextNode = jsonNode.get(DSpaceConstants.CONTEXT);
+			assertTrue(validateContext(contextNode));
 	}
 	
 	@Test
@@ -91,8 +113,11 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
 		    result.andExpect(status().isBadRequest())
 		        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
 		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CATALOG_ERROR.getType())))
-		        .andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)))
 		        .andExpect(jsonPath("['"+DSpaceConstants.DSPACE_REASON+"'][0]['"+DSpaceConstants.VALUE+"']", containsString("@type field not correct, expected dspace:DatasetRequestMessage")));
+	
+		    JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
+			JsonNode contextNode = jsonNode.get(DSpaceConstants.CONTEXT);
+			assertTrue(validateContext(contextNode));
 	}
 	
 	@Test
@@ -110,8 +135,10 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
 		    result.andExpect(status().isNotFound())
 		        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
 		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CATALOG_ERROR.getType())))
-		        .andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)))
 		        .andExpect(jsonPath("['"+DSpaceConstants.DSPACE_REASON+"'][0]['"+DSpaceConstants.VALUE+"']", containsString("Data Set with id: 1 not found")));
+
+		    JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
+			JsonNode contextNode = jsonNode.get(DSpaceConstants.CONTEXT);
+			assertTrue(validateContext(contextNode));
 	}
-	
 }

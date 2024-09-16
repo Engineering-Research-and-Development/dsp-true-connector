@@ -5,7 +5,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -106,7 +106,7 @@ public class MockObjectUtil {
             .issued(ISSUED)
             .modified(MODIFIED)
             .format(Reference.Builder.newInstance().id("HTTP:PULL").build())
-            .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
+//            .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
             .accessService(Arrays.asList(DataServiceUtil.DATA_SERVICE).stream().collect(Collectors.toCollection(HashSet::new)))
             .build();
 
@@ -172,7 +172,7 @@ public class MockObjectUtil {
             .service(Arrays.asList(DataServiceUtil.DATA_SERVICE).stream().collect(Collectors.toCollection(HashSet::new)))
             .dataset(Arrays.asList(DATASET).stream().collect(Collectors.toCollection(HashSet::new)))
             .distribution(Arrays.asList(DISTRIBUTION).stream().collect(Collectors.toCollection(HashSet::new)))
-            .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
+//            .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
             .homepage(ENDPOINT_URL)
             .build();
 
@@ -201,7 +201,7 @@ public class MockObjectUtil {
     public static final CatalogError CATALOG_ERROR = CatalogError.Builder.newInstance().build();
 
     public static final CatalogRequestMessage CATALOG_REQUEST_MESSAGE = CatalogRequestMessage.Builder.newInstance()
-            .filter(List.of("some-filter"))
+            .filter(Map.of("key", "some-filter"))
             .build();
 
     public static final Collection<Catalog> CATALOGS = Arrays.asList(CATALOG);

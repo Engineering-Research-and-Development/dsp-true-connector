@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.Arrays;
+import java.util.Map;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,7 +21,7 @@ import jakarta.validation.ValidationException;
 public class CatalogRequestMessageTest {
 
 	private CatalogRequestMessage catalogRequestMessage = CatalogRequestMessage.Builder.newInstance()
-			.filter(Arrays.asList("filter1"))
+			.filter(Map.of("key", "filter1"))
 			.build();
 	
 	@Test
@@ -82,7 +82,7 @@ public class CatalogRequestMessageTest {
 		assertNotNull(javaObj);
 		assertNotNull(javaObj.getFilter());
 		// must be exact one in array
-		assertNotNull(javaObj.getFilter().get(0));
+		assertNotNull(javaObj.getFilter());
 	}
 	
 }

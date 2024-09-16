@@ -6,8 +6,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -246,12 +246,18 @@ public class Serializer {
             // skip context check if not one of following
             if (!(clazz.equals(Distribution.class) || clazz.equals(DataService.class) || clazz.equals(Offer.class))) {
                 Objects.requireNonNull(jsonNode.get(DSpaceConstants.CONTEXT));
-                if (!Objects.equals(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE, jsonNode.get(DSpaceConstants.CONTEXT).asText())) {
-                    throw new ValidationException("@contexxt field not valid - was " + jsonNode.get(DSpaceConstants.CONTEXT).asText());
+                if (!validateContext(jsonNode.get(DSpaceConstants.CONTEXT))) {
+                    throw new ValidationException("@context field not valid - was " + jsonNode.get(DSpaceConstants.CONTEXT));
                 }
             }
         } catch (NullPointerException npe) {
             throw new ValidationException("Missing mandatory protocol fields @context and/or @type or value not correct");
         }
     }
+
+	private static boolean validateContext(JsonNode jsonNode) {
+		return DSpaceConstants.CONTEXT_MAP.keySet().stream()
+			.map(key -> jsonNode.get(key).asText().equals(DSpaceConstants.CONTEXT_MAP.get(key)))
+			.findFirst().get();
+	}
 }

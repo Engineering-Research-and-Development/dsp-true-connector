@@ -25,7 +25,6 @@
     {
       "_class": "it.eng.catalog.model.Catalog",
       "_id": "urn:uuid:1dc45797-3333-4955-8baf-ab7fd66ac4d5",
-      "context": "https://w3id.org/dspace/2024/1/context.json",
       "keyword": [
         "Employee",
         "Information",
@@ -80,7 +79,6 @@
   "datasets": [
     {
       "_class": "it.eng.catalog.model.Dataset",
-      "context": "https://w3id.org/dspace/2024/1/context.json",
       "_id": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "keyword": [
         "Personal information",

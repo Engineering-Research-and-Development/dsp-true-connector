@@ -1,6 +1,6 @@
 package it.eng.catalog.model;
 
-import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -36,7 +36,7 @@ public class CatalogRequestMessage extends AbstractCatalogObject {
 	private static final long serialVersionUID = 8564526286689300458L;
 	
 	@JsonProperty(DSpaceConstants.DSPACE_FILTER)
-	private List<String> filter;
+	private Map<String, Object> filter;
 
 	@JsonPOJOBuilder(withPrefix = "")
 	@JsonIgnoreProperties(ignoreUnknown = true)
@@ -53,7 +53,7 @@ public class CatalogRequestMessage extends AbstractCatalogObject {
 		}
 		
 		@JsonProperty(DSpaceConstants.DSPACE_FILTER)
-		public Builder filter(List<String> filter) {
+		public Builder filter(Map<String, Object> filter) {
 			message.filter = filter;
 			return this;
 		}

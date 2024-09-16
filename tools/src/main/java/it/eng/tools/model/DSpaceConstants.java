@@ -1,5 +1,7 @@
 package it.eng.tools.model;
 
+import java.util.Map;
+
 public interface DSpaceConstants {
 
 	public static enum ContractNegotiationStates {
@@ -17,6 +19,14 @@ public interface DSpaceConstants {
 	public static enum Operators {
 		EQ, GT, GTEQ, HAS_PARENT, IS_A, IS_ALL_OF, IS_ANY_OF, IS_NONE_OF, IS_PART_OF, LT, TERM_LTEQ, NEQ;
 	}
+	
+	public static final Map<String, String> CONTEXT_MAP = Map.of(
+			"@vocab", "https://w3id.org/edc/v0.0.1/ns/",
+			"dcat", "http://www.w3.org/ns/dcat#",
+			"dct", "http://purl.org/dc/terms/",
+			"odrl", "http://www.w3.org/ns/odrl/2/",
+			"dspace", DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE
+		);
 
 	public static final String DSPACE = "dspace:";
 	public static final String DCAT = "dcat:";

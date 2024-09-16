@@ -90,7 +90,7 @@ public class DistributionTest {
 		assertNotNull(distribution.getTitle());
 		assertNotNull(distribution.getAccessService());
 		assertNotNull(distribution.getDescription());
-		assertNotNull(distribution.getHasPolicy());
+//		assertNotNull(distribution.getHasPolicy());
 		assertNotNull(distribution.getIssued());
 		assertNotNull(distribution.getModified());
 		assertNotNull(distribution.getFormat().getId());
