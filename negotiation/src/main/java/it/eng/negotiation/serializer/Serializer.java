@@ -70,7 +70,7 @@ public class Serializer {
 		
 		jsonMapper = JsonMapper.builder()
 				.serializationInclusion(Include.NON_NULL)
-				.serializationInclusion(Include.NON_EMPTY)
+//				.serializationInclusion(Include.NON_EMPTY)
 				.configure(SerializationFeature.INDENT_OUTPUT, true)
 				.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
 				.build();

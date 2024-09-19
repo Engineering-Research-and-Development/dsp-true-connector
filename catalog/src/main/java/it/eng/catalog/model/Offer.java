@@ -62,7 +62,7 @@ public class Offer implements Serializable {
 	// Different to a Catalog or Dataset, the Offer inside a Contract Request Message must have an odrl:target attribute.
 	// not mandatory for Catalog or Dataset offer to have target field - different from the Offer in negotiation module
 	@JsonProperty(DSpaceConstants.ODRL_TARGET)
-	private String target;
+	private Object target;
 	
 	// required in catalog???
 	@JsonProperty(DSpaceConstants.ODRL_ASSIGNER)
@@ -105,7 +105,7 @@ public class Offer implements Serializable {
 		
 //		@JsonSetter(DSpaceConstants.ODRL_TARGET)
 		@JsonProperty(DSpaceConstants.ODRL_TARGET)
-		public Builder target(String target) {
+		public Builder target(Object target) {
 			offer.target = target;
 			return this;
 		}

@@ -1,5 +1,6 @@
 package it.eng.negotiation.model;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -9,6 +10,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonProperty.Access;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
@@ -117,6 +119,10 @@ public class Agreement {
 		
 		@JsonProperty(DSpaceConstants.ODRL_PERMISSION)
 		public Builder permission(List<Permission> permission) {
+			if(permission == null) {
+				// compatibility with EDC, they expect to have empty array not null or excluded field
+				permission = new ArrayList<>();
+			}
 			agreement.permission = permission;
 			return this;
 		}
@@ -139,8 +145,9 @@ public class Agreement {
 	}
 
 	@JsonIgnoreProperties(value={ "type" }, allowGetters=true)
+	@JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
 	public String getType() {
-		return DSpaceConstants.DSPACE + Agreement.class.getSimpleName();
+		return DSpaceConstants.ODRL + Agreement.class.getSimpleName();
 	}
 		
 }
