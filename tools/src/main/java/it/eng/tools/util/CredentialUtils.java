@@ -4,6 +4,10 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class CredentialUtils {
+	
+	private String EDC_AUTH = "{\"region\":\"eu\",\"audience\":\"\r\n"
+			+ "http://localhost:8090\",\"clientId\":\"consumer\"\r\n"
+			+ "}";
 
 	public String getConnectorCredentials() {
 		// TODO replace with Daps JWT

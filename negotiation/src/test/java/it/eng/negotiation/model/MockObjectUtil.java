@@ -53,6 +53,12 @@ public class MockObjectUtil {
 			.rightOperand("2024-02-29T00:00:01+01:00")
 			.build();
 	
+	public static final Constraint CONSTRAINT_AS_OBECT = Constraint.Builder.newInstance()
+			.leftOperand(Reference.Builder.newInstance().id(LeftOperand.DATE_TIME.toString()).build())
+			.operator(Reference.Builder.newInstance().id(Operator.GT.toString()).build())
+			.rightOperand("2024-02-29T00:00:01+01:00")
+			.build();
+	
 	public static final Constraint CONSTRAINT_COUNT_5 = Constraint.Builder.newInstance()
 			.leftOperand(LeftOperand.COUNT)
 			.operator(Operator.EQ)

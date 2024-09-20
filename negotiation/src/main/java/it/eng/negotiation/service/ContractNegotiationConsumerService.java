@@ -139,7 +139,8 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
      */
 
     public void handleFinalizeEvent(ContractNegotiationEventMessage contractNegotiationEventMessage) {
-    	if (!contractNegotiationEventMessage.getEventType().equals(ContractNegotiationEventType.FINALIZED)) {
+    	ContractNegotiationEventType eventType = ContractNegotiationEventMessage.extractContractNegotiationEventType(contractNegotiationEventMessage.getEventType());
+    	if (!eventType.equals(ContractNegotiationEventType.FINALIZED)) {
 			throw new ContractNegotiationInvalidEventTypeException(
 					"Contract negotiation event message with providerPid " + contractNegotiationEventMessage.getProviderPid() + 
 					" and consumerPid " + contractNegotiationEventMessage.getConsumerPid() + " event type is not FINALIZED, aborting state transition", contractNegotiationEventMessage.getConsumerPid(), contractNegotiationEventMessage.getProviderPid());

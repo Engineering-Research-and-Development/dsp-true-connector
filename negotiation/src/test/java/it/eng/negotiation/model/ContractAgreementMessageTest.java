@@ -105,7 +105,9 @@ public class ContractAgreementMessageTest {
 	public void equalsTestPlain() {
 		String ss = Serializer.serializePlain(contractAgreementMessage);
 		ContractAgreementMessage obj = Serializer.deserializePlain(ss, ContractAgreementMessage.class);
-		assertThat(contractAgreementMessage).usingRecursiveComparison().isEqualTo(obj);
+		assertThat(contractAgreementMessage)
+			.usingRecursiveComparison().usingOverriddenEquals()
+			.isEqualTo(obj);
 	}
 	
 	@Test
@@ -113,7 +115,9 @@ public class ContractAgreementMessageTest {
 	public void equalsTestProtocol() {
 		String ss = Serializer.serializeProtocol(contractAgreementMessage);
 		ContractAgreementMessage obj = Serializer.deserializeProtocol(ss, ContractAgreementMessage.class);
-		assertThat(contractAgreementMessage).usingRecursiveComparison().isEqualTo(obj);
+		assertThat(contractAgreementMessage)
+			.usingRecursiveComparison().usingOverriddenEquals()
+			.isEqualTo(obj);
 	}
 	
 	private void validateAgreementProtocol(JsonNode agreement) {
@@ -143,12 +147,13 @@ public class ContractAgreementMessageTest {
 		
 		var permission = agreement.getPermission().get(0);
 		assertNotNull(permission);
-		assertEquals(Action.USE, permission.getAction());
+		// when deserialized it will be of type String
+		assertEquals(Action.USE, Action.fromAction((String) permission.getAction()));
 		
 		var constraint = permission.getConstraint().get(0);
 		assertNotNull(constraint);
-		assertEquals(LeftOperand.COUNT, constraint.getLeftOperand());
-		assertEquals(Operator.EQ, constraint.getOperator());
+		assertEquals(LeftOperand.COUNT, LeftOperand.fromString((String) constraint.getLeftOperand()));
+		assertEquals(Operator.EQ,  Operator.fromString((String) constraint.getOperator()));
 		assertEquals("5", constraint.getRightOperand());
 		
 	}

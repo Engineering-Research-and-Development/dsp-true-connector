@@ -40,5 +40,9 @@ public class ContractNegotiationProperties {
 	public String getAssignee() {
 		return "TRUEConnector v2";
 	}
+
+	public boolean sendAsObject() {
+		return false;
+	}
 	
 }

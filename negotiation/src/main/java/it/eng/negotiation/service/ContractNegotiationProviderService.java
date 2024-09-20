@@ -146,16 +146,18 @@ public class ContractNegotiationProviderService extends BaseProtocolService {
 
 	public ContractNegotiation handleContractNegotationEventMessage(
 			ContractNegotiationEventMessage contractNegotiationEventMessage) {
-		switch (contractNegotiationEventMessage.getEventType()) {
+		switch (ContractNegotiationEventMessage
+				.extractContractNegotiationEventType(contractNegotiationEventMessage.getEventType())) {
 		case ACCEPTED: {
 			return processAccepted(contractNegotiationEventMessage);
 		}
 		case FINALIZED: {
 			return null;
-		}
+			}
 		}
 		return null;
 	}
+	
 
 	private ContractNegotiation processAccepted(ContractNegotiationEventMessage contractNegotiationEventMessage) {
 		ContractNegotiation contractNegotiation = findContractNegotiationByPids(contractNegotiationEventMessage.getConsumerPid(), contractNegotiationEventMessage.getProviderPid());

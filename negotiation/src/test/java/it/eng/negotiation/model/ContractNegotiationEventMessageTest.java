@@ -72,7 +72,7 @@ public class ContractNegotiationEventMessageTest {
 	public void equalsTestPlain() {
 		String ss = Serializer.serializePlain(contractNegotiationEventMessage);
 		ContractNegotiationEventMessage obj = Serializer.deserializePlain(ss, ContractNegotiationEventMessage.class);
-		assertThat(contractNegotiationEventMessage).usingRecursiveComparison().isEqualTo(obj);
+		assertThat(contractNegotiationEventMessage).usingRecursiveComparison().usingOverriddenEquals().isEqualTo(obj);
 	}
 	
 	@Test
@@ -80,7 +80,7 @@ public class ContractNegotiationEventMessageTest {
 	public void equalsTestProtocol() {
 		String ss = Serializer.serializeProtocol(contractNegotiationEventMessage);
 		ContractNegotiationEventMessage obj = Serializer.deserializeProtocol(ss, ContractNegotiationEventMessage.class);
-		assertThat(contractNegotiationEventMessage).usingRecursiveComparison().isEqualTo(obj);
+		assertThat(contractNegotiationEventMessage).usingRecursiveComparison().usingOverriddenEquals().isEqualTo(obj);
 	}
 	
 	private void validateJavaObj(ContractNegotiationEventMessage javaObj) {

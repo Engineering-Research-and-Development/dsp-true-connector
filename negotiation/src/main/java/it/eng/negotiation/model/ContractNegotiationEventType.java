@@ -1,5 +1,9 @@
 package it.eng.negotiation.model;
 
+import java.util.Collections;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.fasterxml.jackson.annotation.JsonValue;
 
 import it.eng.tools.model.DSpaceConstants;
@@ -15,14 +19,19 @@ public enum ContractNegotiationEventType {
 	ContractNegotiationEventType(final String eventType) {
         this.eventType = eventType;
     }
+	
+	private static final Map<String,ContractNegotiationEventType> BY_LABEL;
+	static {
+        Map<String,ContractNegotiationEventType> map = new ConcurrentHashMap<String, ContractNegotiationEventType>();
+        for (ContractNegotiationEventType instance : ContractNegotiationEventType.values()) {
+            map.put(instance.toString(), instance);
+            map.put(instance.name(), instance);
+        }
+        BY_LABEL = Collections.unmodifiableMap(map);
+    }
 
 	public static ContractNegotiationEventType fromEventType(String label) {
-	    for (ContractNegotiationEventType e : values()) {
-	        if (e.eventType.equals(label)) {
-	            return e;
-	        }
-	    }
-	    return null;
+	  return BY_LABEL.get(label);
 	}
 	
 	@Override

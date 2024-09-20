@@ -65,5 +65,18 @@ public class PermissionTest {
 		Permission p = Serializer.deserializePlain(permissionString, Permission.class);
 		assertNotNull(p);
 	}
+	
+	@Test
+	public void objectVsStringEquals() {
+		Permission permission = Permission.Builder.newInstance()
+				.action(Action.USE)
+				.constraint(Arrays.asList(MockObjectUtil.CONSTRAINT))
+				.build();
+		Permission permissionObj = Permission.Builder.newInstance()
+				.action(Reference.Builder.newInstance().id(Action.USE.toString()).build())
+				.constraint(Arrays.asList(MockObjectUtil.CONSTRAINT))
+				.build();
+		assertTrue(permission.equals(permissionObj));
+	}
 }
 

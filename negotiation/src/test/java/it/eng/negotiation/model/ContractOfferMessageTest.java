@@ -74,7 +74,9 @@ public class ContractOfferMessageTest {
 		ContractOfferMessage contractOfferMessage = MockObjectUtil.CONTRACT_OFFER_MESSAGE;
 		String ss = Serializer.serializePlain(contractOfferMessage);
 		ContractOfferMessage obj = Serializer.deserializePlain(ss, ContractOfferMessage.class);
-		assertThat(contractOfferMessage).usingRecursiveComparison().isEqualTo(obj);
+		assertThat(contractOfferMessage)
+			.usingRecursiveComparison().usingOverriddenEquals()
+			.isEqualTo(obj);
 	}
 	
 	@Test
@@ -83,7 +85,9 @@ public class ContractOfferMessageTest {
 		ContractOfferMessage contractOfferMessage = MockObjectUtil.CONTRACT_OFFER_MESSAGE;
 		String ss = Serializer.serializeProtocol(contractOfferMessage);
 		ContractOfferMessage obj = Serializer.deserializeProtocol(ss, ContractOfferMessage.class);
-		assertThat(contractOfferMessage).usingRecursiveComparison().isEqualTo(obj);
+		assertThat(contractOfferMessage)
+			.usingRecursiveComparison().usingOverriddenEquals()
+			.isEqualTo(obj);
 	}
 	
 	private void validateOfferProtocol(JsonNode offer) {

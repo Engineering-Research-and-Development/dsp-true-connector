@@ -1,5 +1,6 @@
 package it.eng.negotiation.model;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -42,7 +43,7 @@ public class ContractNegotiationEventMessage extends AbstractNegotiationObject {
 	
 	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_EVENT_TYPE)
-	private ContractNegotiationEventType eventType;
+	private Object eventType;
 	
 	@JsonPOJOBuilder(withPrefix = "")
 	@JsonIgnoreProperties(ignoreUnknown = true)
@@ -71,7 +72,7 @@ public class ContractNegotiationEventMessage extends AbstractNegotiationObject {
 		}
 		
 		@JsonProperty(DSpaceConstants.DSPACE_EVENT_TYPE)
-		public Builder eventType(ContractNegotiationEventType eventType) {
+		public Builder eventType(Object eventType) {
 			message.eventType = eventType;
 			return this;
 		}
@@ -94,5 +95,45 @@ public class ContractNegotiationEventMessage extends AbstractNegotiationObject {
 	public String getType() {
 		return DSpaceConstants.DSPACE + ContractNegotiationEventMessage.class.getSimpleName();
 	}
+	
+	@Override
+	public boolean equals(Object o) {
+		if (o == this) {
+			return true;
+		}
+		if (!(o instanceof ContractNegotiationEventMessage)) {
+			return false;
+		}
 		
+		// typecast o to ContractNegotiationEventMessage so that we can compare data members 
+		ContractNegotiationEventMessage message = (ContractNegotiationEventMessage) o;
+		
+		if(!this.consumerPid.equals(message.getConsumerPid())) {
+			return false;
+		}
+		
+		if(!this.providerPid.equals(message.getProviderPid())) {
+			return false;
+		}
+		ContractNegotiationEventType thisEventType = extractContractNegotiationEventType(this.getEventType());
+		ContractNegotiationEventType anotherEventType = extractContractNegotiationEventType(message.getEventType());
+		if (thisEventType != anotherEventType) {
+            return false;
+		}
+		return true;
+	}
+		
+	public static ContractNegotiationEventType extractContractNegotiationEventType(Object cnEventType) {
+		ContractNegotiationEventType eventType = null;
+		if(cnEventType instanceof Map) {
+			eventType = ContractNegotiationEventType.fromEventType((String)((Map)cnEventType).get(DSpaceConstants.ID));
+		} else if(cnEventType instanceof Reference) {
+			eventType = ContractNegotiationEventType.fromEventType(((Reference)cnEventType).getId());
+		} else if(cnEventType instanceof String) {
+			eventType = ContractNegotiationEventType.fromEventType((String) cnEventType);
+		} else {
+			eventType = (ContractNegotiationEventType) cnEventType;
+		}
+		return eventType;
+	}
 }

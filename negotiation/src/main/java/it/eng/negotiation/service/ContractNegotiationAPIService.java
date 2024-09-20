@@ -27,6 +27,7 @@ import it.eng.negotiation.model.ContractOfferMessage;
 import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.model.Reason;
+import it.eng.negotiation.model.Reference;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
@@ -221,13 +222,20 @@ public class ContractNegotiationAPIService {
 		ContractNegotiation contractNegotiation = findContractNegotiationById(contractNegotiationId);
 
 		stateTransitionCheck(ContractNegotiationState.FINALIZED, contractNegotiation.getState());
-		
-		 ContractNegotiationEventMessage  contractNegotiationEventMessage = ContractNegotiationEventMessage.Builder.newInstance()
+		ContractNegotiationEventMessage contractNegotiationEventMessage = null;
+		if(properties.sendAsObject()) {
+			contractNegotiationEventMessage = ContractNegotiationEventMessage.Builder.newInstance()
 					.consumerPid(contractNegotiation.getConsumerPid())
 					.providerPid(contractNegotiation.getProviderPid())
-					.eventType(ContractNegotiationEventType.FINALIZED)
+//					.eventType(Reference.Builder.newInstance().id(ContractNegotiationEventType.FINALIZED.toString()).build())
 					.build();
-		
+		} else {
+			 contractNegotiationEventMessage = ContractNegotiationEventMessage.Builder.newInstance()
+						.consumerPid(contractNegotiation.getConsumerPid())
+						.providerPid(contractNegotiation.getProviderPid())
+						.eventType(ContractNegotiationEventType.FINALIZED)
+						.build();
+		}
 		//	https://consumer.com/:callback/negotiations/:consumerPid/events
 		String callbackAddress = ContractNegotiationCallback.getContractEventsCallback(contractNegotiation.getCallbackAddress(), contractNegotiation.getConsumerPid());
 		

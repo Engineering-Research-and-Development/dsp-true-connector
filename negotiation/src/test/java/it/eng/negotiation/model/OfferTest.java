@@ -68,7 +68,7 @@ public class OfferTest {
 		Offer offer = MockObjectUtil.OFFER;
 		String ss = Serializer.serializePlain(offer);
 		Offer offer2 = Serializer.deserializePlain(ss, Offer.class);
-		assertThat(offer).usingRecursiveComparison().isEqualTo(offer2);
+		assertThat(offer).usingRecursiveComparison().usingOverriddenEquals().isEqualTo(offer2);
 	}
 	
 	@Test
@@ -77,7 +77,7 @@ public class OfferTest {
 		Offer offer = MockObjectUtil.OFFER;
 		String ss = Serializer.serializePlain(offer);
 		Offer obj = Serializer.deserializePlain(ss, Offer.class);
-		assertThat(offer).usingRecursiveComparison().isEqualTo(obj);
+		assertThat(offer).usingRecursiveComparison().usingOverriddenEquals().isEqualTo(obj);
 	}
 	
 	@Test
@@ -86,6 +86,6 @@ public class OfferTest {
 		Offer offer = MockObjectUtil.OFFER;
 		String ss = Serializer.serializeProtocol(offer);
 		Offer obj = Serializer.deserializeProtocol(ss, Offer.class);
-		assertThat(offer).usingRecursiveComparison().isEqualTo(obj);
+		assertThat(offer).usingRecursiveComparison().usingOverriddenEquals().isEqualTo(obj);
 	}
 }

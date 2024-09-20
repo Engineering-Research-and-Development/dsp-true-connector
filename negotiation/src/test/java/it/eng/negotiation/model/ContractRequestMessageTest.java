@@ -118,7 +118,9 @@ public class ContractRequestMessageTest {
 	public void equalsTestPlain() {
 		String ss = Serializer.serializePlain(contractRequestMessage);
 		ContractRequestMessage obj = Serializer.deserializePlain(ss, ContractRequestMessage.class);
-		assertThat(contractRequestMessage).usingRecursiveComparison().isEqualTo(obj);
+		assertThat(contractRequestMessage)
+			.usingRecursiveComparison().usingOverriddenEquals()
+			.isEqualTo(obj);
 	}
 	
 	@Test
@@ -126,7 +128,9 @@ public class ContractRequestMessageTest {
 	public void equalsTestProtocol() {
 		String ss = Serializer.serializeProtocol(contractRequestMessage);
 		ContractRequestMessage obj = Serializer.deserializeProtocol(ss, ContractRequestMessage.class);
-		assertThat(contractRequestMessage).usingRecursiveComparison().isEqualTo(obj);
+		assertThat(contractRequestMessage)
+			.usingRecursiveComparison().usingOverriddenEquals()
+			.isEqualTo(obj);
 	}
 	
 	private void validateOfferProtocol(JsonNode offer) {

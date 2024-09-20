@@ -59,7 +59,7 @@ public class AgreementTest {
 	public void equalsTestPlain() {
 		String ss = Serializer.serializePlain(agreement);
 		Agreement obj = Serializer.deserializePlain(ss, Agreement.class);
-		assertThat(agreement).usingRecursiveComparison().isEqualTo(obj);
+		assertThat(agreement).usingRecursiveComparison().usingOverriddenEquals().isEqualTo(obj);
 	}
 	
 	@Test
@@ -67,7 +67,7 @@ public class AgreementTest {
 	public void equalsTestProtocol() {
 		String ss = Serializer.serializeProtocol(agreement);
 		Agreement obj = Serializer.deserializeProtocol(ss, Agreement.class);
-		assertThat(agreement).usingRecursiveComparison().isEqualTo(obj);
+		assertThat(agreement).usingRecursiveComparison().usingOverriddenEquals().isEqualTo(obj);
 	}
 	
 }
