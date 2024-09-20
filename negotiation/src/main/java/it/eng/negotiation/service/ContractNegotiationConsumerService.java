@@ -2,6 +2,7 @@ package it.eng.negotiation.service;
 
 import java.util.UUID;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -98,13 +99,16 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
     		throw new OfferNotFoundException("For ContractNegotiation with consumerPid {} and providerPid {} Offer does not exists", 
     				contractNegotiation.getConsumerPid(), contractNegotiation.getProviderPid());
     	}
-
+    	String callbackAddress = StringUtils.isNotBlank(contractAgreementMessage.getCallbackAddress()) ? 
+    			contractAgreementMessage.getCallbackAddress() :
+    				contractNegotiation.getCallbackAddress();
+    	
 //    	Must do like this since callbackAddress might be null
     	ContractNegotiation contractNegotiationAgreed = ContractNegotiation.Builder.newInstance()
     			.id(contractNegotiation.getId())
     			.consumerPid(contractNegotiation.getConsumerPid())
     			.providerPid(contractNegotiation.getProviderPid())
-    			.callbackAddress(contractAgreementMessage.getCallbackAddress())
+    			.callbackAddress(callbackAddress)
     			.assigner(contractNegotiation.getAssigner())
     			.state(ContractNegotiationState.AGREED)
     			.role(contractNegotiation.getRole())

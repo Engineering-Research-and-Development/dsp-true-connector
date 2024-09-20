@@ -79,7 +79,8 @@ public class ContractNegotiationAPIService {
 				.consumerPid("urn:uuid:" + UUID.randomUUID())
 				.offer(offer)
 				.build();
-		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(forwardTo, 
+		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
+				ContractNegotiationCallback.getRequest(forwardTo), 
 				Serializer.serializeProtocolJsonNode(contractRequestMessage), credentialUtils.getConnectorCredentials());
 		log.info("Response received {}", response);
 		ContractNegotiation contractNegotiationWithOffer = null;
@@ -103,7 +104,8 @@ public class ContractNegotiationAPIService {
 						.id(contractNegotiation.getId())
 		    			.consumerPid(contractNegotiation.getConsumerPid())
 		    			.providerPid(contractNegotiation.getProviderPid())
-		    			.callbackAddress(contractNegotiation.getCallbackAddress())
+		    			// added provider connector base URL so that it can be used in sending ContractNegotiationAgreementVerification
+		    			.callbackAddress(forwardTo)
 		    			.assigner(offer.getAssigner())
 		    			.state(contractNegotiation.getState())
 		    			.role(IConstants.ROLE_CONSUMER)

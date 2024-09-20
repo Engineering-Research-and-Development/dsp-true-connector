@@ -2,6 +2,7 @@ package it.eng.negotiation.rest.protocol;
 
 public class ContractNegotiationCallback {
 
+	private static final String REQUEST = "/negotiations/request";
 	private static final String OFFERS = "/negotiations/offers";
 	private static final String CONSUMER_OFFERS = ":callback:/negotiations/:consumerPid:/offers";
 	private static final String CONSUMER_AGREEMENT = ":callback:/negotiations/:consumerPid:/agreement";
@@ -14,7 +15,11 @@ public class ContractNegotiationCallback {
 	// /{providerPid}/agreement/verification
 	private static final String PROVIDER_AGREEMENT_VERIFICATION = ":callback:/negotiations/:providerPid:/agreement/verification";
 	
-	public static String getOffersCallback() {
+	public static String getRequest(String address) {
+		return  getValidCallback(address) + REQUEST;
+	}
+	
+	public static String getOffers() {
 		return OFFERS;
 	}
 

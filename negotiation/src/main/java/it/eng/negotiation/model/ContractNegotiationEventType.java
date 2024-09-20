@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 import it.eng.tools.model.DSpaceConstants;
@@ -26,6 +27,7 @@ public enum ContractNegotiationEventType {
         for (ContractNegotiationEventType instance : ContractNegotiationEventType.values()) {
             map.put(instance.toString(), instance);
             map.put(instance.name(), instance);
+            map.put("https://w3id.org/dspace/v0.8/"	+ instance.name(), instance);
         }
         BY_LABEL = Collections.unmodifiableMap(map);
     }
@@ -39,4 +41,13 @@ public enum ContractNegotiationEventType {
     public String toString() {
         return eventType;
     }
+	
+	@JsonCreator
+	public static ContractNegotiationEventType fromString(String string) {
+		ContractNegotiationEventType contractNegotiationEventType = BY_LABEL.get(string);
+		if (contractNegotiationEventType == null) {
+			throw new IllegalArgumentException(string + " has no corresponding value");
+		}
+		return contractNegotiationEventType;
+	}
 }

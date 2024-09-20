@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 import it.eng.tools.model.DSpaceConstants;
@@ -63,7 +64,9 @@ public enum ContractNegotiationState {
 	static {
         Map<String,ContractNegotiationState> map = new ConcurrentHashMap<String, ContractNegotiationState>();
         for (ContractNegotiationState instance : ContractNegotiationState.values()) {
-            map.put(instance.toString().toLowerCase(), instance);
+            map.put(instance.toString(), instance);
+            map.put(instance.name(), instance);
+            map.put("https://w3id.org/dspace/v0.8/" + instance.name(), instance);
         }
         ENUM_MAP = Collections.unmodifiableMap(map);
     }
@@ -85,4 +88,13 @@ public enum ContractNegotiationState {
     public String toString() {
         return state;
     }
+	
+	@JsonCreator
+	public static ContractNegotiationState fromString(String string) {
+		ContractNegotiationState contractNegotiationState = ENUM_MAP.get(string);
+		if (contractNegotiationState == null) {
+			throw new IllegalArgumentException(string + " has no corresponding value");
+		}
+		return contractNegotiationState;
+	}
 }

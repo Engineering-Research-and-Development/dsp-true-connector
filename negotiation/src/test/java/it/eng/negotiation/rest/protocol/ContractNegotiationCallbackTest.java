@@ -13,7 +13,7 @@ public class ContractNegotiationCallbackTest {
  
 	@Test
 	public void getOffersCallback() {
-		assertEquals("/negotiations/offers", ContractNegotiationCallback.getOffersCallback());
+		assertEquals("/negotiations/offers", ContractNegotiationCallback.getOffers());
 	}
 	
 	@Test

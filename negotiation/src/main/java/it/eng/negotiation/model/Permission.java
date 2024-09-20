@@ -137,6 +137,7 @@ public class Permission {
 		if (thisAction != anotherAction) {
             return false;
 		}
+		// TODO check if there is some other way to check 2 arrays, if ordering is not the same
 		if(!Arrays.equals(this.constraint.toArray(), permission.getConstraint().toArray())){
             return false;
 		}
