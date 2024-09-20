@@ -225,19 +225,19 @@ public class ContractNegotiationAPIService {
 
 		stateTransitionCheck(ContractNegotiationState.FINALIZED, contractNegotiation.getState());
 		ContractNegotiationEventMessage contractNegotiationEventMessage = null;
-		if(properties.sendAsObject()) {
+//		if(properties.sendAsObject()) {
 			contractNegotiationEventMessage = ContractNegotiationEventMessage.Builder.newInstance()
 					.consumerPid(contractNegotiation.getConsumerPid())
 					.providerPid(contractNegotiation.getProviderPid())
-//					.eventType(Reference.Builder.newInstance().id(ContractNegotiationEventType.FINALIZED.toString()).build())
+					.eventType(Reference.Builder.newInstance().id(ContractNegotiationEventType.FINALIZED.toString()).build())
 					.build();
-		} else {
-			 contractNegotiationEventMessage = ContractNegotiationEventMessage.Builder.newInstance()
-						.consumerPid(contractNegotiation.getConsumerPid())
-						.providerPid(contractNegotiation.getProviderPid())
-						.eventType(ContractNegotiationEventType.FINALIZED)
-						.build();
-		}
+//		} else {
+//			 contractNegotiationEventMessage = ContractNegotiationEventMessage.Builder.newInstance()
+//						.consumerPid(contractNegotiation.getConsumerPid())
+//						.providerPid(contractNegotiation.getProviderPid())
+//						.eventType(ContractNegotiationEventType.FINALIZED)
+//						.build();
+//		}
 		//	https://consumer.com/:callback/negotiations/:consumerPid/events
 		String callbackAddress = ContractNegotiationCallback.getContractEventsCallback(contractNegotiation.getCallbackAddress(), contractNegotiation.getConsumerPid());
 		

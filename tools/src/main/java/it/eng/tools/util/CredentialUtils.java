@@ -4,14 +4,11 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class CredentialUtils {
-	
-	private String EDC_AUTH = "{\"region\":\"eu\",\"audience\":\"\r\n"
-			+ "http://localhost:8090\",\"clientId\":\"consumer\"\r\n"
-			+ "}";
 
 	public String getConnectorCredentials() {
 		// TODO replace with Daps JWT
-		return  okhttp3.Credentials.basic("connector@mail.com", "password");
+//		return  okhttp3.Credentials.basic("connector@mail.com", "password");
+		return "{\"region\":\"eu\",\"audience\":\"http://localhost:8090\",\"clientId\":\"pera\"}";
 	}
 	
 	public String getAPICredentials() {

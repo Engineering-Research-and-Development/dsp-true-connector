@@ -55,7 +55,7 @@ public class ContractAgreementMessage extends AbstractNegotiationObject {
 	@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
 	private String consumerPid;
 	
-	@NotNull
+//	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_CALLBACK_ADDRESS)
 	private String callbackAddress;
 	

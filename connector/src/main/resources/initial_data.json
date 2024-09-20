@@ -109,18 +109,7 @@
         {
           "_id": "urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5",
           "_class": "it.eng.catalog.model.Offer",
-          "permission": [
-            {
-              "action": "USE",
-              "constraint": [
-                {
-                  "leftOperand": "COUNT",
-                  "operator": "EQ",
-                  "rightOperand": "5"
-                }
-              ]
-            }
-          ]
+          "permission": []
         }
       ],
       "distribution": [
