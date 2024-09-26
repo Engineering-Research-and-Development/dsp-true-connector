@@ -88,6 +88,7 @@ public class MockObjectUtil {
 	public static final Permission PERMISSION_COUNT_5_REFERENCE = Permission.Builder.newInstance()
 			.action(Action.USE)
 			.target(MockObjectUtil.TARGET_REFERENCE)
+			.assigner(MockObjectUtil.ASSIGNER)
 			.constraint(Arrays.asList(MockObjectUtil.CONSTRAINT_COUNT_5_REFERENCE))
 			.build();
 	
