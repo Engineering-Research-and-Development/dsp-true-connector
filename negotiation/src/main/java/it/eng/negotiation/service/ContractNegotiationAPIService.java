@@ -81,6 +81,7 @@ public class ContractNegotiationAPIService {
 				.build();
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
 				ContractNegotiationCallback.getRequest(forwardTo), 
+				//TODO Serializer.serializePlain since it is an API call
 				Serializer.serializeProtocolJsonNode(contractRequestMessage), credentialUtils.getConnectorCredentials());
 		log.info("Response received {}", response);
 		ContractNegotiation contractNegotiationWithOffer = null;

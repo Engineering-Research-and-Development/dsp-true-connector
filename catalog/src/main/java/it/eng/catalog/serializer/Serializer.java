@@ -44,7 +44,6 @@ public class Serializer {
     private static Validator validator;
 
     static {
-
         SimpleModule instantConverterModule = new SimpleModule();
         instantConverterModule.addSerializer(Instant.class, new InstantSerializer());
         instantConverterModule.addDeserializer(Instant.class, new InstantDeserializer());
@@ -87,7 +86,7 @@ public class Serializer {
 
         jsonMapper = JsonMapper.builder()
                 .serializationInclusion(Include.NON_NULL)
-                .serializationInclusion(Include.NON_EMPTY)
+//                .serializationInclusion(Include.NON_EMPTY)
                 .configure(SerializationFeature.INDENT_OUTPUT, true)
                 .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
@@ -246,7 +245,7 @@ public class Serializer {
             // skip context check if not one of following
             if (!(clazz.equals(Distribution.class) || clazz.equals(DataService.class) || clazz.equals(Offer.class))) {
                 Objects.requireNonNull(jsonNode.get(DSpaceConstants.CONTEXT));
-                if (!validateContext(jsonNode.get(DSpaceConstants.CONTEXT))) {
+                if (!DSpaceConstants.validateContext(jsonNode.get(DSpaceConstants.CONTEXT))) {
                     throw new ValidationException("@context field not valid - was " + jsonNode.get(DSpaceConstants.CONTEXT));
                 }
             }
@@ -254,10 +253,4 @@ public class Serializer {
             throw new ValidationException("Missing mandatory protocol fields @context and/or @type or value not correct");
         }
     }
-
-	private static boolean validateContext(JsonNode jsonNode) {
-		return DSpaceConstants.CONTEXT_MAP.keySet().stream()
-			.map(key -> jsonNode.get(key).asText().equals(DSpaceConstants.CONTEXT_MAP.get(key)))
-			.findFirst().get();
-	}
 }

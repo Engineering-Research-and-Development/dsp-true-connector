@@ -92,7 +92,7 @@ public class PermissionTest {
 		Permission permission = MockObjectUtil.PERMISSION;
 		String ss = Serializer.serializePlain(permission);
 		Permission permission2 = Serializer.deserializePlain(ss, Permission.class);
-		assertThat(permission).usingRecursiveComparison().isEqualTo(permission2);
+		assertThat(permission).usingRecursiveComparison().usingOverriddenEquals().isEqualTo(permission2);
 	}
 	
 	@Test
@@ -101,7 +101,7 @@ public class PermissionTest {
 		Permission permission = MockObjectUtil.PERMISSION;
 		String ss = Serializer.serializeProtocol(permission);
 		Permission permission2 = Serializer.deserializeProtocol(ss, Permission.class);
-		assertThat(permission).usingRecursiveComparison().isEqualTo(permission2);
+		assertThat(permission).usingRecursiveComparison().usingOverriddenEquals().isEqualTo(permission2);
 	}
 	
 }

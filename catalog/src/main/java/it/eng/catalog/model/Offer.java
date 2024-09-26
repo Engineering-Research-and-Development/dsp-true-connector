@@ -1,6 +1,7 @@
 package it.eng.catalog.model;
 
 import java.io.Serializable;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -18,7 +19,6 @@ import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
 import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -47,11 +47,11 @@ Offer -> allOf  /definitions/MessageOffer
 */
 
 @Getter
-@EqualsAndHashCode(exclude = {"target", "assigner", "assignee"}) // requires for offer check in negotiation flow
 @JsonDeserialize(builder = Offer.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true) 
 public class Offer implements Serializable {
+
 
 	private static final long serialVersionUID = 4003295986049329564L;
 
@@ -147,4 +147,33 @@ public class Offer implements Serializable {
 			}
 	}
 	
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Offer other = (Offer) obj;
+		
+		if (!Objects.equals(id, other.id)) {
+			return false;
+		}
+		
+		if (this.permission.size() != other.permission.size()) {
+			return false;
+		}
+		
+		if(this.permission.containsAll(other.getPermission())){
+            return true;
+		}
+		
+		if (Permission.compareCollection(this.permission, other.getPermission())) {
+			return true;
+		}
+		
+		return false;
+		
+	}
 }

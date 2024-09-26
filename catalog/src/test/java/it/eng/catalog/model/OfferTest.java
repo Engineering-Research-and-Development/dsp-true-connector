@@ -72,6 +72,16 @@ public class OfferTest {
 					.operator(Operator.EQ)
 					.rightOperand("5")
 					.build();
+		 Constraint constraint3 = Constraint.Builder.newInstance()
+					.leftOperand(LeftOperand.DATE_TIME)
+					.operator(Operator.GT)
+					.rightOperand("2024-02-29T00:00:01+01:00")
+					.build();
+		 Constraint constraint4 = Constraint.Builder.newInstance()
+					.leftOperand(LeftOperand.COUNT)
+					.operator(Operator.EQ)
+					.rightOperand("5")
+					.build();
 		 
 		 Permission permission1 = Permission.Builder.newInstance()
 				.action(Action.USE)
@@ -81,7 +91,17 @@ public class OfferTest {
 		Permission permission2 = Permission.Builder.newInstance()
 				.action(Action.ANONYMIZE)
 				.target(TARGET_A)
-				.constraint(Set.of(constraint2, constraint1))
+				.constraint(Set.of(constraint3, constraint4))
+				.build();
+		Permission permission3 = Permission.Builder.newInstance()
+				.action(Action.USE)
+				.target(TARGET_A)
+				.constraint(Set.of(constraint1, constraint2))
+				.build();
+		Permission permission4 = Permission.Builder.newInstance()
+				.action(Action.ANONYMIZE)
+				.target(TARGET_A)
+				.constraint(Set.of(constraint3, constraint4))
 				.build();
 		
 		Offer offerA = Offer.Builder.newInstance()
@@ -96,9 +116,19 @@ public class OfferTest {
 				.target(TARGET_A)
 				.assignee(ASSIGNEE)
 				.assigner(ASSIGNER)
-				.permission(Set.of(permission2, permission1))
+				.permission(Set.of(permission3, permission4))
 				.build();
-		assertTrue(offerA.equals(offerB));
+		assertThat(offerA).isEqualTo(offerB);
+		
+		//check plain serialization
+		String plain = Serializer.serializePlain(offerA);
+		Offer offerPlain = Serializer.deserializePlain(plain, Offer.class);
+		assertThat(offerPlain).isEqualTo(offerB);
+		
+		//check protocol serialization
+		String protocol = Serializer.serializeProtocol(offerA);
+		Offer offerProtocol = Serializer.deserializeProtocol(protocol, Offer.class);
+		assertThat(offerProtocol).isEqualTo(offerB);
 	}
 	
 	@Test
@@ -136,7 +166,7 @@ public class OfferTest {
 		Offer offer = MockObjectUtil.OFFER;
 		String ss = Serializer.serializePlain(offer);
 		Offer offer2 = Serializer.deserializePlain(ss, Offer.class);
-		assertThat(offer).usingRecursiveComparison().isEqualTo(offer2);
+		assertThat(offer).isEqualTo(offer2);
 	}
 	
 	@Test
@@ -144,7 +174,7 @@ public class OfferTest {
 		Offer offer = MockObjectUtil.OFFER;
 		String ss = Serializer.serializeProtocol(offer);
 		Offer offer2 = Serializer.deserializeProtocol(ss, Offer.class);
-		assertThat(offer).usingRecursiveComparison().isEqualTo(offer2);
+		assertThat(offer).isEqualTo(offer2);
 	}
 	
 	@Test

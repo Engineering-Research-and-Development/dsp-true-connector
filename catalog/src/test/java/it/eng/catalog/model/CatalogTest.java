@@ -1,15 +1,22 @@
 package it.eng.catalog.model;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
 import com.fasterxml.jackson.databind.JsonNode;
+
 import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.util.MockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
 
 public class CatalogTest {
 	
@@ -91,7 +98,7 @@ public class CatalogTest {
 		Catalog catalog = MockObjectUtil.CATALOG;
 		String ss = Serializer.serializePlain(catalog);
 		Catalog catalog2 = Serializer.deserializePlain(ss, Catalog.class);
-		assertThat(catalog).usingRecursiveComparison().isEqualTo(catalog2);
+		assertThat(catalog).usingRecursiveComparison().usingOverriddenEquals().isEqualTo(catalog2);
 	}
 	
 	@Test
@@ -100,7 +107,7 @@ public class CatalogTest {
 		Catalog catalog = MockObjectUtil.CATALOG;
 		String ss = Serializer.serializeProtocol(catalog);
 		Catalog catalog2 = Serializer.deserializeProtocol(ss, Catalog.class);
-		assertThat(catalog).usingRecursiveComparison().isEqualTo(catalog2);
+		assertThat(catalog).usingRecursiveComparison().usingOverriddenEquals().isEqualTo(catalog2);
 	}
 	
 	public void validateDataset(Dataset javaObj) {

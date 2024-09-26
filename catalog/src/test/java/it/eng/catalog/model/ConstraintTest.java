@@ -38,7 +38,7 @@ public class ConstraintTest {
 	public void equalsTestPlain() {
 		String ss = Serializer.serializePlain(constraintA);
 		Constraint constraintA2 = Serializer.deserializePlain(ss, Constraint.class);
-		assertThat(constraintA).usingRecursiveComparison().isEqualTo(constraintA2);
+		assertThat(constraintA).usingRecursiveComparison().usingOverriddenEquals().isEqualTo(constraintA2);
 	}
 	
 	@Test
@@ -46,6 +46,6 @@ public class ConstraintTest {
 	public void equalsTestProtocol() {
 		String ss = Serializer.serializeProtocol(constraintA);
 		Constraint constraintA2 = Serializer.deserializeProtocol(ss, Constraint.class);
-		assertThat(constraintA).usingRecursiveComparison().isEqualTo(constraintA2);
+		assertThat(constraintA).usingRecursiveComparison().usingOverriddenEquals().isEqualTo(constraintA2);
 	}
 }

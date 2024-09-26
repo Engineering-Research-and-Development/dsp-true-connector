@@ -22,6 +22,8 @@ public class MockObjectUtil {
 	
 	public static final String TARGET = "urn:uuid:TARGET";
 	
+	public static final Reference TARGET_REFERENCE = Reference.Builder.newInstance().id(TARGET).build();
+	
 	public static String generateUUID() {
 		return "urn:uuid:" + UUID.randomUUID().toString();
 	}
@@ -65,6 +67,12 @@ public class MockObjectUtil {
 			.rightOperand("5")
 			.build();
 	
+	public static final Constraint CONSTRAINT_COUNT_5_REFERENCE = Constraint.Builder.newInstance()
+			.leftOperand(Reference.Builder.newInstance().id(LeftOperand.COUNT.toString()).build())
+			.operator(Reference.Builder.newInstance().id(Operator.EQ.toString()).build())
+			.rightOperand("5")
+			.build();
+	
 	public static final Permission PERMISSION = Permission.Builder.newInstance()
 			.action(Action.USE)
 			.target(MockObjectUtil.TARGET)
@@ -77,11 +85,24 @@ public class MockObjectUtil {
 			.constraint(Arrays.asList(MockObjectUtil.CONSTRAINT_COUNT_5))
 			.build();
 	
+	public static final Permission PERMISSION_COUNT_5_REFERENCE = Permission.Builder.newInstance()
+			.action(Action.USE)
+			.target(MockObjectUtil.TARGET_REFERENCE)
+			.constraint(Arrays.asList(MockObjectUtil.CONSTRAINT_COUNT_5_REFERENCE))
+			.build();
+	
 	public static final Offer OFFER = Offer.Builder.newInstance()
 			.target(MockObjectUtil.TARGET)
 			.assignee(MockObjectUtil.ASSIGNEE)
 			.assigner(MockObjectUtil.ASSIGNER)
 			.permission(Arrays.asList(MockObjectUtil.PERMISSION))
+			.build();
+	
+	public static final Offer OFFER_REFERENCE = Offer.Builder.newInstance()
+			.target(MockObjectUtil.TARGET_REFERENCE)
+			.assignee(MockObjectUtil.ASSIGNEE)
+			.assigner(MockObjectUtil.ASSIGNER)
+			.permission(Arrays.asList(MockObjectUtil.PERMISSION_COUNT_5_REFERENCE))
 			.build();
 	
 	public static final Offer OFFER_WITH_ORIGINAL_ID = Offer.Builder.newInstance()
@@ -113,6 +134,15 @@ public class MockObjectUtil {
 			.target(MockObjectUtil.TARGET)
 			.timestamp(ZonedDateTime.now().minusDays(2).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
 			.permission(Arrays.asList(PERMISSION_COUNT_5))
+			.build();
+	
+	public static final Agreement AGREEMENT_REFERENCE = Agreement.Builder.newInstance()
+			.id(MockObjectUtil.generateUUID())
+			.assignee(MockObjectUtil.ASSIGNEE)
+			.assigner(MockObjectUtil.ASSIGNER)
+			.target(MockObjectUtil.TARGET_REFERENCE)
+			.timestamp(ZonedDateTime.now().minusDays(2).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
+			.permission(Arrays.asList(PERMISSION_COUNT_5_REFERENCE))
 			.build();
 	
 	public static final ContractRequestMessage CONTRACT_REQUEST_MESSAGE = ContractRequestMessage.Builder.newInstance()

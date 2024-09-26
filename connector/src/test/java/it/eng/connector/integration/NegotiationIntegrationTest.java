@@ -37,6 +37,7 @@ import it.eng.negotiation.model.ContractNegotiationEventType;
 import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.MockObjectUtil;
 import it.eng.negotiation.model.Offer;
+import it.eng.negotiation.model.Reference;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.DSpaceConstants;
@@ -45,6 +46,7 @@ import it.eng.tools.model.DSpaceConstants;
 public class NegotiationIntegrationTest extends BaseIntegrationTest {
 	
 	private static String providerPid;
+	private static String providerPid_forReferenceCheck;
 	private static String offerID = "urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5";
 	private final ObjectMapper mapper = new ObjectMapper();
 	
@@ -245,6 +247,182 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
 		ContractNegotiationEventMessage  contractNegotiationEventMessage = ContractNegotiationEventMessage.Builder.newInstance()
 				.consumerPid(MockObjectUtil.CONSUMER_PID)
 				.providerPid(providerPid)
+				.eventType(ContractNegotiationEventType.FINALIZED)
+				.build();
+    	
+    	final ResultActions result =
+    			mockMvc.perform(
+    					post("/consumer/negotiations/" + MockObjectUtil.CONSUMER_PID + "/events")
+    					.content(Serializer.serializeProtocol(contractNegotiationEventMessage))
+    					.contentType(MediaType.APPLICATION_JSON));
+    	result.andExpect(status().isOk());
+    	
+    	JsonNode contractNegotiation = getContractNegotiationOverAPI();
+    	offerCheck(contractNegotiation);
+    	agreementCheck(contractNegotiation);
+    }
+	
+	//same tests but with some fields as objects (target : {@id:someTarget} vs target:someTarget)
+	
+	@Order(9) 
+    @Test
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    public void createNegotiationTests_objectFields() throws Exception {
+    	
+    	//needs to match offer in initial.data
+    	Offer offer = Offer.Builder.newInstance()
+    			.id(offerID)
+    			.target(Reference.Builder.newInstance().id(MockObjectUtil.TARGET).build())
+    			.assigner(MockObjectUtil.ASSIGNER)
+    			.permission(Arrays.asList(MockObjectUtil.PERMISSION_COUNT_5_REFERENCE))
+    			.build();
+    	
+    	ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
+    			.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
+    			.consumerPid(MockObjectUtil.CONSUMER_PID)
+    			.offer(offer)
+    			.build();
+    	
+    	final ResultActions result =
+    			mockMvc.perform(
+    					post("/negotiations/request")
+    					.content(Serializer.serializeProtocol(contractRequestMessage))
+    					.contentType(MediaType.APPLICATION_JSON));
+    	result.andExpect(status().isCreated())
+    	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())));
+    	
+    	JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
+    	providerPid_forReferenceCheck = jsonNode.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText();
+		assertTrue(DSpaceConstants.validateContext(jsonNode.get(DSpaceConstants.CONTEXT)));
+		
+    	//TODO add protocol call using providerPid_forReferenceCheck
+    	offerCheck(getContractNegotiationOverAPI());
+    }
+
+	
+	@Order(10) 
+    @Test
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    public void negotiationExistsTests_objectFields() throws Exception {
+    	ContractRequestMessage crm = ContractRequestMessage.Builder.newInstance()
+			.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
+			.consumerPid(TestUtil.CONSUMER_PID)
+			.providerPid(TestUtil.PROVIDER_PID)
+			.offer(MockObjectUtil.OFFER_REFERENCE)
+			.build();
+
+    	final ResultActions result =
+    			mockMvc.perform(
+    					post("/negotiations/request")
+    					.content(Serializer.serializeProtocol(crm))
+    					.contentType(MediaType.APPLICATION_JSON));
+    	result.andExpect(status().isBadRequest())
+    	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())));
+
+    	JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
+		JsonNode contextNode = jsonNode.get(DSpaceConstants.CONTEXT);
+		assertTrue(DSpaceConstants.validateContext(contextNode));
+	}
+    
+	@Order(11) 
+    @Test
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    public void getNegotiationByproviderPid_forReferenceCheckTests_objectFields() throws Exception {
+    	// insert data into db
+		Offer offer = Offer.Builder.newInstance()
+    			.id(offerID)
+    			.target(MockObjectUtil.TARGET_REFERENCE)
+    			.assigner(MockObjectUtil.ASSIGNER)
+    			.permission(Arrays.asList(MockObjectUtil.PERMISSION_COUNT_5_REFERENCE))
+    			.build();
+    	
+    	ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
+    			.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
+    			.consumerPid(MockObjectUtil.CONSUMER_PID)
+    			.offer(offer)
+    			.build();
+    	
+    	final ResultActions result =
+    			mockMvc.perform(
+    					post("/negotiations/request")
+    					.content(Serializer.serializeProtocol(contractRequestMessage))
+    					.contentType(MediaType.APPLICATION_JSON));
+    	result.andExpect(status().isCreated())
+    	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())));
+
+    	JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
+    	providerPid_forReferenceCheck = jsonNode.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText();
+    	assertTrue(DSpaceConstants.validateContext(jsonNode.get(DSpaceConstants.CONTEXT)));
+    	
+		mockMvc.perform(
+			get("/negotiations/" + providerPid_forReferenceCheck)
+			.contentType(MediaType.APPLICATION_JSON));
+    	result.andExpect(status().isCreated())
+	    	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+	    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())));
+
+    	jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
+		JsonNode contextNode = jsonNode.get(DSpaceConstants.CONTEXT);
+		assertTrue(DSpaceConstants.validateContext(contextNode));
+	}
+    
+	@Order(12) 
+    @Test
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    public void handleAgreementTest_objectFields() throws Exception {
+		
+		ContractAgreementMessage agreementMessage = ContractAgreementMessage.Builder.newInstance()
+				.consumerPid(MockObjectUtil.CONSUMER_PID)
+				.providerPid(providerPid_forReferenceCheck)
+				.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
+				.agreement(MockObjectUtil.AGREEMENT_REFERENCE)
+				.build();
+    	
+    	final ResultActions result =
+    			mockMvc.perform(
+    					post("/consumer/negotiations/" + MockObjectUtil.CONSUMER_PID + "/agreement")
+    					.content(Serializer.serializeProtocol(agreementMessage))
+    					.contentType(MediaType.APPLICATION_JSON));
+    	result.andExpect(status().isOk());
+    	
+    	JsonNode contractNegotiation = getContractNegotiationOverAPI();
+    	offerCheck(contractNegotiation);
+    	agreementCheck(contractNegotiation);
+    }
+	
+	@Order(13) 
+    @Test
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    public void handleVerifyAgreementTest_objectFields() throws Exception {
+		
+		ContractAgreementVerificationMessage verificationMessage = ContractAgreementVerificationMessage.Builder.newInstance()
+				.consumerPid(MockObjectUtil.CONSUMER_PID)
+				.providerPid(providerPid_forReferenceCheck)
+				.build();
+    	
+    	final ResultActions result =
+    			mockMvc.perform(
+    					post("/negotiations/" + MockObjectUtil.PROVIDER_PID + "/agreement/verification")
+    					.content(Serializer.serializeProtocol(verificationMessage))
+    					.contentType(MediaType.APPLICATION_JSON));
+    	result.andExpect(status().isOk());
+    	
+    	JsonNode contractNegotiation = getContractNegotiationOverAPI();
+    	offerCheck(contractNegotiation);
+    	agreementCheck(contractNegotiation);
+    }
+	
+	@Order(14) 
+    @Test
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    public void handleFinalizeEventTest_objectFields() throws Exception {
+		
+		ContractNegotiationEventMessage  contractNegotiationEventMessage = ContractNegotiationEventMessage.Builder.newInstance()
+				.consumerPid(MockObjectUtil.CONSUMER_PID)
+				.providerPid(providerPid_forReferenceCheck)
 				.eventType(ContractNegotiationEventType.FINALIZED)
 				.build();
     	

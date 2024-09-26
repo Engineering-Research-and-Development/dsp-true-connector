@@ -69,7 +69,10 @@ public class MockObjectUtil {
 
     public static final Permission PERMISSION = Permission.Builder.newInstance()
             .action(Action.USE)
-            .constraint(Arrays.asList(CONSTRAINT).stream().collect(Collectors.toCollection(HashSet::new)))
+            .constraint(Arrays.asList(CONSTRAINT_COUNT_5_TIMES).stream().collect(Collectors.toCollection(HashSet::new)))
+            .assignee(MockObjectUtil.ASSIGNEE)
+        	.assigner(MockObjectUtil.ASSIGNER)
+        	.target(MockObjectUtil.TARGET)
             .build();
     
     public static final Permission PERMISSION_UPDATE = Permission.Builder.newInstance()
@@ -187,7 +190,7 @@ public class MockObjectUtil {
             .title(TITLE)
             .participantId("urn:example:DataProviderA")
             .service(Arrays.asList(DataServiceUtil.DATA_SERVICE_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
-            .dataset(Arrays.asList(DATASET).stream().collect(Collectors.toCollection(HashSet::new)))
+            .dataset(Arrays.asList(DATASET_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
             .distribution(Arrays.asList(DISTRIBUTION_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
             .hasPolicy(Arrays.asList(OFFER_WITH_TARGET).stream().collect(Collectors.toCollection(HashSet::new)))
             .homepage(ENDPOINT_URL)

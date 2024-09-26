@@ -1,12 +1,13 @@
 package it.eng.negotiation.serializer;
 
 import java.lang.annotation.Annotation;
+import java.time.Instant;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -20,6 +21,8 @@ import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.jsontype.TypeResolverBuilder;
 import com.fasterxml.jackson.databind.jsontype.impl.StdTypeResolverBuilder;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import it.eng.negotiation.model.Offer;
 import it.eng.tools.model.DSpaceConstants;
@@ -35,6 +38,10 @@ public class Serializer {
 	private static Validator validator;
 	
 	static {
+		SimpleModule instantConverterModule = new SimpleModule();
+		instantConverterModule.addSerializer(Instant.class, new InstantSerializer());
+		instantConverterModule.addDeserializer(Instant.class, new InstantDeserializer());
+
 		JacksonAnnotationIntrospector ignoreJsonPropertyIntrospector = new JacksonAnnotationIntrospector() {
 			private static final long serialVersionUID = 1L;
 
@@ -65,6 +72,9 @@ public class Serializer {
 				.configure(SerializationFeature.INDENT_OUTPUT, true)
 				.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
 				.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+				.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+	            .addModule(new JavaTimeModule())
+	            .addModule(instantConverterModule)
 				.annotationIntrospector(ignoreJsonPropertyIntrospector)
 				.build();
 		
@@ -73,6 +83,9 @@ public class Serializer {
 //				.serializationInclusion(Include.NON_EMPTY)
 				.configure(SerializationFeature.INDENT_OUTPUT, true)
 				.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
+				.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+	            .addModule(new JavaTimeModule())
+	            .addModule(instantConverterModule)
 				.build();
 		
 		validator = Validation.buildDefaultValidatorFactory().getValidator();
