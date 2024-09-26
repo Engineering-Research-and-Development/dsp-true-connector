@@ -121,9 +121,15 @@
 			"value": "{{PROVIDER}}/api/v1/distributions",
 			"type": "default",
 			"enabled": true
+		},
+		{
+			"key": "dspace_namespace",
+			"value": "https://w3id.org/dspace/v0.8/",
+			"type": "default",
+			"enabled": true
 		}
 	],
 	"_postman_variable_scope": "environment",
-	"_postman_exported_at": "2024-09-12T09:19:08.294Z",
-	"_postman_exported_using": "Postman/11.12.0"
+	"_postman_exported_at": "2024-09-26T14:52:55.722Z",
+	"_postman_exported_using": "Postman/11.14.1"
 }
