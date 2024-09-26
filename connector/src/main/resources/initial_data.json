@@ -99,7 +99,6 @@
                     "_id": "urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5",
                     "_class": "it.eng.catalog.model.Offer",
                     "permission": [{
-						    "assigner": "urn:uuid:ASSIGNER_PROVIDER",
 							"target": "urn:uuid:TARGET",
                             "action": "USE",
                             "constraint": [{
