@@ -27,6 +27,7 @@ import it.eng.negotiation.model.ContractOfferMessage;
 import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.model.Reason;
+import it.eng.negotiation.model.Reference;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
