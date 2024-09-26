@@ -39,9 +39,9 @@ public class DataTransferAPIController {
 	public ResponseEntity<GenericApiResponse<Collection<JsonNode>>> getTransfersProcess(
 			@PathVariable(required = false) String transferProcessId, @RequestParam(required = false) String state) {
 		log.info("Ferching transfer process id - {}, state {}", transferProcessId, state);
-		Collection<JsonNode> contractNegotiations = apiService.findDataTransfers(transferProcessId, state);
+		Collection<JsonNode> dataTransfer = apiService.findDataTransfers(transferProcessId, state);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-				.body(GenericApiResponse.success(contractNegotiations, "Fething transfer process"));
+				.body(GenericApiResponse.success(dataTransfer, "Fething transfer process"));
 	}
-
+	
 }

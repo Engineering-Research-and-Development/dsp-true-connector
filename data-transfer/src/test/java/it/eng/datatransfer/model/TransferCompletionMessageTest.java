@@ -36,7 +36,7 @@ public class TransferCompletionMessageTest {
 	
 	@Test
 	@DisplayName("Verify valid protocol object serialization")
-	public void testPlain_protocol() {
+	public void testProtocol() {
 		JsonNode result = Serializer.serializeProtocolJsonNode(transferCompletionMessage);
 		assertNotNull(result.get(DSpaceConstants.CONTEXT));
 		assertTrue(DSpaceConstants.validateContext(result.get(DSpaceConstants.CONTEXT)));

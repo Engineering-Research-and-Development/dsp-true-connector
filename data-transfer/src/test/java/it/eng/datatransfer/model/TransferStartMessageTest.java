@@ -101,4 +101,52 @@ public class TransferStartMessageTest {
 		assertNotNull(dataAddress.get(DSpaceConstants.DSPACE_ENDPOINT).asText());
 		assertNotNull(dataAddress.get(DSpaceConstants.DSPACE_ENDPOINT_PROPERTIES));
 	}
+	
+	@Test
+	public void deseriazlizeEDC() {
+		String fromEDC = "{\r\n"
+				+ "	\"@id\": \"9bf46bb8-4b22-4775-87bd-a9e5607fd84d\",\r\n"
+				+ "	\"@type\": \"dspace:TransferStartMessage\",\r\n"
+				+ "	\"dspace:providerPid\": \"0802be4c-ab4b-4173-b081-ae6a00f76304\",\r\n"
+				+ "	\"dspace:consumerPid\": \"urn:uuid:f94f263a-6050-4c03-a0ea-67d4893db569\",\r\n"
+				+ "	\"dspace:processId\": \"urn:uuid:f94f263a-6050-4c03-a0ea-67d4893db569\",\r\n"
+				+ "	\"dspace:dataAddress\": {\r\n"
+				+ "		\"@type\": \"dspace:DataAddress\",\r\n"
+				+ "		\"dspace:endpointType\": \"https://w3id.org/idsa/v4.1/HTTP\",\r\n"
+				+ "		\"dspace:endpointProperties\": [\r\n"
+				+ "			{\r\n"
+				+ "				\"@type\": \"dspace:EndpointProperty\",\r\n"
+				+ "				\"dspace:name\": \"https://w3id.org/edc/v0.0.1/ns/endpoint\",\r\n"
+				+ "				\"dspace:value\": \"http://localhost:19291/public\"\r\n"
+				+ "			},\r\n"
+				+ "			{\r\n"
+				+ "				\"@type\": \"dspace:EndpointProperty\",\r\n"
+				+ "				\"dspace:name\": \"https://w3id.org/edc/v0.0.1/ns/authType\",\r\n"
+				+ "				\"dspace:value\": \"bearer\"\r\n"
+				+ "			},\r\n"
+				+ "			{\r\n"
+				+ "				\"@type\": \"dspace:EndpointProperty\",\r\n"
+				+ "				\"dspace:name\": \"https://w3id.org/edc/v0.0.1/ns/endpointType\",\r\n"
+				+ "				\"dspace:value\": \"https://w3id.org/idsa/v4.1/HTTP\"\r\n"
+				+ "			},\r\n"
+				+ "			{\r\n"
+				+ "				\"@type\": \"dspace:EndpointProperty\",\r\n"
+				+ "				\"dspace:name\": \"https://w3id.org/edc/v0.0.1/ns/authorization\",\r\n"
+				+ "				\"dspace:value\": \"eyJraWQiOiJwdWJsaWMta2V5IiwiYWxnIjoiUlMyNTYifQ.eyJpc3MiOiJwcm92aWRlciIsImF1ZCI6ImNvbnN1bWVyIiwic3ViIjoicHJvdmlkZXIiLCJpYXQiOjE3MjcyNzQ5Mjg4NjMsImp0aSI6Ijg1M2E4NjRkLTM4OTEtNDdiNC05ODU4LWZjOGRhMjM5MWNhMCJ9.b-lpmggt65muO3mG5pO6TVZIYEtBytqKCL8bjx224ItH9uOdPN_I_qegPf0WQ6GGaFUyvagAOIy4rhL7PMnYsidwN6A3IuNHbTKme1pN9Si-TeD6acZsHFwmBKLxZVEzm5kxprDGPH9EudKh_DQSgtpEdDuUqd33zJXyn6n92w2u4UKF91L1fedbnRYC-4ICBCbic92W_Pl6OQlemYzr2JM89G1ZlZEMRj3vq191c-zN6UQkbYwroEaWu2xBJwyLPCqfLpnK2C5dDpwzGnDabHLXghcxXjnXzSNVX4AJWNgkpjo9UCYqOZruoR1dgPAJOkAzyY4ETgDgvtwQK62eIg\"\r\n"
+				+ "			}\r\n"
+				+ "		]\r\n"
+				+ "	},\r\n"
+				+ "	\"@context\": {\r\n"
+				+ "		\"@vocab\": \"https://w3id.org/edc/v0.0.1/ns/\",\r\n"
+				+ "		\"edc\": \"https://w3id.org/edc/v0.0.1/ns/\",\r\n"
+				+ "		\"dcat\": \"http://www.w3.org/ns/dcat#\",\r\n"
+				+ "		\"dct\": \"http://purl.org/dc/terms/\",\r\n"
+				+ "		\"odrl\": \"http://www.w3.org/ns/odrl/2/\",\r\n"
+				+ "		\"dspace\": \"https://w3id.org/dspace/v0.8/\"\r\n"
+				+ "	}\r\n"
+				+ "}";
+		
+		TransferStartMessage startMsg = Serializer.deserializeProtocol(fromEDC, TransferStartMessage.class);
+		assertNotNull(startMsg);
+	}
 }

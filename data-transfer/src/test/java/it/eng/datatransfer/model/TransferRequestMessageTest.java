@@ -31,7 +31,7 @@ public class TransferRequestMessageTest {
 			.agreementId(ModelUtil.AGREEMENT_ID)
 			.callbackAddress(ModelUtil.CALLBACK_ADDRESS)
 			.consumerPid(ModelUtil.CONSUMER_PID)
-			.format(ModelUtil.FORMAT)
+			.format(DataTransferConstants.HTTP_PULL.name())
 			.dataAddress(dataAddress)
 			.build();
 	

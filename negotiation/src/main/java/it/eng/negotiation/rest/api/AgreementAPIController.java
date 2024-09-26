@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import it.eng.negotiation.service.ContractNegotiationAPIService;
+import it.eng.negotiation.service.AgreementAPIService;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -17,17 +17,17 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class AgreementAPIController {
 
-	private ContractNegotiationAPIService contractNegotiationAPIService;
+	private AgreementAPIService agreementService;
 
-	public AgreementAPIController(ContractNegotiationAPIService contractNegotiationAPIService) {
+	public AgreementAPIController(AgreementAPIService agreementService) {
 		super();
-		this.contractNegotiationAPIService = contractNegotiationAPIService;
+		this.agreementService = agreementService;
 	}
 	
 	 @PostMapping(path = "/{agreementId}/valid")
 	    public ResponseEntity<GenericApiResponse<String>> validateAgreement(@PathVariable String agreementId) {
 	        log.info("Validating agreement");
-	        contractNegotiationAPIService.validateAgreement(agreementId);
+	        agreementService.validateAgreement(agreementId);
 	        return ResponseEntity.ok()
 	        		.contentType(MediaType.APPLICATION_JSON)
 	        		.body(GenericApiResponse.success("Agreement is ok", "Agreement is ok"));

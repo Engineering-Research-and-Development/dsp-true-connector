@@ -9,10 +9,10 @@ import java.util.Map;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -34,7 +34,8 @@ public class RestArtifactController {
 	 * @param jsonBody
 	 * @return
 	 */
-    @PostMapping(path = "/{transactionId}/{artifactId}")
+//    @PostMapping(path = "/{transactionId}/{artifactId}")
+	@RequestMapping(value = "/{transactionId}/{artifactId}", method = { RequestMethod.POST,  RequestMethod.GET })
     protected ResponseEntity<String> getArtifact(@RequestHeader(required = false) String authorization,
 										    		@PathVariable String transactionId,                                       
 										    		@PathVariable String artifactId, 

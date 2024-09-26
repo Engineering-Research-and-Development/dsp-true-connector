@@ -17,14 +17,14 @@ import org.springframework.http.ResponseEntity;
 
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
 import it.eng.negotiation.model.MockObjectUtil;
-import it.eng.negotiation.service.ContractNegotiationAPIService;
+import it.eng.negotiation.service.AgreementAPIService;
 import it.eng.tools.response.GenericApiResponse;
 
 @ExtendWith(MockitoExtension.class)
 class AgreementAPIControllerTest {
 
 	@Mock
-	private ContractNegotiationAPIService contractNegotiationAPIService;
+	private AgreementAPIService agreementService;
 	
 	@InjectMocks
 	private AgreementAPIController controller;
@@ -32,7 +32,7 @@ class AgreementAPIControllerTest {
 	@Test
 	@DisplayName("Validate agreement")
 	void testValidateAgreement() {
-		doNothing().when(contractNegotiationAPIService).validateAgreement(any(String.class));
+		doNothing().when(agreementService).validateAgreement(any(String.class));
 		ResponseEntity<GenericApiResponse<String>> response = controller.validateAgreement(MockObjectUtil.AGREEMENT.getId());
 		assertNotNull(response);
 		assertTrue(response.getBody().isSuccess());
@@ -42,7 +42,7 @@ class AgreementAPIControllerTest {
 	@DisplayName("Validate agreement - not valid")
 	void testValidateAgreement_serviceError() {
 		doThrow(new ContractNegotiationAPIException("Something not correct - tests"))
-		.when(contractNegotiationAPIService).validateAgreement(any(String.class));
+		.when(agreementService).validateAgreement(any(String.class));
 		assertThrows(ContractNegotiationAPIException.class, 
 				() -> controller.validateAgreement(MockObjectUtil.AGREEMENT.getId()));
 	}

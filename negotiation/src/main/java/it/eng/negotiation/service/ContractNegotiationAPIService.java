@@ -27,7 +27,6 @@ import it.eng.negotiation.model.ContractOfferMessage;
 import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.model.Reason;
-import it.eng.negotiation.model.Reference;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
@@ -415,14 +414,6 @@ public class ContractNegotiationAPIService {
 			log.error("Response status not 200 - consumer did not process ContractNegotiationTerminationMessage correct");
 			throw new ContractNegotiationAPIException("consumer did not process ContractNegotiationTerminationMessage correct");
 		}
-	}
-	
-	public void validateAgreement(String agreementId) {
-		agreementRepository.findById(agreementId)
-				.orElseThrow(() -> new ContractNegotiationAPIException("Agreement with Id " + agreementId + " not found."));
-		// TODO add additional checks like contract dates
-		//		LocalDateTime agreementStartDate = LocalDateTime.parse(agreement.getTimestamp(), FORMATTER);
-		//		agreementStartDate.isBefore(LocalDateTime.now());
 	}
 	
 	private Agreement agreementFromOffer(Offer offer, String assigner) {

@@ -31,7 +31,7 @@ public class DataAddress implements Serializable {
 	@JsonProperty(DSpaceConstants.DSPACE_ENDPOINT_TYPE)
 	private String endpointType;
 	
-	@NotNull
+//	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_ENDPOINT)
 	private String endpoint;
 	

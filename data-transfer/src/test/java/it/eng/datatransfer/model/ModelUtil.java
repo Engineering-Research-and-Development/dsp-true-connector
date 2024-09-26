@@ -10,7 +10,6 @@ public class ModelUtil {
 	public static final String ASSIGNER = "urn:uuid:ASSIGNER";
 	
 	public static final String AGREEMENT_ID = "urn:uuid:AGREEMENT_ID";
-	public static final String FORMAT = "example:HTTP_PUSH";
 	public static final String ENDPOINT = "http://example.com";
 	public static final String ENDPOINT_TYPE = "https://w3id.org/idsa/v4.1/HTTP";
 	
