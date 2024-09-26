@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [0.1.0] - 16-09-2024
 
+### Added
+
+ - New property application.usagecontrol.enabled for usage control enabling/disabling
+ 
 ### Changed
 
  - @context element for all protocol serialized object is map, not string
