@@ -26,8 +26,11 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.model.Catalog;
+import it.eng.catalog.model.Constraint;
 import it.eng.catalog.model.DataService;
 import it.eng.catalog.model.Offer;
+import it.eng.catalog.model.Permission;
+import it.eng.catalog.model.Reference;
 import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.util.MockObjectUtil;
@@ -136,7 +139,7 @@ public class CatalogServiceTest {
     public void providedOfferExists() {
     	when(repository.findAll()).thenReturn(new ArrayList<>(MockObjectUtil.CATALOGS));
     	ContractNegotationOfferRequestEvent offerRequest = new ContractNegotationOfferRequestEvent(MockObjectUtil.CONSUMER_PID,
-    			MockObjectUtil.PROVIDER_PID, Serializer.serializeProtocolJsonNode(MockObjectUtil.OFFER_WITH_TARGET));
+    			MockObjectUtil.PROVIDER_PID, Serializer.serializeProtocolJsonNode(validOffer()));
     	service.validateOffer(offerRequest);
     	
     	verify(publisher).publishEvent(argCaptorContractNegotiationOfferResponse.capture());
@@ -158,5 +161,102 @@ public class CatalogServiceTest {
     	
     	verify(publisher).publishEvent(argCaptorContractNegotiationOfferResponse.capture());
     	assertFalse(argCaptorContractNegotiationOfferResponse.getValue().isOfferAccepted());
+    }
+    
+    @Test
+    public void providedOfferNotValid() {
+    	when(repository.findAll()).thenReturn(new ArrayList<>(MockObjectUtil.CATALOGS));
+    	ContractNegotationOfferRequestEvent offerRequest = new ContractNegotationOfferRequestEvent(MockObjectUtil.CONSUMER_PID,
+    			MockObjectUtil.PROVIDER_PID, Serializer.serializeProtocolJsonNode(invalidOffer()));
+    	service.validateOffer(offerRequest);
+    	
+    	verify(publisher).publishEvent(argCaptorContractNegotiationOfferResponse.capture());
+    	assertFalse(argCaptorContractNegotiationOfferResponse.getValue().isOfferAccepted());
+    }
+    
+    @Test
+    public void offerValidated_java() {
+	  
+    	when(repository.findAll()).thenReturn(new ArrayList<>(MockObjectUtil.CATALOGS));
+    	assertTrue(service.validateOffer(validOffer()));
+    	
+    }
+    
+    
+    @Test
+    public void offerInvalidated_java() {
+	  
+    	when(repository.findAll()).thenReturn(new ArrayList<>(MockObjectUtil.CATALOGS));
+    	assertFalse(service.validateOffer(invalidOffer()));
+    	
+    }
+    
+    @Test
+    public void offerValidated_serialization() {
+	  
+    	when(repository.findAll()).thenReturn(new ArrayList<>(MockObjectUtil.CATALOGS));
+    	assertTrue(service.validateOffer(Serializer.deserializeProtocol(Serializer.serializeProtocolJsonNode(validOffer()), Offer.class)));
+    	
+    }
+    
+    
+    @Test
+    public void offerInvalidated_serialization() {
+	  
+    	when(repository.findAll()).thenReturn(new ArrayList<>(MockObjectUtil.CATALOGS));
+    	assertFalse(service.validateOffer(Serializer.deserializeProtocol(Serializer.serializeProtocolJsonNode(invalidOffer()), Offer.class)));
+    	
+    }
+    
+    
+    
+    
+    
+    private Offer validOffer() {
+    	Constraint constraint = Constraint.Builder.newInstance()
+    	.leftOperand(Reference.Builder.newInstance().id("odrl:count").build())
+    	.operator(Reference.Builder.newInstance().id("odrl:eq").build())
+    	.rightOperand("5")
+    	.build();
+    	Permission permission = Permission.Builder.newInstance()
+    	.action(Reference.Builder.newInstance().id("odrl:use").build())
+    	.assignee(MockObjectUtil.ASSIGNEE)
+    	.assigner(MockObjectUtil.ASSIGNER)
+    	.constraint(Set.of(constraint))
+    	.target(Reference.Builder.newInstance().id(MockObjectUtil.TARGET).build())
+    	.build();
+    	Offer offer = Offer.Builder.newInstance()
+    	.id("urn:offer_id")
+    	.assignee(MockObjectUtil.ASSIGNEE)
+    	.assigner(MockObjectUtil.ASSIGNER)
+    	.permission(Set.of(permission))
+    	.target(Reference.Builder.newInstance().id(MockObjectUtil.TARGET).build())
+    	.build();
+    	
+    	return offer;
+    }
+    
+    private Offer invalidOffer() {
+    	Constraint constraint = Constraint.Builder.newInstance()
+    	.leftOperand(Reference.Builder.newInstance().id("odrl:count").build())
+    	.operator(Reference.Builder.newInstance().id("odrl:eq").build())
+    	.rightOperand("1")
+    	.build();
+    	Permission permission = Permission.Builder.newInstance()
+    	.action(Reference.Builder.newInstance().id("odrl:use").build())
+    	.assignee(MockObjectUtil.ASSIGNEE)
+    	.assigner(MockObjectUtil.ASSIGNER)
+    	.constraint(Set.of(constraint))
+    	.target(Reference.Builder.newInstance().id(MockObjectUtil.TARGET).build())
+    	.build();
+    	Offer offer = Offer.Builder.newInstance()
+    	.id("urn:offer_id")
+    	.assignee(MockObjectUtil.ASSIGNEE)
+    	.assigner(MockObjectUtil.ASSIGNER)
+    	.permission(Set.of(permission))
+    	.target(Reference.Builder.newInstance().id(MockObjectUtil.TARGET).build())
+    	.build();
+    	
+    	return offer;
     }
 }

@@ -243,8 +243,8 @@ public class CatalogService {
 			valid = false;
 		} else {
 //	    		 check if offers are equals
-			if (offer.equals(existingOffer)) {
-				log.debug("Existing and prvided offers are same");
+			if (existingOffer.equals(offer)) {
+				log.debug("Existing and provided offers are same");
 				valid = true;
 			}
 		}

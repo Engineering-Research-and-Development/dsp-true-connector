@@ -74,7 +74,7 @@ public class DistributionTest {
 		Distribution distribution = MockObjectUtil.DISTRIBUTION;
 		String ss = Serializer.serializePlain(distribution);
 		Distribution distribution2 = Serializer.deserializePlain(ss, Distribution.class);
-		assertThat(distribution).usingRecursiveComparison().isEqualTo(distribution2);
+		assertThat(distribution).usingRecursiveComparison().usingOverriddenEquals().isEqualTo(distribution2);
 	}
 	
 	@Test
@@ -83,7 +83,7 @@ public class DistributionTest {
 		Distribution distribution = MockObjectUtil.DISTRIBUTION;
 		String ss = Serializer.serializeProtocol(distribution);
 		Distribution distribution2 = Serializer.deserializeProtocol(ss, Distribution.class);
-		assertThat(distribution).usingRecursiveComparison().isEqualTo(distribution2);
+		assertThat(distribution).usingRecursiveComparison().usingOverriddenEquals().isEqualTo(distribution2);
 	}
 	
 	private void validateDistribution(Distribution distribution) {

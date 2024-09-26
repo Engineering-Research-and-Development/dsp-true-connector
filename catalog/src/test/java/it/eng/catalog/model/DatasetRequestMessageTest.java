@@ -65,7 +65,7 @@ public class DatasetRequestMessageTest {
 	public void equalsTestPlain() {
 		String ss = Serializer.serializePlain(datasetRequestMessage);
 		DatasetRequestMessage DatasetRequestMessage2 = Serializer.deserializePlain(ss, DatasetRequestMessage.class);
-		assertThat(datasetRequestMessage).usingRecursiveComparison().isEqualTo(DatasetRequestMessage2);
+		assertThat(datasetRequestMessage).usingRecursiveComparison().usingOverriddenEquals().isEqualTo(DatasetRequestMessage2);
 	}
 	
 	@Test
@@ -73,7 +73,7 @@ public class DatasetRequestMessageTest {
 	public void equalsTestProtocol() {
 		String ss = Serializer.serializeProtocol(datasetRequestMessage);
 		DatasetRequestMessage DatasetRequestMessage2 = Serializer.deserializeProtocol(ss, DatasetRequestMessage.class);
-		assertThat(datasetRequestMessage).usingRecursiveComparison().isEqualTo(DatasetRequestMessage2);
+		assertThat(datasetRequestMessage).usingRecursiveComparison().usingOverriddenEquals().isEqualTo(DatasetRequestMessage2);
 	}
 	
 	private void validateJavaObj(DatasetRequestMessage javaObj) {

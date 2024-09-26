@@ -120,7 +120,7 @@ public class DataServiceTest {
 		DataService dataService = MockObjectUtil.DATA_SERVICE;
 		String ss = Serializer.serializePlain(dataService);
 		DataService dataService2 = Serializer.deserializePlain(ss, DataService.class);
-		assertThat(dataService).usingRecursiveComparison().isEqualTo(dataService2);
+		assertThat(dataService).usingRecursiveComparison().usingOverriddenEquals().isEqualTo(dataService2);
 	}
 	
 	@Test
@@ -129,7 +129,7 @@ public class DataServiceTest {
 		DataService dataService = MockObjectUtil.DATA_SERVICE;
 		String ss = Serializer.serializeProtocol(dataService);
 		DataService dataService2 = Serializer.deserializeProtocol(ss, DataService.class);
-		assertThat(dataService).usingRecursiveComparison().isEqualTo(dataService2);
+		assertThat(dataService).usingRecursiveComparison().usingOverriddenEquals().isEqualTo(dataService2);
 	}
 	
 	private void validateDataService(DataService dataService) {

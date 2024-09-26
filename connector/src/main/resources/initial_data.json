@@ -1,443 +1,399 @@
 {
-  "users": [
-    {
-      "_class": "it.eng.connector.model.User",
-      "_id": "59d54e6d-a3f3-4a03-a093-d276e3068eef",
-      "firstName": "Admin",
-      "lastName": "Role",
-      "email": "admin@mail.com",
-      "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
-      "enabled": "true",
-      "role": "ROLE_ADMIN"
-    },
-    {
-      "_class": "it.eng.connector.model.User",
-      "_id": "cab7b27b-f810-457d-b900-368994f6a640",
-      "firstName": "Connector",
-      "lastName": "Role",
-      "email": "connector@mail.com",
-      "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
-      "enabled": "true",
-      "role": "ROLE_CONNECTOR"
-    }
-  ],
-  "catalogs": [
-    {
-      "_class": "it.eng.catalog.model.Catalog",
-      "_id": "urn:uuid:1dc45797-3333-4955-8baf-ab7fd66ac4d5",
-      "keyword": [
-        "Employee",
-        "Information",
-        "Test",
-		"TRUEConnector team information"
-      ],
-      "theme": [
-        "dark theme",
-        "light theme"
-      ],
-      "conformsTo": "conformsToSomething",
-      "creator": "Engineering Informatica S.p.A.",
-      "description": [
-        {
-          "value": "Sample catalog offering TRUEConnector team information",
-          "language": "en"
-        }
-      ],
-      "identifier": "Unique identifier for test Catalog",
-      "issued": "2024-04-23T16:26:00.000Z",
-      "modified": "2024-04-23T16:26:00.000Z",
-      "title": "Testcatalog - TRUEConnector team information",
-      "distribution": [
-        {
-          "$ref": "distributions",
-          "$id": "urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5"
-        },
-		{
-			"$ref": "distributions",
-	        "$id": "urn:uuid:1dc45797-json-4932-8baf-ab7fd66ql4d5"
-		}
-      ],
-      "dataset": [
-        {
-          "$ref": "datasets",
-          "$id": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
-        }
-      ],
-      "service": [
-        {
-          "$ref": "dataservices",
-          "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
-        }
-      ],
-      "participantId": "urn:example:DataProviderA",
-      "homepage": "https://www.homepage.com/test",
-      "createdBy": "admin@mail.com",
-      "lastModifiedBy": "admin@mail.com",
-      "version": 0
-    }
-  ],
-  "datasets": [
-    {
-      "_class": "it.eng.catalog.model.Dataset",
-      "_id": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
-      "keyword": [
-        "Personal information",
-        "Employee",
-        "TRUEConnector team",
-		"REST",
-		"SFTP",
-		"json",
-		"pdf"
-      ],
-      "theme": [
-        "dark theme",
-        "light theme"
-      ],
-      "description": [
-        {
-          "value": "Dataset offering TRUEConnector team information",
-          "language": "en"
-        }
-      ],
-      "conformsTo": "conformsToSomething",
-      "creator": "Engineering Informatica S.p.A.",
-      "identifier": "Unique identifier for test Dataset",
-      "issued": "2024-04-23T16:26:00.000Z",
-      "modified": "2024-04-23T16:26:00.000Z",
-      "title": "TRUEConnector team information dataset",
-      "hasPolicy": [
-        {
-          "_id": "urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5",
-          "_class": "it.eng.catalog.model.Offer",
-          "permission": [
-            {
-              "action": "USE",
-              "constraint": [
-                {
-                  "leftOperand": "COUNT",
-                  "operator": "EQ",
-                  "rightOperand": "5"
-                }
-              ]
-            }
-          ]
-        }
-      ],
-      "distribution": [
-        {
-          "$ref": "distributions",
-          "$id": "urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5"
+    "users": [{
+            "_class": "it.eng.connector.model.User",
+            "_id": "59d54e6d-a3f3-4a03-a093-d276e3068eef",
+            "firstName": "Admin",
+            "lastName": "Role",
+            "email": "admin@mail.com",
+            "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
+            "enabled": "true",
+            "role": "ROLE_ADMIN"
         }, {
-		  "$ref": "distributions",
-	      "$id": "urn:uuid:1dc45797-json-4932-8baf-ab7fd66ql4d5"
-		}
-      ],
-      "createdBy": "admin@mail.com",
-      "lastModifiedBy": "admin@mail.com",
-      "version": 0
-    }
-  ],
-  "dataservices": [
-    {
-      "_id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5",
-      "_class": "it.eng.catalog.model.DataService",
-      "keyword": [
-        "REST",
-		"SFTP",
-        "transfer"
-      ],
-      "theme": [
-        "dark theme",
-        "light theme"
-      ],
-      "conformsTo": "conformsToSomething",
-      "creator": "Engineering Informatica S.p.A.",
-      "description": [
-        {
-          "value": "DSP TRUEConnector service offering team information",
-          "language": "en"
+            "_class": "it.eng.connector.model.User",
+            "_id": "cab7b27b-f810-457d-b900-368994f6a640",
+            "firstName": "Connector",
+            "lastName": "Role",
+            "email": "connector@mail.com",
+            "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
+            "enabled": "true",
+            "role": "ROLE_CONNECTOR"
         }
-      ],
-      "identifier": "DSP TRUE Connector Unique identifier for testing",
-      "issued": "2024-04-23T16:26:00.000Z",
-      "modified": "2024-04-23T16:26:00.000Z",
-      "title": "DSP TRUE Connector",
-      "endpointDescription": "dspace:connector",
-      "endpointURL": "http://localhost:8090/",
-      "createdBy": "admin@mail.com",
-      "lastModifiedBy": "admin@mail.com",
-      "version": 0
-    }
-  ],
-  "distributions": [
-    {
-      "_id": "urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5",
-      "_class": "it.eng.catalog.model.Distribution",
-      "title": "PDF file",
-      "format": {
-        "_id": "HTTP-pull"
-      },
-      "accessService": [
-        {
-          "$ref": "dataservices",
-          "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
-        }
-      ],
-      "createdBy": "admin@mail.com",
-      "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
-      "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
-    },
-	{
-      "_id": "urn:uuid:1dc45797-json-4932-8baf-ab7fd66ql4d5",
-      "_class": "it.eng.catalog.model.Distribution",
-      "title": "JSON file",
-      "format": {
-        "_id": "HTTP-pull"
-      },
-      "accessService": [
-        {
-          "$ref": "dataservices",
-          "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
-        }
-      ],
-      "createdBy": "admin@mail.com",
-      "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
-      "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
-    }
-  ],
-  "contract_negotiations": [],
-  "application_properties": [
-    {
-        "_id": "application.daps.dapsJWKSUrl",
-        "value": "https://daps.aisec.fraunhofer.de/.well-known/jwks.json",
-        "mandatory": false,
-        "issued": "2024-06-24T16:26:00.000Z",
-        "modified": "2024-06-24T16:26:00.000Z",
-        "version": 0
-    },
-    {
-        "_id": "application.daps.dapsUrl",
-        "value": "https://daps.aisec.fraunhofer.de/v2/token",
-        "mandatory": false,
-        "issued": "2024-06-24T16:26:00.000Z",
-        "modified": "2024-06-24T16:26:00.000Z",
-        "version": 0
-    },
-    {
-        "_id": "application.daps.enabledDapsInteraction",
-        "value": "false",
-        "mandatory": false,
-        "issued": "2024-06-24T16:26:00.000Z",
-        "modified": "2024-06-24T16:26:00.000Z",
-        "version": 0
-    },
-    {
-        "_id": "application.daps.extendedTokenValidation",
-        "value": "false",
-        "mandatory": false,
-        "issued": "2024-06-24T16:26:00.000Z",
-        "modified": "2024-06-24T16:26:00.000Z",
-        "version": 0
-    },
-    {
-        "_id": "application.daps.fetchTokenOnStartup",
-        "value": "false",
-        "mandatory": false,
-        "issued": "2024-06-24T16:26:00.000Z",
-        "modified": "2024-06-24T16:26:00.000Z",
-        "version": 0
-    },
-    {
-        "_id": "application.daps.tokenCaching",
-        "value": "false",
-        "mandatory": false,
-        "issued": "2024-06-24T16:26:00.000Z",
-        "modified": "2024-06-24T16:26:00.000Z",
-        "version": 0
-    }
-  ],
-  "agreements" : [
-  	{
-  		"_id": "urn:uuid:AGREEMENT_ID_OK",
-  		"_class": "it.eng.negotiation.model.Agreement",
-  		"target": "urn:uuid:3dd1add4-4d2d-569e-d634-8394a8836d23",
-  		"timestamp": "2023-01-01T01:00:00Z",
-  		"assigner": "urn:tsdshhs636378",
-  		"assignee": "urn:jashd766",
-  		"permission": [
-  			{
-  				"action": "USE",
-  				"constraint": [
-  					{
-  						"leftOperand": "COUNT",
-  						"operator": "EQ",
-  						"rightOperand": "5"
-  					}
-  				]
-  			}
-  		]
-  	},
-	{
-  		"_id": "urn:uuid:AGREEMENT_ID_COMPLETED_TRANSFER_TEST",
-  		"_class": "it.eng.negotiation.model.Agreement",
-  		"target": "urn:uuid:3dd1add4-4d2d-569e-d634-8394a8836d23",
-  		"timestamp": "2023-01-01T01:00:00Z",
-  		"assigner": "urn:tsdshhs636378",
-  		"assignee": "urn:jashd766",
-  		"permission": [
-  			{
-  				"action": "USE",
-  				"constraint": [
-  					{
-  						"leftOperand": "COUNT",
-  						"operator": "EQ",
-  						"rightOperand": "5"
-  					}
-  				]
-  			}
-  		]
-  	},
-	{
-  		"_id": "urn:uuid:AGREEMENT_ID_TERMINATE_TRANSFER_TEST",
-  		"_class": "it.eng.negotiation.model.Agreement",
-  		"target": "urn:uuid:3dd1add4-4d2d-569e-d634-8394a8836d23",
-  		"timestamp": "2023-01-01T01:00:00Z",
-  		"assigner": "urn:tsdshhs636378",
-  		"assignee": "urn:jashd766",
-  		"permission": [
-  			{
-  				"action": "USE",
-  				"constraint": [
-  					{
-  						"leftOperand": "COUNT",
-  						"operator": "EQ",
-  						"rightOperand": "5"
-  					}
-  				]
-  			}
-  		]
-  	},
-	{
-  		"_id": "urn:uuid:AGREEMENT_ID_SUSP",
-  		"_class": "it.eng.negotiation.model.Agreement",
-  		"target": "urn:uuid:3dd1add4-4d2d-569e-d634-8394a8836d23",
-  		"timestamp": "2023-01-01T01:00:00Z",
-  		"assigner": "urn:tsdshhs636378",
-  		"assignee": "urn:jashd766",
-  		"permission": [
-  			{
-  				"action": "USE",
-  				"constraint": [
-  					{
-  						"leftOperand": "COUNT",
-  						"operator": "EQ",
-  						"rightOperand": "5"
-  					}
-  				]
-  			}
-  		]
-  	}
     ],
-  "transfer_request_messages" : [
-  	{
-	  "_id": "urn:uuid:abc45797-pdff-4932-8baf-ab7fd66ql4d5",
-	  "_class": "it.eng.datatransfer.model.TransferRequestMessage",
-	  "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
-	  "format": "example:HTTP_PULL",
-	  "callbackAddress": "https://callback.url.com"
-	  }
-  ],
-  "transfer_process" : [
-    {
-	  "_id": "urn:uuid:abc45798-4444-4932-8baf-ab7fd66ql4d5",
-	  "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
-      "callbackAddress" : "http://localhost:8080/consumer/transfers/callback/",
-      "agreementId" : "urn:uuid:AGREEMENT_ID",
-	  "state" : "STARTED",
-	  "createdBy": "admin@mail.com",
-      "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
-      "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
-	},
-	{
-	  "_id": "urn:uuid:abc45798-5555-4932-8baf-ab7fd66ql4d5",
-	  "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_REQ",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_REQ",
-      "callbackAddress" : "http://localhost:8080/consumer/transfers/callback/",
-      "agreementId" : "urn:uuid:AGREEMENT_ID_REQ",
-	  "state" : "REQUESTED",
-	  "createdBy": "admin@mail.com",
-      "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
-      "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
-	},
-	{
-	  "_id": "urn:uuid:abc45798-5551-4932-8baf-ab7fd66ql4d5",
-	  "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_SUSP",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_SUSP",
-      "callbackAddress" : "http://localhost:8080/consumer/transfers/callback/",
-      "agreementId" : "urn:uuid:AGREEMENT_ID_SUSP",
-	  "state" : "SUSPENDED",
-	  "createdBy": "admin@mail.com",
-      "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
-      "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
-	},
-	{
-	  "_id": "urn:uuid:abc45798-5553-4932-8baf-ab7fd66ql4d5",
-	  "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_C_REQ",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_C_REQ",
-      "callbackAddress" : "http://localhost:8080/consumer/transfers/callback/",
-      "agreementId" : "urn:uuid:AGREEMENT_ID_C_REQ",
-	  "state" : "REQUESTED",
-	  "createdBy": "admin@mail.com",
-      "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
-      "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
-	},
-	{
-	  "_id": "urn:uuid:abc45798-5553-4932-TERM-ab7fd66ql4d5",
-	  "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_C_TERM",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_C_TERM",
-      "callbackAddress" : "http://localhost:8080/consumer/transfers/callback/",
-      "agreementId" : "urn:uuid:AGREEMENT_ID_C_REQ",
-	  "state" : "STARTED",
-	  "createdBy": "admin@mail.com",
-      "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
-      "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
-	}
-  ],
-   "transfer_start_messages" : [
-    {
-	  "_id": "urn:uuid:abc45799-4444-4932-8baf-ab7fd66ql4d5",
-	  "_class": "it.eng.datatransfer.model.TransferStartMessage",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
-	  "dataAddress": {
-	    "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
-	    "endpoint": "http://localhost:8090/artifact/dXJuOnV1aWQ6Q09OU1VNRVJfUElEX1RSQU5TRkVSfHVybjp1dWlkOlBST1ZJREVSX1BJRF9UUkFOU0ZFUg/1"
-	  },
-	  "createdBy": "admin@mail.com",
-      "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
-      "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
-	}
-  ]
+    "catalogs": [{
+            "_class": "it.eng.catalog.model.Catalog",
+            "_id": "urn:uuid:1dc45797-3333-4955-8baf-ab7fd66ac4d5",
+            "keyword": [
+                "Employee",
+                "Information",
+                "Test",
+                "TRUEConnector team information"
+            ],
+            "theme": [
+                "dark theme",
+                "light theme"
+            ],
+            "conformsTo": "conformsToSomething",
+            "creator": "Engineering Informatica S.p.A.",
+            "description": [{
+                    "value": "Sample catalog offering TRUEConnector team information",
+                    "language": "en"
+                }
+            ],
+            "identifier": "Unique identifier for test Catalog",
+            "issued": "2024-04-23T16:26:00.000Z",
+            "modified": "2024-04-23T16:26:00.000Z",
+            "title": "Testcatalog - TRUEConnector team information",
+            "distribution": [{
+                    "$ref": "distributions",
+                    "$id": "urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5"
+                }, {
+                    "$ref": "distributions",
+                    "$id": "urn:uuid:1dc45797-json-4932-8baf-ab7fd66ql4d5"
+                }
+            ],
+            "dataset": [{
+                    "$ref": "datasets",
+                    "$id": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
+                }
+            ],
+            "service": [{
+                    "$ref": "dataservices",
+                    "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
+                }
+            ],
+            "participantId": "urn:example:DataProviderA",
+            "homepage": "https://www.homepage.com/test",
+            "createdBy": "admin@mail.com",
+            "lastModifiedBy": "admin@mail.com",
+            "version": 0
+        }
+    ],
+    "datasets": [{
+            "_class": "it.eng.catalog.model.Dataset",
+            "_id": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+            "keyword": [
+                "Personal information",
+                "Employee",
+                "TRUEConnector team",
+                "REST",
+                "SFTP",
+                "json",
+                "pdf"
+            ],
+            "theme": [
+                "dark theme",
+                "light theme"
+            ],
+            "description": [{
+                    "value": "Dataset offering TRUEConnector team information",
+                    "language": "en"
+                }
+            ],
+            "conformsTo": "conformsToSomething",
+            "creator": "Engineering Informatica S.p.A.",
+            "identifier": "Unique identifier for test Dataset",
+            "issued": "2024-04-23T16:26:00.000Z",
+            "modified": "2024-04-23T16:26:00.000Z",
+            "title": "TRUEConnector team information dataset",
+            "hasPolicy": [{
+                    "_id": "urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5",
+                    "_class": "it.eng.catalog.model.Offer",
+                    "permission": [{
+							"target": "urn:uuid:TARGET",
+                            "action": "USE",
+                            "constraint": [{
+                                    "leftOperand": "COUNT",
+                                    "operator": "EQ",
+                                    "rightOperand": "5"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "distribution": [{
+                    "$ref": "distributions",
+                    "$id": "urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5"
+                }, {
+                    "$ref": "distributions",
+                    "$id": "urn:uuid:1dc45797-json-4932-8baf-ab7fd66ql4d5"
+                }
+            ],
+            "createdBy": "admin@mail.com",
+            "lastModifiedBy": "admin@mail.com",
+            "version": 0
+        }
+    ],
+    "dataservices": [{
+            "_id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5",
+            "_class": "it.eng.catalog.model.DataService",
+            "keyword": [
+                "REST",
+                "SFTP",
+                "transfer"
+            ],
+            "theme": [
+                "dark theme",
+                "light theme"
+            ],
+            "conformsTo": "conformsToSomething",
+            "creator": "Engineering Informatica S.p.A.",
+            "description": [{
+                    "value": "DSP TRUEConnector service offering team information",
+                    "language": "en"
+                }
+            ],
+            "identifier": "DSP TRUE Connector Unique identifier for testing",
+            "issued": "2024-04-23T16:26:00.000Z",
+            "modified": "2024-04-23T16:26:00.000Z",
+            "title": "DSP TRUE Connector",
+            "endpointDescription": "dspace:connector",
+            "endpointURL": "http://localhost:8090/",
+            "createdBy": "admin@mail.com",
+            "lastModifiedBy": "admin@mail.com",
+            "version": 0
+        }
+    ],
+    "distributions": [{
+            "_id": "urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5",
+            "_class": "it.eng.catalog.model.Distribution",
+            "title": "PDF file",
+            "format": {
+                "_id": "HTTP-pull"
+            },
+            "accessService": [{
+                    "$ref": "dataservices",
+                    "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
+                }
+            ],
+            "createdBy": "admin@mail.com",
+            "lastModifiedBy": "admin@mail.com",
+            "issued": "2024-04-23T16:26:00.000Z",
+            "modified": "2024-04-23T16:26:00.000Z",
+            "version": 0
+        }, {
+            "_id": "urn:uuid:1dc45797-json-4932-8baf-ab7fd66ql4d5",
+            "_class": "it.eng.catalog.model.Distribution",
+            "title": "JSON file",
+            "format": {
+                "_id": "HTTP-pull"
+            },
+            "accessService": [{
+                    "$ref": "dataservices",
+                    "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
+                }
+            ],
+            "createdBy": "admin@mail.com",
+            "lastModifiedBy": "admin@mail.com",
+            "issued": "2024-04-23T16:26:00.000Z",
+            "modified": "2024-04-23T16:26:00.000Z",
+            "version": 0
+        }
+    ],
+    "contract_negotiations": [],
+    "application_properties": [{
+            "_id": "application.daps.dapsJWKSUrl",
+            "value": "https://daps.aisec.fraunhofer.de/.well-known/jwks.json",
+            "mandatory": false,
+            "issued": "2024-06-24T16:26:00.000Z",
+            "modified": "2024-06-24T16:26:00.000Z",
+            "version": 0
+        }, {
+            "_id": "application.daps.dapsUrl",
+            "value": "https://daps.aisec.fraunhofer.de/v2/token",
+            "mandatory": false,
+            "issued": "2024-06-24T16:26:00.000Z",
+            "modified": "2024-06-24T16:26:00.000Z",
+            "version": 0
+        }, {
+            "_id": "application.daps.enabledDapsInteraction",
+            "value": "false",
+            "mandatory": false,
+            "issued": "2024-06-24T16:26:00.000Z",
+            "modified": "2024-06-24T16:26:00.000Z",
+            "version": 0
+        }, {
+            "_id": "application.daps.extendedTokenValidation",
+            "value": "false",
+            "mandatory": false,
+            "issued": "2024-06-24T16:26:00.000Z",
+            "modified": "2024-06-24T16:26:00.000Z",
+            "version": 0
+        }, {
+            "_id": "application.daps.fetchTokenOnStartup",
+            "value": "false",
+            "mandatory": false,
+            "issued": "2024-06-24T16:26:00.000Z",
+            "modified": "2024-06-24T16:26:00.000Z",
+            "version": 0
+        }, {
+            "_id": "application.daps.tokenCaching",
+            "value": "false",
+            "mandatory": false,
+            "issued": "2024-06-24T16:26:00.000Z",
+            "modified": "2024-06-24T16:26:00.000Z",
+            "version": 0
+        }
+    ],
+    "agreements": [{
+            "_id": "urn:uuid:AGREEMENT_ID_OK",
+            "_class": "it.eng.negotiation.model.Agreement",
+            "target": "urn:uuid:3dd1add4-4d2d-569e-d634-8394a8836d23",
+            "timestamp": "2023-01-01T01:00:00Z",
+            "assigner": "urn:tsdshhs636378",
+            "assignee": "urn:jashd766",
+            "permission": [{
+                    "action": "USE",
+                    "constraint": [{
+                            "leftOperand": "COUNT",
+                            "operator": "EQ",
+                            "rightOperand": "5"
+                        }
+                    ]
+                }
+            ]
+        }, {
+            "_id": "urn:uuid:AGREEMENT_ID_COMPLETED_TRANSFER_TEST",
+            "_class": "it.eng.negotiation.model.Agreement",
+            "target": "urn:uuid:3dd1add4-4d2d-569e-d634-8394a8836d23",
+            "timestamp": "2023-01-01T01:00:00Z",
+            "assigner": "urn:tsdshhs636378",
+            "assignee": "urn:jashd766",
+            "permission": [{
+                    "action": "USE",
+                    "constraint": [{
+                            "leftOperand": "COUNT",
+                            "operator": "EQ",
+                            "rightOperand": "5"
+                        }
+                    ]
+                }
+            ]
+        }, {
+            "_id": "urn:uuid:AGREEMENT_ID_TERMINATE_TRANSFER_TEST",
+            "_class": "it.eng.negotiation.model.Agreement",
+            "target": "urn:uuid:3dd1add4-4d2d-569e-d634-8394a8836d23",
+            "timestamp": "2023-01-01T01:00:00Z",
+            "assigner": "urn:tsdshhs636378",
+            "assignee": "urn:jashd766",
+            "permission": [{
+                    "action": "USE",
+                    "constraint": [{
+                            "leftOperand": "COUNT",
+                            "operator": "EQ",
+                            "rightOperand": "5"
+                        }
+                    ]
+                }
+            ]
+        }, {
+            "_id": "urn:uuid:AGREEMENT_ID_SUSP",
+            "_class": "it.eng.negotiation.model.Agreement",
+            "target": "urn:uuid:3dd1add4-4d2d-569e-d634-8394a8836d23",
+            "timestamp": "2023-01-01T01:00:00Z",
+            "assigner": "urn:tsdshhs636378",
+            "assignee": "urn:jashd766",
+            "permission": [{
+                    "action": "USE",
+                    "constraint": [{
+                            "leftOperand": "COUNT",
+                            "operator": "EQ",
+                            "rightOperand": "5"
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "transfer_request_messages": [{
+            "_id": "urn:uuid:abc45797-pdff-4932-8baf-ab7fd66ql4d5",
+            "_class": "it.eng.datatransfer.model.TransferRequestMessage",
+            "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+            "format": "example:HTTP_PULL",
+            "callbackAddress": "https://callback.url.com"
+        }
+    ],
+    "transfer_process": [{
+            "_id": "urn:uuid:abc45798-4444-4932-8baf-ab7fd66ql4d5",
+            "_class": "it.eng.datatransfer.model.TransferProcess",
+            "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
+            "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+            "callbackAddress": "http://localhost:8080/consumer/transfers/callback/",
+            "agreementId": "urn:uuid:AGREEMENT_ID",
+            "state": "STARTED",
+            "createdBy": "admin@mail.com",
+            "lastModifiedBy": "admin@mail.com",
+            "issued": "2024-04-23T16:26:00.000Z",
+            "modified": "2024-04-23T16:26:00.000Z",
+            "version": 0
+        }, {
+            "_id": "urn:uuid:abc45798-5555-4932-8baf-ab7fd66ql4d5",
+            "_class": "it.eng.datatransfer.model.TransferProcess",
+            "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_REQ",
+            "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_REQ",
+            "callbackAddress": "http://localhost:8080/consumer/transfers/callback/",
+            "agreementId": "urn:uuid:AGREEMENT_ID_REQ",
+            "state": "REQUESTED",
+            "createdBy": "admin@mail.com",
+            "lastModifiedBy": "admin@mail.com",
+            "issued": "2024-04-23T16:26:00.000Z",
+            "modified": "2024-04-23T16:26:00.000Z",
+            "version": 0
+        }, {
+            "_id": "urn:uuid:abc45798-5551-4932-8baf-ab7fd66ql4d5",
+            "_class": "it.eng.datatransfer.model.TransferProcess",
+            "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_SUSP",
+            "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_SUSP",
+            "callbackAddress": "http://localhost:8080/consumer/transfers/callback/",
+            "agreementId": "urn:uuid:AGREEMENT_ID_SUSP",
+            "state": "SUSPENDED",
+            "createdBy": "admin@mail.com",
+            "lastModifiedBy": "admin@mail.com",
+            "issued": "2024-04-23T16:26:00.000Z",
+            "modified": "2024-04-23T16:26:00.000Z",
+            "version": 0
+        }, {
+            "_id": "urn:uuid:abc45798-5553-4932-8baf-ab7fd66ql4d5",
+            "_class": "it.eng.datatransfer.model.TransferProcess",
+            "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_C_REQ",
+            "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_C_REQ",
+            "callbackAddress": "http://localhost:8080/consumer/transfers/callback/",
+            "agreementId": "urn:uuid:AGREEMENT_ID_C_REQ",
+            "state": "REQUESTED",
+            "createdBy": "admin@mail.com",
+            "lastModifiedBy": "admin@mail.com",
+            "issued": "2024-04-23T16:26:00.000Z",
+            "modified": "2024-04-23T16:26:00.000Z",
+            "version": 0
+        }, {
+            "_id": "urn:uuid:abc45798-5553-4932-TERM-ab7fd66ql4d5",
+            "_class": "it.eng.datatransfer.model.TransferProcess",
+            "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_C_TERM",
+            "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_C_TERM",
+            "callbackAddress": "http://localhost:8080/consumer/transfers/callback/",
+            "agreementId": "urn:uuid:AGREEMENT_ID_C_REQ",
+            "state": "STARTED",
+            "createdBy": "admin@mail.com",
+            "lastModifiedBy": "admin@mail.com",
+            "issued": "2024-04-23T16:26:00.000Z",
+            "modified": "2024-04-23T16:26:00.000Z",
+            "version": 0
+        }
+    ],
+    "transfer_start_messages": [{
+            "_id": "urn:uuid:abc45799-4444-4932-8baf-ab7fd66ql4d5",
+            "_class": "it.eng.datatransfer.model.TransferStartMessage",
+            "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
+            "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+            "dataAddress": {
+                "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
+                "endpoint": "http://localhost:8090/artifact/dXJuOnV1aWQ6Q09OU1VNRVJfUElEX1RSQU5TRkVSfHVybjp1dWlkOlBST1ZJREVSX1BJRF9UUkFOU0ZFUg/1"
+            },
+            "createdBy": "admin@mail.com",
+            "lastModifiedBy": "admin@mail.com",
+            "issued": "2024-04-23T16:26:00.000Z",
+            "modified": "2024-04-23T16:26:00.000Z",
+            "version": 0
+        }
+    ]
 }

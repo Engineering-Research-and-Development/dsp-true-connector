@@ -85,7 +85,7 @@ public class DatasetTest {
 		Dataset dataset = MockObjectUtil.DATASET;
 		String ss = Serializer.serializePlain(dataset);
 		Dataset dataset2 = Serializer.deserializePlain(ss, Dataset.class);
-		assertThat(dataset).usingRecursiveComparison().isEqualTo(dataset2);
+		assertThat(dataset).usingRecursiveComparison().usingOverriddenEquals().isEqualTo(dataset2);
 	}
 	
 	@Test
@@ -94,7 +94,7 @@ public class DatasetTest {
 		Dataset dataset = MockObjectUtil.DATASET;
 		String ss = Serializer.serializeProtocol(dataset);
 		Dataset dataset2 = Serializer.deserializeProtocol(ss, Dataset.class);
-		assertThat(dataset).usingRecursiveComparison().isEqualTo(dataset2);
+		assertThat(dataset).usingRecursiveComparison().usingOverriddenEquals().isEqualTo(dataset2);
 	}
 	
 	private void validateDataset(Dataset javaObj) {
