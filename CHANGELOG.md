@@ -1,17 +1,42 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [0.1.0] - 16-09-2024
+## [0.1.0] - 16-09-2024 - EDC compatible
 
 ### Added
 
  - New property application.usagecontrol.enabled for usage control enabling/disabling
+ - AgreementAPIService - extracted from existing ContractNegotiationAPIService - is agreement valid
  
 ### Changed
 
  - @context element for all protocol serialized object is map, not string
+ - dpsace value "https://w3id.org/dspace/v0.8/" instead "https://w3id.org/dspace/1/0/context.json"
+ - Constraint.leftOperand, Constraint.operator, Permission.target, Permission.action are now objects
+ (they can be String or as Reference, json object with @id as key and String for value)
 
+```
+"odrl:leftOperand": {
+	"@id": "odrl:count"
+},
+"odrl:operator": {
+	"@id": "odrl:eq"
+}
 
+"odrl:target": {
+	"@id": "assetId"
+}
+```
+ - For Object fields created extractXXX methods that returns value for comparison, used in equals method
+ - dct:format - "HttpData-PULL" and "HttpData-PUSH"
+ - equals methods for Constraint, Permission and Offer - custom implementation related with Object types, can be String, Map or Reference
+ - Postman collection updated with new @context element; added dspace_namespace variable for easy change in @context
+ - ContractNegotiationConsumerService - callbackAddress might be omitted in ContractAgreementMessage so using initial
+
+### Removed
+
+ - Assignee, assigner and target from Permission and Offer in Catalog module
+ 
 ## [0.1.0] - 13-09-2024
 
 ### Added
