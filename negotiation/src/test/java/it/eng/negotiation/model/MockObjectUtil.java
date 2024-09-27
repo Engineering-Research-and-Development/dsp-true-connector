@@ -28,7 +28,6 @@ public class MockObjectUtil {
 		return "urn:uuid:" + UUID.randomUUID().toString();
 	}
 	
-	
 	public static ContractNegotiationEventMessage getEventMessage(ContractNegotiationEventType eventType) {
 		return ContractNegotiationEventMessage.Builder.newInstance()
 				.consumerPid(MockObjectUtil.CONSUMER_PID)

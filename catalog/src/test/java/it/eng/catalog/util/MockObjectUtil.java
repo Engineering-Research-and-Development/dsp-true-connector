@@ -37,9 +37,9 @@ public class MockObjectUtil {
     public static final String RIGHT_EXPRESSION = "EU";
     public static final String USE = "use";
     public static final String INCLUDED_IN = "includedInAction";
-    public static final String ASSIGNEE = "assignee";
-    public static final String ASSIGNER = "assigner";
-    public static final String TARGET = "target";
+//    public static final String ASSIGNEE = "assignee";
+//    public static final String ASSIGNER = "assigner";
+//    public static final String TARGET = "target";
     public static final String CONFORMSTO = "conformsToSomething";
     public static final String CREATOR = "Chuck Norris";
     public static final String IDENTIFIER = "Unique identifier for tests";
@@ -70,9 +70,9 @@ public class MockObjectUtil {
     public static final Permission PERMISSION = Permission.Builder.newInstance()
             .action(Action.USE)
             .constraint(Arrays.asList(CONSTRAINT_COUNT_5_TIMES).stream().collect(Collectors.toCollection(HashSet::new)))
-            .assignee(MockObjectUtil.ASSIGNEE)
-        	.assigner(MockObjectUtil.ASSIGNER)
-        	.target(MockObjectUtil.TARGET)
+//            .assignee(MockObjectUtil.ASSIGNEE)
+//        	.assigner(MockObjectUtil.ASSIGNER)
+//        	.target(MockObjectUtil.TARGET)
             .build();
     
     public static final Permission PERMISSION_UPDATE = Permission.Builder.newInstance()
@@ -93,13 +93,11 @@ public class MockObjectUtil {
     
     public static final Offer OFFER_WITH_TARGET = Offer.Builder.newInstance()
     		.id("urn:offer_id")
-            .target(TARGET)
             .permission(Arrays.asList(PERMISSION).stream().collect(Collectors.toCollection(HashSet::new)))
             .build();
     
     public static final Offer OFFER_UPDATE = Offer.Builder.newInstance()
     		.id("urn:offer_id_update")
-            .target(TARGET)
             .permission(Arrays.asList(PERMISSION_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
             .build();
 
@@ -118,7 +116,7 @@ public class MockObjectUtil {
             .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
             .issued(ISSUED)
             .modified(MODIFIED)
-            .hasPolicy(Arrays.asList(OFFER_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
+//            .hasPolicy(Arrays.asList(OFFER_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
             .accessService(Arrays.asList(DataServiceUtil.DATA_SERVICE).stream().collect(Collectors.toCollection(HashSet::new)))
             .version(0L)
             .createdBy("admin@mail.com")
@@ -126,6 +124,7 @@ public class MockObjectUtil {
             .build();
 
     public static final Collection<Distribution> DISTRIBUTIONS = Arrays.asList(DISTRIBUTION);
+    
     public static final Dataset DATASET = Dataset.Builder.newInstance()
             .conformsTo(CONFORMSTO)
             .creator(CREATOR)
@@ -192,7 +191,7 @@ public class MockObjectUtil {
             .service(Arrays.asList(DataServiceUtil.DATA_SERVICE_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
             .dataset(Arrays.asList(DATASET_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
             .distribution(Arrays.asList(DISTRIBUTION_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
-            .hasPolicy(Arrays.asList(OFFER_WITH_TARGET).stream().collect(Collectors.toCollection(HashSet::new)))
+//            .hasPolicy(Arrays.asList(OFFER_WITH_TARGET).stream().collect(Collectors.toCollection(HashSet::new)))
             .homepage(ENDPOINT_URL)
             .version(0L)
             .createdBy("admin@mail.com")

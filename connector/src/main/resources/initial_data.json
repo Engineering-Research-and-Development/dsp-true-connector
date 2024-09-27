@@ -99,7 +99,6 @@
                     "_id": "urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5",
                     "_class": "it.eng.catalog.model.Offer",
                     "permission": [{
-							"target": "urn:uuid:TARGET",
                             "action": "USE",
                             "constraint": [{
                                     "leftOperand": "COUNT",
@@ -159,7 +158,7 @@
             "_class": "it.eng.catalog.model.Distribution",
             "title": "PDF file",
             "format": {
-                "_id": "HTTP-pull"
+                "_id": "HttpData-PULL"
             },
             "accessService": [{
                     "$ref": "dataservices",
@@ -176,7 +175,7 @@
             "_class": "it.eng.catalog.model.Distribution",
             "title": "JSON file",
             "format": {
-                "_id": "HTTP-pull"
+                "_id": "HttpData-PULL"
             },
             "accessService": [{
                     "$ref": "dataservices",
@@ -309,7 +308,7 @@
             "_id": "urn:uuid:abc45797-pdff-4932-8baf-ab7fd66ql4d5",
             "_class": "it.eng.datatransfer.model.TransferRequestMessage",
             "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
-            "format": "example:HTTP_PULL",
+            "format": "HttpData-PULL",
             "callbackAddress": "https://callback.url.com"
         }
     ],

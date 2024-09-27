@@ -21,6 +21,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /*
 "odrl:offer": {
@@ -50,8 +51,8 @@ Offer -> allOf  /definitions/MessageOffer
 @JsonDeserialize(builder = Offer.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true) 
+@Slf4j
 public class Offer implements Serializable {
-
 
 	private static final long serialVersionUID = 4003295986049329564L;
 
@@ -61,16 +62,16 @@ public class Offer implements Serializable {
 	
 	// Different to a Catalog or Dataset, the Offer inside a Contract Request Message must have an odrl:target attribute.
 	// not mandatory for Catalog or Dataset offer to have target field - different from the Offer in negotiation module
-	@JsonProperty(DSpaceConstants.ODRL_TARGET)
-	private Object target;
+//	@JsonProperty(DSpaceConstants.ODRL_TARGET)
+//	private Object target;
 	
 	// required in catalog???
-	@JsonProperty(DSpaceConstants.ODRL_ASSIGNER)
-	private String assigner;
+//	@JsonProperty(DSpaceConstants.ODRL_ASSIGNER)
+//	private String assigner;
 
 	// required in catalog???
-	@JsonProperty(DSpaceConstants.ODRL_ASSIGNEE)
-	private String assignee;
+//	@JsonProperty(DSpaceConstants.ODRL_ASSIGNEE)
+//	private String assignee;
 	
 	@NotNull
 	@JsonProperty(DSpaceConstants.ODRL_PERMISSION)
@@ -96,33 +97,30 @@ public class Offer implements Serializable {
 			return new Builder();
 		}
 
-//		@JsonSetter(DSpaceConstants.ID)
 		@JsonProperty(DSpaceConstants.ID)
 		public Builder id(String id) {
 			offer.id = id;
 			return this;
 		}
 		
-//		@JsonSetter(DSpaceConstants.ODRL_TARGET)
-		@JsonProperty(DSpaceConstants.ODRL_TARGET)
-		public Builder target(Object target) {
-			offer.target = target;
-			return this;
-		}
+//		@JsonProperty(DSpaceConstants.ODRL_TARGET)
+//		public Builder target(Object target) {
+//			offer.target = target;
+//			return this;
+//		}
 
-		@JsonProperty(DSpaceConstants.ODRL_ASSIGNER)
-		public Builder assigner(String assigner) {
-			offer.assigner = assigner;
-			return this;
-		}
+//		@JsonProperty(DSpaceConstants.ODRL_ASSIGNER)
+//		public Builder assigner(String assigner) {
+//			offer.assigner = assigner;
+//			return this;
+//		}
 		
-		@JsonProperty(DSpaceConstants.ODRL_ASSIGNEE)
-		public Builder assignee(String assignee) {
-			offer.assignee = assignee;
-			return this;
-		}
+//		@JsonProperty(DSpaceConstants.ODRL_ASSIGNEE)
+//		public Builder assignee(String assignee) {
+//			offer.assignee = assignee;
+//			return this;
+//		}
 		
-//		@JsonSetter(DSpaceConstants.ODRL_PERMISSION)
 		@JsonProperty(DSpaceConstants.ODRL_PERMISSION)
 		@JsonDeserialize(as = Set.class)
 		public Builder permission(Set<Permission> permission) {
@@ -146,7 +144,7 @@ public class Offer implements Serializable {
 						.collect(Collectors.joining(", ")));
 			}
 	}
-	
+
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj)
@@ -158,22 +156,17 @@ public class Offer implements Serializable {
 		Offer other = (Offer) obj;
 		
 		if (!Objects.equals(id, other.id)) {
+			log.debug("Id's not equal");
 			return false;
 		}
 		
 		if (this.permission.size() != other.permission.size()) {
+			log.debug("Permssion size's not equal");
 			return false;
 		}
-		
-		if(this.permission.containsAll(other.getPermission())){
-            return true;
-		}
-		
 		if (Permission.compareCollection(this.permission, other.getPermission())) {
 			return true;
 		}
-		
 		return false;
-		
 	}
 }

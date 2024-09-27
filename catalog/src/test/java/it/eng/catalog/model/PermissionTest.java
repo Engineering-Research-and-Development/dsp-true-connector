@@ -14,7 +14,7 @@ import it.eng.catalog.util.MockObjectUtil;
 
 public class PermissionTest {
 
-	private static final String TARGET_A = "urn:uuid:TARGET";
+//	private static final String TARGET_A = "urn:uuid:TARGET";
 	
 	private Constraint constraint = Constraint.Builder.newInstance()
 			.leftOperand(LeftOperand.DATE_TIME)
@@ -24,13 +24,13 @@ public class PermissionTest {
 	
 	private Permission permissionA = Permission.Builder.newInstance()
 			.action(Action.USE)
-			.target(TARGET_A)
+//			.target(TARGET_A)
 			.constraint(Set.of(constraint))
 			.build();
 	
 	private Permission permissionB = Permission.Builder.newInstance()
 			.action(Action.ANONYMIZE)
-			.target(TARGET_A)
+//			.target(TARGET_A)
 			.constraint(Set.of(constraint))
 			.build();
 	
@@ -53,7 +53,7 @@ public class PermissionTest {
 					.build();
 		Permission permissionArray = Permission.Builder.newInstance()
 				.action(Action.ANONYMIZE)
-				.target(TARGET_A)
+//				.target(TARGET_A)
 				.constraint(Set.of(constraint2, constraint))
 				.build();
 		assertFalse(permissionA.equals(permissionArray));
@@ -74,12 +74,12 @@ public class PermissionTest {
 		 
 		Permission permissionA = Permission.Builder.newInstance()
 					.action(Action.USE)
-					.target(TARGET_A)
+//					.target(TARGET_A)
 					.constraint(Set.of(constraint1, constraint2))
 					.build();
 		Permission permissionB = Permission.Builder.newInstance()
 				.action(Action.USE)
-				.target(TARGET_A)
+//				.target(TARGET_A)
 				.constraint(Set.of(constraint2, constraint1))
 				.build();
 
@@ -104,4 +104,16 @@ public class PermissionTest {
 		assertThat(permission).usingRecursiveComparison().usingOverriddenEquals().isEqualTo(permission2);
 	}
 	
+	@Test
+	public void objectVsStringEquals() {
+		Permission permission = Permission.Builder.newInstance()
+				.action(Action.USE)
+				.constraint(Set.of(MockObjectUtil.CONSTRAINT))
+				.build();
+		Permission permissionObj = Permission.Builder.newInstance()
+				.action(Reference.Builder.newInstance().id(Action.USE.toString()).build())
+				.constraint(Set.of(MockObjectUtil.CONSTRAINT))
+				.build();
+		assertTrue(permission.equals(permissionObj));
+	}
 }

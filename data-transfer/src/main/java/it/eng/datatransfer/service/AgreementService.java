@@ -12,6 +12,7 @@ import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
 
@@ -19,20 +20,22 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class AgreementService {
 	
-	@Value("${server.port}")
 	private String serverPort;
 	
 	Map<String, Boolean> agreementStorage = new HashMap<>();
 	private TransferProcessRepository transferProcessRepository;
 	private OkHttpRestClient okHttpRestClient;
 	private CredentialUtils credentialUtils;
+	private UsageControlProperties usageControlProperties; 
 	
-	public AgreementService(TransferProcessRepository transferProcessRepository, OkHttpRestClient okHttpRestClient,
-			CredentialUtils credentialUtils) {
+	public AgreementService(@Value("${server.port}") String serverPort, TransferProcessRepository transferProcessRepository, OkHttpRestClient okHttpRestClient,
+			CredentialUtils credentialUtils, UsageControlProperties usageControlProperties) {
 		super();
+		this.serverPort = serverPort;
 		this.transferProcessRepository = transferProcessRepository;
 		this.okHttpRestClient = okHttpRestClient;
 		this.credentialUtils = credentialUtils;
+		this.usageControlProperties = usageControlProperties;
 	}
 
 	public boolean isAgreementValid(String consumerPid, String providerPid) {
@@ -41,16 +44,19 @@ public class AgreementService {
 						"' and providerPid '" + providerPid + "' not found", consumerPid, providerPid));
 		
 		String agreementId = transferProcess.getAgreementId();
-		// TODO once usage policy enforcement is done, call should be made here
-
-		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + serverPort 
-			+ ApiEndpoints.NEGOTIATION_AGREEMENTS_V1 + "/" + agreementId + "/valid", 
-				null, 
-				credentialUtils.getAPICredentials());
-        
-		if (!response.isSuccess()) {
-			log.info("Agreement is not valid");
-			return false;
+		//TODO once usage policy enforcement is done, call should be made here; 
+		if(usageControlProperties.usageControlEnabled()) {
+			GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + serverPort 
+					+ ApiEndpoints.NEGOTIATION_AGREEMENTS_V1 + "/" + agreementId + "/valid", 
+					null, 
+					credentialUtils.getAPICredentials());
+			
+			if (!response.isSuccess()) {
+				log.info("Agreement is not valid");
+				return false;
+			}
+		} else {
+			log.info("Usge control disabled - skipping check if agreement is valid");
 		}
 		
 		return true;

@@ -111,11 +111,6 @@ public class CatalogServiceTest {
         assertTrue(argCaptorCatalog.getValue().getDescription().stream().filter(d -> d.getValue().contains("update")).findFirst().isPresent());
         assertTrue(argCaptorCatalog.getValue().getDistribution().stream().filter(d -> d.getTitle().contains("update")).findFirst().isPresent());
        
-        assertTrue(argCaptorCatalog.getValue().getDistribution().stream().findFirst().get().getHasPolicy()
-        		.stream()
-        		.filter(p -> p.getId().equals("urn:offer_id_update"))
-        		.findFirst().isPresent());
-        
         DataService dataServiceUpdated = argCaptorCatalog.getValue().getService().stream().findFirst().get();
         assertTrue(dataServiceUpdated.getCreator().contains("update"));
         assertTrue(dataServiceUpdated.getEndpointURL().contains("update"));
@@ -150,7 +145,6 @@ public class CatalogServiceTest {
     public void providedOfferNotFound() {
 	  Offer differentOffer = Offer.Builder.newInstance()
 	    		.id("urn:offer_id")
-	            .target(MockObjectUtil.TARGET)
 	            .permission(Set.of(MockObjectUtil.PERMISSION_ANONYMIZE))
 	            .build();
 	
@@ -220,17 +214,14 @@ public class CatalogServiceTest {
     	.build();
     	Permission permission = Permission.Builder.newInstance()
     	.action(Reference.Builder.newInstance().id("odrl:use").build())
-    	.assignee(MockObjectUtil.ASSIGNEE)
-    	.assigner(MockObjectUtil.ASSIGNER)
+//    	.assignee(MockObjectUtil.ASSIGNEE)
+//    	.assigner(MockObjectUtil.ASSIGNER)
+//    	.target(Reference.Builder.newInstance().id(MockObjectUtil.TARGET).build())
     	.constraint(Set.of(constraint))
-    	.target(Reference.Builder.newInstance().id(MockObjectUtil.TARGET).build())
     	.build();
     	Offer offer = Offer.Builder.newInstance()
     	.id("urn:offer_id")
-    	.assignee(MockObjectUtil.ASSIGNEE)
-    	.assigner(MockObjectUtil.ASSIGNER)
     	.permission(Set.of(permission))
-    	.target(Reference.Builder.newInstance().id(MockObjectUtil.TARGET).build())
     	.build();
     	
     	return offer;
@@ -244,17 +235,14 @@ public class CatalogServiceTest {
     	.build();
     	Permission permission = Permission.Builder.newInstance()
     	.action(Reference.Builder.newInstance().id("odrl:use").build())
-    	.assignee(MockObjectUtil.ASSIGNEE)
-    	.assigner(MockObjectUtil.ASSIGNER)
+//    	.assignee(MockObjectUtil.ASSIGNEE)
+//    	.assigner(MockObjectUtil.ASSIGNER)
+//    	.target(Reference.Builder.newInstance().id(MockObjectUtil.TARGET).build())
     	.constraint(Set.of(constraint))
-    	.target(Reference.Builder.newInstance().id(MockObjectUtil.TARGET).build())
     	.build();
     	Offer offer = Offer.Builder.newInstance()
     	.id("urn:offer_id")
-    	.assignee(MockObjectUtil.ASSIGNEE)
-    	.assigner(MockObjectUtil.ASSIGNER)
     	.permission(Set.of(permission))
-    	.target(Reference.Builder.newInstance().id(MockObjectUtil.TARGET).build())
     	.build();
     	
     	return offer;

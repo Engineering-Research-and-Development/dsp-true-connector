@@ -7,8 +7,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.StringUtils;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -33,15 +31,15 @@ public class Permission implements Serializable {
 
 	private static final long serialVersionUID = -6221623714296723036L;
 
-	@JsonProperty(DSpaceConstants.ODRL_ASSIGNER)
-	private String assigner;
+//	@JsonProperty(DSpaceConstants.ODRL_ASSIGNER)
+//	private String assigner;
 	
-	@JsonProperty(DSpaceConstants.ODRL_ASSIGNEE)
-	private String assignee;
+//	@JsonProperty(DSpaceConstants.ODRL_ASSIGNEE)
+//	private String assignee;
 	
 	// not sure if this one is required at all or just optional for permission
-	@JsonProperty(DSpaceConstants.ODRL_TARGET)
-	private Object target;
+//	@JsonProperty(DSpaceConstants.ODRL_TARGET)
+//	private Object target;
 	
 	@NotNull
 	@JsonProperty(DSpaceConstants.ODRL_ACTION)
@@ -65,23 +63,23 @@ public class Permission implements Serializable {
 			return new Builder();
 		}
 		
-		@JsonProperty(DSpaceConstants.ODRL_ASSIGNER)
-		public Builder assigner(String assigner) {
-			permission.assigner = assigner;
-			return this;
-		}
+//		@JsonProperty(DSpaceConstants.ODRL_ASSIGNER)
+//		public Builder assigner(String assigner) {
+//			permission.assigner = assigner;
+//			return this;
+//		}
 		
-		@JsonProperty(DSpaceConstants.ODRL_ASSIGNEE)
-		public Builder assignee(String assignee) {
-			permission.assignee = assignee;
-			return this;
-		}
+//		@JsonProperty(DSpaceConstants.ODRL_ASSIGNEE)
+//		public Builder assignee(String assignee) {
+//			permission.assignee = assignee;
+//			return this;
+//		}
 		
-		@JsonProperty(DSpaceConstants.ODRL_TARGET)
-		public Builder target(Object target) {
-			permission.target = target;
-			return this;
-		}
+//		@JsonProperty(DSpaceConstants.ODRL_TARGET)
+//		public Builder target(Object target) {
+//			permission.target = target;
+//			return this;
+//		}
 		
 		@JsonProperty(DSpaceConstants.ODRL_ACTION)
 		public Builder action(Object action) {
@@ -123,20 +121,20 @@ public class Permission implements Serializable {
 		// typecast o to ContractNegotiationEventMessage so that we can compare data members 
 		Permission permission = (Permission) obj;
 				
-		if(!StringUtils.equals(this.assignee, permission.getAssignee())) {
-			log.debug("Permission assignee not equal");
-			return false;
-		}
-		if(!StringUtils.equals(this.assigner, permission.getAssigner())) {
-			log.debug("Permission assigner not equal");
-			return false;
-		}
-		String thisTarget = extractTarget(this.target);
-		String anotherTarget = extractTarget(permission.getTarget());
-		if(!StringUtils.equals(thisTarget, anotherTarget)) {
-			log.debug("Permission target not equal");
-			return false;
-		}
+//		if(!StringUtils.equals(this.assignee, permission.getAssignee())) {
+//			log.debug("Permission assignee not equal");
+//			return false;
+//		}
+//		if(!StringUtils.equals(this.assigner, permission.getAssigner())) {
+//			log.debug("Permission assigner not equal");
+//			return false;
+//		}
+//		String thisTarget = extractTarget(this.target);
+//		String anotherTarget = extractTarget(permission.getTarget());
+//		if(!StringUtils.equals(thisTarget, anotherTarget)) {
+//			log.debug("Permission target not equal");
+//			return false;
+//		}
 		Action thisAction = extractAction(this.getAction());
 		Action anotherAction = extractAction(permission.getAction());
 		if (thisAction != anotherAction) {
@@ -147,10 +145,6 @@ public class Permission implements Serializable {
 		if (this.constraint.size() != permission.getConstraint().size()) {
 			log.debug("Permission constraint size not equal");
 			return false;
-		}
-		if(this.constraint.containsAll(permission.getConstraint())){
-			log.debug("Permission constraint contains all constrains from check");
-            return true;
 		}
 		
 		if (Constraint.compareCollection(this.constraint, permission.getConstraint())) {
