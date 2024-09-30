@@ -1,0 +1,306 @@
+{
+	"info": {
+		"_postman_id": "cb7d0c13-563b-471f-961f-2bf56c2bce96",
+		"name": "EDC sample",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "36278855"
+	},
+	"item": [
+		{
+			"name": "Create asset",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"@context\": {\r\n    \"@vocab\": \"https://w3id.org/edc/v0.0.1/ns/\"\r\n  },\r\n  \"@id\": \"assetId\",\r\n  \"properties\": {\r\n    \"name\": \"product description\",\r\n    \"contenttype\": \"application/json\"\r\n  },\r\n  \"dataAddress\": {\r\n    \"type\": \"HttpData\",\r\n    \"name\": \"Test asset\",\r\n    \"baseUrl\": \"https://jsonplaceholder.typicode.com/users\",\r\n    \"proxyPath\": \"true\"\r\n  }\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:19193/management/v3/assets",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "19193",
+					"path": [
+						"management",
+						"v3",
+						"assets"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create policy",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"@context\": {\r\n    \"@vocab\": \"https://w3id.org/edc/v0.0.1/ns/\",\r\n    \"odrl\": \"http://www.w3.org/ns/odrl/2/\"\r\n  },\r\n  \"@id\": \"aPolicy\",\r\n  \"policy\": {\r\n    \"@context\": \"http://www.w3.org/ns/odrl.jsonld\",\r\n    \"@type\": \"Set\",\r\n    \"permission\": [],\r\n    \"prohibition\": [],\r\n    \"obligation\": []\r\n  }\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:19193/management/v3/policydefinitions",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "19193",
+					"path": [
+						"management",
+						"v3",
+						"policydefinitions"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create contract definitions",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"@context\": {\r\n    \"@vocab\": \"https://w3id.org/edc/v0.0.1/ns/\"\r\n  },\r\n  \"@id\": \"1\",\r\n  \"accessPolicyId\": \"aPolicy\",\r\n  \"contractPolicyId\": \"aPolicy\",\r\n  \"assetsSelector\": []\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:19193/management/v3/contractdefinitions",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "19193",
+					"path": [
+						"management",
+						"v3",
+						"contractdefinitions"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Fetch catalog",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"@context\": {\r\n    \"@vocab\": \"https://w3id.org/edc/v0.0.1/ns/\"\r\n  },\r\n  \"counterPartyAddress\": \"http://localhost:19194/protocol\",\r\n  \"protocol\": \"dataspace-protocol-http\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:29193/management/v3/catalog/request",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "29193",
+					"path": [
+						"management",
+						"v3",
+						"catalog",
+						"request"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Negotiate contract",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"@context\": {\r\n    \"@vocab\": \"https://w3id.org/edc/v0.0.1/ns/\"\r\n  },\r\n  \"@type\": \"ContractRequest\",\r\n  \"counterPartyAddress\": \"http://localhost:19194/protocol\",\r\n  \"protocol\": \"dataspace-protocol-http\",\r\n  \"policy\": {\r\n    \"@context\": \"http://www.w3.org/ns/odrl.jsonld\",\r\n    \"@id\": \"MQ==:YXNzZXRJZA==:Y2QxNzZjNmUtNTc3Yy00NGYyLTljMDQtZTM1Y2MxMWEzMjBh\",\r\n    \"@type\": \"Offer\",\r\n    \"assigner\": \"provider\",\r\n    \"target\": \"assetId\"\r\n  }\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:29193/management/v3/contractnegotiations",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "29193",
+					"path": [
+						"management",
+						"v3",
+						"contractnegotiations"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Contract Negotiation",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:29193/management/v3/contractnegotiations/c587f03a-c37b-4dc1-9939-5bef8b8ea6a9",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "29193",
+					"path": [
+						"management",
+						"v3",
+						"contractnegotiations",
+						"c587f03a-c37b-4dc1-9939-5bef8b8ea6a9"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Start transfer process",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"@context\": {\r\n    \"@vocab\": \"https://w3id.org/edc/v0.0.1/ns/\"\r\n  },\r\n  \"@type\": \"TransferRequestDto\",\r\n  \"connectorId\": \"provider\",\r\n  \"counterPartyAddress\": \"http://localhost:19194/protocol\",\r\n  \"contractId\": \"134cf135-3049-45dd-b02b-6c213f089104\",\r\n  \"assetId\": \"assetId\",\r\n  \"protocol\": \"dataspace-protocol-http\",\r\n  \"transferType\": \"HttpData-PULL\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:29193/management/v3/transferprocesses",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "29193",
+					"path": [
+						"management",
+						"v3",
+						"transferprocesses"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Check transfer process",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:29193/management/v3/transferprocesses/aaa7f561-0ecc-4aea-8a9c-b87d159656ce",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "29193",
+					"path": [
+						"management",
+						"v3",
+						"transferprocesses",
+						"aaa7f561-0ecc-4aea-8a9c-b87d159656ce"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "DataAddress",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:29193/management/v3/edrs/aaa7f561-0ecc-4aea-8a9c-b87d159656ce/dataaddress",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "29193",
+					"path": [
+						"management",
+						"v3",
+						"edrs",
+						"aaa7f561-0ecc-4aea-8a9c-b87d159656ce",
+						"dataaddress"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Fetch data public",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJraWQiOiJwdWJsaWMta2V5IiwiYWxnIjoiUlMyNTYifQ.eyJpc3MiOiJwcm92aWRlciIsImF1ZCI6ImNvbnN1bWVyIiwic3ViIjoicHJvdmlkZXIiLCJpYXQiOjE3MTc3NjkyMzEyOTYsImp0aSI6IjM2M2RhMGU4LWZmOGItNDY1My05YjQwLWY4MjdlMWMzOGMzYyJ9.WOVPz6m7XzIrbiMTfLqOXacGYz8Xk_-iQu7gmxoIgDFYsgo0da2Iv51EsugIpqbodPsmB0kK7zkyrmsFOfAASAq7fjsy4gQF-u5egYwoGpcxjYaJJdQa5lkwjC0fRxdVFVwZwrOaT5Mg-vGA9HssTEnlA64q-O0ae_aTH5ToflmPDM3FhAgL55I3odM5ysM2POEJY6pgOxIV9XjuhZFl_i_iTiUCZy__oQUZiYk58wKoqfK758Sy1WzpH-eyZCDUi_Z3n6cJB80_0ZThoPhtiFH7Tl9DfStnjsCoaeqMLFnTXp0s8h4ZGFmjfBc-72aAdRQqqLDT8WXNg3Csv5B56Q",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:19291/public/",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "19291",
+					"path": [
+						"public",
+						""
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
