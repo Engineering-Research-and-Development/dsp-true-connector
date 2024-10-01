@@ -25,28 +25,28 @@ You can use this Postman collection:
 [TC Postman collection](https://github.com/Engineering-Research-and-Development/dsp-true-connector/edc-integration/edc-sample.postman_collection.json)
 
 The first 4 requests add an asset to the provider:
-![EDC provider preparation](edc-integration/edc-provider-preparation.png)
+![EDC provider preparation](edc-provider-preparation.png)
 
 The rest are for the negotiation and data transfer:
-![EDC negotiation and data transfer](edc-integration/edc-negotiation-and-data-transfer.png)
+![EDC negotiation and data transfer](edc-negotiation-and-data-transfer.png)
 
 After initializing the negotiation and getting the response copy the @id value underlined red:
-![EDC contract negotiation id](edc-integration/edc-contract-negotiation-id.png)
+![EDC contract negotiation id](edc-contract-negotiation-id.png)
 
 Use it in the next request to get the contract negotiation, replace it with the value underlined yellow:
-![EDC get contract negotiation](edc-integration/edc-get-contract-negotiation.png)
+![EDC get contract negotiation](edc-get-contract-negotiation.png)
 
 From the previous response copy the contractAgreementId value underlined red and use in the Start transfer process contractId underlined red:
-![EDC start tranfer process](edc-integration/edc-start-tranfer-process.png)
+![EDC start tranfer process](edc-start-tranfer-process.png)
 
 To check the transfer process use the @id from previous response underlined yellow and replace in the Check transfer process request path underlined yellow:
-![EDC check transfer process](edc-integration/edc-check-transfer-process.png)
+![EDC check transfer process](edc-check-transfer-process.png)
 
 Get the data address by replacing the path in the Data Address underlined yellow with the **@id from the Start transfer process request underlined yellow**:
-![EDC data address](edc-integration/edc-data-address.png)
+![EDC data address](edc-data-address.png)
 
 In order to get the data use the authorization value from previous request underlined red and add the Authorization header in Fetch data public request, **set authorization in Authorization tab to NO AUTH**:
-![EDC fetch data public](edc-integration/edc-fetch-data-public.png)
+![EDC fetch data public](edc-fetch-data-public.png)
 
 ## TC preparation
 
@@ -73,7 +73,7 @@ public String getConnectorCredentials() {
 audience - is the TC connector - the values is passed from  "counterPartyAddress": "http://localhost:8090" in EDC requests
 clientId - this value must the same as "assigner": "TC-provider" in EDC requests
 
-![EDC authorization](edc-integration/edc-authorization.png)
+![EDC authorization](edc-authorization.png)
 
 
 Open the initial_data.json and remove the permission, to do so replacing the following:
