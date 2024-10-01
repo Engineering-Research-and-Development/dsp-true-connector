@@ -182,5 +182,5 @@ During the testing and integration we have noticed the following:
 
 - dct:format - "HttpData-PULL" and "HttpData-PUSH"
 - ContractNegotiationConsumerService - callbackAddress might be omitted in ContractAgreementMessage, in that case we will use initial "Forward-To" as callbackAddress
-- EDC expects Authorization header like this {\"region\":\"eu\",\"audience\":\"http://localhost:8090\",\"clientId\":\"TC-provider\"}
+- EDC expects Authorization header like this {\"region\":\"eu\",\"audience\":\"http&#65279;://localhost:8090\",\"clientId\":\"TC-provider\"}
 - until this moment we did not find in EDC documentation how to customize authorization on receiver side and on sender side
