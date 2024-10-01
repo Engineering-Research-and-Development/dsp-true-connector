@@ -1,13 +1,28 @@
 {
 	"info": {
-		"_postman_id": "cb7d0c13-563b-471f-961f-2bf56c2bce96",
-		"name": "EDC sample",
+		"_postman_id": "2b9b1d5c-a6f7-4ad7-8859-d7ab872e5547",
+		"name": "EDC sample Copy 2",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "36278855"
+		"_exporter_id": "21815221",
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-2b9b1d5c-a6f7-4ad7-8859-d7ab872e5547?action=share&source=collection_link&creator=21815221"
 	},
 	"item": [
 		{
 			"name": "Create asset",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
 			"request": {
 				"method": "POST",
 				"header": [],
@@ -38,6 +53,20 @@
 		},
 		{
 			"name": "Create policy",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
 			"request": {
 				"method": "POST",
 				"header": [],
@@ -68,6 +97,20 @@
 		},
 		{
 			"name": "Create contract definitions",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
 			"request": {
 				"method": "POST",
 				"header": [],
@@ -98,6 +141,20 @@
 		},
 		{
 			"name": "Fetch catalog",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
 			"request": {
 				"method": "POST",
 				"header": [],
@@ -129,6 +186,25 @@
 		},
 		{
 			"name": "Negotiate contract",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.collectionVariables.set(\"contract-negotiation-id\", jsonData[\"@id\"])\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
 			"request": {
 				"method": "POST",
 				"header": [],
@@ -159,6 +235,25 @@
 		},
 		{
 			"name": "Get Contract Negotiation",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Retrieve contract agreement id\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.collectionVariables.set(\"contract-agreement-id\", jsonData[\"contractAgreementId\"])\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
 			"request": {
 				"method": "GET",
 				"header": [
@@ -169,7 +264,7 @@
 					}
 				],
 				"url": {
-					"raw": "http://localhost:29193/management/v3/contractnegotiations/c587f03a-c37b-4dc1-9939-5bef8b8ea6a9",
+					"raw": "http://localhost:29193/management/v3/contractnegotiations/{{contract-negotiation-id}}",
 					"protocol": "http",
 					"host": [
 						"localhost"
@@ -179,7 +274,7 @@
 						"management",
 						"v3",
 						"contractnegotiations",
-						"c587f03a-c37b-4dc1-9939-5bef8b8ea6a9"
+						"{{contract-negotiation-id}}"
 					]
 				}
 			},
@@ -187,12 +282,31 @@
 		},
 		{
 			"name": "Start transfer process",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Retrieve transfer process id\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.collectionVariables.set(\"transfer-process-id\", jsonData[\"@id\"])\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
 			"request": {
 				"method": "POST",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n  \"@context\": {\r\n    \"@vocab\": \"https://w3id.org/edc/v0.0.1/ns/\"\r\n  },\r\n  \"@type\": \"TransferRequestDto\",\r\n  \"connectorId\": \"provider\",\r\n  \"counterPartyAddress\": \"http://localhost:19194/protocol\",\r\n  \"contractId\": \"134cf135-3049-45dd-b02b-6c213f089104\",\r\n  \"assetId\": \"assetId\",\r\n  \"protocol\": \"dataspace-protocol-http\",\r\n  \"transferType\": \"HttpData-PULL\"\r\n}",
+					"raw": "{\r\n  \"@context\": {\r\n    \"@vocab\": \"https://w3id.org/edc/v0.0.1/ns/\"\r\n  },\r\n  \"@type\": \"TransferRequestDto\",\r\n  \"connectorId\": \"provider\",\r\n  \"counterPartyAddress\": \"http://localhost:19194/protocol\",\r\n  \"contractId\": \"{{contract-agreement-id}}\",\r\n  \"assetId\": \"assetId\",\r\n  \"protocol\": \"dataspace-protocol-http\",\r\n  \"transferType\": \"HttpData-PULL\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -217,6 +331,20 @@
 		},
 		{
 			"name": "Check transfer process",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
 			"request": {
 				"method": "GET",
 				"header": [
@@ -227,7 +355,7 @@
 					}
 				],
 				"url": {
-					"raw": "http://localhost:29193/management/v3/transferprocesses/aaa7f561-0ecc-4aea-8a9c-b87d159656ce",
+					"raw": "http://localhost:29193/management/v3/transferprocesses/{{transfer-process-id}}",
 					"protocol": "http",
 					"host": [
 						"localhost"
@@ -237,7 +365,7 @@
 						"management",
 						"v3",
 						"transferprocesses",
-						"aaa7f561-0ecc-4aea-8a9c-b87d159656ce"
+						"{{transfer-process-id}}"
 					]
 				}
 			},
@@ -245,11 +373,30 @@
 		},
 		{
 			"name": "DataAddress",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Retrieve authorization header\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.collectionVariables.set(\"authorization-header\", jsonData[\"authorization\"])\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
 			"request": {
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "http://localhost:29193/management/v3/edrs/aaa7f561-0ecc-4aea-8a9c-b87d159656ce/dataaddress",
+					"raw": "http://localhost:29193/management/v3/edrs/{{transfer-process-id}}/dataaddress",
 					"protocol": "http",
 					"host": [
 						"localhost"
@@ -259,7 +406,7 @@
 						"management",
 						"v3",
 						"edrs",
-						"aaa7f561-0ecc-4aea-8a9c-b87d159656ce",
+						"{{transfer-process-id}}",
 						"dataaddress"
 					]
 				}
@@ -268,22 +415,34 @@
 		},
 		{
 			"name": "Fetch data public",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
 			"request": {
 				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "eyJraWQiOiJwdWJsaWMta2V5IiwiYWxnIjoiUlMyNTYifQ.eyJpc3MiOiJwcm92aWRlciIsImF1ZCI6ImNvbnN1bWVyIiwic3ViIjoicHJvdmlkZXIiLCJpYXQiOjE3MTc3NjkyMzEyOTYsImp0aSI6IjM2M2RhMGU4LWZmOGItNDY1My05YjQwLWY4MjdlMWMzOGMzYyJ9.WOVPz6m7XzIrbiMTfLqOXacGYz8Xk_-iQu7gmxoIgDFYsgo0da2Iv51EsugIpqbodPsmB0kK7zkyrmsFOfAASAq7fjsy4gQF-u5egYwoGpcxjYaJJdQa5lkwjC0fRxdVFVwZwrOaT5Mg-vGA9HssTEnlA64q-O0ae_aTH5ToflmPDM3FhAgL55I3odM5ysM2POEJY6pgOxIV9XjuhZFl_i_iTiUCZy__oQUZiYk58wKoqfK758Sy1WzpH-eyZCDUi_Z3n6cJB80_0ZThoPhtiFH7Tl9DfStnjsCoaeqMLFnTXp0s8h4ZGFmjfBc-72aAdRQqqLDT8WXNg3Csv5B56Q",
-							"type": "string"
-						}
-					]
+					"type": "noauth"
 				},
 				"method": "GET",
 				"header": [
 					{
 						"key": "Content-Type",
 						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{authorization-header}}",
 						"type": "text"
 					}
 				],
@@ -301,6 +460,46 @@
 				}
 			},
 			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "contract-negotiation-id",
+			"value": ""
+		},
+		{
+			"key": "contract-agreement-id",
+			"value": ""
+		},
+		{
+			"key": "transfer-process-id",
+			"value": ""
+		},
+		{
+			"key": "authorization-header",
+			"value": ""
 		}
 	]
 }

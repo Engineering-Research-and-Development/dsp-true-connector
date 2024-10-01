@@ -20,31 +20,13 @@ java -Dedc.keystore=transfer/transfer-00-prerequisites/resources/certs/cert.pfx 
 
 ## EDC Samples preparation and communication
 
-You can use this [EDC Postman collection](edc-sample.postman_collection.json) for the requests.
+You can use this [EDC Postman collection](edc-sample.postman_collection.json) for the requests. If you run the whole collection set a delay of 2 seconds between requests.
 
 The first 4 requests add an asset to the provider:<br/>
 ![EDC provider preparation](edc-provider-preparation.png)
 
 The rest are for the negotiation and data transfer:<br/>
 ![EDC negotiation and data transfer](edc-negotiation-and-data-transfer.png)
-
-After initializing the negotiation and getting the response copy the @id value underlined red:<br/>
-![EDC contract negotiation id](edc-contract-negotiation-id.png)
-
-Use it in the next request to get the contract negotiation, replace it with the value underlined yellow:<br/>
-![EDC get contract negotiation](edc-get-contract-negotiation.png)
-
-From the previous response copy the contractAgreementId value underlined red and use in the Start transfer process contractId underlined red:<br/>
-![EDC start tranfer process](edc-start-tranfer-process.png)
-
-To check the transfer process use the @id from previous response underlined yellow and replace in the Check transfer process request path underlined yellow:<br/>
-![EDC check transfer process](edc-check-transfer-process.png)
-
-Get the data address by replacing the path in the Data Address underlined yellow with the **@id from the Start transfer process request underlined yellow**:<br/>
-![EDC data address](edc-data-address.png)
-
-In order to get the data use the authorization value from previous request underlined red and add the Authorization header in Fetch data public request, **set authorization in Authorization tab to NO AUTH**:<br/>
-![EDC fetch data public](edc-fetch-data-public.png)
 
 ## TC preparation
 
@@ -131,7 +113,7 @@ Use the TC Start negotiation Postman request and change the body with this:
 }
 ```
 
-The permission must be an empty array. If the array would have 1 Permission EDC will send a single Object not an Array of one (we support only array).
+The permission must be an empty array. If the array would have 1 Permission EDC will send a single Object, not an Array of one (we support only array).
 
 Finally, send the Verify negotiation request as is.
 
@@ -184,3 +166,4 @@ During the testing and integration we have noticed the following:
 - ContractNegotiationConsumerService - callbackAddress might be omitted in ContractAgreementMessage, in that case we will use initial "Forward-To" as callbackAddress
 - EDC expects Authorization header like this {\"region\":\"eu\",\"audience\":\"http&#65279;://localhost:8090\",\"clientId\":\"TC-provider\"}
 - until this moment we did not find in EDC documentation how to customize authorization on receiver side and on sender side
+- if the array would have 1 Permission EDC will send a single Object, not an Array of one (we support only array)
