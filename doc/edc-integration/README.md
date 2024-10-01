@@ -4,48 +4,46 @@ This is a guide on how to start the EDC Samples, preparation for communication, 
 
 ## EDC Samples start
 
-First download the samples from:
-https://github.com/eclipse-edc/Samples/tree/main
+First download the samples from [the EDC samples repository](https://github.com/eclipse-edc/Samples/tree/main).
 
 To run the provider, just run the following command:
 
-```bash
+```
 java -Dedc.keystore=transfer/transfer-00-prerequisites/resources/certs/cert.pfx -Dedc.keystore.password=123456 -Dedc.fs.config=transfer/transfer-00-prerequisites/resources/configuration/provider-configuration.properties -jar transfer/transfer-00-prerequisites/connector/build/libs/connector.jar
 ```
 
 To run the consumer, just run the following command (different terminal):
 
-```bash
+```
 java -Dedc.keystore=transfer/transfer-00-prerequisites/resources/certs/cert.pfx -Dedc.keystore.password=123456 -Dedc.fs.config=transfer/transfer-00-prerequisites/resources/configuration/consumer-configuration.properties -jar transfer/transfer-00-prerequisites/connector/build/libs/connector.jar
 ```
 
 ## EDC Samples preparation and communication
 
-You can use this Postman collection:
-[TC Postman collection](https://github.com/Engineering-Research-and-Development/dsp-true-connector/edc-integration/edc-sample.postman_collection.json)
+You can use this [TC Postman collection](https://github.com/Engineering-Research-and-Development/dsp-true-connector/edc-integration/edc-sample.postman_collection.json) for the requests.
 
-The first 4 requests add an asset to the provider:
+The first 4 requests add an asset to the provider:<br/>
 ![EDC provider preparation](edc-provider-preparation.png)
 
-The rest are for the negotiation and data transfer:
+The rest are for the negotiation and data transfer:<br/>
 ![EDC negotiation and data transfer](edc-negotiation-and-data-transfer.png)
 
-After initializing the negotiation and getting the response copy the @id value underlined red:
+After initializing the negotiation and getting the response copy the @id value underlined red:<br/>
 ![EDC contract negotiation id](edc-contract-negotiation-id.png)
 
-Use it in the next request to get the contract negotiation, replace it with the value underlined yellow:
+Use it in the next request to get the contract negotiation, replace it with the value underlined yellow:<br/>
 ![EDC get contract negotiation](edc-get-contract-negotiation.png)
 
-From the previous response copy the contractAgreementId value underlined red and use in the Start transfer process contractId underlined red:
+From the previous response copy the contractAgreementId value underlined red and use in the Start transfer process contractId underlined red:<br/>
 ![EDC start tranfer process](edc-start-tranfer-process.png)
 
-To check the transfer process use the @id from previous response underlined yellow and replace in the Check transfer process request path underlined yellow:
+To check the transfer process use the @id from previous response underlined yellow and replace in the Check transfer process request path underlined yellow:<br/>
 ![EDC check transfer process](edc-check-transfer-process.png)
 
-Get the data address by replacing the path in the Data Address underlined yellow with the **@id from the Start transfer process request underlined yellow**:
+Get the data address by replacing the path in the Data Address underlined yellow with the **@id from the Start transfer process request underlined yellow**:<br/>
 ![EDC data address](edc-data-address.png)
 
-In order to get the data use the authorization value from previous request underlined red and add the Authorization header in Fetch data public request, **set authorization in Authorization tab to NO AUTH**:
+In order to get the data use the authorization value from previous request underlined red and add the Authorization header in Fetch data public request, **set authorization in Authorization tab to NO AUTH**:<br/>
 ![EDC fetch data public](edc-fetch-data-public.png)
 
 ## TC preparation
@@ -71,7 +69,7 @@ public String getConnectorCredentials() {
 ```
 
 audience - is the TC connector - the values is passed from  "counterPartyAddress": "http://localhost:8090" in EDC requests
-clientId - this value must the same as "assigner": "TC-provider" in EDC requests
+clientId - this value must the same as "assigner": "TC-provider" in EDC requests <br/>
 
 ![EDC authorization](edc-authorization.png)
 
@@ -170,16 +168,16 @@ During the testing and integration we have noticed the following:
 (they can be String or as Reference, json object with @id as key and String for value)
  
 ```
-				"odrl:leftOperand": {
-					"@id": "odrl:count"
-				},
-				"odrl:operator": {
-					"@id": "odrl:eq"
-				}
-				 
-				"odrl:target": {
-					"@id": "assetId"
-				}
+"odrl:leftOperand": {
+	"@id": "odrl:count"
+},
+"odrl:operator": {
+	"@id": "odrl:eq"
+}
+ 
+"odrl:target": {
+	"@id": "assetId"
+}
 ```
 
 - dct:format - "HttpData-PULL" and "HttpData-PUSH"
