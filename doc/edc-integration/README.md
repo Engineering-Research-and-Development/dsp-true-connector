@@ -20,7 +20,7 @@ java -Dedc.keystore=transfer/transfer-00-prerequisites/resources/certs/cert.pfx 
 
 ## EDC Samples preparation and communication
 
-You can use this [TC Postman collection](https://github.com/Engineering-Research-and-Development/dsp-true-connector/edc-integration/edc-sample.postman_collection.json) for the requests.
+You can use this [EDC Postman collection](edc-sample.postman_collection.json) for the requests.
 
 The first 4 requests add an asset to the provider:<br/>
 ![EDC provider preparation](edc-provider-preparation.png)
@@ -68,7 +68,7 @@ public String getConnectorCredentials() {
 	}
 ```
 
-audience - is the TC connector - the values is passed from  "counterPartyAddress": "http://localhost:8090" in EDC requests
+audience - is the TC connector - the values is passed from  "counterPartyAddress": "http&#65279;://localhost:8090" in EDC requests
 clientId - this value must the same as "assigner": "TC-provider" in EDC requests <br/>
 
 ![EDC authorization](edc-authorization.png)
@@ -163,7 +163,7 @@ Afterwards use Find Contract Negotiation, Approve negotiation and Finalize negot
 
 During the testing and integration we have noticed the following:
 
-- dpsace value "https://w3id.org/dspace/v0.8/" instead "https://w3id.org/dspace/1/0/context.json"
+- dpsace value "https&#65279;://w3id.org/dspace/v0.8/" instead "https&#65279;://w3id.org/dspace/1/0/context.json"
 - Constraint.leftOperand, Constraint.operator, Permission.target, Permission.action, ContractNegotiationEventMessage.eventType are now objects
 (they can be String or as Reference, json object with @id as key and String for value)
  
