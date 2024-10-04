@@ -1,7 +1,9 @@
 package it.eng.connector.configuration;
 
+import java.io.IOException;
 import java.util.Arrays;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -22,8 +24,11 @@ import it.eng.catalog.model.CatalogError;
 import it.eng.catalog.serializer.Serializer;
 import it.eng.datatransfer.model.TransferError;
 import it.eng.negotiation.model.ContractNegotiationErrorMessage;
+import it.eng.tools.model.DSpaceConstants;
+import lombok.extern.slf4j.Slf4j;
 
 @ControllerAdvice
+@Slf4j
 public class DataspaceProtocolEndpointsExceptionHandler extends ResponseEntityExceptionHandler {
 
 	private static final String EN = "en";
@@ -34,6 +39,25 @@ public class DataspaceProtocolEndpointsExceptionHandler extends ResponseEntityEx
     @ResponseBody
     public ResponseEntity<JsonNode> handleAuthenticationException(Exception ex, WebRequest request) {
 		String uri = ((ServletWebRequest)request).getRequest().getRequestURI().toString();
+		String consumerPid = "NA";
+		String providerPid = "NA";
+		try {
+			String body = ( (ServletWebRequest) request).getRequest().getReader().lines().reduce("",String::concat);
+			if(StringUtils.isNotBlank(body)) {
+				// TODO maybe use plain jsonMapper here and not one from sub modules
+				JsonNode node = Serializer.deserializeProtocol(body, JsonNode.class);
+				consumerPid = node.get(DSpaceConstants.DSPACE_CONSUMER_PID) != null ? 
+						node.get(DSpaceConstants.DSPACE_CONSUMER_PID).asText() : 
+							"NA";
+				providerPid = node.get(DSpaceConstants.DSPACE_PROVIDER_PID) != null ? 
+						node.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText() : 
+							"NA";
+			} else {
+				log.debug("No body to parse");
+			}
+		} catch (IOException e) {
+			log.error("Error while getting body form the request");
+		}
 		JsonNode error = null;
 		if(uri.contains("api/")) {
 			ErrorResponse errorResponse = new ErrorResponse() {
@@ -58,16 +82,16 @@ public class DataspaceProtocolEndpointsExceptionHandler extends ResponseEntityEx
 				error = Serializer.serializeProtocolJsonNode(catalogError);
 			} else if(uri.contains("negotiations")) {
 				ContractNegotiationErrorMessage negotationError = ContractNegotiationErrorMessage.Builder.newInstance()
-						.consumerPid("NA")
-						.providerPid("NA")
+						.consumerPid(consumerPid)
+						.providerPid(providerPid)
 						.code(NOT_AUTH_CODE)
 						.reason(Arrays.asList(it.eng.negotiation.model.Reason.Builder.newInstance().language(EN).value(NOT_AUTH).build()))
 						.build();
 				error = Serializer.serializeProtocolJsonNode(negotationError);
 			} else if(uri.contains("transfers")) {
 				TransferError transferError = TransferError.Builder.newInstance()
-						.consumerPid("NA")
-						.providerPid("NA")
+						.consumerPid(consumerPid)
+						.providerPid(providerPid)
 						.code(NOT_AUTH_CODE)
 						.reason(Arrays.asList(it.eng.datatransfer.model.Reason.Builder.newInstance().language(EN).value(NOT_AUTH).build()))
 						.build();
