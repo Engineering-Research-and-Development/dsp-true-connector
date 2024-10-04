@@ -75,6 +75,31 @@ public class DataTransferTest extends BaseIntegrationTest {
     }
 	
 	@Test
+    @DisplayName("Start transfer - unauthorized")
+    public void getCatalogSUnauthorizedTest() throws Exception {
+    	
+		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
+	    		.consumerPid(CONSUMER_PID)
+	    		.agreementId("urn:uuid:AGREEMENT_ID") // this one should be present in init_data.json
+	    		.format("HTTP_PULL")
+	    		.callbackAddress(CALLBACK_ADDRESS)
+	    		.build();
+		
+    	String body = Serializer.serializeProtocol(transferRequestMessage);
+    	
+    	final ResultActions result =
+    			mockMvc.perform(
+    					post("/transfers/request")
+    					.content(body)
+    					.contentType(MediaType.APPLICATION_JSON)
+    					.header("Authorization", "Basic YXNkckBtYWlsLmNvbTpwYXNzd29yZA=="));
+    	result.andExpect(status().isUnauthorized())
+    	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(DSpaceConstants.DSPACE + TransferError.class.getSimpleName())))
+    	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
+    }
+	
+	@Test
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void initiateDataTransfer_agreement_exists() throws Exception {
 		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()

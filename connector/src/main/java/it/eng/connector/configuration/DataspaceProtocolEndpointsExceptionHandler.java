@@ -4,6 +4,7 @@ import java.util.Arrays;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.AuthenticationException;
@@ -55,20 +56,24 @@ public class DataspaceProtocolEndpointsExceptionHandler extends ResponseEntityEx
 						.reason(Arrays.asList(it.eng.catalog.model.Reason.Builder.newInstance().language(EN).value(NOT_AUTH).build()))
 						.build();
 				error = Serializer.serializeProtocolJsonNode(catalogError);
-			} else if(uri.contains("negotations")) {
+			} else if(uri.contains("negotiations")) {
 				ContractNegotiationErrorMessage negotationError = ContractNegotiationErrorMessage.Builder.newInstance()
+						.consumerPid("NA")
+						.providerPid("NA")
 						.code(NOT_AUTH_CODE)
 						.reason(Arrays.asList(it.eng.negotiation.model.Reason.Builder.newInstance().language(EN).value(NOT_AUTH).build()))
 						.build();
 				error = Serializer.serializeProtocolJsonNode(negotationError);
 			} else if(uri.contains("transfers")) {
 				TransferError transferError = TransferError.Builder.newInstance()
+						.consumerPid("NA")
+						.providerPid("NA")
 						.code(NOT_AUTH_CODE)
 						.reason(Arrays.asList(it.eng.datatransfer.model.Reason.Builder.newInstance().language(EN).value(NOT_AUTH).build()))
 						.build();
 				error = Serializer.serializeProtocolJsonNode(transferError);
 			}
 		}
-		return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+		return ResponseEntity.status(HttpStatus.UNAUTHORIZED).contentType(MediaType.APPLICATION_JSON).body(error);
     }
 }
