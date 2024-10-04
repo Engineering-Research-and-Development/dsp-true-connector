@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.Arrays;
 
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,6 +20,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.RedirectStrategy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
@@ -29,6 +32,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import it.eng.connector.repository.UserRepository;
+import it.eng.tools.service.ApplicationPropertiesService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -48,17 +52,24 @@ public class WebSecurityConfig {
 
     @Value("${application.cors.allowed.credentials:}")
     private String allowedCredentials;
+    
+    @Autowired
+    @Qualifier("delegatedAuthenticationEntryPoint")
+    AuthenticationEntryPoint authEntryPoint;
 
     private final JwtAuthenticationProvider jwtAuthenticationProvider;
     private final UserRepository userRepository;
+    private final ApplicationPropertiesService applicationPropertiesService;
 
-    public WebSecurityConfig(JwtAuthenticationProvider jwtAuthenticationProvider, UserRepository userRepository) {
+    public WebSecurityConfig(JwtAuthenticationProvider jwtAuthenticationProvider, UserRepository userRepository,
+    		ApplicationPropertiesService applicationPropertiesService) {
         this.jwtAuthenticationProvider = jwtAuthenticationProvider;
         this.userRepository = userRepository;
+        this.applicationPropertiesService = applicationPropertiesService;
     }
 
     @Bean
-    public JwtAuthenticationFilter jwtAuthenticationFilter(HttpSecurity http) {
+    JwtAuthenticationFilter jwtAuthenticationFilter(HttpSecurity http) {
         return new JwtAuthenticationFilter(authenticationManager());
     }
 
@@ -66,9 +77,14 @@ public class WebSecurityConfig {
     public BasicAuthenticationFilter basicAuthenticationFilter() {
         return new BasicAuthenticationFilter(authenticationManager());
     }
+    
+    @Bean
+    DataspaceProtocolEndpointsAuthenticationFilter protocolEndpointsAuthenticationFilter(ApplicationPropertiesService applicationPropertiesService) {
+    	return new DataspaceProtocolEndpointsAuthenticationFilter(applicationPropertiesService);
+    }
 
     @Bean
-    public AuthenticationManager authenticationManager() {
+    AuthenticationManager authenticationManager() {
         return new ProviderManager(jwtAuthenticationProvider, daoAUthenticationProvider());
     }
 
@@ -130,18 +146,20 @@ public class WebSecurityConfig {
                             .requestMatchers(new AntPathRequestMatcher("/api/**")).hasRole("ADMIN")
                             .anyRequest().permitAll();
                 })
+                .addFilterBefore(protocolEndpointsAuthenticationFilter(applicationPropertiesService), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter(http), UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(basicAuthenticationFilter(), JwtAuthenticationFilter.class);
+                .addFilterAfter(basicAuthenticationFilter(), JwtAuthenticationFilter.class)
+                .exceptionHandling((exHandler) -> exHandler.authenticationEntryPoint(authEntryPoint));
         return http.build();
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
+    PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
         if (StringUtils.isBlank(allowedOrigins)) {

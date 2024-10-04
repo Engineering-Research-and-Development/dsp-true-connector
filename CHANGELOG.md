@@ -1,6 +1,15 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 04-10-2024
+
+### Added
+
+ - New mandatory property application.protocol.authentication.enabled=true
+ - DataspaceProtocolEndpointsExceptionHandler - returns valid protocol error based on resource accessed
+ - ProtocolEndpointsAuthenticationFilter - filter that creates dummy authorization if security for protocol endpoints is disabled
+ - DataspaceProtocolEndpointsAuthenticationEntryPoint - custom authentication class to handle Spring Security errors in protocol way
+
 ## [0.1.0] - 13-09-2024
 
 ### Added
