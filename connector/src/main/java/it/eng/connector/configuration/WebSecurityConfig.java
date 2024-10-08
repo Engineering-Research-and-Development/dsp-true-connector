@@ -55,7 +55,7 @@ public class WebSecurityConfig {
     
     @Autowired
     @Qualifier("delegatedAuthenticationEntryPoint")
-    AuthenticationEntryPoint authEntryPoint;
+    private AuthenticationEntryPoint authEntryPoint;
 
     private final JwtAuthenticationProvider jwtAuthenticationProvider;
     private final UserRepository userRepository;
@@ -74,7 +74,7 @@ public class WebSecurityConfig {
     }
 
     @Bean
-    public BasicAuthenticationFilter basicAuthenticationFilter() {
+    BasicAuthenticationFilter basicAuthenticationFilter() {
         return new BasicAuthenticationFilter(authenticationManager());
     }
     
@@ -138,6 +138,7 @@ public class WebSecurityConfig {
                 .authorizeHttpRequests((authorize) -> {
                     authorize
                             .requestMatchers(new AntPathRequestMatcher("/env"), new AntPathRequestMatcher("/actuator/**")).hasRole("ADMIN")
+                            // TODO consider wrapping up all protocol endpoints under single context (/protocol/ or /dsp/ or anything else)
                             .requestMatchers(new AntPathRequestMatcher("/connector/**"),
                                     new AntPathRequestMatcher("/negotiations/**"),
                                     new AntPathRequestMatcher("/catalog/**"),
