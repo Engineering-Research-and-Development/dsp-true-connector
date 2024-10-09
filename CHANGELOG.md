@@ -1,6 +1,18 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 09-10-2024
+
+### Added
+
+ - Initial logic for policy enforcement (count and dateTime left operands)
+ - PolicyEnforcement model, repo and service classes that holds count for agreement
+ - PolicyManager - class that gets access count and update counter when artifact will be accessed
+ 
+### Changed
+ 
+ - Operator TERM_LTEQ to LTEQ
+ 
 ## [0.1.1] - 04-10-2024
 
 ### Added
