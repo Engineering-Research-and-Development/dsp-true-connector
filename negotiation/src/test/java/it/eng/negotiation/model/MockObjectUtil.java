@@ -55,7 +55,7 @@ public class MockObjectUtil {
 	
 	public static final Constraint CONSTRAINT_COUNT_5 = Constraint.Builder.newInstance()
 			.leftOperand(LeftOperand.COUNT)
-			.operator(Operator.EQ)
+			.operator(Operator.LTEQ)
 			.rightOperand("5")
 			.build();
 	
@@ -188,6 +188,7 @@ public class MockObjectUtil {
 			.providerPid(MockObjectUtil.PROVIDER_PID)
 			.callbackAddress(CALLBACK_ADDRESS)
 			.state(ContractNegotiationState.VERIFIED)
+			.agreement(AGREEMENT)
 			.build();
 	
 	public static final ContractNegotiation CONTRACT_NEGOTIATION_FINALIZED = ContractNegotiation.Builder.newInstance()

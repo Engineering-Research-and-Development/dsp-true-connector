@@ -34,6 +34,7 @@ import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
+import it.eng.negotiation.service.policy.PolicyEnforcementService;
 
 @ExtendWith(MockitoExtension.class)
 public class ContractNegotiationConsumerServiceTest {
@@ -48,6 +49,8 @@ public class ContractNegotiationConsumerServiceTest {
 	private AgreementRepository agreementRepository ;
 	@Mock
 	private OfferRepository offerRepository;
+	@Mock
+	private PolicyEnforcementService policyEnforcementService;
 	
 	@Captor
 	private ArgumentCaptor<ContractNegotiation> argCaptorContractNegotiation;
@@ -146,10 +149,9 @@ when(contractNegotiationRepository.findByProviderPidAndConsumerPid(MockObjectUti
 		service.handleFinalizeEvent(MockObjectUtil.getEventMessage(ContractNegotiationEventType.FINALIZED));
 	
 		verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
-
 		//verify that status is updated to FINALIZED
 		assertEquals(ContractNegotiationState.FINALIZED, argCaptorContractNegotiation.getValue().getState());
-	
+		verify(policyEnforcementService).createPolicyEnforcement(MockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getAgreement().getId());
 	}
 	
 	@Test

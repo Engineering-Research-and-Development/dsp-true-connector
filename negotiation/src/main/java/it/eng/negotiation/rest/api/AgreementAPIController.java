@@ -32,5 +32,14 @@ public class AgreementAPIController {
 	        		.contentType(MediaType.APPLICATION_JSON)
 	        		.body(GenericApiResponse.success("Agreement is ok", "Agreement is ok"));
 	 }
+	 
+	 @PostMapping(path = "/{agreementId}/enforce")
+	    public ResponseEntity<GenericApiResponse<String>> enforceAgreement(@PathVariable String agreementId) {
+	        log.info("Enforcing agreement");
+	        contractNegotiationAPIService.enforceAgreement(agreementId);
+	        return ResponseEntity.ok()
+	        		.contentType(MediaType.APPLICATION_JSON)
+	        		.body(GenericApiResponse.success("Agreement enforcement is valid", "Agreement enforcement is ok"));
+	 }
 
 }

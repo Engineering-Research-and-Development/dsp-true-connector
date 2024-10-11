@@ -1,4 +1,4 @@
-package it.eng.negotiation.service;
+package it.eng.negotiation.service.policy;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import it.eng.negotiation.exception.PolicyEnforcementException;
 import it.eng.negotiation.model.PolicyEnforcement;
 import it.eng.negotiation.repository.PolicyEnforcementRepository;
+import it.eng.negotiation.service.policy.PolicyManager;
 
 @ExtendWith(MockitoExtension.class)
 class PolicyManagerTest {

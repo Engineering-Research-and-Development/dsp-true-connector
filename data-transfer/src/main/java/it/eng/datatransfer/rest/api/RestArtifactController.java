@@ -49,7 +49,7 @@ public class RestArtifactController {
     
     // TODO change to get data from repository instead hardcoded
     private String getJohnDoe() {
-    	DateFormat dateFormat = new SimpleDateFormat("2023/07/13 12:34:56");
+    	DateFormat dateFormat = new SimpleDateFormat();
 		Date date = new Date();
 		String formattedDate = dateFormat.format(date);
 

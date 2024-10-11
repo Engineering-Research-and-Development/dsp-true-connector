@@ -1,4 +1,4 @@
-package it.eng.negotiation.service;
+package it.eng.negotiation.service.policy;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -16,13 +17,14 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import it.eng.negotiation.exception.PolicyEnforcementException;
 import it.eng.negotiation.model.Action;
 import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.Constraint;
 import it.eng.negotiation.model.LeftOperand;
 import it.eng.negotiation.model.Operator;
 import it.eng.negotiation.model.Permission;
+import it.eng.negotiation.service.policy.validators.CountPolicyValidator;
+import it.eng.negotiation.service.policy.validators.DateTimePolicyValidator;
 
 @ExtendWith(MockitoExtension.class)
 class PolicyEnforcementServiceTest {
@@ -33,7 +35,9 @@ class PolicyEnforcementServiceTest {
 	private static final String TARGET = "target";
 	
 	@Mock
-	private PolicyManager policyManager;
+	private CountPolicyValidator countPolicyValidator;
+	@Mock
+	private DateTimePolicyValidator dateTimePolicyValidator;
 	
 	@InjectMocks
 	private PolicyEnforcementService service;
@@ -42,67 +46,65 @@ class PolicyEnforcementServiceTest {
 	@Test
 	@DisplayName("Count enforcement - not reached")
 	void countOK() {
-		when(policyManager.getAccessCount(AGREEMENT_ID)).thenReturn(3);
-		assertTrue(service.isAgreementValid(agreement(Arrays.asList(COUNT_5))));
-	}
-	
-	@Test
-	@DisplayName("Count enforcement - not reached")
-	void countOK_equal() {
-		when(policyManager.getAccessCount(AGREEMENT_ID)).thenReturn(5);
+		when(countPolicyValidator.validateCount(AGREEMENT_ID, COUNT_5)).thenReturn(true);
 		assertTrue(service.isAgreementValid(agreement(Arrays.asList(COUNT_5))));
 	}
 	
 	@Test
 	@DisplayName("Count enforcement - exceeded")
 	void conutExceeded() {
-		when(policyManager.getAccessCount(AGREEMENT_ID)).thenReturn(6);
+		when(countPolicyValidator.validateCount(AGREEMENT_ID, COUNT_5)).thenReturn(false);
 		assertFalse(service.isAgreementValid(agreement(Arrays.asList(COUNT_5))));
 	}
 	
-	@Test
-	@DisplayName("Count enforcement - policyEnforcement not found")
-	void conutPE_not_found() {
-		when(policyManager.getAccessCount(AGREEMENT_ID)).thenThrow(new PolicyEnforcementException("Not found"));
-		assertFalse(service.isAgreementValid(agreement(Arrays.asList(COUNT_5))));
-	}
-
 	// DATE_TIME
 	@Test
 	@DisplayName("DateTime enforcement - not reached")
 	void dateTimeOK() {
+		when(dateTimePolicyValidator.validateDateTime(DATE_TIME)).thenReturn(true);
 		assertTrue(service.isAgreementValid(agreement(Arrays.asList(DATE_TIME))));
 	}
 	
 	@Test
 	@DisplayName("DateTime enforcement - expired")
 	void dateTimeExired() {
-		assertFalse(service.isAgreementValid(agreement(Arrays.asList(DATE_TIME_EXPIRED))));
+		when(dateTimePolicyValidator.validateDateTime(DATE_TIME)).thenReturn(false);
+		assertFalse(service.isAgreementValid(agreement(Arrays.asList(DATE_TIME))));
 	}
 	
-	@Test
-	@DisplayName("DateTime enforcement - invalid date")
-	void dateTime_invalid_date() {
-		assertFalse(service.isAgreementValid(agreement(Arrays.asList(Constraint.Builder.newInstance()
-				.leftOperand(LeftOperand.DATE_TIME)
-				.operator(Operator.LT)
-				.rightOperand("INVALID_DATE")
-				.build()))));
-	}
-	
+	// Multiple constraints	
 	@Test
 	@DisplayName("Multiple constraints - count and date")
 	public void multipleConstraints_ok() {
-		when(policyManager.getAccessCount(AGREEMENT_ID)).thenReturn(3);
+		when(countPolicyValidator.validateCount(AGREEMENT_ID, COUNT_5)).thenReturn(true);
+		when(dateTimePolicyValidator.validateDateTime(DATE_TIME)).thenReturn(true);
 		assertTrue(service.isAgreementValid(agreement(Arrays.asList(COUNT_5, DATE_TIME))));
 	}
 	
 	@Test
 	@DisplayName("Multiple constraints - count and date - one is expired")
 	public void multipleConstraints_invalid() {
-		assertFalse(service.isAgreementValid(agreement(Arrays.asList(COUNT_5, DATE_TIME_EXPIRED))));
-		when(policyManager.getAccessCount(AGREEMENT_ID)).thenReturn(10);
-		assertFalse(service.isAgreementValid(agreement(Arrays.asList(COUNT_5, DATE_TIME_EXPIRED))));
+		when(countPolicyValidator.validateCount(AGREEMENT_ID, COUNT_5)).thenReturn(false);
+		when(dateTimePolicyValidator.validateDateTime(DATE_TIME)).thenReturn(true);
+		assertFalse(service.isAgreementValid(agreement(Arrays.asList(COUNT_5, DATE_TIME))));
+		
+		when(countPolicyValidator.validateCount(AGREEMENT_ID, COUNT_5)).thenReturn(true);
+		when(dateTimePolicyValidator.validateDateTime(DATE_TIME)).thenReturn(false);
+		assertFalse(service.isAgreementValid(agreement(Arrays.asList(COUNT_5, DATE_TIME))));
+	}
+	
+	// No permission
+	@Test
+	@DisplayName("No permissions - allow")
+	public void emptyPermission() {
+		Agreement emptyPermissionAgreement = Agreement.Builder.newInstance()
+			.id(AGREEMENT_ID)
+			.assignee(ASSIGNEE)
+			.assigner(ASSIGNER)
+			.target(TARGET)
+			.permission(new ArrayList<Permission>())
+			.build();
+		assertTrue(service.isAgreementValid(emptyPermissionAgreement));
 	}
 	
 	private Agreement agreement(List<Constraint> constraints) {
@@ -125,11 +127,5 @@ class PolicyEnforcementServiceTest {
 			.leftOperand(LeftOperand.DATE_TIME)
 			.operator(Operator.LT)
 			.rightOperand(Instant.now().plus(5, ChronoUnit.DAYS).toString())
-			.build();
-	
-	private Constraint DATE_TIME_EXPIRED = Constraint.Builder.newInstance()
-			.leftOperand(LeftOperand.DATE_TIME)
-			.operator(Operator.LT)
-			.rightOperand(Instant.now().minus(5, ChronoUnit.DAYS).toString())
 			.build();
 }

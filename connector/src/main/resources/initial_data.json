@@ -117,7 +117,7 @@
               "constraint": [
                 {
                   "leftOperand": "COUNT",
-                  "operator": "EQ",
+                  "operator": "LTEQ",
                   "rightOperand": "5"
                 }
               ]
@@ -283,9 +283,9 @@
   				"action": "USE",
   				"constraint": [
   					{
-  						"leftOperand": "COUNT",
-  						"operator": "EQ",
-  						"rightOperand": "5"
+  						"leftOperand": "DATE_TIME",
+  						"operator": "GT",
+  						"rightOperand": "2024-10-01T14:48:22.605323600Z"
   					}
   				]
   			}
@@ -303,9 +303,9 @@
   				"action": "USE",
   				"constraint": [
   					{
-  						"leftOperand": "COUNT",
-  						"operator": "EQ",
-  						"rightOperand": "5"
+  						"leftOperand": "DATE_TIME",
+  						"operator": "GT",
+  						"rightOperand": "2024-10-01T14:48:22.605323600Z"
   					}
   				]
   			}
@@ -322,10 +322,10 @@
   			{
   				"action": "USE",
   				"constraint": [
-  					{
-  						"leftOperand": "COUNT",
-  						"operator": "EQ",
-  						"rightOperand": "5"
+					{
+  						"leftOperand": "DATE_TIME",
+  						"operator": "GT",
+  						"rightOperand": "2024-10-01T14:48:22.605323600Z"
   					}
   				]
   			}
@@ -342,10 +342,10 @@
   			{
   				"action": "USE",
   				"constraint": [
-  					{
-  						"leftOperand": "COUNT",
-  						"operator": "EQ",
-  						"rightOperand": "5"
+					{
+  						"leftOperand": "DATE_TIME",
+  						"operator": "GT",
+  						"rightOperand": "2024-10-01T14:48:22.605323600Z"
   					}
   				]
   			}

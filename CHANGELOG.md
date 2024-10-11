@@ -5,9 +5,10 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
- - Initial logic for policy enforcement (count and dateTime left operands)
+ - Initial logic for policy enforcement (count and dateTime as left operands)
  - PolicyEnforcement model, repo and service classes that holds count for agreement
  - PolicyManager - class that gets access count and update counter when artifact will be accessed
+ - AgreementAPI - enforceAgreement logic
  
 ### Changed
  
