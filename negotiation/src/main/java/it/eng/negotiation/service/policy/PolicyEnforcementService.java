@@ -54,7 +54,7 @@ public class PolicyEnforcementService {
 	public void createPolicyEnforcement(String agreementId) {
 		PolicyEnforcement pe = new PolicyEnforcement();
 		pe.setAgreementId(agreementId);
-		pe.setCount(0);
+		pe.setCount(1);
 		repository.save(pe);
 		
 	}

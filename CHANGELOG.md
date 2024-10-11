@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
  - PolicyEnforcement model, repo and service classes that holds count for agreement
  - PolicyManager - class that gets access count and update counter when artifact will be accessed
  - AgreementAPI - enforceAgreement logic
+ - Event when accessing resource, used to increase count for agreementId
  
 ### Changed
  

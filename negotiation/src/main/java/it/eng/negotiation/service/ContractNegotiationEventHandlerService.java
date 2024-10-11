@@ -23,8 +23,10 @@ import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.rest.protocol.ContractNegotiationCallback;
 import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.service.policy.PolicyManager;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
+import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -37,14 +39,17 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
 	
 	private final AgreementRepository agreementRepository;
 	protected final CredentialUtils credentialUtils;
+	private final PolicyManager policyManager;
 	
 	public ContractNegotiationEventHandlerService(ContractNegotiationPublisher publisher,
 			ContractNegotiationRepository contractNegotiationRepository, OkHttpRestClient okHttpRestClient,
 			ContractNegotiationProperties properties, OfferRepository offerRepository,
-			AgreementRepository agreementRepository, CredentialUtils credentialUtils) {
+			AgreementRepository agreementRepository, CredentialUtils credentialUtils,
+			PolicyManager policyManager) {
 		super(publisher, contractNegotiationRepository, okHttpRestClient, properties, offerRepository);
 		this.agreementRepository = agreementRepository;
 		this.credentialUtils = credentialUtils;
+		this.policyManager = policyManager;
 	}
 
 	@Deprecated
@@ -159,4 +164,8 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
 		}
 	}
 
+	public void artifactConsumedEvent(ArtifactConsumedEvent artifactConsumedEvent) {
+		log.info("Increasing access count for artifactId {}", artifactConsumedEvent.getAgreementId());
+		policyManager.updateAccessCount(artifactConsumedEvent.getAgreementId());
+	}
 }
