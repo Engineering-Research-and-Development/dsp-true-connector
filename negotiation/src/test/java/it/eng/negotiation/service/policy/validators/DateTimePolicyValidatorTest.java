@@ -24,8 +24,8 @@ class DateTimePolicyValidatorTest {
 	
 	@Test
 	@DisplayName("DateTime enforcement - not reached")
-	void dateTimeOK() {
-		assertTrue(dateTimePolicyValidator.validateDateTime(DATE_TIME));
+	void dateTime_lt_OK() {
+		assertTrue(dateTimePolicyValidator.validateDateTime(DATE_TIME_LT));
 	}
 	
 	@Test
@@ -41,6 +41,12 @@ class DateTimePolicyValidatorTest {
 	}
 	
 	@Test
+	@DisplayName("DateTime enforcement - greather than - in future")
+	void dateTime_gt_not_yet() {
+		assertFalse(dateTimePolicyValidator.validateDateTime(DATE_TIME_GT_NOT_YET));
+	}
+	
+	@Test
 	@DisplayName("DateTime enforcement - invalid date")
 	void dateTime_invalid_date() {
 		assertFalse(dateTimePolicyValidator.validateDateTime(Constraint.Builder.newInstance()
@@ -50,10 +56,16 @@ class DateTimePolicyValidatorTest {
 				.build()));
 	}
 
-	private Constraint DATE_TIME = Constraint.Builder.newInstance()
+	private Constraint DATE_TIME_LT = Constraint.Builder.newInstance()
 			.leftOperand(LeftOperand.DATE_TIME)
 			.operator(Operator.LT)
 			.rightOperand(Instant.now().plus(5, ChronoUnit.DAYS).toString())
+			.build();
+	
+	private Constraint DATE_TIME_EXPIRED = Constraint.Builder.newInstance()
+			.leftOperand(LeftOperand.DATE_TIME)
+			.operator(Operator.LT)
+			.rightOperand(Instant.now().minus(5, ChronoUnit.DAYS).toString())
 			.build();
 	
 	private Constraint DATE_TIME_GT = Constraint.Builder.newInstance()
@@ -62,9 +74,9 @@ class DateTimePolicyValidatorTest {
 			.rightOperand("2024-10-01T06:00:00Z")
 			.build();
 	
-	private Constraint DATE_TIME_EXPIRED = Constraint.Builder.newInstance()
+	private Constraint DATE_TIME_GT_NOT_YET = Constraint.Builder.newInstance()
 			.leftOperand(LeftOperand.DATE_TIME)
-			.operator(Operator.LT)
-			.rightOperand(Instant.now().minus(5, ChronoUnit.DAYS).toString())
+			.operator(Operator.GT)
+			.rightOperand("2099-10-01T06:00:00Z")
 			.build();
 }
