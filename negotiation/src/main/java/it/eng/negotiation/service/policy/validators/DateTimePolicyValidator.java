@@ -23,9 +23,9 @@ public class DateTimePolicyValidator {
 			return valid;
 		}
 		switch (constraint.getOperator()) {
-			case EQ:
-				valid = Instant.now().equals(constraintDateTime);
-				break;
+//			case EQ:
+//				valid = Instant.now().equals(constraintDateTime);
+//				break;
 			case LT:
 				valid =  Instant.now().isBefore(constraintDateTime);
 				break;

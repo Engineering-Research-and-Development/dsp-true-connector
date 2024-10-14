@@ -29,23 +29,13 @@ public class CountPolicyValidator {
 			return false;
 		}
 		switch (constraint.getOperator()) {
-			case EQ:
-				if(count == Integer.valueOf(constraint.getRightOperand())) {
-					valid = true;
-				}
-				break;
+//			case EQ:
+//				if(count == Integer.valueOf(constraint.getRightOperand())) {
+//					valid = true;
+//				}
+//				break;
 			case LT:
 				if(count < Integer.valueOf(constraint.getRightOperand())) {
-					valid = true;
-				}
-				break;
-			case GT: 
-				if(count > Integer.valueOf(constraint.getRightOperand())) {
-					valid = true;
-				}
-				break;
-			case GTEQ:
-				if(count >= Integer.valueOf(constraint.getRightOperand())) {
 					valid = true;
 				}
 				break;
@@ -54,6 +44,16 @@ public class CountPolicyValidator {
 					valid = true;
 				}
 				break;
+//			case GT: 
+//				if(count > Integer.valueOf(constraint.getRightOperand())) {
+//					valid = true;
+//				}
+//				break;
+//			case GTEQ:
+//				if(count >= Integer.valueOf(constraint.getRightOperand())) {
+//					valid = true;
+//				}
+//				break;
 			default:
 				log.warn("Operator not supported {}", constraint.getOperator().name());
 				valid = false;

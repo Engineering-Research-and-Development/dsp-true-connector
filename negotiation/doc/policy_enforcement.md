@@ -27,8 +27,8 @@ private boolean validateConstraint(String agreementId, Constraint constraint) {
 
 | Policy | Left Operand | Operators | Right Operand | Example |
 | :---- | :---- | :---- | :---- | :---- |
-| [Number of usages](../src/main/java/it/eng/negotiation/service/policy/validators/CountPolicyValidator.java) | COUNT | EQ, LT, GT, LTEQ, GTEQ | Number (as String) | 5 |
-| [Date time](../src/main/java/it/eng/negotiation/service/policy/validators/DateTimePolicyValidator.java) | DATE_TIME | EQ, LT, GT | Date time ui UTC (as String) | 2024-10-01T06:00:00Z |
+| [Number of usages](../src/main/java/it/eng/negotiation/service/policy/validators/CountPolicyValidator.java) | COUNT | LT,  LTEQ | Number (as String) | 5 |
+| [Date time](../src/main/java/it/eng/negotiation/service/policy/validators/DateTimePolicyValidator.java) | DATE_TIME | LT, GT | Date time in UTC (as String) | 2024-10-01T06:00:00Z |
 
 In case of multiple constraints, all constraints must be evaluated as true for overall policy to be evaluated as true.
 
