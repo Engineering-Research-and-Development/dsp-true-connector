@@ -38,7 +38,13 @@ In case of multiple constraints, all constraints must be evaluated as true for o
  - create new maven submodule that will contain classes for policy evaluation
  - move Constraint, LeftOperand and Operator from negotiation module to newly created
  - update references in negotiation module to use classes from new module
- - make use of newly created module in negotiation module, to call logic of policy enforcement class (avoid making rest endpoint?)
+ - create new API endpoint for obtaining locally stored artifact (on consumer side, as BSON in Mongo)
+ - enforce policy validation when consumer requests artifact data
+ - data transfer for requested artifact must to be in completed state for consumer being able to get artifact
+ - consider creating job that will scan all agreements and check ones that are expired and possibly remove artifact that are no longer accessible on consumer side (deleting them from Mongo)
+ 
+Note:
+Data transfer will address only transfering data from provider to consumer. Once artifact is transfered on consumer side, newly created API endoint in `usage control` module will be used to get data.
  
  
  
