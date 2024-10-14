@@ -34,7 +34,7 @@ public class MockObjectUtil {
 
 	public static final String CONSUMER_PID = "urn:uuid:CONSUMER_PID";
 	public static final String PROVIDER_PID = "urn:uuid:PROVIDER_PID";
-    public static final String RIGHT_EXPRESSION = "EU";
+    public static final String RIGHT_EXPRESSION_COUNT = "5";
     public static final String USE = "use";
     public static final String INCLUDED_IN = "includedInAction";
     public static final String ASSIGNEE = "assignee";
@@ -56,9 +56,9 @@ public class MockObjectUtil {
 
 
     public static final Constraint CONSTRAINT = Constraint.Builder.newInstance()
-            .leftOperand(LeftOperand.ABSOLUTE_POSITION)
-            .rightOperand(RIGHT_EXPRESSION)
+            .leftOperand(LeftOperand.COUNT)
             .operator(Operator.EQ)
+            .rightOperand(RIGHT_EXPRESSION_COUNT)
             .build();
     
     public static final Constraint CONSTRAINT_COUNT_5_TIMES = Constraint.Builder.newInstance()

@@ -2,7 +2,6 @@ package it.eng.catalog.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashSet;
@@ -127,7 +126,7 @@ public class OfferTest {
 				+ "                }";
 		Permission p = Serializer.deserializePlain(oString, Permission.class);
 		p.getConstraint();
-		p.getConstraint().add(Constraint.Builder.newInstance().leftOperand(LeftOperand.ABSOLUTE_POSITION).operator(Operator.GT).rightOperand("DesniOperand").build());
+		p.getConstraint().add(Constraint.Builder.newInstance().leftOperand(LeftOperand.COUNT).operator(Operator.GT).rightOperand("5").build());
 		p.getConstraint();
 	}
 	
@@ -147,26 +146,4 @@ public class OfferTest {
 		assertThat(offer).usingRecursiveComparison().isEqualTo(offer2);
 	}
 	
-	@Test
-	public void aaaaa() {
-		String str = "{\r\n"
-				+ "  \"id\" : \"urn:offer_id\",\r\n"
-				+ "  \"target\" : null,\r\n"
-				+ "  \"assigner\" : \"assigner\",\r\n"
-				+ "  \"assignee\" : \"assignee\",\r\n"
-				+ "  \"permission\" : [ {\r\n"
-				+ "    \"assigner\" : null,\r\n"
-				+ "    \"assignee\" : null,\r\n"
-				+ "    \"target\" : null,\r\n"
-				+ "    \"action\" : \"USE\",\r\n"
-				+ "    \"constraint\" : [ {\r\n"
-				+ "      \"leftOperand\" : \"ABSOLUTE_POSITION\",\r\n"
-				+ "      \"operator\" : \"EQ\",\r\n"
-				+ "      \"rightOperand\" : \"EU\"\r\n"
-				+ "    } ]\r\n"
-				+ "  } ]\r\n"
-				+ "}";
-		Offer off = Serializer.deserializePlain(str, Offer.class);
-		assertNotNull(off);
-	}
 }

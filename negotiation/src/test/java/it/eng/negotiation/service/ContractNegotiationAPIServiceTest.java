@@ -1,5 +1,6 @@
 package it.eng.negotiation.service;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -26,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
+import it.eng.negotiation.exception.PolicyEnforcementException;
 import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationState;
@@ -36,6 +38,7 @@ import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.service.policy.PolicyEnforcementService;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
@@ -58,6 +61,8 @@ public class ContractNegotiationAPIServiceTest {
 	private GenericApiResponse<String> apiResponse;
 	@Mock
     private CredentialUtils credentialUtils;
+	@Mock
+	private PolicyEnforcementService policyEnforcementService;
 	
 	@Captor
 	private ArgumentCaptor<ContractNegotiation> argCaptorContractNegotiation;
@@ -216,7 +221,7 @@ public class ContractNegotiationAPIServiceTest {
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(true);
 		when(contractNegotiationRepository.findById(MockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId()))
-		.thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED));
+			.thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED));
 		
 		service.finalizeNegotiation(MockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId());
 		
@@ -530,4 +535,39 @@ public class ContractNegotiationAPIServiceTest {
 		verify(contractNegotiationRepository, times(0)).save(argCaptorContractNegotiation.capture());
 	}
 
+	// validate agreement
+	@Test
+	@DisplayName("Validate agreement ok")
+	public void validateAgreement() {
+		when(agreementRepository.findById(MockObjectUtil.AGREEMENT.getId())).thenReturn(Optional.of(MockObjectUtil.AGREEMENT));
+		
+		assertDoesNotThrow(()-> service.validateAgreement(MockObjectUtil.AGREEMENT.getId()));
+	}
+	
+	@Test
+	@DisplayName("Validate agreement - not valid")
+	public void validateAgreement_not_valid() {
+		when(agreementRepository.findById(MockObjectUtil.AGREEMENT.getId())).thenReturn(Optional.empty());
+		
+		assertThrows(ContractNegotiationAPIException.class, ()-> service.validateAgreement(MockObjectUtil.AGREEMENT.getId()));
+	}
+	
+	// enforce agreement
+	@Test
+	@DisplayName("Enforce agreement ok")
+	public void enforceAgreement() {
+		when(agreementRepository.findById(MockObjectUtil.AGREEMENT.getId())).thenReturn(Optional.of(MockObjectUtil.AGREEMENT));
+		when(policyEnforcementService.isAgreementValid(MockObjectUtil.AGREEMENT)).thenReturn(true);
+		
+		assertDoesNotThrow(()-> service.enforceAgreement(MockObjectUtil.AGREEMENT.getId()));
+	}
+	
+	@Test
+	@DisplayName("Enforce agreement - not valid")
+	public void enforceAgreement_not_valid() {
+		when(agreementRepository.findById(MockObjectUtil.AGREEMENT.getId())).thenReturn(Optional.of(MockObjectUtil.AGREEMENT));
+		when(policyEnforcementService.isAgreementValid(MockObjectUtil.AGREEMENT)).thenReturn(false);
+		
+		assertThrows(PolicyEnforcementException.class, ()-> service.enforceAgreement(MockObjectUtil.AGREEMENT.getId()));
+	}
 }

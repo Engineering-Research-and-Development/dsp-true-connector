@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
+import it.eng.negotiation.exception.PolicyEnforcementException;
 import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.ContractAgreementMessage;
 import it.eng.negotiation.model.ContractAgreementVerificationMessage;
@@ -33,6 +34,7 @@ import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.rest.protocol.ContractNegotiationCallback;
 import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.service.policy.PolicyEnforcementService;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
@@ -51,17 +53,19 @@ public class ContractNegotiationAPIService {
 	private final OfferRepository offerRepository;
 	private final AgreementRepository agreementRepository;
 	private final CredentialUtils credentialUtils;
+	private final PolicyEnforcementService policyEnforcementService;
 	ObjectMapper mapper = new ObjectMapper();
 
 	public ContractNegotiationAPIService(OkHttpRestClient okHttpRestClient, ContractNegotiationRepository contractNegotiationRepository,
 			ContractNegotiationProperties properties, OfferRepository offerRepository, AgreementRepository agreementRepository,
-			CredentialUtils credentialUtils) {
+			CredentialUtils credentialUtils, PolicyEnforcementService policyEnforcementService) {
 		this.okHttpRestClient = okHttpRestClient;
 		this.contractNegotiationRepository = contractNegotiationRepository;
 		this.properties = properties;
 		this.offerRepository = offerRepository;
 		this.agreementRepository = agreementRepository;
 		this.credentialUtils = credentialUtils;
+		this.policyEnforcementService = policyEnforcementService;
 	}
 
 	/**
@@ -238,6 +242,8 @@ public class ContractNegotiationAPIService {
 		if (response.isSuccess()) {
 			ContractNegotiation contractNegotiationFinalized = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.FINALIZED);
 			contractNegotiationRepository.save(contractNegotiationFinalized);
+			// TODO remove this line once api/getArtifact is implemented on consumer side 
+			policyEnforcementService.createPolicyEnforcement(contractNegotiation.getAgreement().getId());
 		} else {
 			log.error("Error response received!");
 			throw new ContractNegotiationAPIException(response.getMessage());
@@ -451,4 +457,19 @@ public class ContractNegotiationAPIService {
     	        .orElseThrow(() ->
                 new ContractNegotiationAPIException("Contract negotiation with id " + contractNegotiationId + " not found"));
     }
+
+	public void enforceAgreement(String agreementId) {
+		Agreement agreement = agreementRepository.findById(agreementId)
+				.orElseThrow(() -> new ContractNegotiationAPIException("Agreement with Id " + agreementId + " not found."));
+		// TODO add additional checks like contract dates
+		//		LocalDateTime agreementStartDate = LocalDateTime.parse(agreement.getTimestamp(), FORMATTER);
+		//		agreementStartDate.isBefore(LocalDateTime.now());
+		boolean agreementValid = policyEnforcementService.isAgreementValid(agreement);
+		if(agreementValid) {
+			log.info("Agreement is valid");
+		} else {
+			log.info("Agreement is invalid");
+			throw new PolicyEnforcementException("Agreement with id'" + agreementId + "' evaluated as invalid");
+		}
+	}
 }

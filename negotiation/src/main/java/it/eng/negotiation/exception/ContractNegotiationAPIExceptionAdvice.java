@@ -13,7 +13,7 @@ import it.eng.tools.response.GenericApiResponse;
 @RestControllerAdvice(basePackageClasses = {ContractNegotiationAPIController.class})
 public class ContractNegotiationAPIExceptionAdvice extends ResponseEntityExceptionHandler {
 
-    @ExceptionHandler(value = {ContractNegotiationAPIException.class})
+    @ExceptionHandler(value = {ContractNegotiationAPIException.class, PolicyEnforcementException.class})
     protected ResponseEntity<Object> handleContractNegotiationAPIException(ContractNegotiationAPIException ex, WebRequest request) {
     	return new ResponseEntity<>(GenericApiResponse.error(ex.getLocalizedMessage()), HttpStatus.BAD_REQUEST);
     }

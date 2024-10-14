@@ -44,7 +44,7 @@ public class AgreementService {
 		// TODO once usage policy enforcement is done, call should be made here
 
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + serverPort 
-			+ ApiEndpoints.NEGOTIATION_AGREEMENTS_V1 + "/" + agreementId + "/valid", 
+			+ ApiEndpoints.NEGOTIATION_AGREEMENTS_V1 + "/" + agreementId + "/enforce", 
 				null, 
 				credentialUtils.getAPICredentials());
         

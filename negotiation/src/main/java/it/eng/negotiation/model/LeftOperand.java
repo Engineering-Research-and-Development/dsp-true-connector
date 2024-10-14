@@ -11,15 +11,21 @@ import it.eng.tools.model.DSpaceConstants;
 
 public enum LeftOperand {
 
+	// Uncomment ones that are supported by the underlying logic
+	COUNT(DSpaceConstants.ODRL + "count"),
+	DATE_TIME(DSpaceConstants.ODRL + "dateTime");
+/*
+ * https://www.w3.org/TR/odrl-vocab/#constraintLeftOperandCommon
 	ABSOLUTE_POSITION(DSpaceConstants.ODRL + "absolutePosition"),
 	ABSOLUTE_SIZE(DSpaceConstants.ODRL + "absoluteSize"),
 	ABSOLUTE_SPATIAL_POSITION(DSpaceConstants.ODRL + "absoluteSpatialPosition"),
 	ABSOLUTE_TEMPORAL_POSITION(DSpaceConstants.ODRL + "absoluteTemporalPosition"),
-    COUNT(DSpaceConstants.ODRL + "count"),
-    DATE_TIME(DSpaceConstants.ODRL + "dateTime"),
     DELAY_PERIOD(DSpaceConstants.ODRL + "delayPeriod"),
     DELIVERY_CHANNEL(DSpaceConstants.ODRL + "deliveryChannel"),
     DEVICE(DSpaceConstants.ODRL + "device"),
+    
+	//Only the eq, lt, lteq operators SHOULD be used. See also Metered Time.
+	//Example: elpasedTime eq P60M indicates a total elapsed time of 60 Minutes.
     ELAPSED_TIME(DSpaceConstants.ODRL + "elapsedTime"),
     EVENT(DSpaceConstants.ODRL + "event"),
     FILE_FOMRAT(DSpaceConstants.ODRL + "fileFormat"),
@@ -45,6 +51,7 @@ public enum LeftOperand {
     UNIT_OF_COUNT(DSpaceConstants.ODRL + "unitOfCount"),
     VERSION(DSpaceConstants.ODRL + "version"),
 	VIRTUAL_LOCATION(DSpaceConstants.ODRL + "virtualLocation");
+	*/
 	
 	private final String operand;
 
