@@ -45,7 +45,7 @@ public class PolicyEnforcementService {
 			valid = dateTimePolicyValidator.validateDateTime(constraint);
 			break;
 		default:
-			log.warn("Left operand not supported {}", constraint.getLeftOperand().name());
+			log.warn("Constraint not supported {}", constraint.getLeftOperand().name());
 			return false;
 		}
 		return valid;
