@@ -19,7 +19,7 @@ public interface DSpaceConstants {
 	}
 	
 	public static enum Operators {
-		EQ, GT, GTEQ, HAS_PARENT, IS_A, IS_ALL_OF, IS_ANY_OF, IS_NONE_OF, IS_PART_OF, LT, TERM_LTEQ, NEQ;
+		EQ, GT, GTEQ, HAS_PARENT, IS_A, IS_ALL_OF, IS_ANY_OF, IS_NONE_OF, IS_PART_OF, LT, LTEQ, NEQ;
 	}
 	
 	public static final Map<String, String> CONTEXT_MAP = Map.of(
@@ -57,7 +57,6 @@ public interface DSpaceConstants {
 	public static final String DSPACE_PARTICIPANT_ID = DSPACE + PARTICIPANT_ID;
 	public static final String DATA_ADDRESS = "dataAddress";
 	public static final String DSPACE_DATA_ADDRESS = DSPACE + DATA_ADDRESS;
-	
 	
 	public static final String ENDPOINT_TYPE = "endpointType";
 	public static final String DSPACE_ENDPOINT_TYPE = DSPACE + ENDPOINT_TYPE;

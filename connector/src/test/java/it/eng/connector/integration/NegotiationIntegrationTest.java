@@ -106,7 +106,6 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     	offerCheck(getContractNegotiationOverAPI());
     }
 
-	
 	@Order(3) 
     @Test
     @WithUserDetails(TestUtil.CONNECTOR_USER)
@@ -438,6 +437,24 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     	agreementCheck(contractNegotiation);
     }
 
+	
+	@Order(15) 
+    @Test
+    public void contractNegotiation_notAuthorized() throws Exception {
+    	final ResultActions result =
+    			mockMvc.perform(
+    					get("/negotiations/1")
+    					.contentType(MediaType.APPLICATION_JSON)
+    					.header("Authorization", "Basic YXNkckBtYWlsLmNvbTpwYXNzd29yZA=="));
+    	result.andExpect(status().isUnauthorized())
+    	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())));
+
+    	JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
+		JsonNode contextNode = jsonNode.get(DSpaceConstants.CONTEXT);
+		assertTrue(DSpaceConstants.validateContext(contextNode));
+	
+	}
 	private JsonNode getContractNegotiationOverAPI()
 			throws Exception, JsonProcessingException, JsonMappingException, UnsupportedEncodingException {
 		final ResultActions result =
@@ -460,4 +477,5 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
 	private void agreementCheck(JsonNode contractNegotiation) {
 		assertNotNull(contractNegotiation.get("agreement"));
 	}
+	
 }

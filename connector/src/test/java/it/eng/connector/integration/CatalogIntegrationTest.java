@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import it.eng.catalog.model.CatalogError;
 import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.util.MockObjectUtil;
 import it.eng.connector.util.TestUtil;
@@ -43,6 +44,27 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
 	    	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
 	    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CATALOG.getType())));
     	
+    	JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
+		JsonNode contextNode = jsonNode.get(DSpaceConstants.CONTEXT);
+		assertTrue(validateContext(contextNode));
+    }
+    
+    @Test
+    @DisplayName("Get catalog - unauthorized")
+    public void getCatalogSUnauthorizedTest() throws Exception {
+    	
+    	String body = Serializer.serializeProtocol(MockObjectUtil.CATALOG_REQUEST_MESSAGE);
+    	
+    	final ResultActions result =
+    			mockMvc.perform(
+    					post("/catalog/request")
+    					.content(body)
+    					.contentType(MediaType.APPLICATION_JSON)
+    					.header("Authorization", "Basic YXNkckBtYWlsLmNvbTpwYXNzd29yZA=="));
+    	result.andExpect(status().isUnauthorized())
+    	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(DSpaceConstants.DSPACE + CatalogError.class.getSimpleName())));
+
     	JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
 		JsonNode contextNode = jsonNode.get(DSpaceConstants.CONTEXT);
 		assertTrue(validateContext(contextNode));

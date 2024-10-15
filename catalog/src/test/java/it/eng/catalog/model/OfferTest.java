@@ -16,6 +16,9 @@ import it.eng.catalog.util.MockObjectUtil;
 public class OfferTest {
 	
 	private static final String TARGET_A = "urn:uuid:TARGET";
+	private static final String TARGET_B = "urn:uuid:TARGET_B";
+	private static final String ASSIGNEE = "urn:uuid:ASSIGNEE";
+	private static final String ASSIGNER = "urn:uuid:ASSIGNER";
 	
 	String id = UUID.randomUUID().toString();
 	
@@ -139,7 +142,7 @@ public class OfferTest {
 				+ "                }";
 		Permission p = Serializer.deserializePlain(oString, Permission.class);
 		p.getConstraint();
-		p.getConstraint().add(Constraint.Builder.newInstance().leftOperand(LeftOperand.ABSOLUTE_POSITION).operator(Operator.GT).rightOperand("DesniOperand").build());
+		p.getConstraint().add(Constraint.Builder.newInstance().leftOperand(LeftOperand.COUNT).operator(Operator.GT).rightOperand("5").build());
 		p.getConstraint();
 	}
 	

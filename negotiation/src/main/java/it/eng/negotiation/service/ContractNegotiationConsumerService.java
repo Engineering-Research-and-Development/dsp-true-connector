@@ -24,6 +24,7 @@ import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.service.policy.PolicyEnforcementService;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.model.IConstants;
 import lombok.extern.slf4j.Slf4j;
@@ -33,13 +34,15 @@ import lombok.extern.slf4j.Slf4j;
 public class ContractNegotiationConsumerService extends BaseProtocolService {
 
 	private final AgreementRepository agreementRepository;
+	private final PolicyEnforcementService policyEnforcementService;
 	
 	public ContractNegotiationConsumerService(ContractNegotiationPublisher publisher,
 			ContractNegotiationRepository contractNegotiationRepository, OkHttpRestClient okHttpRestClient,
 			ContractNegotiationProperties properties, OfferRepository offerRepository,
-			AgreementRepository agreementRepository) {
+			AgreementRepository agreementRepository, PolicyEnforcementService policyEnforcementService) {
 		super(publisher, contractNegotiationRepository, okHttpRestClient, properties, offerRepository);
 		this.agreementRepository = agreementRepository;
+		this.policyEnforcementService = policyEnforcementService;
 	}
 
 	/**
@@ -51,7 +54,7 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
      * "dspace:state" :"OFFERED"
      * }
      *
-     * @param contractOfferMessage
+     * @param contractOfferMessage 
      * @return
      */
 
@@ -158,8 +161,10 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
 		ContractNegotiation contractNegotiationUpdated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.FINALIZED);
 		log.info("CONSUMER - saving updated contract negotiation");
 		contractNegotiationRepository.save(contractNegotiationUpdated);
+		
+		log.debug("Creating polcyEnforcement for agreementId {}", contractNegotiation.getAgreement().getId());
+		policyEnforcementService.createPolicyEnforcement(contractNegotiation.getAgreement().getId());
     }
-
 
     /**
      * The response body is not specified and clients are not required to process it.

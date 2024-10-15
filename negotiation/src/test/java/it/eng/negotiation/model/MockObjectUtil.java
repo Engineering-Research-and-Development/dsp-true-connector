@@ -62,13 +62,13 @@ public class MockObjectUtil {
 	
 	public static final Constraint CONSTRAINT_COUNT_5 = Constraint.Builder.newInstance()
 			.leftOperand(LeftOperand.COUNT)
-			.operator(Operator.EQ)
+			.operator(Operator.LTEQ)
 			.rightOperand("5")
 			.build();
 	
 	public static final Constraint CONSTRAINT_COUNT_5_REFERENCE = Constraint.Builder.newInstance()
 			.leftOperand(Reference.Builder.newInstance().id(LeftOperand.COUNT.toString()).build())
-			.operator(Reference.Builder.newInstance().id(Operator.EQ.toString()).build())
+			.operator(Reference.Builder.newInstance().id(Operator.LTEQ.toString()).build())
 			.rightOperand("5")
 			.build();
 	
@@ -223,6 +223,7 @@ public class MockObjectUtil {
 			.providerPid(MockObjectUtil.PROVIDER_PID)
 			.callbackAddress(CALLBACK_ADDRESS)
 			.state(ContractNegotiationState.VERIFIED)
+			.agreement(AGREEMENT)
 			.build();
 	
 	public static final ContractNegotiation CONTRACT_NEGOTIATION_FINALIZED = ContractNegotiation.Builder.newInstance()
@@ -240,4 +241,5 @@ public class MockObjectUtil {
 			.offer(MockObjectUtil.OFFER_COUNT_5)
 			.assigner(ASSIGNER)
 			.build();
+	
 }
