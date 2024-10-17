@@ -17,4 +17,6 @@ public interface ContractNegotiationRepository extends MongoRepository<ContractN
 
 	Collection<ContractNegotiation> findByState(String state);
 
+	Optional<ContractNegotiation> findByAgreement(String agreement);
+
 }
