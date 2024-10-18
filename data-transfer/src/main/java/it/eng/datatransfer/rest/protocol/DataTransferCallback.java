@@ -45,7 +45,7 @@ public class DataTransferCallback {
 		return getValidCallback(callback) + PROVIDER_DATA_TRANSFER_SUSPENSION.replace(":providerPid:", providerPid);
 	}
 	
-	private static String getValidCallback(String callback) {
+	public static String getValidCallback(String callback) {
 		return callback.endsWith("/") ? callback.substring(0, callback.length() - 1) : callback;
 	} 
 }

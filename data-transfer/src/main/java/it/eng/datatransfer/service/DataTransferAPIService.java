@@ -1,11 +1,13 @@
 package it.eng.datatransfer.service;
 
+import java.io.UnsupportedEncodingException;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.tomcat.util.codec.binary.Base64;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -14,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.model.DataAddress;
+import it.eng.datatransfer.model.EndpointProperty;
 import it.eng.datatransfer.model.TransferCompletionMessage;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferRequestMessage;
@@ -123,27 +126,48 @@ public class DataTransferAPIService {
 	 * Transfer Process upon successful response to STARTED
 	 * @param transferProcessId
 	 * @return
+	 * @throws UnsupportedEncodingException 
 	 */
-	public JsonNode startTransfer(String transferProcessId) {
+	public JsonNode startTransfer(String transferProcessId) throws UnsupportedEncodingException {
 		TransferProcess transferProcess = findTransferProcessById(transferProcessId);
 		
 		stateTransitionCheck(TransferState.STARTED, transferProcess.getState());
 		
-		TransferStartMessage transferStartMessage = TransferStartMessage.Builder.newInstance()
-				.consumerPid(transferProcess.getConsumerPid())
-				.providerPid(transferProcess.getProviderPid())
-				.dataAddress(transferProcess.getDataAddress())
-				.build();
 		
 	   	log.info("Sending TransferStartMessage to {}", transferProcess.getCallbackAddress());
 	   	String address = null;
+	   	DataAddress dataAddress = null;
 	   	
 	   	if (StringUtils.equals(IConstants.ROLE_CONSUMER, transferProcess.getRole())) {
 	   		address = DataTransferCallback.getProviderDataTransferStart(transferProcess.getCallbackAddress(), transferProcess.getProviderPid());
 		}
 	   	if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
 	   		address = DataTransferCallback.getConsumerDataTransferStart(transferProcess.getCallbackAddress(), transferProcess.getConsumerPid());
+	   		if (transferProcess.getDataAddress() == null) {
+	   			String transactionId = Base64.encodeBase64URLSafeString((transferProcess.getConsumerPid() + "|" + transferProcess.getProviderPid()).getBytes("UTF-8"));
+	   			String artifactURL = DataTransferCallback.getValidCallback(dataTransferProperties.providerCallbackAddress()) + "/artifacts/" + transactionId + "/1";
+	   			
+	   			EndpointProperty endpointProperty = EndpointProperty.Builder.newInstance()
+	   					.name("https://w3id.org/edc/v0.0.1/ns/endpoint")
+	   					.value(artifactURL)
+	   					.build();
+	   			EndpointProperty endpointTypeProperty = EndpointProperty.Builder.newInstance()
+	   					.name("https://w3id.org/edc/v0.0.1/ns/endpointType")
+	   					.value(address)
+	   					.build();
+				dataAddress = DataAddress.Builder.newInstance()
+						.endpoint(artifactURL)
+						.endpointProperties(List.of(endpointProperty, endpointTypeProperty))
+						.endpointType("https://w3id.org/idsa/v4.1/HTTP")
+						.build();
+			}
 		}
+	   	
+	   	TransferStartMessage transferStartMessage = TransferStartMessage.Builder.newInstance()
+	   			.consumerPid(transferProcess.getConsumerPid())
+	   			.providerPid(transferProcess.getProviderPid())
+	   			.dataAddress(transferProcess.getDataAddress() == null ? dataAddress : transferProcess.getDataAddress())
+	   			.build();
 	   	
 		GenericApiResponse<String> response = okHttpRestClient
 				.sendRequestProtocol(address,

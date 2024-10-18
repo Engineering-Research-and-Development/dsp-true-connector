@@ -12,6 +12,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -115,7 +116,7 @@ class DataTransferAPIControllerTest {
 	
 	@Test
 	@DisplayName("Start transfer process success")
-	public void startTransfer_success() {
+	public void startTransfer_success() throws UnsupportedEncodingException {
 				
 		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.startTransfer(MockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
 		assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -124,7 +125,7 @@ class DataTransferAPIControllerTest {
 	
 	@Test
 	@DisplayName("Start transfer process failed")
-	public void startTransfer_failed() {
+	public void startTransfer_failed() throws UnsupportedEncodingException {
 				
 		doThrow(new DataTransferAPIException("Something not correct - tests"))
 			.when(apiService).startTransfer(MockObjectUtil.TRANSFER_PROCESS_STARTED.getId());

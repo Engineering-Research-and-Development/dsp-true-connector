@@ -10,6 +10,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Optional;
@@ -137,7 +138,7 @@ class DataTransferAPIServiceTest {
 	
 	@Test
 	@DisplayName("Start transfer process success")
-	public void startTransfer_success_requestedState() {
+	public void startTransfer_success_requestedState() throws UnsupportedEncodingException {
 		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(true);

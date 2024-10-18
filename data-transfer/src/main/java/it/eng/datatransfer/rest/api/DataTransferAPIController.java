@@ -1,5 +1,6 @@
 package it.eng.datatransfer.rest.api;
 
+import java.io.UnsupportedEncodingException;
 import java.util.Collection;
 
 import org.springframework.http.MediaType;
@@ -66,7 +67,7 @@ public class DataTransferAPIController {
 	}
 	
 	@PutMapping(path = "/{transferProcessId}/start")
-    public ResponseEntity<GenericApiResponse<JsonNode>> startTransfer(@PathVariable String transferProcessId) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> startTransfer(@PathVariable String transferProcessId) throws UnsupportedEncodingException {
 		log.info("Starting data transfer");
     	JsonNode response = apiService.startTransfer(transferProcessId);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
