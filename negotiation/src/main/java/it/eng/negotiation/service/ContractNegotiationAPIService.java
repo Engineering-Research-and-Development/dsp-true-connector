@@ -53,8 +53,8 @@ public class ContractNegotiationAPIService {
 	private final OfferRepository offerRepository;
 	private final AgreementRepository agreementRepository;
 	private final CredentialUtils credentialUtils;
+	private final ObjectMapper mapper = new ObjectMapper();
 	private final PolicyEnforcementService policyEnforcementService;
-	ObjectMapper mapper = new ObjectMapper();
 
 	public ContractNegotiationAPIService(OkHttpRestClient okHttpRestClient, ContractNegotiationRepository contractNegotiationRepository,
 			ContractNegotiationProperties properties, OfferRepository offerRepository, AgreementRepository agreementRepository,
@@ -414,8 +414,16 @@ public class ContractNegotiationAPIService {
 	}
 	
 	public void validateAgreement(String agreementId) {
-		agreementRepository.findById(agreementId)
-				.orElseThrow(() -> new ContractNegotiationAPIException("Agreement with Id " + agreementId + " not found."));
+		log.info("Validating agreement " + agreementId);
+		contractNegotiationRepository.findByAgreement(agreementId)
+		.ifPresentOrElse((cn) -> {
+			if (!cn.getState().equals(ContractNegotiationState.FINALIZED)) {
+				throw new ContractNegotiationAPIException("Contract negotiation with Agreement Id " + agreementId + " is not finalized.");
+			}},
+				() -> {
+					throw new ContractNegotiationAPIException("Contract negotiation with Agreement Id " + agreementId + " not found.");
+					});
+//				.orElseThrow(() -> new ContractNegotiationAPIException("Contract negotiation with Agreement Id " + agreementId + " not found."));
 		// TODO add additional checks like contract dates
 		//		LocalDateTime agreementStartDate = LocalDateTime.parse(agreement.getTimestamp(), FORMATTER);
 		//		agreementStartDate.isBefore(LocalDateTime.now());

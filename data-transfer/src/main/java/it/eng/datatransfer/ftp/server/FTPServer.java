@@ -12,6 +12,7 @@ import org.apache.sshd.server.SshServer;
 import org.apache.sshd.server.auth.keyboard.KeyboardInteractiveAuthenticator;
 import org.apache.sshd.server.auth.pubkey.PublickeyAuthenticator;
 import org.apache.sshd.sftp.server.SftpSubsystemFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
@@ -32,7 +33,7 @@ public class FTPServer {
 	
 	SshServer sshd;
 	
-	public FTPServer(GlobalSSLConfiguration sslConfiguration, PublickeyAuthenticator authenticator, FTPConfiguration ftpConfiguration) throws IOException, URISyntaxException {
+	public FTPServer(GlobalSSLConfiguration sslConfiguration, @Qualifier(value = "FTPAuthenticator") PublickeyAuthenticator authenticator, FTPConfiguration ftpConfiguration) throws IOException, URISyntaxException {
 		super();
 		this.sslConfiguration = sslConfiguration;
 		this.ftpConfiguration = ftpConfiguration;

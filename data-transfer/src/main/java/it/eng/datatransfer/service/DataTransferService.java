@@ -10,7 +10,6 @@ import it.eng.datatransfer.exceptions.AgreementNotFoundException;
 import it.eng.datatransfer.exceptions.TransferProcessExistsException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.exceptions.TransferProcessNotFoundException;
-import it.eng.datatransfer.serializer.Serializer;
 import it.eng.datatransfer.model.TransferCompletionMessage;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferRequestMessage;
@@ -21,8 +20,10 @@ import it.eng.datatransfer.model.TransferTerminationMessage;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
+import it.eng.datatransfer.serializer.Serializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +44,8 @@ public class DataTransferService {
 			TransferRequestMessageRepository transferRequestMessageRepository,
 			ApplicationEventPublisher publisher, 
 			OkHttpRestClient okHttpRestClient,
-			CredentialUtils credentialUtils, DataTransferProperties properties) {
+			CredentialUtils credentialUtils,
+			DataTransferProperties properties) {
 		super();
 		this.transferProcessRepository = transferProcessRepository;
 		this.transferRequestMessageRepository = transferRequestMessageRepository;
@@ -94,7 +96,7 @@ public class DataTransferService {
 				null, 
 				credentialUtils.getAPICredentials());
 		if (!response.isSuccess()) {
-			throw new AgreementNotFoundException("Agreement with id " + transferRequestMessage.getAgreementId()+ " not found",
+			throw new AgreementNotFoundException("Agreement with id " + transferRequestMessage.getAgreementId()+ " not found or Conract Negotiation not FINALIZED.",
 					transferRequestMessage.getConsumerPid(), "urn:uuid:" + UUID.randomUUID());
 		}
 		
@@ -105,7 +107,10 @@ public class DataTransferService {
 				.agreementId(transferRequestMessage.getAgreementId())
 				.callbackAddress(transferRequestMessage.getCallbackAddress())
 				.consumerPid(transferRequestMessage.getConsumerPid())
+				.format(transferRequestMessage.getFormat())
+				.dataAddress(transferRequestMessage.getDataAddress())
 				.state(TransferState.REQUESTED)
+				.role(IConstants.ROLE_PROVIDER)
 				.build();
 		transferProcessRepository.save(transferProcessRequested);
 		log.info("Requested TransferProcess created");

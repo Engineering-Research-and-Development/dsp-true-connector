@@ -229,7 +229,9 @@ public class CatalogService {
 	public boolean validateOffer(Offer offer) {
 		boolean valid = false;
 		Catalog catalog = getCatalog();
+		
 
+		//TODO change logic with SELECT Dataset FROM Catalog WHERE Catalog.Dataset.Id == Offer.target
 		Offer existingOffer = catalog.getDataset().stream()
 				.flatMap(dataset -> dataset.getHasPolicy().stream())
 				.filter(of -> of.getId().equals(offer.getId()))
@@ -237,7 +239,7 @@ public class CatalogService {
 				.orElse(null);
 
 		log.debug("Offer with id '{}' {}", offer.getId(), existingOffer != null ? " found." : "not found.");
-
+		
 		if (existingOffer == null) {
 			log.warn("Offer with id {} not found in catalog", offer.getId());
 			valid = false;

@@ -8,6 +8,7 @@ import org.apache.sshd.common.config.keys.KeyUtils;
 import org.apache.sshd.server.auth.AsyncAuthException;
 import org.apache.sshd.server.auth.pubkey.PublickeyAuthenticator;
 import org.apache.sshd.server.session.ServerSession;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.ssl.NoSuchSslBundleException;
 import org.springframework.stereotype.Component;
 
@@ -16,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
+@Qualifier(value = "FTPAuthenticator")
 public class FTPAuthenticator implements PublickeyAuthenticator {
 
 	private final GlobalSSLConfiguration sslConfiguration;

@@ -273,7 +273,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
 		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
 		
 		JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
-		return jsonNode.findValues("data").get(0).get(0);
+		return jsonNode.findValues("data").get(0).get(jsonNode.findValues("data").get(0).size()-1);
 	}
 	
 	private void offerCheck(JsonNode contractNegotiation) {
