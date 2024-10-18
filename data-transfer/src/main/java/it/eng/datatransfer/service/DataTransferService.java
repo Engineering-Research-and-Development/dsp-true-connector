@@ -226,8 +226,8 @@ public class DataTransferService {
 		return transferProcessTerminated;
 	}
 	
-	private TransferProcess findTransferProcess(String consumerPid, String providerPidFinal) {
-		TransferProcess transferProcessRequested = transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPidFinal)
+	public TransferProcess findTransferProcess(String consumerPid, String providerPid) {
+		TransferProcess transferProcessRequested = transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid)
 			.orElseThrow(() -> new TransferProcessNotFoundException("Transfer process for consumerPid " + consumerPid
 			 + " and providerPid " + consumerPid + " not found"));
 		return transferProcessRequested;

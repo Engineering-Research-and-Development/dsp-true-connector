@@ -1,6 +1,29 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 09-10-2024
+
+### Added
+
+ - Initial logic for policy enforcement (count and dateTime as left operands)
+ - PolicyEnforcement model, repo and service classes that holds count for agreement
+ - PolicyManager - class that gets access count and update counter when artifact will be accessed
+ - AgreementAPI - enforceAgreement logic
+ - Event when accessing resource, used to increase count for agreementId
+ 
+### Changed
+ 
+ - Operator TERM_LTEQ to LTEQ
+ 
+## [0.1.1] - 04-10-2024
+
+### Added
+
+ - New mandatory property application.protocol.authentication.enabled=true
+ - DataspaceProtocolEndpointsExceptionHandler - returns valid protocol error based on resource accessed
+ - ProtocolEndpointsAuthenticationFilter - filter that creates dummy authorization if security for protocol endpoints is disabled
+ - DataspaceProtocolEndpointsAuthenticationEntryPoint - custom authentication class to handle Spring Security errors in protocol way
+
 ## [0.1.0] - 13-09-2024
 
 ### Added
