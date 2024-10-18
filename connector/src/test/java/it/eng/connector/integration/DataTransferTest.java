@@ -76,10 +76,10 @@ public class DataTransferTest extends BaseIntegrationTest {
     public void getCatalogSUnauthorizedTest() throws Exception {
     	
 		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
-	    		.consumerPid(CONSUMER_PID)
+	    		.consumerPid(MockObjectUtil.CONSUMER_PID)
 	    		.agreementId("urn:uuid:AGREEMENT_ID") // this one should be present in init_data.json
 	    		.format("HTTP_PULL")
-	    		.callbackAddress(CALLBACK_ADDRESS)
+	    		.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
 	    		.build();
 		
     	String body = Serializer.serializeProtocol(transferRequestMessage);
