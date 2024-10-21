@@ -255,7 +255,7 @@
 							}
 						],
 						"url": {
-							"raw": "http://172.17.0.1:8090/artifacts/{{transactionId}}/artifact1",
+							"raw": "http://172.17.0.1:8090/artifacts/{{transactionId}}",
 							"protocol": "http",
 							"host": [
 								"172",
@@ -455,7 +455,7 @@
 							}
 						],
 						"url": {
-							"raw": "http://172.17.0.1:8090/artifacts/{{transactionId}}/artifact1",
+							"raw": "http://172.17.0.1:8090/artifacts/{{transactionId}}",
 							"protocol": "http",
 							"host": [
 								"172",
