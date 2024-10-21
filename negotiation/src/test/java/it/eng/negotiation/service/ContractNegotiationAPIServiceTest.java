@@ -539,7 +539,7 @@ public class ContractNegotiationAPIServiceTest {
 	@Test
 	@DisplayName("Validate agreement ok")
 	public void validateAgreement() {
-		when(agreementRepository.findById(MockObjectUtil.AGREEMENT.getId())).thenReturn(Optional.of(MockObjectUtil.AGREEMENT));
+		when(contractNegotiationRepository.findByAgreement(MockObjectUtil.AGREEMENT.getId())).thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_FINALIZED));
 		
 		assertDoesNotThrow(()-> service.validateAgreement(MockObjectUtil.AGREEMENT.getId()));
 	}
@@ -547,7 +547,7 @@ public class ContractNegotiationAPIServiceTest {
 	@Test
 	@DisplayName("Validate agreement - not valid")
 	public void validateAgreement_not_valid() {
-		when(agreementRepository.findById(MockObjectUtil.AGREEMENT.getId())).thenReturn(Optional.empty());
+		when(contractNegotiationRepository.findByAgreement(MockObjectUtil.AGREEMENT.getId())).thenReturn(Optional.empty());
 		
 		assertThrows(ContractNegotiationAPIException.class, ()-> service.validateAgreement(MockObjectUtil.AGREEMENT.getId()));
 	}

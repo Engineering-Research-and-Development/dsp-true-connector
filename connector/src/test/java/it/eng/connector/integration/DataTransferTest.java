@@ -28,6 +28,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
+import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.TransferCompletionMessage;
 import it.eng.datatransfer.model.TransferError;
 import it.eng.datatransfer.model.TransferProcess;
@@ -37,6 +38,7 @@ import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.model.TransferSuspensionMessage;
 import it.eng.datatransfer.model.TransferTerminationMessage;
 import it.eng.datatransfer.serializer.Serializer;
+import it.eng.datatransfer.util.MockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
 
 /**
@@ -44,19 +46,14 @@ import it.eng.tools.model.DSpaceConstants;
  */
 public class DataTransferTest extends BaseIntegrationTest {
 	
-	public static final String CONSUMER_PID = "urn:uuid:CONSUMER_PID";
-	public static final String PROVIDER_PID = "urn:uuid:PROVIDER_PID";
-	public static final String AGREEMENT_ID = "urn:uuid:" + UUID.randomUUID().toString();
-	public static final String CALLBACK_ADDRESS = "https://example.com/callback";
-	
 	@Test
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void initiateDataTransfer() throws Exception {
 		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
-	    		.consumerPid(CONSUMER_PID)
+	    		.consumerPid(MockObjectUtil.CONSUMER_PID)
 	    		.agreementId("urn:uuid:AGREEMENT_ID_OK")
-	    		.format("HTTP_PULL")
-	    		.callbackAddress(CALLBACK_ADDRESS)
+	    		.format(DataTransferFormat.HTTP_PULL.name())
+	    		.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
 	    		.build();
 		
     	String body = Serializer.serializeProtocol(transferRequestMessage);
@@ -79,10 +76,10 @@ public class DataTransferTest extends BaseIntegrationTest {
     public void getCatalogSUnauthorizedTest() throws Exception {
     	
 		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
-	    		.consumerPid(CONSUMER_PID)
+	    		.consumerPid(MockObjectUtil.CONSUMER_PID)
 	    		.agreementId("urn:uuid:AGREEMENT_ID") // this one should be present in init_data.json
 	    		.format("HTTP_PULL")
-	    		.callbackAddress(CALLBACK_ADDRESS)
+	    		.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
 	    		.build();
 		
     	String body = Serializer.serializeProtocol(transferRequestMessage);
@@ -103,10 +100,10 @@ public class DataTransferTest extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void initiateDataTransfer_agreement_exists() throws Exception {
 		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
-	    		.consumerPid(CONSUMER_PID)
+	    		.consumerPid(MockObjectUtil.CONSUMER_PID)
 	    		.agreementId("urn:uuid:AGREEMENT_ID") // this one should be present in init_data.json
-	    		.format("HTTP_PULL")
-	    		.callbackAddress(CALLBACK_ADDRESS)
+	    		.format(DataTransferFormat.HTTP_PULL.name())
+	    		.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
 	    		.build();
 		
     	String body = Serializer.serializeProtocol(transferRequestMessage);
@@ -235,8 +232,8 @@ public class DataTransferTest extends BaseIntegrationTest {
 		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
 	    		.consumerPid(consumerPid)
 	    		.agreementId("urn:uuid:AGREEMENT_ID_COMPLETED_TRANSFER_TEST")
-	    		.format("HTTP_PULL")
-	    		.callbackAddress(CALLBACK_ADDRESS)
+	    		.format(DataTransferFormat.HTTP_PULL.name())
+	    		.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
 	    		.build();
 		MvcResult mvcResult = mockMvc.perform(
     					post("/transfers/request")
@@ -349,8 +346,8 @@ public class DataTransferTest extends BaseIntegrationTest {
 		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
 	    		.consumerPid(consumerPid)
 	    		.agreementId("urn:uuid:AGREEMENT_ID_TERMINATE_TRANSFER_TEST")
-	    		.format("HTTP_PULL")
-	    		.callbackAddress(CALLBACK_ADDRESS)
+	    		.format(DataTransferFormat.HTTP_PULL.name())
+	    		.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
 	    		.build();
 		MvcResult mvcResult = mockMvc.perform(
     					post("/transfers/request")
