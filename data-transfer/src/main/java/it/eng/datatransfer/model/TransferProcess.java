@@ -61,6 +61,8 @@ public class TransferProcess extends AbstractTransferMessage {
 	private String agreementId;
 	@JsonIgnore
 	private String callbackAddress;
+	@JsonIgnore
+	private String fileId;
 	
     @JsonIgnore
     @CreatedBy
@@ -98,18 +100,18 @@ public class TransferProcess extends AbstractTransferMessage {
 			return this;
 		}
 
-		@JsonProperty((DSpaceConstants.DSPACE_PROVIDER_PID))
+		@JsonProperty(DSpaceConstants.DSPACE_PROVIDER_PID)
 		public Builder providerPid(String providerPid) {
 			message.providerPid = providerPid;
 			return this;
 		}
 		
-		@JsonProperty((DSpaceConstants.DSPACE_STATE))
+		@JsonProperty(DSpaceConstants.DSPACE_STATE)
 		public Builder state(TransferState state) {
 			message.state = state;
 			return this;
 		}
-
+		
 		@JsonProperty("createdBy")
 		public Builder createdBy(String createdBy) {
 			message.createdBy = createdBy;
@@ -137,6 +139,12 @@ public class TransferProcess extends AbstractTransferMessage {
 		@JsonProperty(DSpaceConstants.CALLBACK_ADDRESS)
 		public Builder callbackAddress(String callbackAddress) {
 			message.callbackAddress = callbackAddress;
+			return this;
+		}
+		
+		@JsonProperty("fileId")
+		public Builder fileId(String fileId) {
+			message.fileId = fileId;
 			return this;
 		}
 
@@ -179,6 +187,7 @@ public class TransferProcess extends AbstractTransferMessage {
 				.providerPid(this.providerPid)
 				.callbackAddress(this.callbackAddress)
 				.state(newTransferState)
+				.fileId(this.fileId)
 				// no need to modify audit fields???
 				.createdBy(this.createdBy)
 				.lastModifiedBy(this.lastModifiedBy)

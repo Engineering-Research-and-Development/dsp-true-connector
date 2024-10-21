@@ -419,6 +419,11 @@ public class ContractNegotiationAPIService {
 		// TODO add additional checks like contract dates
 		//		LocalDateTime agreementStartDate = LocalDateTime.parse(agreement.getTimestamp(), FORMATTER);
 		//		agreementStartDate.isBefore(LocalDateTime.now());
+		if(!policyEnforcementService.policyEnforcementExists(agreementId)) {
+			log.warn("Policy enforcement not created, cannot enforoce properly");
+			throw new ContractNegotiationAPIException("Policy enforcement not found for agreement with Id " 
+					 + agreementId + " not found.");
+		}
 	}
 	
 	private Agreement agreementFromOffer(Offer offer, String assigner) {

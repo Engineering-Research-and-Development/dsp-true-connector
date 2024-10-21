@@ -449,5 +449,25 @@
       "modified": "2024-04-23T16:26:00.000Z",
       "version": 0
 	}
+  ],
+  "policy_enforcements" : [
+      {
+  	  "_id": "urn:uuid:abc45799-pole-4932-8baf-ab7fd66ql4d5",
+  	  "_class": "it.eng.negotiation.model.PolicyEnforcement",
+        "agreementId": "urn:uuid:AGREEMENT_ID_COMPLETED_TRANSFER_TEST",
+        "count": "0"
+  	 },
+  	 {
+  	  "_id": "urn:uuid:abc45799-pole-4932-8baf-ab7fd66ql4d6",
+  	  "_class": "it.eng.negotiation.model.PolicyEnforcement",
+        "agreementId": "urn:uuid:AGREEMENT_ID_TERMINATE_TRANSFER_TEST",
+        "count": "0"
+  	 },{
+		
+		"_id": "urn:uuid:abc45799-pole-4932-8baf-ab7fd66ql4d7",
+  	  	"_class": "it.eng.negotiation.model.PolicyEnforcement",
+        "agreementId": "urn:uuid:AGREEMENT_ID_OK",
+        "count": "0"
+	 }
   ]
 }

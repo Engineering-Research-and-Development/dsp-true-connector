@@ -540,7 +540,7 @@ public class ContractNegotiationAPIServiceTest {
 	@DisplayName("Validate agreement ok")
 	public void validateAgreement() {
 		when(agreementRepository.findById(MockObjectUtil.AGREEMENT.getId())).thenReturn(Optional.of(MockObjectUtil.AGREEMENT));
-		
+		when(policyEnforcementService.policyEnforcementExists(MockObjectUtil.AGREEMENT.getId())).thenReturn(true);
 		assertDoesNotThrow(()-> service.validateAgreement(MockObjectUtil.AGREEMENT.getId()));
 	}
 	
