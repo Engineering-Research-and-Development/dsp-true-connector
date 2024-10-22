@@ -54,6 +54,7 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     // determins which role the connector is for that contract negotiation (consumer or provider)
     @JsonIgnore
     private String role;
+    
     @JsonIgnore
     @DBRef
     private Offer offer;

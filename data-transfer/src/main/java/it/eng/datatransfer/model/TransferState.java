@@ -62,7 +62,7 @@ public enum TransferState {
         ENUM_MAP = Collections.unmodifiableMap(map);
     }
 	
-	public static TransferState fromContractNegotiationState(String state) {
+	public static TransferState fromTransferStateState(String state) {
 		return ENUM_MAP.get(state.toLowerCase());
 	}
 	

@@ -8,6 +8,15 @@ All notable changes to this project will be documented in this file.
  - Upload and list artifacts that will be shared as dataset
  - When verifying agreement additional check (policyEnforcement for agreement exists) added
  
+## [0.1.1] - 20-10-2024
+
+### Added
+
+ - Added logic for DataTransfer API
+ 
+### Changed
+ 
+ - DataTransfer now checks that the Agreement exists and that it's linked to a FINALIZED Contract Negotiation
 
 ## [0.1.1] - 09-10-2024
 
