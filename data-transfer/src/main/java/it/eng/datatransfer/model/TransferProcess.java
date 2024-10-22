@@ -62,6 +62,16 @@ public class TransferProcess extends AbstractTransferMessage {
 	@JsonIgnore
 	private String callbackAddress;
 	
+	// determins which role the connector is for that contract negotiation (consumer or provider)
+    @JsonIgnore
+    private String role;
+    
+    @JsonIgnore
+    private DataAddress dataAddress;
+    
+    @JsonIgnore
+	private String format;
+	
     @JsonIgnore
     @CreatedBy
     private String createdBy;
@@ -109,6 +119,21 @@ public class TransferProcess extends AbstractTransferMessage {
 			message.state = state;
 			return this;
 		}
+		
+		public Builder role(String role) {
+        	message.role = role;
+        	return this;
+        }
+		
+		public Builder dataAddress(DataAddress dataAddress) {
+        	message.dataAddress = dataAddress;
+        	return this;
+        }
+		
+		public Builder format(String format) {
+        	message.format = format;
+        	return this;
+        }
 
 		@JsonProperty("createdBy")
 		public Builder createdBy(String createdBy) {
@@ -142,11 +167,11 @@ public class TransferProcess extends AbstractTransferMessage {
 
 		public TransferProcess build() {
 			if (message.id == null) {
-	               message.id = message.createNewPid();
-	        }
+				message.id = message.createNewPid();
+			}
 			if (message.providerPid == null) {
-                message.providerPid = message.createNewPid();
-            }
+				message.providerPid = message.createNewPid();
+			}
 			Set<ConstraintViolation<TransferProcess>> violations 
 				= Validation.buildDefaultValidatorFactory().getValidator().validate(message);
 			if(violations.isEmpty()) {
@@ -178,7 +203,10 @@ public class TransferProcess extends AbstractTransferMessage {
 				.consumerPid(this.consumerPid)
 				.providerPid(this.providerPid)
 				.callbackAddress(this.callbackAddress)
+				.dataAddress(this.dataAddress)
+				.format(this.format)
 				.state(newTransferState)
+				.role(this.role)
 				// no need to modify audit fields???
 				.createdBy(this.createdBy)
 				.lastModifiedBy(this.lastModifiedBy)

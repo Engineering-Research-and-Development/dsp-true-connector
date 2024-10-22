@@ -191,6 +191,99 @@
     ],
     "contract_negotiations": [],
     "application_properties": [{
+    "contract_negotiations": [{
+            "_id": "urn:uuid:58c9c224-1a23-40a2-b38d-be1520r24e5a",
+            "callbackAddress": "http://localhost:8080/consumer",
+            "assigner": "urn:uuid:ASSIGNER_PROVIDER",
+            "role": "provider",
+            "offer": {
+                "$ref": "offer",
+                "$id": "urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5"
+            },
+            "agreement": {
+                "$ref": "agreements",
+                "$id": "urn:uuid:AGREEMENT_ID_OK_API"
+            },
+            "consumerPid": "urn:uuid:be8c0f63-1350-4288-9bf7-5f5495da48b8",
+            "state": "FINALIZED",
+            "context": "https://w3id.org/dspace/2024/1/context.json",
+            "providerPid": "urn:uuid:3e370869-48ec-4475-bf51-ea0c37860d07",
+            "_class": "it.eng.negotiation.model.ContractNegotiation"
+        }, {
+            "_id": "urn:uuid:58c9c224-1a23-40a2-b38d-be1520824e5a",
+            "callbackAddress": "http://localhost:8080/consumer",
+            "assigner": "urn:uuid:ASSIGNER_PROVIDER",
+            "role": "provider",
+            "offer": {
+                "$ref": "offer",
+                "$id": "urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5"
+            },
+            "agreement": {
+                "$ref": "agreements",
+                "$id": "urn:uuid:AGREEMENT_ID_OK"
+            },
+            "consumerPid": "urn:uuid:be8c0f63-1350-4288-9bf7-5f5495da48b8",
+            "state": "FINALIZED",
+            "context": "https://w3id.org/dspace/2024/1/context.json",
+            "providerPid": "urn:uuid:3e370869-48ec-4475-bf51-ea0c37860d07",
+            "_class": "it.eng.negotiation.model.ContractNegotiation"
+        }, {
+            "_id": "urn:uuid:58c9c224-1a23-40a2-b38d-be1520824e51",
+            "callbackAddress": "http://localhost:8080/consumer",
+            "assigner": "urn:uuid:ASSIGNER_PROVIDER",
+            "role": "provider",
+            "offer": {
+                "$ref": "offer",
+                "$id": "urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5"
+            },
+            "agreement": {
+                "$ref": "agreements",
+                "$id": "urn:uuid:AGREEMENT_ID_TERMINATE_TRANSFER_TEST"
+            },
+            "consumerPid": "urn:uuid:be8c0f63-1350-4288-9bf7-5f5495da48b8",
+            "state": "FINALIZED",
+            "context": "https://w3id.org/dspace/2024/1/context.json",
+            "providerPid": "urn:uuid:3e370869-48ec-4475-bf51-ea0c37860d07",
+            "_class": "it.eng.negotiation.model.ContractNegotiation"
+        }, {
+            "_id": "urn:uuid:58c9c224-1a23-40a2-b38d-be1520824e52",
+            "callbackAddress": "http://localhost:8080/consumer",
+            "assigner": "urn:uuid:ASSIGNER_PROVIDER",
+            "role": "provider",
+            "offer": {
+                "$ref": "offer",
+                "$id": "urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5"
+            },
+            "agreement": {
+                "$ref": "agreements",
+                "$id": "urn:uuid:AGREEMENT_ID_SUSP"
+            },
+            "consumerPid": "urn:uuid:be8c0f63-1350-4288-9bf7-5f5495da48b8",
+            "state": "FINALIZED",
+            "context": "https://w3id.org/dspace/2024/1/context.json",
+            "providerPid": "urn:uuid:3e370869-48ec-4475-bf51-ea0c37860d07",
+            "_class": "it.eng.negotiation.model.ContractNegotiation"
+        }, {
+            "_id": "urn:uuid:58c9c224-1a23-40a2-b38d-be1520824e53",
+            "callbackAddress": "http://localhost:8080/consumer",
+            "assigner": "urn:uuid:ASSIGNER_PROVIDER",
+            "role": "provider",
+            "offer": {
+                "$ref": "offer",
+                "$id": "urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5"
+            },
+            "agreement": {
+                "$ref": "agreements",
+                "$id": "urn:uuid:AGREEMENT_ID_COMPLETED_TRANSFER_TEST"
+            },
+            "consumerPid": "urn:uuid:be8c0f63-1350-4288-9bf7-5f5495da48b8",
+            "state": "FINALIZED",
+            "context": "https://w3id.org/dspace/2024/1/context.json",
+            "providerPid": "urn:uuid:3e370869-48ec-4475-bf51-ea0c37860d07",
+            "_class": "it.eng.negotiation.model.ContractNegotiation"
+        }
+    ],
+    "application_properties": [{
             "_id": "application.daps.dapsJWKSUrl",
             "value": "https://daps.aisec.fraunhofer.de/.well-known/jwks.json",
             "mandatory": false,
@@ -250,10 +343,28 @@
             "assigner": "urn:tsdshhs636378",
             "assignee": "urn:jashd766",
             "permission": [{
+            "permission": [{
                     "action": "USE",
                     "constraint": [{
                             "leftOperand": "DATE_TIME",
-                            "operator": "EQ",
+                            "operator": "GT",
+                            "rightOperand": "2024-10-01T14:48:22.605323600Z"
+                        }
+                    ]
+                }
+            ]
+        }, {
+            "_id": "urn:uuid:AGREEMENT_ID_OK_API",
+            "_class": "it.eng.negotiation.model.Agreement",
+            "target": "urn:uuid:3dd1add4-4d2d-569e-d634-8394a8836d23",
+            "timestamp": "2023-01-01T01:00:00Z",
+            "assigner": "urn:tsdshhs636378",
+            "assignee": "urn:jashd766",
+            "permission": [{
+                    "action": "USE",
+                    "constraint": [{
+                            "leftOperand": "DATE_TIME",
+                            "operator": "GT",
                             "rightOperand": "2024-10-01T14:48:22.605323600Z"
                         }
                     ]
@@ -270,7 +381,7 @@
                     "action": "USE",
                     "constraint": [{
                             "leftOperand": "DATE_TIME",
-                            "operator": "EQ",
+                            "operator": "GT",
                             "rightOperand": "2024-10-01T14:48:22.605323600Z"
                         }
                     ]
@@ -287,7 +398,7 @@
                     "action": "USE",
                     "constraint": [{
                             "leftOperand": "DATE_TIME",
-                            "operator": "EQ",
+                            "operator": "GT",
                             "rightOperand": "2024-10-01T14:48:22.605323600Z"
                         }
                     ]
@@ -304,7 +415,7 @@
                     "action": "USE",
                     "constraint": [{
                             "leftOperand": "DATE_TIME",
-                            "operator": "EQ",
+                            "operator": "GT",
                             "rightOperand": "2024-10-01T14:48:22.605323600Z"
                         }
                     ]
@@ -325,9 +436,21 @@
             "_class": "it.eng.datatransfer.model.TransferProcess",
             "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
             "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
-            "callbackAddress": "http://localhost:8080/consumer/transfers/callback/",
+            "callbackAddress": "http://localhost:8090/",
             "agreementId": "urn:uuid:AGREEMENT_ID",
             "state": "STARTED",
+            "role": "consumer",
+            "dataAddress": {
+                "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
+                "endpoint": "https://provider-a.com/connector",
+                "endpointProperties": [{
+                        "name": "authorization",
+                        "value": "TOKEN-ABCDEFG",
+                        "type": "dspace:EndpointProperty"
+                    }
+                ],
+                "type": "dspace:DataAddress"
+            },
             "createdBy": "admin@mail.com",
             "lastModifiedBy": "admin@mail.com",
             "issued": "2024-04-23T16:26:00.000Z",
@@ -338,9 +461,21 @@
             "_class": "it.eng.datatransfer.model.TransferProcess",
             "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_REQ",
             "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_REQ",
-            "callbackAddress": "http://localhost:8080/consumer/transfers/callback/",
+            "callbackAddress": "http://localhost:8090/",
             "agreementId": "urn:uuid:AGREEMENT_ID_REQ",
             "state": "REQUESTED",
+            "role": "consumer",
+            "dataAddress": {
+                "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
+                "endpoint": "https://provider-a.com/connector",
+                "endpointProperties": [{
+                        "name": "authorization",
+                        "value": "TOKEN-ABCDEFG",
+                        "type": "dspace:EndpointProperty"
+                    }
+                ],
+                "type": "dspace:DataAddress"
+            },
             "createdBy": "admin@mail.com",
             "lastModifiedBy": "admin@mail.com",
             "issued": "2024-04-23T16:26:00.000Z",
@@ -351,9 +486,21 @@
             "_class": "it.eng.datatransfer.model.TransferProcess",
             "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_SUSP",
             "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_SUSP",
-            "callbackAddress": "http://localhost:8080/consumer/transfers/callback/",
+            "callbackAddress": "http://localhost:8090/",
             "agreementId": "urn:uuid:AGREEMENT_ID_SUSP",
             "state": "SUSPENDED",
+            "role": "consumer",
+            "dataAddress": {
+                "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
+                "endpoint": "https://provider-a.com/connector",
+                "endpointProperties": [{
+                        "name": "authorization",
+                        "value": "TOKEN-ABCDEFG",
+                        "type": "dspace:EndpointProperty"
+                    }
+                ],
+                "type": "dspace:DataAddress"
+            },
             "createdBy": "admin@mail.com",
             "lastModifiedBy": "admin@mail.com",
             "issued": "2024-04-23T16:26:00.000Z",
@@ -364,9 +511,21 @@
             "_class": "it.eng.datatransfer.model.TransferProcess",
             "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_C_REQ",
             "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_C_REQ",
-            "callbackAddress": "http://localhost:8080/consumer/transfers/callback/",
+            "callbackAddress": "http://localhost:8090/",
             "agreementId": "urn:uuid:AGREEMENT_ID_C_REQ",
             "state": "REQUESTED",
+            "role": "consumer",
+            "dataAddress": {
+                "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
+                "endpoint": "https://provider-a.com/connector",
+                "endpointProperties": [{
+                        "name": "authorization",
+                        "value": "TOKEN-ABCDEFG",
+                        "type": "dspace:EndpointProperty"
+                    }
+                ],
+                "type": "dspace:DataAddress"
+            },
             "createdBy": "admin@mail.com",
             "lastModifiedBy": "admin@mail.com",
             "issued": "2024-04-23T16:26:00.000Z",
@@ -377,9 +536,21 @@
             "_class": "it.eng.datatransfer.model.TransferProcess",
             "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_C_TERM",
             "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_C_TERM",
-            "callbackAddress": "http://localhost:8080/consumer/transfers/callback/",
+            "callbackAddress": "http://localhost:8090/",
             "agreementId": "urn:uuid:AGREEMENT_ID_C_REQ",
             "state": "STARTED",
+            "role": "consumer",
+            "dataAddress": {
+                "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
+                "endpoint": "https://provider-a.com/connector",
+                "endpointProperties": [{
+                        "name": "authorization",
+                        "value": "TOKEN-ABCDEFG",
+                        "type": "dspace:EndpointProperty"
+                    }
+                ],
+                "type": "dspace:DataAddress"
+            },
             "createdBy": "admin@mail.com",
             "lastModifiedBy": "admin@mail.com",
             "issued": "2024-04-23T16:26:00.000Z",
