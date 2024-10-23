@@ -423,10 +423,14 @@ public class ContractNegotiationAPIService {
 				() -> {
 					throw new ContractNegotiationAPIException("Contract negotiation with Agreement Id " + agreementId + " not found.");
 					});
-//				.orElseThrow(() -> new ContractNegotiationAPIException("Contract negotiation with Agreement Id " + agreementId + " not found."));
-		// TODO add additional checks like contract dates
+		// TODO add additional checks like contract dates or else
 		//		LocalDateTime agreementStartDate = LocalDateTime.parse(agreement.getTimestamp(), FORMATTER);
 		//		agreementStartDate.isBefore(LocalDateTime.now());
+		if(!policyEnforcementService.policyEnforcementExists(agreementId)) {
+			log.warn("Policy enforcement not created, cannot enforoce properly");
+			throw new ContractNegotiationAPIException("Policy enforcement not found for agreement with Id " 
+					 + agreementId + " not found.");
+		}
 	}
 	
 	private Agreement agreementFromOffer(Offer offer, String assigner) {

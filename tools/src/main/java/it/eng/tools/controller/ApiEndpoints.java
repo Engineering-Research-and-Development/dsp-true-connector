@@ -25,6 +25,10 @@ public interface ApiEndpoints {
 	 * Catalog module - v1 API endpoint for offers
 	 */
 	public static final String CATALOG_OFFERS_V1 = "/api/v1/offers";
+	/**
+	 *  Catalog module - v1 API endpoint for artifact handling
+	 */
+	public static final String CATALOG_ARTIFACT_V1 = "/api/v1/artifacts";
 	
 	/**
 	 * Negotation module - v1 API endpoint for negotations

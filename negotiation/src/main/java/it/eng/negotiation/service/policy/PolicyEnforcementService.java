@@ -26,6 +26,16 @@ public class PolicyEnforcementService {
 		this.dateTimePolicyValidator = dateTimePolicyValidator;
 		this.repository = repository;
 	}
+	
+	/**
+	 * Check if PolicyEnforcement for agreement exists
+	 * Must be sure that policy can be enforced after data is returned
+	 * @param agreementId
+	 * @return
+	 */
+	public boolean policyEnforcementExists(String agreementId) {
+		return repository.findByAgreementId(agreementId).isPresent();
+	}
 
 	public boolean isAgreementValid(Agreement agreement) {
 		return agreement.getPermission().stream().allMatch(p -> validatePermission(agreement.getId(), p));
