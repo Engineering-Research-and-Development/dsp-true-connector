@@ -14,11 +14,12 @@ import org.springframework.web.multipart.MultipartFile;
 
 import it.eng.catalog.model.Artifact;
 import it.eng.catalog.service.ArtifactService;
+import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
-@RequestMapping(path = "/api/v1/artifacts")
+@RequestMapping(path = ApiEndpoints.CATALOG_ARTIFACT_V1)
 @Slf4j
 public class ArtifactAPIController {
 

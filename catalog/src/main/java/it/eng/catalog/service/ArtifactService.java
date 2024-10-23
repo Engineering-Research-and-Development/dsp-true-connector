@@ -22,9 +22,9 @@ import com.mongodb.client.gridfs.model.GridFSFile;
 import com.mongodb.client.gridfs.model.GridFSUploadOptions;
 import com.mongodb.client.model.Filters;
 
+import it.eng.catalog.exceptions.CatalogErrorAPIException;
 import it.eng.catalog.model.Artifact;
 import it.eng.catalog.model.Dataset;
-import it.eng.tools.exception.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -45,7 +45,7 @@ public class ArtifactService {
 	public ObjectId storeFile(MultipartFile file, String datasetId) {
 		try {
 			if (file.isEmpty()) {
-				throw new BadRequestException("Failed to store empty file.");
+				throw new CatalogErrorAPIException("Failed to store empty file.");
 			}
 			GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
 			Document doc = new Document();
@@ -65,12 +65,12 @@ public class ArtifactService {
 				   return objId;
 			} catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
 				log.error("Error while updating dataset with file reference", e);
-				throw new BadRequestException("Failed to update dataset.fileId. " + e.getLocalizedMessage());
+				throw new CatalogErrorAPIException("Failed to update dataset.fileId. " + e.getLocalizedMessage());
 			}
 		}
 		catch (IOException e) {
 			log.error("Error while uploading file to dataset", e);
-			throw new BadRequestException("Failed to store file. " + e.getLocalizedMessage());
+			throw new CatalogErrorAPIException("Failed to store file. " + e.getLocalizedMessage());
 		}
 	}
 	

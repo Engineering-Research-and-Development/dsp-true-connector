@@ -423,9 +423,6 @@ public class ContractNegotiationAPIService {
 				() -> {
 					throw new ContractNegotiationAPIException("Contract negotiation with Agreement Id " + agreementId + " not found.");
 					});
-		agreementRepository.findById(agreementId)
-			.orElseThrow(() -> new ContractNegotiationAPIException("Agreement with Id " + agreementId + " not found."));
-//				.orElseThrow(() -> new ContractNegotiationAPIException("Contract negotiation with Agreement Id " + agreementId + " not found."));
 		// TODO add additional checks like contract dates or else
 		//		LocalDateTime agreementStartDate = LocalDateTime.parse(agreement.getTimestamp(), FORMATTER);
 		//		agreementStartDate.isBefore(LocalDateTime.now());
