@@ -22,7 +22,6 @@
 	"catalogs": [{
 	            "_class": "it.eng.catalog.model.Catalog",
 	            "_id": "urn:uuid:1dc45797-3333-4955-8baf-ab7fd66ac4d5",
-	            "context": "https://w3id.org/dspace/2024/1/context.json",
 	            "keyword": [
 	                "Employee",
 	                "Information",
@@ -71,7 +70,6 @@
 	    ],
 	    "datasets": [{
 	            "_class": "it.eng.catalog.model.Dataset",
-	            "context": "https://w3id.org/dspace/2024/1/context.json",
 	            "_id": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
 	            "keyword": [
 	                "Personal information",
@@ -206,7 +204,6 @@
 	            },
 	            "consumerPid": "urn:uuid:be8c0f63-1350-4288-9bf7-5f5495da48b8",
 	            "state": "FINALIZED",
-	            "context": "https://w3id.org/dspace/2024/1/context.json",
 	            "providerPid": "urn:uuid:3e370869-48ec-4475-bf51-ea0c37860d07",
 	            "_class": "it.eng.negotiation.model.ContractNegotiation"
 	        }, {
@@ -224,7 +221,6 @@
 	            },
 	            "consumerPid": "urn:uuid:be8c0f63-1350-4288-9bf7-5f5495da48b8",
 	            "state": "FINALIZED",
-	            "context": "https://w3id.org/dspace/2024/1/context.json",
 	            "providerPid": "urn:uuid:3e370869-48ec-4475-bf51-ea0c37860d07",
 	            "_class": "it.eng.negotiation.model.ContractNegotiation"
 	        }, {
@@ -242,7 +238,6 @@
 	            },
 	            "consumerPid": "urn:uuid:be8c0f63-1350-4288-9bf7-5f5495da48b8",
 	            "state": "FINALIZED",
-	            "context": "https://w3id.org/dspace/2024/1/context.json",
 	            "providerPid": "urn:uuid:3e370869-48ec-4475-bf51-ea0c37860d07",
 	            "_class": "it.eng.negotiation.model.ContractNegotiation"
 	        }, {
@@ -260,7 +255,6 @@
 	            },
 	            "consumerPid": "urn:uuid:be8c0f63-1350-4288-9bf7-5f5495da48b8",
 	            "state": "FINALIZED",
-	            "context": "https://w3id.org/dspace/2024/1/context.json",
 	            "providerPid": "urn:uuid:3e370869-48ec-4475-bf51-ea0c37860d07",
 	            "_class": "it.eng.negotiation.model.ContractNegotiation"
 	        }, {
@@ -278,7 +272,6 @@
 	            },
 	            "consumerPid": "urn:uuid:be8c0f63-1350-4288-9bf7-5f5495da48b8",
 	            "state": "FINALIZED",
-	            "context": "https://w3id.org/dspace/2024/1/context.json",
 	            "providerPid": "urn:uuid:3e370869-48ec-4475-bf51-ea0c37860d07",
 	            "_class": "it.eng.negotiation.model.ContractNegotiation"
 	        }
