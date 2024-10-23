@@ -1,10 +1,6 @@
 {
 	"info": {
-<<<<<<< HEAD
-		"_postman_id": "3c6078d7-1d67-4061-b8be-9040970a6714",
-=======
 		"_postman_id": "470bd18d-8b85-4354-bd4c-a202627e5e03",
->>>>>>> refs/remotes/origin/develop
 		"name": "True_connector_DSP",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "21815221",

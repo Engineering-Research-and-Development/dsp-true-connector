@@ -102,7 +102,7 @@
                             "action": "USE",
                             "constraint": [{
                                     "leftOperand": "COUNT",
-                  					"operator": "LTEQ",
+                                    "operator": "LTEQ",
                                     "rightOperand": "5"
                                 }
                             ]
@@ -189,8 +189,6 @@
             "version": 0
         }
     ],
-    "contract_negotiations": [],
-    "application_properties": [{
     "contract_negotiations": [{
             "_id": "urn:uuid:58c9c224-1a23-40a2-b38d-be1520r24e5a",
             "callbackAddress": "http://localhost:8080/consumer",
@@ -206,7 +204,6 @@
             },
             "consumerPid": "urn:uuid:be8c0f63-1350-4288-9bf7-5f5495da48b8",
             "state": "FINALIZED",
-            "context": "https://w3id.org/dspace/2024/1/context.json",
             "providerPid": "urn:uuid:3e370869-48ec-4475-bf51-ea0c37860d07",
             "_class": "it.eng.negotiation.model.ContractNegotiation"
         }, {
@@ -224,7 +221,6 @@
             },
             "consumerPid": "urn:uuid:be8c0f63-1350-4288-9bf7-5f5495da48b8",
             "state": "FINALIZED",
-            "context": "https://w3id.org/dspace/2024/1/context.json",
             "providerPid": "urn:uuid:3e370869-48ec-4475-bf51-ea0c37860d07",
             "_class": "it.eng.negotiation.model.ContractNegotiation"
         }, {
@@ -242,7 +238,6 @@
             },
             "consumerPid": "urn:uuid:be8c0f63-1350-4288-9bf7-5f5495da48b8",
             "state": "FINALIZED",
-            "context": "https://w3id.org/dspace/2024/1/context.json",
             "providerPid": "urn:uuid:3e370869-48ec-4475-bf51-ea0c37860d07",
             "_class": "it.eng.negotiation.model.ContractNegotiation"
         }, {
@@ -260,7 +255,6 @@
             },
             "consumerPid": "urn:uuid:be8c0f63-1350-4288-9bf7-5f5495da48b8",
             "state": "FINALIZED",
-            "context": "https://w3id.org/dspace/2024/1/context.json",
             "providerPid": "urn:uuid:3e370869-48ec-4475-bf51-ea0c37860d07",
             "_class": "it.eng.negotiation.model.ContractNegotiation"
         }, {
@@ -278,7 +272,6 @@
             },
             "consumerPid": "urn:uuid:be8c0f63-1350-4288-9bf7-5f5495da48b8",
             "state": "FINALIZED",
-            "context": "https://w3id.org/dspace/2024/1/context.json",
             "providerPid": "urn:uuid:3e370869-48ec-4475-bf51-ea0c37860d07",
             "_class": "it.eng.negotiation.model.ContractNegotiation"
         }
@@ -325,14 +318,13 @@
             "issued": "2024-06-24T16:26:00.000Z",
             "modified": "2024-06-24T16:26:00.000Z",
             "version": 0
-    },
-	{
-		"_id": "application.protocol.authentication.enabled",
-       "value": "true",
-       "mandatory": true,
-       "issued": "2024-06-24T16:26:00.000Z",
-       "modified": "2024-06-24T16:26:00.000Z",
-       "version": 0	
+        }, {
+            "_id": "application.protocol.authentication.enabled",
+            "value": "true",
+            "mandatory": true,
+            "issued": "2024-06-24T16:26:00.000Z",
+            "modified": "2024-06-24T16:26:00.000Z",
+            "version": 0
         }
     ],
     "agreements": [{
@@ -342,7 +334,6 @@
             "timestamp": "2023-01-01T01:00:00Z",
             "assigner": "urn:tsdshhs636378",
             "assignee": "urn:jashd766",
-            "permission": [{
             "permission": [{
                     "action": "USE",
                     "constraint": [{
