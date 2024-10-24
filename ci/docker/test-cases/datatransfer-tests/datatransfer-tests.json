@@ -1,7 +1,7 @@
 {
 	"info": {
-		"_postman_id": "0d31668f-cc1c-495c-932b-e73570787149",
-		"name": "Data Transfer tests",
+		"_postman_id": "c2561802-487f-469b-aa96-e671d0ef4baf",
+		"name": "Data Transfer tests EDC",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "36278855"
 	},
@@ -117,7 +117,7 @@
 							}
 						],
 						"url": {
-							"raw": "http://172.17.0.1:8090/artifacts/{{transactionId}}/artifact1",
+							"raw": "http://172.17.0.1:8090/artifacts/{{transactionId}}",
 							"protocol": "http",
 							"host": [
 								"172",
@@ -128,8 +128,7 @@
 							"port": "8090",
 							"path": [
 								"artifacts",
-								"{{transactionId}}",
-								"artifact1"
+								"{{transactionId}}"
 							]
 						}
 					},
@@ -255,7 +254,7 @@
 							}
 						],
 						"url": {
-							"raw": "http://172.17.0.1:8090/artifacts/{{transactionId}}/artifact1",
+							"raw": "http://172.17.0.1:8090/artifacts/{{transactionId}}",
 							"protocol": "http",
 							"host": [
 								"172",
@@ -266,8 +265,7 @@
 							"port": "8090",
 							"path": [
 								"artifacts",
-								"{{transactionId}}",
-								"artifact1"
+								"{{transactionId}}"
 							]
 						}
 					},
@@ -356,7 +354,7 @@
 							}
 						],
 						"url": {
-							"raw": "http://172.17.0.1:8090/artifacts/{{transactionId}}/artifact1",
+							"raw": "http://172.17.0.1:8090/artifacts/{{transactionId}}",
 							"protocol": "http",
 							"host": [
 								"172",
@@ -367,8 +365,7 @@
 							"port": "8090",
 							"path": [
 								"artifacts",
-								"{{transactionId}}",
-								"artifact1"
+								"{{transactionId}}"
 							]
 						}
 					},
@@ -455,7 +452,7 @@
 							}
 						],
 						"url": {
-							"raw": "http://172.17.0.1:8090/artifacts/{{transactionId}}/artifact1",
+							"raw": "http://172.17.0.1:8090/artifacts/{{transactionId}}",
 							"protocol": "http",
 							"host": [
 								"172",
@@ -466,8 +463,7 @@
 							"port": "8090",
 							"path": [
 								"artifacts",
-								"{{transactionId}}",
-								"artifact1"
+								"{{transactionId}}"
 							]
 						}
 					},
@@ -550,7 +546,7 @@
 							}
 						],
 						"url": {
-							"raw": "http://172.17.0.1:8090/artifacts/{{transactionId}}/artifact1",
+							"raw": "http://172.17.0.1:8090/artifacts/{{transactionId}}",
 							"protocol": "http",
 							"host": [
 								"172",
@@ -561,8 +557,7 @@
 							"port": "8090",
 							"path": [
 								"artifacts",
-								"{{transactionId}}",
-								"artifact1"
+								"{{transactionId}}"
 							]
 						}
 					},
