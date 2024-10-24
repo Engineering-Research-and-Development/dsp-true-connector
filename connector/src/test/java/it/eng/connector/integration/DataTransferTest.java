@@ -347,13 +347,13 @@ public class DataTransferTest extends BaseIntegrationTest {
 	}
 
 	private void downloadArtifactFail(String transactionId) throws Exception {
-		mockMvc.perform(post("/artifacts/" + transactionId + "/" + "artifactIdTest")
+		mockMvc.perform(post("/artifacts/" + transactionId)
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().is(HttpStatus.PRECONDITION_FAILED.value()));
 	}
 
 	private void downloadArifact(String transactionId) throws Exception, UnsupportedEncodingException {
-		MvcResult resultArtifact = mockMvc.perform(post("/artifacts/" + transactionId + "/" + "artifactIdTest")
+		MvcResult resultArtifact = mockMvc.perform(post("/artifacts/" + transactionId)
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().isOk())
 				.andReturn();

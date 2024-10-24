@@ -424,6 +424,26 @@ public class ContractNegotiationAPIService {
 		}
 	}
 	
+	public void validateAgreement(String agreementId) {
+		log.info("Validating agreement " + agreementId);
+		contractNegotiationRepository.findByAgreement(agreementId)
+		.ifPresentOrElse((cn) -> {
+			if (!cn.getState().equals(ContractNegotiationState.FINALIZED)) {
+				throw new ContractNegotiationAPIException("Contract negotiation with Agreement Id " + agreementId + " is not finalized.");
+			}},
+				() -> {
+					throw new ContractNegotiationAPIException("Contract negotiation with Agreement Id " + agreementId + " not found.");
+					});
+		// TODO add additional checks like contract dates or else
+		//		LocalDateTime agreementStartDate = LocalDateTime.parse(agreement.getTimestamp(), FORMATTER);
+		//		agreementStartDate.isBefore(LocalDateTime.now());
+		if(!policyEnforcementService.policyEnforcementExists(agreementId)) {
+			log.warn("Policy enforcement not created, cannot enforoce properly");
+			throw new ContractNegotiationAPIException("Policy enforcement not found for agreement with Id " 
+					 + agreementId + " not found.");
+		}
+	}
+	
 	private Agreement agreementFromOffer(Offer offer, String assigner) {
 		return Agreement.Builder.newInstance()
 				.id("urn:uuid:" + UUID.randomUUID().toString())
@@ -460,21 +480,6 @@ public class ContractNegotiationAPIService {
     	        .orElseThrow(() ->
                 new ContractNegotiationAPIException("Contract negotiation with id " + contractNegotiationId + " not found"));
     }
-	
-	public void validateAgreement(String agreementId) {
-		log.info("Validating agreement " + agreementId);
-		contractNegotiationRepository.findByAgreement(agreementId)
-		.ifPresentOrElse((cn) -> {
-			if (!cn.getState().equals(ContractNegotiationState.FINALIZED)) {
-				throw new ContractNegotiationAPIException("Contract negotiation with Agreement Id " + agreementId + " is not finalized.");
-			}},
-				() -> {
-					throw new ContractNegotiationAPIException("Contract negotiation with Agreement Id " + agreementId + " not found.");
-					});
-		// TODO add additional checks like contract dates
-		//		LocalDateTime agreementStartDate = LocalDateTime.parse(agreement.getTimestamp(), FORMATTER);
-		//		agreementStartDate.isBefore(LocalDateTime.now());
-	}
 
 	public void enforceAgreement(String agreementId) {
 		Agreement agreement = agreementRepository.findById(agreementId)

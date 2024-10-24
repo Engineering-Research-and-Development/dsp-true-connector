@@ -30,6 +30,14 @@ class CatalogAPIExceptionAdviceTest {
 	}
 
 	@Test
+	public void handleCatalogErrorAPIException() {
+		CatalogErrorAPIException ex = new CatalogErrorAPIException(TEST_ERROR_MESSAGE);
+		ResponseEntity<Object> response = advice.handleCatalogErrorAPIException(ex, request);
+		assertNotNull(response);
+		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+	}
+	
+	@Test
 	public void handleDatasetNotFoundException() {
 		InternalServerErrorAPIException ex = new InternalServerErrorAPIException(TEST_ERROR_MESSAGE);
 		ResponseEntity<Object> response = advice.handleInternalServerErrorAPIException(ex, request);

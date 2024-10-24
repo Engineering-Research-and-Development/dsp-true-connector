@@ -74,6 +74,10 @@ public class Dataset extends AbstractCatalogObject {
     @JsonProperty(DSpaceConstants.DCAT_DISTRIBUTION)
     @DBRef
     private Set<Distribution> distribution;
+    
+    @JsonIgnore
+    private String fileId;
+    
     @JsonIgnore
     @CreatedBy
     private String createdBy;
@@ -176,6 +180,12 @@ public class Dataset extends AbstractCatalogObject {
             return this;
         }
 
+        @JsonProperty("fileId")
+        public Builder fileId(String fileId) {
+            dataset.fileId = fileId;
+            return this;
+        }
+        
         @JsonProperty("createdBy")
         public Builder createdBy(String createdBy) {
             dataset.createdBy = createdBy;
@@ -237,6 +247,7 @@ public class Dataset extends AbstractCatalogObject {
          .title(updatedDataset.getTitle() != null ? updatedDataset.getTitle() : this.title)
          .distribution(updatedDataset.getDistribution() != null ? updatedDataset.getDistribution() : this.distribution)
          .hasPolicy(updatedDataset.getHasPolicy() != null ? updatedDataset.getHasPolicy() : this.hasPolicy)
+         .fileId(updatedDataset.getFileId() != null ? updatedDataset.getFileId() : this.fileId)
          .build();
   }
 }

@@ -30,14 +30,10 @@ The rest are for the negotiation and data transfer:<br/>
 
 ## TC preparation
 
-EDC is using a custom authentication method so for the testing we have to turn off our authorization. Go to it.eng.connector.configuration.WebSecurityConfig class and disable lines 125-129:
+EDC is using a custom authentication method so for the testing we have to turn off our authorization. Edit property file and set following property like:
 
 ```
-//                            .requestMatchers(new AntPathRequestMatcher("/connector/**"),
-//                                    new AntPathRequestMatcher("/negotiations/**"),
-//                                    new AntPathRequestMatcher("/catalog/**"),
-//                                    new AntPathRequestMatcher("/transfers/**"))
-//                            .hasRole("CONNECTOR")
+application.protocol.authentication.enabled=false
 ```
 
 Since EDC have the authorization enabled we have to change the following in the class it.eng.tools.util.CredentialUtils:

@@ -423,13 +423,13 @@
         }
     ],
     "transfer_process": [{
-            "_id": "urn:uuid:abc45798-4444-4932-8baf-ab7fd66ql4d5",
-            "_class": "it.eng.datatransfer.model.TransferProcess",
-            "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
-            "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+	  "_id": "urn:uuid:abc45798-4444-4932-8baf-ab7fd66ql4d5",
+	  "_class": "it.eng.datatransfer.model.TransferProcess",
+      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
+      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
             "callbackAddress": "http://localhost:8090/",
-            "agreementId": "urn:uuid:AGREEMENT_ID",
-            "state": "STARTED",
+      "agreementId" : "urn:uuid:AGREEMENT_ID",
+	  "state" : "STARTED",
             "role": "consumer",
             "dataAddress": {
                 "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
@@ -442,127 +442,156 @@
                 ],
                 "type": "dspace:DataAddress"
             },
-            "createdBy": "admin@mail.com",
-            "lastModifiedBy": "admin@mail.com",
-            "issued": "2024-04-23T16:26:00.000Z",
-            "modified": "2024-04-23T16:26:00.000Z",
-            "version": 0
+	  "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
         }, {
-            "_id": "urn:uuid:abc45798-5555-4932-8baf-ab7fd66ql4d5",
-            "_class": "it.eng.datatransfer.model.TransferProcess",
-            "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_REQ",
-            "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_REQ",
-            "callbackAddress": "http://localhost:8090/",
-            "agreementId": "urn:uuid:AGREEMENT_ID_REQ",
-            "state": "REQUESTED",
-            "role": "consumer",
-            "dataAddress": {
-                "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
-                "endpoint": "https://provider-a.com/connector",
-                "endpointProperties": [{
-                        "name": "authorization",
-                        "value": "TOKEN-ABCDEFG",
-                        "type": "dspace:EndpointProperty"
-                    }
-                ],
-                "type": "dspace:DataAddress"
-            },
-            "createdBy": "admin@mail.com",
-            "lastModifiedBy": "admin@mail.com",
-            "issued": "2024-04-23T16:26:00.000Z",
-            "modified": "2024-04-23T16:26:00.000Z",
-            "version": 0
-        }, {
-            "_id": "urn:uuid:abc45798-5551-4932-8baf-ab7fd66ql4d5",
-            "_class": "it.eng.datatransfer.model.TransferProcess",
-            "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_SUSP",
-            "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_SUSP",
-            "callbackAddress": "http://localhost:8090/",
-            "agreementId": "urn:uuid:AGREEMENT_ID_SUSP",
-            "state": "SUSPENDED",
-            "role": "consumer",
-            "dataAddress": {
-                "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
-                "endpoint": "https://provider-a.com/connector",
-                "endpointProperties": [{
-                        "name": "authorization",
-                        "value": "TOKEN-ABCDEFG",
-                        "type": "dspace:EndpointProperty"
-                    }
-                ],
-                "type": "dspace:DataAddress"
-            },
-            "createdBy": "admin@mail.com",
-            "lastModifiedBy": "admin@mail.com",
-            "issued": "2024-04-23T16:26:00.000Z",
-            "modified": "2024-04-23T16:26:00.000Z",
-            "version": 0
-        }, {
-            "_id": "urn:uuid:abc45798-5553-4932-8baf-ab7fd66ql4d5",
-            "_class": "it.eng.datatransfer.model.TransferProcess",
-            "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_C_REQ",
-            "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_C_REQ",
-            "callbackAddress": "http://localhost:8090/",
-            "agreementId": "urn:uuid:AGREEMENT_ID_C_REQ",
-            "state": "REQUESTED",
-            "role": "consumer",
-            "dataAddress": {
-                "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
-                "endpoint": "https://provider-a.com/connector",
-                "endpointProperties": [{
-                        "name": "authorization",
-                        "value": "TOKEN-ABCDEFG",
-                        "type": "dspace:EndpointProperty"
-                    }
-                ],
-                "type": "dspace:DataAddress"
-            },
-            "createdBy": "admin@mail.com",
-            "lastModifiedBy": "admin@mail.com",
-            "issued": "2024-04-23T16:26:00.000Z",
-            "modified": "2024-04-23T16:26:00.000Z",
-            "version": 0
-        }, {
-            "_id": "urn:uuid:abc45798-5553-4932-TERM-ab7fd66ql4d5",
-            "_class": "it.eng.datatransfer.model.TransferProcess",
-            "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_C_TERM",
-            "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_C_TERM",
-            "callbackAddress": "http://localhost:8090/",
-            "agreementId": "urn:uuid:AGREEMENT_ID_C_REQ",
-            "state": "STARTED",
-            "role": "consumer",
-            "dataAddress": {
-                "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
-                "endpoint": "https://provider-a.com/connector",
-                "endpointProperties": [{
-                        "name": "authorization",
-                        "value": "TOKEN-ABCDEFG",
-                        "type": "dspace:EndpointProperty"
-                    }
-                ],
-                "type": "dspace:DataAddress"
-            },
-            "createdBy": "admin@mail.com",
-            "lastModifiedBy": "admin@mail.com",
-            "issued": "2024-04-23T16:26:00.000Z",
-            "modified": "2024-04-23T16:26:00.000Z",
-            "version": 0
-        }
-    ],
+	  "_id": "urn:uuid:abc45798-5555-4932-8baf-ab7fd66ql4d5",
+	  "_class": "it.eng.datatransfer.model.TransferProcess",
+      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_REQ",
+      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_REQ",
+      "callbackAddress": "http://localhost:8090/",
+      "agreementId" : "urn:uuid:AGREEMENT_ID_REQ",
+	  "state" : "REQUESTED",
+	  "role": "consumer",
+	  "dataAddress": {
+	      "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
+	      "endpoint": "https://provider-a.com/connector",
+	      "endpointProperties": [{
+	              "name": "authorization",
+	              "value": "TOKEN-ABCDEFG",
+	              "type": "dspace:EndpointProperty"
+	          }
+	      ],
+	      "type": "dspace:DataAddress"
+	  },
+	  "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    }, {
+	  "_id": "urn:uuid:abc45798-5551-4932-8baf-ab7fd66ql4d5",
+	  "_class": "it.eng.datatransfer.model.TransferProcess",
+      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_SUSP",
+      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_SUSP",
+      "callbackAddress": "http://localhost:8090/",
+      "agreementId" : "urn:uuid:AGREEMENT_ID_SUSP",
+	  "state" : "SUSPENDED",
+	  "role": "consumer",
+	  "dataAddress": {
+		  "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
+		  "endpoint": "https://provider-a.com/connector",
+		  "endpointProperties": [{
+		          "name": "authorization",
+		          "value": "TOKEN-ABCDEFG",
+		          "type": "dspace:EndpointProperty"
+		      }
+		  ],
+		  "type": "dspace:DataAddress"
+		},
+	  "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    }, {
+	  "_id": "urn:uuid:abc45798-5553-4932-8baf-ab7fd66ql4d5",
+	  "_class": "it.eng.datatransfer.model.TransferProcess",
+      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_C_REQ",
+      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_C_REQ",
+      "callbackAddress": "http://localhost:8090/",
+      "agreementId" : "urn:uuid:AEEMENT_ID_C_REQ",
+	  "state" : "REQUESTED",
+      "role": "consumer",
+      "dataAddress": {
+      "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
+      "endpoint": "https://provider-a.com/connector",
+      "endpointProperties": [{
+         "name": "authorization",
+         "value": "TOKEN-ABCDEFG",
+         "type": "dspace:EndpointProperty"
+        }],
+        "type": "dspace:DataAddress"
+      },
+	  "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    }, 
+	{
+	  "_id": "urn:uuid:abc45798-5553-4932-TERM-ab7fd66ql4d5",
+	  "_class": "it.eng.datatransfer.model.TransferProcess",
+      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_C_TERM",
+      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_C_TERM",
+      "callbackAddress": "http://localhost:8090/",
+      "agreementId" : "urn:uuid:AGREEMENT_ID_C_REQ",
+	  "state" : "STARTED",
+      "role": "consumer",
+      "dataAddress": {
+          "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
+          "endpoint": "https://provider-a.com/connector",
+          "endpointProperties": [{
+                  "name": "authorization",
+                  "value": "TOKEN-ABCDEFG",
+                  "type": "dspace:EndpointProperty"
+              }
+          ],
+          "type": "dspace:DataAddress"
+      },
+	  "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+	}
+  ],
     "transfer_start_messages": [{
-            "_id": "urn:uuid:abc45799-4444-4932-8baf-ab7fd66ql4d5",
-            "_class": "it.eng.datatransfer.model.TransferStartMessage",
-            "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
-            "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
-            "dataAddress": {
-                "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
-                "endpoint": "http://localhost:8090/artifact/dXJuOnV1aWQ6Q09OU1VNRVJfUElEX1RSQU5TRkVSfHVybjp1dWlkOlBST1ZJREVSX1BJRF9UUkFOU0ZFUg/1"
-            },
-            "createdBy": "admin@mail.com",
-            "lastModifiedBy": "admin@mail.com",
-            "issued": "2024-04-23T16:26:00.000Z",
-            "modified": "2024-04-23T16:26:00.000Z",
-            "version": 0
-        }
-    ]
+	  "_id": "urn:uuid:abc45799-4444-4932-8baf-ab7fd66ql4d5",
+	  "_class": "it.eng.datatransfer.model.TransferStartMessage",
+      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
+      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+	  "dataAddress": {
+	    "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
+	    "endpoint": "http://localhost:8090/artifact/dXJuOnV1aWQ6Q09OU1VNRVJfUElEX1RSQU5TRkVSfHVybjp1dWlkOlBST1ZJREVSX1BJRF9UUkFOU0ZFUg/1"
+	  },
+	  "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+	}
+  ],
+  "policy_enforcements" : [
+      {
+  	  "_id": "urn:uuid:abc45799-pole-4932-8baf-ab7fd66ql4d5",
+  	  "_class": "it.eng.negotiation.model.PolicyEnforcement",
+        "agreementId": "urn:uuid:AGREEMENT_ID_COMPLETED_TRANSFER_TEST",
+        "count": "0"
+  	 },
+  	 {
+  	    "_id": "urn:uuid:abc45799-pole-4932-8baf-ab7fd66ql4d6",
+  	    "_class": "it.eng.negotiation.model.PolicyEnforcement",
+        "agreementId": "urn:uuid:AGREEMENT_ID_TERMINATE_TRANSFER_TEST",
+        "count": "0"
+  	 },{
+		"_id": "urn:uuid:abc45799-pole-4932-8baf-ab7fd66ql4d7",
+  	  	"_class": "it.eng.negotiation.model.PolicyEnforcement",
+        "agreementId": "urn:uuid:AGREEMENT_ID_OK",
+        "count": "0"
+ 	},{
+		"_id": "urn:uuid:abc45800-pole-4932-8baf-ab7fd66ql4d7",
+  	  	"_class": "it.eng.negotiation.model.PolicyEnforcement",
+        "agreementId": "urn:uuid:AGREEMENT_ID_OK_API",
+        "count": "0"
+	 },{
+		"_id": "urn:uuid:abc45801-pole-4932-8baf-ab7fd66ql4d7",
+  	  	"_class": "it.eng.negotiation.model.PolicyEnforcement",
+        "agreementId": "urn:uuid:AGREEMENT_ID_SUSP",
+        "count": "0"
+	 }
+  ]
 }

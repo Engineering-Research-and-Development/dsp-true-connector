@@ -145,7 +145,7 @@ public class DataTransferAPIService {
 	   		address = DataTransferCallback.getConsumerDataTransferStart(transferProcess.getCallbackAddress(), transferProcess.getConsumerPid());
 	   		if (transferProcess.getDataAddress() == null) {
 	   			String transactionId = Base64.encodeBase64URLSafeString((transferProcess.getConsumerPid() + "|" + transferProcess.getProviderPid()).getBytes("UTF-8"));
-	   			String artifactURL = DataTransferCallback.getValidCallback(dataTransferProperties.providerCallbackAddress()) + "/artifacts/" + transactionId + "/1";
+	   			String artifactURL = DataTransferCallback.getValidCallback(dataTransferProperties.providerCallbackAddress()) + "/artifacts/" + transactionId;
 	   			
 	   			EndpointProperty endpointProperty = EndpointProperty.Builder.newInstance()
 	   					.name("https://w3id.org/edc/v0.0.1/ns/endpoint")

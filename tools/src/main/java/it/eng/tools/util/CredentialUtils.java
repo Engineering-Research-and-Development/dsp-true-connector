@@ -8,7 +8,7 @@ public class CredentialUtils {
 	public String getConnectorCredentials() {
 		// TODO replace with Daps JWT
 		return  okhttp3.Credentials.basic("connector@mail.com", "password");
-//		return "{\"region\":\"eu\",\"audience\":\"http://localhost:8090\",\"clientId\":\"pera\"}";
+//		return "{\"region\":\"eu\",\"audience\":\"http://localhost:8090\",\"clientId\":\"provider\"}";
 	}
 	
 	public String getAPICredentials() {

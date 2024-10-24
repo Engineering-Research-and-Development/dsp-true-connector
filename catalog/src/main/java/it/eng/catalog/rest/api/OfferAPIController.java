@@ -15,7 +15,8 @@ import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = ApiEndpoints.CATALOG_OFFERS_V1)
+@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, 
+	path = ApiEndpoints.CATALOG_OFFERS_V1)
 @Slf4j
 public class OfferAPIController {
 	
@@ -26,7 +27,7 @@ public class OfferAPIController {
         this.catalogService = service;
     }
 	
-    @PostMapping(path = "/validateOffer")
+    @PostMapping(path = "/validate")
     public ResponseEntity<GenericApiResponse<String>> validateOffer(@RequestBody String offerString) {
         log.info("Validating offer");
         
