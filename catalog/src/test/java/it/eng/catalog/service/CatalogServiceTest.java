@@ -10,9 +10,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,9 +28,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import it.eng.catalog.exceptions.CatalogErrorException;
+import it.eng.catalog.model.Action;
 import it.eng.catalog.model.Catalog;
+import it.eng.catalog.model.Constraint;
 import it.eng.catalog.model.DataService;
+import it.eng.catalog.model.LeftOperand;
 import it.eng.catalog.model.Offer;
+import it.eng.catalog.model.Operator;
+import it.eng.catalog.model.Permission;
 import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.util.MockObjectUtil;
@@ -158,5 +166,57 @@ public class CatalogServiceTest {
     	
     	verify(publisher).publishEvent(argCaptorContractNegotiationOfferResponse.capture());
     	assertFalse(argCaptorContractNegotiationOfferResponse.getValue().isOfferAccepted());
+    }
+    
+    @Test
+    @DisplayName("Offer valid")
+    public void valiadateOffer( ) {
+    	when(repository.findAll()).thenReturn(new ArrayList<>(MockObjectUtil.CATALOGS));
+    	
+    	boolean offerValid = service.validateOffer(MockObjectUtil.OFFER_WITH_TARGET);
+    
+    	assertTrue(offerValid);
+    }
+    
+    @Test
+    @DisplayName("Offer invalid - target not equal to datasetId")
+    public void valiadateOffer_dataset( ) {
+        Offer offer = Offer.Builder.newInstance()
+        		.id("urn:offer_id")
+                .target("invalid_dataset_id")
+                .permission(Arrays.asList(MockObjectUtil.PERMISSION).stream().collect(Collectors.toCollection(HashSet::new)))
+                .build();
+        
+    	when(repository.findAll()).thenReturn(new ArrayList<>(MockObjectUtil.CATALOGS));
+    	
+    	boolean offerValid = service.validateOffer(offer);
+    
+    	assertFalse(offerValid);
+    }
+    
+    @Test
+    @DisplayName("Offer invalid - offer not equal")
+    public void valiadateOffer_offer( ) {
+    	
+    	Constraint constraintDatetime = Constraint.Builder.newInstance()
+                .leftOperand(LeftOperand.DATE_TIME)
+                .operator(Operator.GTEQ)
+                .rightOperand("5")
+                .build();
+    	Permission permission = Permission.Builder.newInstance()
+                .action(Action.USE)
+                .constraint(Arrays.asList(constraintDatetime).stream().collect(Collectors.toCollection(HashSet::new)))
+                .build();
+        Offer offer = Offer.Builder.newInstance()
+        		.id("urn:offer_id")
+                .target(MockObjectUtil.DATASET_ID)
+                .permission(Arrays.asList(permission).stream().collect(Collectors.toCollection(HashSet::new)))
+                .build();
+        
+    	when(repository.findAll()).thenReturn(new ArrayList<>(MockObjectUtil.CATALOGS));
+    	
+    	boolean offerValid = service.validateOffer(offer);
+    
+    	assertFalse(offerValid);
     }
 }

@@ -34,6 +34,7 @@ public class MockObjectUtil {
 
 	public static final String CONSUMER_PID = "urn:uuid:CONSUMER_PID";
 	public static final String PROVIDER_PID = "urn:uuid:PROVIDER_PID";
+	public static final String DATASET_ID = "dataset_uuid_test";
     public static final String RIGHT_EXPRESSION_COUNT = "5";
     public static final String USE = "use";
     public static final String INCLUDED_IN = "includedInAction";
@@ -90,7 +91,7 @@ public class MockObjectUtil {
     
     public static final Offer OFFER_WITH_TARGET = Offer.Builder.newInstance()
     		.id("urn:offer_id")
-            .target(TARGET)
+            .target(DATASET_ID)
             .permission(Arrays.asList(PERMISSION).stream().collect(Collectors.toCollection(HashSet::new)))
             .build();
     
@@ -124,6 +125,7 @@ public class MockObjectUtil {
 
     public static final Collection<Distribution> DISTRIBUTIONS = Arrays.asList(DISTRIBUTION);
     public static final Dataset DATASET = Dataset.Builder.newInstance()
+    		.id(DATASET_ID)
             .conformsTo(CONFORMSTO)
             .creator(CREATOR)
             .distribution(Arrays.asList(DISTRIBUTION).stream().collect(Collectors.toCollection(HashSet::new)))
