@@ -16,11 +16,13 @@ public class MockObjectUtil {
 	public static final String PROVIDER_PID = "urn:uuid:PROVIDER_PID";
 	public static final String CALLBACK_ADDRESS = "https://callback.address/callback";
 	public static final String FORWARD_TO = "https://forward-to.com";
-	public static final String DATASET_ID = "urn:uuid:DATASET_ID";
+	// must match dataset_id from initial_data.json 
+	public static final String DATASET_ID = "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5";
 	public static final String ASSIGNEE = "urn:uuid:ASSIGNEE_CONSUMER";
 	public static final String ASSIGNER = "urn:uuid:ASSIGNER_PROVIDER";
 	
-	public static final String TARGET = "urn:uuid:TARGET";
+	// target for offer must be dataset_id
+	public static final String TARGET = DATASET_ID;
 	
 	public static String generateUUID() {
 		return "urn:uuid:" + UUID.randomUUID().toString();

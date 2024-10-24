@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 24-10-2024
+
+### Added
+
+ - Offer validation - check if offer.target == dataset.id
+ 
 ## [0.1.1] - 23-10-2024
 
 ### Added
