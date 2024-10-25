@@ -1,0 +1,23 @@
+@startuml
+
+Title Circular TwAIn DS - datatransfer
+skinparam sequenceMessageAlign center
+
+participant "TRUEConnector - Provider" as tc
+participant "Eclipse Dataspace Connector - Consumer" as edc
+
+edc -> tc : Request data transfer (agreementId)
+tc -> edc : TransferProcess; OK
+
+tc <- tc : evaluate Transfer Request; prepare download link
+tc -> edc : Start Transfer Request
+edc -> tc : OK
+
+
+edc -> edc : inspect DataAddress element
+edc -> tc : download link
+tc -> edc : return data
+
+tc <- tc: enforce policy (verify agreement is valid)
+
+@enduml 

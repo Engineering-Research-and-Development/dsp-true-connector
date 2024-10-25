@@ -1,0 +1,25 @@
+@startuml
+
+Title Circular TwAIn DS - negotation
+skinparam sequenceMessageAlign center
+
+participant "TRUEConnector - Provider" as tc
+participant "Eclipse Dataspace Connector - Consumer" as edc
+
+edc -> tc : Request Catalog
+tc -> edc : Catalog
+
+edc -> edc : inspect catalog and get offer from Dataset
+edc -> tc : Initiate contract negotiation
+tc -> edc : ContractNegotiation; OK
+tc <- tc : evaluate ContractRequestMessage; accept
+tc <- tc: create agreement from offer
+tc -> edc : ContractAgreementMessage
+edc -> edc : strore agreement
+edc -> tc: OK
+edc -> tc : ContractAgreementVerficationMessage
+tc -> edc : OK
+tc-> edc : ContractNegotiationEventMessage.FINALIZED
+edc -> tc : OK
+
+@enduml 
