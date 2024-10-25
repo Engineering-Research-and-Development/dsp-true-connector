@@ -14,6 +14,7 @@ import it.eng.catalog.model.DataService;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.Distribution;
 import it.eng.catalog.model.Offer;
+import it.eng.catalog.model.OfferResponse;
 import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.serializer.Serializer;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
@@ -135,7 +136,7 @@ public class CatalogService {
     public void validateOffer(ContractNegotationOfferRequestEvent offerRequest) {
         log.info("Comparing if offer is valid or not");
         Offer offer = Serializer.deserializeProtocol(offerRequest.getOffer(), Offer.class);
-        boolean valid = validateOffer(offer);
+        boolean valid = validateOffer(offer).isValid();
         ContractNegotiationOfferResponseEvent contractNegotiationOfferResponse = new ContractNegotiationOfferResponseEvent(offerRequest.getConsumerPid(),
                 offerRequest.getProviderPid(), valid, Serializer.serializeProtocolJsonNode(offer));
         publisher.publishEvent(contractNegotiationOfferResponse);
@@ -226,7 +227,7 @@ public class CatalogService {
      * @param offer
      * @return boolean
      */
-	public boolean validateOffer(Offer offer) {
+	public OfferResponse validateOffer(Offer offer) {
 		boolean valid = false;
 		Catalog catalog = getCatalog();
 		
@@ -247,10 +248,11 @@ public class CatalogService {
 //	    		 check if offers are equals
 			if (offer.equals(existingOffer)) {
 				log.debug("Existing and prvided offers are same");
+				
 				valid = true;
 			}
 		}
 		log.info("Offer evaluated as {}", valid ? "valid" : "invalid");
-		return valid;
+		return OfferResponse.Builder.newInstance().isValid(valid).build();
 	}
 }

@@ -8,11 +8,17 @@ import org.springframework.stereotype.Component;
 
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.TransferCompletionMessage;
+import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferRequestMessage;
 import it.eng.datatransfer.model.TransferStartMessage;
+import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.model.TransferSuspensionMessage;
 import it.eng.datatransfer.model.TransferTerminationMessage;
+import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
+import it.eng.tools.event.datatransfer.InitializeTransferProcessConsumer;
+import it.eng.tools.event.datatransfer.InitializeTransferProcessProvider;
+import it.eng.tools.model.IConstants;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
@@ -21,11 +27,40 @@ public class DataTransferEventListener {
 	
 	private final ApplicationEventPublisher publisher;
 	private final TransferRequestMessageRepository transferRequestMessageRepository;
+	private final TransferProcessRepository transferProcessRepository;
 	
-	public DataTransferEventListener(ApplicationEventPublisher publisher, TransferRequestMessageRepository transferRequestMessageRepository) {
+	public DataTransferEventListener(ApplicationEventPublisher publisher, TransferRequestMessageRepository transferRequestMessageRepository, TransferProcessRepository transferProcessRepository) {
 		super();
 		this.publisher = publisher;
 		this.transferRequestMessageRepository = transferRequestMessageRepository;
+		this.transferProcessRepository = transferProcessRepository;
+	}
+	
+	@EventListener
+	public void initializeTransferProcessConsumer(InitializeTransferProcessConsumer initializeTransferProcessConsumer) {
+		log.info("Initializing transfer process on consumer");
+		TransferProcess transferProcess = TransferProcess.Builder.newInstance()
+				.consumerPid("temporary_consumer_pid")
+				.agreementId(initializeTransferProcessConsumer.getAgreementId())
+				.format(initializeTransferProcessConsumer.getFormat())
+				.state(TransferState.INITIALIZED)
+				.role(IConstants.ROLE_CONSUMER)
+				.build();
+		transferProcessRepository.save(transferProcess);
+	}
+	
+	@EventListener
+	public void initializeTransferProcessProvider(InitializeTransferProcessProvider initializeTransferProcessProvider) {
+		log.info("Initializing transfer process on provider");
+		TransferProcess transferProcess = TransferProcess.Builder.newInstance()
+				.consumerPid("temporary_consumer_pid")
+				.agreementId(initializeTransferProcessProvider.getAgreementId())
+				.format(initializeTransferProcessProvider.getFormat())
+				.fileId(initializeTransferProcessProvider.getFileId())
+				.state(TransferState.INITIALIZED)
+				.role(IConstants.ROLE_PROVIDER)
+				.build();
+		transferProcessRepository.save(transferProcess);
 	}
 
 	@EventListener

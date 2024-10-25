@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
 import it.eng.negotiation.exception.PolicyEnforcementException;
+import it.eng.negotiation.listener.ContractNegotiationPublisher;
 import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.ContractAgreementMessage;
 import it.eng.negotiation.model.ContractAgreementVerificationMessage;
@@ -36,6 +37,7 @@ import it.eng.negotiation.rest.protocol.ContractNegotiationCallback;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.negotiation.service.policy.PolicyEnforcementService;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.event.datatransfer.InitializeTransferProcessProvider;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
@@ -55,10 +57,11 @@ public class ContractNegotiationAPIService {
 	private final CredentialUtils credentialUtils;
 	private final ObjectMapper mapper = new ObjectMapper();
 	private final PolicyEnforcementService policyEnforcementService;
+	private final ContractNegotiationPublisher publisher;
 
 	public ContractNegotiationAPIService(OkHttpRestClient okHttpRestClient, ContractNegotiationRepository contractNegotiationRepository,
 			ContractNegotiationProperties properties, OfferRepository offerRepository, AgreementRepository agreementRepository,
-			CredentialUtils credentialUtils, PolicyEnforcementService policyEnforcementService) {
+			CredentialUtils credentialUtils, PolicyEnforcementService policyEnforcementService, ContractNegotiationPublisher publisher) {
 		this.okHttpRestClient = okHttpRestClient;
 		this.contractNegotiationRepository = contractNegotiationRepository;
 		this.properties = properties;
@@ -66,6 +69,7 @@ public class ContractNegotiationAPIService {
 		this.agreementRepository = agreementRepository;
 		this.credentialUtils = credentialUtils;
 		this.policyEnforcementService = policyEnforcementService;
+		this.publisher = publisher;
 	}
 
 	/**
@@ -244,6 +248,11 @@ public class ContractNegotiationAPIService {
 			contractNegotiationRepository.save(contractNegotiationFinalized);
 			// TODO remove this line once api/getArtifact is implemented on consumer side 
 			policyEnforcementService.createPolicyEnforcement(contractNegotiation.getAgreement().getId());
+			publisher.publishEvent(new InitializeTransferProcessProvider(
+					contractNegotiationFinalized.getFileId(),
+					contractNegotiationFinalized.getAgreement().getId(),
+					contractNegotiationFinalized.getFormat()
+					));
 		} else {
 			log.error("Error response received!");
 			throw new ContractNegotiationAPIException(response.getMessage());

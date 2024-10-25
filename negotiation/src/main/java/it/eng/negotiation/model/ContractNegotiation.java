@@ -56,6 +56,9 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     private String role;
     
     @JsonIgnore
+    private String fileId;
+    
+    @JsonIgnore
     @DBRef
     private Offer offer;
     
@@ -70,6 +73,9 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     @NotNull
     @JsonProperty(DSpaceConstants.DSPACE_STATE)
     private ContractNegotiationState state;
+    
+    @JsonIgnore
+    private String format;
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -118,6 +124,16 @@ public class ContractNegotiation extends AbstractNegotiationObject {
         	return this;
         }
         
+        public Builder fileId(String fileId) {
+        	message.fileId = fileId;
+        	return this;
+        }
+        
+        public Builder format(String format) {
+        	message.format = format;
+        	return this;
+		}
+        
         public Builder offer(Offer offer) {
         	message.offer = offer;
         	return this;
@@ -158,6 +174,7 @@ public class ContractNegotiation extends AbstractNegotiationObject {
                             .map(v -> v.getPropertyPath() + " " + v.getMessage())
                             .collect(Collectors.joining(", ")));
         }
+
     }
 
     @Override
@@ -180,6 +197,8 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     			.offer(this.offer)
     			.assigner(this.assigner)
     			.role(this.role)
+    			.fileId(this.fileId)
+    			.format(this.format)
     			.agreement(this.agreement)
     			// not yet auditable fields
 //    			.createdBy(this.createdBy)

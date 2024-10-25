@@ -35,6 +35,7 @@ import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.service.policy.PolicyEnforcementService;
+import it.eng.tools.event.datatransfer.InitializeTransferProcessConsumer;
 
 @ExtendWith(MockitoExtension.class)
 public class ContractNegotiationConsumerServiceTest {
@@ -152,6 +153,7 @@ when(contractNegotiationRepository.findByProviderPidAndConsumerPid(MockObjectUti
 		//verify that status is updated to FINALIZED
 		assertEquals(ContractNegotiationState.FINALIZED, argCaptorContractNegotiation.getValue().getState());
 		verify(policyEnforcementService).createPolicyEnforcement(MockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getAgreement().getId());
+		verify(publisher).publishEvent(any(InitializeTransferProcessConsumer.class));
 	}
 	
 	@Test

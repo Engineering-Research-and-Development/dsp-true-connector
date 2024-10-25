@@ -7,7 +7,7 @@ public interface DSpaceConstants {
 	}
 	
 	public static enum DataTransferStates {
-		REQUESTED, STARTED, COMPLETED, SUSPENDED, TERMINATED
+		INITIALIZED, REQUESTED, STARTED, COMPLETED, SUSPENDED, TERMINATED
 	}
 	
 	public static enum ContractNegotiationEvent {

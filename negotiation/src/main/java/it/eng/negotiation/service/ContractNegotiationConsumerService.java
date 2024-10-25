@@ -25,6 +25,7 @@ import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.negotiation.service.policy.PolicyEnforcementService;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.event.datatransfer.InitializeTransferProcessConsumer;
 import it.eng.tools.model.IConstants;
 import lombok.extern.slf4j.Slf4j;
 
@@ -159,6 +160,10 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
 		
 		log.debug("Creating polcyEnforcement for agreementId {}", contractNegotiation.getAgreement().getId());
 		policyEnforcementService.createPolicyEnforcement(contractNegotiation.getAgreement().getId());
+		publisher.publishEvent(new InitializeTransferProcessConsumer(
+				contractNegotiationUpdated.getAgreement().getId(),
+				contractNegotiationUpdated.getFormat()
+				));
     }
 
     /**

@@ -28,6 +28,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
 import it.eng.negotiation.exception.PolicyEnforcementException;
+import it.eng.negotiation.listener.ContractNegotiationPublisher;
 import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationState;
@@ -40,6 +41,7 @@ import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.negotiation.service.policy.PolicyEnforcementService;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.event.datatransfer.InitializeTransferProcessProvider;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
@@ -47,6 +49,8 @@ import it.eng.tools.util.CredentialUtils;
 @ExtendWith(MockitoExtension.class)
 public class ContractNegotiationAPIServiceTest {
 
+	@Mock
+    private ContractNegotiationPublisher publisher;
 	@Mock
 	private OkHttpRestClient okHttpRestClient;
 	@Mock
@@ -226,6 +230,7 @@ public class ContractNegotiationAPIServiceTest {
 		service.finalizeNegotiation(MockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId());
 		
 		verify(contractNegotiationRepository).save(any(ContractNegotiation.class));
+		verify(publisher).publishEvent(any(InitializeTransferProcessProvider.class));
 	}
 	
 	@Test
