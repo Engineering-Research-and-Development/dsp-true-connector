@@ -1,6 +1,19 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 28-10-2024
+
+### Added
+
+ - Added new INITIALIZE state for Transfer Processes
+ - Added logic for creating Transfer Process in INITIALIZE state
+
+## [0.1.1] - 24-10-2024
+
+### Added
+
+ - Offer validation - check if offer.target == dataset.id
+ 
 ## [0.1.1] - 23-10-2024
 
 ### Added

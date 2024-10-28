@@ -230,11 +230,15 @@ public class CatalogService {
 	public OfferResponse validateOffer(Offer offer) {
 		boolean valid = false;
 		Catalog catalog = getCatalog();
-		
+		Dataset dataset = catalog.getDataset().stream()
+				.filter(ds -> ds.getId().equals(offer.getTarget())).findFirst()
+				.orElse(null);
+		if(dataset == null) {
+			log.warn("Offer.target '{}' does not match with any dataset from catalog", offer.getTarget());
+			return false;
+		}
 
-		//TODO change logic with SELECT Dataset FROM Catalog WHERE Catalog.Dataset.Id == Offer.target
-		Offer existingOffer = catalog.getDataset().stream()
-				.flatMap(dataset -> dataset.getHasPolicy().stream())
+		Offer existingOffer = dataset.getHasPolicy().stream()
 				.filter(of -> of.getId().equals(offer.getId()))
 				.findFirst()
 				.orElse(null);
