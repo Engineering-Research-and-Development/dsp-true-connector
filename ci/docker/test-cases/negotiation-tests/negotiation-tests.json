@@ -3,8 +3,9 @@
 		"_postman_id": "04c08cce-8b0b-4708-b7c8-ee0c4e19c16d",
 		"name": "Negotiation tests",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "36278855"
-},
+		"_exporter_id": "21815221",
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-04c08cce-8b0b-4708-b7c8-ee0c4e19c16d?action=share&source=collection_link&creator=21815221"
+	},
 	"item": [
 		{
 			"name": "Negotiation",
@@ -738,6 +739,11 @@
 			"key": "datasetId",
 			"value": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
 			"type": "string"
+		},
+		{
+			"key": "PROVIDER_SERVER_API_TRANSFERS",
+			"value": "http://localhost:8090/api/v1/transfers",
+			"type": "default"
 		}
 	]
 }
