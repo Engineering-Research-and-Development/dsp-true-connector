@@ -227,25 +227,30 @@ public class CatalogService {
      * @return boolean
      */
     public boolean validateOffer(Offer offer) {
-		boolean valid = false;
+    	boolean valid = false;
 		Catalog catalog = getCatalog();
-
-		Offer existingOffer = catalog.getDataset().stream()
-				.flatMap(dataset -> dataset.getHasPolicy().stream())
-				.filter(of -> of.getId().equals(offer.getId()))
-				.findFirst()
+		Dataset dataset = catalog.getDataset().stream()
+				.filter(ds -> ds.getId().equals(offer.getTarget())).findFirst()
 				.orElse(null);
-
-		log.debug("Offer with id '{}' {}", offer.getId(), existingOffer != null ? " found." : "not found.");
-
-		if (existingOffer == null) {
-			log.warn("Offer with id {} not found in catalog", offer.getId());
-			valid = false;
+		if (dataset == null) {
+			log.warn("Offer.target '{}' does not match with any dataset from catalog", offer.getTarget());
 		} else {
-			//check if offers are equals
-			if (offer.equals(existingOffer)) {
-				log.debug("Existing and prvided offers are same");
-				valid = true;
+
+			Offer existingOffer = dataset.getHasPolicy().stream()
+					.filter(of -> of.getId().equals(offer.getId()))
+					.findFirst()
+					.orElse(null);
+
+			log.debug("Offer with id '{}' {}", offer.getId(), existingOffer != null ? " found." : "not found.");
+
+			if (existingOffer == null) {
+				log.warn("Offer with id {} not found in catalog", offer.getId());
+			} else {
+				// check if offers are equals
+				if (offer.equals(existingOffer)) {
+					log.debug("Existing and provided offers are same");
+					valid = true;
+				}
 			}
 		}
 		log.info("Offer evaluated as {}", valid ? "valid" : "invalid");
