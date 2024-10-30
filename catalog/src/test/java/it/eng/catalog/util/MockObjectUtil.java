@@ -139,6 +139,22 @@ public class MockObjectUtil {
             .title(TITLE)
             .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
             .build();
+    
+    public static final Dataset DATASET_WITH_FILE_ID = Dataset.Builder.newInstance()
+    		.id(DATASET_ID)
+            .conformsTo(CONFORMSTO)
+            .creator(CREATOR)
+            .distribution(Arrays.asList(DISTRIBUTION).stream().collect(Collectors.toCollection(HashSet::new)))
+            .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
+            .issued(ISSUED)
+            .fileId(FILE_ID)
+            .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
+            .identifier(IDENTIFIER)
+            .modified(MODIFIED)
+            .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
+            .title(TITLE)
+            .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
+            .build();
 
     public static final Dataset DATASET_FOR_UPDATE = Dataset.Builder.newInstance()
             .conformsTo(CONFORMSTO)
