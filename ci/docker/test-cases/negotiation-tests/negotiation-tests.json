@@ -4,7 +4,7 @@
 		"name": "Negotiation tests",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "21815221",
-		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-04c08cce-8b0b-4708-b7c8-ee0c4e19c16d?action=share&source=collection_link&creator=21815221"
+		"_collection_link": "https://true-connector.postman.co/workspace/6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-04c08cce-8b0b-4708-b7c8-ee0c4e19c16d?action=share&source=collection_link&creator=21815221"
 	},
 	"item": [
 		{
@@ -635,6 +635,50 @@
 					"response": []
 				},
 				{
+					"name": "[C] Check if transfer process is initialized",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Check if transfer process is initialized\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    var transferProcess = jsonData[\"data\"][jsonData.data.length - 1];\r",
+									"    pm.expect(transferProcess[\"state\"]).to.eql(\"INITIALIZED\");\r",
+									"    pm.expect(transferProcess[\"role\"]).to.eql(\"consumer\");\r",
+									"    pm.expect(transferProcess[\"agreementId\"]).to.not.eql(null);\r",
+									"    pm.expect(transferProcess[\"callbackAddress\"]).to.not.eql(null);\r",
+									"    pm.expect(transferProcess[\"datasetId\"]).to.not.eql(null);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{CONSUMER_SERVER_API_TRANSFERS}}",
+							"host": [
+								"{{CONSUMER_SERVER_API_TRANSFERS}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "[P] Check if transfer process is initialized",
 					"event": [
 						{
@@ -649,6 +693,10 @@
 									"    var jsonData = pm.response.json();\r",
 									"    var transferProcess = jsonData[\"data\"][jsonData.data.length - 1];\r",
 									"    pm.expect(transferProcess[\"state\"]).to.eql(\"INITIALIZED\");\r",
+									"    pm.expect(transferProcess[\"role\"]).to.eql(\"provider\");\r",
+									"    pm.expect(transferProcess[\"agreementId\"]).to.not.eql(null);\r",
+									"    pm.expect(transferProcess[\"callbackAddress\"]).to.not.eql(null);\r",
+									"    pm.expect(transferProcess[\"datasetId\"]).to.not.eql(null);\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -739,6 +787,11 @@
 			"key": "datasetId",
 			"value": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
 			"type": "string"
+		},
+		{
+			"key": "CONSUMER_SERVER_API_TRANSFERS",
+			"value": "http://localhost:8080/api/v1/transfers",
+			"type": "default"
 		},
 		{
 			"key": "PROVIDER_SERVER_API_TRANSFERS",
