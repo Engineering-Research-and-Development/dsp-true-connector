@@ -34,7 +34,6 @@ import it.eng.catalog.model.Constraint;
 import it.eng.catalog.model.DataService;
 import it.eng.catalog.model.LeftOperand;
 import it.eng.catalog.model.Offer;
-import it.eng.catalog.model.OfferResponse;
 import it.eng.catalog.model.Operator;
 import it.eng.catalog.model.Permission;
 import it.eng.catalog.repository.CatalogRepository;
@@ -174,9 +173,9 @@ public class CatalogServiceTest {
     public void valiadateOffer( ) {
     	when(repository.findAll()).thenReturn(new ArrayList<>(MockObjectUtil.CATALOGS));
     	
-    	OfferResponse offerValid = service.validateOffer(MockObjectUtil.OFFER_WITH_TARGET);
+    	boolean offerValid = service.validateOffer(MockObjectUtil.OFFER_WITH_TARGET);
     
-    	assertTrue(offerValid.isValid());
+    	assertTrue(offerValid);
     }
     
     @Test
@@ -190,9 +189,9 @@ public class CatalogServiceTest {
         
     	when(repository.findAll()).thenReturn(new ArrayList<>(MockObjectUtil.CATALOGS));
     	
-    	OfferResponse offerValid = service.validateOffer(offer);
+    	boolean offerValid = service.validateOffer(offer);
     
-    	assertFalse(offerValid.isValid());
+    	assertFalse(offerValid);
     }
     
     @Test
@@ -216,8 +215,8 @@ public class CatalogServiceTest {
         
     	when(repository.findAll()).thenReturn(new ArrayList<>(MockObjectUtil.CATALOGS));
     	
-    	OfferResponse offerValid = service.validateOffer(offer);
+    	boolean offerValid = service.validateOffer(offer);
     
-    	assertFalse(offerValid.isValid());
+    	assertFalse(offerValid);
     }
 }

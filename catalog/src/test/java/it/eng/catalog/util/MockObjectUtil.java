@@ -48,6 +48,7 @@ public class MockObjectUtil {
     public static final Instant MODIFIED = Instant.parse("2024-04-23T16:26:00Z");
     public static final String TITLE = "Title for test";
     public static final String ENDPOINT_URL = "https://provider-a.com/connector";
+    private static final String FILE_ID = "some file";
 
     public static final Multilanguage MULTILANGUAGE =
             Multilanguage.Builder.newInstance().language("en").value("For test").build();
@@ -131,6 +132,7 @@ public class MockObjectUtil {
             .distribution(Arrays.asList(DISTRIBUTION).stream().collect(Collectors.toCollection(HashSet::new)))
             .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
             .issued(ISSUED)
+            .fileId(FILE_ID)
             .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
             .identifier(IDENTIFIER)
             .modified(MODIFIED)

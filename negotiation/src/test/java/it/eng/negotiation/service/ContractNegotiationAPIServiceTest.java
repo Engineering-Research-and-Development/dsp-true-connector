@@ -41,7 +41,7 @@ import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.negotiation.service.policy.PolicyEnforcementService;
 import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.event.datatransfer.InitializeTransferProcessProvider;
+import it.eng.tools.event.datatransfer.InitializeTransferProcess;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
@@ -230,7 +230,7 @@ public class ContractNegotiationAPIServiceTest {
 		service.finalizeNegotiation(MockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId());
 		
 		verify(contractNegotiationRepository).save(any(ContractNegotiation.class));
-		verify(publisher).publishEvent(any(InitializeTransferProcessProvider.class));
+		verify(publisher).publishEvent(any(InitializeTransferProcess.class));
 	}
 	
 	@Test

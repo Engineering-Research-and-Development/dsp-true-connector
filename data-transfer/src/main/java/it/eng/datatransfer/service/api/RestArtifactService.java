@@ -24,9 +24,14 @@ import com.mongodb.client.model.Filters;
 
 import it.eng.datatransfer.exceptions.TransferProcessArtifactNotFoundException;
 import it.eng.datatransfer.model.TransferProcess;
+import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.serializer.Serializer;
 import it.eng.datatransfer.service.DataTransferService;
+import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
+import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -36,12 +41,19 @@ public class RestArtifactService {
 	private final ApplicationEventPublisher publisher;
 	private final DataTransferService dataTransferService;
 	private final MongoTemplate mongoTemplate;
+	private final OkHttpRestClient okHttpRestClient;
+	private final CredentialUtils credentialUtils;
+	private final DataTransferProperties properties;
 	
-	public RestArtifactService(ApplicationEventPublisher publisher, DataTransferService dataTransferService, MongoTemplate mongoTemplate) {
+	public RestArtifactService(ApplicationEventPublisher publisher, DataTransferService dataTransferService, MongoTemplate mongoTemplate,
+			OkHttpRestClient okHttpRestClient, CredentialUtils credentialUtils, DataTransferProperties properties) {
 		super();
 		this.publisher = publisher;
 		this.dataTransferService = dataTransferService;
 		this.mongoTemplate = mongoTemplate;
+		this.okHttpRestClient = okHttpRestClient;
+		this.credentialUtils = credentialUtils;
+		this.properties = properties;
 	}
 
 	public String getArtifact(String transactionId, JsonNode jsonBody) {
@@ -53,7 +65,10 @@ public class RestArtifactService {
 	
 	public GridFsResource streamAttachment(String transactionId) {
 		TransferProcess transferProcess = getTransferProcessForTransactionId(transactionId);
-		String fileId = transferProcess.getFileId();
+		GenericApiResponse<String> response = okHttpRestClient.sendGETRequest("http://localhost:" + properties.serverPort() + ApiEndpoints.CATALOG_DATASETS_V1 + "/fileid", 
+				credentialUtils.getAPICredentials());
+		
+		String fileId = response.getData();
 		if(StringUtils.isBlank(fileId)) {
 			log.error("NO file attached to dataset");
 			throw new TransferProcessArtifactNotFoundException("Artifact not found for agreement " + transferProcess.getAgreementId(), 

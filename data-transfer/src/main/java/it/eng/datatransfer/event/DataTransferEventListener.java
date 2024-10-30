@@ -16,9 +16,7 @@ import it.eng.datatransfer.model.TransferSuspensionMessage;
 import it.eng.datatransfer.model.TransferTerminationMessage;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
-import it.eng.tools.event.datatransfer.InitializeTransferProcessConsumer;
-import it.eng.tools.event.datatransfer.InitializeTransferProcessProvider;
-import it.eng.tools.model.IConstants;
+import it.eng.tools.event.datatransfer.InitializeTransferProcess;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
@@ -37,28 +35,15 @@ public class DataTransferEventListener {
 	}
 	
 	@EventListener
-	public void initializeTransferProcessConsumer(InitializeTransferProcessConsumer initializeTransferProcessConsumer) {
-		log.info("Initializing transfer process on consumer");
+	public void initializeTransferProcess(InitializeTransferProcess initializeTransferProcess) {
+		log.info("Initializing transfer process");
 		TransferProcess transferProcess = TransferProcess.Builder.newInstance()
 				.consumerPid("temporary_consumer_pid")
-				.agreementId(initializeTransferProcessConsumer.getAgreementId())
-				.format(initializeTransferProcessConsumer.getFormat())
+				.callbackAddress(initializeTransferProcess.getCallbackAddress())
+				.agreementId(initializeTransferProcess.getAgreementId())
+				.datasetId(initializeTransferProcess.getDatasetId())
 				.state(TransferState.INITIALIZED)
-				.role(IConstants.ROLE_CONSUMER)
-				.build();
-		transferProcessRepository.save(transferProcess);
-	}
-	
-	@EventListener
-	public void initializeTransferProcessProvider(InitializeTransferProcessProvider initializeTransferProcessProvider) {
-		log.info("Initializing transfer process on provider");
-		TransferProcess transferProcess = TransferProcess.Builder.newInstance()
-				.consumerPid("temporary_consumer_pid")
-				.agreementId(initializeTransferProcessProvider.getAgreementId())
-				.format(initializeTransferProcessProvider.getFormat())
-				.fileId(initializeTransferProcessProvider.getFileId())
-				.state(TransferState.INITIALIZED)
-				.role(IConstants.ROLE_PROVIDER)
+				.role(initializeTransferProcess.getRole())
 				.build();
 		transferProcessRepository.save(transferProcess);
 	}

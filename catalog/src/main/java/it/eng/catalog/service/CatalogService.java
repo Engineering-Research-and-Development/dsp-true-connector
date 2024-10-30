@@ -14,7 +14,6 @@ import it.eng.catalog.model.DataService;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.Distribution;
 import it.eng.catalog.model.Offer;
-import it.eng.catalog.model.OfferResponse;
 import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.serializer.Serializer;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
@@ -136,7 +135,7 @@ public class CatalogService {
     public void validateOffer(ContractNegotationOfferRequestEvent offerRequest) {
         log.info("Comparing if offer is valid or not");
         Offer offer = Serializer.deserializeProtocol(offerRequest.getOffer(), Offer.class);
-        boolean valid = validateOffer(offer).isValid();
+        boolean valid = validateOffer(offer);
         ContractNegotiationOfferResponseEvent contractNegotiationOfferResponse = new ContractNegotiationOfferResponseEvent(offerRequest.getConsumerPid(),
                 offerRequest.getProviderPid(), valid, Serializer.serializeProtocolJsonNode(offer));
         publisher.publishEvent(contractNegotiationOfferResponse);
@@ -227,34 +226,29 @@ public class CatalogService {
      * @param offer
      * @return boolean
      */
-	public OfferResponse validateOffer(Offer offer) {
+    public boolean validateOffer(Offer offer) {
 		boolean valid = false;
 		Catalog catalog = getCatalog();
-		Dataset dataset = catalog.getDataset().stream()
-				.filter(ds -> ds.getId().equals(offer.getTarget())).findFirst()
+
+		Offer existingOffer = catalog.getDataset().stream()
+				.flatMap(dataset -> dataset.getHasPolicy().stream())
+				.filter(of -> of.getId().equals(offer.getId()))
+				.findFirst()
 				.orElse(null);
-		if (dataset == null) {
-			log.warn("Offer.target '{}' does not match with any dataset from catalog", offer.getTarget());
+
+		log.debug("Offer with id '{}' {}", offer.getId(), existingOffer != null ? " found." : "not found.");
+
+		if (existingOffer == null) {
+			log.warn("Offer with id {} not found in catalog", offer.getId());
+			valid = false;
 		} else {
-
-			Offer existingOffer = dataset.getHasPolicy().stream()
-					.filter(of -> of.getId().equals(offer.getId()))
-					.findFirst()
-					.orElse(null);
-
-			log.debug("Offer with id '{}' {}", offer.getId(), existingOffer != null ? " found." : "not found.");
-
-			if (existingOffer == null) {
-				log.warn("Offer with id {} not found in catalog", offer.getId());
-			} else {
-				//check if offers are equal
-				if (offer.equals(existingOffer)) {
-					log.debug("Existing and prvided offers are same");
-					valid = true;
-				}
+			//check if offers are equals
+			if (offer.equals(existingOffer)) {
+				log.debug("Existing and prvided offers are same");
+				valid = true;
 			}
 		}
 		log.info("Offer evaluated as {}", valid ? "valid" : "invalid");
-		return OfferResponse.Builder.newInstance().isValid(valid).build();
+		return valid;
 	}
 }

@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import it.eng.catalog.model.Offer;
-import it.eng.catalog.model.OfferResponse;
 import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.service.CatalogService;
 import it.eng.tools.controller.ApiEndpoints;
@@ -29,16 +28,16 @@ public class OfferAPIController {
     }
 	
     @PostMapping(path = "/validate")
-    public ResponseEntity<GenericApiResponse<OfferResponse>> validateOffer(@RequestBody String offerString) {
+    public ResponseEntity<GenericApiResponse<String>> validateOffer(@RequestBody String offerString) {
         log.info("Validating offer");
         
         Offer offer = Serializer.deserializePlain(offerString, Offer.class);
 
-        OfferResponse offerResponse = catalogService.validateOffer(offer);
+        boolean isValid = catalogService.validateOffer(offer);
         
-        if (offerResponse.isValid()) {
+        if (isValid) {
         	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-        			.body(GenericApiResponse.success(offerResponse, "Offer is valid"));
+        			.body(GenericApiResponse.success("Offer is valid", "Offer is valid"));
 		}
         
         return ResponseEntity.badRequest().contentType(MediaType.APPLICATION_JSON)

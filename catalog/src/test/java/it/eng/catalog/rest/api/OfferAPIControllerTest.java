@@ -16,7 +16,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 
 import it.eng.catalog.model.Offer;
-import it.eng.catalog.model.OfferResponse;
 import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.service.CatalogService;
 import it.eng.catalog.util.MockObjectUtil;
@@ -35,9 +34,9 @@ public class OfferAPIControllerTest {
 	    @DisplayName("Validate offer - offer is valid")
 	    public void offerValidationSuccessfulTest() {
 	        Offer offer = MockObjectUtil.OFFER;
-	    	when(catalogService.validateOffer(any(Offer.class))).thenReturn(OfferResponse.Builder.newInstance().isValid(true).build());
+	    	when(catalogService.validateOffer(any(Offer.class))).thenReturn(true);
 	        
-	        ResponseEntity<GenericApiResponse<OfferResponse>> response = offerAPIController.validateOffer(Serializer.serializePlain(offer));
+	        ResponseEntity<GenericApiResponse<String>> response = offerAPIController.validateOffer(Serializer.serializePlain(offer));
 
 	        verify(catalogService).validateOffer(any(Offer.class));
 	        assertNotNull(response);
@@ -49,9 +48,9 @@ public class OfferAPIControllerTest {
 	    @DisplayName("Validate offer - offer not valid")
 	    public void offerValidationFailedTest() {
 	    	Offer offer = MockObjectUtil.OFFER;
-	    	when(catalogService.validateOffer(any(Offer.class))).thenReturn(OfferResponse.Builder.newInstance().isValid(false).build());
+	    	when(catalogService.validateOffer(any(Offer.class))).thenReturn(false);
 		    
-	    	ResponseEntity<GenericApiResponse<OfferResponse>> response = offerAPIController.validateOffer(Serializer.serializePlain(offer));
+	    	ResponseEntity<GenericApiResponse<String>> response = offerAPIController.validateOffer(Serializer.serializePlain(offer));
 
 		    verify(catalogService).validateOffer(any(Offer.class));
 	        assertNotNull(response);

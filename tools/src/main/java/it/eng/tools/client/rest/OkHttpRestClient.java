@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import it.eng.tools.model.Serializer;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.MediaType;
@@ -79,37 +78,29 @@ public class OkHttpRestClient {
 	}
 	
 	/**
-	 * Sends protocol request
+	 * Sends GET request
 	 * @param targetAddress
 	 * @param jsonNode
 	 * @param authorization
 	 * @return
 	 */
-	public GenericApiResponse<Object> sendRequestProtocol(String targetAddress, JsonNode jsonNode, String authorization, Object responseType) {
+	public GenericApiResponse<String> sendGETRequest(String targetAddress, String authorization) {
 		// send response to targetAddress
 		Request.Builder requestBuilder = new Request.Builder()
 				.url(targetAddress);
-		if(jsonNode != null) {
-			RequestBody body = RequestBody.create(jsonNode.toPrettyString(), MediaType.parse("application/json"));
-			requestBuilder.post(body);
-		} else {
-			RequestBody body = RequestBody.create("", MediaType.parse("application/json"));
-			requestBuilder.post(body);
-		}
 		if(StringUtils.isNotBlank(authorization)) {
 			requestBuilder.addHeader(HttpHeaders.AUTHORIZATION, authorization);
 		}
+		requestBuilder.addHeader(HttpHeaders.CONTENT_TYPE, "application/json");
 		Request request = requestBuilder.build();
 		log.info("Sending request using address: " + targetAddress);
 		try (Response response = okHttpClient.newCall(request).execute()) {
 			int code = response.code();
 			log.info("Status {}", code);
-			//why is this not JSONNode
 			String resp = response.body().string();
-			var responseObject = Serializer.deserializePlain(resp, responseType.getClass());
 			log.info("Response received: {}", resp);
 			if(response.isSuccessful()) { // code in 200..299
-				return GenericApiResponse.success(responseObject, "Response received from " + targetAddress);
+				return GenericApiResponse.success(resp, "Response received from " + targetAddress);
 			} else {
 				return GenericApiResponse.error(resp);
 			}

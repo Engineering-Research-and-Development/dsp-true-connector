@@ -34,7 +34,6 @@ import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.MockObjectUtil;
 import it.eng.negotiation.model.Offer;
-import it.eng.negotiation.model.OfferResponse;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
@@ -58,7 +57,7 @@ public class ContractNegotiationProviderServiceTest {
     @Mock
 	private OkHttpRestClient okHttpRestClient;
     @Mock
-	private GenericApiResponse<Object> apiResponse;
+	private GenericApiResponse<String> apiResponse;
     @Mock
     private CredentialUtils credentialUtils;
     @InjectMocks
@@ -75,9 +74,8 @@ public class ContractNegotiationProviderServiceTest {
     	when(properties.isAutomaticNegotiation()).thenReturn(true);
     	when(credentialUtils.getAPICredentials()).thenReturn("credentials");
         when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.ofNullable(null));
-    	when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class), any(OfferResponse.class))).thenReturn(apiResponse);
+    	when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
     	when(apiResponse.isSuccess()).thenReturn(true);
-    	when(apiResponse.getData()).thenReturn(OfferResponse.Builder.newInstance().fileId("fileId").format("format").build());
 		when(offerRepository.save(any(Offer.class))).thenReturn(MockObjectUtil.OFFER_WITH_ORIGINAL_ID);
     	
         ContractNegotiation result = service.startContractNegotiation(MockObjectUtil.CONTRACT_REQUEST_MESSAGE);
@@ -101,9 +99,8 @@ public class ContractNegotiationProviderServiceTest {
     public void startContractNegotiation_automatic_OFF() throws InterruptedException {
         when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.ofNullable(null));
         when(credentialUtils.getAPICredentials()).thenReturn("credentials");
-    	when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class), any(OfferResponse.class))).thenReturn(apiResponse);
+    	when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
     	when(apiResponse.isSuccess()).thenReturn(true);
-    	when(apiResponse.getData()).thenReturn(OfferResponse.Builder.newInstance().fileId("fileId").format("format").build());
     	when(offerRepository.save(any(Offer.class))).thenReturn(MockObjectUtil.OFFER_WITH_ORIGINAL_ID);
     	
         ContractNegotiation result = service.startContractNegotiation(MockObjectUtil.CONTRACT_REQUEST_MESSAGE);
@@ -150,7 +147,7 @@ public class ContractNegotiationProviderServiceTest {
     public void startContractNegotiation_offerNotValid() throws InterruptedException {
         when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.ofNullable(null));
         when(credentialUtils.getAPICredentials()).thenReturn("credentials");
-    	when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class), any(OfferResponse.class))).thenReturn(apiResponse);
+    	when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
     	when(apiResponse.isSuccess()).thenReturn(false);
     	
         assertThrows(OfferNotValidException.class,()-> service.startContractNegotiation(MockObjectUtil.CONTRACT_REQUEST_MESSAGE));

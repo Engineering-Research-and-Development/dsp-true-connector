@@ -15,7 +15,6 @@ import it.eng.negotiation.model.ContractNegotiationEventMessage;
 import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.Offer;
-import it.eng.negotiation.model.OfferResponse;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
@@ -89,16 +88,13 @@ public class ContractNegotiationProviderService extends BaseProtocolService {
         
         checkIfContractNegotiationExists(contractRequestMessage.getConsumerPid(), contractRequestMessage.getProviderPid());
 
-		GenericApiResponse<Object> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + properties.serverPort() + ApiEndpoints.CATALOG_OFFERS_V1 + "/validate", 
+		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + properties.serverPort() + ApiEndpoints.CATALOG_OFFERS_V1 + "/validate", 
 				Serializer.serializePlainJsonNode(contractRequestMessage.getOffer()), 
-				credentialUtils.getAPICredentials(),
-				OfferResponse.Builder.newInstance().build());
+				credentialUtils.getAPICredentials());
         
 		if (!response.isSuccess()) {
 			throw new OfferNotValidException("Contract offer is not valid", contractRequestMessage.getConsumerPid(), contractRequestMessage.getProviderPid());
 		}
-		
-		OfferResponse offerResponse = (OfferResponse) response.getData();
 		
 		Offer offerToBeInserted = Offer.Builder.newInstance()
 				.assignee(contractRequestMessage.getOffer().getAssignee())
@@ -118,8 +114,6 @@ public class ContractNegotiationProviderService extends BaseProtocolService {
                 .callbackAddress(contractRequestMessage.getCallbackAddress())
                 .assigner(contractRequestMessage.getOffer().getAssigner())
                 .role(IConstants.ROLE_PROVIDER)
-                .fileId(offerResponse.getFileId())
-                .format(offerResponse.getFormat())
                 .offer(savedOffer)
                 .build();
         

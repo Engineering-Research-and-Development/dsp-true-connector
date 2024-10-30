@@ -1,6 +1,7 @@
 package it.eng.catalog.rest.api;
 
 import java.util.Collection;
+import java.util.List;
 
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -41,6 +42,24 @@ public class DatasetAPIController {
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(dataset), "Fetched dataset"));
+    }
+    
+    @GetMapping(path = "/{id}/formats")
+    public ResponseEntity<GenericApiResponse<List<String>>> getFormatsFromDataset(@PathVariable String id) {
+        log.info("Fetching formats from dataset with id: '" + id + "'");
+        List<String> formats = datasetService.getFormatsFromDataset(id);
+
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(GenericApiResponse.success(formats, "Fetched formats"));
+    }
+    
+    @GetMapping(path = "/{id}/fileid")
+    public ResponseEntity<GenericApiResponse<String>> getFileIdFromDataset(@PathVariable String id) {
+        log.info("Fetching fileId from dataset with id: '" + id + "'");
+        String fileId = datasetService.getFileIdFromDataset(id);
+
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(GenericApiResponse.success(fileId, "Fetched file id"));
     }
 
     @GetMapping

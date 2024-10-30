@@ -37,7 +37,7 @@ import it.eng.negotiation.rest.protocol.ContractNegotiationCallback;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.negotiation.service.policy.PolicyEnforcementService;
 import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.event.datatransfer.InitializeTransferProcessProvider;
+import it.eng.tools.event.datatransfer.InitializeTransferProcess;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
@@ -248,10 +248,11 @@ public class ContractNegotiationAPIService {
 			contractNegotiationRepository.save(contractNegotiationFinalized);
 			// TODO remove this line once api/getArtifact is implemented on consumer side 
 			policyEnforcementService.createPolicyEnforcement(contractNegotiation.getAgreement().getId());
-			publisher.publishEvent(new InitializeTransferProcessProvider(
-					contractNegotiationFinalized.getFileId(),
+			publisher.publishEvent(new InitializeTransferProcess(
+					contractNegotiationFinalized.getCallbackAddress(),
 					contractNegotiationFinalized.getAgreement().getId(),
-					contractNegotiationFinalized.getFormat()
+					contractNegotiationFinalized.getAgreement().getTarget(),
+					contractNegotiationFinalized.getRole()
 					));
 		} else {
 			log.error("Error response received!");

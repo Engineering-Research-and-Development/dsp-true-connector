@@ -130,7 +130,7 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
 		        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
 		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CATALOG_ERROR.getType())))
 		        .andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)))
-		        .andExpect(jsonPath("['"+DSpaceConstants.DSPACE_REASON+"'][0]['"+DSpaceConstants.VALUE+"']", containsString("Data Set with id: 1 not found")));
+		        .andExpect(jsonPath("['"+DSpaceConstants.DSPACE_REASON+"'][0]['"+DSpaceConstants.VALUE+"']", containsString("Dataset with id: 1 not found")));
 	}
 	
 }
