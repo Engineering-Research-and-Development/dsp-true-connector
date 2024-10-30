@@ -263,6 +263,9 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
 		
 		assertEquals(TransferState.INITIALIZED, transferProcess.getState());
 		assertNotNull(transferProcess.getAgreementId());
+		assertNotNull(transferProcess.getCallbackAddress());
+		assertNotNull(transferProcess.getRole());
+		assertNotNull(transferProcess.getDatasetId());
     }
 	
 	@Order(9) 

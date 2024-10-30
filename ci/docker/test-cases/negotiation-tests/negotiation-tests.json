@@ -1,10 +1,10 @@
 {
 	"info": {
-		"_postman_id": "aaea8b62-cafd-4af8-bfbc-02ef7143b484",
+		"_postman_id": "04c08cce-8b0b-4708-b7c8-ee0c4e19c16d",
 		"name": "Negotiation tests",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "36278855"
-	},
+},
 	"item": [
 		{
 			"name": "Negotiation",
@@ -628,6 +628,46 @@
 							"raw": "{{PROVIDER_API_ENDPOINT}}",
 							"host": [
 								"{{PROVIDER_API_ENDPOINT}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[P] Check if transfer process is initialized",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Check if transfer process is initialized\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    var transferProcess = jsonData[\"data\"][jsonData.data.length - 1];\r",
+									"    pm.expect(transferProcess[\"state\"]).to.eql(\"INITIALIZED\");\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}",
+							"host": [
+								"{{PROVIDER_SERVER_API_TRANSFERS}}"
 							]
 						}
 					},
