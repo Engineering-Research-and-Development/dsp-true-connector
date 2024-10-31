@@ -112,6 +112,13 @@ public class DatasetAPIControllerTest {
     }
     
     @Test
+    @DisplayName("Get fileId from Dataset - failed")
+    public void getFileIdFromDatasetFailedTest() {
+    	when(datasetService.getFileIdFromDataset(MockObjectUtil.DATASET_WITH_FILE_ID.getId())).thenThrow(new ResourceNotFoundAPIException());
+    	assertThrows(ResourceNotFoundAPIException.class,() -> datasetAPIController.getFileIdFromDataset(MockObjectUtil.DATASET_WITH_FILE_ID.getId()));
+    }
+    
+    @Test
     @DisplayName("Get formats from Dataset - success")
     public void getFormatsFromDatasetSuccessfulTest() {
         when(datasetService.getFormatsFromDataset(MockObjectUtil.DATASET_WITH_FILE_ID.getId())).thenReturn(MockObjectUtil.DATASET_WITH_FILE_ID.getDistribution().stream().map(dist -> dist.getFormat().getId()).collect(Collectors.toList()));
@@ -121,13 +128,6 @@ public class DatasetAPIControllerTest {
         assertTrue(response.getStatusCode().is2xxSuccessful());
         assertTrue(StringUtils.contains(response.getBody().getData().get(0),
         		MockObjectUtil.DATASET_WITH_FILE_ID.getDistribution().stream().findFirst().get().getFormat().getId()));
-    }
-    
-    @Test
-    @DisplayName("Get fileId from Dataset - failed")
-    public void getFileIdFromDatasetFailedTest() {
-        when(datasetService.getFileIdFromDataset(MockObjectUtil.DATASET_WITH_FILE_ID.getId())).thenThrow(new ResourceNotFoundAPIException());
-        assertThrows(ResourceNotFoundAPIException.class,() -> datasetAPIController.getFileIdFromDataset(MockObjectUtil.DATASET_WITH_FILE_ID.getId()));
     }
     
     @Test

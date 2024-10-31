@@ -2,6 +2,7 @@ package it.eng.catalog.service;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
@@ -11,6 +12,7 @@ import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.exceptions.InternalServerErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.Dataset;
+import it.eng.catalog.model.Distribution;
 import it.eng.catalog.repository.DatasetRepository;
 import lombok.extern.slf4j.Slf4j;
 
@@ -126,10 +128,21 @@ public class DatasetService {
     }
 
 	public List<String> getFormatsFromDataset(String id) {
-		List<String> formats = getDatasetByIdForApi(id).getDistribution().stream().map(dist -> dist.getFormat().getId()).collect(Collectors.toList());
-		if (formats == null || formats.isEmpty()) {
-			throw new ResourceNotFoundAPIException("Dataset with id: " + id + " has no distribution formats");
+		Set<Distribution> distributions = getDatasetByIdForApi(id).getDistribution();
+		
+		if (distributions == null || distributions.isEmpty()) {
+			throw new ResourceNotFoundAPIException("Dataset with id: " + id + " has no distributions");
 		}
+		
+		List<String> formats = distributions.stream()
+				.filter(dist -> dist.getFormat() != null)
+				.map(dist -> dist.getFormat().getId())
+				.collect(Collectors.toList());
+		
+		if (formats == null || formats.isEmpty()) {
+			throw new ResourceNotFoundAPIException("Dataset with id: " + id + " has no distributions with format");
+		}
+		
 		return formats;
 	}
 

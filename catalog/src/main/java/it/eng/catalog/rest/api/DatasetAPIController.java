@@ -44,6 +44,13 @@ public class DatasetAPIController {
                 .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(dataset), "Fetched dataset"));
     }
     
+    /**
+     * Used for fetching all dct:formats for a Dataset </br>
+     * Generally used for creating Transfer Processes with INITIALIZED state
+     * 
+     * @param id id of Dataset
+     * @return List of formats
+     */
     @GetMapping(path = "/{id}/formats")
     public ResponseEntity<GenericApiResponse<List<String>>> getFormatsFromDataset(@PathVariable String id) {
         log.info("Fetching formats from dataset with id: '" + id + "'");
@@ -53,6 +60,12 @@ public class DatasetAPIController {
                 .body(GenericApiResponse.success(formats, "Fetched formats"));
     }
     
+    /**
+     * Used for fetching the fileId from a Dataset
+     * 
+     * @param id id of Dataset
+     * @return file id
+     */
     @GetMapping(path = "/{id}/fileid")
     public ResponseEntity<GenericApiResponse<String>> getFileIdFromDataset(@PathVariable String id) {
         log.info("Fetching fileId from dataset with id: '" + id + "'");

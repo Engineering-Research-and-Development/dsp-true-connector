@@ -1,16 +1,18 @@
 package it.eng.catalog.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,23 +44,16 @@ public class DatasetServiceTest {
     @InjectMocks
     private DatasetService datasetService;
 
-    private Dataset dataset = MockObjectUtil.DATASET;
-
-    @Test
-    @DisplayName("Get dataset by ID successfully")
-    void getDataSetById_success() {
-        when(repository.findById(anyString())).thenReturn(Optional.of(dataset));
-        Dataset retrievedDataset = datasetService.getDatasetById(dataset.getId());
-        assertNotNull(retrievedDataset);
-        assertEquals(dataset.getId(), retrievedDataset.getId());
-    }
+    private Dataset dataset = MockObjectUtil.DATASET_WITH_FILE_ID;
     
-    @Test
-    @DisplayName("Get dataset by ID throws exception when not found")
-    void getDataSetById_notFound() {
-        when(repository.findById(anyString())).thenReturn(Optional.empty());
-        assertThrows(CatalogErrorException.class, () -> datasetService.getDatasetById("datasetId"));
-    }
+    private Dataset datasetWithoutDistributions = Dataset.Builder.newInstance()
+    		.hasPolicy(Arrays.asList(MockObjectUtil.OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
+    		.build();
+    
+    private Dataset datasetWithoutFormats = Dataset.Builder.newInstance()
+    		.hasPolicy(Arrays.asList(MockObjectUtil.OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
+    		.distribution(Arrays.asList(MockObjectUtil.DISTRIBUTION_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
+    		.build();
 
     @Test
     @DisplayName("Get dataset by id - success")
@@ -77,6 +72,58 @@ public class DatasetServiceTest {
         when(repository.findById("1")).thenReturn(Optional.empty());
 
         assertThrows(CatalogErrorException.class, () -> datasetService.getDatasetById("1"));
+
+        verify(repository).findById("1");
+    }
+    
+    @Test
+    @DisplayName("Get formats from dataset - success")
+    public void getFormatsFromDataset_success() {
+        when(repository.findById(dataset.getId())).thenReturn(Optional.of(dataset));
+
+        List<String> formats = datasetService.getFormatsFromDataset(dataset.getId());
+
+        assertEquals(dataset.getDistribution().stream().findFirst().get().getFormat().getId(), formats.get(0));
+        verify(repository).findById(dataset.getId());
+    }
+
+    @Test
+    @DisplayName("Get formats from dataset - no distributions found")
+    public void getFormatsFromDataset_noDistributionsFound() {
+        when(repository.findById(datasetWithoutDistributions.getId())).thenReturn(Optional.of(datasetWithoutDistributions));
+
+        assertThrows(ResourceNotFoundAPIException.class, () -> datasetService.getFormatsFromDataset(datasetWithoutDistributions.getId()));
+
+        verify(repository).findById(datasetWithoutDistributions.getId());
+    }
+    
+    @Test
+    @DisplayName("Get formats from dataset - no formats found")
+    public void getFormatsFromDataset_noFormatsFound() {
+        when(repository.findById(datasetWithoutDistributions.getId())).thenReturn(Optional.of(datasetWithoutFormats));
+
+        assertThrows(ResourceNotFoundAPIException.class, () -> datasetService.getFormatsFromDataset(datasetWithoutDistributions.getId()));
+
+        verify(repository).findById(datasetWithoutDistributions.getId());
+    }
+    
+    @Test
+    @DisplayName("Get file id from dataset - success")
+    public void getFileIdFromDataset_success() {
+        when(repository.findById(dataset.getId())).thenReturn(Optional.of(dataset));
+
+        String result = datasetService.getFileIdFromDataset(dataset.getId());
+
+        assertEquals(dataset.getFileId(), result);
+        verify(repository).findById(dataset.getId());
+    }
+
+    @Test
+    @DisplayName("Get file id from dataset - not found")
+    public void getFileIdFromDataset_notFound() {
+        when(repository.findById("1")).thenReturn(Optional.of(MockObjectUtil.DATASET));
+
+        assertThrows(ResourceNotFoundAPIException.class, () -> datasetService.getFileIdFromDataset("1"));
 
         verify(repository).findById("1");
     }

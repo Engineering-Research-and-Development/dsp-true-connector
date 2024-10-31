@@ -42,13 +42,13 @@ public class MockObjectUtil {
     public static final String ASSIGNER = "assigner";
     public static final String TARGET = "target";
     public static final String CONFORMSTO = "conformsToSomething";
-    public static final String CREATOR = "Chuck Norris";
-    public static final String IDENTIFIER = "Unique identifier for tests";
+    public static final String CREATOR = "Chuck_Norris";
+    public static final String IDENTIFIER = "Unique_identifier_for_tests";
     public static final Instant ISSUED = Instant.parse("2024-04-23T16:26:00Z");
     public static final Instant MODIFIED = Instant.parse("2024-04-23T16:26:00Z");
-    public static final String TITLE = "Title for test";
+    public static final String TITLE = "Title_for_test";
     public static final String ENDPOINT_URL = "https://provider-a.com/connector";
-    private static final String FILE_ID = "some file";
+    private static final String FILE_ID = "some_file";
 
     public static final Multilanguage MULTILANGUAGE =
             Multilanguage.Builder.newInstance().language("en").value("For test").build();
