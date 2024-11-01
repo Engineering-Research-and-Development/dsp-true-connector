@@ -1,10 +1,14 @@
 package it.eng.catalog.rest.api;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.DisplayName;
@@ -17,6 +21,7 @@ import org.springframework.http.ResponseEntity;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.service.DatasetService;
@@ -93,6 +98,43 @@ public class DatasetAPIControllerTest {
         assertNotNull(response.getBody());
         assertTrue(StringUtils.contains(response.getBody().getData().get("type").toString(), MockObjectUtil.DATASET.getType()));
 
+    }
+    
+    @Test
+    @DisplayName("Get fileId from Dataset - success")
+    public void getFileIdFromDatasetSuccessfulTest() {
+        when(datasetService.getFileIdFromDataset(MockObjectUtil.DATASET_WITH_FILE_ID.getId())).thenReturn(MockObjectUtil.DATASET_WITH_FILE_ID.getFileId());
+        ResponseEntity<GenericApiResponse<String>> response = datasetAPIController.getFileIdFromDataset(MockObjectUtil.DATASET_WITH_FILE_ID.getId());
+
+        assertNotNull(response);
+        assertTrue(response.getStatusCode().is2xxSuccessful());
+        assertTrue(StringUtils.contains(response.getBody().toString(), MockObjectUtil.DATASET_WITH_FILE_ID.getFileId()));
+    }
+    
+    @Test
+    @DisplayName("Get fileId from Dataset - failed")
+    public void getFileIdFromDatasetFailedTest() {
+    	when(datasetService.getFileIdFromDataset(MockObjectUtil.DATASET_WITH_FILE_ID.getId())).thenThrow(new ResourceNotFoundAPIException());
+    	assertThrows(ResourceNotFoundAPIException.class,() -> datasetAPIController.getFileIdFromDataset(MockObjectUtil.DATASET_WITH_FILE_ID.getId()));
+    }
+    
+    @Test
+    @DisplayName("Get formats from Dataset - success")
+    public void getFormatsFromDatasetSuccessfulTest() {
+        when(datasetService.getFormatsFromDataset(MockObjectUtil.DATASET_WITH_FILE_ID.getId())).thenReturn(MockObjectUtil.DATASET_WITH_FILE_ID.getDistribution().stream().map(dist -> dist.getFormat().getId()).collect(Collectors.toList()));
+        ResponseEntity<GenericApiResponse<List<String>>> response = datasetAPIController.getFormatsFromDataset(MockObjectUtil.DATASET_WITH_FILE_ID.getId());
+
+        assertNotNull(response);
+        assertTrue(response.getStatusCode().is2xxSuccessful());
+        assertTrue(StringUtils.contains(response.getBody().getData().get(0),
+        		MockObjectUtil.DATASET_WITH_FILE_ID.getDistribution().stream().findFirst().get().getFormat().getId()));
+    }
+    
+    @Test
+    @DisplayName("Get formats from Dataset - failed")
+    public void getFormatsFromDatasetFailedTest() {
+        when(datasetService.getFormatsFromDataset(MockObjectUtil.DATASET_WITH_FILE_ID.getId())).thenThrow(new ResourceNotFoundAPIException());
+        assertThrows(ResourceNotFoundAPIException.class,() -> datasetAPIController.getFormatsFromDataset(MockObjectUtil.DATASET_WITH_FILE_ID.getId()));
     }
 
 }

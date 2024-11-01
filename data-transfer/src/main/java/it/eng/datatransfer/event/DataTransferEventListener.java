@@ -8,11 +8,15 @@ import org.springframework.stereotype.Component;
 
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.TransferCompletionMessage;
+import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferRequestMessage;
 import it.eng.datatransfer.model.TransferStartMessage;
+import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.model.TransferSuspensionMessage;
 import it.eng.datatransfer.model.TransferTerminationMessage;
+import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
+import it.eng.tools.event.datatransfer.InitializeTransferProcess;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
@@ -21,11 +25,27 @@ public class DataTransferEventListener {
 	
 	private final ApplicationEventPublisher publisher;
 	private final TransferRequestMessageRepository transferRequestMessageRepository;
+	private final TransferProcessRepository transferProcessRepository;
 	
-	public DataTransferEventListener(ApplicationEventPublisher publisher, TransferRequestMessageRepository transferRequestMessageRepository) {
+	public DataTransferEventListener(ApplicationEventPublisher publisher, TransferRequestMessageRepository transferRequestMessageRepository, TransferProcessRepository transferProcessRepository) {
 		super();
 		this.publisher = publisher;
 		this.transferRequestMessageRepository = transferRequestMessageRepository;
+		this.transferProcessRepository = transferProcessRepository;
+	}
+	
+	@EventListener
+	public void initializeTransferProcess(InitializeTransferProcess initializeTransferProcess) {
+		log.info("Initializing transfer process");
+		TransferProcess transferProcess = TransferProcess.Builder.newInstance()
+				.consumerPid("temporary_consumer_pid")
+				.callbackAddress(initializeTransferProcess.getCallbackAddress())
+				.agreementId(initializeTransferProcess.getAgreementId())
+				.datasetId(initializeTransferProcess.getDatasetId())
+				.state(TransferState.INITIALIZED)
+				.role(initializeTransferProcess.getRole())
+				.build();
+		transferProcessRepository.save(transferProcess);
 	}
 
 	@EventListener

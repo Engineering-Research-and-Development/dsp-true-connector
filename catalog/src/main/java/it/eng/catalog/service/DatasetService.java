@@ -1,13 +1,18 @@
 package it.eng.catalog.service;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.exceptions.InternalServerErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.Dataset;
+import it.eng.catalog.model.Distribution;
 import it.eng.catalog.repository.DatasetRepository;
 import lombok.extern.slf4j.Slf4j;
 
@@ -37,7 +42,7 @@ public class DatasetService {
      * @throws CatalogErrorException if no dataset is found with the provided ID
      */
     public Dataset getDatasetById(String id) {
-        return repository.findById(id).orElseThrow(() -> new CatalogErrorException("Data Set with id: " + id + " not found"));
+        return repository.findById(id).orElseThrow(() -> new CatalogErrorException("Dataset with id: " + id + " not found"));
 
     }
     
@@ -50,7 +55,7 @@ public class DatasetService {
      * @throws ResourceNotFoundAPIException if no dataset is found with the provided ID
      */
     public Dataset getDatasetByIdForApi(String id) {
-        return repository.findById(id).orElseThrow(() -> new ResourceNotFoundAPIException("Data Set with id: " + id + " not found"));
+        return repository.findById(id).orElseThrow(() -> new ResourceNotFoundAPIException("Dataset with id: " + id + " not found"));
     }
 
     /**
@@ -121,4 +126,31 @@ public class DatasetService {
 
         return storedDataset;
     }
+
+	public List<String> getFormatsFromDataset(String id) {
+		Set<Distribution> distributions = getDatasetByIdForApi(id).getDistribution();
+		
+		if (distributions == null || distributions.isEmpty()) {
+			throw new ResourceNotFoundAPIException("Dataset with id: " + id + " has no distributions");
+		}
+		
+		List<String> formats = distributions.stream()
+				.filter(dist -> dist.getFormat() != null)
+				.map(dist -> dist.getFormat().getId())
+				.collect(Collectors.toList());
+		
+		if (formats == null || formats.isEmpty()) {
+			throw new ResourceNotFoundAPIException("Dataset with id: " + id + " has no distributions with format");
+		}
+		
+		return formats;
+	}
+
+	public String getFileIdFromDataset(String id) {
+		String fileId = getDatasetByIdForApi(id).getFileId();
+		if (StringUtils.isBlank(fileId)) {
+			throw new ResourceNotFoundAPIException("Dataset with id: " + id + " has no file id");
+		}
+		return fileId;
+	}
 }

@@ -14,6 +14,12 @@ import it.eng.tools.model.DSpaceConstants.DataTransferStates;
 
 public enum TransferState {
 	
+	INITIALIZED(DSpaceConstants.DSPACE + DataTransferStates.INITIALIZED) {
+		@Override
+		public List<TransferState> nextState() {
+			return Arrays.asList(REQUESTED);
+		}
+	},
 	REQUESTED(DSpaceConstants.DSPACE + DataTransferStates.REQUESTED) {
 		@Override
 		public List<TransferState> nextState() {

@@ -76,4 +76,37 @@ public class OkHttpRestClient {
 			return GenericApiResponse.error(e.getLocalizedMessage());
 		}
 	}
+	
+	/**
+	 * Sends GET request
+	 * @param targetAddress
+	 * @param jsonNode
+	 * @param authorization
+	 * @return
+	 */
+	public GenericApiResponse<String> sendGETRequest(String targetAddress, String authorization) {
+		// send response to targetAddress
+		Request.Builder requestBuilder = new Request.Builder()
+				.url(targetAddress);
+		if(StringUtils.isNotBlank(authorization)) {
+			requestBuilder.addHeader(HttpHeaders.AUTHORIZATION, authorization);
+		}
+		requestBuilder.addHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+		Request request = requestBuilder.build();
+		log.info("Sending request using address: " + targetAddress);
+		try (Response response = okHttpClient.newCall(request).execute()) {
+			int code = response.code();
+			log.info("Status {}", code);
+			String resp = response.body().string();
+			log.info("Response received: {}", resp);
+			if(response.isSuccessful()) { // code in 200..299
+				return GenericApiResponse.success(resp, "Response received from " + targetAddress);
+			} else {
+				return GenericApiResponse.error(resp);
+			}
+        } catch (IOException e) {
+			log.error(e.getLocalizedMessage());
+			return GenericApiResponse.error(e.getLocalizedMessage());
+		}
+	}
 }

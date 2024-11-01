@@ -42,12 +42,13 @@ public class MockObjectUtil {
     public static final String ASSIGNER = "assigner";
     public static final String TARGET = "target";
     public static final String CONFORMSTO = "conformsToSomething";
-    public static final String CREATOR = "Chuck Norris";
-    public static final String IDENTIFIER = "Unique identifier for tests";
+    public static final String CREATOR = "Chuck_Norris";
+    public static final String IDENTIFIER = "Unique_identifier_for_tests";
     public static final Instant ISSUED = Instant.parse("2024-04-23T16:26:00Z");
     public static final Instant MODIFIED = Instant.parse("2024-04-23T16:26:00Z");
-    public static final String TITLE = "Title for test";
+    public static final String TITLE = "Title_for_test";
     public static final String ENDPOINT_URL = "https://provider-a.com/connector";
+    public static final String FILE_ID = "some_file";
 
     public static final Multilanguage MULTILANGUAGE =
             Multilanguage.Builder.newInstance().language("en").value("For test").build();
@@ -131,6 +132,22 @@ public class MockObjectUtil {
             .distribution(Arrays.asList(DISTRIBUTION).stream().collect(Collectors.toCollection(HashSet::new)))
             .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
             .issued(ISSUED)
+            .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
+            .identifier(IDENTIFIER)
+            .modified(MODIFIED)
+            .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
+            .title(TITLE)
+            .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
+            .build();
+    
+    public static final Dataset DATASET_WITH_FILE_ID = Dataset.Builder.newInstance()
+    		.id(DATASET_ID)
+            .conformsTo(CONFORMSTO)
+            .creator(CREATOR)
+            .distribution(Arrays.asList(DISTRIBUTION).stream().collect(Collectors.toCollection(HashSet::new)))
+            .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
+            .issued(ISSUED)
+            .fileId(FILE_ID)
             .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
             .identifier(IDENTIFIER)
             .modified(MODIFIED)

@@ -1,6 +1,14 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 28-10-2024
+
+### Added
+
+ - Added new INITIALIZE state for Transfer Processes
+ - Added logic for creating Transfer Process in INITIALIZE state
+ - Added API endpoints to get fileId and dct:format
+
 ## [0.1.1] - 24-10-2024
 
 ### Added

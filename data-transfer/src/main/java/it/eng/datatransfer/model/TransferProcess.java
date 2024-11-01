@@ -62,7 +62,7 @@ public class TransferProcess extends AbstractTransferMessage {
 	@JsonIgnore
 	private String callbackAddress;
 	@JsonIgnore
-	private String fileId;
+	private String datasetId;
 	
 	// determins which role the connector is for that contract negotiation (consumer or provider)
     @JsonIgnore
@@ -167,9 +167,9 @@ public class TransferProcess extends AbstractTransferMessage {
 			return this;
 		}
 		
-		@JsonProperty("fileId")
-		public Builder fileId(String fileId) {
-			message.fileId = fileId;
+		@JsonProperty("datasetId")
+		public Builder datasetId(String datasetId) {
+			message.datasetId = datasetId;
 			return this;
 		}
 
@@ -215,7 +215,7 @@ public class TransferProcess extends AbstractTransferMessage {
 				.format(this.format)
 				.state(newTransferState)
 				.role(this.role)
-				.fileId(this.fileId)
+				.datasetId(this.datasetId)
 				// no need to modify audit fields???
 				.createdBy(this.createdBy)
 				.lastModifiedBy(this.lastModifiedBy)

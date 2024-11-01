@@ -70,7 +70,7 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     @NotNull
     @JsonProperty(DSpaceConstants.DSPACE_STATE)
     private ContractNegotiationState state;
-
+    
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Builder {
@@ -158,6 +158,7 @@ public class ContractNegotiation extends AbstractNegotiationObject {
                             .map(v -> v.getPropertyPath() + " " + v.getMessage())
                             .collect(Collectors.joining(", ")));
         }
+
     }
 
     @Override

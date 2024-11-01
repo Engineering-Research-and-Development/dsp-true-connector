@@ -29,6 +29,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.connector.util.TestUtil;
+import it.eng.datatransfer.model.TransferProcess;
+import it.eng.datatransfer.model.TransferState;
 import it.eng.negotiation.model.ContractAgreementMessage;
 import it.eng.negotiation.model.ContractAgreementVerificationMessage;
 import it.eng.negotiation.model.ContractNegotiationEventMessage;
@@ -245,6 +247,25 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     	JsonNode contractNegotiation = getContractNegotiationOverAPI();
     	offerCheck(contractNegotiation);
     	agreementCheck(contractNegotiation);
+    	
+    	//check if Transfer Process is initialized
+    	final ResultActions tp =
+				mockMvc.perform(
+						get(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
+						.with(user(TestUtil.CONNECTOR_USER).password("password").roles("ADMIN"))
+						.contentType(MediaType.APPLICATION_JSON));
+		
+		tp.andExpect(status().isOk())
+		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
+		
+		JsonNode jsonNode = mapper.readTree(tp.andReturn().getResponse().getContentAsString());
+		TransferProcess transferProcess = it.eng.datatransfer.serializer.Serializer.deserializePlain(jsonNode.findValues("data").get(0).get(jsonNode.findValues("data").get(0).size()-1).toString(), TransferProcess.class);
+		
+		assertEquals(TransferState.INITIALIZED, transferProcess.getState());
+		assertNotNull(transferProcess.getAgreementId());
+		assertNotNull(transferProcess.getCallbackAddress());
+		assertNotNull(transferProcess.getRole());
+		assertNotNull(transferProcess.getDatasetId());
     }
 	
 	@Order(9) 
