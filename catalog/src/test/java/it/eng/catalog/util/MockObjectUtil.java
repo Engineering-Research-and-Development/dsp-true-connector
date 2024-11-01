@@ -48,7 +48,7 @@ public class MockObjectUtil {
     public static final Instant MODIFIED = Instant.parse("2024-04-23T16:26:00Z");
     public static final String TITLE = "Title_for_test";
     public static final String ENDPOINT_URL = "https://provider-a.com/connector";
-    private static final String FILE_ID = "some_file";
+    public static final String FILE_ID = "some_file";
 
     public static final Multilanguage MULTILANGUAGE =
             Multilanguage.Builder.newInstance().language("en").value("For test").build();
