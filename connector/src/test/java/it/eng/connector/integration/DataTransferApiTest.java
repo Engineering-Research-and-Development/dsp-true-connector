@@ -37,8 +37,6 @@ import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
-import it.eng.datatransfer.serializer.Serializer;
-import it.eng.datatransfer.util.MockObjectUtil;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.model.IConstants;
@@ -107,10 +105,9 @@ public class DataTransferApiTest extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.API_USER)
     public void initiateDataTransfer() throws Exception {
 		Map<String, Object> map = new HashMap<>();
-		map.put("Forward-To", "http://localhost:8090");
-		map.put("agreementId", "urn:uuid:AGREEMENT_ID_OK_API");
+		map.put("transferProcessId", "urn:uuid:abc45798-4434-4932-8baf-ab7fd66ql4d5");
 		map.put(DSpaceConstants.FORMAT, DataTransferFormat.HTTP_PULL.name());
-		map.put(DSpaceConstants.DATA_ADDRESS, Serializer.serializePlainJsonNode(MockObjectUtil.DATA_ADDRESS));
+		map.put(DSpaceConstants.DATA_ADDRESS, "");
     	
     	final ResultActions result =
     			mockMvc.perform(

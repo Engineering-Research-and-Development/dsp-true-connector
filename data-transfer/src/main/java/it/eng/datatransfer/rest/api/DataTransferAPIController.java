@@ -39,12 +39,11 @@ public class DataTransferAPIController {
 	
 	@PostMapping
 	public ResponseEntity<GenericApiResponse<JsonNode>> requestTransfer(@RequestBody JsonNode requestTransferRequest) {
-		String targetConnector = requestTransferRequest.get("Forward-To").asText();
-		String agreementId = requestTransferRequest.get("agreementId").asText();
+		String transferProcessId = requestTransferRequest.get("transferProcessId").asText();
 		String format = requestTransferRequest.get(DSpaceConstants.FORMAT).asText();
     	JsonNode dataAddress = requestTransferRequest.get(DSpaceConstants.DATA_ADDRESS);
 		log.info("Consumer sends transfer request");
-		JsonNode response = apiService.requestTransfer(targetConnector, agreementId, format, dataAddress);
+		JsonNode response = apiService.requestTransfer(transferProcessId, format, dataAddress);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
 				.body(GenericApiResponse.success(response, "Data transfer requested"));
 	}

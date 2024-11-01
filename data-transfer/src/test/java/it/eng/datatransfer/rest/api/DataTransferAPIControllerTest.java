@@ -86,30 +86,28 @@ class DataTransferAPIControllerTest {
 	@DisplayName("Request transfer process success")
 	public void requestTransfer_success() {
 		Map<String, Object> map = new HashMap<>();
-		map.put("Forward-To", MockObjectUtil.FORWARD_TO);
-		map.put("agreementId", "urn:uuid:AGREEMENT_ID");
+		map.put("transferProcessId", MockObjectUtil.FORWARD_TO);
 		map.put(DSpaceConstants.FORMAT, DataTransferFormat.HTTP_PULL.name());
 		map.put(DSpaceConstants.DATA_ADDRESS, Serializer.serializePlainJsonNode(MockObjectUtil.DATA_ADDRESS));
 				
-		when(apiService.requestTransfer(any(String.class), any(String.class), any(String.class), any(JsonNode.class)))
+		when(apiService.requestTransfer(any(String.class), any(String.class), any(JsonNode.class)))
 			.thenReturn(Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_PROCESS_REQUESTED));
 		
 		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.requestTransfer(mapper.convertValue(map, JsonNode.class));
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		verify(apiService).requestTransfer(any(String.class), any(String.class), any(String.class), any(JsonNode.class));
+		verify(apiService).requestTransfer(any(String.class), any(String.class), any(JsonNode.class));
 	}
 	
 	@Test
 	@DisplayName("Request transfer process failed")
 	public void requestTransfer_failed() {
 		Map<String, Object> map = new HashMap<>();
-		map.put("Forward-To", MockObjectUtil.FORWARD_TO);
-		map.put("agreementId", "some-agreement");
+		map.put("transferProcessId", MockObjectUtil.FORWARD_TO);
 		map.put(DSpaceConstants.FORMAT, DataTransferFormat.HTTP_PULL.name());
 		map.put(DSpaceConstants.DATA_ADDRESS, Serializer.serializePlainJsonNode(MockObjectUtil.DATA_ADDRESS));
 				
 		doThrow(new DataTransferAPIException("Something not correct - tests"))
-			.when(apiService).requestTransfer(any(String.class), any(String.class), any(String.class), any(JsonNode.class));
+			.when(apiService).requestTransfer(any(String.class), any(String.class), any(JsonNode.class));
 		
 		assertThrows(DataTransferAPIException.class, () -> controller.requestTransfer(mapper.convertValue(map, JsonNode.class)));
 	}

@@ -95,6 +95,7 @@ class DataTransferAPIServiceTest {
 	@Test
 	@DisplayName("Request transfer process success")
 	public void startNegotiation_success() {
+		when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
 		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.getData()).thenReturn(Serializer.serializeProtocol(MockObjectUtil.TRANSFER_PROCESS_REQUESTED));
@@ -102,7 +103,7 @@ class DataTransferAPIServiceTest {
 		when(properties.consumerCallbackAddress()).thenReturn(MockObjectUtil.CALLBACK_ADDRESS);
 		when(transferProcessRepository.save(any(TransferProcess.class))).thenReturn(MockObjectUtil.TRANSFER_PROCESS_REQUESTED);
 		
-		apiService.requestTransfer(MockObjectUtil.FORWARD_TO, MockObjectUtil.TRANSFER_PROCESS_REQUESTED.getId(), DataTransferFormat.HTTP_PULL.name(), Serializer.serializePlainJsonNode(MockObjectUtil.DATA_ADDRESS));
+		apiService.requestTransfer(MockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(), DataTransferFormat.HTTP_PULL.name(), null);
 		
 		verify(transferProcessRepository).save(argCaptorTransferProcess.capture());
 		assertEquals(IConstants.ROLE_CONSUMER, argCaptorTransferProcess.getValue().getRole());
@@ -111,12 +112,13 @@ class DataTransferAPIServiceTest {
 	@Test
 	@DisplayName("Request transfer process failed")
 	public void startNegotiation_failed() {
+		when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
 		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(properties.consumerCallbackAddress()).thenReturn(MockObjectUtil.CALLBACK_ADDRESS);
 		
 		assertThrows(DataTransferAPIException.class, ()->
-			apiService.requestTransfer(MockObjectUtil.FORWARD_TO, MockObjectUtil.TRANSFER_PROCESS_REQUESTED.getId(), DataTransferFormat.HTTP_PULL.name(), Serializer.serializePlainJsonNode(MockObjectUtil.DATA_ADDRESS)));
+			apiService.requestTransfer(MockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(), DataTransferFormat.HTTP_PULL.name(), null));
 		
 		verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 	}
@@ -124,6 +126,7 @@ class DataTransferAPIServiceTest {
 	@Test
 	@DisplayName("Request transfer process json exception")
 	public void startNegotiation_jsonException() {
+		when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
 		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.getData()).thenReturn("not a JSON");
@@ -131,7 +134,7 @@ class DataTransferAPIServiceTest {
 		when(properties.consumerCallbackAddress()).thenReturn(MockObjectUtil.CALLBACK_ADDRESS);
 		
 		assertThrows(DataTransferAPIException.class, ()->
-			apiService.requestTransfer(MockObjectUtil.FORWARD_TO, MockObjectUtil.TRANSFER_PROCESS_REQUESTED.getId(), DataTransferFormat.HTTP_PULL.name(), Serializer.serializePlainJsonNode(MockObjectUtil.DATA_ADDRESS)));
+			apiService.requestTransfer( MockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(), DataTransferFormat.HTTP_PULL.name(), null));
 		
 		verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 	}

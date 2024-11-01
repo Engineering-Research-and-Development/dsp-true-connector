@@ -73,39 +73,41 @@ public class DataTransferAPIService {
 	
 	/********* CONSUMER ***********/
 	
-	public JsonNode requestTransfer(String targetConnector, String agreementId, String format, JsonNode dataAddress) {
+	public JsonNode requestTransfer(String transferProcessId, String format, JsonNode dataAddress) {
+		TransferProcess transferProcess = findTransferProcessById(transferProcessId);
+		
+		stateTransitionCheck(TransferState.REQUESTED, transferProcess.getState());
 		DataAddress dataAddressForMessage = null;
-		if (StringUtils.isNotBlank(format)) {
+		if (StringUtils.isNotBlank(format) && dataAddress != null && !dataAddress.isEmpty()) {
 			dataAddressForMessage = Serializer.deserializePlain(dataAddress.toPrettyString(), DataAddress.class);
 		}
 		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
-				.agreementId(agreementId)
+				.agreementId(transferProcess.getAgreementId())
 				.callbackAddress(dataTransferProperties.consumerCallbackAddress())
 				.consumerPid("urn:uuid:" + UUID.randomUUID())
-				//TODO add format and data address when PUSH format is supported
-				.format(null)
-				.dataAddress(null)
+				.format(format)
+				.dataAddress(dataAddressForMessage)
 				.build();
 		
-		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(DataTransferCallback.getConsumerDataTransferRequest(targetConnector), 
+		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(DataTransferCallback.getConsumerDataTransferRequest(transferProcess.getCallbackAddress()), 
 				Serializer.serializeProtocolJsonNode(transferRequestMessage), credentialUtils.getConnectorCredentials());
 		log.info("Response received {}", response);
 		TransferProcess transferProcessForDB = null;
 		if (response.isSuccess()) {
 			try {
 				JsonNode jsonNode = mapper.readTree(response.getData());
-				TransferProcess transferProcess = Serializer.deserializeProtocol(jsonNode, TransferProcess.class);
+				TransferProcess transferProcessFromResponse = Serializer.deserializeProtocol(jsonNode, TransferProcess.class);
 				
 				transferProcessForDB = TransferProcess.Builder.newInstance()
 						.id(transferProcess.getId())
-						.agreementId(agreementId)
-						.consumerPid(transferProcess.getConsumerPid())
-						.providerPid(transferProcess.getProviderPid())
+						.agreementId(transferProcess.getAgreementId())
+						.consumerPid(transferProcessFromResponse.getConsumerPid())
+						.providerPid(transferProcessFromResponse.getProviderPid())
 						.format(format)
 						.dataAddress(dataAddressForMessage)
-						.callbackAddress(targetConnector)
+						.callbackAddress(transferProcess.getCallbackAddress())
 						.role(IConstants.ROLE_CONSUMER)
-						.state(transferProcess.getState())
+						.state(transferProcessFromResponse.getState())
 						.build();
 				
 				transferProcessRepository.save(transferProcessForDB);
@@ -145,7 +147,7 @@ public class DataTransferAPIService {
 	   		address = DataTransferCallback.getConsumerDataTransferStart(transferProcess.getCallbackAddress(), transferProcess.getConsumerPid());
 	   		if (transferProcess.getDataAddress() == null) {
 	   			String transactionId = Base64.encodeBase64URLSafeString((transferProcess.getConsumerPid() + "|" + transferProcess.getProviderPid()).getBytes("UTF-8"));
-	   			String artifactURL = DataTransferCallback.getValidCallback(dataTransferProperties.providerCallbackAddress()) + "/artifacts/" + transactionId + "/1";
+	   			String artifactURL = DataTransferCallback.getValidCallback(dataTransferProperties.providerCallbackAddress()) + "/artifacts/" + transactionId;
 	   			
 	   			EndpointProperty endpointProperty = EndpointProperty.Builder.newInstance()
 	   					.name("https://w3id.org/edc/v0.0.1/ns/endpoint")
