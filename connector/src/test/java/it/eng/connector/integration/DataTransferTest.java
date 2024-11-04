@@ -298,6 +298,46 @@ public class DataTransferTest extends BaseIntegrationTest {
     	downloadArtifactFail(transactionId);
 	}
 
+	@Test
+	@DisplayName("Terminate transfer process - provider")
+	@WithUserDetails(TestUtil.CONNECTOR_USER)
+	public void termianteTransferProcess_provider() throws Exception {
+		String consumerPid = "urn:uuid" + UUID.randomUUID().toString();
+		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
+				.consumerPid(consumerPid)
+				.agreementId("urn:uuid:AGREEMENT_ID_TERMINATE_TRANSFER_TEST")
+				.format(DataTransferFormat.HTTP_PULL.name())
+				.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
+				.build();
+		MvcResult mvcResult = mockMvc.perform(
+				post("/transfers/request")
+				.content(Serializer.serializeProtocol(transferRequestMessage))
+				.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(status().isCreated())
+				.andReturn();
+		String jsonTransferProcess = mvcResult.getResponse().getContentAsString();
+		JsonNode jsonNode = Serializer.serializeStringToProtocolJsonNode(jsonTransferProcess);
+		TransferProcess transferProcessRequested = Serializer.deserializeProtocol(jsonNode, TransferProcess.class);
+		String providerPid = transferProcessRequested.getProviderPid();
+		
+		// send terminate message
+		TransferTerminationMessage transferTerminationMessage = TransferTerminationMessage.Builder.newInstance()
+				.consumerPid(consumerPid)
+				.providerPid(providerPid)
+				.code("1")
+				.build();
+		mvcResult = mockMvc.perform(
+				post("/transfers/" + providerPid + "/termination")
+				.content(Serializer.serializeProtocol(transferTerminationMessage))
+				.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(status().isOk())
+				.andReturn();
+		
+		// check TransferProcess status for providerPid
+		TransferProcess transferProcessTerminated = getTransferProcessForProviderPid(providerPid);
+		assertEquals(transferProcessTerminated.getState(), TransferState.TERMINATED);
+	}
+	
 	private TransferProcess getTransferProcessForProviderPid(String providerPid)
 			throws Exception, UnsupportedEncodingException, JsonMappingException, JsonProcessingException {
 		MvcResult resultCompletedMessage = mockMvc.perform(
@@ -338,44 +378,5 @@ public class DataTransferTest extends BaseIntegrationTest {
 		assertTrue(artifact.contains("Doe"));
 	}
 	
-	@Test
-	@DisplayName("Terminate transfer process - provider")
-	@WithUserDetails(TestUtil.CONNECTOR_USER)
-	public void termianteTransferProcess_provider() throws Exception {
-		String consumerPid = "urn:uuid" + UUID.randomUUID().toString();
-		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
-	    		.consumerPid(consumerPid)
-	    		.agreementId("urn:uuid:AGREEMENT_ID_TERMINATE_TRANSFER_TEST")
-	    		.format(DataTransferFormat.HTTP_PULL.name())
-	    		.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
-	    		.build();
-		MvcResult mvcResult = mockMvc.perform(
-    					post("/transfers/request")
-    					.content(Serializer.serializeProtocol(transferRequestMessage))
-    					.contentType(MediaType.APPLICATION_JSON))
-    					.andExpect(status().isCreated())
-				    	.andReturn();
-    	String jsonTransferProcess = mvcResult.getResponse().getContentAsString();
-    	JsonNode jsonNode = Serializer.serializeStringToProtocolJsonNode(jsonTransferProcess);
-    	TransferProcess transferProcessRequested = Serializer.deserializeProtocol(jsonNode, TransferProcess.class);
-    	String providerPid = transferProcessRequested.getProviderPid();
-    	
-    	// send terminate message
-    	TransferTerminationMessage transferTerminationMessage = TransferTerminationMessage.Builder.newInstance()
-	    		.consumerPid(consumerPid)
-	    		.providerPid(providerPid)
-	    		.code("1")
-	    		.build();
-    	mvcResult = mockMvc.perform(
-				post("/transfers/" + providerPid + "/termination")
-				.content(Serializer.serializeProtocol(transferTerminationMessage))
-				.contentType(MediaType.APPLICATION_JSON))
-				.andExpect(status().isOk())
-		    	.andReturn();
-    	
-    	// check TransferProcess status for providerPid
-    	TransferProcess transferProcessTerminated = getTransferProcessForProviderPid(providerPid);
-    	assertEquals(transferProcessTerminated.getState(), TransferState.TERMINATED);
-	}
 	
 }
