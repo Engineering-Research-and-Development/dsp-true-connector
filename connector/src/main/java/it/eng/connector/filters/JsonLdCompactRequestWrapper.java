@@ -8,6 +8,10 @@ import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+
 import com.github.jsonldjava.core.JsonLdConsts;
 import com.github.jsonldjava.core.JsonLdOptions;
 import com.github.jsonldjava.core.JsonLdProcessor;
@@ -43,23 +47,30 @@ public class JsonLdCompactRequestWrapper extends HttpServletRequestWrapper {
 		}
 		String input = stringBuilder.toString();
 		
-		Map<String, Object> jsonObject = (Map<String, Object>) JsonUtils.fromString(input);
-		Object con =  jsonObject.get(JsonLdConsts.CONTEXT);
-		if(con instanceof Map) {
-			log.info("Performing json-ld compact since initial context is not expected");
-			jsonObject.put(JsonLdConsts.CONTEXT, DSpaceConstants.DATASPACE_CONTEXT_2024_01_VALUE);
-			Map<String, Object> inContext = new HashMap<>();
-			inContext.put(JsonLdConsts.CONTEXT, DSpaceConstants.DATASPACE_CONTEXT_2024_01_VALUE);
-			
-			JsonLdOptions ldOpts = new JsonLdOptions();
-			ldOpts.setCompactArrays(Boolean.TRUE);
-			ldOpts.setProcessingMode(JsonLdOptions.JSON_LD_1_1);
-			
-			Map<String, Object> compact = JsonLdProcessor.compact(jsonObject, inContext, ldOpts);
-			String compactContent = JsonUtils.toString(compact);
-			return compactContent;
-		} 
-		log.info("SKIPPING performing json-ld compact - context is expected");
+		// input can be empty - perform check && body is of application-json
+		// Should we support also application/json+ld? Impact on controllers since they do not accept such content type
+		if(StringUtils.isNotBlank(input) && MediaType.APPLICATION_JSON_VALUE.equals(request.getHeader(HttpHeaders.CONTENT_TYPE))) {
+			Map<String, Object> jsonObject = (Map<String, Object>) JsonUtils.fromString(input);
+			Object con =  jsonObject.get(JsonLdConsts.CONTEXT);
+			if(con instanceof Map) {
+				log.info("Performing json-ld compact since initial context is not expected");
+				jsonObject.put(JsonLdConsts.CONTEXT, DSpaceConstants.DATASPACE_CONTEXT_2024_01_VALUE);
+				Map<String, Object> inContext = new HashMap<>();
+				inContext.put(JsonLdConsts.CONTEXT, DSpaceConstants.DATASPACE_CONTEXT_2024_01_VALUE);
+				
+				JsonLdOptions ldOpts = new JsonLdOptions();
+				ldOpts.setCompactArrays(Boolean.TRUE);
+				ldOpts.setProcessingMode(JsonLdOptions.JSON_LD_1_1);
+				
+				Map<String, Object> compact = JsonLdProcessor.compact(jsonObject, inContext, ldOpts);
+				String compactContent = JsonUtils.toString(compact);
+				return compactContent;
+			} 
+			log.info("SKIPPING performing json-ld compact - context is expected");
+		} else {
+			log.debug("Empty body - not performing json-ld compacting");
+		}
+		
 		return input;
 	}
 

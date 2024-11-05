@@ -378,4 +378,19 @@ public class DataTransferTest extends BaseIntegrationTest {
     	assertEquals(transferProcessTerminated.getState(), TransferState.TERMINATED);
 	}
 	
+	@Test
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    public void findDataTransfer_providerPid() throws Exception {
+    	final ResultActions result =
+    			mockMvc.perform(
+    					get("/transfers/urn:uuid:PROVIDER_PID_TRANSFER")
+    					.contentType(MediaType.APPLICATION_JSON));
+    	result.andExpect(status().isOk())
+    	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+    	.andExpect(jsonPath("['" + DSpaceConstants.TYPE + "']", 
+    			is(DSpaceConstants.DSPACE + TransferProcess.class.getSimpleName())))
+    	.andExpect(jsonPath("['" + DSpaceConstants.DSPACE_STATE + "']", is(TransferState.STARTED.toString())))
+    	.andExpect(jsonPath("['" + DSpaceConstants.CONTEXT + "']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
+    }
+	
 }
