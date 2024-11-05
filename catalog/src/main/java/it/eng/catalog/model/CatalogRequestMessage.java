@@ -36,7 +36,8 @@ public class CatalogRequestMessage extends AbstractCatalogObject {
 	private static final long serialVersionUID = 8564526286689300458L;
 	
 	@JsonProperty(DSpaceConstants.DSPACE_FILTER)
-	private List<String> filter;
+//	private List<String> filter;
+	private List<Object> filter;
 
 	@JsonPOJOBuilder(withPrefix = "")
 	@JsonIgnoreProperties(ignoreUnknown = true)
@@ -52,8 +53,13 @@ public class CatalogRequestMessage extends AbstractCatalogObject {
 			return new CatalogRequestMessage.Builder();
 		}
 		
+//		@JsonProperty(DSpaceConstants.DSPACE_FILTER)
+//		public Builder filter(List<String> filter) {
+//			message.filter = filter;
+//			return this;
+//		}
 		@JsonProperty(DSpaceConstants.DSPACE_FILTER)
-		public Builder filter(List<String> filter) {
+		public Builder filter(List<Object> filter) {
 			message.filter = filter;
 			return this;
 		}

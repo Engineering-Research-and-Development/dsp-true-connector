@@ -143,4 +143,19 @@ public class Serializer {
 				.collect(Collectors.joining(",")));
 	}
 
+	
+	public static <T> T deserializeProtocol(String jsonStringPlain, Class<T> clazz) {
+		try {
+			T obj = jsonMapper.readValue(jsonStringPlain, clazz);
+			Set<ConstraintViolation<T>> violations = validator.validate(obj);
+			if (violations.isEmpty()) {
+				return obj;
+			}
+			throw new ValidationException(violations.stream().map(v -> v.getPropertyPath() + " " + v.getMessage())
+					.collect(Collectors.joining(",")));
+		} catch (JsonProcessingException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
 }

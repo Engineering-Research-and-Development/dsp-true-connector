@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 05-11-2024
+
+### Added
+
+ - Json-ld request processing filter to compact incoming protocol request
+
 ## [0.1.1] - 24-10-2024
 
 ### Added

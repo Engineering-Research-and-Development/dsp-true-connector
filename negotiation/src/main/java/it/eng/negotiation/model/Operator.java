@@ -32,6 +32,7 @@ public enum Operator {
 		Map<String, Operator> map = new ConcurrentHashMap<String, Operator>();
 		for (Operator instance : Operator.values()) {
 			map.put(instance.toString(), instance);
+			map.put(instance.toString().toLowerCase(), instance);
 			map.put(instance.name(), instance);
 		}
 		BY_LABEL = Collections.unmodifiableMap(map);

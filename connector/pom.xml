@@ -83,6 +83,23 @@
 			<artifactId>json</artifactId>
 			<version>20230618</version>
 		</dependency>
+		<dependency>
+		    <groupId>com.github.jsonld-java</groupId>
+		    <artifactId>jsonld-java</artifactId>
+		    <version>0.13.6</version>
+		</dependency>
+<!--		Replace com.github.jsonld-java with titanium-->
+		<dependency>
+		    <groupId>com.apicatalog</groupId>
+		    <artifactId>titanium-json-ld</artifactId>
+		    <version>1.4.1</version>
+		</dependency>
+		<dependency>
+		    <groupId>org.glassfish</groupId>
+		    <artifactId>jakarta.json</artifactId>
+		    <version>2.0.1</version>
+		</dependency>
+		
 		<!-- TEST -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

@@ -31,6 +31,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import it.eng.connector.filters.JsonLdRequestProcessingFilter;
 import it.eng.connector.repository.UserRepository;
 import it.eng.tools.service.ApplicationPropertiesService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -56,6 +57,9 @@ public class WebSecurityConfig {
     @Autowired
     @Qualifier("delegatedAuthenticationEntryPoint")
     private AuthenticationEntryPoint authEntryPoint;
+    
+    @Autowired
+    JsonLdRequestProcessingFilter jsonLdRequestProcessingFilter;
 
     private final JwtAuthenticationProvider jwtAuthenticationProvider;
     private final UserRepository userRepository;
@@ -150,6 +154,7 @@ public class WebSecurityConfig {
                 .addFilterBefore(protocolEndpointsAuthenticationFilter(applicationPropertiesService), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter(http), UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(basicAuthenticationFilter(), JwtAuthenticationFilter.class)
+                .addFilterAfter(jsonLdRequestProcessingFilter, JwtAuthenticationFilter.class)
                 .exceptionHandling((exHandler) -> exHandler.authenticationEntryPoint(authEntryPoint));
         return http.build();
     }

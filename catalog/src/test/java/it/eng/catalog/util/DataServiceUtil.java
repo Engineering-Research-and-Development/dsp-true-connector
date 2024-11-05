@@ -12,7 +12,7 @@ public class DataServiceUtil {
 	public static final DataService DATA_SERVICE = DataService.Builder.newInstance()
 			.id(UUID.randomUUID().toString())
 			.keyword(Arrays.asList("DataService keyword1", "DataService keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
-			.theme(Arrays.asList("DataService theme1", "DataService theme2").stream().collect(Collectors.toCollection(HashSet::new)))
+			.theme(Arrays.asList("DataServiceTheme1", "DataServiceTheme2").stream().collect(Collectors.toCollection(HashSet::new)))
 			.conformsTo(MockObjectUtil.CONFORMSTO)
 			.creator(MockObjectUtil.CREATOR)
 			.description(Arrays.asList(MockObjectUtil.MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
