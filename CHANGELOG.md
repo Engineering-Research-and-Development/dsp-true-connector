@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 05-11-2024
+
+### Changed
+
+ - Initiate transfer process protocol endpoint now uses initialized transfer processes
+
 ## [0.1.1] - 28-10-2024
 
 ### Added

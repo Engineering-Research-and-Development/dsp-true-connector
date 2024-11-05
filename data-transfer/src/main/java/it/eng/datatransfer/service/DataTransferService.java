@@ -82,6 +82,9 @@ public class DataTransferService {
 				.state(TransferState.REQUESTED)
 				.role(transferProcess.getRole())
 				.datasetId(transferProcess.getDatasetId())
+				.createdBy(transferProcess.getCreatedBy())
+				.lastModifiedBy(transferProcess.getLastModifiedBy())
+				.version(transferProcess.getVersion())
 				.build();
 		transferProcessRepository.save(transferProcessRequested);
 		log.info("Requested TransferProcess created");

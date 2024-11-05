@@ -457,6 +457,36 @@
       "modified": "2024-04-23T16:26:00.000Z",
       "version": 0
         }, {
+	  "_id": "urn:uuid:abc45798-4124-4932-8baf-ab7fd66ql4d5",
+	  "_class": "it.eng.datatransfer.model.TransferProcess",
+      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
+      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+      "callbackAddress": "http://localhost:8090/",
+      "agreementId" : "urn:uuid:AGREEMENT_ID_TERMINATE_TRANSFER_TEST",
+	  "state" : "INITIALIZED",
+      "role": "consumer",
+	  "datasetId":"urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+	  "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+        }, {
+	  "_id": "urn:uuid:abc45798-4134-4932-8baf-ab7fd66ql4d5",
+	  "_class": "it.eng.datatransfer.model.TransferProcess",
+      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
+      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+      "callbackAddress": "http://localhost:8090/",
+      "agreementId" : "urn:uuid:AGREEMENT_ID_COMPLETED_TRANSFER_TEST",
+	  "state" : "INITIALIZED",
+      "role": "consumer",
+	  "datasetId":"urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+	  "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+        }, {
 	  "_id": "urn:uuid:abc45798-5555-4932-8baf-ab7fd66ql4d5",
 	  "_class": "it.eng.datatransfer.model.TransferProcess",
       "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_REQ",
