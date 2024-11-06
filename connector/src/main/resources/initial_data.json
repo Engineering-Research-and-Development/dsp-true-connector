@@ -444,8 +444,8 @@
         }, {
 	  "_id": "urn:uuid:abc45798-4434-4932-8baf-ab7fd66ql4d5",
 	  "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_INITIALIZED",
+      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_INITIALIZED",
       "callbackAddress": "http://localhost:8090/",
       "agreementId" : "urn:uuid:AGREEMENT_ID_INITIALIZED",
 	  "state" : "INITIALIZED",
@@ -459,8 +459,8 @@
         }, {
 	  "_id": "urn:uuid:abc45798-1434-4932-8baf-ab7fd66ql4d5",
 	  "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_INITIALIZED_API",
+      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_INITIALIZED_API",
       "callbackAddress": "http://localhost:8090/",
       "agreementId" : "urn:uuid:AGREEMENT_ID_INITIALIZED_API",
 	  "state" : "INITIALIZED",
@@ -474,8 +474,8 @@
         }, {
 	  "_id": "urn:uuid:abc45798-4124-4932-8baf-ab7fd66ql4d5",
 	  "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_TERMINATE_TRANSFER_TEST",
+      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_TERMINATE_TRANSFER_TEST",
       "callbackAddress": "http://localhost:8090/",
       "agreementId" : "urn:uuid:AGREEMENT_ID_TERMINATE_TRANSFER_TEST",
 	  "state" : "INITIALIZED",
@@ -489,8 +489,8 @@
         }, {
 	  "_id": "urn:uuid:abc45798-4134-4932-8baf-ab7fd66ql4d5",
 	  "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_COMPLETED_TRANSFER_TEST",
+      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_COMPLETED_TRANSFER_TEST",
       "callbackAddress": "http://localhost:8090/",
       "agreementId" : "urn:uuid:AGREEMENT_ID_COMPLETED_TRANSFER_TEST",
 	  "state" : "INITIALIZED",
