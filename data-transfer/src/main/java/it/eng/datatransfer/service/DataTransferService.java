@@ -25,6 +25,7 @@ import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
 
@@ -35,6 +36,7 @@ public class DataTransferService {
 	private final TransferProcessRepository transferProcessRepository;
 	private final TransferRequestMessageRepository transferRequestMessageRepository;
 	private final ApplicationEventPublisher publisher;
+	private final UsageControlProperties usageControlProperties;
 	
 	private final OkHttpRestClient okHttpRestClient;
 	private final CredentialUtils credentialUtils;
@@ -43,6 +45,7 @@ public class DataTransferService {
 	public DataTransferService(TransferProcessRepository transferProcessRepository, 
 			TransferRequestMessageRepository transferRequestMessageRepository,
 			ApplicationEventPublisher publisher, 
+			UsageControlProperties usageControlProperties, 
 			OkHttpRestClient okHttpRestClient,
 			CredentialUtils credentialUtils,
 			DataTransferProperties properties) {
@@ -50,6 +53,7 @@ public class DataTransferService {
 		this.transferProcessRepository = transferProcessRepository;
 		this.transferRequestMessageRepository = transferRequestMessageRepository;
 		this.publisher = publisher;
+		this.usageControlProperties = usageControlProperties;
 		this.okHttpRestClient = okHttpRestClient;
 		this.credentialUtils = credentialUtils;
 		this.properties = properties;
@@ -90,14 +94,17 @@ public class DataTransferService {
 					" there is already transfer process created.", tp.getConsumerPid());
 				});
 		// check if agreement exists
-//		/{agreementId}/valid
-		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + 
-				properties.serverPort() + ApiEndpoints.NEGOTIATION_AGREEMENTS_V1 + "/"+  transferRequestMessage.getAgreementId() + "/valid", 
-				null, 
-				credentialUtils.getAPICredentials());
-		if (!response.isSuccess()) {
-			throw new AgreementNotFoundException("Agreement with id " + transferRequestMessage.getAgreementId()+ " not found or Conract Negotiation not FINALIZED.",
-					transferRequestMessage.getConsumerPid(), "urn:uuid:" + UUID.randomUUID());
+		if(usageControlProperties.usageControlEnabled()) {
+			GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + 
+					properties.serverPort() + ApiEndpoints.NEGOTIATION_AGREEMENTS_V1 + "/"+  transferRequestMessage.getAgreementId() + "/valid", 
+					null, 
+					credentialUtils.getAPICredentials());
+			if (!response.isSuccess()) {
+				throw new AgreementNotFoundException("Agreement with id " + transferRequestMessage.getAgreementId()+ " not found or Conract Negotiation not FINALIZED.",
+						transferRequestMessage.getConsumerPid(), "urn:uuid:" + UUID.randomUUID());
+			}
+		} else {
+			log.info("UsageControl DISABLED - will not check if agreement is present or valid");
 		}
 		
 		// TODO save also transferRequestMessage once we implement provider push data - will need information where to push

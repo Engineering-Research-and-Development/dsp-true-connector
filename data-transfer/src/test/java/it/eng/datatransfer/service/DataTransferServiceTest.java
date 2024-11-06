@@ -39,6 +39,7 @@ import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.datatransfer.util.MockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -58,6 +59,8 @@ public class DataTransferServiceTest {
 	private DataTransferProperties properties;
     @Mock
 	private GenericApiResponse<String> apiResponse;
+    @Mock
+    private UsageControlProperties usageControlProperties;
 
 	@InjectMocks
 	private DataTransferService service;
@@ -109,9 +112,24 @@ public class DataTransferServiceTest {
 	@DisplayName("DataTransfer requested - success")
 	public void initiateTransferProcess() {
 		when(transferProcessRepository.findByAgreementId(MockObjectUtil.AGREEMENT_ID)).thenReturn(Optional.empty());
+		when(usageControlProperties.usageControlEnabled()).thenReturn(true);
     	when(okHttpRestClient.sendRequestProtocol(any(String.class), isNull(), isNull()))
     		.thenReturn(apiResponse);
     	when(apiResponse.isSuccess()).thenReturn(true);
+
+    	TransferProcess transferProcessRequested = service.initiateDataTransfer(MockObjectUtil.TRANSFER_REQUEST_MESSAGE);
+		
+		assertNotNull(transferProcessRequested);
+		assertEquals(TransferState.REQUESTED, transferProcessRequested.getState());
+		verify(transferProcessRepository).save(argTransferProcess.capture());
+		assertEquals(TransferState.REQUESTED, argTransferProcess.getValue().getState());
+	}
+	
+	@Test
+	@DisplayName("DataTransfer requested - usageControl disabled - success")
+	public void initiateTransferProcess_uc_disabled() {
+		when(transferProcessRepository.findByAgreementId(MockObjectUtil.AGREEMENT_ID)).thenReturn(Optional.empty());
+		when(usageControlProperties.usageControlEnabled()).thenReturn(false);
 
     	TransferProcess transferProcessRequested = service.initiateDataTransfer(MockObjectUtil.TRANSFER_REQUEST_MESSAGE);
 		
@@ -136,6 +154,7 @@ public class DataTransferServiceTest {
 	@DisplayName("DataTransfer requested - agreement not valid")
 	public void initiateTransferProcess_agreemen_not_valid() {
 		when(transferProcessRepository.findByAgreementId(MockObjectUtil.AGREEMENT_ID)).thenReturn(Optional.empty());
+		when(usageControlProperties.usageControlEnabled()).thenReturn(true);
     	when(okHttpRestClient.sendRequestProtocol(any(String.class), isNull(), isNull()))
     		.thenReturn(apiResponse);
     	when(apiResponse.isSuccess()).thenReturn(false);

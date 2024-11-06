@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import it.eng.negotiation.service.ContractNegotiationAPIService;
+import it.eng.negotiation.service.AgreementAPIService;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -17,17 +17,17 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class AgreementAPIController {
 
-	private ContractNegotiationAPIService contractNegotiationAPIService;
+	private AgreementAPIService agreementAPIService;
 
-	public AgreementAPIController(ContractNegotiationAPIService contractNegotiationAPIService) {
+	public AgreementAPIController(AgreementAPIService agreementAPIService) {
 		super();
-		this.contractNegotiationAPIService = contractNegotiationAPIService;
+		this.agreementAPIService = agreementAPIService;
 	}
 	
 	 @PostMapping(path = "/{agreementId}/valid")
 	    public ResponseEntity<GenericApiResponse<String>> validateAgreement(@PathVariable String agreementId) {
 	        log.info("Validating agreement");
-	        contractNegotiationAPIService.validateAgreement(agreementId);
+	        agreementAPIService.validateAgreement(agreementId);
 	        return ResponseEntity.ok()
 	        		.contentType(MediaType.APPLICATION_JSON)
 	        		.body(GenericApiResponse.success("Agreement is ok", "Agreement is ok"));
@@ -36,7 +36,7 @@ public class AgreementAPIController {
 	 @PostMapping(path = "/{agreementId}/enforce")
 	    public ResponseEntity<GenericApiResponse<String>> enforceAgreement(@PathVariable String agreementId) {
 	        log.info("Enforcing agreement");
-	        contractNegotiationAPIService.enforceAgreement(agreementId);
+	        agreementAPIService.enforceAgreement(agreementId);
 	        return ResponseEntity.ok()
 	        		.contentType(MediaType.APPLICATION_JSON)
 	        		.body(GenericApiResponse.success("Agreement enforcement is valid", "Agreement enforcement is ok"));
