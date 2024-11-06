@@ -1,13 +1,9 @@
 package it.eng.datatransfer.service;
 
-import java.util.UUID;
-
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import it.eng.datatransfer.event.TransferProcessChangeEvent;
-import it.eng.datatransfer.exceptions.AgreementNotFoundException;
-import it.eng.datatransfer.exceptions.TransferProcessExistsException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.exceptions.TransferProcessNotFoundException;
 import it.eng.datatransfer.model.TransferCompletionMessage;
@@ -17,15 +13,9 @@ import it.eng.datatransfer.model.TransferStartMessage;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.model.TransferSuspensionMessage;
 import it.eng.datatransfer.model.TransferTerminationMessage;
-import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.datatransfer.serializer.Serializer;
-import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.controller.ApiEndpoints;
-import it.eng.tools.model.IConstants;
-import it.eng.tools.response.GenericApiResponse;
-import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -36,23 +26,13 @@ public class DataTransferService {
 	private final TransferRequestMessageRepository transferRequestMessageRepository;
 	private final ApplicationEventPublisher publisher;
 	
-	private final OkHttpRestClient okHttpRestClient;
-	private final CredentialUtils credentialUtils;
-	private final DataTransferProperties properties;
-	
 	public DataTransferService(TransferProcessRepository transferProcessRepository, 
 			TransferRequestMessageRepository transferRequestMessageRepository,
-			ApplicationEventPublisher publisher, 
-			OkHttpRestClient okHttpRestClient,
-			CredentialUtils credentialUtils,
-			DataTransferProperties properties) {
+			ApplicationEventPublisher publisher) {
 		super();
 		this.transferProcessRepository = transferProcessRepository;
 		this.transferRequestMessageRepository = transferRequestMessageRepository;
 		this.publisher = publisher;
-		this.okHttpRestClient = okHttpRestClient;
-		this.credentialUtils = credentialUtils;
-		this.properties = properties;
 	}
 
 	/**
@@ -84,33 +64,27 @@ public class DataTransferService {
 	 * @return TransferProcess with status REQUESTED
 	 */
 	public TransferProcess initiateDataTransfer(TransferRequestMessage transferRequestMessage) {
-		transferProcessRepository.findByAgreementId(transferRequestMessage.getAgreementId())
-			.ifPresent(tp -> {
-				throw new TransferProcessExistsException("For agreementId " + tp.getAgreementId() + 
-					" there is already transfer process created.", tp.getConsumerPid());
-				});
-		// check if agreement exists
-//		/{agreementId}/valid
-		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + 
-				properties.serverPort() + ApiEndpoints.NEGOTIATION_AGREEMENTS_V1 + "/"+  transferRequestMessage.getAgreementId() + "/valid", 
-				null, 
-				credentialUtils.getAPICredentials());
-		if (!response.isSuccess()) {
-			throw new AgreementNotFoundException("Agreement with id " + transferRequestMessage.getAgreementId()+ " not found or Conract Negotiation not FINALIZED.",
-					transferRequestMessage.getConsumerPid(), "urn:uuid:" + UUID.randomUUID());
-		}
+		TransferProcess transferProcess = transferProcessRepository.findByAgreementId(transferRequestMessage.getAgreementId())
+				.orElseThrow(() -> new TransferProcessNotFoundException("No agreement with id " + transferRequestMessage.getAgreementId() + 
+					" exists or Contract Negotiation not finalized"));
 		
+		stateTransitionCheck(transferProcess, TransferState.REQUESTED);
 		// TODO save also transferRequestMessage once we implement provider push data - will need information where to push
 		transferRequestMessageRepository.save(transferRequestMessage);
 		
 		TransferProcess transferProcessRequested = TransferProcess.Builder.newInstance()
+				.id(transferProcess.getId())
 				.agreementId(transferRequestMessage.getAgreementId())
 				.callbackAddress(transferRequestMessage.getCallbackAddress())
 				.consumerPid(transferRequestMessage.getConsumerPid())
 				.format(transferRequestMessage.getFormat())
 				.dataAddress(transferRequestMessage.getDataAddress())
 				.state(TransferState.REQUESTED)
-				.role(IConstants.ROLE_PROVIDER)
+				.role(transferProcess.getRole())
+				.datasetId(transferProcess.getDatasetId())
+				.createdBy(transferProcess.getCreatedBy())
+				.lastModifiedBy(transferProcess.getLastModifiedBy())
+				.version(transferProcess.getVersion())
 				.build();
 		transferProcessRepository.save(transferProcessRequested);
 		log.info("Requested TransferProcess created");
