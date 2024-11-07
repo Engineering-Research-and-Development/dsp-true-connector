@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -27,20 +26,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
-import it.eng.datatransfer.exceptions.AgreementNotFoundException;
-import it.eng.datatransfer.exceptions.TransferProcessExistsException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.exceptions.TransferProcessNotFoundException;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
-import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.datatransfer.util.MockObjectUtil;
-import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.response.GenericApiResponse;
-import it.eng.tools.usagecontrol.UsageControlProperties;
-import it.eng.tools.util.CredentialUtils;
 
 @ExtendWith(MockitoExtension.class)
 public class DataTransferServiceTest {
@@ -51,16 +44,8 @@ public class DataTransferServiceTest {
 	private TransferRequestMessageRepository transferRequestMessageRepository;
 	@Mock
 	private ApplicationEventPublisher publisher;
-	@Mock
-	private OkHttpRestClient okHttpRestClient;
-	@Mock
-	private CredentialUtils credentialUtils;
-	@Mock
-	private DataTransferProperties properties;
     @Mock
 	private GenericApiResponse<String> apiResponse;
-    @Mock
-    private UsageControlProperties usageControlProperties;
 
 	@InjectMocks
 	private DataTransferService service;
@@ -111,11 +96,7 @@ public class DataTransferServiceTest {
 	@Test
 	@DisplayName("DataTransfer requested - success")
 	public void initiateTransferProcess() {
-		when(transferProcessRepository.findByAgreementId(MockObjectUtil.AGREEMENT_ID)).thenReturn(Optional.empty());
-		when(usageControlProperties.usageControlEnabled()).thenReturn(true);
-    	when(okHttpRestClient.sendRequestProtocol(any(String.class), isNull(), isNull()))
-    		.thenReturn(apiResponse);
-    	when(apiResponse.isSuccess()).thenReturn(true);
+		when(transferProcessRepository.findByAgreementId(MockObjectUtil.AGREEMENT_ID)).thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
 
     	TransferProcess transferProcessRequested = service.initiateDataTransfer(MockObjectUtil.TRANSFER_REQUEST_MESSAGE);
 		
@@ -126,41 +107,12 @@ public class DataTransferServiceTest {
 	}
 	
 	@Test
-	@DisplayName("DataTransfer requested - usageControl disabled - success")
-	public void initiateTransferProcess_uc_disabled() {
-		when(transferProcessRepository.findByAgreementId(MockObjectUtil.AGREEMENT_ID)).thenReturn(Optional.empty());
-		when(usageControlProperties.usageControlEnabled()).thenReturn(false);
-
-    	TransferProcess transferProcessRequested = service.initiateDataTransfer(MockObjectUtil.TRANSFER_REQUEST_MESSAGE);
-		
-		assertNotNull(transferProcessRequested);
-		assertEquals(TransferState.REQUESTED, transferProcessRequested.getState());
-		verify(transferProcessRepository).save(argTransferProcess.capture());
-		assertEquals(TransferState.REQUESTED, argTransferProcess.getValue().getState());
-	}
-	
-	@Test
-	@DisplayName("DataTransfer requested - TransferProcess exists")
+	@DisplayName("DataTransfer requested - intialized TransferProcess does not exist")
 	public void initiateTransferPRocess_exists() {
 		when(transferProcessRepository.findByAgreementId(MockObjectUtil.AGREEMENT_ID))
-			.thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_REQUESTED));
-		assertThrows(TransferProcessExistsException.class,
+			.thenReturn(Optional.empty());
+		assertThrows(TransferProcessNotFoundException.class,
 				() -> service.initiateDataTransfer(MockObjectUtil.TRANSFER_REQUEST_MESSAGE));
-		
-		verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
-	}
-	
-	@Test
-	@DisplayName("DataTransfer requested - agreement not valid")
-	public void initiateTransferProcess_agreemen_not_valid() {
-		when(transferProcessRepository.findByAgreementId(MockObjectUtil.AGREEMENT_ID)).thenReturn(Optional.empty());
-		when(usageControlProperties.usageControlEnabled()).thenReturn(true);
-    	when(okHttpRestClient.sendRequestProtocol(any(String.class), isNull(), isNull()))
-    		.thenReturn(apiResponse);
-    	when(apiResponse.isSuccess()).thenReturn(false);
-
-    	assertThrows(AgreementNotFoundException.class,
-    			() -> service.initiateDataTransfer(MockObjectUtil.TRANSFER_REQUEST_MESSAGE));
 		
 		verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
 	}

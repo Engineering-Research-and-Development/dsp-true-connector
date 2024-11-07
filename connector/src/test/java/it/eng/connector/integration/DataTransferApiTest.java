@@ -108,7 +108,7 @@ public class DataTransferApiTest extends BaseIntegrationTest {
     public void initiateDataTransfer() throws Exception {
 		Map<String, Object> map = new HashMap<>();
 		map.put("Forward-To", "http://localhost:8090");
-		map.put("agreementId", "urn:uuid:AGREEMENT_ID_OK_API");
+		map.put("agreementId", "urn:uuid:AGREEMENT_ID_INITIALIZED_API");
 		map.put(DSpaceConstants.FORMAT, DataTransferFormat.HTTP_PULL.name());
 		map.put(DSpaceConstants.DATA_ADDRESS, Serializer.serializePlainJsonNode(MockObjectUtil.DATA_ADDRESS));
     	

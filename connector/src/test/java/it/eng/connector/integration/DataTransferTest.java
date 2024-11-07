@@ -51,7 +51,7 @@ public class DataTransferTest extends BaseIntegrationTest {
     public void initiateDataTransfer() throws Exception {
 		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
 	    		.consumerPid(MockObjectUtil.CONSUMER_PID)
-	    		.agreementId("urn:uuid:AGREEMENT_ID_OK")
+	    		.agreementId("urn:uuid:AGREEMENT_ID_INITIALIZED")
 	    		.format(DataTransferFormat.HTTP_PULL.name())
 	    		.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
 	    		.build();

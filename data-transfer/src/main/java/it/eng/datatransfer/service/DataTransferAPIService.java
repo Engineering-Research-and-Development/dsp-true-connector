@@ -106,6 +106,9 @@ public class DataTransferAPIService {
 						.callbackAddress(targetConnector)
 						.role(IConstants.ROLE_CONSUMER)
 						.state(transferProcess.getState())
+						.createdBy(transferProcess.getCreatedBy())
+						.lastModifiedBy(transferProcess.getLastModifiedBy())
+						.version(transferProcess.getVersion())
 						.build();
 				
 				transferProcessRepository.save(transferProcessForDB);

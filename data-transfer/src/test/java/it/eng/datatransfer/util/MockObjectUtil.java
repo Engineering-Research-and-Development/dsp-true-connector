@@ -47,6 +47,14 @@ public class MockObjectUtil {
 			.endpointType(ENDPOINT_TYPE)
 			.endpointProperties(List.of(ENDPOINT_PROPERTY))
 			.build();
+	
+	public static final TransferProcess TRANSFER_PROCESS_INITIALIZED = TransferProcess.Builder.newInstance()
+    		.consumerPid(CONSUMER_PID)
+    		.agreementId(AGREEMENT_ID)
+    		.callbackAddress(CALLBACK_ADDRESS)
+    		.role(IConstants.ROLE_CONSUMER)
+    		.state(TransferState.INITIALIZED)
+    		.build();
 
     public static final TransferProcess TRANSFER_PROCESS_REQUESTED = TransferProcess.Builder.newInstance()
     		.consumerPid(CONSUMER_PID)
