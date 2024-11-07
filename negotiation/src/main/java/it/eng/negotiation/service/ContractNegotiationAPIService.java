@@ -15,7 +15,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
-import it.eng.negotiation.exception.PolicyEnforcementException;
 import it.eng.negotiation.listener.ContractNegotiationPublisher;
 import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.ContractAgreementMessage;
@@ -479,19 +478,4 @@ public class ContractNegotiationAPIService {
     	        .orElseThrow(() ->
                 new ContractNegotiationAPIException("Contract negotiation with id " + contractNegotiationId + " not found"));
     }
-
-	public void enforceAgreement(String agreementId) {
-		Agreement agreement = agreementRepository.findById(agreementId)
-				.orElseThrow(() -> new ContractNegotiationAPIException("Agreement with Id " + agreementId + " not found."));
-		// TODO add additional checks like contract dates
-		//		LocalDateTime agreementStartDate = LocalDateTime.parse(agreement.getTimestamp(), FORMATTER);
-		//		agreementStartDate.isBefore(LocalDateTime.now());
-		boolean agreementValid = policyEnforcementService.isAgreementValid(agreement);
-		if(agreementValid) {
-			log.info("Agreement is valid");
-		} else {
-			log.info("Agreement is invalid");
-			throw new PolicyEnforcementException("Agreement with id'" + agreementId + "' evaluated as invalid");
-		}
-	}
 }
