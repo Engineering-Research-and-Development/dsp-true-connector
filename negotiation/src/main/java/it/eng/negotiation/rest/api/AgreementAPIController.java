@@ -24,15 +24,6 @@ public class AgreementAPIController {
 		this.agreementAPIService = agreementAPIService;
 	}
 	
-	 @PostMapping(path = "/{agreementId}/valid")
-	    public ResponseEntity<GenericApiResponse<String>> validateAgreement(@PathVariable String agreementId) {
-	        log.info("Validating agreement");
-	        agreementAPIService.validateAgreement(agreementId);
-	        return ResponseEntity.ok()
-	        		.contentType(MediaType.APPLICATION_JSON)
-	        		.body(GenericApiResponse.success("Agreement is ok", "Agreement is ok"));
-	 }
-	 
 	 @PostMapping(path = "/{agreementId}/enforce")
 	    public ResponseEntity<GenericApiResponse<String>> enforceAgreement(@PathVariable String agreementId) {
 	        log.info("Enforcing agreement");

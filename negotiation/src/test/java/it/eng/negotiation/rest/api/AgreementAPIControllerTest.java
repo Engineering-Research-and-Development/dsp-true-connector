@@ -30,25 +30,6 @@ class AgreementAPIControllerTest {
 	private AgreementAPIController controller;
 	
 	@Test
-	@DisplayName("Validate agreement")
-	void ValidateAgreement() {
-		doNothing().when(agreementAPIService).validateAgreement(any(String.class));
-		ResponseEntity<GenericApiResponse<String>> response = controller.validateAgreement(MockObjectUtil.AGREEMENT.getId());
-		assertNotNull(response);
-		assertTrue(response.getBody().isSuccess());
-	}
-	
-	@Test
-	@DisplayName("Validate agreement - not valid")
-	void validateAgreement_serviceError() {
-		doThrow(new ContractNegotiationAPIException("Something not correct - tests"))
-		.when(agreementAPIService).validateAgreement(any(String.class));
-		assertThrows(ContractNegotiationAPIException.class, 
-				() -> controller.validateAgreement(MockObjectUtil.AGREEMENT.getId()));
-	}
-	
-	// enforce
-	@Test
 	@DisplayName("Enforce agreement")
 	void enforceAgreement() {
 		doNothing().when(agreementAPIService).enforceAgreement(MockObjectUtil.AGREEMENT.getId());
