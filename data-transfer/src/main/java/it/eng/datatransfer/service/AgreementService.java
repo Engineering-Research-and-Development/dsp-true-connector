@@ -37,7 +37,7 @@ public class AgreementService {
 	public boolean isAgreementValid(String consumerPid, String providerPid) {
 		if(usageControlProperties.usageControlEnabled()) {
 			TransferProcess transferProcess = transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid)
-					.orElseThrow(() -> new AgreementNotFoundException("Agreement for cosnumerPid '"+ consumerPid +
+					.orElseThrow(() -> new AgreementNotFoundException("Agreement for consumerPid '"+ consumerPid +
 							"' and providerPid '" + providerPid + "' not found", consumerPid, providerPid));
 			String agreementId = transferProcess.getAgreementId();
 			GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + serverPort 
