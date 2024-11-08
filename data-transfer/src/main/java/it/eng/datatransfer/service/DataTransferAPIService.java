@@ -82,8 +82,8 @@ public class DataTransferAPIService {
 				.agreementId(agreementId)
 				.callbackAddress(dataTransferProperties.consumerCallbackAddress())
 				.consumerPid("urn:uuid:" + UUID.randomUUID())
-				//TODO add format and data address when PUSH format is supported
-				.format(null)
+				.format(format)
+				//TODO add data address when PUSH format is supported
 				.dataAddress(null)
 				.build();
 		

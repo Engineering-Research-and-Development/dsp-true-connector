@@ -158,7 +158,7 @@
 	            "_class": "it.eng.catalog.model.Distribution",
 	            "title": "PDF file",
 	            "format": {
-	                "_id": "HTTP-pull"
+	                "_id": "HttpData-PULL"
 	            },
 	            "accessService": [{
 	                    "$ref": "dataservices",
@@ -175,7 +175,7 @@
 	            "_class": "it.eng.catalog.model.Distribution",
 	            "title": "JSON file",
 	            "format": {
-	                "_id": "HTTP-pull"
+	                "_id": "HttpData-PULL"
 	            },
 	            "accessService": [{
 	                    "$ref": "dataservices",

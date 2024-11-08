@@ -56,7 +56,7 @@ public class DataTransferExceptionAdvice extends ResponseEntityExceptionHandler 
 				HttpStatus.BAD_REQUEST, request);
 	}
 	
-	@ExceptionHandler(value = { TransferProcessInvalidStateException.class })
+	@ExceptionHandler(value = { TransferProcessInvalidStateException.class, TransferProcessInvalidFormatException.class })
 	protected ResponseEntity<Object> handleTransferProcessInvalidStateException(TransferProcessInvalidStateException ex,
 			WebRequest request) {
 		TransferError errorMessage = TransferError.Builder.newInstance()
@@ -82,7 +82,7 @@ public class DataTransferExceptionAdvice extends ResponseEntityExceptionHandler 
 				HttpStatus.BAD_REQUEST, request);
 	}
 	
-	@ExceptionHandler(value = TransferProcessArtifactNotFoundException.class)
+	@ExceptionHandler(value = {TransferProcessArtifactNotFoundException.class, TransferProcessInternalException.class })
 	protected ResponseEntity<Object> handleTransferProcessArtifactNotFoundException(TransferProcessArtifactNotFoundException ex, WebRequest request) {
 		TransferError errorMessage = TransferError.Builder.newInstance()
 				.consumerPid(ex.getConsumerPid())

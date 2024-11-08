@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+ - TransferRequest initiate - protocol endpoint check if provided dct:format is supported by negotiated dataset
+ - OkHttpClient.sendInternalRequest
+ 
+### Changed
+
+ - DataTransferFormat.HttpData-PULL (was before HTTP_PULL)
+ - GenericApiResponse.timestamp added @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS")
+ - Serializers added InstantSerializer, InstantDeserializer and JavaTimeModule
+ 
+## [0.1.1] - 07-11-2024
+
+### Added
+
  - New property *application.usagecontrol.enabled=true*
  - Logic for optional usageControl; feature can be turned on or off by setting the property
 

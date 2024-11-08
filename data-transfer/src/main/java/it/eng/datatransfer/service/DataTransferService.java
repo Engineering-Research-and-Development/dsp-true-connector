@@ -1,9 +1,15 @@
 package it.eng.datatransfer.service;
 
+import java.util.List;
+
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
 import it.eng.datatransfer.event.TransferProcessChangeEvent;
+import it.eng.datatransfer.exceptions.TransferProcessInternalException;
+import it.eng.datatransfer.exceptions.TransferProcessInvalidFormatException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.exceptions.TransferProcessNotFoundException;
 import it.eng.datatransfer.model.TransferCompletionMessage;
@@ -16,6 +22,9 @@ import it.eng.datatransfer.model.TransferTerminationMessage;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.datatransfer.serializer.Serializer;
+import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -26,13 +35,17 @@ public class DataTransferService {
 	private final TransferRequestMessageRepository transferRequestMessageRepository;
 	private final ApplicationEventPublisher publisher;
 	
+	private final OkHttpRestClient okHttpRestClient;
+	
 	public DataTransferService(TransferProcessRepository transferProcessRepository, 
 			TransferRequestMessageRepository transferRequestMessageRepository,
-			ApplicationEventPublisher publisher) {
+			ApplicationEventPublisher publisher,
+			OkHttpRestClient okHttpRestClient) {
 		super();
 		this.transferProcessRepository = transferProcessRepository;
 		this.transferRequestMessageRepository = transferRequestMessageRepository;
 		this.publisher = publisher;
+		this.okHttpRestClient = okHttpRestClient;
 	}
 
 	/**
@@ -69,7 +82,10 @@ public class DataTransferService {
 					" exists or Contract Negotiation not finalized"));
 		
 		stateTransitionCheck(transferProcess, TransferState.REQUESTED);
-		// TODO save also transferRequestMessage once we implement provider push data - will need information where to push
+		
+		// check if TransferRequestMessage.format is supported by dataset.[distribution]
+		checkSupportedFormats(transferProcess, transferRequestMessage.getFormat());
+		
 		transferRequestMessageRepository.save(transferRequestMessage);
 		
 		TransferProcess transferProcessRequested = TransferProcess.Builder.newInstance()
@@ -93,6 +109,41 @@ public class DataTransferService {
 		}
 		return transferProcessRequested;
 	}
+
+	private void checkSupportedFormats(TransferProcess transferProcess, String format) {
+		String response = okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" 
+				+  transferProcess.getDatasetId() + "/formats", 
+				HttpMethod.GET,
+				null);
+
+//		ObjectMapper objectMapper = new ObjectMapper();
+//		LocalDateTimeDeserializer localDateTimeDeserializer = new LocalDateTimeDeserializer(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+//		JavaTimeModule module = new JavaTimeModule();
+//		module.addDeserializer(LocalDateTime.class, localDateTimeDeserializer);
+//		objectMapper.registerModule(module);
+//		
+//		TypeReference<GenericApiResponse<List<String>>> typeRef = new TypeReference<GenericApiResponse<List<String>>>() {};
+//	    try {
+		if(StringUtils.isBlank(response)) {
+			throw new TransferProcessInternalException("Internal error", 
+					transferProcess.getConsumerPid(), transferProcess.getProviderPid());
+		}
+        GenericApiResponse<List<String>> apiResp = Serializer.deserializePlain(response, GenericApiResponse.class);
+        boolean formatValid = apiResp.getData().stream().anyMatch(f -> f.equals(format));
+        if(formatValid) {
+        	log.debug("Found supported format");
+        } else {
+        	log.info("{} not found as one of supported distribution formats");
+        	throw new TransferProcessInvalidFormatException("dct:format '" + format + "' not supported", 
+        			transferProcess.getConsumerPid(), transferProcess.getProviderPid());
+        }
+//	    } catch (JsonProcessingException e) {
+//	    	log.error(e.getLocalizedMessage(), e);
+//	        throw new TransferProcessInternalException("Internal error", transferProcess.getConsumerPid(), transferProcess.getProviderPid());
+//	    }
+	}
+	
+	
 
 	/**
 	 * Transfer from REQUESTED or SUSPENDED to STARTED state

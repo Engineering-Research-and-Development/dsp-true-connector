@@ -4,12 +4,15 @@ import java.io.IOException;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -20,11 +23,16 @@ import okhttp3.Response;
 @Service
 @Slf4j
 public class OkHttpRestClient {
-
-	private OkHttpClient okHttpClient;
 	
-	public OkHttpRestClient(@Qualifier("okHttpClient") OkHttpClient okHttpClient) {
+	private String serverPort;
+	private OkHttpClient okHttpClient;
+	private CredentialUtils credentialUtils;
+	
+	public OkHttpRestClient(@Qualifier("okHttpClient") OkHttpClient okHttpClient, CredentialUtils credentialUtils, 
+			@Value("${server.port}")String serverPort) {
 		this.okHttpClient = okHttpClient;
+		this.credentialUtils = credentialUtils;
+		this.serverPort = serverPort;
 	}
 	
 	public Response executeCall(Request request) {
@@ -107,6 +115,39 @@ public class OkHttpRestClient {
         } catch (IOException e) {
 			log.error(e.getLocalizedMessage());
 			return GenericApiResponse.error(e.getLocalizedMessage());
+		}
+	}
+	
+	public String sendInternalRequest(String contextAddress, HttpMethod method, JsonNode jsonBody) {
+		String targetAddress = "http://localhost:" + serverPort + contextAddress;
+		Request.Builder requestBuilder = new Request.Builder()
+				.url(targetAddress);
+		requestBuilder.addHeader(HttpHeaders.AUTHORIZATION, credentialUtils.getAPICredentials());
+		if(HttpMethod.GET.equals(method)) {
+			// performing get
+			requestBuilder.addHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+		} else {
+			if(jsonBody != null) {
+				RequestBody body = RequestBody.create(jsonBody.toPrettyString(), MediaType.parse("application/json"));
+				requestBuilder.post(body);
+			} else {
+				RequestBody body = RequestBody.create("", MediaType.parse("application/json"));
+				requestBuilder.post(body);
+			}
+		}
+		Request request = requestBuilder.build();
+		try (Response response = okHttpClient.newCall(request).execute()) {
+			int code = response.code();
+			log.info("Status {}", code);
+			String resp = response.body().string();
+			log.info("Response received: {}", resp);
+			// TODO see to pass GenericApiResponse<X> as parameter and then 
+			// TypeReference<GenericApiResponse<List<String>>> typeRef = new TypeReference<GenericApiResponse<List<String>>>() {};
+			// GenericApiResponse<List<String>> apiResp =  objectMapper.readValue(resp, typeRef);
+			return resp;
+        } catch (IOException e) {
+			log.error(e.getLocalizedMessage());
+			return null;
 		}
 	}
 }

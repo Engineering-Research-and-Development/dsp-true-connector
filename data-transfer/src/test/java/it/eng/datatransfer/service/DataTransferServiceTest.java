@@ -6,10 +6,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -25,14 +28,20 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpMethod;
 
+import it.eng.datatransfer.exceptions.TransferProcessInternalException;
+import it.eng.datatransfer.exceptions.TransferProcessInvalidFormatException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.exceptions.TransferProcessNotFoundException;
+import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.datatransfer.util.MockObjectUtil;
+import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.model.Serializer;
 import it.eng.tools.response.GenericApiResponse;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,6 +55,8 @@ public class DataTransferServiceTest {
 	private ApplicationEventPublisher publisher;
     @Mock
 	private GenericApiResponse<String> apiResponse;
+    @Mock
+    private OkHttpRestClient okHttpRestClient;
 
 	@InjectMocks
 	private DataTransferService service;
@@ -97,8 +108,14 @@ public class DataTransferServiceTest {
 	@DisplayName("DataTransfer requested - success")
 	public void initiateTransferProcess() {
 		when(transferProcessRepository.findByAgreementId(MockObjectUtil.AGREEMENT_ID)).thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
-
-    	TransferProcess transferProcessRequested = service.initiateDataTransfer(MockObjectUtil.TRANSFER_REQUEST_MESSAGE);
+		
+		List<String> formats = new ArrayList<>();
+		formats.add(DataTransferFormat.HTTP_PULL.name());
+		GenericApiResponse<List<String>> resp = GenericApiResponse.success(formats, "Ok");
+		when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+			.thenReturn(Serializer.serializePlain(resp));
+    	
+		TransferProcess transferProcessRequested = service.initiateDataTransfer(MockObjectUtil.TRANSFER_REQUEST_MESSAGE);
 		
 		assertNotNull(transferProcessRequested);
 		assertEquals(TransferState.REQUESTED, transferProcessRequested.getState());
@@ -107,8 +124,35 @@ public class DataTransferServiceTest {
 	}
 	
 	@Test
+	@DisplayName("DataTransfer requested - fail - dct:format")
+	public void initiateTransferProcess_format_not_supported() {
+		when(transferProcessRepository.findByAgreementId(MockObjectUtil.AGREEMENT_ID)).thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
+		
+		List<String> formats = new ArrayList<>();
+		formats.add("ABC");
+		GenericApiResponse<List<String>> resp = GenericApiResponse.success(formats, "Ok");
+		when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+			.thenReturn(Serializer.serializePlain(resp));
+    	
+		assertThrows(TransferProcessInvalidFormatException.class, 
+					() -> service.initiateDataTransfer(MockObjectUtil.TRANSFER_REQUEST_MESSAGE));
+	}
+	
+	@Test
+	@DisplayName("DataTransfer requested - fail - dct:format - null")
+	public void initiateTransferProcess_format_null() {
+		when(transferProcessRepository.findByAgreementId(MockObjectUtil.AGREEMENT_ID)).thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
+		
+		when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+			.thenReturn(null);
+    	
+		assertThrows(TransferProcessInternalException.class, 
+					() -> service.initiateDataTransfer(MockObjectUtil.TRANSFER_REQUEST_MESSAGE));
+	}
+	
+	@Test
 	@DisplayName("DataTransfer requested - intialized TransferProcess does not exist")
-	public void initiateTransferPRocess_exists() {
+	public void initiateTransferProcess_exists() {
 		when(transferProcessRepository.findByAgreementId(MockObjectUtil.AGREEMENT_ID))
 			.thenReturn(Optional.empty());
 		assertThrows(TransferProcessNotFoundException.class,
