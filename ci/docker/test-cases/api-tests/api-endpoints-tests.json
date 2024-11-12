@@ -447,9 +447,21 @@
 					}
 				}
 			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
 			"request": {
 				"method": "GET",
 				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"Forward-To\" : \"{{PROVIDER_PROTOCOL}}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
 				"url": {
 					"raw": "{{CONSUMER_SERVER_API_PROXY}}/dataset/{{datasetId}}/formats",
 					"host": [
