@@ -420,7 +420,7 @@
 					}
 				},
 				"url": {
-					"raw": "{{CONSUMER_SERVER_API_PROXY}}/catalog",
+					"raw": "{{CONSUMER_SERVER_API_PROXY}}/catalogs",
 					"host": [
 						"{{CONSUMER_SERVER_API_PROXY}}"
 					],
@@ -463,7 +463,7 @@
 					}
 				},
 				"url": {
-					"raw": "{{CONSUMER_SERVER_API_PROXY}}/dataset/{{datasetId}}/formats",
+					"raw": "{{CONSUMER_SERVER_API_PROXY}}/datasets/{{datasetId}}/formats",
 					"host": [
 						"{{CONSUMER_SERVER_API_PROXY}}"
 					],

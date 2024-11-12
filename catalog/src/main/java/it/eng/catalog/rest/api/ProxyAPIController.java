@@ -31,7 +31,7 @@ public class ProxyAPIController {
 		this.proxyApiService = proxyApiService;
 	}
 
-	@GetMapping(path = "/dataset/{id}/formats")
+	@GetMapping(path = "/datasets/{id}/formats")
 	public ResponseEntity<GenericApiResponse<List<String>>> getFormatsFromDataset(@PathVariable String id,
 			@RequestBody JsonNode formatsRequest) {
 		log.info("Fetching formats from dataset with id: '" + id + "'");
@@ -42,7 +42,7 @@ public class ProxyAPIController {
 				.body(GenericApiResponse.success(formats, "Fetched formats"));
 	}
 	
-	@GetMapping(path = "/catalog")
+	@GetMapping(path = "/catalogs")
 	public ResponseEntity<GenericApiResponse<JsonNode>> getCatalog(@RequestBody JsonNode formatsRequest) {
 		log.info("Fetching proxy catalog");
 		String forwardTo = formatsRequest.get("Forward-To").asText();
