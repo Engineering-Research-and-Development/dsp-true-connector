@@ -425,7 +425,7 @@
 						"{{CONSUMER_SERVER_API_PROXY}}"
 					],
 					"path": [
-						"catalog"
+						"catalogs"
 					]
 				}
 			},
@@ -468,7 +468,7 @@
 						"{{CONSUMER_SERVER_API_PROXY}}"
 					],
 					"path": [
-						"dataset",
+						"datasets",
 						"{{datasetId}}",
 						"formats"
 					]
