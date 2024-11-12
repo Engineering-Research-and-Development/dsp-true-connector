@@ -1,6 +1,16 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 12-11-2024
+
+### Added
+
+ - API proxy endpoints to fetch remote catalog and dct:format for dataset
+ 
+### Changed
+
+ - Updated postman collection 
+ 
 ## [0.1.1] - 07-11-2024
 
 ### Added
