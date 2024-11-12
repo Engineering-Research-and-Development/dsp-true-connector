@@ -18,14 +18,14 @@ import lombok.NoArgsConstructor;
 public class GenericApiResponse<T> implements Serializable {
 	
 	private static final long serialVersionUID = -1433451249888939134L;
-	
+
 	private boolean success;
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private String message;
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private T data;
-    //, pattern = "dd-MM-yyyy HH:mm:ss"
-    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    // ISO datetime format, same like we use in serializers
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS")
     private LocalDateTime timestamp;
 
 
