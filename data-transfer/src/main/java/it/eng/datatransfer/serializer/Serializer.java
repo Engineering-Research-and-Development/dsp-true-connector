@@ -1,6 +1,7 @@
 package it.eng.datatransfer.serializer;
 
 import java.lang.annotation.Annotation;
+import java.time.Instant;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -21,6 +22,8 @@ import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.jsontype.TypeResolverBuilder;
 import com.fasterxml.jackson.databind.jsontype.impl.StdTypeResolverBuilder;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
@@ -35,6 +38,10 @@ public class Serializer {
 	private static Validator validator;
 	
 	static {
+		SimpleModule instantConverterModule = new SimpleModule();
+        instantConverterModule.addSerializer(Instant.class, new InstantSerializer());
+        instantConverterModule.addDeserializer(Instant.class, new InstantDeserializer());
+	        
 		JacksonAnnotationIntrospector ignoreJsonPropertyIntrospector = new JacksonAnnotationIntrospector() {
 			private static final long serialVersionUID = 1L;
 	
@@ -64,6 +71,8 @@ public class Serializer {
 				.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
 				.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
 				.annotationIntrospector(ignoreJsonPropertyIntrospector)
+				.addModule(instantConverterModule)
+				.addModule(new JavaTimeModule())
 				.build();
 		
 		jsonMapper = JsonMapper.builder()
@@ -71,6 +80,8 @@ public class Serializer {
 				.serializationInclusion(Include.NON_EMPTY)
 				.configure(SerializationFeature.INDENT_OUTPUT, true)
 				.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
+				.addModule(instantConverterModule)
+				.addModule(new JavaTimeModule())
 				.build();
 		
 		validator = Validation.buildDefaultValidatorFactory().getValidator();

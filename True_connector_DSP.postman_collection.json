@@ -1,10 +1,9 @@
 {
 	"info": {
-		"_postman_id": "a9b60a20-4a9c-46e8-93ec-1bc347a47da3",
+		"_postman_id": "e9e58032-7b2b-4884-b508-f03f0c4af675",
 		"name": "True_connector_DSP",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "21815221",
-		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-470bd18d-8b85-4354-bd4c-a202627e5e03?action=share&source=collection_link&creator=21815221"
+		"_exporter_id": "36278855"
 	},
 	"item": [
 		{
@@ -1380,6 +1379,115 @@
 									"path": [
 										"{{provider_transferProcessId}}",
 										"terminate"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Proxy",
+					"item": [
+						{
+							"name": "Dataset formats",
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "admin@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"Forward-To\" : \"http://localhost:8090\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://{{CONSUMER}}/api/v1/proxy/datasets/urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5/formats",
+									"protocol": "http",
+									"host": [
+										"{{CONSUMER}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"proxy",
+										"datasets",
+										"urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+										"formats"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get remote catalog",
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "admin@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"Forward-To\" : \"http://localhost:8090\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://{{CONSUMER}}/api/v1/proxy/catalogs",
+									"protocol": "http",
+									"host": [
+										"{{CONSUMER}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"proxy",
+										"catalogs"
 									]
 								}
 							},

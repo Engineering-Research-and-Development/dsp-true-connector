@@ -24,7 +24,8 @@ import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = ApiEndpoints.CATALOG_DATASETS_V1)
+@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, 
+	path = ApiEndpoints.CATALOG_DATASETS_V1)
 @Slf4j
 public class DatasetAPIController {
 

@@ -43,4 +43,9 @@ public interface ApiEndpoints {
 	 * DataTransfer module - v1 API endpoint for transfers
 	 */
 	public static final String TRANSFER_DATATRANSFER_V1 = "/api/v1/transfers";
+	
+	/**
+	 * Proxy endpoint for forwarding API requests to provider
+	 */
+	public static final String PROXY_V1 = "/api/v1/proxy";
 }

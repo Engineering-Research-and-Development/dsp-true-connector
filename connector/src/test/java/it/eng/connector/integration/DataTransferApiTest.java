@@ -46,7 +46,7 @@ import it.eng.tools.response.GenericApiResponse;
 /**
  * Data Transfer API endpoints integration test
  */
-public class DataTransferAPITest extends BaseIntegrationTest {
+public class DataTransferApiTest extends BaseIntegrationTest {
 	
 	private ObjectMapper mapper = new ObjectMapper();
 	
