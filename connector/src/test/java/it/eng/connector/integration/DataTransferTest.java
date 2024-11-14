@@ -52,7 +52,7 @@ public class DataTransferTest extends BaseIntegrationTest {
 		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
 	    		.consumerPid(MockObjectUtil.CONSUMER_PID)
 	    		.agreementId("urn:uuid:AGREEMENT_ID_INITIALIZED")
-	    		.format(DataTransferFormat.HTTP_PULL.name())
+	    		.format(DataTransferFormat.HTTP_PULL.format())
 	    		.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
 	    		.build();
 		
@@ -73,12 +73,12 @@ public class DataTransferTest extends BaseIntegrationTest {
 	
 	@Test
     @DisplayName("Start transfer - unauthorized")
-    public void getCatalogSUnauthorizedTest() throws Exception {
+    public void getCatalog_UnauthorizedTest() throws Exception {
     	
 		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
 	    		.consumerPid(MockObjectUtil.CONSUMER_PID)
 	    		.agreementId("urn:uuid:AGREEMENT_ID") // this one should be present in init_data.json
-	    		.format("HTTP_PULL")
+	    		.format(DataTransferFormat.HTTP_PULL.format())
 	    		.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
 	    		.build();
 		
@@ -102,7 +102,7 @@ public class DataTransferTest extends BaseIntegrationTest {
 		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
 	    		.consumerPid(MockObjectUtil.CONSUMER_PID)
 	    		.agreementId("urn:uuid:AGREEMENT_ID") // this one should be present in init_data.json
-	    		.format(DataTransferFormat.HTTP_PULL.name())
+	    		.format(DataTransferFormat.HTTP_PULL.format())
 	    		.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
 	    		.build();
 		
@@ -232,7 +232,7 @@ public class DataTransferTest extends BaseIntegrationTest {
 		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
 	    		.consumerPid(consumerPid)
 	    		.agreementId("urn:uuid:AGREEMENT_ID_COMPLETED_TRANSFER_TEST")
-	    		.format(DataTransferFormat.HTTP_PULL.name())
+	    		.format(DataTransferFormat.HTTP_PULL.format())
 	    		.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
 	    		.build();
 		MvcResult mvcResult = mockMvc.perform(
@@ -306,7 +306,7 @@ public class DataTransferTest extends BaseIntegrationTest {
 		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
 				.consumerPid(consumerPid)
 				.agreementId("urn:uuid:AGREEMENT_ID_TERMINATE_TRANSFER_TEST")
-				.format(DataTransferFormat.HTTP_PULL.name())
+				.format(DataTransferFormat.HTTP_PULL.format())
 				.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
 				.build();
 		MvcResult mvcResult = mockMvc.perform(
