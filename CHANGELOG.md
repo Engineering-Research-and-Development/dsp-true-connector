@@ -1,6 +1,29 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 14-11-2024
+
+### Added
+
+ - Added role filter to GET Transport Process API endpoint
+
+### Changed
+
+ - Initiate transfer process API endpoint now uses initialized transfer processes
+
+## [0.1.1] - 07-11-2024
+
+### Added
+
+ - New property *application.usagecontrol.enabled=true*
+ - Logic for optional usageControl; feature can be turned on or off by setting the property
+
+## [0.1.1] - 06-11-2024
+
+### Changed
+
+ - Initiate transfer process protocol endpoint now uses initialized transfer processes
+
 ## [0.1.1] - 28-10-2024
 
 ### Added

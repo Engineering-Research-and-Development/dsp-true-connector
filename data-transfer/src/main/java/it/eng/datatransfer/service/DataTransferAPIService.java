@@ -55,21 +55,25 @@ public class DataTransferAPIService {
 		this.dataTransferProperties = dataTransferProperties;
 	}
 
-	public Collection<JsonNode> findDataTransfers(String transferProcessId, String state) {
+	public Collection<JsonNode> findDataTransfers(String transferProcessId, String state, String role) {
 		if(StringUtils.isNotBlank(transferProcessId)) {
 			return transferProcessRepository.findById(transferProcessId)
 					.stream()
 					.map(dt -> Serializer.serializePlainJsonNode(dt))
 					.collect(Collectors.toList());
-		} else if(StringUtils.isNoneBlank(state)) {
+		} else if(StringUtils.isNotBlank(state)) {
 			return transferProcessRepository.findByState(state)
 					.stream()
+					.filter(tp -> filterByRole(tp, role))
 					.map(dt -> Serializer.serializePlainJsonNode(dt))
 					.collect(Collectors.toList());
 		}
-		return transferProcessRepository.findAll().stream().map(dt -> Serializer.serializePlainJsonNode(dt))
+		return transferProcessRepository.findAll()
+				.stream()
+				.filter(tp -> filterByRole(tp, role))
+				.map(dt -> Serializer.serializePlainJsonNode(dt))
 				.collect(Collectors.toList());
-		}
+	}
 	
 	/********* CONSUMER ***********/
 	
@@ -108,6 +112,11 @@ public class DataTransferAPIService {
 						.callbackAddress(transferProcess.getCallbackAddress())
 						.role(IConstants.ROLE_CONSUMER)
 						.state(transferProcessFromResponse.getState())
+						.createdBy(transferProcess.getCreatedBy())
+						.lastModifiedBy(transferProcess.getLastModifiedBy())
+						.version(transferProcess.getVersion())
+						// although not needed on consumer side it is added here to avoid duplicate id exception from mongodb
+						.datasetId(transferProcess.getDatasetId())
 						.build();
 				
 				transferProcessRepository.save(transferProcessForDB);
@@ -328,5 +337,13 @@ public class DataTransferAPIService {
     	        .orElseThrow(() ->
                 new DataTransferAPIException("Transfer process with id " + transferProcessId + " not found"));
     }
+	
+	private boolean filterByRole(TransferProcess cn, String role) {
+		if(role == null) {
+			return true;
+		} else {
+			return role.equalsIgnoreCase(cn.getRole());
+		}
+	}
 
 }

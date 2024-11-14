@@ -54,31 +54,31 @@ class DataTransferAPIControllerTest {
 	@Test
 	@DisplayName("Find transfer process by id, state and all")
 	public void getTransfersProcess() {
-		when(apiService.findDataTransfers(anyString(), anyString()))
+		when(apiService.findDataTransfers(anyString(), anyString(), null))
 			.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(MockObjectUtil.TRANSFER_PROCESS_REQUESTED)));
-		ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess("test", TransferState.REQUESTED.name());
+		ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess("test", TransferState.REQUESTED.name(), null);
 		assertNotNull(response);
 		assertTrue(response.getBody().isSuccess());
 		assertFalse(response.getBody().getData().isEmpty());
 		
-		when(apiService.findDataTransfers(anyString(), isNull()))
+		when(apiService.findDataTransfers(anyString(), isNull(), null))
 			.thenReturn(new ArrayList<>());
-		response = controller.getTransfersProcess("test_not_found", null);
+		response = controller.getTransfersProcess("test_not_found", null, null);
 		assertNotNull(response);
 		assertTrue(response.getBody().isSuccess());
 		assertTrue(response.getBody().getData().isEmpty());
 		
-		when(apiService.findDataTransfers(isNull(), anyString()))
+		when(apiService.findDataTransfers(isNull(), anyString(), anyString()))
 			.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(MockObjectUtil.TRANSFER_PROCESS_STARTED)));
-		response = controller.getTransfersProcess(null, TransferState.STARTED.name());
+		response = controller.getTransfersProcess(null, TransferState.STARTED.name(), null);
 		assertNotNull(response);
 		assertTrue(response.getBody().isSuccess());
 		assertFalse(response.getBody().getData().isEmpty());
 	
-		when(apiService.findDataTransfers(isNull(), isNull()))
+		when(apiService.findDataTransfers(isNull(), isNull(), isNull()))
 			.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(MockObjectUtil.TRANSFER_PROCESS_REQUESTED),
 					Serializer.serializePlainJsonNode(MockObjectUtil.TRANSFER_PROCESS_STARTED)));
-		response = controller.getTransfersProcess(null, null);
+		response = controller.getTransfersProcess(null, null, null);
 
 	}
 	

@@ -71,23 +71,31 @@ class DataTransferAPIServiceTest {
 	public void findDataTransfers() {
 
 		when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_REQUESTED));
-		Collection<JsonNode> response = apiService.findDataTransfers("test", TransferState.REQUESTED.name());
+		Collection<JsonNode> response = apiService.findDataTransfers("test", TransferState.REQUESTED.name(), null);
 		assertNotNull(response);
 		assertEquals(response.size(), 1);
 
 		when(transferProcessRepository.findById(anyString())).thenReturn(Optional.empty());
-		response = apiService.findDataTransfers("test_not_found", null);
+		response = apiService.findDataTransfers("test_not_found", null, null);
 		assertNotNull(response);
 		assertTrue(response.isEmpty());
 
-		when(transferProcessRepository.findByState(anyString())).thenReturn(Arrays.asList(MockObjectUtil.TRANSFER_PROCESS_STARTED));
-		response =  apiService.findDataTransfers(null, TransferState.STARTED.name());
+		when(transferProcessRepository.findByState(anyString())).thenReturn(Arrays.asList(MockObjectUtil.TRANSFER_PROCESS_STARTED, MockObjectUtil.TRANSFER_PROCESS_COMPLETED));
+		response =  apiService.findDataTransfers(null, TransferState.STARTED.name(), null);
+		assertNotNull(response);
+		assertEquals(response.size(), 2);
+		
+		response =  apiService.findDataTransfers(null, TransferState.STARTED.name(), IConstants.ROLE_PROVIDER);
+		assertNotNull(response);
+		assertEquals(response.size(), 1);
+		
+		response =  apiService.findDataTransfers(null, TransferState.STARTED.name(), IConstants.ROLE_CONSUMER);
 		assertNotNull(response);
 		assertEquals(response.size(), 1);
 
 		when(transferProcessRepository.findAll())
 				.thenReturn(Arrays.asList(MockObjectUtil.TRANSFER_PROCESS_REQUESTED, MockObjectUtil.TRANSFER_PROCESS_STARTED));
-		response =  apiService.findDataTransfers(null, null);
+		response =  apiService.findDataTransfers(null, null, null);
 		assertNotNull(response);
 		assertEquals(response.size(), 2);
 	}
