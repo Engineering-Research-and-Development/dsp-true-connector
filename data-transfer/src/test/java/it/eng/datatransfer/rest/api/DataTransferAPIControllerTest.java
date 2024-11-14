@@ -54,14 +54,14 @@ class DataTransferAPIControllerTest {
 	@Test
 	@DisplayName("Find transfer process by id, state and all")
 	public void getTransfersProcess() {
-		when(apiService.findDataTransfers(anyString(), anyString(), null))
+		when(apiService.findDataTransfers(anyString(), anyString(), isNull()))
 			.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(MockObjectUtil.TRANSFER_PROCESS_REQUESTED)));
 		ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess("test", TransferState.REQUESTED.name(), null);
 		assertNotNull(response);
 		assertTrue(response.getBody().isSuccess());
 		assertFalse(response.getBody().getData().isEmpty());
 		
-		when(apiService.findDataTransfers(anyString(), isNull(), null))
+		when(apiService.findDataTransfers(anyString(), isNull(), isNull()))
 			.thenReturn(new ArrayList<>());
 		response = controller.getTransfersProcess("test_not_found", null, null);
 		assertNotNull(response);
@@ -70,7 +70,7 @@ class DataTransferAPIControllerTest {
 		
 		when(apiService.findDataTransfers(isNull(), anyString(), anyString()))
 			.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(MockObjectUtil.TRANSFER_PROCESS_STARTED)));
-		response = controller.getTransfersProcess(null, TransferState.STARTED.name(), null);
+		response = controller.getTransfersProcess(null, TransferState.STARTED.name(), MockObjectUtil.TRANSFER_PROCESS_STARTED.getRole());
 		assertNotNull(response);
 		assertTrue(response.getBody().isSuccess());
 		assertFalse(response.getBody().getData().isEmpty());
@@ -79,6 +79,9 @@ class DataTransferAPIControllerTest {
 			.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(MockObjectUtil.TRANSFER_PROCESS_REQUESTED),
 					Serializer.serializePlainJsonNode(MockObjectUtil.TRANSFER_PROCESS_STARTED)));
 		response = controller.getTransfersProcess(null, null, null);
+		assertNotNull(response);
+		assertTrue(response.getBody().isSuccess());
+		assertFalse(response.getBody().getData().isEmpty());
 
 	}
 	
