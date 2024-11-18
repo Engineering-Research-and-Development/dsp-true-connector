@@ -1,7 +1,7 @@
 package it.eng.tools.response;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -25,8 +25,9 @@ public class GenericApiResponse<T> implements Serializable {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private T data;
     // ISO datetime format, same like we use in serializers
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS")
-    private LocalDateTime timestamp;
+    // XXX will format to 2024-11-18T14:51:32+02:00 time zone offset
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    private ZonedDateTime timestamp;
 
 
     //TODO Finish success after discussion with the team
@@ -35,7 +36,7 @@ public class GenericApiResponse<T> implements Serializable {
                 .message(message)
                 .data(data)
                 .success(true)
-                .timestamp(LocalDateTime.now())
+                .timestamp(ZonedDateTime.now())
                 .build();
     }
 
@@ -44,7 +45,7 @@ public class GenericApiResponse<T> implements Serializable {
         return GenericApiResponse.<T>builder()
                 .message(message)
                 .success(false)
-                .timestamp(LocalDateTime.now())
+                .timestamp(ZonedDateTime.now())
                 .build();
     }
 }

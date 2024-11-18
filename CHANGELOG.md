@@ -1,6 +1,14 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 19-11-2024
+
+### Changed
+
+ - Changed proxy requests to be POST instead GET (because of mandatory body)
+ - GenericApiResponse.timestamp LocalDateTime to ZonedDateTime
+ - Updated postman collection
+ 
 ## [0.1.1] - 12-11-2024
 
 ### Added
