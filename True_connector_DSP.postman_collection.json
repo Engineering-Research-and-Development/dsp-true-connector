@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "e9e58032-7b2b-4884-b508-f03f0c4af675",
+		"_postman_id": "976b0794-c898-456b-b8e1-02f21a0bdc7f",
 		"name": "True_connector_DSP",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "36278855"
@@ -1391,9 +1391,6 @@
 					"item": [
 						{
 							"name": "Dataset formats",
-							"protocolProfileBehavior": {
-								"disableBodyPruning": true
-							},
 							"request": {
 								"auth": {
 									"type": "basic",
@@ -1410,7 +1407,7 @@
 										}
 									]
 								},
-								"method": "GET",
+								"method": "POST",
 								"header": [
 									{
 										"key": "Content-Type",
@@ -1428,8 +1425,7 @@
 									}
 								},
 								"url": {
-									"raw": "http://{{CONSUMER}}/api/v1/proxy/datasets/urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5/formats",
-									"protocol": "http",
+									"raw": "{{CONSUMER}}/api/v1/proxy/datasets/urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5/formats",
 									"host": [
 										"{{CONSUMER}}"
 									],
@@ -1447,9 +1443,6 @@
 						},
 						{
 							"name": "Get remote catalog",
-							"protocolProfileBehavior": {
-								"disableBodyPruning": true
-							},
 							"request": {
 								"auth": {
 									"type": "basic",
@@ -1466,7 +1459,7 @@
 										}
 									]
 								},
-								"method": "GET",
+								"method": "POST",
 								"header": [],
 								"body": {
 									"mode": "raw",
@@ -1478,8 +1471,7 @@
 									}
 								},
 								"url": {
-									"raw": "http://{{CONSUMER}}/api/v1/proxy/catalogs",
-									"protocol": "http",
+									"raw": "{{CONSUMER}}/api/v1/proxy/catalogs",
 									"host": [
 										"{{CONSUMER}}"
 									],
