@@ -49,7 +49,8 @@ public class ArtifactService {
 			}
 			GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
 			Document doc = new Document();
-			doc.append(HttpHeaders.CONTENT_TYPE, file.getContentType());
+			// taken from GridFsResource.CONTENT_TYPE_FIELD
+			doc.append("_contentType", file.getContentType());
 			doc.append(DATASET_ID_METADATA, datasetId);
 			GridFSUploadOptions options = new GridFSUploadOptions()
 			        .chunkSizeBytes(1048576) // 1MB chunk size

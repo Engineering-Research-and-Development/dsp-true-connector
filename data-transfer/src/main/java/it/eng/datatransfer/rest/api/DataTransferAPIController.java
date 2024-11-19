@@ -61,7 +61,7 @@ public class DataTransferAPIController {
 			@PathVariable(required = false) String transferProcessId,
 			@RequestParam(required = false) String state,
 			@RequestParam(required = false) String role) {
-		log.info("Ferching transfer process id - {}, state {}", transferProcessId, state);
+		log.info("Fetching transfer process id - {}, state {}", transferProcessId, state);
 		Collection<JsonNode> response = apiService.findDataTransfers(transferProcessId, state, role);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
 				.body(GenericApiResponse.success(response, "Fetching transfer process"));

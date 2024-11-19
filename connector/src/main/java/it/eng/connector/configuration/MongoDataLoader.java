@@ -1,18 +1,20 @@
 package it.eng.connector.configuration;
 
+import java.io.InputStream;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.extern.java.Log;
+import org.bson.Document;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.mongodb.core.MongoTemplate;
 
-import java.io.InputStream;
-import java.util.Map;
-@Log
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Configuration
 public class MongoDataLoader {
 
@@ -26,24 +28,22 @@ public class MongoDataLoader {
     CommandLineRunner loadInitialData() {
         return args -> {
             ObjectMapper mapper = new ObjectMapper();
-            InputStream inputStream = new ClassPathResource("initial_data.json").getInputStream();
-            JsonNode rootNode = mapper.readTree(inputStream);
+            try (InputStream inputStream = new ClassPathResource("initial_data.json").getInputStream()) {
+                JsonNode rootNode = mapper.readTree(inputStream);
 
-            rootNode.fields().forEachRemaining(entry -> {
-                String collectionName = entry.getKey();
-                JsonNode documents = entry.getValue();
+                rootNode.fields().forEachRemaining(entry -> {
+                    String collectionName = entry.getKey();
+                    JsonNode documents = entry.getValue();
 
-                documents.forEach(document -> {
-                    Map<String, Object> documentMap = mapper.convertValue(document, new com.fasterxml.jackson.core.type.TypeReference<>() {
-                    });
-                    mongoTemplate.save(documentMap, collectionName);
+                        documents.forEach(document -> {
+                            Document mongoDocument = Document.parse(document.toString());
+                            mongoTemplate.save(mongoDocument, collectionName);                        });
+                        log.info("Loaded " + documents.size() + " documents into the '" + collectionName + "' collection.");
                 });
-                log.info("Loaded " + documents.size() + " documents into the '" + collectionName + "' collection.");
-            });
+            } catch (Exception e) {
+                log.error("Error loading initial data: " + e.getMessage());
+                throw new RuntimeException("Failed to load initial data", e);
+            }
         };
     }
 }
-
-
-
-
