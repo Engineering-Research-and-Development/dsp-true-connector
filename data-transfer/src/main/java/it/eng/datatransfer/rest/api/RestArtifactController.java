@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.datatransfer.service.api.RestArtifactService;
-import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 
@@ -41,7 +40,7 @@ public class RestArtifactController {
 	 * @return
 	 */
     @RequestMapping(path = "/{transactionId}", method = { RequestMethod.GET, RequestMethod.POST })
-    protected HttpServletResponse getArtifact(HttpServletResponse response,
+    protected void getArtifact(HttpServletResponse response,
     												@RequestHeader(required = false) String authorization,
 										    		@PathVariable String transactionId,                                       
 										    		@RequestBody(required = false) JsonNode jsonBody) {
@@ -49,7 +48,7 @@ public class RestArtifactController {
     	log.info("Starting data download");
 		
 		GridFsResource attachment = restArtifactService.streamAttachment(transactionId);
-		try (ServletOutputStream outputStream = response.getOutputStream()) {
+		try {
 			response.setStatus(HttpStatus.OK.value());
 			response.setHeader("Content-Disposition", "attachment;filename=\"" + attachment.getFilename() + "\"");
 			response.addHeader("Content-type", attachment.getContentType());
@@ -57,6 +56,5 @@ public class RestArtifactController {
 		} catch (IOException e) {
 			response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
-		return response;
     }
 }

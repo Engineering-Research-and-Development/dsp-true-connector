@@ -372,6 +372,7 @@ public class DataTransferTest extends BaseIntegrationTest {
 		MvcResult resultArtifact = mockMvc.perform(post("/artifacts/" + transactionId)
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().isOk())
+				.andExpect(content().contentType(MediaType.APPLICATION_JSON))
 				.andReturn();
 		String artifact = resultArtifact.getResponse().getContentAsString();
 		assertTrue(artifact.contains("John"));
