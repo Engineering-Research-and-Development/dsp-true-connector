@@ -235,7 +235,7 @@
 									"pm.test(\"Check expected response\", ()=> {\r",
 									"    pm.response.to.have.status(200);\r",
 									"    var jsonData = pm.response.json();\r",
-									"    pm.expect(jsonData['employee']['name']).to.eq('John Doe');\r",
+									"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -432,7 +432,7 @@
 									"pm.test(\"Check expected response\", ()=> {\r",
 									"    pm.response.to.have.status(200);\r",
 									"    var jsonData = pm.response.json();\r",
-									"    pm.expect(jsonData['employee']['name']).to.eq('John Doe');\r",
+									"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
 									"});"
 								],
 								"type": "text/javascript",
