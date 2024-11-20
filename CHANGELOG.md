@@ -1,6 +1,17 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 21-11-2024
+
+### Changed
+
+ - ContractNegotiation.callbackAddress on consumer side value set to provider address
+ - Terminate negotiation API request - based on role, it sends to provider protocol address or consumer callback address
+
+### Added
+
+ - Provider handleTermination request
+
 ## [0.1.1] - 19-11-2024
 
 ### Changed

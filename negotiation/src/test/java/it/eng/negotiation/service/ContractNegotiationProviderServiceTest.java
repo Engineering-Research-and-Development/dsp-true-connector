@@ -227,4 +227,35 @@ public class ContractNegotiationProviderServiceTest {
         assertThrows(ContractNegotiationInvalidStateException.class, () -> service.verifyNegotiation(MockObjectUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE));
     }
 
+    @Test
+	@DisplayName("Process termination message success")
+	public void handleTerminationRequest_success() {
+		when(repository.findByProviderPid(any(String.class)))
+			.thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED_PROIVDER));
+
+		service.handleTerminationRequest(MockObjectUtil.PROVIDER_PID, MockObjectUtil.TERMINATION_MESSAGE);
+		
+		verify(repository).save(argCaptorContractNegotiation.capture());
+		assertEquals(ContractNegotiationState.TERMINATED, argCaptorContractNegotiation.getValue().getState());
+	}
+	
+	@Test
+	@DisplayName("Process termination message failed - negotiation not found")
+	public void handleTerminationRequest_fail() {
+		when(repository.findByProviderPid(any(String.class)))
+			.thenReturn(Optional.empty());
+
+		assertThrows(ContractNegotiationNotFoundException.class, 
+				() -> service.handleTerminationRequest(MockObjectUtil.PROVIDER_PID, MockObjectUtil.TERMINATION_MESSAGE));
+	}
+	
+	@Test
+	@DisplayName("Process termination message failed - already terminated")
+	public void handleTerminationRequest_fail_alreadyTerminated() {
+		when(repository.findByProviderPid(any(String.class)))
+			.thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_TERMINATED));
+
+		assertThrows(ContractNegotiationInvalidStateException.class, 
+				() -> service.handleTerminationRequest(MockObjectUtil.PROVIDER_PID, MockObjectUtil.TERMINATION_MESSAGE));
+	}
 }

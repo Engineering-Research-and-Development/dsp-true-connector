@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
@@ -149,7 +150,20 @@ public class ProviderContractNegotiationControllerTest {
 				.build();
 		ResponseEntity<JsonNode> response = controller.handleTerminationMessage(MockObjectUtil.PROVIDER_PID, Serializer.serializeProtocolJsonNode(cntm));
 		assertNotNull(response, "Response is not null");
-		assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+		assertEquals(HttpStatus.OK, response.getStatusCode());
 	}
 	
+	@Test
+	public void handleTerminationMessage_error() {
+		ContractNegotiationTerminationMessage cntm = ContractNegotiationTerminationMessage.Builder.newInstance()
+				.consumerPid(MockObjectUtil.CONSUMER_PID)
+				.providerPid(MockObjectUtil.PROVIDER_PID)
+				.code("1")
+				.reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("test").build()))
+				.build();
+		doThrow(ContractNegotiationNotFoundException.class)
+			.when(contractNegotiationService).handleTerminationRequest(anyString(), any(ContractNegotiationTerminationMessage.class));
+		assertThrows(ContractNegotiationNotFoundException.class, 
+				() -> controller.handleTerminationMessage(MockObjectUtil.PROVIDER_PID, Serializer.serializeProtocolJsonNode(cntm)));
+	}
 }

@@ -127,7 +127,7 @@ public class ConsumerContractNegotiationCallbackController {
         ContractNegotiationTerminationMessage contractNegotiationTerminationMessage =
                 Serializer.deserializeProtocol(contractNegotiationTerminationMessageJsonNode, ContractNegotiationTerminationMessage.class);
 
-        contractNegotiationConsumerService.handleTerminationResponse(consumerPid, contractNegotiationTerminationMessage);
+        contractNegotiationConsumerService.handleTerminationRequest(consumerPid, contractNegotiationTerminationMessage);
 
         // ACK or ERROR
         // If the CN's state is successfully transitioned, the Consumer must return HTTP code 200 (OK).

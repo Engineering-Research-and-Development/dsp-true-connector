@@ -185,11 +185,11 @@ when(contractNegotiationRepository.findByProviderPidAndConsumerPid(MockObjectUti
 	
 	@Test
 	@DisplayName("Process termination message success")
-	public void handleTerminationResponse_success() {
+	public void handleTerminationRequest_success() {
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class)))
 			.thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
 
-		service.handleTerminationResponse(MockObjectUtil.CONSUMER_PID, MockObjectUtil.TERMINATION_MESSAGE);
+		service.handleTerminationRequest(MockObjectUtil.CONSUMER_PID, MockObjectUtil.TERMINATION_MESSAGE);
 		
 		verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
 		assertEquals(ContractNegotiationState.TERMINATED, argCaptorContractNegotiation.getValue().getState());
@@ -197,23 +197,21 @@ when(contractNegotiationRepository.findByProviderPidAndConsumerPid(MockObjectUti
 	
 	@Test
 	@DisplayName("Process termination message failed - negotiation not found")
-	public void handleTerminationResponse_fail() {
+	public void handleTerminationRequest_fail() {
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class)))
 			.thenReturn(Optional.empty());
 
 		assertThrows(ContractNegotiationNotFoundException.class, 
-				() -> service.handleTerminationResponse(MockObjectUtil.CONSUMER_PID, MockObjectUtil.TERMINATION_MESSAGE));
+				() -> service.handleTerminationRequest(MockObjectUtil.CONSUMER_PID, MockObjectUtil.TERMINATION_MESSAGE));
 	}
 	
 	@Test
 	@DisplayName("Process termination message failed - already terminated")
-	public void handleTerminationResponse_fail_alreadyTerminated() {
+	public void handleTerminationRequest_fail_alreadyTerminated() {
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class)))
 			.thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_TERMINATED));
 
 		assertThrows(ContractNegotiationInvalidStateException.class, 
-				() -> service.handleTerminationResponse(MockObjectUtil.CONSUMER_PID, MockObjectUtil.TERMINATION_MESSAGE));
+				() -> service.handleTerminationRequest(MockObjectUtil.CONSUMER_PID, MockObjectUtil.TERMINATION_MESSAGE));
 	}
-	
-	
 }

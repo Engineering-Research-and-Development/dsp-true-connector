@@ -498,15 +498,30 @@ public class ContractNegotiationAPIServiceTest {
 	}
 	
 	@Test
-	@DisplayName("Provider terminate contract negotiation")
-	public void terminateNegotiation() {
-		String contractNegotaitionId = UUID.randomUUID().toString(); 
-		when(contractNegotiationRepository.findById(contractNegotaitionId)).thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
+	@DisplayName("Handle termination - provider")
+	public void handleTerminationCN_provider() {
+		when(contractNegotiationRepository.findById(MockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED_PROIVDER.getId()))
+			.thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED_PROIVDER));
+		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+		when(apiResponse.isSuccess()).thenReturn(true);
+
+		service.handleContractNegotiationTerminated(MockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED_PROIVDER.getId());
+		
+		verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
+		assertEquals(ContractNegotiationState.TERMINATED, argCaptorContractNegotiation.getValue().getState());
+	}
+	
+	@Test
+	@DisplayName("Handle termination - consumer")
+	public void handleTerminationCN_consumer() {
+		when(contractNegotiationRepository.findById(MockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED.getId()))
+			.thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
 		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(true);
 		
-		service.handleContractNegotiationTerminated(contractNegotaitionId);
+		service.handleContractNegotiationTerminated(MockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED.getId());
 		
 		verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
 		assertEquals(ContractNegotiationState.TERMINATED, argCaptorContractNegotiation.getValue().getState());

@@ -3,6 +3,7 @@ package it.eng.negotiation.rest.protocol;
 import java.net.URI;
 import java.util.Arrays;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -111,11 +112,14 @@ public class ProviderContractNegotiationController {
     @PostMapping(path = "/{providerPid}/termination")
     public ResponseEntity<JsonNode> handleTerminationMessage(@PathVariable String providerPid, 
     		@RequestBody JsonNode contractNegotiationTerminationMessageJsonNode) {
-        ContractNegotiationTerminationMessage cntm = 
+        ContractNegotiationTerminationMessage contractNegotiationTerminationMessage = 
         		Serializer.deserializeProtocol(contractNegotiationTerminationMessageJsonNode, ContractNegotiationTerminationMessage.class);
 
-        ContractNegotiationErrorMessage error = methodNotYetImplemented();
-        return ResponseEntity.internalServerError().contentType(MediaType.APPLICATION_JSON).body(Serializer.serializeProtocolJsonNode(error));
+        providerService.handleTerminationRequest(providerPid, contractNegotiationTerminationMessage);
+        
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON.toString())
+                .build();
     }
 
 	private ContractNegotiationErrorMessage methodNotYetImplemented() {
