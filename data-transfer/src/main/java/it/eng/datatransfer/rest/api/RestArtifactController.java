@@ -1,7 +1,11 @@
 package it.eng.datatransfer.rest.api;
 
+import java.io.IOException;
+
+import org.apache.tomcat.util.http.fileupload.IOUtils;
+import org.springframework.data.mongodb.gridfs.GridFsResource;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -36,26 +40,22 @@ public class RestArtifactController {
 	 * @return
 	 */
     @RequestMapping(path = "/{transactionId}", method = { RequestMethod.GET, RequestMethod.POST })
-    protected ResponseEntity<String> getArtifact(HttpServletResponse response,
+    protected void getArtifact(HttpServletResponse response,
     												@RequestHeader(required = false) String authorization,
 										    		@PathVariable String transactionId,                                       
 										    		@RequestBody(required = false) JsonNode jsonBody) {
     
-		String rr = restArtifactService.getArtifact(transactionId, jsonBody);
-		return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(rr);
-		/*
-		 * Uncomment this part when TransferProcess.State.INITIAL is done
-		 * this logic requires to have fileId present in TransferPRocess
-		try (ServletOutputStream outputStream = response.getOutputStream()) {
-			GridFsResource attachment = restArtifactService.streamAttachment(transactionId);
+    	log.info("Starting data download");
+		
+		GridFsResource attachment = restArtifactService.streamAttachment(transactionId);
+		try {
+			response.setStatus(HttpStatus.OK.value());
 			response.setHeader("Content-Disposition", "attachment;filename=\"" + attachment.getFilename() + "\"");
 			response.addHeader("Content-type", attachment.getContentType());
 			IOUtils.copy(attachment.getInputStream(), response.getOutputStream());
+			restArtifactService.publishArtifactConsumedEvent(transactionId);
 		} catch (IOException e) {
 			response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
-		*/
     }
 }

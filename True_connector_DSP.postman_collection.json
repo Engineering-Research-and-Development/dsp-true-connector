@@ -1,7 +1,7 @@
 {
 	"info": {
-		"_postman_id": "7d2a07b5-b19e-4566-b543-54ba2d7de487",
-		"name": "True_connector_DSP",
+		"_postman_id": "81fe3e1c-089e-4d01-abee-a62e5fd4bc5e",
+		"name": "True_connector_DSP Copy",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "36278855"
 	},
@@ -1116,6 +1116,55 @@
 					"name": "DataTransfer",
 					"item": [
 						{
+							"name": "[C] Find Initialized Transfer Process",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"consumer_transferProcessId\", jsonData[\"data\"][jsonData.data.length-1][\"@id\"])\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_TRANSFERS}}?state=INITIALIZED&role=consumer",
+									"host": [
+										"{{CONSUMER_SERVER_API_TRANSFERS}}"
+									],
+									"query": [
+										{
+											"key": "state",
+											"value": "INITIALIZED"
+										},
+										{
+											"key": "role",
+											"value": "consumer"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "[C] Request transfer",
 							"event": [
 								{
@@ -1129,6 +1178,13 @@
 											"\r",
 											"pm.test(\"Check if status code is 200\", function () {\r",
 											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"TransactionId\", ()=> {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    let trId = jsonData[\"data\"][\"consumerPid\"] + \"|\" + jsonData[\"data\"][\"providerPid\"];\r",
+											"    pm.collectionVariables.set(\"transactionId\", btoa(trId));\r",
+											"    console.log(pm.collectionVariables.get(\"transactionId\"));\r",
 											"});"
 										],
 										"type": "text/javascript",
@@ -1141,7 +1197,7 @@
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER}}\",\r\n    \"agreementId\": \"{{agreementId}}\",\r\n    \"format\": \"example:HTTP_PULL\",\r\n    \"dataAddress\": {\r\n        \"endpointType\": \"https://w3id.org/idsa/v4.1/HTTP\",\r\n        \"endpoint\": \"http://example.com\",\r\n        \"endpointProperties\": [\r\n            {\r\n                \"name\": \"authorization\",\r\n                \"value\": \"TOKEN-ABCDEFG\"\r\n            },\r\n            {\r\n                \"name\": \"authType\",\r\n                \"value\": \"bearer\"\r\n            }\r\n        ]\r\n    }\r\n}",
+									"raw": "{\r\n    \"transferProcessId\": \"{{consumer_transferProcessId}}\",\r\n    \"format\": \"HttpData-PULL\",\r\n    \"dataAddress\": {\r\n        \"endpointType\": \"https://w3id.org/idsa/v4.1/HTTP\",\r\n        \"endpoint\": \"http://example.com\",\r\n        \"endpointProperties\": [\r\n            {\r\n                \"name\": \"authorization\",\r\n                \"value\": \"TOKEN-ABCDEFG\"\r\n            },\r\n            {\r\n                \"name\": \"authType\",\r\n                \"value\": \"bearer\"\r\n            }\r\n        ]\r\n    }\r\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -1238,6 +1294,40 @@
 									"path": [
 										"{{provider_transferProcessId}}",
 										"start"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[C] Download data",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check expected response\", ()=> {\r",
+											"    pm.response.to.have.status(200);\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{PROVIDER}}/artifacts/{{transactionId}}",
+									"host": [
+										"{{PROVIDER}}"
+									],
+									"path": [
+										"artifacts",
+										"{{transactionId}}"
 									]
 								}
 							},
@@ -2324,6 +2414,10 @@
 		},
 		{
 			"key": "agreementId",
+			"value": ""
+		},
+		{
+			"key": "transactionId",
 			"value": ""
 		}
 	]

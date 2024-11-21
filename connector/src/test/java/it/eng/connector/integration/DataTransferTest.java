@@ -73,12 +73,12 @@ public class DataTransferTest extends BaseIntegrationTest {
 	
 	@Test
     @DisplayName("Start transfer - unauthorized")
-    public void getCatalogSUnauthorizedTest() throws Exception {
+    public void getCatalog_UnauthorizedTest() throws Exception {
     	
 		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
 	    		.consumerPid(MockObjectUtil.CONSUMER_PID)
 	    		.agreementId("urn:uuid:AGREEMENT_ID") // this one should be present in init_data.json
-	    		.format("HTTP_PULL")
+	    		.format(DataTransferFormat.HTTP_PULL.format())
 	    		.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
 	    		.build();
 		
@@ -298,6 +298,46 @@ public class DataTransferTest extends BaseIntegrationTest {
     	downloadArtifactFail(transactionId);
 	}
 
+	@Test
+	@DisplayName("Terminate transfer process - provider")
+	@WithUserDetails(TestUtil.CONNECTOR_USER)
+	public void termianteTransferProcess_provider() throws Exception {
+		String consumerPid = "urn:uuid" + UUID.randomUUID().toString();
+		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
+				.consumerPid(consumerPid)
+				.agreementId("urn:uuid:AGREEMENT_ID_TERMINATE_TRANSFER_TEST")
+				.format(DataTransferFormat.HTTP_PULL.format())
+				.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
+				.build();
+		MvcResult mvcResult = mockMvc.perform(
+				post("/transfers/request")
+				.content(Serializer.serializeProtocol(transferRequestMessage))
+				.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(status().isCreated())
+				.andReturn();
+		String jsonTransferProcess = mvcResult.getResponse().getContentAsString();
+		JsonNode jsonNode = Serializer.serializeStringToProtocolJsonNode(jsonTransferProcess);
+		TransferProcess transferProcessRequested = Serializer.deserializeProtocol(jsonNode, TransferProcess.class);
+		String providerPid = transferProcessRequested.getProviderPid();
+		
+		// send terminate message
+		TransferTerminationMessage transferTerminationMessage = TransferTerminationMessage.Builder.newInstance()
+				.consumerPid(consumerPid)
+				.providerPid(providerPid)
+				.code("1")
+				.build();
+		mvcResult = mockMvc.perform(
+				post("/transfers/" + providerPid + "/termination")
+				.content(Serializer.serializeProtocol(transferTerminationMessage))
+				.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(status().isOk())
+				.andReturn();
+		
+		// check TransferProcess status for providerPid
+		TransferProcess transferProcessTerminated = getTransferProcessForProviderPid(providerPid);
+		assertEquals(transferProcessTerminated.getState(), TransferState.TERMINATED);
+	}
+	
 	private TransferProcess getTransferProcessForProviderPid(String providerPid)
 			throws Exception, UnsupportedEncodingException, JsonMappingException, JsonProcessingException {
 		MvcResult resultCompletedMessage = mockMvc.perform(
@@ -332,50 +372,12 @@ public class DataTransferTest extends BaseIntegrationTest {
 		MvcResult resultArtifact = mockMvc.perform(post("/artifacts/" + transactionId)
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().isOk())
+				.andExpect(content().contentType(MediaType.APPLICATION_JSON))
 				.andReturn();
 		String artifact = resultArtifact.getResponse().getContentAsString();
 		assertTrue(artifact.contains("John"));
 		assertTrue(artifact.contains("Doe"));
 	}
 	
-	@Test
-	@DisplayName("Terminate transfer process - provider")
-	@WithUserDetails(TestUtil.CONNECTOR_USER)
-	public void termianteTransferProcess_provider() throws Exception {
-		String consumerPid = "urn:uuid" + UUID.randomUUID().toString();
-		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
-	    		.consumerPid(consumerPid)
-	    		.agreementId("urn:uuid:AGREEMENT_ID_TERMINATE_TRANSFER_TEST")
-	    		.format(DataTransferFormat.HTTP_PULL.format())
-	    		.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
-	    		.build();
-		MvcResult mvcResult = mockMvc.perform(
-    					post("/transfers/request")
-    					.content(Serializer.serializeProtocol(transferRequestMessage))
-    					.contentType(MediaType.APPLICATION_JSON))
-    					.andExpect(status().isCreated())
-				    	.andReturn();
-    	String jsonTransferProcess = mvcResult.getResponse().getContentAsString();
-    	JsonNode jsonNode = Serializer.serializeStringToProtocolJsonNode(jsonTransferProcess);
-    	TransferProcess transferProcessRequested = Serializer.deserializeProtocol(jsonNode, TransferProcess.class);
-    	String providerPid = transferProcessRequested.getProviderPid();
-    	
-    	// send terminate message
-    	TransferTerminationMessage transferTerminationMessage = TransferTerminationMessage.Builder.newInstance()
-	    		.consumerPid(consumerPid)
-	    		.providerPid(providerPid)
-	    		.code("1")
-	    		.build();
-    	mvcResult = mockMvc.perform(
-				post("/transfers/" + providerPid + "/termination")
-				.content(Serializer.serializeProtocol(transferTerminationMessage))
-				.contentType(MediaType.APPLICATION_JSON))
-				.andExpect(status().isOk())
-		    	.andReturn();
-    	
-    	// check TransferProcess status for providerPid
-    	TransferProcess transferProcessTerminated = getTransferProcessForProviderPid(providerPid);
-    	assertEquals(transferProcessTerminated.getState(), TransferState.TERMINATED);
-	}
 	
 }

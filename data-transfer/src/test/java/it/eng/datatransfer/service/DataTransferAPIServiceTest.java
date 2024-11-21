@@ -33,6 +33,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.model.DataAddress;
 import it.eng.datatransfer.model.DataTransferFormat;
+import it.eng.datatransfer.model.DataTransferRequest;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
@@ -66,28 +67,40 @@ class DataTransferAPIServiceTest {
 	@InjectMocks
 	private DataTransferAPIService apiService;
 	
+	private DataTransferRequest dataTransferRequest = new DataTransferRequest(MockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
+			DataTransferFormat.HTTP_PULL.name(),
+			null);
+	
 	@Test
 	@DisplayName("Find transfer process by id, state and all")
 	public void findDataTransfers() {
 
 		when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_REQUESTED));
-		Collection<JsonNode> response = apiService.findDataTransfers("test", TransferState.REQUESTED.name());
+		Collection<JsonNode> response = apiService.findDataTransfers("test", TransferState.REQUESTED.name(), null);
 		assertNotNull(response);
 		assertEquals(response.size(), 1);
 
 		when(transferProcessRepository.findById(anyString())).thenReturn(Optional.empty());
-		response = apiService.findDataTransfers("test_not_found", null);
+		response = apiService.findDataTransfers("test_not_found", null, null);
 		assertNotNull(response);
 		assertTrue(response.isEmpty());
 
-		when(transferProcessRepository.findByState(anyString())).thenReturn(Arrays.asList(MockObjectUtil.TRANSFER_PROCESS_STARTED));
-		response =  apiService.findDataTransfers(null, TransferState.STARTED.name());
+		when(transferProcessRepository.findByState(anyString())).thenReturn(Arrays.asList(MockObjectUtil.TRANSFER_PROCESS_STARTED, MockObjectUtil.TRANSFER_PROCESS_COMPLETED));
+		response =  apiService.findDataTransfers(null, TransferState.STARTED.name(), null);
+		assertNotNull(response);
+		assertEquals(response.size(), 2);
+		
+		response =  apiService.findDataTransfers(null, TransferState.STARTED.name(), IConstants.ROLE_PROVIDER);
+		assertNotNull(response);
+		assertEquals(response.size(), 1);
+		
+		response =  apiService.findDataTransfers(null, TransferState.STARTED.name(), IConstants.ROLE_CONSUMER);
 		assertNotNull(response);
 		assertEquals(response.size(), 1);
 
 		when(transferProcessRepository.findAll())
 				.thenReturn(Arrays.asList(MockObjectUtil.TRANSFER_PROCESS_REQUESTED, MockObjectUtil.TRANSFER_PROCESS_STARTED));
-		response =  apiService.findDataTransfers(null, null);
+		response =  apiService.findDataTransfers(null, null, null);
 		assertNotNull(response);
 		assertEquals(response.size(), 2);
 	}
@@ -95,6 +108,7 @@ class DataTransferAPIServiceTest {
 	@Test
 	@DisplayName("Request transfer process success")
 	public void startNegotiation_success() {
+		when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
 		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.getData()).thenReturn(Serializer.serializeProtocol(MockObjectUtil.TRANSFER_PROCESS_REQUESTED));
@@ -102,7 +116,7 @@ class DataTransferAPIServiceTest {
 		when(properties.consumerCallbackAddress()).thenReturn(MockObjectUtil.CALLBACK_ADDRESS);
 		when(transferProcessRepository.save(any(TransferProcess.class))).thenReturn(MockObjectUtil.TRANSFER_PROCESS_REQUESTED);
 		
-		apiService.requestTransfer(MockObjectUtil.FORWARD_TO, MockObjectUtil.TRANSFER_PROCESS_REQUESTED.getId(), DataTransferFormat.HTTP_PULL.name(), Serializer.serializePlainJsonNode(MockObjectUtil.DATA_ADDRESS));
+		apiService.requestTransfer(dataTransferRequest);
 		
 		verify(transferProcessRepository).save(argCaptorTransferProcess.capture());
 		assertEquals(IConstants.ROLE_CONSUMER, argCaptorTransferProcess.getValue().getRole());
@@ -111,12 +125,13 @@ class DataTransferAPIServiceTest {
 	@Test
 	@DisplayName("Request transfer process failed")
 	public void startNegotiation_failed() {
+		when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
 		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(properties.consumerCallbackAddress()).thenReturn(MockObjectUtil.CALLBACK_ADDRESS);
 		
 		assertThrows(DataTransferAPIException.class, ()->
-			apiService.requestTransfer(MockObjectUtil.FORWARD_TO, MockObjectUtil.TRANSFER_PROCESS_REQUESTED.getId(), DataTransferFormat.HTTP_PULL.name(), Serializer.serializePlainJsonNode(MockObjectUtil.DATA_ADDRESS)));
+			apiService.requestTransfer(dataTransferRequest));
 		
 		verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 	}
@@ -124,6 +139,7 @@ class DataTransferAPIServiceTest {
 	@Test
 	@DisplayName("Request transfer process json exception")
 	public void startNegotiation_jsonException() {
+		when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
 		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.getData()).thenReturn("not a JSON");
@@ -131,7 +147,7 @@ class DataTransferAPIServiceTest {
 		when(properties.consumerCallbackAddress()).thenReturn(MockObjectUtil.CALLBACK_ADDRESS);
 		
 		assertThrows(DataTransferAPIException.class, ()->
-			apiService.requestTransfer(MockObjectUtil.FORWARD_TO, MockObjectUtil.TRANSFER_PROCESS_REQUESTED.getId(), DataTransferFormat.HTTP_PULL.name(), Serializer.serializePlainJsonNode(MockObjectUtil.DATA_ADDRESS)));
+			apiService.requestTransfer(dataTransferRequest));
 		
 		verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 	}

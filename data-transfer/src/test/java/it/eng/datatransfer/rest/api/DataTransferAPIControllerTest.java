@@ -29,10 +29,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.model.DataTransferFormat;
+import it.eng.datatransfer.model.DataTransferRequest;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.serializer.Serializer;
 import it.eng.datatransfer.service.DataTransferAPIService;
@@ -49,36 +49,42 @@ class DataTransferAPIControllerTest {
 	@InjectMocks
 	private DataTransferAPIController controller;
 	
-	private ObjectMapper mapper = new ObjectMapper();
+	private DataTransferRequest dataTransferRequest = new DataTransferRequest(MockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
+			DataTransferFormat.HTTP_PULL.name(),
+			null);
+
 	
 	@Test
 	@DisplayName("Find transfer process by id, state and all")
 	public void getTransfersProcess() {
-		when(apiService.findDataTransfers(anyString(), anyString()))
+		when(apiService.findDataTransfers(anyString(), anyString(), isNull()))
 			.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(MockObjectUtil.TRANSFER_PROCESS_REQUESTED)));
-		ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess("test", TransferState.REQUESTED.name());
+		ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess("test", TransferState.REQUESTED.name(), null);
 		assertNotNull(response);
 		assertTrue(response.getBody().isSuccess());
 		assertFalse(response.getBody().getData().isEmpty());
 		
-		when(apiService.findDataTransfers(anyString(), isNull()))
+		when(apiService.findDataTransfers(anyString(), isNull(), isNull()))
 			.thenReturn(new ArrayList<>());
-		response = controller.getTransfersProcess("test_not_found", null);
+		response = controller.getTransfersProcess("test_not_found", null, null);
 		assertNotNull(response);
 		assertTrue(response.getBody().isSuccess());
 		assertTrue(response.getBody().getData().isEmpty());
 		
-		when(apiService.findDataTransfers(isNull(), anyString()))
+		when(apiService.findDataTransfers(isNull(), anyString(), anyString()))
 			.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(MockObjectUtil.TRANSFER_PROCESS_STARTED)));
-		response = controller.getTransfersProcess(null, TransferState.STARTED.name());
+		response = controller.getTransfersProcess(null, TransferState.STARTED.name(), MockObjectUtil.TRANSFER_PROCESS_STARTED.getRole());
 		assertNotNull(response);
 		assertTrue(response.getBody().isSuccess());
 		assertFalse(response.getBody().getData().isEmpty());
 	
-		when(apiService.findDataTransfers(isNull(), isNull()))
+		when(apiService.findDataTransfers(isNull(), isNull(), isNull()))
 			.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(MockObjectUtil.TRANSFER_PROCESS_REQUESTED),
 					Serializer.serializePlainJsonNode(MockObjectUtil.TRANSFER_PROCESS_STARTED)));
-		response = controller.getTransfersProcess(null, null);
+		response = controller.getTransfersProcess(null, null, null);
+		assertNotNull(response);
+		assertTrue(response.getBody().isSuccess());
+		assertFalse(response.getBody().getData().isEmpty());
 
 	}
 	
@@ -86,32 +92,30 @@ class DataTransferAPIControllerTest {
 	@DisplayName("Request transfer process success")
 	public void requestTransfer_success() {
 		Map<String, Object> map = new HashMap<>();
-		map.put("Forward-To", MockObjectUtil.FORWARD_TO);
-		map.put("agreementId", "urn:uuid:AGREEMENT_ID");
+		map.put("transferProcessId", MockObjectUtil.FORWARD_TO);
 		map.put(DSpaceConstants.FORMAT, DataTransferFormat.HTTP_PULL.name());
 		map.put(DSpaceConstants.DATA_ADDRESS, Serializer.serializePlainJsonNode(MockObjectUtil.DATA_ADDRESS));
 				
-		when(apiService.requestTransfer(any(String.class), any(String.class), any(String.class), any(JsonNode.class)))
+		when(apiService.requestTransfer(any(DataTransferRequest.class)))
 			.thenReturn(Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_PROCESS_REQUESTED));
 		
-		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.requestTransfer(mapper.convertValue(map, JsonNode.class));
+		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.requestTransfer(dataTransferRequest);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		verify(apiService).requestTransfer(any(String.class), any(String.class), any(String.class), any(JsonNode.class));
+		verify(apiService).requestTransfer(dataTransferRequest);
 	}
 	
 	@Test
 	@DisplayName("Request transfer process failed")
 	public void requestTransfer_failed() {
 		Map<String, Object> map = new HashMap<>();
-		map.put("Forward-To", MockObjectUtil.FORWARD_TO);
-		map.put("agreementId", "some-agreement");
+		map.put("transferProcessId", MockObjectUtil.FORWARD_TO);
 		map.put(DSpaceConstants.FORMAT, DataTransferFormat.HTTP_PULL.name());
 		map.put(DSpaceConstants.DATA_ADDRESS, Serializer.serializePlainJsonNode(MockObjectUtil.DATA_ADDRESS));
 				
 		doThrow(new DataTransferAPIException("Something not correct - tests"))
-			.when(apiService).requestTransfer(any(String.class), any(String.class), any(String.class), any(JsonNode.class));
+			.when(apiService).requestTransfer(any(DataTransferRequest.class));
 		
-		assertThrows(DataTransferAPIException.class, () -> controller.requestTransfer(mapper.convertValue(map, JsonNode.class)));
+		assertThrows(DataTransferAPIException.class, () -> controller.requestTransfer(dataTransferRequest));
 	}
 	
 	@Test
