@@ -1,9 +1,10 @@
 {
 	"info": {
-		"_postman_id": "6521fb79-901b-45c8-a971-17a3f7cf294a",
+		"_postman_id": "770eabed-7d91-47be-b8f5-00108780c8f9",
 		"name": "Data Transfer tests",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "36278855"
+		"_exporter_id": "21815221",
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-770eabed-7d91-47be-b8f5-00108780c8f9?action=share&source=collection_link&creator=21815221"
 	},
 	"item": [
 		{
@@ -234,9 +235,7 @@
 									"pm.test(\"Check expected response\", ()=> {\r",
 									"    pm.response.to.have.status(200);\r",
 									"    var jsonData = pm.response.json();\r",
-									"    pm.expect(jsonData['firstName']).to.eq('John');\r",
-									"    pm.expect(jsonData['lastName']).to.eq('Doe');\r",
-									"    pm.expect(jsonData['address']).to.eq('591  Franklin Street, Pennsylvania');\r",
+									"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -433,9 +432,7 @@
 									"pm.test(\"Check expected response\", ()=> {\r",
 									"    pm.response.to.have.status(200);\r",
 									"    var jsonData = pm.response.json();\r",
-									"    pm.expect(jsonData['firstName']).to.eq('John');\r",
-									"    pm.expect(jsonData['lastName']).to.eq('Doe');\r",
-									"    pm.expect(jsonData['address']).to.eq('591  Franklin Street, Pennsylvania');\r",
+									"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
 									"});"
 								],
 								"type": "text/javascript",

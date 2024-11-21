@@ -31,6 +31,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ArtifactService {
 
+	// taken from GridFsResource.CONTENT_TYPE_FIELD
+	private static final String CONTENT_TYPE_FIELD = "_contentType";
 	private static final String DATASET_ID_METADATA = "datasetId";
 	
 	private final MongoTemplate mongoTemplate;
@@ -49,7 +51,8 @@ public class ArtifactService {
 			}
 			GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
 			Document doc = new Document();
-			doc.append(HttpHeaders.CONTENT_TYPE, file.getContentType());
+			//TODO check what happens if file.getContentType() is null
+			doc.append(CONTENT_TYPE_FIELD, file.getContentType());
 			doc.append(DATASET_ID_METADATA, datasetId);
 			GridFSUploadOptions options = new GridFSUploadOptions()
 			        .chunkSizeBytes(1048576) // 1MB chunk size

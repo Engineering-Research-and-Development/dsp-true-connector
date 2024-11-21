@@ -1,9 +1,10 @@
 {
 	"info": {
-		"_postman_id": "976b0794-c898-456b-b8e1-02f21a0bdc7f",
+		"_postman_id": "b1d0623d-e1ea-4b12-82a7-cd53811193db",
 		"name": "True_connector_DSP",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "36278855"
+		"_exporter_id": "21815221",
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-b1d0623d-e1ea-4b12-82a7-cd53811193db?action=share&source=collection_link&creator=21815221"
 	},
 	"item": [
 		{
@@ -662,7 +663,7 @@
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER}}/negotiations/request\",\r\n    \"offer\": {\r\n        \"@id\": \"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"urn:uuid:TARGET\",\r\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n        \"permission\": [\r\n            {\r\n                \"target\": \"urn:uuid:TARGET\",\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"EQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+									"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER}}/negotiations/request\",\r\n    \"offer\": {\r\n        \"@id\": \"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5\",\r\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"LTEQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -1116,6 +1117,55 @@
 					"name": "DataTransfer",
 					"item": [
 						{
+							"name": "[C] Find Initialized Transfer Process",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"consumer_transferProcessId\", jsonData[\"data\"][jsonData.data.length-1][\"@id\"])\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_TRANSFERS}}?state=INITIALIZED&role=consumer",
+									"host": [
+										"{{CONSUMER_SERVER_API_TRANSFERS}}"
+									],
+									"query": [
+										{
+											"key": "state",
+											"value": "INITIALIZED"
+										},
+										{
+											"key": "role",
+											"value": "consumer"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "[C] Request transfer",
 							"event": [
 								{
@@ -1129,6 +1179,13 @@
 											"\r",
 											"pm.test(\"Check if status code is 200\", function () {\r",
 											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"TransactionId\", ()=> {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    let trId = jsonData[\"data\"][\"consumerPid\"] + \"|\" + jsonData[\"data\"][\"providerPid\"];\r",
+											"    pm.collectionVariables.set(\"transactionId\", btoa(trId));\r",
+											"    console.log(pm.collectionVariables.get(\"transactionId\"));\r",
 											"});"
 										],
 										"type": "text/javascript",
@@ -1141,7 +1198,7 @@
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER}}\",\r\n    \"agreementId\": \"{{agreementId}}\",\r\n    \"format\": \"example:HTTP_PULL\",\r\n    \"dataAddress\": {\r\n        \"endpointType\": \"https://w3id.org/idsa/v4.1/HTTP\",\r\n        \"endpoint\": \"http://example.com\",\r\n        \"endpointProperties\": [\r\n            {\r\n                \"name\": \"authorization\",\r\n                \"value\": \"TOKEN-ABCDEFG\"\r\n            },\r\n            {\r\n                \"name\": \"authType\",\r\n                \"value\": \"bearer\"\r\n            }\r\n        ]\r\n    }\r\n}",
+									"raw": "{\r\n    \"transferProcessId\": \"{{consumer_transferProcessId}}\",\r\n    \"format\": \"HttpData-PULL\",\r\n    \"dataAddress\": {\r\n        \"endpointType\": \"https://w3id.org/idsa/v4.1/HTTP\",\r\n        \"endpoint\": \"http://example.com\",\r\n        \"endpointProperties\": [\r\n            {\r\n                \"name\": \"authorization\",\r\n                \"value\": \"TOKEN-ABCDEFG\"\r\n            },\r\n            {\r\n                \"name\": \"authType\",\r\n                \"value\": \"bearer\"\r\n            }\r\n        ]\r\n    }\r\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -1238,6 +1295,40 @@
 									"path": [
 										"{{provider_transferProcessId}}",
 										"start"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[C] Download data",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check expected response\", ()=> {\r",
+											"    pm.response.to.have.status(200);\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{PROVIDER}}/artifacts/{{transactionId}}",
+									"host": [
+										"{{PROVIDER}}"
+									],
+									"path": [
+										"artifacts",
+										"{{transactionId}}"
 									]
 								}
 							},
@@ -2324,6 +2415,10 @@
 		},
 		{
 			"key": "agreementId",
+			"value": ""
+		},
+		{
+			"key": "transactionId",
 			"value": ""
 		}
 	]

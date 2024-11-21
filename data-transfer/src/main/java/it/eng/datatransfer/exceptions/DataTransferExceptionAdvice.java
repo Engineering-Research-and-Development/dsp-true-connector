@@ -10,13 +10,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-import it.eng.datatransfer.serializer.Serializer;
 import it.eng.datatransfer.model.TransferError;
+import it.eng.datatransfer.rest.api.RestArtifactController;
 import it.eng.datatransfer.rest.protocol.ProviderDataTransferController;
+import it.eng.datatransfer.serializer.Serializer;
 import it.eng.datatransfer.service.DataTransferService;
+import it.eng.datatransfer.service.api.RestArtifactService;
 import jakarta.validation.ValidationException;
 
-@RestControllerAdvice(basePackageClasses = { ProviderDataTransferController.class, DataTransferService.class })
+@RestControllerAdvice(basePackageClasses = { ProviderDataTransferController.class, DataTransferService.class, RestArtifactController.class, RestArtifactService.class })
 public class DataTransferExceptionAdvice extends ResponseEntityExceptionHandler {
 
 	@ExceptionHandler(value = { ValidationException.class })

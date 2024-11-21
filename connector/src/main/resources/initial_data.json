@@ -118,6 +118,7 @@
 	                    "$id": "urn:uuid:1dc45797-json-4932-8baf-ab7fd66ql4d5"
 	                }
 	            ],
+				"fileId": "673c80eb4909383cb15db673",
 	            "createdBy": "admin@mail.com",
 	            "lastModifiedBy": "admin@mail.com",
 	            "version": 0
@@ -457,7 +458,7 @@
       "modified": "2024-04-23T16:26:00.000Z",
       "version": 0
         },  {
-	  "_id": "urn:uuid:abc45798-4434-4932-8baf-ab7fd66ql4d5",
+	  "_id": "urn:uuid:abc45498-4434-4932-8baf-ab7fd66ql4d5",
 	  "_class": "it.eng.datatransfer.model.TransferProcess",
       "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_INITIALIZED",
       "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_INITIALIZED",
@@ -561,6 +562,7 @@
 		  ],
 		  "type": "dspace:DataAddress"
 		},
+	  "datasetId":"urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
 	  "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "issued": "2024-04-23T16:26:00.000Z",
@@ -658,6 +660,40 @@
   	  	"_class": "it.eng.negotiation.model.PolicyEnforcement",
         "agreementId": "urn:uuid:AGREEMENT_ID_OK_API",
         "count": "0"
+	 },{
+			
+		"_id": "urn:uuid:abc45800-pole-4932-8baf-ab7fd66ql4d8",
+  	  	"_class": "it.eng.negotiation.model.PolicyEnforcement",
+        "agreementId": "urn:uuid:AGREEMENT_ID_SUSP",
+        "count": "0"
+	 },{
+			
+		"_id": "urn:uuid:abc45800-pole-4932-8baf-ab7fd66ql4d9",
+  	  	"_class": "it.eng.negotiation.model.PolicyEnforcement",
+        "agreementId": "urn:uuid:AGREEMENT_ID_OK_API",
+        "count": "0"
 	 }
-  ]
+  ],
+	"fs.files": [
+		{
+			"_id": {"$oid": "673c80eb4909383cb15db673"},
+			"chunkSize": 1048576,
+			"filename": "ENG employee.json",
+			"length": 113,
+			"metadata": {
+				"_contentType": "application/json",
+				"datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
+			},
+			"uploadDate": {"$date": "2024-11-19T12:13:31.437Z"}
+		}
+	],
+	"fs.chunks": [
+		{
+			"_id": {"$oid": "673c80eb4909383cb15db674"},
+			"data": {"$binary": {"base64": "Ww0KICB7DQogICAgImVtcGxveWVlIjogew0KICAgICAgIm5hbWUiOiAiSm9obiBEb2UiLA0KICAgICAgImFnZSI6IDMwLA0KICAgICAgImNpdHkiOiAiTmV3IFlvcmsiDQogICAgfQ0KICB9DQpdDQo=", "subType": "00"}},
+			"files_id": {"$oid": "673c80eb4909383cb15db673"},
+			"n": 0
+		}
+	]
+	
 }

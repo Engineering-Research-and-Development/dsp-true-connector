@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.model.DataAddress;
+import it.eng.datatransfer.model.DataTransferRequest;
 import it.eng.datatransfer.model.EndpointProperty;
 import it.eng.datatransfer.model.TransferCompletionMessage;
 import it.eng.datatransfer.model.TransferProcess;
@@ -55,60 +56,68 @@ public class DataTransferAPIService {
 		this.dataTransferProperties = dataTransferProperties;
 	}
 
-	public Collection<JsonNode> findDataTransfers(String transferProcessId, String state) {
+	public Collection<JsonNode> findDataTransfers(String transferProcessId, String state, String role) {
 		if(StringUtils.isNotBlank(transferProcessId)) {
 			return transferProcessRepository.findById(transferProcessId)
 					.stream()
 					.map(dt -> Serializer.serializePlainJsonNode(dt))
 					.collect(Collectors.toList());
-		} else if(StringUtils.isNoneBlank(state)) {
+		} else if(StringUtils.isNotBlank(state)) {
 			return transferProcessRepository.findByState(state)
 					.stream()
+					.filter(tp -> filterByRole(tp, role))
 					.map(dt -> Serializer.serializePlainJsonNode(dt))
 					.collect(Collectors.toList());
 		}
-		return transferProcessRepository.findAll().stream().map(dt -> Serializer.serializePlainJsonNode(dt))
+		return transferProcessRepository.findAll()
+				.stream()
+				.filter(tp -> filterByRole(tp, role))
+				.map(dt -> Serializer.serializePlainJsonNode(dt))
 				.collect(Collectors.toList());
-		}
+	}
 	
 	/********* CONSUMER ***********/
 	
-	public JsonNode requestTransfer(String targetConnector, String agreementId, String format, JsonNode dataAddress) {
+	public JsonNode requestTransfer(DataTransferRequest dataTransferRequest) {
+		TransferProcess transferProcess = findTransferProcessById(dataTransferRequest.getTransferProcessId());
+		
+		stateTransitionCheck(TransferState.REQUESTED, transferProcess.getState());
 		DataAddress dataAddressForMessage = null;
-		if (StringUtils.isNotBlank(format)) {
-			dataAddressForMessage = Serializer.deserializePlain(dataAddress.toPrettyString(), DataAddress.class);
+		if (StringUtils.isNotBlank(dataTransferRequest.getFormat()) && dataTransferRequest.getDataAddress() != null && !dataTransferRequest.getDataAddress().isEmpty()) {
+			dataAddressForMessage = Serializer.deserializePlain(dataTransferRequest.getDataAddress().toPrettyString(), DataAddress.class);
 		}
 		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
-				.agreementId(agreementId)
+				.agreementId(transferProcess.getAgreementId())
 				.callbackAddress(dataTransferProperties.consumerCallbackAddress())
 				.consumerPid("urn:uuid:" + UUID.randomUUID())
-				.format(format)
-				//TODO add data address when PUSH format is supported
-				.dataAddress(null)
+				.format(dataTransferRequest.getFormat())
+				.dataAddress(dataAddressForMessage)
 				.build();
 		
-		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(DataTransferCallback.getConsumerDataTransferRequest(targetConnector), 
+		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(DataTransferCallback.getConsumerDataTransferRequest(transferProcess.getCallbackAddress()), 
 				Serializer.serializeProtocolJsonNode(transferRequestMessage), credentialUtils.getConnectorCredentials());
 		log.info("Response received {}", response);
 		TransferProcess transferProcessForDB = null;
 		if (response.isSuccess()) {
 			try {
 				JsonNode jsonNode = mapper.readTree(response.getData());
-				TransferProcess transferProcess = Serializer.deserializeProtocol(jsonNode, TransferProcess.class);
+				TransferProcess transferProcessFromResponse = Serializer.deserializeProtocol(jsonNode, TransferProcess.class);
 				
 				transferProcessForDB = TransferProcess.Builder.newInstance()
 						.id(transferProcess.getId())
-						.agreementId(agreementId)
-						.consumerPid(transferProcess.getConsumerPid())
-						.providerPid(transferProcess.getProviderPid())
-						.format(format)
+						.agreementId(transferProcess.getAgreementId())
+						.consumerPid(transferProcessFromResponse.getConsumerPid())
+						.providerPid(transferProcessFromResponse.getProviderPid())
+						.format(dataTransferRequest.getFormat())
 						.dataAddress(dataAddressForMessage)
-						.callbackAddress(targetConnector)
+						.callbackAddress(transferProcess.getCallbackAddress())
 						.role(IConstants.ROLE_CONSUMER)
-						.state(transferProcess.getState())
+						.state(transferProcessFromResponse.getState())
 						.createdBy(transferProcess.getCreatedBy())
 						.lastModifiedBy(transferProcess.getLastModifiedBy())
 						.version(transferProcess.getVersion())
+						// although not needed on consumer side it is added here to avoid duplicate id exception from mongodb
+						.datasetId(transferProcess.getDatasetId())
 						.build();
 				
 				transferProcessRepository.save(transferProcessForDB);
@@ -148,7 +157,7 @@ public class DataTransferAPIService {
 	   		address = DataTransferCallback.getConsumerDataTransferStart(transferProcess.getCallbackAddress(), transferProcess.getConsumerPid());
 	   		if (transferProcess.getDataAddress() == null) {
 	   			String transactionId = Base64.encodeBase64URLSafeString((transferProcess.getConsumerPid() + "|" + transferProcess.getProviderPid()).getBytes("UTF-8"));
-	   			String artifactURL = DataTransferCallback.getValidCallback(dataTransferProperties.providerCallbackAddress()) + "/artifacts/" + transactionId + "/1";
+	   			String artifactURL = DataTransferCallback.getValidCallback(dataTransferProperties.providerCallbackAddress()) + "/artifacts/" + transactionId;
 	   			
 	   			EndpointProperty endpointProperty = EndpointProperty.Builder.newInstance()
 	   					.name("https://w3id.org/edc/v0.0.1/ns/endpoint")
@@ -329,5 +338,13 @@ public class DataTransferAPIService {
     	        .orElseThrow(() ->
                 new DataTransferAPIException("Transfer process with id " + transferProcessId + " not found"));
     }
+	
+	private boolean filterByRole(TransferProcess cn, String role) {
+		if(role == null) {
+			return true;
+		} else {
+			return role.equalsIgnoreCase(cn.getRole());
+		}
+	}
 
 }
