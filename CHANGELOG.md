@@ -1,7 +1,7 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [0.1.1] - 20-11-2024
+## [0.1.1] - 21-11-2024
 
 ### Added
 
@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
  - Initiate transfer process API endpoint now uses initialized transfer processes
+ - Download now uses data from DB (not the hardcoded John Doe)
 
 ## [0.1.1] - 19-11-2024
 
@@ -42,7 +43,6 @@ All notable changes to this project will be documented in this file.
  - GenericApiResponse.timestamp added @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS")
  - Serializers added InstantSerializer, InstantDeserializer and JavaTimeModule
  
->>>>>>> refs/remotes/origin/develop
 ## [0.1.1] - 07-11-2024
 
 ### Added
