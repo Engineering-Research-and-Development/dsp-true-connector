@@ -65,11 +65,15 @@ public class RestArtifactService {
         if (file != null) {
             GridFSDownloadStream gridFSDownloadStream = gridFSBucket.openDownloadStream(file.getObjectId());
             GridFsResource gridFsResource = new GridFsResource(file, gridFSDownloadStream);
-    		publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId()));
             return gridFsResource;
         }
         return null;
     }
+	
+	public void publishArtifactConsumedEvent(String transactionId) {
+		TransferProcess transferProcess = getTransferProcessForTransactionId(transactionId);
+		publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId()));
+	}
 
 	private TransferProcess getTransferProcessForTransactionId(String transactionId) {
 		String[] tokens = new String(Base64.decodeBase64URLSafe(transactionId), Charset.forName("UTF-8")).split("\\|");

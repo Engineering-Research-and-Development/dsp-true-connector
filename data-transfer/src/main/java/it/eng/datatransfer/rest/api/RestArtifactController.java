@@ -53,6 +53,7 @@ public class RestArtifactController {
 			response.setHeader("Content-Disposition", "attachment;filename=\"" + attachment.getFilename() + "\"");
 			response.addHeader("Content-type", attachment.getContentType());
 			IOUtils.copy(attachment.getInputStream(), response.getOutputStream());
+			restArtifactService.publishArtifactConsumedEvent(transactionId);
 		} catch (IOException e) {
 			response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
