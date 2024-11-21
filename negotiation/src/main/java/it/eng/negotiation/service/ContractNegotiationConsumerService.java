@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.negotiation.exception.ContractNegotiationInvalidEventTypeException;
+import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
 import it.eng.negotiation.exception.OfferNotFoundException;
 import it.eng.negotiation.listener.ContractNegotiationPublisher;
 import it.eng.negotiation.model.ContractAgreementMessage;
@@ -176,8 +177,11 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
      * @return
      */
     public void handleTerminationRequest(String consumerPid, ContractNegotiationTerminationMessage contractNegotiationTerminationMessage) {
-    	ContractNegotiation contractNegotiation = findContractNegotiationByPids(contractNegotiationTerminationMessage.getConsumerPid(), contractNegotiationTerminationMessage.getProviderPid());
-
+    	ContractNegotiation contractNegotiation = contractNegotiationRepository.findByConsumerPid(consumerPid)
+				.orElseThrow(() -> new ContractNegotiationNotFoundException(
+						"Contract negotiation with providerPid " + contractNegotiationTerminationMessage.getProviderPid() + 
+						" and consumerPid " + consumerPid + " not found", consumerPid, contractNegotiationTerminationMessage.getProviderPid()));
+    	
     	stateTransitionCheck(ContractNegotiationState.TERMINATED, contractNegotiation);
 
     	ContractNegotiation contractNegotiationTerminated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.TERMINATED);

@@ -186,7 +186,7 @@ when(contractNegotiationRepository.findByProviderPidAndConsumerPid(MockObjectUti
 	@Test
 	@DisplayName("Process termination message success")
 	public void handleTerminationRequest_success() {
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class)))
+		when(contractNegotiationRepository.findByConsumerPid(any(String.class)))
 			.thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
 
 		service.handleTerminationRequest(MockObjectUtil.CONSUMER_PID, MockObjectUtil.TERMINATION_MESSAGE);
@@ -198,7 +198,7 @@ when(contractNegotiationRepository.findByProviderPidAndConsumerPid(MockObjectUti
 	@Test
 	@DisplayName("Process termination message failed - negotiation not found")
 	public void handleTerminationRequest_fail() {
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class)))
+		when(contractNegotiationRepository.findByConsumerPid(any(String.class)))
 			.thenReturn(Optional.empty());
 
 		assertThrows(ContractNegotiationNotFoundException.class, 
@@ -208,7 +208,7 @@ when(contractNegotiationRepository.findByProviderPidAndConsumerPid(MockObjectUti
 	@Test
 	@DisplayName("Process termination message failed - already terminated")
 	public void handleTerminationRequest_fail_alreadyTerminated() {
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class)))
+		when(contractNegotiationRepository.findByConsumerPid(any(String.class)))
 			.thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_TERMINATED));
 
 		assertThrows(ContractNegotiationInvalidStateException.class, 
