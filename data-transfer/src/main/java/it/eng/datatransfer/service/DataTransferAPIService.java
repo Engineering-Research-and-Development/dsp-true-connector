@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.model.DataAddress;
+import it.eng.datatransfer.model.DataTransferRequest;
 import it.eng.datatransfer.model.EndpointProperty;
 import it.eng.datatransfer.model.TransferCompletionMessage;
 import it.eng.datatransfer.model.TransferProcess;
@@ -77,19 +78,19 @@ public class DataTransferAPIService {
 	
 	/********* CONSUMER ***********/
 	
-	public JsonNode requestTransfer(String transferProcessId, String format, JsonNode dataAddress) {
-		TransferProcess transferProcess = findTransferProcessById(transferProcessId);
+	public JsonNode requestTransfer(DataTransferRequest dataTransferRequest) {
+		TransferProcess transferProcess = findTransferProcessById(dataTransferRequest.getTransferProcessId());
 		
 		stateTransitionCheck(TransferState.REQUESTED, transferProcess.getState());
 		DataAddress dataAddressForMessage = null;
-		if (StringUtils.isNotBlank(format) && dataAddress != null && !dataAddress.isEmpty()) {
-			dataAddressForMessage = Serializer.deserializePlain(dataAddress.toPrettyString(), DataAddress.class);
+		if (StringUtils.isNotBlank(dataTransferRequest.getFormat()) && dataTransferRequest.getDataAddress() != null && !dataTransferRequest.getDataAddress().isEmpty()) {
+			dataAddressForMessage = Serializer.deserializePlain(dataTransferRequest.getDataAddress().toPrettyString(), DataAddress.class);
 		}
 		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
 				.agreementId(transferProcess.getAgreementId())
 				.callbackAddress(dataTransferProperties.consumerCallbackAddress())
 				.consumerPid("urn:uuid:" + UUID.randomUUID())
-				.format(format)
+				.format(dataTransferRequest.getFormat())
 				.dataAddress(dataAddressForMessage)
 				.build();
 		
@@ -107,7 +108,7 @@ public class DataTransferAPIService {
 						.agreementId(transferProcess.getAgreementId())
 						.consumerPid(transferProcessFromResponse.getConsumerPid())
 						.providerPid(transferProcessFromResponse.getProviderPid())
-						.format(format)
+						.format(dataTransferRequest.getFormat())
 						.dataAddress(dataAddressForMessage)
 						.callbackAddress(transferProcess.getCallbackAddress())
 						.role(IConstants.ROLE_CONSUMER)

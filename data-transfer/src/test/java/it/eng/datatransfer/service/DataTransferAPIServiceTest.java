@@ -33,6 +33,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.model.DataAddress;
 import it.eng.datatransfer.model.DataTransferFormat;
+import it.eng.datatransfer.model.DataTransferRequest;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
@@ -65,6 +66,10 @@ class DataTransferAPIServiceTest {
 	
 	@InjectMocks
 	private DataTransferAPIService apiService;
+	
+	private DataTransferRequest dataTransferRequest = new DataTransferRequest(MockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
+			DataTransferFormat.HTTP_PULL.name(),
+			null);
 	
 	@Test
 	@DisplayName("Find transfer process by id, state and all")
@@ -111,7 +116,7 @@ class DataTransferAPIServiceTest {
 		when(properties.consumerCallbackAddress()).thenReturn(MockObjectUtil.CALLBACK_ADDRESS);
 		when(transferProcessRepository.save(any(TransferProcess.class))).thenReturn(MockObjectUtil.TRANSFER_PROCESS_REQUESTED);
 		
-		apiService.requestTransfer(MockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(), DataTransferFormat.HTTP_PULL.name(), null);
+		apiService.requestTransfer(dataTransferRequest);
 		
 		verify(transferProcessRepository).save(argCaptorTransferProcess.capture());
 		assertEquals(IConstants.ROLE_CONSUMER, argCaptorTransferProcess.getValue().getRole());
@@ -126,7 +131,7 @@ class DataTransferAPIServiceTest {
 		when(properties.consumerCallbackAddress()).thenReturn(MockObjectUtil.CALLBACK_ADDRESS);
 		
 		assertThrows(DataTransferAPIException.class, ()->
-			apiService.requestTransfer(MockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(), DataTransferFormat.HTTP_PULL.name(), null));
+			apiService.requestTransfer(dataTransferRequest));
 		
 		verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 	}
@@ -142,7 +147,7 @@ class DataTransferAPIServiceTest {
 		when(properties.consumerCallbackAddress()).thenReturn(MockObjectUtil.CALLBACK_ADDRESS);
 		
 		assertThrows(DataTransferAPIException.class, ()->
-			apiService.requestTransfer( MockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(), DataTransferFormat.HTTP_PULL.name(), null));
+			apiService.requestTransfer(dataTransferRequest));
 		
 		verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 	}

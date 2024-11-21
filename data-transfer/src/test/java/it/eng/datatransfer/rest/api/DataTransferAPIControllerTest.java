@@ -29,10 +29,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.model.DataTransferFormat;
+import it.eng.datatransfer.model.DataTransferRequest;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.serializer.Serializer;
 import it.eng.datatransfer.service.DataTransferAPIService;
@@ -49,7 +49,10 @@ class DataTransferAPIControllerTest {
 	@InjectMocks
 	private DataTransferAPIController controller;
 	
-	private ObjectMapper mapper = new ObjectMapper();
+	private DataTransferRequest dataTransferRequest = new DataTransferRequest(MockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
+			DataTransferFormat.HTTP_PULL.name(),
+			null);
+
 	
 	@Test
 	@DisplayName("Find transfer process by id, state and all")
@@ -93,12 +96,12 @@ class DataTransferAPIControllerTest {
 		map.put(DSpaceConstants.FORMAT, DataTransferFormat.HTTP_PULL.name());
 		map.put(DSpaceConstants.DATA_ADDRESS, Serializer.serializePlainJsonNode(MockObjectUtil.DATA_ADDRESS));
 				
-		when(apiService.requestTransfer(any(String.class), any(String.class), any(JsonNode.class)))
+		when(apiService.requestTransfer(any(DataTransferRequest.class)))
 			.thenReturn(Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_PROCESS_REQUESTED));
 		
-		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.requestTransfer(mapper.convertValue(map, JsonNode.class));
+		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.requestTransfer(dataTransferRequest);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		verify(apiService).requestTransfer(any(String.class), any(String.class), any(JsonNode.class));
+		verify(apiService).requestTransfer(dataTransferRequest);
 	}
 	
 	@Test
@@ -110,9 +113,9 @@ class DataTransferAPIControllerTest {
 		map.put(DSpaceConstants.DATA_ADDRESS, Serializer.serializePlainJsonNode(MockObjectUtil.DATA_ADDRESS));
 				
 		doThrow(new DataTransferAPIException("Something not correct - tests"))
-			.when(apiService).requestTransfer(any(String.class), any(String.class), any(JsonNode.class));
+			.when(apiService).requestTransfer(any(DataTransferRequest.class));
 		
-		assertThrows(DataTransferAPIException.class, () -> controller.requestTransfer(mapper.convertValue(map, JsonNode.class)));
+		assertThrows(DataTransferAPIException.class, () -> controller.requestTransfer(dataTransferRequest));
 	}
 	
 	@Test
