@@ -1,0 +1,611 @@
+{
+	"info": {
+		"_postman_id": "c1268923-e00d-45a1-bfa7-22395ea150ff",
+		"name": "Data Transfer API test",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "21815221",
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-c1268923-e00d-45a1-bfa7-22395ea150ff?action=share&source=collection_link&creator=21815221"
+	},
+	"item": [
+		{
+			"name": "[C] Request transfer",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Retrieve transfer process id\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.collectionVariables.set(\"consumer_transferProcessId\", jsonData[\"data\"][\"@id\"])\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"TransactionId\", ()=> {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    let trId = jsonData[\"data\"][\"consumerPid\"] + \"|\" + jsonData[\"data\"][\"providerPid\"];\r",
+							"    pm.collectionVariables.set(\"transactionId\", btoa(trId));\r",
+							"    console.log(pm.collectionVariables.get(\"transactionId\"));\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"transferProcessId\": \"{{consumer_transferProcessId}}\",\r\n    \"format\": \"HttpData-PULL\",\r\n    \"dataAddress\": {\r\n        \"endpointType\": \"https://w3id.org/idsa/v4.1/HTTP\",\r\n        \"endpoint\": \"http://example.com\",\r\n        \"endpointProperties\": [\r\n            {\r\n                \"name\": \"authorization\",\r\n                \"value\": \"TOKEN-ABCDEFG\"\r\n            },\r\n            {\r\n                \"name\": \"authType\",\r\n                \"value\": \"bearer\"\r\n            }\r\n        ]\r\n    }\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[P] Find Transfer Process",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Retrieve transfer process id\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.collectionVariables.set(\"provider_transferProcessId\", jsonData[\"data\"][jsonData.data.length-1][\"@id\"])\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{PROVIDER_API_TRANSFERS}}",
+					"host": [
+						"{{PROVIDER_API_TRANSFERS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[P] Start transfer",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{PROVIDER_API_TRANSFERS}}/{{provider_transferProcessId}}/start",
+					"host": [
+						"{{PROVIDER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{provider_transferProcessId}}",
+						"start"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[C] Suspend transfer",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/suspend",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"suspend"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[C] Start transfer",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/start",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"start"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[C] Download data",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check expected response\", ()=> {\r",
+							"    pm.response.to.have.status(200);\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{PROVIDER}}/artifacts/{{transactionId}}",
+					"host": [
+						"{{PROVIDER}}"
+					],
+					"path": [
+						"artifacts",
+						"{{transactionId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[C] Complete transfer",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/complete",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"complete"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[C] Request transfer",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Retrieve transfer process id\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.collectionVariables.set(\"consumer_transferProcessId\", jsonData[\"data\"][\"@id\"])\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"TransactionId\", ()=> {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    let trId = jsonData[\"data\"][\"consumerPid\"] + \"|\" + jsonData[\"data\"][\"providerPid\"];\r",
+							"    pm.collectionVariables.set(\"transactionId\", btoa(trId));\r",
+							"    console.log(pm.collectionVariables.get(\"transactionId\"));\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"transferProcessId\": \"{{consumer_transferProcessId}}\",\r\n    \"format\": \"HttpData-PULL\",\r\n    \"dataAddress\": {\r\n        \"endpointType\": \"https://w3id.org/idsa/v4.1/HTTP\",\r\n        \"endpoint\": \"http://example.com\",\r\n        \"endpointProperties\": [\r\n            {\r\n                \"name\": \"authorization\",\r\n                \"value\": \"TOKEN-ABCDEFG\"\r\n            },\r\n            {\r\n                \"name\": \"authType\",\r\n                \"value\": \"bearer\"\r\n            }\r\n        ]\r\n    }\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[P] Find Transfer Process",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Retrieve transfer process id\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.collectionVariables.set(\"provider_transferProcessId\", jsonData[\"data\"][jsonData.data.length-1][\"@id\"])\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{PROVIDER_API_TRANSFERS}}",
+					"host": [
+						"{{PROVIDER_API_TRANSFERS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[P] Terminate transfer",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{PROVIDER_API_TRANSFERS}}/{{provider_transferProcessId}}/terminate",
+					"host": [
+						"{{PROVIDER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{provider_transferProcessId}}",
+						"terminate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[C] Request transfer",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Retrieve transfer process id\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.collectionVariables.set(\"consumer_transferProcessId\", jsonData[\"data\"][\"@id\"])\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"TransactionId\", ()=> {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    let trId = jsonData[\"data\"][\"consumerPid\"] + \"|\" + jsonData[\"data\"][\"providerPid\"];\r",
+							"    pm.collectionVariables.set(\"transactionId\", btoa(trId));\r",
+							"    console.log(pm.collectionVariables.get(\"transactionId\"));\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"transferProcessId\": \"{{consumer_transferProcessId}}\",\r\n    \"format\": \"HttpData-PULL\",\r\n    \"dataAddress\": {\r\n        \"endpointType\": \"https://w3id.org/idsa/v4.1/HTTP\",\r\n        \"endpoint\": \"http://example.com\",\r\n        \"endpointProperties\": [\r\n            {\r\n                \"name\": \"authorization\",\r\n                \"value\": \"TOKEN-ABCDEFG\"\r\n            },\r\n            {\r\n                \"name\": \"authType\",\r\n                \"value\": \"bearer\"\r\n            }\r\n        ]\r\n    }\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[C] Terminate transfer",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/terminate",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"terminate"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "basic",
+		"basic": [
+			{
+				"key": "password",
+				"value": "password",
+				"type": "string"
+			},
+			{
+				"key": "username",
+				"value": "admin@mail.com",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "PROVIDER",
+			"value": "http://172.17.0.1:8090",
+			"type": "string"
+		},
+		{
+			"key": "CONSUMER_API_TRANSFERS",
+			"value": "http://localhost:8080/api/v1/transfers",
+			"type": "default"
+		},
+		{
+			"key": "PROVIDER_API_TRANSFERS",
+			"value": "http://localhost:8090/api/v1/transfers",
+			"type": "default"
+		},
+		{
+			"key": "consumer_transferProcessId",
+			"value": "urn:uuid:abc45798-1434-4932-8baf-ab7fd66ql4d5",
+			"type": "string"
+		}
+	]
+}
