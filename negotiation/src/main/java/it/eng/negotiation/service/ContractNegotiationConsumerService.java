@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.negotiation.exception.ContractNegotiationInvalidEventTypeException;
+import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
 import it.eng.negotiation.exception.OfferNotFoundException;
 import it.eng.negotiation.listener.ContractNegotiationPublisher;
 import it.eng.negotiation.model.ContractAgreementMessage;
@@ -175,33 +176,19 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
      * @param contractNegotiationTerminationMessage
      * @return
      */
-
-    public void handleTerminationResponse(String consumerPid, ContractNegotiationTerminationMessage contractNegotiationTerminationMessage) {
-    	ContractNegotiation contractNegotiation = findContractNegotiationByPids(contractNegotiationTerminationMessage.getConsumerPid(), contractNegotiationTerminationMessage.getProviderPid());
-
+    public void handleTerminationRequest(String consumerPid, ContractNegotiationTerminationMessage contractNegotiationTerminationMessage) {
+    	ContractNegotiation contractNegotiation = contractNegotiationRepository.findByConsumerPid(consumerPid)
+				.orElseThrow(() -> new ContractNegotiationNotFoundException(
+						"Contract negotiation with providerPid " + contractNegotiationTerminationMessage.getProviderPid() + 
+						" and consumerPid " + consumerPid + " not found", consumerPid, contractNegotiationTerminationMessage.getProviderPid()));
+    	
     	stateTransitionCheck(ContractNegotiationState.TERMINATED, contractNegotiation);
 
     	ContractNegotiation contractNegotiationTerminated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.TERMINATED);
     	contractNegotiationRepository.save(contractNegotiationTerminated);
     	log.info("Contract Negotiation with id {} set to TERMINATED state", contractNegotiation.getId());
-    }
-    
-//    private Offer validateAgreementAgainstOffer(ContractAgreementMessage contractAgreementMessage) {
-//    	return 
-//    	repository.findByProviderPidAndConsumerPid(contractAgreementMessage.getProviderPid(), contractAgreementMessage.getConsumerPid())
-//    		.map(cn -> cn.getOffer())
-//    	.orElseThrow(() -> new OfferNotFoundException(
-//				"Offer with following values from Agreement not found: providerPid " + contractAgreementMessage.getProviderPid() + 
-//				" and consumerPid " + contractAgreementMessage.getConsumerPid() + "and target " + contractAgreementMessage.getAgreement().getTarget()));
-
     	
-//		return offerRepository
-//				.findByConsumerPidAndProviderPidAndTarget(contractAgreementMessage.getConsumerPid(),
-//						contractAgreementMessage.getProviderPid(),
-//						contractAgreementMessage.getAgreement().getTarget())
-//				.orElseThrow(() -> new OfferNotFoundException(
-//						"Offer with following values from Agreement not found: providerPid " + contractAgreementMessage.getProviderPid() + 
-//						" and consumerPid " + contractAgreementMessage.getConsumerPid() + "and target " + contractAgreementMessage.getAgreement().getTarget()));
-//	}
+    	publisher.publishEvent(contractNegotiationTerminationMessage);
+    }
 
 }

@@ -44,8 +44,11 @@ public class ProviderContractNegotiationController {
     @GetMapping(path = "/{providerPid}")
     public ResponseEntity<JsonNode>  getNegotiationByProviderPid(@PathVariable String providerPid) {
         log.info("Get negotiation by provider pid");
-		ContractNegotiation contractNegotiation = providerService.getNegotiationByProviderPid(providerPid);
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(Serializer.serializeProtocolJsonNode(contractNegotiation));
+		
+        ContractNegotiation contractNegotiation = providerService.getNegotiationByProviderPid(providerPid);
+        
+		return ResponseEntity.ok()
+        		.body(Serializer.serializeProtocolJsonNode(contractNegotiation));
     }
 
     // 2.2 The provider negotiations/request resource
@@ -61,7 +64,8 @@ public class ProviderContractNegotiationController {
                 .fromCurrentRequest().path("/{id}")
                 .buildAndExpand(cn.getProviderPid()).toUri();
 
-        return ResponseEntity.created(location).contentType(MediaType.APPLICATION_JSON).body(Serializer.serializeProtocolJsonNode(cn));
+        return ResponseEntity.created(location)
+        		.body(Serializer.serializeProtocolJsonNode(cn));
     }
 
     // 2.3 The provider negotiations/:providerPid/request resource
@@ -73,7 +77,9 @@ public class ProviderContractNegotiationController {
         ContractRequestMessage crm = Serializer.deserializeProtocol(contractRequestMessageJsonNode, ContractRequestMessage.class);
 
         ContractNegotiationErrorMessage error = methodNotYetImplemented();
-        return ResponseEntity.internalServerError().contentType(MediaType.APPLICATION_JSON).body(Serializer.serializeProtocolJsonNode(error));
+        
+        return ResponseEntity.internalServerError()
+        		.body(Serializer.serializeProtocolJsonNode(error));
     }
 
     // 2.4 The provider negotiations/:providerPid/events
@@ -87,9 +93,8 @@ public class ProviderContractNegotiationController {
          
          ContractNegotiation contractNegotiation = providerService.handleContractNegotationEventMessage(contractNegotiationEventMessage);
        
-         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+         return ResponseEntity.ok()
         		 .body(Serializer.serializeProtocolJsonNode(contractNegotiation));
-//        		 .build();
     }
 
     // 2.5 The provider negotiations/:providerPid/agreement/verification resource
@@ -101,8 +106,12 @@ public class ProviderContractNegotiationController {
         ContractAgreementVerificationMessage cavm = 
         		Serializer.deserializeProtocol(contractAgreementVerificationMessageJsonNode, ContractAgreementVerificationMessage.class);
         log.info("Verification message received");
+        
         providerService.verifyNegotiation(cavm);
-        return ResponseEntity.ok().build();
+        
+        return ResponseEntity.ok()
+//        		.contentType(MediaType.APPLICATION_JSON)
+        		.build();
     }
 
     // 2.6 The provider negotiations/:id/termination resource
@@ -111,11 +120,14 @@ public class ProviderContractNegotiationController {
     @PostMapping(path = "/{providerPid}/termination")
     public ResponseEntity<JsonNode> handleTerminationMessage(@PathVariable String providerPid, 
     		@RequestBody JsonNode contractNegotiationTerminationMessageJsonNode) {
-        ContractNegotiationTerminationMessage cntm = 
+        ContractNegotiationTerminationMessage contractNegotiationTerminationMessage = 
         		Serializer.deserializeProtocol(contractNegotiationTerminationMessageJsonNode, ContractNegotiationTerminationMessage.class);
 
-        ContractNegotiationErrorMessage error = methodNotYetImplemented();
-        return ResponseEntity.internalServerError().contentType(MediaType.APPLICATION_JSON).body(Serializer.serializeProtocolJsonNode(error));
+        providerService.handleTerminationRequest(providerPid, contractNegotiationTerminationMessage);
+        
+        return ResponseEntity.ok()
+//        		.contentType(MediaType.APPLICATION_JSON)
+        		.build();
     }
 
 	private ContractNegotiationErrorMessage methodNotYetImplemented() {

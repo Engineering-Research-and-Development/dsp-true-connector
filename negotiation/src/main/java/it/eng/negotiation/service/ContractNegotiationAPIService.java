@@ -85,7 +85,7 @@ public class ContractNegotiationAPIService {
 				.consumerPid("urn:uuid:" + UUID.randomUUID())
 				.offer(offer)
 				.build();
-		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(forwardTo, 
+		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(ContractNegotiationCallback.getNegotiationRequestURL(forwardTo), 
 				Serializer.serializeProtocolJsonNode(contractRequestMessage), credentialUtils.getConnectorCredentials());
 		log.info("Response received {}", response);
 		ContractNegotiation contractNegotiationWithOffer = null;
@@ -104,12 +104,16 @@ public class ContractNegotiationAPIService {
 				
 				Offer savedOffer = offerRepository.save(offerToBeInserted);
 				log.info("Offer {} saved", savedOffer.getId());
-				
+				String callbackAddress = contractNegotiation.getCallbackAddress();
+				if(StringUtils.isBlank(callbackAddress)) {
+					log.debug("Response ContractNegotiation.callbackAddress is null, setting it to forwardTo");
+					callbackAddress = forwardTo;
+				}
 				contractNegotiationWithOffer = ContractNegotiation.Builder.newInstance()
 						.id(contractNegotiation.getId())
 		    			.consumerPid(contractNegotiation.getConsumerPid())
 		    			.providerPid(contractNegotiation.getProviderPid())
-		    			.callbackAddress(contractNegotiation.getCallbackAddress())
+		    			.callbackAddress(callbackAddress)
 		    			.assigner(offer.getAssigner())
 		    			.state(contractNegotiation.getState())
 		    			.role(IConstants.ROLE_CONSUMER)
@@ -400,15 +404,28 @@ public class ContractNegotiationAPIService {
 		ContractNegotiation contractNegotiation = findContractNegotiationById(contractNegotiationId);
 		// for now just log it; maybe we can publish event?
 		log.info("Contract negotiation with consumerPid {} and providerPid {} declined", contractNegotiation.getConsumerPid(), contractNegotiation.getProviderPid());
+		String reason = null;
+		String address = null;
+		if(IConstants.ROLE_PROVIDER.equals(contractNegotiation.getRole())) {
+			log.info("Terminating negotiation by provider");
+			reason = "Contract negotiation terminated by provider";
+			// send request to consumer callback address
+			address = ContractNegotiationCallback.getContractTerminationCallback(contractNegotiation.getCallbackAddress(), contractNegotiation.getConsumerPid());
+		} else {
+			log.info("Terminating negotiation by consumer");
+			reason = "Contract negotiation terminated by consumer";
+			// send request to protocol address
+			address = ContractNegotiationCallback.getContractTerminationProvider(contractNegotiation.getCallbackAddress(), 
+					contractNegotiation.getProviderPid());
+		}
 		ContractNegotiationTerminationMessage negotiationTerminatedEventMessage = ContractNegotiationTerminationMessage.Builder.newInstance()
-			.consumerPid(contractNegotiation.getConsumerPid())
-			.providerPid(contractNegotiation.getProviderPid())
-			.code(contractNegotiationId)
-			.reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("Contract negotiation terminated by provider").build()))
-			.build();
-			
+				.consumerPid(contractNegotiation.getConsumerPid())
+				.providerPid(contractNegotiation.getProviderPid())
+				.code(contractNegotiationId)
+				.reason(Arrays.asList(Reason.Builder.newInstance().language("en").value(reason).build()))
+				.build();
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
-				ContractNegotiationCallback.getContractTerminationCallback(contractNegotiation.getCallbackAddress(), contractNegotiation.getConsumerPid()), 
+				address, 
 				Serializer.serializeProtocolJsonNode(negotiationTerminatedEventMessage),
 				credentialUtils.getConnectorCredentials());
 		if(response.isSuccess()) {

@@ -130,7 +130,7 @@ public class ConsumerContractNegotiationCallbackControllerTest {
     public void handleTerminationResponse_error_service() {
     	JsonNode jsonNode = Serializer.serializeProtocolJsonNode(MockObjectUtil.TERMINATION_MESSAGE);
     	doThrow(ContractNegotiationNotFoundException.class).when(contractNegotiationConsumerService)
-    		.handleTerminationResponse(any(String.class), any(ContractNegotiationTerminationMessage.class));
+    		.handleTerminationRequest(any(String.class), any(ContractNegotiationTerminationMessage.class));
     	assertThrows(ContractNegotiationNotFoundException.class, 
     			() ->controller.handleTerminationResponse(MockObjectUtil.CONSUMER_PID, jsonNode));
     }

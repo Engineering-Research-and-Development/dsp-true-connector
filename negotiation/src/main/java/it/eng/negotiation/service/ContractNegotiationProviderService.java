@@ -13,6 +13,7 @@ import it.eng.negotiation.model.ContractAgreementVerificationMessage;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationEventMessage;
 import it.eng.negotiation.model.ContractNegotiationState;
+import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
 import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
@@ -164,5 +165,21 @@ public class ContractNegotiationProviderService extends BaseProtocolService {
 		log.info("Updating state to ACCEPTED for contract negotiation id {}", contractNegotiation.getId());
 		ContractNegotiation contractNegotiationAccepted = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.ACCEPTED);
 		return contractNegotiationRepository.save(contractNegotiationAccepted);
+	}
+
+	public void handleTerminationRequest(String providerPid,
+			ContractNegotiationTerminationMessage contractNegotiationTerminationMessage) {
+		ContractNegotiation contractNegotiation = contractNegotiationRepository.findByProviderPid(providerPid)
+				.orElseThrow(() -> new ContractNegotiationNotFoundException(
+						"Contract negotiation with providerPid " + providerPid + 
+						" and consumerPid " + contractNegotiationTerminationMessage.getConsumerPid() + " not found", 
+						contractNegotiationTerminationMessage.getConsumerPid(), providerPid));
+		stateTransitionCheck(ContractNegotiationState.TERMINATED, contractNegotiation);
+		
+		ContractNegotiation contractNegotiationTerminated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.TERMINATED);
+    	contractNegotiationRepository.save(contractNegotiationTerminated);
+    	log.info("Contract Negotiation with id {} set to TERMINATED state", contractNegotiation.getId());
+    	
+    	publisher.publishEvent(contractNegotiationTerminationMessage);
 	}
 }

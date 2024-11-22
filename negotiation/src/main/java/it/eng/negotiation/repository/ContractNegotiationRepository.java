@@ -12,6 +12,8 @@ import it.eng.negotiation.model.ContractNegotiation;
 public interface ContractNegotiationRepository extends MongoRepository<ContractNegotiation, String> {
 
 	Optional<ContractNegotiation> findByProviderPid(String providerPid);
+	
+	Optional<ContractNegotiation> findByConsumerPid(String consumerPid);
 
 	Optional<ContractNegotiation> findByProviderPidAndConsumerPid(String providerPid, String consumerPid);
 

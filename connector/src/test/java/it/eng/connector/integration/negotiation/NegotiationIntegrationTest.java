@@ -1,4 +1,4 @@
-package it.eng.connector.integration;
+package it.eng.connector.integration.negotiation;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -28,6 +28,7 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
@@ -220,6 +221,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     					.content(Serializer.serializeProtocol(verificationMessage))
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isOk());
+//    		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
     	
     	JsonNode contractNegotiation = getContractNegotiationOverAPI();
     	offerCheck(contractNegotiation);
