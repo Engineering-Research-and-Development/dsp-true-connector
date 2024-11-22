@@ -4,7 +4,6 @@ import java.net.URI;
 import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -77,7 +76,6 @@ public class ConsumerContractNegotiationCallbackController {
 //        return ResponseEntity.of().contentType(MediaType.APPLICATION_JSON).build();
         ContractNegotiationErrorMessage error = methodNotYetImplemented();
         return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
-        		.contentType(MediaType.APPLICATION_JSON)
         		.body(Serializer.serializeProtocolJsonNode(error));
     }
 
@@ -94,7 +92,9 @@ public class ConsumerContractNegotiationCallbackController {
         contractNegotiationConsumerService.handleAgreement(contractAgreementMessage);
 
         log.info("CONSUMER - Sending response OK - agreementMessage received");
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok()
+//        		.contentType(MediaType.APPLICATION_JSON)
+        		.build();
     }
 
     // https://consumer.com/:callback/negotiations/:consumerPid/events	POST	ContractNegotiationEventMessage
@@ -113,7 +113,7 @@ public class ConsumerContractNegotiationCallbackController {
         //If the CN's state is successfully transitioned, the Consumer must return HTTP code 200 (OK).
         // The response body is not specified and clients are not required to process it.
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON.toString())
+//        		.contentType(MediaType.APPLICATION_JSON)
                 .build();
     }
 
@@ -133,10 +133,9 @@ public class ConsumerContractNegotiationCallbackController {
         // If the CN's state is successfully transitioned, the Consumer must return HTTP code 200 (OK).
         // The response body is not specified and clients are not required to process it.
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON.toString())
-                .build();
+//        		.contentType(MediaType.APPLICATION_JSON)
+        		.build();
     }
-    
 
 	private ContractNegotiationErrorMessage methodNotYetImplemented() {
 		ContractNegotiationErrorMessage cnem = ContractNegotiationErrorMessage.Builder.newInstance()

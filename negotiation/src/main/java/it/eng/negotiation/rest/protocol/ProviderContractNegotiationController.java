@@ -3,7 +3,6 @@ package it.eng.negotiation.rest.protocol;
 import java.net.URI;
 import java.util.Arrays;
 
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -45,8 +44,11 @@ public class ProviderContractNegotiationController {
     @GetMapping(path = "/{providerPid}")
     public ResponseEntity<JsonNode>  getNegotiationByProviderPid(@PathVariable String providerPid) {
         log.info("Get negotiation by provider pid");
-		ContractNegotiation contractNegotiation = providerService.getNegotiationByProviderPid(providerPid);
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(Serializer.serializeProtocolJsonNode(contractNegotiation));
+		
+        ContractNegotiation contractNegotiation = providerService.getNegotiationByProviderPid(providerPid);
+        
+		return ResponseEntity.ok()
+        		.body(Serializer.serializeProtocolJsonNode(contractNegotiation));
     }
 
     // 2.2 The provider negotiations/request resource
@@ -62,7 +64,8 @@ public class ProviderContractNegotiationController {
                 .fromCurrentRequest().path("/{id}")
                 .buildAndExpand(cn.getProviderPid()).toUri();
 
-        return ResponseEntity.created(location).contentType(MediaType.APPLICATION_JSON).body(Serializer.serializeProtocolJsonNode(cn));
+        return ResponseEntity.created(location)
+        		.body(Serializer.serializeProtocolJsonNode(cn));
     }
 
     // 2.3 The provider negotiations/:providerPid/request resource
@@ -74,7 +77,9 @@ public class ProviderContractNegotiationController {
         ContractRequestMessage crm = Serializer.deserializeProtocol(contractRequestMessageJsonNode, ContractRequestMessage.class);
 
         ContractNegotiationErrorMessage error = methodNotYetImplemented();
-        return ResponseEntity.internalServerError().contentType(MediaType.APPLICATION_JSON).body(Serializer.serializeProtocolJsonNode(error));
+        
+        return ResponseEntity.internalServerError()
+        		.body(Serializer.serializeProtocolJsonNode(error));
     }
 
     // 2.4 The provider negotiations/:providerPid/events
@@ -88,9 +93,8 @@ public class ProviderContractNegotiationController {
          
          ContractNegotiation contractNegotiation = providerService.handleContractNegotationEventMessage(contractNegotiationEventMessage);
        
-         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+         return ResponseEntity.ok()
         		 .body(Serializer.serializeProtocolJsonNode(contractNegotiation));
-//        		 .build();
     }
 
     // 2.5 The provider negotiations/:providerPid/agreement/verification resource
@@ -102,8 +106,12 @@ public class ProviderContractNegotiationController {
         ContractAgreementVerificationMessage cavm = 
         		Serializer.deserializeProtocol(contractAgreementVerificationMessageJsonNode, ContractAgreementVerificationMessage.class);
         log.info("Verification message received");
+        
         providerService.verifyNegotiation(cavm);
-        return ResponseEntity.ok().build();
+        
+        return ResponseEntity.ok()
+//        		.contentType(MediaType.APPLICATION_JSON)
+        		.build();
     }
 
     // 2.6 The provider negotiations/:id/termination resource
@@ -118,8 +126,8 @@ public class ProviderContractNegotiationController {
         providerService.handleTerminationRequest(providerPid, contractNegotiationTerminationMessage);
         
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON.toString())
-                .build();
+//        		.contentType(MediaType.APPLICATION_JSON)
+        		.build();
     }
 
 	private ContractNegotiationErrorMessage methodNotYetImplemented() {

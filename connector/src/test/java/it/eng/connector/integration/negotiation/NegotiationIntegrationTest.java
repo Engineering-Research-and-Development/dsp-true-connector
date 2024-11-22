@@ -221,6 +221,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     					.content(Serializer.serializeProtocol(verificationMessage))
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isOk());
+//    		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
     	
     	JsonNode contractNegotiation = getContractNegotiationOverAPI();
     	offerCheck(contractNegotiation);
