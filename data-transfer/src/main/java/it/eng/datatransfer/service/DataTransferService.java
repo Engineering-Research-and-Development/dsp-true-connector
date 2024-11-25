@@ -24,6 +24,7 @@ import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.datatransfer.serializer.Serializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 
@@ -158,8 +159,16 @@ public class DataTransferService {
 		log.debug("Starting data transfer for consumerPid {} and providerPid {}", consumerPidFinal, providerPidFinal);
 
 		TransferProcess transferProcessRequested = findTransferProcess(consumerPidFinal, providerPidFinal);
+		
+		if (IConstants.ROLE_PROVIDER.equals(transferProcessRequested.getRole()) && TransferState.REQUESTED.equals(transferProcessRequested.getState())) {
+			// Only consumer can transit from REQUESTED to STARTED state
+			throw new TransferProcessInvalidStateException("State transition aborted, consumer can not transit from " + TransferState.REQUESTED.name()
+					+ " to " + TransferState.STARTED.name(),
+					transferProcessRequested.getConsumerPid(), transferProcessRequested.getProviderPid());
+		} 
+		
 		stateTransitionCheck(transferProcessRequested, TransferState.STARTED);
-
+		
 		TransferProcess transferProcessStarted = transferProcessRequested.copyWithNewTransferState(TransferState.STARTED);
 		transferProcessRepository.save(transferProcessStarted);
 		publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()

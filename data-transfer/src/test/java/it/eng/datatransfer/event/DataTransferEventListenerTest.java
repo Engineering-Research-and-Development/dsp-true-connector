@@ -35,7 +35,7 @@ class DataTransferEventListenerTest {
 	@DisplayName("Handle TransferProcessChange event")
 	void handleTransferProcessChange() {
 		TransferProcessChangeEvent changeEvent = TransferProcessChangeEvent.Builder.newInstance()
-				.oldTransferProcess(MockObjectUtil.TRANSFER_PROCESS_REQUESTED)
+				.oldTransferProcess(MockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)
 				.newTransferProcess(MockObjectUtil.TRANSFER_PROCESS_STARTED)
 				.build();
 		assertDoesNotThrow(() -> dataTransferEventListener.handleTransferProcessChange(changeEvent));

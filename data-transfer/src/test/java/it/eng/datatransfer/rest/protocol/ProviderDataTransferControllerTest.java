@@ -42,7 +42,7 @@ public class ProviderDataTransferControllerTest {
 	@DisplayName("Get TransferProcess for ProviderPid")
 	public void geTransferProcess() {
 		when(dataTransferService.findTransferProcessByProviderPid(MockObjectUtil.PROVIDER_PID))
-			.thenReturn(MockObjectUtil.TRANSFER_PROCESS_REQUESTED);
+			.thenReturn(MockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER);
 		assertEquals(HttpStatus.OK, controller.getTransferProcessByProviderPid(MockObjectUtil.PROVIDER_PID).getStatusCode());
 	}
 	
@@ -60,7 +60,7 @@ public class ProviderDataTransferControllerTest {
 	@DisplayName("Initiate TransferProcess")
 	public void initateDataTransfer() {
 		when(dataTransferService.initiateDataTransfer(any(TransferRequestMessage.class)))
-			.thenReturn(MockObjectUtil.TRANSFER_PROCESS_REQUESTED);
+			.thenReturn(MockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER);
 		ResponseEntity<JsonNode> response = controller.initiateDataTransfer(Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_REQUEST_MESSAGE));
 		assertEquals(HttpStatus.CREATED, response.getStatusCode());
 	}
@@ -176,7 +176,7 @@ public class ProviderDataTransferControllerTest {
 	@DisplayName("Suspend/pause TransferProcess")
 	public void suspenseDataTransfer() {
 		when(dataTransferService.suspendDataTransfer(any(TransferSuspensionMessage.class), isNull(), any(String.class)))
-			.thenReturn(MockObjectUtil.TRANSFER_PROCESS_SUSPENDED);
+			.thenReturn(MockObjectUtil.TRANSFER_PROCESS_SUSPENDED_PROVIDER);
 		ResponseEntity<JsonNode> response =  controller.suspenseDataTransfer(MockObjectUtil.PROVIDER_PID,
 				Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_SUSPENSION_MESSAGE));
 		assertEquals(HttpStatus.OK, response.getStatusCode());

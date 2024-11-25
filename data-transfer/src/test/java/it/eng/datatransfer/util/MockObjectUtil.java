@@ -56,7 +56,17 @@ public class MockObjectUtil {
     		.state(TransferState.INITIALIZED)
     		.build();
 
-    public static final TransferProcess TRANSFER_PROCESS_REQUESTED = TransferProcess.Builder.newInstance()
+    public static final TransferProcess TRANSFER_PROCESS_REQUESTED_PROVIDER = TransferProcess.Builder.newInstance()
+    		.consumerPid(CONSUMER_PID)
+    		.providerPid(PROVIDER_PID)
+    		.dataAddress(DATA_ADDRESS)
+    		.agreementId(AGREEMENT_ID)
+    		.callbackAddress(CALLBACK_ADDRESS)
+    		.role(IConstants.ROLE_PROVIDER)
+    		.state(TransferState.REQUESTED)
+    		.build();
+    
+    public static final TransferProcess TRANSFER_PROCESS_REQUESTED_CONSUMER = TransferProcess.Builder.newInstance()
     		.consumerPid(CONSUMER_PID)
     		.providerPid(PROVIDER_PID)
     		.dataAddress(DATA_ADDRESS)
@@ -86,7 +96,17 @@ public class MockObjectUtil {
     		.state(TransferState.COMPLETED)
     		.build();
     
-    public static final TransferProcess TRANSFER_PROCESS_SUSPENDED = TransferProcess.Builder.newInstance()
+    public static final TransferProcess TRANSFER_PROCESS_SUSPENDED_PROVIDER = TransferProcess.Builder.newInstance()
+    		.consumerPid(CONSUMER_PID)
+    		.providerPid(PROVIDER_PID)
+    		.dataAddress(DATA_ADDRESS)
+    		.agreementId(AGREEMENT_ID)
+    		.callbackAddress(CALLBACK_ADDRESS)
+    		.role(IConstants.ROLE_PROVIDER)
+    		.state(TransferState.SUSPENDED)
+    		.build();
+    
+    public static final TransferProcess TRANSFER_PROCESS_SUSPENDED_CONSUMER = TransferProcess.Builder.newInstance()
     		.consumerPid(CONSUMER_PID)
     		.providerPid(PROVIDER_PID)
     		.dataAddress(DATA_ADDRESS)

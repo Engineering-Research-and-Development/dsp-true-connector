@@ -58,7 +58,7 @@ class DataTransferAPIControllerTest {
 	@DisplayName("Find transfer process by id, state and all")
 	public void getTransfersProcess() {
 		when(apiService.findDataTransfers(anyString(), anyString(), isNull()))
-			.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(MockObjectUtil.TRANSFER_PROCESS_REQUESTED)));
+			.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(MockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
 		ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess("test", TransferState.REQUESTED.name(), null);
 		assertNotNull(response);
 		assertTrue(response.getBody().isSuccess());
@@ -79,7 +79,7 @@ class DataTransferAPIControllerTest {
 		assertFalse(response.getBody().getData().isEmpty());
 	
 		when(apiService.findDataTransfers(isNull(), isNull(), isNull()))
-			.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(MockObjectUtil.TRANSFER_PROCESS_REQUESTED),
+			.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(MockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER),
 					Serializer.serializePlainJsonNode(MockObjectUtil.TRANSFER_PROCESS_STARTED)));
 		response = controller.getTransfersProcess(null, null, null);
 		assertNotNull(response);
@@ -97,7 +97,7 @@ class DataTransferAPIControllerTest {
 		map.put(DSpaceConstants.DATA_ADDRESS, Serializer.serializePlainJsonNode(MockObjectUtil.DATA_ADDRESS));
 				
 		when(apiService.requestTransfer(any(DataTransferRequest.class)))
-			.thenReturn(Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_PROCESS_REQUESTED));
+			.thenReturn(Serializer.serializeProtocolJsonNode(MockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
 		
 		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.requestTransfer(dataTransferRequest);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -160,9 +160,9 @@ class DataTransferAPIControllerTest {
 	@DisplayName("Suspend transfer process success")
 	public void suspendTransfer_success() {
 				
-		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.suspendTransfer(MockObjectUtil.TRANSFER_PROCESS_SUSPENDED.getId());
+		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.suspendTransfer(MockObjectUtil.TRANSFER_PROCESS_SUSPENDED_PROVIDER.getId());
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		verify(apiService).suspendTransfer(MockObjectUtil.TRANSFER_PROCESS_SUSPENDED.getId());
+		verify(apiService).suspendTransfer(MockObjectUtil.TRANSFER_PROCESS_SUSPENDED_PROVIDER.getId());
 	}
 	
 	@Test
@@ -170,9 +170,9 @@ class DataTransferAPIControllerTest {
 	public void suspendTransfer_failed() {
 				
 		doThrow(new DataTransferAPIException("Something not correct - tests"))
-			.when(apiService).suspendTransfer(MockObjectUtil.TRANSFER_PROCESS_SUSPENDED.getId());
+			.when(apiService).suspendTransfer(MockObjectUtil.TRANSFER_PROCESS_SUSPENDED_PROVIDER.getId());
 		
-		assertThrows(DataTransferAPIException.class, () -> controller.suspendTransfer(MockObjectUtil.TRANSFER_PROCESS_SUSPENDED.getId()));
+		assertThrows(DataTransferAPIException.class, () -> controller.suspendTransfer(MockObjectUtil.TRANSFER_PROCESS_SUSPENDED_PROVIDER.getId()));
 	}
 	
 	@Test
