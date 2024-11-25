@@ -5,6 +5,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.test.web.servlet.MockMvc;
+import org.wiremock.spring.EnableWireMock;
 
 @SpringBootTest(
 		  webEnvironment = WebEnvironment.DEFINED_PORT,
@@ -12,9 +13,11 @@ import org.springframework.test.web.servlet.MockMvc;
 		    "server.port=8090"
 		  })
 @AutoConfigureMockMvc
+@EnableWireMock
+//@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class BaseIntegrationTest {
 	
-	   @Autowired
-	   protected MockMvc mockMvc;
-
+   @Autowired
+   protected MockMvc mockMvc;
+	   
 }

@@ -1,4 +1,4 @@
-package it.eng.connector.integration;
+package it.eng.connector.integration.catalog;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
@@ -17,6 +17,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import it.eng.catalog.model.CatalogError;
 import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.util.MockObjectUtil;
+import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.tools.model.DSpaceConstants;
 

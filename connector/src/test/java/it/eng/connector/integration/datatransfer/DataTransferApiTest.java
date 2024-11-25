@@ -1,4 +1,4 @@
-package it.eng.connector.integration;
+package it.eng.connector.integration.datatransfer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -34,6 +34,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import it.eng.catalog.serializer.InstantDeserializer;
 import it.eng.catalog.serializer.InstantSerializer;
+import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.TransferProcess;

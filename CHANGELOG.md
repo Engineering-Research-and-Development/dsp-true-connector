@@ -1,6 +1,18 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 25-11-2024
+
+### Changed
+
+ - Moved integration tests into packages
+ - ContractNegotiationAPIException accepts ContractNegotiationErrorMessage as parameter
+ - ContractNegotiationAPIService when error happens, create ContractNegotiationErrorMessage
+
+### Added
+
+ - Wiremock to simulate provider in integration requests
+
 ## [0.1.1] - 22-11-2024
 
 ### Changed

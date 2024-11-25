@@ -20,6 +20,7 @@ import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.ContractAgreementMessage;
 import it.eng.negotiation.model.ContractAgreementVerificationMessage;
 import it.eng.negotiation.model.ContractNegotiation;
+import it.eng.negotiation.model.ContractNegotiationErrorMessage;
 import it.eng.negotiation.model.ContractNegotiationEventMessage;
 import it.eng.negotiation.model.ContractNegotiationEventType;
 import it.eng.negotiation.model.ContractNegotiationState;
@@ -127,7 +128,14 @@ public class ContractNegotiationAPIService {
 			}
 		} else {
 			log.info("Error response received!");
-			throw new ContractNegotiationAPIException(response.getMessage());
+			JsonNode jsonNode;
+			try {
+				jsonNode = mapper.readTree(response.getData());
+				ContractNegotiationErrorMessage contractNegotiationErrorMessage = Serializer.deserializeProtocol(jsonNode, ContractNegotiationErrorMessage.class);
+				throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, "Error making request");
+			} catch (JsonProcessingException e) {
+				throw new ContractNegotiationAPIException("Error occured");
+			}
 		}
 		return Serializer.serializePlainJsonNode(contractNegotiationWithOffer);
 	}
@@ -396,7 +404,14 @@ public class ContractNegotiationAPIService {
 			contractNegotiationRepository.save(contractNegtiationVerified);
 		} else {
 			log.error("Response status not 200 - provider did not process Verification message correct");
-			throw new ContractNegotiationAPIException("provider did not process Verification message correct");
+			JsonNode jsonNode;
+			try {
+				jsonNode = mapper.readTree(response.getData());
+				ContractNegotiationErrorMessage contractNegotiationErrorMessage = Serializer.deserializeProtocol(jsonNode, ContractNegotiationErrorMessage.class);
+				throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, "Provider did not process Verification message correct");
+			} catch (JsonProcessingException e) {
+				throw new ContractNegotiationAPIException("Provider did not process Verification message correct");
+			}
 		}
 	}
 	
@@ -434,8 +449,15 @@ public class ContractNegotiationAPIService {
 			contractNegotiationRepository.save(contractNegtiationTerminated);
 			return contractNegtiationTerminated;
 		} else {
-			log.error("Response status not 200 - consumer did not process ContractNegotiationTerminationMessage correct");
-			throw new ContractNegotiationAPIException("consumer did not process ContractNegotiationTerminationMessage correct");
+			log.error("Response status not 200 - " + contractNegotiation.getRole() + " did not process ContractNegotiationTerminationMessage correct");
+			JsonNode jsonNode;
+			try {
+				jsonNode = mapper.readTree(response.getData());
+				ContractNegotiationErrorMessage contractNegotiationErrorMessage = Serializer.deserializeProtocol(jsonNode, ContractNegotiationErrorMessage.class);
+				throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, contractNegotiation.getRole() + " did not process Verification message correct");
+			} catch (JsonProcessingException e) {
+				throw new ContractNegotiationAPIException(contractNegotiation.getRole() + " did not process Verification message correct");
+			}
 		}
 	}
 	
