@@ -541,7 +541,7 @@
       "callbackAddress": "http://localhost:8090/",
       "agreementId" : "urn:uuid:AGREEMENT_ID_COMPLETED_TRANSFER_TEST",
 	  "state" : "INITIALIZED",
-      "role": "consumer",
+      "role": "provider",
 	  "datasetId":"urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
 	  "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
