@@ -14,7 +14,6 @@ import org.wiremock.spring.EnableWireMock;
 		  })
 @AutoConfigureMockMvc
 @EnableWireMock
-//@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class BaseIntegrationTest {
 	
    @Autowired
