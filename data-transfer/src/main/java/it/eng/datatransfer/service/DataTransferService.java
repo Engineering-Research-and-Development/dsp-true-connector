@@ -97,7 +97,7 @@ public class DataTransferService {
 				.format(transferRequestMessage.getFormat())
 				.dataAddress(transferRequestMessage.getDataAddress())
 				.state(TransferState.REQUESTED)
-				.role(transferProcess.getRole())
+				.role(IConstants.ROLE_PROVIDER)
 				.datasetId(transferProcess.getDatasetId())
 				.createdBy(transferProcess.getCreatedBy())
 				.lastModifiedBy(transferProcess.getLastModifiedBy())
