@@ -263,7 +263,7 @@ public class DataTransferService {
 	public TransferProcess findTransferProcess(String consumerPid, String providerPid) {
 		TransferProcess transferProcessRequested = transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid)
 			.orElseThrow(() -> new TransferProcessNotFoundException("Transfer process for consumerPid " + consumerPid
-			 + " and providerPid " + consumerPid + " not found"));
+			 + " and providerPid " + providerPid + " not found"));
 		return transferProcessRequested;
 	}
 	

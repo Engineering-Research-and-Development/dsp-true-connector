@@ -87,9 +87,9 @@
 					}
 				],
 				"url": {
-					"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}",
+					"raw": "{{PROVIDER_API_TRANSFERS}}",
 					"host": [
-						"{{PROVIDER_SERVER_API_TRANSFERS}}"
+						"{{PROVIDER_API_TRANSFERS}}"
 					]
 				}
 			},
