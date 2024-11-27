@@ -1,7 +1,7 @@
 {
 	"info": {
 		"_postman_id": "770eabed-7d91-47be-b8f5-00108780c8f9",
-		"name": "Data Transfer tests",
+		"name": "Data Transfer protocol tests",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "21815221",
 		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-770eabed-7d91-47be-b8f5-00108780c8f9?action=share&source=collection_link&creator=21815221"
@@ -38,6 +38,7 @@
 									"    var jsonData = pm.response.json();\r",
 									"    pm.expect(jsonData['dspace:state']).to.eq('dspace:REQUESTED');\r",
 									"    pm.collectionVariables.set(\"providerPid\", jsonData[\"dspace:providerPid\"])\r",
+									"    pm.collectionVariables.set(\"consumerPid\", jsonData[\"dspace:consumerPid\"])\r",
 									"});\r",
 									"\r",
 									"pm.test(\"TransactionId\", ()=> {\r",
@@ -164,12 +165,12 @@
 							}
 						},
 						"url": {
-							"raw": "{{PROVIDER_PROTOCOL_ENDPOINT}}/{{providerPid}}/start",
+							"raw": "{{CONSUMER_PROTOCOL_ENDPOINT}}/{{consumerPid}}/start",
 							"host": [
-								"{{PROVIDER_PROTOCOL_ENDPOINT}}"
+								"{{CONSUMER_PROTOCOL_ENDPOINT}}"
 							],
 							"path": [
-								"{{providerPid}}",
+								"{{consumerPid}}",
 								"start"
 							]
 						}
@@ -986,18 +987,8 @@
 	],
 	"variable": [
 		{
-			"key": "CONSUMER_API_ENDPOINT",
-			"value": "http://172.17.0.1:8080/api/transfers",
-			"type": "string"
-		},
-		{
-			"key": "PROVIDER_API_ENDPOINT",
-			"value": "http://172.17.0.1:8090/api/transfers",
-			"type": "string"
-		},
-		{
 			"key": "CONSUMER_PROTOCOL_ENDPOINT",
-			"value": "http://172.17.0.1:8080/transfers",
+			"value": "http://172.17.0.1:8080/consumer/transfers",
 			"type": "string"
 		},
 		{

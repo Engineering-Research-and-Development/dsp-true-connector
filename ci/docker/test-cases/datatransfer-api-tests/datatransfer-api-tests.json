@@ -57,6 +57,45 @@
 			"response": []
 		},
 		{
+			"name": "[P] Find Transfer Process",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.collectionVariables.set(\"provider_transferProcessId\", jsonData[\"data\"][jsonData.data.length-1][\"@id\"])\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}",
+					"host": [
+						"{{PROVIDER_SERVER_API_TRANSFERS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
 			"name": "[P] Start transfer",
 			"event": [
 				{
@@ -566,11 +605,6 @@
 		{
 			"key": "consumer_transferProcessId",
 			"value": "urn:uuid:abc45798-1434-4932-8baf-ab7fd66ql4d5",
-			"type": "string"
-		},
-		{
-			"key": "provider_transferProcessId",
-			"value": "urn:uuid:abc44798-1434-4932-8baf-ab7fd66ql4d5",
 			"type": "string"
 		}
 	]
