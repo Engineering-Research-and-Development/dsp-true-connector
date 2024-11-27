@@ -10,12 +10,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,12 +22,7 @@ import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 import org.wiremock.spring.InjectWireMock;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 
@@ -41,29 +34,12 @@ import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.MockObjectUtil;
 import it.eng.negotiation.model.Reason;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
-import it.eng.negotiation.serializer.InstantDeserializer;
-import it.eng.negotiation.serializer.InstantSerializer;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 
 public class ConsumerAPIContractNegotiationIntegrationTest extends BaseIntegrationTest {
-
-	private JsonMapper jsonMapper;
-	
-	@BeforeEach
-	public void setup() {
-		SimpleModule instantConverterModule = new SimpleModule();
-		instantConverterModule.addSerializer(Instant.class, new InstantSerializer());
-		instantConverterModule.addDeserializer(Instant.class, new InstantDeserializer());
-		jsonMapper = JsonMapper.builder()
-        		.addModule(new JavaTimeModule())
-        		.configure(MapperFeature.USE_ANNOTATIONS, false)
-        		.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-        		.addModule(instantConverterModule)
-                .build();
-	}
 
 	@InjectWireMock 
 	private WireMockServer wiremock;

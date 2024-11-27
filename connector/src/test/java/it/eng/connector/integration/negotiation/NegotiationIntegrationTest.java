@@ -26,7 +26,6 @@ import org.springframework.test.web.servlet.ResultActions;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
@@ -48,7 +47,6 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
 	
 	private static String providerPid;
 	private static String offerID = "urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5";
-	private final ObjectMapper mapper = new ObjectMapper();
 	
 	@Order(1)
     @ParameterizedTest
@@ -96,7 +94,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())))
     	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
     	
-    	JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
+    	JsonNode jsonNode = jsonMapper.readTree(result.andReturn().getResponse().getContentAsString());
     	providerPid = jsonNode.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText();
 
     	//TODO add protocol call using providerPid
@@ -154,7 +152,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())))
     	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
     	
-    	JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
+    	JsonNode jsonNode = jsonMapper.readTree(result.andReturn().getResponse().getContentAsString());
     	providerPid = jsonNode.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText();
     	
 		mockMvc.perform(
@@ -260,7 +258,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
 		tp.andExpect(status().isOk())
 		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
 		
-		JsonNode jsonNode = mapper.readTree(tp.andReturn().getResponse().getContentAsString());
+		JsonNode jsonNode = jsonMapper.readTree(tp.andReturn().getResponse().getContentAsString());
 		TransferProcess transferProcess = it.eng.datatransfer.serializer.Serializer.deserializePlain(jsonNode.findValues("data").get(0).get(jsonNode.findValues("data").get(0).size()-1).toString(), TransferProcess.class);
 		
 		assertEquals(TransferState.INITIALIZED, transferProcess.getState());
@@ -295,7 +293,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
 		result.andExpect(status().isOk())
 		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
 		
-		JsonNode jsonNode = mapper.readTree(result.andReturn().getResponse().getContentAsString());
+		JsonNode jsonNode = jsonMapper.readTree(result.andReturn().getResponse().getContentAsString());
 		return jsonNode.findValues("data").get(0).get(jsonNode.findValues("data").get(0).size()-1);
 	}
 	

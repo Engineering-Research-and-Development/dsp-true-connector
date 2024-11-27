@@ -10,12 +10,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,18 +23,11 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import org.wiremock.spring.InjectWireMock;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 
-import it.eng.catalog.serializer.InstantDeserializer;
-import it.eng.catalog.serializer.InstantSerializer;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.DataTransferFormat;
@@ -55,26 +46,11 @@ import it.eng.tools.response.GenericApiResponse;
  */
 public class DataTransferApiTest extends BaseIntegrationTest {
 	
-	private JsonMapper jsonMapper;
-
 	@Autowired
 	private TransferProcessRepository transferProcessRepository;
 	
 	@InjectWireMock 
 	private WireMockServer wiremock;
-	
-	@BeforeEach
-	public void setup() {
-		SimpleModule instantConverterModule = new SimpleModule();
-		instantConverterModule.addSerializer(Instant.class, new InstantSerializer());
-		instantConverterModule.addDeserializer(Instant.class, new InstantDeserializer());
-		jsonMapper = JsonMapper.builder()
-				.addModule(new JavaTimeModule())
-				.configure(MapperFeature.USE_ANNOTATIONS, false)
-				.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-				.addModule(instantConverterModule)
-				.build();
-	}
 	
 	@Test
 	@DisplayName("TransferProcess API - get")
