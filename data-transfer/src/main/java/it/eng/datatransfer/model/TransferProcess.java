@@ -99,6 +99,7 @@ public class TransferProcess extends AbstractTransferMessage {
 			return new Builder();
 		}
 		
+		@JsonProperty(DSpaceConstants.ID)
 		public Builder id(String id) {
         	message.id = id;
         	return this;

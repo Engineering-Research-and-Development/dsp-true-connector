@@ -14,7 +14,6 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -336,9 +335,5 @@ public class ConsumerAPIContractNegotiationIntegrationTest extends BaseIntegrati
 		// state NOT changed
 		assertEquals(ContractNegotiationState.AGREED, contractNegotiationRepository.findById(contractNegotiation.getId()).get().getState());
 		contractNegotiationRepository.delete(contractNegotiation);
-	}
-	
-	private String createNewId() {
-		return "urn:uuid:" + UUID.randomUUID().toString();
 	}
 }

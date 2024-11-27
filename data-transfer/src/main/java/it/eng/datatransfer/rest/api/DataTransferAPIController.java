@@ -19,7 +19,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.model.DataTransferRequest;
 import it.eng.datatransfer.service.DataTransferAPIService;
 import it.eng.tools.controller.ApiEndpoints;
-import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 
