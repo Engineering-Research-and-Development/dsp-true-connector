@@ -14,7 +14,7 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test(\"Retrieve transfer process id\", function () {\r",
+							"pm.test(\"Retrieve consumer transfer process id\", function () {\r",
 							"    var jsonData = pm.response.json();\r",
 							"    pm.collectionVariables.set(\"consumer_transferProcessId\", jsonData[\"data\"][\"@id\"])\r",
 							"});\r",
@@ -67,7 +67,7 @@
 							"    pm.response.to.have.status(200);\r",
 							"});\r",
 							"\r",
-							"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+							"pm.test(\"Retrieve provider transfer process id\", function () {\r",
 							"    var jsonData = pm.response.json();\r",
 							"    pm.collectionVariables.set(\"provider_transferProcessId\", jsonData[\"data\"][jsonData.data.length-1][\"@id\"])\r",
 							"});"

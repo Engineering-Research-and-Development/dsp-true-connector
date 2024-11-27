@@ -19,7 +19,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.model.DataTransferRequest;
 import it.eng.datatransfer.service.DataTransferAPIService;
 import it.eng.tools.controller.ApiEndpoints;
-import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 
@@ -40,7 +39,7 @@ public class DataTransferAPIController {
 	
 	@PostMapping
 	public ResponseEntity<GenericApiResponse<JsonNode>> requestTransfer(@RequestBody DataTransferRequest dataTransferRequest ) {
-		log.info("Consumer sends transfer request");
+		log.info("Consumer sends transfer request" + dataTransferRequest.getTransferProcessId());
 		JsonNode response = apiService.requestTransfer(dataTransferRequest);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
 				.body(GenericApiResponse.success(response, "Data transfer requested"));
@@ -67,7 +66,7 @@ public class DataTransferAPIController {
 	
 	@PutMapping(path = "/{transferProcessId}/start")
     public ResponseEntity<GenericApiResponse<JsonNode>> startTransfer(@PathVariable String transferProcessId) throws UnsupportedEncodingException {
-		log.info("Starting data transfer");
+		log.info("Starting data transfer" + transferProcessId);
     	JsonNode response = apiService.startTransfer(transferProcessId);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
     			.body(GenericApiResponse.success(response, "Data transfer started"));
@@ -75,7 +74,7 @@ public class DataTransferAPIController {
 	
 	@PutMapping(path = "/{transferProcessId}/complete")
     public ResponseEntity<GenericApiResponse<JsonNode>> completeTransfer(@PathVariable String transferProcessId) {
-		log.info("Compliting data transfer");
+		log.info("Compliting data transfer" + transferProcessId);
     	JsonNode response = apiService.completeTransfer(transferProcessId);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
     			.body(GenericApiResponse.success(response, "Data transfer completed"));
@@ -83,7 +82,7 @@ public class DataTransferAPIController {
 	
 	@PutMapping(path = "/{transferProcessId}/suspend")
     public ResponseEntity<GenericApiResponse<JsonNode>> suspendTransfer(@PathVariable String transferProcessId) {
-		log.info("Compliting data transfer");
+		log.info("Suspending data transfer" + transferProcessId);
     	JsonNode response = apiService.suspendTransfer(transferProcessId);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
     			.body(GenericApiResponse.success(response, "Data transfer suspended"));
@@ -91,7 +90,7 @@ public class DataTransferAPIController {
 	
 	@PutMapping(path = "/{transferProcessId}/terminate")
     public ResponseEntity<GenericApiResponse<JsonNode>> terminateTransfer(@PathVariable String transferProcessId) {
-		log.info("Compliting data transfer");
+		log.info("Terminating data transfer" + transferProcessId);
     	JsonNode response = apiService.terminateTransfer(transferProcessId);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
     			.body(GenericApiResponse.success(response, "Data transfer terminated"));
