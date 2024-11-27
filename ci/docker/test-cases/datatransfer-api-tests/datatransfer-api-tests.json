@@ -8,6 +8,40 @@
 	},
 	"item": [
 		{
+			"name": "[C] Download data fail",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check expected response\", ()=> {\r",
+							"    pm.response.to.have.status(200);\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{PROVIDER}}/artifacts/{{transactionId}}",
+					"host": [
+						"{{PROVIDER}}"
+					],
+					"path": [
+						"artifacts",
+						"{{transactionId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
 			"name": "[C] Request transfer",
 			"event": [
 				{
@@ -57,6 +91,40 @@
 			"response": []
 		},
 		{
+			"name": "[C] Download data fail",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check expected response\", ()=> {\r",
+							"    pm.response.to.have.status(200);\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{PROVIDER}}/artifacts/{{transactionId}}",
+					"host": [
+						"{{PROVIDER}}"
+					],
+					"path": [
+						"artifacts",
+						"{{transactionId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
 			"name": "[P] Find Transfer Process",
 			"event": [
 				{
@@ -87,9 +155,19 @@
 					}
 				],
 				"url": {
-					"raw": "{{PROVIDER_API_TRANSFERS}}",
+					"raw": "{{PROVIDER_API_TRANSFERS}}?state=REQUESTED&role=provider",
 					"host": [
 						"{{PROVIDER_API_TRANSFERS}}"
+					],
+					"query": [
+						{
+							"key": "state",
+							"value": "REQUESTED"
+						},
+						{
+							"key": "role",
+							"value": "provider"
+						}
 					]
 				}
 			},
@@ -143,6 +221,40 @@
 			"response": []
 		},
 		{
+			"name": "[C] Download data",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check expected response\", ()=> {\r",
+							"    pm.response.to.have.status(200);\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{PROVIDER}}/artifacts/{{transactionId}}",
+					"host": [
+						"{{PROVIDER}}"
+					],
+					"path": [
+						"artifacts",
+						"{{transactionId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
 			"name": "[C] Suspend transfer",
 			"event": [
 				{
@@ -184,6 +296,40 @@
 					"path": [
 						"{{consumer_transferProcessId}}",
 						"suspend"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[C] Download data fail",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check expected response\", ()=> {\r",
+							"    pm.response.to.have.status(200);\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{PROVIDER}}/artifacts/{{transactionId}}",
+					"host": [
+						"{{PROVIDER}}"
+					],
+					"path": [
+						"artifacts",
+						"{{transactionId}}"
 					]
 				}
 			},
@@ -318,68 +464,16 @@
 			"response": []
 		},
 		{
-			"name": "[C] Request transfer",
+			"name": "[C] Download data fail",
 			"event": [
 				{
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test(\"Retrieve transfer process id\", function () {\r",
-							"    var jsonData = pm.response.json();\r",
-							"    pm.collectionVariables.set(\"consumer_transferProcessId\", jsonData[\"data\"][\"@id\"])\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Check if status code is 200\", function () {\r",
+							"pm.test(\"Check expected response\", ()=> {\r",
 							"    pm.response.to.have.status(200);\r",
-							"});\r",
-							"\r",
-							"pm.test(\"TransactionId\", ()=> {\r",
 							"    var jsonData = pm.response.json();\r",
-							"    let trId = jsonData[\"data\"][\"consumerPid\"] + \"|\" + jsonData[\"data\"][\"providerPid\"];\r",
-							"    pm.collectionVariables.set(\"transactionId\", btoa(trId));\r",
-							"    console.log(pm.collectionVariables.get(\"transactionId\"));\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n    \"transferProcessId\": \"{{consumer_transferProcessId}}\",\r\n    \"format\": \"HttpData-PULL\",\r\n    \"dataAddress\": {\r\n        \"endpointType\": \"https://w3id.org/idsa/v4.1/HTTP\",\r\n        \"endpoint\": \"http://example.com\",\r\n        \"endpointProperties\": [\r\n            {\r\n                \"name\": \"authorization\",\r\n                \"value\": \"TOKEN-ABCDEFG\"\r\n            },\r\n            {\r\n                \"name\": \"authType\",\r\n                \"value\": \"bearer\"\r\n            }\r\n        ]\r\n    }\r\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}",
-					"host": [
-						"{{CONSUMER_API_TRANSFERS}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "[P] Find Transfer Process",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Check if status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Retrieve transfer process id\", function () {\r",
-							"    var jsonData = pm.response.json();\r",
-							"    pm.collectionVariables.set(\"provider_transferProcessId\", jsonData[\"data\"][jsonData.data.length-1][\"@id\"])\r",
+							"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -389,160 +483,15 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{PROVIDER_API_TRANSFERS}}",
-					"host": [
-						"{{PROVIDER_API_TRANSFERS}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "[P] Terminate transfer",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Check if status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "PUT",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{PROVIDER_API_TRANSFERS}}/{{provider_transferProcessId}}/terminate",
-					"host": [
-						"{{PROVIDER_API_TRANSFERS}}"
-					],
-					"path": [
-						"{{provider_transferProcessId}}",
-						"terminate"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "[C] Request transfer",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Retrieve transfer process id\", function () {\r",
-							"    var jsonData = pm.response.json();\r",
-							"    pm.collectionVariables.set(\"consumer_transferProcessId\", jsonData[\"data\"][\"@id\"])\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Check if status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
-							"});\r",
-							"\r",
-							"pm.test(\"TransactionId\", ()=> {\r",
-							"    var jsonData = pm.response.json();\r",
-							"    let trId = jsonData[\"data\"][\"consumerPid\"] + \"|\" + jsonData[\"data\"][\"providerPid\"];\r",
-							"    pm.collectionVariables.set(\"transactionId\", btoa(trId));\r",
-							"    console.log(pm.collectionVariables.get(\"transactionId\"));\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "POST",
 				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n    \"transferProcessId\": \"{{consumer_transferProcessId}}\",\r\n    \"format\": \"HttpData-PULL\",\r\n    \"dataAddress\": {\r\n        \"endpointType\": \"https://w3id.org/idsa/v4.1/HTTP\",\r\n        \"endpoint\": \"http://example.com\",\r\n        \"endpointProperties\": [\r\n            {\r\n                \"name\": \"authorization\",\r\n                \"value\": \"TOKEN-ABCDEFG\"\r\n            },\r\n            {\r\n                \"name\": \"authType\",\r\n                \"value\": \"bearer\"\r\n            }\r\n        ]\r\n    }\r\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
 				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}",
+					"raw": "{{PROVIDER}}/artifacts/{{transactionId}}",
 					"host": [
-						"{{CONSUMER_API_TRANSFERS}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "[C] Terminate transfer",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Check if status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "PUT",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/terminate",
-					"host": [
-						"{{CONSUMER_API_TRANSFERS}}"
+						"{{PROVIDER}}"
 					],
 					"path": [
-						"{{consumer_transferProcessId}}",
-						"terminate"
+						"artifacts",
+						"{{transactionId}}"
 					]
 				}
 			},

@@ -66,7 +66,7 @@ public class DataTransferAPIController {
 	
 	@PutMapping(path = "/{transferProcessId}/start")
     public ResponseEntity<GenericApiResponse<JsonNode>> startTransfer(@PathVariable String transferProcessId) throws UnsupportedEncodingException {
-		log.info("Starting data transfer" + transferProcessId);
+		log.info("Starting data transfer " + transferProcessId);
     	JsonNode response = apiService.startTransfer(transferProcessId);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
     			.body(GenericApiResponse.success(response, "Data transfer started"));
