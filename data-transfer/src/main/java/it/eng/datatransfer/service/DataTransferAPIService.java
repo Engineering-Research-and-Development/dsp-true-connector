@@ -19,6 +19,7 @@ import it.eng.datatransfer.model.DataAddress;
 import it.eng.datatransfer.model.DataTransferRequest;
 import it.eng.datatransfer.model.EndpointProperty;
 import it.eng.datatransfer.model.TransferCompletionMessage;
+import it.eng.datatransfer.model.TransferError;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferRequestMessage;
 import it.eng.datatransfer.model.TransferStartMessage;
@@ -94,8 +95,10 @@ public class DataTransferAPIService {
 				.dataAddress(dataAddressForMessage)
 				.build();
 		
-		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(DataTransferCallback.getConsumerDataTransferRequest(transferProcess.getCallbackAddress()), 
-				Serializer.serializeProtocolJsonNode(transferRequestMessage), credentialUtils.getConnectorCredentials());
+		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
+				DataTransferCallback.getConsumerDataTransferRequest(transferProcess.getCallbackAddress()), 
+				Serializer.serializeProtocolJsonNode(transferRequestMessage), 
+				credentialUtils.getConnectorCredentials());
 		log.info("Response received {}", response);
 		TransferProcess transferProcessForDB = null;
 		if (response.isSuccess()) {
@@ -128,7 +131,15 @@ public class DataTransferAPIService {
 			}
 		} else {
 			log.info("Error response received!");
-			throw new DataTransferAPIException(response.getMessage());
+			log.error("Transfer process from response not valid");
+			JsonNode jsonNode;
+			try {
+				jsonNode = mapper.readTree(response.getData());
+				TransferError transferError = Serializer.deserializeProtocol(jsonNode, TransferError.class);
+				throw new DataTransferAPIException(transferError, "Error making request");
+			} catch (JsonProcessingException ex) {
+				throw new DataTransferAPIException("Error occured");
+			}
 		}
 		return Serializer.serializePlainJsonNode(transferProcessForDB);
 	}

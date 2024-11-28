@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.datatransfer.serializer.Serializer;
+import it.eng.datatransfer.util.MockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 
@@ -103,6 +104,14 @@ public class TransferProcessTest {
 		assertTrue(ModelUtil.TRANSFER_PROCESS_SUSPENDED.getState().canTransitTo(TransferState.TERMINATED));
 		assertFalse(ModelUtil.TRANSFER_PROCESS_SUSPENDED.getState().canTransitTo(TransferState.REQUESTED));
 		assertFalse(ModelUtil.TRANSFER_PROCESS_SUSPENDED.getState().canTransitTo(TransferState.COMPLETED));
+	}
+	
+	@Test
+	@DisplayName("Check if id is the same after serialization")
+	public void checkId() {
+		String sss = Serializer.serializePlain(MockObjectUtil.TRANSFER_PROCESS_REQUESTED);
+		TransferProcess tp = Serializer.deserializePlain(sss, TransferProcess.class);
+		assertEquals(MockObjectUtil.TRANSFER_PROCESS_REQUESTED.getId(), tp.getId());
 	}
 
 	private void validateJavaObject(TransferProcess javaObj) {

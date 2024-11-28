@@ -59,7 +59,8 @@ public class Serializer {
 			// used when converting from Java to String; must exclude JsonIgnore for ContractNegotiation.id
 			protected <A extends Annotation> A _findAnnotation(Annotated ann, Class<A> annoClass) {
 				//  annoClass == JsonValue.class - enum returned without prefix for plain
-				if ((annoClass == JsonProperty.class && !ann.getName().equals("id")) || annoClass == JsonIgnore.class || annoClass == JsonValue.class) {
+				if ((annoClass == JsonProperty.class && !ann.getName().equals("id")) || annoClass == JsonIgnore.class 
+						|| annoClass == JsonValue.class) {
 					return null;
 				}
 				return super._findAnnotation(ann, annoClass);
@@ -205,4 +206,17 @@ public class Serializer {
 			throw new ValidationException("Missing mandatory protocol fields @context and/or @type or value not correct");
 		}
 	}
+	
+	public static <T> T deserializePlain(JsonNode jsonNode, Class<T> clazz) {
+		T obj = jsonMapperPlain.convertValue(jsonNode, clazz);
+		Set<ConstraintViolation<T>> violations = validator.validate(obj);
+		if(violations.isEmpty()) {
+			return obj;
+		}
+		throw new ValidationException(
+				violations
+					.stream()
+					.map(v -> v.getPropertyPath() + " " + v.getMessage())
+					.collect(Collectors.joining(",")));
+		}
 }

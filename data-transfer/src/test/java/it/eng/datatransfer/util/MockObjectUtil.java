@@ -1,12 +1,15 @@
 package it.eng.datatransfer.util;
 
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 
 import it.eng.datatransfer.model.DataAddress;
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.EndpointProperty;
+import it.eng.datatransfer.model.Reason;
 import it.eng.datatransfer.model.TransferCompletionMessage;
+import it.eng.datatransfer.model.TransferError;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferRequestMessage;
 import it.eng.datatransfer.model.TransferStartMessage;
@@ -46,6 +49,13 @@ public class MockObjectUtil {
 			.endpoint(ENDPOINT_URL)
 			.endpointType(ENDPOINT_TYPE)
 			.endpointProperties(List.of(ENDPOINT_PROPERTY))
+			.build();
+	
+	public static final TransferError TRANSFER_ERROR = TransferError.Builder.newInstance()
+			.consumerPid(CONSUMER_PID)
+			.providerPid(PROVIDER_PID)
+			.code("TEST")
+			.reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("TEST").build()))
 			.build();
 	
 	public static final TransferProcess TRANSFER_PROCESS_INITIALIZED = TransferProcess.Builder.newInstance()

@@ -48,4 +48,13 @@ public class GenericApiResponse<T> implements Serializable {
                 .timestamp(ZonedDateTime.now())
                 .build();
     }
+    
+    public static <T> GenericApiResponse<T> error(T data, String message) {
+        return GenericApiResponse.<T>builder()
+                .message(message)
+                .data(data)
+                .success(false)
+                .timestamp(ZonedDateTime.now())
+                .build();
+    }
 }

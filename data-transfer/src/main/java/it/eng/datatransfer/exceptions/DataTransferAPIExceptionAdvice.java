@@ -15,7 +15,7 @@ public class DataTransferAPIExceptionAdvice extends ResponseEntityExceptionHandl
 	
 	@ExceptionHandler(value = {DataTransferAPIException.class})
     protected ResponseEntity<Object> handleDataTransferAPIException(DataTransferAPIException ex, WebRequest request) {
-    	return new ResponseEntity<>(GenericApiResponse.error(ex.getLocalizedMessage()), HttpStatus.BAD_REQUEST);
+    	return new ResponseEntity<>(GenericApiResponse.error(ex.getTransferError(), ex.getLocalizedMessage()), HttpStatus.BAD_REQUEST);
     }
 
 }

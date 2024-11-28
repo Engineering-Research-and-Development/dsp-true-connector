@@ -1,6 +1,23 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 27-11-2024
+
+### Changed
+
+ - Moved integration tests into packages
+ - ContractNegotiationAPIException accepts ContractNegotiationErrorMessage as parameter
+ - ContractNegotiationAPIService when error happens, create ContractNegotiationErrorMessage
+ - Dependency changed from de.flapdoodle.embed.mongo.spring30x to de.flapdoodle.embed.mongo.spring3x
+ - DataTransferAPIException accepts TransferError as parameter
+ - DataTransferApiService when error happens, create TransferError (requestTransfer)
+ - TransferProcess and ContractNegotiation sets correct id when deserialized from plain string
+
+### Added
+
+ - Wiremock to simulate provider in integration requests
+ - DataTransferApi tests
+
 ## [0.1.1] - 22-11-2024
 
 ### Changed

@@ -65,7 +65,6 @@ public class Serializer {
 				}
 				return super._findAnnotation(ann, annoClass);
 			}
-			
         };
         
 		jsonMapperPlain = JsonMapper.builder()
