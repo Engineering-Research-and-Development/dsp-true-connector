@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.Arrays;
-import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -158,10 +157,6 @@ public class ContractNegotiationTerminateIntegrationTest extends BaseIntegration
     	
     	// cleanup
     	contractNegotiationRepository.delete(cn);
-    }
-    
-    private String createNewId() {
-        return UUID.randomUUID().toString();
     }
     
 	private ContractNegotiation createContractNegotiation() {

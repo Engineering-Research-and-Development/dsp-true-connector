@@ -28,7 +28,8 @@ public class OkHttpRestClient {
 	private OkHttpClient okHttpClient;
 	private CredentialUtils credentialUtils;
 	
-	public OkHttpRestClient(@Qualifier("okHttpClient") OkHttpClient okHttpClient, CredentialUtils credentialUtils, 
+//	@Qualifier("okHttpClient") 
+	public OkHttpRestClient(OkHttpClient okHttpClient, CredentialUtils credentialUtils, 
 			@Value("${server.port}")String serverPort) {
 		this.okHttpClient = okHttpClient;
 		this.credentialUtils = credentialUtils;
@@ -77,7 +78,7 @@ public class OkHttpRestClient {
 			if(response.isSuccessful()) { // code in 200..299
 				return GenericApiResponse.success(resp, "Response received from " + targetAddress);
 			} else {
-				return GenericApiResponse.error(resp);
+				return GenericApiResponse.error(resp, "Error while making request");
 			}
         } catch (IOException e) {
 			log.error(e.getLocalizedMessage());

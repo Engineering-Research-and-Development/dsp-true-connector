@@ -1,4 +1,4 @@
-package it.eng.connector.integration;
+package it.eng.connector.integration.applicationproperties;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -14,6 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 
+import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.tools.model.ApplicationProperty;
 import it.eng.tools.model.IConstants;

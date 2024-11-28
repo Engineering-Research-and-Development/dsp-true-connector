@@ -128,6 +128,7 @@ class DataTransferAPIServiceTest {
 		when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
 		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+		when(apiResponse.getData()).thenReturn(Serializer.serializeProtocol(MockObjectUtil.TRANSFER_ERROR));
 		when(properties.consumerCallbackAddress()).thenReturn(MockObjectUtil.CALLBACK_ADDRESS);
 		
 		assertThrows(DataTransferAPIException.class, ()->

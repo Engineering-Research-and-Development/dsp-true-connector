@@ -97,9 +97,16 @@
 
 		<dependency>
 			<groupId>de.flapdoodle.embed</groupId>
-			<artifactId>de.flapdoodle.embed.mongo.spring30x</artifactId>
-			<version>4.11.0</version>
+			<artifactId>de.flapdoodle.embed.mongo.spring3x</artifactId>
+			<version>4.16.1</version>
 			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+		    <groupId>org.wiremock.integrations</groupId>
+		    <artifactId>wiremock-spring-boot</artifactId>
+		    <version>3.2.0</version>
+		    <scope>test</scope>
 		</dependency>
 
 		<dependency>

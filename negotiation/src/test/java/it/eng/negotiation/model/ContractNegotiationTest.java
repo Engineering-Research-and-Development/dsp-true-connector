@@ -146,6 +146,7 @@ public class ContractNegotiationTest {
 		ContractNegotiation obj = Serializer.deserializePlain(ss, ContractNegotiation.class);
 		// must exclude id since it is not according to protocol but internally
 		assertThat(contractNegotiation).usingRecursiveComparison().ignoringFieldsMatchingRegexes("id").isEqualTo(obj);
+		assertEquals(contractNegotiation.getId(), obj.getId());
 	}
 	
 	@Test
@@ -155,6 +156,8 @@ public class ContractNegotiationTest {
 		ContractNegotiation obj = Serializer.deserializeProtocol(ss, ContractNegotiation.class);
 		// must exclude id since it is not according to protocol but internally
 		assertThat(contractNegotiation).usingRecursiveComparison().ignoringFieldsMatchingRegexes("id").isEqualTo(obj);
+		// protocol does not have id field
+		//		assertEquals(contractNegotiation.getId(), obj.getId());
 	}
 	
 	private void validateJavaObj(ContractNegotiation javaObj) {

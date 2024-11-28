@@ -86,6 +86,7 @@ public class ContractNegotiation extends AbstractNegotiationObject {
             return new ContractNegotiation.Builder();
         }
         
+        @JsonProperty(DSpaceConstants.ID)
         public Builder id(String id) {
         	message.id = id;
         	return this;
