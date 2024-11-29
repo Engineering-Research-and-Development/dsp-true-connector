@@ -39,7 +39,7 @@ public class DataTransferAPIController {
 	
 	@PostMapping
 	public ResponseEntity<GenericApiResponse<JsonNode>> requestTransfer(@RequestBody DataTransferRequest dataTransferRequest ) {
-		log.info("Consumer sends transfer request" + dataTransferRequest.getTransferProcessId());
+		log.info("Consumer sends transfer request {}", dataTransferRequest.getTransferProcessId());
 		JsonNode response = apiService.requestTransfer(dataTransferRequest);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
 				.body(GenericApiResponse.success(response, "Data transfer requested"));
