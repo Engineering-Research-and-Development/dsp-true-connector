@@ -57,7 +57,7 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:test
           labels: ${{ steps.meta.outputs.labels }}
       
-  negotiation-tests:
+  negotiation-api-tests:
     needs: build-and-push-image
     runs-on: ubuntu-latest
     
@@ -65,7 +65,7 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v4
         
-      - name: Run docker container for negotiation-tests
+      - name: Run docker container for negotiation-api-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
         
       - name: Wait for container starting
@@ -76,16 +76,16 @@ jobs:
 
       - uses: matt-ball/newman-action@v2.0.0
         with:
-          collection: ./ci/docker/test-cases/negotiation-tests/negotiation-tests.json
+          collection: ./ci/docker/test-cases/negotiation-api-tests/negotiation-api-tests.json
           
-      - name: Dump docker negotiation-tests
+      - name: Dump docker negotiation-api-tests
         if: failure()
         uses: jwalton/gh-docker-logs@v2
 
-      - name: Stop docker container negotiation-tests
+      - name: Stop docker container negotiation-api-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
-        
-  datatransfer-tests:
+
+  datatransfer-api-tests:
     needs: build-and-push-image
     runs-on: ubuntu-latest
     
@@ -93,7 +93,7 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v4
         
-      - name: Run docker container for datatransfer-tests
+      - name: Run docker container for datatransfer-api-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
         
       - name: Wait for container starting
@@ -104,15 +104,15 @@ jobs:
 
       - uses: matt-ball/newman-action@v2.0.0
         with:
-          collection: ./ci/docker/test-cases/datatransfer-tests/datatransfer-tests.json
+          collection: ./ci/docker/test-cases/datatransfer-api-tests/datatransfer-api-tests.json
           
-      - name: Dump docker datatransfer-tests
+      - name: Dump docker datatransfer-api-tests
         if: failure()
         uses: jwalton/gh-docker-logs@v2
 
-      - name: Stop docker container datatransfer-tests
+      - name: Stop docker container datatransfer-api-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
-
+        
   api-endpoints-tests:
     needs: build-and-push-image
     runs-on: ubuntu-latest

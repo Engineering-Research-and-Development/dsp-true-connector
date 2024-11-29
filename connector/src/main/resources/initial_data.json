@@ -356,6 +356,23 @@
 	                }
 	            ]
 	        }, {
+	            "_id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
+	            "_class": "it.eng.negotiation.model.Agreement",
+	            "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+	            "timestamp": "2023-01-01T01:00:00Z",
+	            "assigner": "urn:tsdshhs636378",
+	            "assignee": "urn:jashd766",
+	            "permission": [{
+	                    "action": "USE",
+	                    "constraint": [{
+	                            "leftOperand": "DATE_TIME",
+	                            "operator": "GT",
+	                            "rightOperand": "2024-10-01T14:48:22.605323600Z"
+	                        }
+	                    ]
+	                }
+	            ]
+	        }, {
 	            "_id": "urn:uuid:AGREEMENT_ID_COMPLETED_TRANSFER_TEST",
 	            "_class": "it.eng.negotiation.model.Agreement",
 	            "target": "urn:uuid:3dd1add4-4d2d-569e-d634-8394a8836d23",
@@ -473,12 +490,26 @@
       "modified": "2024-04-23T16:26:00.000Z",
       "version": 0
         }, {
-	  "_id": "urn:uuid:abc45798-1434-4932-8baf-ab7fd66ql4d5",
+	  "_id": "urn:uuid:abc45797-1434-4932-8baf-ab7fd66ql4d5",
 	  "_class": "it.eng.datatransfer.model.TransferProcess",
       "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_INITIALIZED_API",
       "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_INITIALIZED_API",
       "callbackAddress": "http://localhost:8090/",
       "agreementId" : "urn:uuid:AGREEMENT_ID_INITIALIZED_API",
+	  "state" : "INITIALIZED",
+      "role": "consumer",
+	  "datasetId":"urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+	  "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+        }, {
+	  "_id": "urn:uuid:abc45798-1434-4932-8baf-ab7fd66ql4d5",
+	  "_class": "it.eng.datatransfer.model.TransferProcess",
+      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_INITIALIZED_API_GHA",
+      "callbackAddress": "http://172.17.0.1:8090/",
+      "agreementId" : "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
 	  "state" : "INITIALIZED",
       "role": "consumer",
 	  "datasetId":"urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
@@ -510,7 +541,7 @@
       "callbackAddress": "http://localhost:8090/",
       "agreementId" : "urn:uuid:AGREEMENT_ID_COMPLETED_TRANSFER_TEST",
 	  "state" : "INITIALIZED",
-      "role": "consumer",
+      "role": "provider",
 	  "datasetId":"urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
 	  "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
@@ -671,6 +702,12 @@
 		"_id": "urn:uuid:abc45800-pole-4932-8baf-ab7fd66ql4d9",
   	  	"_class": "it.eng.negotiation.model.PolicyEnforcement",
         "agreementId": "urn:uuid:AGREEMENT_ID_OK_API",
+        "count": "0"
+	 },{
+			
+		"_id": "urn:uuid:abc45800-pole-4932-8baf-ab7fd36ql4d9",
+  	  	"_class": "it.eng.negotiation.model.PolicyEnforcement",
+        "agreementId": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
         "count": "0"
 	 }
   ],

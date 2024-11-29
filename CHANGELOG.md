@@ -1,6 +1,20 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 28-11-2024
+
+### Added
+
+ - Added API Data Transfer GHA tests
+
+### Changed
+
+ - Added role check on Data Transfer start message protocol and API endpoints to prevent consumer from sending start message after request message instead of provider
+ 
+### Removed
+
+ - Removed protocol Data Transfer GHA tests
+ 
 ## [0.1.1] - 27-11-2024
 
 ### Changed

@@ -12,10 +12,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.Base64;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithUserDetails;
@@ -38,6 +40,7 @@ import it.eng.datatransfer.model.TransferStartMessage;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.model.TransferSuspensionMessage;
 import it.eng.datatransfer.model.TransferTerminationMessage;
+import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.Serializer;
 import it.eng.datatransfer.util.MockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
@@ -46,6 +49,9 @@ import it.eng.tools.model.DSpaceConstants;
  * Data Transfer integration test - provider endpoints
  */
 public class DataTransferTest extends BaseIntegrationTest {
+	
+	@Autowired
+	TransferProcessRepository processRepository;
 	
 	@Test
     @WithUserDetails(TestUtil.CONNECTOR_USER)
@@ -251,9 +257,13 @@ public class DataTransferTest extends BaseIntegrationTest {
     	// Try to access artifact before process is started - should result in error
     	downloadArtifactFail(transactionId);
     	
-    	// send TransferStartMessage
-    	sendTransferStartMessage(consumerPid, providerPid)
-    		.andExpect(status().isOk());
+    	// provider can not send start message to himself and thats why we are changing the state manually
+    	// to simulate a start message that was sent from provider to consumer
+    	Optional<TransferProcess> process = processRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid);
+    	TransferProcess started = process.get().copyWithNewTransferState(TransferState.STARTED);
+    	processRepository.save(started);
+//    	sendTransferStartMessage(consumerPid, providerPid)
+//    		.andExpect(status().isOk());
 		
 		// download artifact
 		downloadArifact(transactionId);

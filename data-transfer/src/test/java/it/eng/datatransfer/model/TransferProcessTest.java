@@ -109,9 +109,9 @@ public class TransferProcessTest {
 	@Test
 	@DisplayName("Check if id is the same after serialization")
 	public void checkId() {
-		String sss = Serializer.serializePlain(MockObjectUtil.TRANSFER_PROCESS_REQUESTED);
+		String sss = Serializer.serializePlain(MockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER);
 		TransferProcess tp = Serializer.deserializePlain(sss, TransferProcess.class);
-		assertEquals(MockObjectUtil.TRANSFER_PROCESS_REQUESTED.getId(), tp.getId());
+		assertEquals(MockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId(), tp.getId());
 	}
 
 	private void validateJavaObject(TransferProcess javaObj) {

@@ -154,6 +154,11 @@ public class DataTransferAPIService {
 	public JsonNode startTransfer(String transferProcessId) throws UnsupportedEncodingException {
 		TransferProcess transferProcess = findTransferProcessById(transferProcessId);
 		
+		if (StringUtils.equals(IConstants.ROLE_CONSUMER, transferProcess.getRole()) && TransferState.REQUESTED.equals(transferProcess.getState())) {
+			throw new DataTransferAPIException("State transition aborted, consumer can not transit from " + transferProcess.getState().name()
+			+ " to " + TransferState.STARTED.name());
+		}
+		
 		stateTransitionCheck(TransferState.STARTED, transferProcess.getState());
 		
 		
