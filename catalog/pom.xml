@@ -58,6 +58,14 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>it.eng</groupId>
+			<artifactId>tools</artifactId>
+			<classifier>tests</classifier>
+			<type>test-jar</type>
+			<version>${revision}</version>
+			<scope>test</scope>
+		</dependency>
 
 	</dependencies>
 	

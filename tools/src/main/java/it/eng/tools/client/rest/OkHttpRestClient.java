@@ -3,7 +3,6 @@ package it.eng.tools.client.rest;
 import java.io.IOException;
 
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -19,6 +18,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import okhttp3.ResponseBody;
 
 @Service
 @Slf4j
@@ -89,12 +89,10 @@ public class OkHttpRestClient {
 	/**
 	 * Sends GET request
 	 * @param targetAddress
-	 * @param jsonNode
 	 * @param authorization
 	 * @return
 	 */
 	public GenericApiResponse<String> sendGETRequest(String targetAddress, String authorization) {
-		// send response to targetAddress
 		Request.Builder requestBuilder = new Request.Builder()
 				.url(targetAddress);
 		if(StringUtils.isNotBlank(authorization)) {
@@ -116,6 +114,30 @@ public class OkHttpRestClient {
         } catch (IOException e) {
 			log.error(e.getLocalizedMessage());
 			return GenericApiResponse.error(e.getLocalizedMessage());
+		}
+	}
+	
+	/**
+	 * Sends GET request to download data
+	 * @param targetAddress
+	 * @param authorization
+	 * @return
+	 */
+	public ResponseBody downloadData(String targetAddress, String authorization) {
+		Request.Builder requestBuilder = new Request.Builder()
+				.url(targetAddress);
+		if(StringUtils.isNotBlank(authorization)) {
+			requestBuilder.addHeader(HttpHeaders.AUTHORIZATION, authorization);
+		}
+		Request request = requestBuilder.build();
+		log.info("Sending request using address: " + targetAddress);
+		try (Response response = okHttpClient.newCall(request).execute()) {
+			int code = response.code();
+			log.info("Status {}", code);
+			return response.body();
+        } catch (IOException e) {
+			log.error(e.getLocalizedMessage());
+			return null;
 		}
 	}
 	

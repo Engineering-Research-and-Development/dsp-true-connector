@@ -147,7 +147,7 @@ public class MockObjectUtil {
             .distribution(Arrays.asList(DISTRIBUTION).stream().collect(Collectors.toCollection(HashSet::new)))
             .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
             .issued(ISSUED)
-            .fileId(FILE_ID)
+            .artifactId(FILE_ID)
             .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
             .identifier(IDENTIFIER)
             .modified(MODIFIED)
@@ -259,7 +259,7 @@ public class MockObjectUtil {
             .createdBy("admin@mail.com")
             .lastModifiedBy("admin@mail.com")
             .build();
-
+    
     public static final Collection<DataService> DATA_SERVICES = Arrays.asList(DATA_SERVICE);
 
 

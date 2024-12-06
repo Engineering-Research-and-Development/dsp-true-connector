@@ -25,8 +25,11 @@ import it.eng.datatransfer.service.DataTransferService;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
+import it.eng.tools.model.Artifact;
+import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.ResponseBody;
 
 @Service
 @Slf4j
@@ -36,30 +39,40 @@ public class RestArtifactService {
 	private final MongoTemplate mongoTemplate;
 	private final OkHttpRestClient okHttpRestClient;
 	private final ApplicationEventPublisher publisher;
+	private final ArtifactRepository artifactRepository;
 	
 	public RestArtifactService(DataTransferService dataTransferService, MongoTemplate mongoTemplate,
-			OkHttpRestClient okHttpRestClient, ApplicationEventPublisher publisher) {
+			OkHttpRestClient okHttpRestClient, ApplicationEventPublisher publisher, ArtifactRepository artifactRepository) {
 		super();
 		this.dataTransferService = dataTransferService;
 		this.mongoTemplate = mongoTemplate;
 		this.okHttpRestClient = okHttpRestClient;
 		this.publisher = publisher;
+		this.artifactRepository = artifactRepository;
 	}
+	
 
-	public GridFsResource streamAttachment(String transactionId) {
+
+	public Artifact getArtifact(String transactionId) {
 		TransferProcess transferProcess = getTransferProcessForTransactionId(transactionId);
-		String response = okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + transferProcess.getDatasetId() + "/fileid", HttpMethod.GET, null);
+		String response = okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + transferProcess.getDatasetId() + "/artifactId", HttpMethod.GET, null);
 		
 		GenericApiResponse<String> rr = Serializer.deserializePlain(response, GenericApiResponse.class);
 		
-		String fileId = rr.getData();
-		if(StringUtils.isBlank(fileId)) {
-			log.error("NO file attached to dataset");
+		String artifactId = rr.getData();
+		if(StringUtils.isBlank(artifactId)) {
+			log.error("No artifact attached to dataset");
 			throw new TransferProcessArtifactNotFoundException("Artifact not found for agreement " + transferProcess.getAgreementId(), 
 					transferProcess.getConsumerPid(), transferProcess.getProviderPid());
 		}
+		return artifactRepository.findById(artifactId)
+				.orElseThrow(() -> new TransferProcessArtifactNotFoundException("Artifact not found for agreement " + transferProcess.getAgreementId(), 
+						transferProcess.getConsumerPid(), transferProcess.getProviderPid()));
+	}
+
+	public GridFsResource streamAttachment(String artifactId) {
 	 	GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
-	 	ObjectId fileIdentifier = new ObjectId(fileId);
+	 	ObjectId fileIdentifier = new ObjectId(artifactId);
 	 	Bson query = Filters.eq("_id", fileIdentifier);
 	 	GridFSFile file = gridFSBucket.find(query).first();
         if (file != null) {
@@ -69,6 +82,10 @@ public class RestArtifactService {
         }
         return null;
     }
+	
+	public ResponseBody getExternalData(String value) {
+		return okHttpRestClient.downloadData(value, value);
+	}
 	
 	public void publishArtifactConsumedEvent(String transactionId) {
 		TransferProcess transferProcess = getTransferProcessForTransactionId(transactionId);
@@ -81,5 +98,4 @@ public class RestArtifactService {
 		String providerPid = tokens[1];
 		return dataTransferService.findTransferProcess(consumerPid, providerPid);
 	}
-	
 }

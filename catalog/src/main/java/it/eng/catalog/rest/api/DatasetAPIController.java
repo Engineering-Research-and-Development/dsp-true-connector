@@ -62,18 +62,18 @@ public class DatasetAPIController {
     }
     
     /**
-     * Used for fetching the fileId from a Dataset
+     * Used for fetching the artifactId from a Dataset
      * 
      * @param id id of Dataset
-     * @return file id
+     * @return artifact id
      */
-    @GetMapping(path = "/{id}/fileid")
-    public ResponseEntity<GenericApiResponse<String>> getFileIdFromDataset(@PathVariable String id) {
+    @GetMapping(path = "/{id}/artifactId")
+    public ResponseEntity<GenericApiResponse<String>> getArtifactIdFromDataset(@PathVariable String id) {
         log.info("Fetching fileId from dataset with id: '" + id + "'");
-        String fileId = datasetService.getFileIdFromDataset(id);
+        String artifactId = datasetService.getArtifactIdFromDataset(id);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(fileId, "Fetched file id"));
+                .body(GenericApiResponse.success(artifactId, "Fetched artifact Id"));
     }
 
     @GetMapping

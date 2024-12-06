@@ -12,6 +12,7 @@ public interface IConstants {
 	public static final String VALUE = "value";
 	public static final String ROLE_CONSUMER = "consumer";
 	public static final String ROLE_PROVIDER = "provider";
+	public static final String ARTIFACT_TYPE = "artifactType";
 	
 	
 }

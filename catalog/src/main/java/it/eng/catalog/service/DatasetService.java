@@ -115,7 +115,7 @@ public class DatasetService {
      */
     public Dataset updateDataset(String id, Dataset dataset) {
     	Dataset existingDataset = getDatasetByIdForApi(id);
-    	Dataset storedDataset = null;;
+    	Dataset storedDataset = null;
 		try {
 			Dataset updatedDataset= existingDataset.updateInstance(dataset);
 			storedDataset = repository.save(updatedDataset);
@@ -146,11 +146,11 @@ public class DatasetService {
 		return formats;
 	}
 
-	public String getFileIdFromDataset(String id) {
-		String fileId = getDatasetByIdForApi(id).getFileId();
-		if (StringUtils.isBlank(fileId)) {
-			throw new ResourceNotFoundAPIException("Dataset with id: " + id + " has no file id");
+	public String getArtifactIdFromDataset(String id) {
+		String artifactId = getDatasetByIdForApi(id).getArtifactId();
+		if (StringUtils.isBlank(artifactId)) {
+			throw new ResourceNotFoundAPIException("Dataset with id: " + id + " has no artifact id");
 		}
-		return fileId;
+		return artifactId;
 	}
 }

@@ -4,6 +4,7 @@ import java.nio.charset.Charset;
 
 import org.apache.tomcat.util.codec.binary.Base64;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 
 public class RestArtifactControllerTest {
 
@@ -22,4 +23,9 @@ public class RestArtifactControllerTest {
 		System.out.println(tokens[0]);
 		System.out.println(tokens[1]);
 	}
+	
+//	proveri za download ako pukne da li je ov prazno
+//	response.setStatus(HttpStatus.OK.value());
+//	response.setHeader("Content-Disposition", "attachment;filename=\"" + attachment.getFilename() + "\"");
+//	response.addHeader("Content-type", attachment.getContentType());
 }
