@@ -1,5 +1,6 @@
 package it.eng.catalog.rest.api;
 
+import java.net.URL;
 import java.util.List;
 
 import org.springframework.http.MediaType;
@@ -7,15 +8,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import it.eng.catalog.model.ArtifactRequest;
 import it.eng.catalog.service.ArtifactService;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.Artifact;
@@ -36,9 +35,12 @@ public class ArtifactAPIController {
 	}
 
 	@PostMapping("/upload/{datasetId}")
-	public ResponseEntity<GenericApiResponse<JsonNode>> uploadArtifact(@RequestParam("file") MultipartFile file,
-			@PathVariable(required = true) String datasetId, @RequestBody(required = true) ArtifactRequest artifactRequest) {
-		Artifact artifact = artifactService.uploadArtifact(file, datasetId, artifactRequest);
+	public ResponseEntity<GenericApiResponse<JsonNode>> uploadArtifact(
+			@RequestPart(value = "file", required = false) MultipartFile file,
+			@RequestPart(value = "url", required = false) URL externalURL,
+			@PathVariable(required = true) String datasetId) {
+		log.info("Uploading artifact");
+		Artifact artifact = artifactService.uploadArtifact(file, datasetId, externalURL);
 		log.info("Artifact uploaded {} ", artifact.getId());
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(artifact), "Artifact uploaded"));

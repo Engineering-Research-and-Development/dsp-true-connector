@@ -3,6 +3,7 @@ package it.eng.tools.util;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.bson.types.ObjectId;
 import org.springframework.http.MediaType;
 
 import it.eng.tools.model.ApplicationProperty;
@@ -59,7 +60,7 @@ public class MockObjectUtil {
 			.lastModifiedDate(NOW)
 			.filename("Employees.txt")
 			.lastModifiedBy(CREATOR)
-			.value("FileId")
+			.value(new ObjectId().toHexString())
 			.version(0L)
 			.build();
 	
@@ -70,7 +71,7 @@ public class MockObjectUtil {
 			.created(NOW)
 			.lastModifiedDate(NOW)
 			.lastModifiedBy(CREATOR)
-			.value("example.com/employees")
+			.value("https://example.com/employees")
 			.version(0L)
 			.build();
 	

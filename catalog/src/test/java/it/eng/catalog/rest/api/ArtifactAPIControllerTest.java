@@ -1,6 +1,8 @@
 package it.eng.catalog.rest.api;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
@@ -8,6 +10,7 @@ import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,10 +22,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import it.eng.catalog.model.ArtifactRequest;
+import it.eng.catalog.exceptions.CatalogErrorAPIException;
 import it.eng.catalog.service.ArtifactService;
 import it.eng.catalog.util.MockObjectUtil;
-import it.eng.tools.model.ArtifactType;
 import it.eng.tools.response.GenericApiResponse;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,24 +41,49 @@ class ArtifactAPIControllerTest {
 	private ArtifactAPIController controller;
 	
 	@Test
-	void testUploadFile() {
-		ArtifactRequest artifactRequest = new ArtifactRequest(ArtifactType.FILE, null);
-		when(artifactService.uploadArtifact(file, MockObjectUtil.DATASET.getId(), artifactRequest)).thenReturn(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE);
+	@DisplayName("Upload - success")
+	public void testUpload() {
+		when(artifactService.uploadArtifact(file, MockObjectUtil.DATASET.getId(), null)).thenReturn(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE);
 		
-		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.uploadArtifact(file, MockObjectUtil.DATASET.getId(), artifactRequest);
+		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.uploadArtifact(file, null, MockObjectUtil.DATASET.getId());
 		
 		assertTrue(StringUtils.isNotBlank(response.getBody().getData().toString()));
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 	}
+	
+	@Test
+	@DisplayName("Upload - fail")
+	public void testUpload_failed() {
+		when(artifactService.uploadArtifact(file, MockObjectUtil.DATASET.getId(), null)).thenThrow(CatalogErrorAPIException.class);
+		
+		assertThrows(CatalogErrorAPIException.class, ()-> controller.uploadArtifact(file, null, MockObjectUtil.DATASET.getId()));
+		
+	}
 
 	@Test
-	void testListArtifacts() {
+	@DisplayName("Get all artifacts - success")
+	public void testListArtifacts() {
 		when(artifactService.getArtifacts(null))
 		.thenReturn(List.of(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE, it.eng.tools.util.MockObjectUtil.ARTIFACT_EXTERNAL));
 		
 		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.getArtifacts(null);
 		
-		assertTrue(StringUtils.isNotBlank(response.getBody().getData().toString()));
+		
+		assertTrue(response.getBody().getData().has(1));
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+	}
+	
+	@Test
+	@DisplayName("Get artifact by id - success")
+	public void testGetArtifact() {
+		when(artifactService.getArtifacts(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE.getId()))
+		.thenReturn(List.of(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE));
+		
+		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.getArtifacts(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE.getId());
+		
+		
+		assertTrue(response.getBody().getData().has(0));
+		assertFalse(response.getBody().getData().has(1));
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 	}
 

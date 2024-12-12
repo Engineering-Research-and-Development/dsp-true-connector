@@ -11,14 +11,12 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import it.eng.datatransfer.model.TransferError;
-import it.eng.datatransfer.rest.api.RestArtifactController;
 import it.eng.datatransfer.rest.protocol.ProviderDataTransferController;
 import it.eng.datatransfer.serializer.Serializer;
 import it.eng.datatransfer.service.DataTransferService;
-import it.eng.datatransfer.service.api.RestArtifactService;
 import jakarta.validation.ValidationException;
 
-@RestControllerAdvice(basePackageClasses = { ProviderDataTransferController.class, DataTransferService.class, RestArtifactController.class, RestArtifactService.class })
+@RestControllerAdvice(basePackageClasses = { ProviderDataTransferController.class, DataTransferService.class})
 public class DataTransferExceptionAdvice extends ResponseEntityExceptionHandler {
 
 	@ExceptionHandler(value = { ValidationException.class })
@@ -82,17 +80,5 @@ public class DataTransferExceptionAdvice extends ResponseEntityExceptionHandler 
 				.build();
 		return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(),
 				HttpStatus.BAD_REQUEST, request);
-	}
-	
-	@ExceptionHandler(value = {TransferProcessArtifactNotFoundException.class, TransferProcessInternalException.class })
-	protected ResponseEntity<Object> handleTransferProcessArtifactNotFoundException(TransferProcessArtifactNotFoundException ex, WebRequest request) {
-		TransferError errorMessage = TransferError.Builder.newInstance()
-				.consumerPid(ex.getConsumerPid())
-				.providerPid(ex.getProviderPid())
-				.code(HttpStatus.BAD_REQUEST.getReasonPhrase())
-				.reason(Collections.singletonList(ex.getLocalizedMessage()))
-				.build();
-		return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(),
-				HttpStatus.INTERNAL_SERVER_ERROR, request);
 	}
 }

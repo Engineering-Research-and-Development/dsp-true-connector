@@ -30,7 +30,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @JsonDeserialize(builder = Artifact.Builder.class)
 @NoArgsConstructor
-@Document(collection = "artifact")
+@Document(collection = "artifacts")
 public class Artifact implements Serializable{
 
 	private static final long serialVersionUID = -250707162174100566L;

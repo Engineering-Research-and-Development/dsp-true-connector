@@ -39,6 +39,7 @@ public class MockObjectUtil {
     public static final String ENDPOINT_TYPE = "https://w3id.org/idsa/v4.1/HTTP";
     public static final String CALLBACK_ADDRESS = "https://example.com/callback";
 	public static final String FORWARD_TO = "https://forward-to.com";
+	public static final String DATASET_ID = "datasetId";
 	
 	public static final EndpointProperty ENDPOINT_PROPERTY = EndpointProperty.Builder.newInstance()
 			.name("authorization")
@@ -90,6 +91,7 @@ public class MockObjectUtil {
     		.consumerPid(CONSUMER_PID)
     		.providerPid(PROVIDER_PID)
     		.dataAddress(DATA_ADDRESS)
+    		.datasetId(DATASET_ID)
     		.agreementId(AGREEMENT_ID)
     		.callbackAddress(CALLBACK_ADDRESS)
     		.role(IConstants.ROLE_PROVIDER)

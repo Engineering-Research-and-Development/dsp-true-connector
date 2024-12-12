@@ -18,7 +18,6 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-import okhttp3.ResponseBody;
 
 @Service
 @Slf4j
@@ -123,7 +122,7 @@ public class OkHttpRestClient {
 	 * @param authorization
 	 * @return
 	 */
-	public ResponseBody downloadData(String targetAddress, String authorization) {
+	public GenericApiResponse<Response> downloadData(String targetAddress, String authorization) {
 		Request.Builder requestBuilder = new Request.Builder()
 				.url(targetAddress);
 		if(StringUtils.isNotBlank(authorization)) {
@@ -131,14 +130,19 @@ public class OkHttpRestClient {
 		}
 		Request request = requestBuilder.build();
 		log.info("Sending request using address: " + targetAddress);
-		try (Response response = okHttpClient.newCall(request).execute()) {
+		try {
+			Response response = okHttpClient.newCall(request).execute();
 			int code = response.code();
 			log.info("Status {}", code);
-			return response.body();
+			if(response.isSuccessful()) { // code in 200..299
+				return GenericApiResponse.success(response, "Response received from " + targetAddress);
+			} else {
+				return GenericApiResponse.error(response.message());
+			}
         } catch (IOException e) {
 			log.error(e.getLocalizedMessage());
-			return null;
-		}
+			return GenericApiResponse.error(e.getLocalizedMessage());
+        }
 	}
 	
 	public String sendInternalRequest(String contextAddress, HttpMethod method, JsonNode jsonBody) {

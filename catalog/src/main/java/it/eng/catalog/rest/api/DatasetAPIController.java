@@ -69,7 +69,7 @@ public class DatasetAPIController {
      */
     @GetMapping(path = "/{id}/artifactId")
     public ResponseEntity<GenericApiResponse<String>> getArtifactIdFromDataset(@PathVariable String id) {
-        log.info("Fetching fileId from dataset with id: '" + id + "'");
+        log.info("Fetching artifactId from dataset with id: '" + id + "'");
         String artifactId = datasetService.getArtifactIdFromDataset(id);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)

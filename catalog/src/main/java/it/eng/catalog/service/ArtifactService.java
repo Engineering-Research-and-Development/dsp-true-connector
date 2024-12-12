@@ -2,6 +2,7 @@ package it.eng.catalog.service;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.net.URL;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -17,9 +18,9 @@ import com.mongodb.client.gridfs.GridFSBuckets;
 import com.mongodb.client.gridfs.model.GridFSUploadOptions;
 
 import it.eng.catalog.exceptions.CatalogErrorAPIException;
-import it.eng.catalog.model.ArtifactRequest;
 import it.eng.catalog.model.Dataset;
 import it.eng.tools.model.Artifact;
+import it.eng.tools.model.ArtifactType;
 import it.eng.tools.repository.ArtifactRepository;
 import lombok.extern.slf4j.Slf4j;
 
@@ -51,23 +52,21 @@ public class ArtifactService {
 		this.artifactRepository = artifactRepository;
 	}
 
-	public Artifact uploadArtifact(MultipartFile file, String datasetId, ArtifactRequest artifactRequest) {
-		switch (artifactRequest.getArtifactType()) {
-		case FILE:
-			return storeFile(file, datasetId, artifactRequest);
-		case EXTERNAL:
-			return insertExternalArtifact(datasetId, artifactRequest);
-		default:
-			log.warn("Artifact type not supported {}", artifactRequest.getArtifactType().name());
-			throw new CatalogErrorAPIException("Artifact type not supported " + artifactRequest.getArtifactType().name());
+	public Artifact uploadArtifact(MultipartFile file, String datasetId, URL externalURL) {
+		if (file != null) {
+			return storeFile(file, datasetId);
+		} else if (externalURL != null) {
+			return insertExternalArtifact(datasetId, externalURL);
 		}
+		log.warn("Artifact and file not found");
+		throw new CatalogErrorAPIException("Artifact and file not found");
 	}
 
-	private Artifact insertExternalArtifact(String datasetId, ArtifactRequest artifactRequest) {
+	private Artifact insertExternalArtifact(String datasetId, URL externalURL) {
 		try {
 			Artifact artifact = Artifact.Builder.newInstance()
-					.artifactType(artifactRequest.getArtifactType())
-					.value(artifactRequest.getValue())
+					.artifactType(ArtifactType.EXTERNAL)
+					.value(externalURL.toString())
 					.build();
 			artifact = artifactRepository.save(artifact);
 			updateDataset(datasetId, artifact.getId());
@@ -78,11 +77,8 @@ public class ArtifactService {
 		}
 	}
 
-	private Artifact storeFile(MultipartFile file, String datasetId, ArtifactRequest artifactRequest) {
+	private Artifact storeFile(MultipartFile file, String datasetId) {
 		try {
-			if (file.isEmpty()) {
-				throw new CatalogErrorAPIException("Failed to store empty file.");
-			}
 			GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
 			Document doc = new Document();
 			//TODO check what happens if file.getContentType() is null
@@ -93,7 +89,7 @@ public class ArtifactService {
 			        .metadata(doc);
 			ObjectId fileId = gridFSBucket.uploadFromStream(file.getOriginalFilename(), file.getInputStream(), options);
 			Artifact artifact = Artifact.Builder.newInstance()
-					.artifactType(artifactRequest.getArtifactType())
+					.artifactType(ArtifactType.FILE)
 					.value(fileId.toHexString())
 					.contentType(file.getContentType())
 					.filename(file.getOriginalFilename())
