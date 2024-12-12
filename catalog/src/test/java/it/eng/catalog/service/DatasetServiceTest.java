@@ -44,8 +44,6 @@ public class DatasetServiceTest {
     @InjectMocks
     private DatasetService datasetService;
 
-    private Dataset dataset = MockObjectUtil.DATASET_WITH_FILE_ID;
-    
     private Dataset datasetWithoutDistributions = Dataset.Builder.newInstance()
     		.hasPolicy(Arrays.asList(MockObjectUtil.OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
     		.build();
@@ -58,12 +56,12 @@ public class DatasetServiceTest {
     @Test
     @DisplayName("Get dataset by id - success")
     public void getDatasetById_success() {
-        when(repository.findById(dataset.getId())).thenReturn(Optional.of(dataset));
+        when(repository.findById(MockObjectUtil.DATASET_WITH_FILE_ID.getId())).thenReturn(Optional.of(MockObjectUtil.DATASET_WITH_FILE_ID));
 
-        Dataset result = datasetService.getDatasetById(dataset.getId());
+        Dataset result = datasetService.getDatasetById(MockObjectUtil.DATASET_WITH_FILE_ID.getId());
 
-        assertEquals(dataset.getId(), result.getId());
-        verify(repository).findById(dataset.getId());
+        assertEquals(MockObjectUtil.DATASET_WITH_FILE_ID.getId(), result.getId());
+        verify(repository).findById(MockObjectUtil.DATASET_WITH_FILE_ID.getId());
     }
 
     @Test
@@ -79,12 +77,12 @@ public class DatasetServiceTest {
     @Test
     @DisplayName("Get formats from dataset - success")
     public void getFormatsFromDataset_success() {
-        when(repository.findById(dataset.getId())).thenReturn(Optional.of(dataset));
+        when(repository.findById(MockObjectUtil.DATASET_WITH_FILE_ID.getId())).thenReturn(Optional.of(MockObjectUtil.DATASET_WITH_FILE_ID));
 
-        List<String> formats = datasetService.getFormatsFromDataset(dataset.getId());
+        List<String> formats = datasetService.getFormatsFromDataset(MockObjectUtil.DATASET_WITH_FILE_ID.getId());
 
-        assertEquals(dataset.getDistribution().stream().findFirst().get().getFormat().getId(), formats.get(0));
-        verify(repository).findById(dataset.getId());
+        assertEquals(MockObjectUtil.DATASET_WITH_FILE_ID.getDistribution().stream().findFirst().get().getFormat().getId(), formats.get(0));
+        verify(repository).findById(MockObjectUtil.DATASET_WITH_FILE_ID.getId());
     }
 
     @Test
@@ -108,19 +106,19 @@ public class DatasetServiceTest {
     }
     
     @Test
-    @DisplayName("Get file id from dataset - success")
-    public void getFileIdFromDataset_success() {
-        when(repository.findById(dataset.getId())).thenReturn(Optional.of(dataset));
+    @DisplayName("Get artifact id from dataset - success")
+    public void getArtifactIdFromDataset_success() {
+        when(repository.findById(MockObjectUtil.DATASET_WITH_FILE_ID.getId())).thenReturn(Optional.of(MockObjectUtil.DATASET_WITH_FILE_ID));
 
-        String result = datasetService.getArtifactIdFromDataset(dataset.getId());
+        String result = datasetService.getArtifactIdFromDataset(MockObjectUtil.DATASET_WITH_FILE_ID.getId());
 
-        assertEquals(dataset.getArtifactId(), result);
-        verify(repository).findById(dataset.getId());
+        assertEquals(MockObjectUtil.DATASET_WITH_FILE_ID.getArtifactId(), result);
+        verify(repository).findById(MockObjectUtil.DATASET_WITH_FILE_ID.getId());
     }
 
     @Test
-    @DisplayName("Get file id from dataset - not found")
-    public void getFileIdFromDataset_notFound() {
+    @DisplayName("Get artifact id from dataset - not found")
+    public void getArtifactIdFromDataset_notFound() {
         when(repository.findById("1")).thenReturn(Optional.of(MockObjectUtil.DATASET));
 
         assertThrows(ResourceNotFoundAPIException.class, () -> datasetService.getArtifactIdFromDataset("1"));
@@ -138,25 +136,25 @@ public class DatasetServiceTest {
     @Test
     @DisplayName("Save dataset")
     public void saveDataset_success() {
-        when(repository.save(any(Dataset.class))).thenReturn(dataset);
+        when(repository.save(any(Dataset.class))).thenReturn(MockObjectUtil.DATASET_WITH_FILE_ID);
 
-        Dataset result = datasetService.saveDataset(dataset);
+        Dataset result = datasetService.saveDataset(MockObjectUtil.DATASET_WITH_FILE_ID);
 
-        assertEquals(dataset.getId(), result.getId());
-        verify(repository).save(dataset);
-        verify(catalogService).updateCatalogDatasetAfterSave(dataset);
+        assertEquals(MockObjectUtil.DATASET_WITH_FILE_ID.getId(), result.getId());
+        verify(repository).save(MockObjectUtil.DATASET_WITH_FILE_ID);
+        verify(catalogService).updateCatalogDatasetAfterSave(MockObjectUtil.DATASET_WITH_FILE_ID);
     }
 
     @Test
     @DisplayName("Delete dataset - success")
     public void deleteDataset_success() {
-        when(repository.findById(dataset.getId())).thenReturn(Optional.of(dataset));
+        when(repository.findById(MockObjectUtil.DATASET_WITH_FILE_ID.getId())).thenReturn(Optional.of(MockObjectUtil.DATASET_WITH_FILE_ID));
 
-        datasetService.deleteDataset(dataset.getId());
+        datasetService.deleteDataset(MockObjectUtil.DATASET_WITH_FILE_ID.getId());
 
-        verify(repository).findById(dataset.getId());
-        verify(repository).deleteById(dataset.getId());
-        verify(catalogService).updateCatalogDatasetAfterDelete(dataset);
+        verify(repository).findById(MockObjectUtil.DATASET_WITH_FILE_ID.getId());
+        verify(repository).deleteById(MockObjectUtil.DATASET_WITH_FILE_ID.getId());
+        verify(catalogService).updateCatalogDatasetAfterDelete(MockObjectUtil.DATASET_WITH_FILE_ID);
     }
 
     @Test
@@ -174,13 +172,13 @@ public class DatasetServiceTest {
     @Test
     @DisplayName("Update dataset - success")
     public void updateDataset_success() {
-        when(repository.findById(dataset.getId())).thenReturn(Optional.of(dataset));
-        when(repository.save(any(Dataset.class))).thenReturn(dataset);
+        when(repository.findById(MockObjectUtil.DATASET_WITH_FILE_ID.getId())).thenReturn(Optional.of(MockObjectUtil.DATASET_WITH_FILE_ID));
+        when(repository.save(any(Dataset.class))).thenReturn(MockObjectUtil.DATASET_WITH_FILE_ID);
 
-        Dataset result = datasetService.updateDataset(dataset.getId(), MockObjectUtil.DATASET_FOR_UPDATE);
+        Dataset result = datasetService.updateDataset(MockObjectUtil.DATASET_WITH_FILE_ID.getId(), MockObjectUtil.DATASET_FOR_UPDATE);
 
-        assertEquals(dataset.getId(), result.getId());
-        verify(repository).findById(dataset.getId());
+        assertEquals(MockObjectUtil.DATASET_WITH_FILE_ID.getId(), result.getId());
+        verify(repository).findById(MockObjectUtil.DATASET_WITH_FILE_ID.getId());
         verify(repository).save(argCaptorDataset.capture());
         
         assertTrue(argCaptorDataset.getValue().getCreator().contains("update"));
