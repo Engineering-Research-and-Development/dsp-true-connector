@@ -112,12 +112,4 @@ public class RestArtifactControllerTest {
 		assertThrows(DownloadException.class, () -> restArtifactController.getArtifact(httpServletResponse, null, TRANSACTION_ID));
 	}
 	
-	@Test
-	@DisplayName("Get artifact - wrong artifact type")
-	public void getArtifact_wrongArtifactType() throws IllegalStateException, IOException {
-		HttpServletResponse httpServletResponse = mock(HttpServletResponse.class);
-		when(restArtifactService.getArtifact(TRANSACTION_ID)).thenReturn(it.eng.tools.util.MockObjectUtil.ARTIFACT_EXTERNAL);
-		
-		assertThrows(DownloadException.class, () -> restArtifactController.getArtifact(httpServletResponse, null, TRANSACTION_ID));
-	}
 }

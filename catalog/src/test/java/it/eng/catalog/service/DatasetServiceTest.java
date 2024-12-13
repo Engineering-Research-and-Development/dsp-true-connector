@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -119,11 +120,13 @@ public class DatasetServiceTest {
     @Test
     @DisplayName("Get artifact id from dataset - not found")
     public void getArtifactIdFromDataset_notFound() {
-        when(repository.findById(MockObjectUtil.DATASET.getId())).thenReturn(Optional.of(MockObjectUtil.DATASET));
+    	Dataset mockDataset = mock(Dataset.class);
+        when(repository.findById(MockObjectUtil.DATASET.getId())).thenReturn(Optional.of(mockDataset));
+        when(mockDataset.getArtifactId()).thenReturn(null);
 
         assertThrows(ResourceNotFoundAPIException.class, () -> datasetService.getArtifactIdFromDataset(MockObjectUtil.DATASET.getId()));
 
-        verify(repository).findById("1");
+        verify(repository).findById(MockObjectUtil.DATASET.getId());
     }
 
     @Test
