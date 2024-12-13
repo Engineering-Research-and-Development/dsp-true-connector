@@ -119,9 +119,9 @@ public class DatasetServiceTest {
     @Test
     @DisplayName("Get artifact id from dataset - not found")
     public void getArtifactIdFromDataset_notFound() {
-        when(repository.findById("1")).thenReturn(Optional.of(MockObjectUtil.DATASET));
+        when(repository.findById(MockObjectUtil.DATASET.getId())).thenReturn(Optional.of(MockObjectUtil.DATASET));
 
-        assertThrows(ResourceNotFoundAPIException.class, () -> datasetService.getArtifactIdFromDataset("1"));
+        assertThrows(ResourceNotFoundAPIException.class, () -> datasetService.getArtifactIdFromDataset(MockObjectUtil.DATASET.getId()));
 
         verify(repository).findById("1");
     }
