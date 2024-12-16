@@ -55,7 +55,7 @@ public class RestArtifactService {
 
 	public Artifact getArtifact(String transactionId) {
 		TransferProcess transferProcess = getTransferProcessForTransactionId(transactionId);
-		String response = okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + transferProcess.getDatasetId() + "/artifactId", HttpMethod.GET, null);
+		String response = okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + transferProcess.getDatasetId() + "/artifact", HttpMethod.GET, null);
 		
 		GenericApiResponse<String> rr = Serializer.deserializePlain(response, GenericApiResponse.class);
 		

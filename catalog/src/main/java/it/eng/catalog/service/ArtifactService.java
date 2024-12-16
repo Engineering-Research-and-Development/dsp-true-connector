@@ -108,7 +108,7 @@ public class ArtifactService {
 		Dataset dataset = datasetService.getDatasetByIdForApi(datasetId);
 		// TODO not most elegant solution to change one field since we do not have setters
 		try {
-			Field artifactIdField = dataset.getClass().getDeclaredField("artifactId");
+			Field artifactIdField = dataset.getClass().getDeclaredField("artifact");
 			artifactIdField.setAccessible(true);
 			artifactIdField.set(dataset, artifactId);
 		} catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {

@@ -46,9 +46,9 @@ public class ArtifactAPIController {
                 .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(artifact), "Artifact uploaded"));
 	}
 	
-	@GetMapping(path = {"", "/{artifactId}"})
-	public ResponseEntity<GenericApiResponse<JsonNode>> getArtifacts(@PathVariable(required = false) String artifactId) {
-		List<Artifact> result = artifactService.getArtifacts(artifactId);
+	@GetMapping(path = {"", "/{artifact}"})
+	public ResponseEntity<GenericApiResponse<JsonNode>> getArtifacts(@PathVariable(required = false) String artifact) {
+		List<Artifact> result = artifactService.getArtifacts(artifact);
 		return ResponseEntity.ok(GenericApiResponse.success(Serializer.serializePlainJsonNode(result), "Stored artifacts"));
 	}
 }
