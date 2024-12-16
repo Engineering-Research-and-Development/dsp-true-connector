@@ -28,7 +28,7 @@ public abstract class AbstractCatalogObject implements Serializable {
     public abstract String getType();
 
     protected String createNewPid() {
-        return "urn:uuid: pid method" + UUID.randomUUID();
+        return "urn:uuid:" + UUID.randomUUID();
     }
 
     protected String createNewId() {
