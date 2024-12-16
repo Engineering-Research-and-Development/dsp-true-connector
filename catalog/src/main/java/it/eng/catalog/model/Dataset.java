@@ -206,9 +206,9 @@ public class Dataset extends AbstractCatalogObject {
         }
 
         public Dataset build() {
-            if (dataset.id == null) {
-                dataset.id = dataset.createNewPid();
-            }
+//            if (dataset.id == null) {
+//                dataset.id = dataset.createNewPid();
+//            }
             System.out.println("build method: "+dataset.artifact);
             Set<ConstraintViolation<Dataset>> violations
                     = Validation.buildDefaultValidatorFactory().getValidator().validate(dataset);
