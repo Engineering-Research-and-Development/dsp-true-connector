@@ -147,7 +147,7 @@ public class DatasetService {
 	}
 
 	public String getFileIdFromDataset(String id) {
-		String fileId = getDatasetByIdForApi(id).getFileId();
+		String fileId = getDatasetByIdForApi(id).getArtifact();
 		if (StringUtils.isBlank(fileId)) {
 			throw new ResourceNotFoundAPIException("Dataset with id: " + id + " has no file id");
 		}

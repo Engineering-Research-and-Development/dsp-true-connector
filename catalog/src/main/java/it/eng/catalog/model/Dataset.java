@@ -76,7 +76,7 @@ public class Dataset extends AbstractCatalogObject {
     private Set<Distribution> distribution;
     
     @JsonIgnore
-    private String fileId;
+    private String artifact;
     
     @JsonIgnore
     @CreatedBy
@@ -180,9 +180,9 @@ public class Dataset extends AbstractCatalogObject {
             return this;
         }
 
-        @JsonProperty("fileId")
-        public Builder fileId(String fileId) {
-            dataset.fileId = fileId;
+        @JsonProperty("artifact")
+        public Builder artifact(String artifact) {
+            dataset.artifact = artifact;
             return this;
         }
         
@@ -247,7 +247,7 @@ public class Dataset extends AbstractCatalogObject {
          .title(updatedDataset.getTitle() != null ? updatedDataset.getTitle() : this.title)
          .distribution(updatedDataset.getDistribution() != null ? updatedDataset.getDistribution() : this.distribution)
          .hasPolicy(updatedDataset.getHasPolicy() != null ? updatedDataset.getHasPolicy() : this.hasPolicy)
-         .fileId(updatedDataset.getFileId() != null ? updatedDataset.getFileId() : this.fileId)
+         .artifact(updatedDataset.getArtifact() != null ? updatedDataset.getArtifact() : this.artifact)
          .build();
   }
 }

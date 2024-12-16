@@ -114,7 +114,7 @@ public class DatasetServiceTest {
 
         String result = datasetService.getFileIdFromDataset(dataset.getId());
 
-        assertEquals(dataset.getFileId(), result);
+        assertEquals(dataset.getArtifact(), result);
         verify(repository).findById(dataset.getId());
     }
 
