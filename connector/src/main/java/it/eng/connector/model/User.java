@@ -13,6 +13,8 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Data
 @Builder
 @AllArgsConstructor
@@ -28,9 +30,9 @@ public class User implements UserDetails {
 	private String firstName;
 	private String lastName;
 	private String email;
+	@JsonIgnore
 	private String password;
 	private boolean enabled;
-
 
 	private Role role;
 
