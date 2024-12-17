@@ -52,8 +52,7 @@ public class MockObjectUtil {
 			.build();
 	
 	public static final Artifact ARTIFACT_FILE = Artifact.Builder.newInstance()
-//			.id("urn:uuid:" + UUID.randomUUID())
-			.id("pera file")
+			.id("urn:uuid:" + UUID.randomUUID())
 			.artifactType(ArtifactType.FILE)
 			.contentType(MediaType.APPLICATION_JSON.getType())
 			.createdBy(CREATOR)
@@ -66,8 +65,7 @@ public class MockObjectUtil {
 			.build();
 	
 	public static final Artifact ARTIFACT_EXTERNAL = Artifact.Builder.newInstance()
-//			.id("urn:uuid:" + UUID.randomUUID())
-			.id("pera externals")
+			.id("urn:uuid:" + UUID.randomUUID())
 			.artifactType(ArtifactType.EXTERNAL)
 			.createdBy(CREATOR)
 			.created(NOW)
