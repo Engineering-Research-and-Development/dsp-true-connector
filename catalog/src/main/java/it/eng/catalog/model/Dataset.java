@@ -76,7 +76,7 @@ public class Dataset extends AbstractCatalogObject {
     private Set<Distribution> distribution;
     
     @JsonIgnore
-    private String someField;
+    private String artifact;
     
     @JsonIgnore
     @CreatedBy
@@ -180,10 +180,10 @@ public class Dataset extends AbstractCatalogObject {
             return this;
         }
 
-        @JsonProperty("someField")
-        public Builder someField(String artifact) {
+        @JsonProperty("artifact")
+        public Builder artifact(String artifact) {
         	System.out.println("artifact builder method: "+artifact);
-            dataset.someField = artifact;
+            dataset.artifact = artifact;
             return this;
         }
         
@@ -206,10 +206,10 @@ public class Dataset extends AbstractCatalogObject {
         }
 
         public Dataset build() {
-//            if (dataset.id == null) {
-//                dataset.id = dataset.createNewPid();
-//            }
-            System.out.println("build method: "+dataset.someField);
+            if (dataset.id == null) {
+                dataset.id = dataset.createNewPid();
+            }
+            System.out.println("build method: "+dataset.artifact);
             Set<ConstraintViolation<Dataset>> violations
                     = Validation.buildDefaultValidatorFactory().getValidator().validate(dataset);
             if (violations.isEmpty()) {
@@ -249,7 +249,7 @@ public class Dataset extends AbstractCatalogObject {
          .title(updatedDataset.getTitle() != null ? updatedDataset.getTitle() : this.title)
          .distribution(updatedDataset.getDistribution() != null ? updatedDataset.getDistribution() : this.distribution)
          .hasPolicy(updatedDataset.getHasPolicy() != null ? updatedDataset.getHasPolicy() : this.hasPolicy)
-         .someField(updatedDataset.getSomeField() != null ? updatedDataset.getSomeField() : this.someField)
+         .artifact(updatedDataset.getArtifact() != null ? updatedDataset.getArtifact() : this.artifact)
          .build();
   }
 }
