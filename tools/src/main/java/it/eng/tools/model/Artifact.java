@@ -2,6 +2,8 @@ package it.eng.tools.model;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
@@ -18,6 +20,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidationException;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -126,16 +131,17 @@ public class Artifact implements Serializable{
 		}
 		
 		public Artifact build() {
-//			Set<ConstraintViolation<Artifact>> violations 
-//				= Validation.buildDefaultValidatorFactory().getValidator().validate(artifact);
-//			if(violations.isEmpty()) {
+			System.out.println("artifact tools bulder method");
+			Set<ConstraintViolation<Artifact>> violations 
+				= Validation.buildDefaultValidatorFactory().getValidator().validate(artifact);
+			if(violations.isEmpty()) {
 				return artifact;
-//			}
-//			throw new ValidationException("Artifact - " +
-//					violations
-//						.stream()
-//						.map(v -> v.getPropertyPath() + " " + v.getMessage())
-//						.collect(Collectors.joining(",")));
+			}
+			throw new ValidationException("Artifact - " +
+					violations
+						.stream()
+						.map(v -> v.getPropertyPath() + " " + v.getMessage())
+						.collect(Collectors.joining(",")));
 			}
 	}	
 }
