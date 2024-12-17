@@ -63,13 +63,13 @@ public class ArtifactServiceTest {
 	@Test
     @DisplayName("Get artifacts by id - success")
     public void getArtifactById_success() {
-		when(artifactRepository.findById(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE.getId())).thenReturn(Optional.of(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE));
+		when(artifactRepository.findById("1")).thenReturn(Optional.of(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE));
 
-		List<Artifact> result = artifactService.getArtifacts(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE.getId());
+		List<Artifact> result = artifactService.getArtifacts("1");
 
 		assertEquals(1, result.size());
         assertEquals(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE.getId(), result.get(0).getId());
-        verify(artifactRepository).findById(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE.getId());
+        verify(artifactRepository).findById("1");
     }
 	
 	@Test
