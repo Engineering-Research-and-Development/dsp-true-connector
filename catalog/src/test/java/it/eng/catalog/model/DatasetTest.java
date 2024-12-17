@@ -97,7 +97,8 @@ public class DatasetTest {
 		Dataset dataset2 = Serializer.deserializeProtocol(ss, Dataset.class);
 		System.out.println("dataset artifact: "+dataset.getArtifact());
 		System.out.println("dataset id: "+dataset.getId());
-		System.out.println("dataset1: "+dataset2.getArtifact());
+		System.out.println("dataset2: "+dataset2.getArtifact());
+		System.out.println("dataset2 id: "+dataset2.getId());
 		assertThat(dataset).usingRecursiveComparison().isEqualTo(dataset2);
 	}
 	
