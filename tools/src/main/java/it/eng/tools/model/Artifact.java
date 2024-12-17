@@ -35,7 +35,7 @@ public class Artifact implements Serializable{
 
 	private static final long serialVersionUID = -250707162174100566L;
 	
-	@Id
+//	@Id
 	private String id;
     @NotNull
 	@JsonProperty(IConstants.ARTIFACT_TYPE)
