@@ -182,7 +182,6 @@ public class Dataset extends AbstractCatalogObject {
 
         @JsonProperty("artifact")
         public Builder artifact(String artifact) {
-        	System.out.println("artifact builder method: "+artifact);
             dataset.artifact = artifact;
             return this;
         }
@@ -209,7 +208,6 @@ public class Dataset extends AbstractCatalogObject {
             if (dataset.id == null) {
                 dataset.id = dataset.createNewPid();
             }
-            System.out.println("build method: "+dataset.artifact);
             Set<ConstraintViolation<Dataset>> violations
                     = Validation.buildDefaultValidatorFactory().getValidator().validate(dataset);
             if (violations.isEmpty()) {
