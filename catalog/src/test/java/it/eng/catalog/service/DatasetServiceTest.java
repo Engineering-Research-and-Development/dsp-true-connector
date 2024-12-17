@@ -113,7 +113,7 @@ public class DatasetServiceTest {
 
         String result = datasetService.getArtifactIdFromDataset(MockObjectUtil.DATASET_WITH_FILE_ID.getId());
 
-        assertEquals(MockObjectUtil.DATASET_WITH_FILE_ID.getArtifact(), result);
+        assertEquals(MockObjectUtil.DATASET_WITH_FILE_ID.getSomeField(), result);
         verify(repository).findById(MockObjectUtil.DATASET_WITH_FILE_ID.getId());
     }
 
@@ -122,7 +122,7 @@ public class DatasetServiceTest {
     public void getArtifactIdFromDataset_notFound() {
     	Dataset mockDataset = mock(Dataset.class);
         when(repository.findById(MockObjectUtil.DATASET.getId())).thenReturn(Optional.of(mockDataset));
-        when(mockDataset.getArtifact()).thenReturn(null);
+        when(mockDataset.getSomeField()).thenReturn(null);
 
         assertThrows(ResourceNotFoundAPIException.class, () -> datasetService.getArtifactIdFromDataset(MockObjectUtil.DATASET.getId()));
 

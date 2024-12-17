@@ -147,7 +147,7 @@ public class DatasetService {
 	}
 
 	public String getArtifactIdFromDataset(String id) {
-		String artifactId = getDatasetByIdForApi(id).getArtifact();
+		String artifactId = getDatasetByIdForApi(id).getSomeField();
 		if (StringUtils.isBlank(artifactId)) {
 			throw new ResourceNotFoundAPIException("Dataset with id: " + id + " has no artifact id");
 		}

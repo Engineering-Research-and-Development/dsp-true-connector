@@ -103,12 +103,12 @@ public class DatasetAPIControllerTest {
     @Test
     @DisplayName("Get fileId from Dataset - success")
     public void getFileIdFromDatasetSuccessfulTest() {
-        when(datasetService.getArtifactIdFromDataset(MockObjectUtil.DATASET_WITH_FILE_ID.getId())).thenReturn(MockObjectUtil.DATASET_WITH_FILE_ID.getArtifact());
+        when(datasetService.getArtifactIdFromDataset(MockObjectUtil.DATASET_WITH_FILE_ID.getId())).thenReturn(MockObjectUtil.DATASET_WITH_FILE_ID.getSomeField());
         ResponseEntity<GenericApiResponse<String>> response = datasetAPIController.getArtifactIdFromDataset(MockObjectUtil.DATASET_WITH_FILE_ID.getId());
 
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
-        assertTrue(StringUtils.contains(response.getBody().toString(), MockObjectUtil.DATASET_WITH_FILE_ID.getArtifact()));
+        assertTrue(StringUtils.contains(response.getBody().toString(), MockObjectUtil.DATASET_WITH_FILE_ID.getSomeField()));
     }
     
     @Test
