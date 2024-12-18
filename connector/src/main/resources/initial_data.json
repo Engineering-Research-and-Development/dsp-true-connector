@@ -118,7 +118,7 @@
 	                    "$id": "urn:uuid:1dc45797-json-4932-8baf-ab7fd66ql4d5"
 	                }
 	            ],
-				"artifactId": "675866abb01afd26035737e6",
+				"artifact": "675866abb01afd26035737e6",
 	            "createdBy": "admin@mail.com",
 	            "lastModifiedBy": "admin@mail.com",
 	            "version": 0

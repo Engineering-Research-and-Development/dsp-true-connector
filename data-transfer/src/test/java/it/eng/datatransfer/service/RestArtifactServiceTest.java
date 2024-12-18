@@ -90,7 +90,7 @@ public class RestArtifactServiceTest {
 		GenericApiResponse<String> apiResponse = new GenericApiResponse<String>();
 		apiResponse.setData(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE.getId());
 		apiResponse.setSuccess(true);
-		when(okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + MockObjectUtil.TRANSFER_PROCESS_STARTED.getDatasetId() + "/artifactId", HttpMethod.GET, null))
+		when(okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + MockObjectUtil.TRANSFER_PROCESS_STARTED.getDatasetId() + "/artifact", HttpMethod.GET, null))
 		.thenReturn(Serializer.serializePlain(apiResponse));
 		when(artifactRepository.findById(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE.getId())).thenReturn(Optional.of(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE));
 		
@@ -115,7 +115,7 @@ public class RestArtifactServiceTest {
 		GenericApiResponse<String> apiResponse = new GenericApiResponse<String>();
 		apiResponse.setData("Dataset has no artifact");
 		apiResponse.setSuccess(true);
-		when(okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + MockObjectUtil.TRANSFER_PROCESS_STARTED.getDatasetId() + "/artifactId", HttpMethod.GET, null))
+		when(okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + MockObjectUtil.TRANSFER_PROCESS_STARTED.getDatasetId() + "/artifact", HttpMethod.GET, null))
 		.thenReturn(Serializer.serializePlain(apiResponse));
 		
 		assertThrows(DownloadException.class, () -> restArtifactService.getArtifact(TRANSACTION_ID));
@@ -129,7 +129,7 @@ public class RestArtifactServiceTest {
 		GenericApiResponse<String> apiResponse = new GenericApiResponse<String>();
 		apiResponse.setData(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE.getId());
 		apiResponse.setSuccess(true);
-		when(okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + MockObjectUtil.TRANSFER_PROCESS_STARTED.getDatasetId() + "/artifactId", HttpMethod.GET, null))
+		when(okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + MockObjectUtil.TRANSFER_PROCESS_STARTED.getDatasetId() + "/artifact", HttpMethod.GET, null))
 		.thenReturn(Serializer.serializePlain(apiResponse));
 		when(artifactRepository.findById(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE.getId())).thenThrow(new DownloadException("No such artifact", HttpStatus.NOT_FOUND));
 		
