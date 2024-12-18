@@ -132,7 +132,7 @@ public class MockObjectUtil {
             .distribution(Arrays.asList(DISTRIBUTION).stream().collect(Collectors.toCollection(HashSet::new)))
             .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
             .issued(ISSUED)
-            .artifact(null)
+            .artifact("kurac")
             .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
             .identifier(IDENTIFIER)
             .modified(MODIFIED)
