@@ -93,7 +93,7 @@ public class DatasetTest {
 	public void equalsTestProtocol() {
 		Dataset dataset = MockObjectUtil.DATASET;
 		String ss = Serializer.serializeProtocol(dataset);
-		System.out.println(ss);
+		System.out.println(dataset.getApplicationProperty());
 		Dataset dataset2 = Serializer.deserializeProtocol(ss, Dataset.class);
 		assertThat(dataset).usingRecursiveComparison().isEqualTo(dataset2);
 	}
