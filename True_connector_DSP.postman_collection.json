@@ -1,9 +1,10 @@
 {
 	"info": {
-		"_postman_id": "81fe3e1c-089e-4d01-abee-a62e5fd4bc5e",
-		"name": "True_connector_DSP Copy",
+		"_postman_id": "b1d0623d-e1ea-4b12-82a7-cd53811193db",
+		"name": "True_connector_DSP",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "36278855"
+		"_exporter_id": "21815221",
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-b1d0623d-e1ea-4b12-82a7-cd53811193db?action=share&source=collection_link&creator=21815221"
 	},
 	"item": [
 		{
@@ -313,21 +314,24 @@
 										{
 											"key": "file",
 											"type": "file",
-											"src": "/C:/Users/igor.balog/tools/code/dsp-true-connector/ci/docker/test-cases/datatransfer-tests/datatransfer-tests.json"
+											"src": "/C:/Users/david.jovanovic/Desktop/Elden-Ring.jpg",
+											"disabled": true
+										},
+										{
+											"key": "artifactRequest",
+											"value": "{\n    \"artifactType\": \"EXTERNAL\",\n    \"value\":\"https://www.google.com/\"\n}",
+											"contentType": "application/json",
+											"type": "text",
+											"disabled": true
 										}
 									]
 								},
 								"url": {
-									"raw": "http://localhost:8090/api/v1/artifacts/upload/urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
-									"protocol": "http",
+									"raw": "{{PROVIDER_SERVER_API_ARTIFACTS}}/upload/urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
 									"host": [
-										"localhost"
+										"{{PROVIDER_SERVER_API_ARTIFACTS}}"
 									],
-									"port": "8090",
 									"path": [
-										"api",
-										"v1",
-										"artifacts",
 										"upload",
 										"urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
 									]
@@ -341,16 +345,9 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "http://localhost:8090/api/v1/artifacts",
-									"protocol": "http",
+									"raw": "{{PROVIDER_SERVER_API_ARTIFACTS}}",
 									"host": [
-										"localhost"
-									],
-									"port": "8090",
-									"path": [
-										"api",
-										"v1",
-										"artifacts"
+										"{{PROVIDER_SERVER_API_ARTIFACTS}}"
 									]
 								}
 							},
@@ -712,59 +709,6 @@
 									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}",
 									"host": [
 										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "[C/P] Send offer",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Check if status code is 200\", function () {\r",
-											"    pm.response.to.have.status(200);\r",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									},
-									{
-										"key": "Authorization",
-										"value": "Basic YWRtaW5AbWFpbC5jb206cGFzc3dvcmQ="
-									},
-									{
-										"key": "Cookie",
-										"value": "JSESSIONID=1B172A0D2187794C8FA816EF096C69B8"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"Forward-To\": \"{{CONSUMER_SERVER_PROTOCOL_NEGOTIATION}}/offers\",\n    \"offer\": {\n        \"@id\": \"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\n        \"target\": \"target\",\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\n        \"permission\": [\n            {\n                \"action\": \"USE\",\n                \"constraint\": [\n                    {\n                        \"leftOperand\": \"COUNT\",\n                        \"operator\": \"EQ\",\n                        \"rightOperand\": \"5\"\n                    }\n                ]\n            }\n        ]\n    }\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/offers",
-									"host": [
-										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
-									],
-									"path": [
-										"offers"
 									]
 								}
 							},
@@ -1178,13 +1122,6 @@
 											"\r",
 											"pm.test(\"Check if status code is 200\", function () {\r",
 											"    pm.response.to.have.status(200);\r",
-											"});\r",
-											"\r",
-											"pm.test(\"TransactionId\", ()=> {\r",
-											"    var jsonData = pm.response.json();\r",
-											"    let trId = jsonData[\"data\"][\"consumerPid\"] + \"|\" + jsonData[\"data\"][\"providerPid\"];\r",
-											"    pm.collectionVariables.set(\"transactionId\", btoa(trId));\r",
-											"    console.log(pm.collectionVariables.get(\"transactionId\"));\r",
 											"});"
 										],
 										"type": "text/javascript",
@@ -1197,7 +1134,7 @@
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n    \"transferProcessId\": \"{{consumer_transferProcessId}}\",\r\n    \"format\": \"HttpData-PULL\",\r\n    \"dataAddress\": {\r\n        \"endpointType\": \"https://w3id.org/idsa/v4.1/HTTP\",\r\n        \"endpoint\": \"http://example.com\",\r\n        \"endpointProperties\": [\r\n            {\r\n                \"name\": \"authorization\",\r\n                \"value\": \"TOKEN-ABCDEFG\"\r\n            },\r\n            {\r\n                \"name\": \"authType\",\r\n                \"value\": \"bearer\"\r\n            }\r\n        ]\r\n    }\r\n}",
+									"raw": "{\r\n    \"transferProcessId\": \"{{consumer_transferProcessId}}\",\r\n    \"format\": \"HttpData-PULL\"\r\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -1261,6 +1198,11 @@
 										"exec": [
 											"pm.test(\"Check if status code is 200\", function () {\r",
 											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Retrieve data address endpoint\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"dataAddress_endpoint\", jsonData[\"data\"][\"dataAddress\"][\"endpoint\"])\r",
 											"});"
 										],
 										"type": "text/javascript",
@@ -1321,13 +1263,9 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{PROVIDER}}/artifacts/{{transactionId}}",
+									"raw": "{{dataAddress_endpoint}}",
 									"host": [
-										"{{PROVIDER}}"
-									],
-									"path": [
-										"artifacts",
-										"{{transactionId}}"
+										"{{dataAddress_endpoint}}"
 									]
 								}
 							},
@@ -2418,6 +2356,10 @@
 		},
 		{
 			"key": "transactionId",
+			"value": ""
+		},
+		{
+			"key": "dataAddress_endpoint",
 			"value": ""
 		}
 	]

@@ -169,7 +169,21 @@ public class DataTransferService {
 		
 		stateTransitionCheck(transferProcessRequested, TransferState.STARTED);
 		
-		TransferProcess transferProcessStarted = transferProcessRequested.copyWithNewTransferState(TransferState.STARTED);
+		TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
+				.id(transferProcessRequested.getId())
+				.agreementId(transferProcessRequested.getAgreementId())
+				.consumerPid(transferProcessRequested.getConsumerPid())
+				.providerPid(transferProcessRequested.getProviderPid())
+				.callbackAddress(transferProcessRequested.getCallbackAddress())
+	   			.dataAddress(transferStartMessage.getDataAddress())
+				.format(transferProcessRequested.getFormat())
+				.state(TransferState.STARTED)
+				.role(transferProcessRequested.getRole())
+				.datasetId(transferProcessRequested.getDatasetId())
+				.createdBy(transferProcessRequested.getCreatedBy())
+				.lastModifiedBy(transferProcessRequested.getLastModifiedBy())
+				.version(transferProcessRequested.getVersion())
+				.build();
 		transferProcessRepository.save(transferProcessStarted);
 		publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()
 				.oldTransferProcess(transferProcessRequested)

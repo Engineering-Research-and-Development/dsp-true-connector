@@ -67,7 +67,6 @@ public class RestArtifactService {
 	public GridFsResource streamAttachment(String fileId) {
 	 	GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
 	 	ObjectId fileIdentifier = new ObjectId(fileId);
-	 	// probaj da sklonis
 	 	Bson query = Filters.eq("_id", fileIdentifier);
 	 	GridFSFile file = gridFSBucket.find(query).first();
         if (file != null) {
