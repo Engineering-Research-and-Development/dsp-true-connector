@@ -79,6 +79,9 @@ public class Dataset extends AbstractCatalogObject {
     private String artifact;
     
     @JsonIgnore
+    private String applicationProperty;
+    
+    @JsonIgnore
     @CreatedBy
     private String createdBy;
     @JsonIgnore
@@ -183,6 +186,12 @@ public class Dataset extends AbstractCatalogObject {
         @JsonProperty("artifact")
         public Builder artifact(String artifact) {
             dataset.artifact = artifact;
+            return this;
+        }
+        
+        @JsonProperty("applicationProperty")
+        public Builder applicationProperty(String applicationProperty) {
+            dataset.applicationProperty = applicationProperty;
             return this;
         }
         
