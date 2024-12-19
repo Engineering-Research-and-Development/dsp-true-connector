@@ -1,7 +1,7 @@
 {
 	"info": {
-		"_postman_id": "81fe3e1c-089e-4d01-abee-a62e5fd4bc5e",
-		"name": "True_connector_DSP Copy",
+		"_postman_id": "443854dd-7534-4432-93d0-5cc40e89eb3c",
+		"name": "True_connector_DSP",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "36278855"
 	},
@@ -1576,6 +1576,249 @@
 							"response": []
 						}
 					]
+				},
+				{
+					"name": "User",
+					"item": [
+						{
+							"name": "Get all users",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER}}/api/v1/users",
+									"host": [
+										"{{CONSUMER}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"users"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get user by email",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER}}/api/v1/users/admin@mail.com",
+									"host": [
+										"{{CONSUMER}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"users",
+										"admin@mail.com"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"pm.test(\"Response body contains New user created\", function () {\r",
+											"    pm.expect(pm.response.text()).to.include(\"New user created\");\r",
+											"});\r",
+											"let jsonData = pm.response.json();\r",
+											"\r",
+											"// Extracting the user ID from the response body\r",
+											"let userId = jsonData.data.id;\r",
+											"pm.collectionVariables.set(\"userId\", userId);\r",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"firstName\" : \"firstName\",\r\n  \"lastName\" : \"lastName\",\r\n  \"email\" : \"{{newUserEmail}}\",\r\n  \"password\" : \"{{newUserPassword}}\",\r\n  \"role\" : \"ROLE_ADMIN\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER}}/api/v1/users",
+									"host": [
+										"{{CONSUMER}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"users"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update self user",
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "{{newUserEmail}}",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "{{newUserPassword}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"firstName\" : \"UPDATE_NAME\",\r\n  \"lastName\" : \"UPDATE_LAST_NAME\",\r\n  \"role\" : \"ROLE_ADMIN\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER}}/api/v1/users/{{userId}}/update",
+									"host": [
+										"{{CONSUMER}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"users",
+										"{{userId}}",
+										"update"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update password for self user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "{{newUserEmail}}",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "{{newUserPassword}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"email\" : \"{{userEmail}}\",\r\n  \"newPassword\" : \"ValidaPasswordUpdate123!\",\r\n  \"password\" : \"ValidPassword123!\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER}}/api/v1/users/{{userId}}/password",
+									"host": [
+										"{{CONSUMER}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"users",
+										"{{userId}}",
+										"password"
+									]
+								}
+							},
+							"response": []
+						}
+					]
 				}
 			],
 			"auth": {
@@ -2419,6 +2662,16 @@
 		{
 			"key": "transactionId",
 			"value": ""
+		},
+		{
+			"key": "newUserPassword",
+			"value": "ValidPassword123!",
+			"type": "string"
+		},
+		{
+			"key": "newUserEmail",
+			"value": "newUser@mail.com",
+			"type": "string"
 		}
 	]
 }
