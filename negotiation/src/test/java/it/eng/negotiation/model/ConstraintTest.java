@@ -13,7 +13,7 @@ public class ConstraintTest {
 
 	@Test
 	public void equalsTrue() {
-		assertTrue(MockObjectUtil.CONSTRAINT.equals(MockObjectUtil.CONSTRAINT));
+		assertTrue(NegotiationMockObjectUtil.CONSTRAINT.equals(NegotiationMockObjectUtil.CONSTRAINT));
 	}
 	
 	@Test
@@ -35,7 +35,7 @@ public class ConstraintTest {
 	@Test
 	@DisplayName("Plain serialize/deserialize")
 	public void equalsTestPlain() {
-		Constraint constraint = MockObjectUtil.CONSTRAINT;
+		Constraint constraint = NegotiationMockObjectUtil.CONSTRAINT;
 		String ss = Serializer.serializePlain(constraint);
 		Constraint obj = Serializer.deserializePlain(ss, Constraint.class);
 		assertThat(constraint).usingRecursiveComparison().isEqualTo(obj);
@@ -44,7 +44,7 @@ public class ConstraintTest {
 	@Test
 	@DisplayName("Protocol serialize/deserialize")
 	public void equalsTestProtocol() {
-		Constraint constraint = MockObjectUtil.CONSTRAINT;
+		Constraint constraint = NegotiationMockObjectUtil.CONSTRAINT;
 		String ss = Serializer.serializeProtocol(constraint);
 		Constraint obj = Serializer.deserializeProtocol(ss, Constraint.class);
 		assertThat(constraint).usingRecursiveComparison().isEqualTo(obj);

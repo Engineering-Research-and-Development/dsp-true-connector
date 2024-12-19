@@ -18,7 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import it.eng.datatransfer.exceptions.AgreementNotFoundException;
 import it.eng.datatransfer.repository.TransferProcessRepository;
-import it.eng.datatransfer.util.MockObjectUtil;
+import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.usagecontrol.UsageControlProperties;
@@ -45,14 +45,14 @@ class AgreementServiceTest {
 	@DisplayName("Agreement valid - usageControl enabled")
 	void isAgreementValid_uc_enabled() {
 		when(usageControlProperties.usageControlEnabled()).thenReturn(true);
-		when(transferProcessRepository.findByConsumerPidAndProviderPid(MockObjectUtil.CONSUMER_PID, MockObjectUtil.PROVIDER_PID))
-			.thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_STARTED));
+		when(transferProcessRepository.findByConsumerPidAndProviderPid(DataTransferMockObjectUtil.CONSUMER_PID, DataTransferMockObjectUtil.PROVIDER_PID))
+			.thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
 		when(credentialUtils.getAPICredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), isNull(), any(String.class)))
 			.thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(true);
 
-		boolean isValid = service.isAgreementValid(MockObjectUtil.CONSUMER_PID, MockObjectUtil.PROVIDER_PID);
+		boolean isValid = service.isAgreementValid(DataTransferMockObjectUtil.CONSUMER_PID, DataTransferMockObjectUtil.PROVIDER_PID);
 		assertTrue(isValid);
 	}
 	
@@ -60,14 +60,14 @@ class AgreementServiceTest {
 	@DisplayName("Agreement invalid - usageControl enabled")
 	void isAgreementValid_uc_enabled_call_false() {
 		when(usageControlProperties.usageControlEnabled()).thenReturn(true);
-		when(transferProcessRepository.findByConsumerPidAndProviderPid(MockObjectUtil.CONSUMER_PID, MockObjectUtil.PROVIDER_PID))
-			.thenReturn(Optional.of(MockObjectUtil.TRANSFER_PROCESS_STARTED));
+		when(transferProcessRepository.findByConsumerPidAndProviderPid(DataTransferMockObjectUtil.CONSUMER_PID, DataTransferMockObjectUtil.PROVIDER_PID))
+			.thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
 		when(credentialUtils.getAPICredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), isNull(), any(String.class)))
 			.thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(false);
 
-		boolean isValid = service.isAgreementValid(MockObjectUtil.CONSUMER_PID, MockObjectUtil.PROVIDER_PID);
+		boolean isValid = service.isAgreementValid(DataTransferMockObjectUtil.CONSUMER_PID, DataTransferMockObjectUtil.PROVIDER_PID);
 		assertFalse(isValid);
 	}
 	
@@ -75,18 +75,18 @@ class AgreementServiceTest {
 	@DisplayName("Agreement invalid - transferProcess not found")
 	void isAgreementValid_tn_not_found() {
 		when(usageControlProperties.usageControlEnabled()).thenReturn(true);
-		when(transferProcessRepository.findByConsumerPidAndProviderPid(MockObjectUtil.CONSUMER_PID, MockObjectUtil.PROVIDER_PID))
+		when(transferProcessRepository.findByConsumerPidAndProviderPid(DataTransferMockObjectUtil.CONSUMER_PID, DataTransferMockObjectUtil.PROVIDER_PID))
 			.thenReturn(Optional.empty());
 		
 		assertThrows(AgreementNotFoundException.class, ()->
-			service.isAgreementValid(MockObjectUtil.CONSUMER_PID, MockObjectUtil.PROVIDER_PID));
+			service.isAgreementValid(DataTransferMockObjectUtil.CONSUMER_PID, DataTransferMockObjectUtil.PROVIDER_PID));
 	}
 	
 	@Test
 	@DisplayName("Agreement valid - usageControl disabled")
 	void isAgreementValid_uc_disabled() {
 		when(usageControlProperties.usageControlEnabled()).thenReturn(false);
-		boolean isValid = service.isAgreementValid(MockObjectUtil.CONSUMER_PID, MockObjectUtil.PROVIDER_PID);
+		boolean isValid = service.isAgreementValid(DataTransferMockObjectUtil.CONSUMER_PID, DataTransferMockObjectUtil.PROVIDER_PID);
 		assertTrue(isValid);
 	}
 

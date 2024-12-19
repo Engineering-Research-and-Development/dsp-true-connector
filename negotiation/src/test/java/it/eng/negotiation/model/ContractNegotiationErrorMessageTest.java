@@ -22,8 +22,8 @@ public class ContractNegotiationErrorMessageTest {
 
 	private ContractNegotiationErrorMessage contractNegotiationErrorMessage = ContractNegotiationErrorMessage.Builder
 			.newInstance()
-			.consumerPid(MockObjectUtil.CONSUMER_PID)
-			.providerPid(MockObjectUtil.PROVIDER_PID)
+			.consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
+			.providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
 			.code("Negotiation error code 123")
 			.description(Arrays.asList(
 					Description.Builder.newInstance().language("en").value("English description text").build(),

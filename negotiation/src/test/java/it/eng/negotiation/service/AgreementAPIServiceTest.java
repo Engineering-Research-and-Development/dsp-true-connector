@@ -14,7 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import it.eng.negotiation.exception.PolicyEnforcementException;
-import it.eng.negotiation.model.MockObjectUtil;
+import it.eng.negotiation.model.NegotiationMockObjectUtil;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.service.policy.PolicyEnforcementService;
 
@@ -33,18 +33,18 @@ class AgreementAPIServiceTest {
 	@Test
 	@DisplayName("Enforce agreement ok")
 	public void enforceAgreement() {
-		when(agreementRepository.findById(MockObjectUtil.AGREEMENT.getId())).thenReturn(Optional.of(MockObjectUtil.AGREEMENT));
-		when(policyEnforcementService.isAgreementValid(MockObjectUtil.AGREEMENT)).thenReturn(true);
+		when(agreementRepository.findById(NegotiationMockObjectUtil.AGREEMENT.getId())).thenReturn(Optional.of(NegotiationMockObjectUtil.AGREEMENT));
+		when(policyEnforcementService.isAgreementValid(NegotiationMockObjectUtil.AGREEMENT)).thenReturn(true);
 		
-		assertDoesNotThrow(()-> service.enforceAgreement(MockObjectUtil.AGREEMENT.getId()));
+		assertDoesNotThrow(()-> service.enforceAgreement(NegotiationMockObjectUtil.AGREEMENT.getId()));
 	}
 	
 	@Test
 	@DisplayName("Enforce agreement - not valid")
 	public void enforceAgreement_not_valid() {
-		when(agreementRepository.findById(MockObjectUtil.AGREEMENT.getId())).thenReturn(Optional.of(MockObjectUtil.AGREEMENT));
-		when(policyEnforcementService.isAgreementValid(MockObjectUtil.AGREEMENT)).thenReturn(false);
+		when(agreementRepository.findById(NegotiationMockObjectUtil.AGREEMENT.getId())).thenReturn(Optional.of(NegotiationMockObjectUtil.AGREEMENT));
+		when(policyEnforcementService.isAgreementValid(NegotiationMockObjectUtil.AGREEMENT)).thenReturn(false);
 		
-		assertThrows(PolicyEnforcementException.class, ()-> service.enforceAgreement(MockObjectUtil.AGREEMENT.getId()));
+		assertThrows(PolicyEnforcementException.class, ()-> service.enforceAgreement(NegotiationMockObjectUtil.AGREEMENT.getId()));
 	}
 }

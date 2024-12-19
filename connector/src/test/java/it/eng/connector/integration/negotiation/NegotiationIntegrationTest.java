@@ -36,7 +36,7 @@ import it.eng.negotiation.model.ContractAgreementVerificationMessage;
 import it.eng.negotiation.model.ContractNegotiationEventMessage;
 import it.eng.negotiation.model.ContractNegotiationEventType;
 import it.eng.negotiation.model.ContractRequestMessage;
-import it.eng.negotiation.model.MockObjectUtil;
+import it.eng.negotiation.model.NegotiationMockObjectUtil;
 import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.controller.ApiEndpoints;
@@ -61,7 +61,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isBadRequest())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())))
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())))
     	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
     }
 
@@ -73,14 +73,14 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     	//needs to match offer in initial.data
     	Offer offer = Offer.Builder.newInstance()
     			.id(offerID)
-    			.target(MockObjectUtil.TARGET)
-    			.assigner(MockObjectUtil.ASSIGNER)
-    			.permission(Arrays.asList(MockObjectUtil.PERMISSION_COUNT_5))
+    			.target(NegotiationMockObjectUtil.TARGET)
+    			.assigner(NegotiationMockObjectUtil.ASSIGNER)
+    			.permission(Arrays.asList(NegotiationMockObjectUtil.PERMISSION_COUNT_5))
     			.build();
     	
     	ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
-    			.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
-    			.consumerPid(MockObjectUtil.CONSUMER_PID)
+    			.callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
+    			.consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
     			.offer(offer)
     			.build();
     	
@@ -91,7 +91,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isCreated())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())))
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())))
     	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
     	
     	JsonNode jsonNode = jsonMapper.readTree(result.andReturn().getResponse().getContentAsString());
@@ -107,10 +107,10 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void negotiationExistsTests() throws Exception {
     	ContractRequestMessage crm = ContractRequestMessage.Builder.newInstance()
-			.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
+			.callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
 			.consumerPid(TestUtil.CONSUMER_PID)
 			.providerPid(TestUtil.PROVIDER_PID)
-			.offer(MockObjectUtil.OFFER)
+			.offer(NegotiationMockObjectUtil.OFFER)
 			.build();
 
     	final ResultActions result =
@@ -120,7 +120,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isBadRequest())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())))
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())))
     	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
     }
     
@@ -131,14 +131,14 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     	// insert data into db
 		Offer offer = Offer.Builder.newInstance()
     			.id(offerID)
-    			.target(MockObjectUtil.TARGET)
-    			.assigner(MockObjectUtil.ASSIGNER)
-    			.permission(Arrays.asList(MockObjectUtil.PERMISSION_COUNT_5))
+    			.target(NegotiationMockObjectUtil.TARGET)
+    			.assigner(NegotiationMockObjectUtil.ASSIGNER)
+    			.permission(Arrays.asList(NegotiationMockObjectUtil.PERMISSION_COUNT_5))
     			.build();
     	
     	ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
-    			.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
-    			.consumerPid(MockObjectUtil.CONSUMER_PID)
+    			.callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
+    			.consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
     			.offer(offer)
     			.build();
     	
@@ -149,7 +149,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isCreated())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())))
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())))
     	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
     	
     	JsonNode jsonNode = jsonMapper.readTree(result.andReturn().getResponse().getContentAsString());
@@ -160,7 +160,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
 			.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isCreated())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())))
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getType())))
     	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
     }
     
@@ -175,7 +175,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isNotFound())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())))
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())))
     	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
     }
     
@@ -185,15 +185,15 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     public void handleAgreementTest() throws Exception {
 		
 		ContractAgreementMessage agreementMessage = ContractAgreementMessage.Builder.newInstance()
-				.consumerPid(MockObjectUtil.CONSUMER_PID)
+				.consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
 				.providerPid(providerPid)
-				.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
-				.agreement(MockObjectUtil.AGREEMENT)
+				.callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
+				.agreement(NegotiationMockObjectUtil.AGREEMENT)
 				.build();
     	
     	final ResultActions result =
     			mockMvc.perform(
-    					post("/consumer/negotiations/" + MockObjectUtil.CONSUMER_PID + "/agreement")
+    					post("/consumer/negotiations/" + NegotiationMockObjectUtil.CONSUMER_PID + "/agreement")
     					.content(Serializer.serializeProtocol(agreementMessage))
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isOk());
@@ -209,13 +209,13 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     public void handleVerifyAgreementTest() throws Exception {
 		
 		ContractAgreementVerificationMessage verificationMessage = ContractAgreementVerificationMessage.Builder.newInstance()
-				.consumerPid(MockObjectUtil.CONSUMER_PID)
+				.consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
 				.providerPid(providerPid)
 				.build();
     	
     	final ResultActions result =
     			mockMvc.perform(
-    					post("/negotiations/" + MockObjectUtil.PROVIDER_PID + "/agreement/verification")
+    					post("/negotiations/" + NegotiationMockObjectUtil.PROVIDER_PID + "/agreement/verification")
     					.content(Serializer.serializeProtocol(verificationMessage))
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isOk());
@@ -232,14 +232,14 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     public void handleFinalizeEventTest() throws Exception {
 		
 		ContractNegotiationEventMessage  contractNegotiationEventMessage = ContractNegotiationEventMessage.Builder.newInstance()
-				.consumerPid(MockObjectUtil.CONSUMER_PID)
+				.consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
 				.providerPid(providerPid)
 				.eventType(ContractNegotiationEventType.FINALIZED)
 				.build();
     	
     	final ResultActions result =
     			mockMvc.perform(
-    					post("/consumer/negotiations/" + MockObjectUtil.CONSUMER_PID + "/events")
+    					post("/consumer/negotiations/" + NegotiationMockObjectUtil.CONSUMER_PID + "/events")
     					.content(Serializer.serializeProtocol(contractNegotiationEventMessage))
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isOk());
@@ -278,7 +278,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     					.header("Authorization", "Basic YXNkckBtYWlsLmNvbTpwYXNzd29yZA=="));
     	result.andExpect(status().isUnauthorized())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())))
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE.getType())))
     	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
     }
 

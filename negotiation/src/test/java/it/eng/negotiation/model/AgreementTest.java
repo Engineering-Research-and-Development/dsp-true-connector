@@ -17,10 +17,10 @@ import jakarta.validation.ValidationException;
 public class AgreementTest {
 
 	Agreement agreement = Agreement.Builder.newInstance()
-			.id(MockObjectUtil.generateUUID())
-			.assignee(MockObjectUtil.ASSIGNEE)
-			.assigner(MockObjectUtil.ASSIGNER)
-			.target(MockObjectUtil.TARGET)
+			.id(NegotiationMockObjectUtil.generateUUID())
+			.assignee(NegotiationMockObjectUtil.ASSIGNEE)
+			.assigner(NegotiationMockObjectUtil.ASSIGNER)
+			.target(NegotiationMockObjectUtil.TARGET)
 			.permission(Arrays.asList(Permission.Builder.newInstance()
 					.action(Action.USE)
 					.constraint(Arrays.asList(Constraint.Builder.newInstance()
@@ -42,7 +42,7 @@ public class AgreementTest {
 	public void invalidAgreement() {
 	assertThrows(ValidationException.class, () -> {
 		Agreement.Builder.newInstance()
-				.id(MockObjectUtil.generateUUID())
+				.id(NegotiationMockObjectUtil.generateUUID())
 				.build();
 		});
 	}
