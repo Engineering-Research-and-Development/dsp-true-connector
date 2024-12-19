@@ -20,7 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.Distribution;
 import it.eng.catalog.repository.DistributionRepository;
-import it.eng.catalog.util.MockObjectUtil;
+import it.eng.catalog.util.CatalogMockObjectUtil;
 
 @ExtendWith(MockitoExtension.class)
 public class DistributionServiceTest {
@@ -34,12 +34,12 @@ public class DistributionServiceTest {
     @InjectMocks
     private DistributionService distributionService;
 
-    private Distribution distribution = MockObjectUtil.DISTRIBUTION;
-    private Distribution updatedDistribution = MockObjectUtil.DISTRIBUTION_FOR_UPDATE;
+    private Distribution distribution = CatalogMockObjectUtil.DISTRIBUTION;
+    private Distribution updatedDistribution = CatalogMockObjectUtil.DISTRIBUTION_FOR_UPDATE;
 
     @BeforeEach
     void setUp() {
-        distribution = MockObjectUtil.DISTRIBUTION;
+        distribution = CatalogMockObjectUtil.DISTRIBUTION;
     }
 
     @Test

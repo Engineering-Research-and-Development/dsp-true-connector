@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.Serializer;
-import it.eng.tools.util.MockObjectUtil;
+import it.eng.tools.util.ToolsMockObjectUtil;
 
 public class ArtifactTest {
 	
@@ -15,11 +15,11 @@ public class ArtifactTest {
 	@Test
 	@DisplayName("Plain serialize/deserialize")
 	public void equalsTestPlain() {
-		String ss = Serializer.serializePlain(MockObjectUtil.ARTIFACT_FILE);
+		String ss = Serializer.serializePlain(ToolsMockObjectUtil.ARTIFACT_FILE);
 		Artifact obj = Serializer.deserializePlain(ss, Artifact.class);
-		assertEquals(MockObjectUtil.ARTIFACT_FILE.getArtifactType(), obj.getArtifactType());
-		assertEquals(MockObjectUtil.ARTIFACT_FILE.getContentType(), obj.getContentType());
-		assertEquals(MockObjectUtil.ARTIFACT_FILE.getValue(), obj.getValue());
+		assertEquals(ToolsMockObjectUtil.ARTIFACT_FILE.getArtifactType(), obj.getArtifactType());
+		assertEquals(ToolsMockObjectUtil.ARTIFACT_FILE.getContentType(), obj.getContentType());
+		assertEquals(ToolsMockObjectUtil.ARTIFACT_FILE.getValue(), obj.getValue());
 	}
 
 }
