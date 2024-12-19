@@ -18,7 +18,7 @@ public class PermissionTest {
 	public void validPermission() {
 		Permission permission = Permission.Builder.newInstance()
 				.action(Action.USE)
-				.constraint(Arrays.asList(NegotiationMockObjectUtil.CONSTRAINT))
+				.constraint(Arrays.asList(MockObjectUtil.CONSTRAINT))
 				.build();
 		assertNotNull(permission, "Permission creted with mandatory fields");
 	}
@@ -27,8 +27,8 @@ public class PermissionTest {
 	public void invalidPermission() {
 		assertThrows(ValidationException.class, 
 				() -> Permission.Builder.newInstance()
-					.assignee(NegotiationMockObjectUtil.ASSIGNEE)
-					.assigner(NegotiationMockObjectUtil.ASSIGNER)
+					.assignee(MockObjectUtil.ASSIGNEE)
+					.assigner(MockObjectUtil.ASSIGNER)
 					.build());
 	}
 	
@@ -36,11 +36,11 @@ public class PermissionTest {
 	public void equalsTrue() {
 		Permission permission = Permission.Builder.newInstance()
 				.action(Action.USE)
-				.constraint(Arrays.asList(NegotiationMockObjectUtil.CONSTRAINT))
+				.constraint(Arrays.asList(MockObjectUtil.CONSTRAINT))
 				.build();
 		Permission permissionB = Permission.Builder.newInstance()
 				.action(Action.USE)
-				.constraint(Arrays.asList(NegotiationMockObjectUtil.CONSTRAINT))
+				.constraint(Arrays.asList(MockObjectUtil.CONSTRAINT))
 				.build();
 		assertTrue(permission.equals(permissionB));
 	}
@@ -49,18 +49,18 @@ public class PermissionTest {
 	public void equalsFalse() {
 		Permission permissionA = Permission.Builder.newInstance()
 				.action(Action.USE)
-				.constraint(Arrays.asList(NegotiationMockObjectUtil.CONSTRAINT))
+				.constraint(Arrays.asList(MockObjectUtil.CONSTRAINT))
 				.build();
 		Permission permissionB = Permission.Builder.newInstance()
 				.action(Action.ANONYMIZE)
-				.constraint(Arrays.asList(NegotiationMockObjectUtil.CONSTRAINT))
+				.constraint(Arrays.asList(MockObjectUtil.CONSTRAINT))
 				.build();
 		assertFalse(permissionA.equals(permissionB));
 	}
 	
 	@Test
 	public void serializePlain() {
-		String permissionString = Serializer.serializePlain(NegotiationMockObjectUtil.PERMISSION_COUNT_5);
+		String permissionString = Serializer.serializePlain(MockObjectUtil.PERMISSION_COUNT_5);
 		assertNotNull(permissionString);
 		Permission p = Serializer.deserializePlain(permissionString, Permission.class);
 		assertNotNull(p);

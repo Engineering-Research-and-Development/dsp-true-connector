@@ -18,7 +18,7 @@ import org.springframework.http.ResponseEntity;
 import it.eng.catalog.model.Offer;
 import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.service.CatalogService;
-import it.eng.catalog.util.CatalogMockObjectUtil;
+import it.eng.catalog.util.MockObjectUtil;
 import it.eng.tools.response.GenericApiResponse;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,7 +33,7 @@ public class OfferAPIControllerTest {
 	    @Test
 	    @DisplayName("Validate offer - offer is valid")
 	    public void offerValidationSuccessfulTest() {
-	        Offer offer = CatalogMockObjectUtil.OFFER;
+	        Offer offer = MockObjectUtil.OFFER;
 	    	when(catalogService.validateOffer(any(Offer.class))).thenReturn(true);
 	        
 	        ResponseEntity<GenericApiResponse<String>> response = offerAPIController.validateOffer(Serializer.serializePlain(offer));
@@ -47,7 +47,7 @@ public class OfferAPIControllerTest {
 	    @Test
 	    @DisplayName("Validate offer - offer not valid")
 	    public void offerValidationFailedTest() {
-	    	Offer offer = CatalogMockObjectUtil.OFFER;
+	    	Offer offer = MockObjectUtil.OFFER;
 	    	when(catalogService.validateOffer(any(Offer.class))).thenReturn(false);
 		    
 	    	ResponseEntity<GenericApiResponse<String>> response = offerAPIController.validateOffer(Serializer.serializePlain(offer));
@@ -60,7 +60,7 @@ public class OfferAPIControllerTest {
 	    
 	    @Test
 	    public void aaa() {
-	    	String ss = Serializer.serializePlain(CatalogMockObjectUtil.OFFER);
+	    	String ss = Serializer.serializePlain(MockObjectUtil.OFFER);
 	    	System.out.println(ss);
 	    	String o = "{\r\n"
 	    			+ "  \"consumerPid\" : null,\r\n"

@@ -2,7 +2,7 @@ package it.eng.catalog.model;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.catalog.serializer.Serializer;
-import it.eng.catalog.util.CatalogMockObjectUtil;
+import it.eng.catalog.util.MockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 import org.junit.jupiter.api.DisplayName;
@@ -16,7 +16,7 @@ public class CatalogTest {
 	@Test
 	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() {
-		String result = Serializer.serializePlain(CatalogMockObjectUtil.CATALOG);
+		String result = Serializer.serializePlain(MockObjectUtil.CATALOG);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
 		
@@ -42,7 +42,7 @@ public class CatalogTest {
 	@Test
 	@DisplayName("Verify valid protocol object serialization")
 	public void testProtocol() {
-		JsonNode result = Serializer.serializeProtocolJsonNode(CatalogMockObjectUtil.CATALOG);
+		JsonNode result = Serializer.serializeProtocolJsonNode(MockObjectUtil.CATALOG);
 		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
 		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
 		assertNotNull(result.get(DSpaceConstants.DCAT_KEYWORD).asText());
@@ -63,7 +63,7 @@ public class CatalogTest {
 	@Test
 	@DisplayName("Missing @context and @type")
 	public void missingContextAndType() {
-		JsonNode result = Serializer.serializePlainJsonNode(CatalogMockObjectUtil.CATALOG);
+		JsonNode result = Serializer.serializePlainJsonNode(MockObjectUtil.CATALOG);
 		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, Catalog.class));
 	}
 	
@@ -76,11 +76,11 @@ public class CatalogTest {
 	
 	@Test
 	public void findOffer() {
-		boolean offerExists = CatalogMockObjectUtil.CATALOG.getDataset().stream()
+		boolean offerExists = MockObjectUtil.CATALOG.getDataset().stream()
 				.flatMap(dataset -> dataset.getHasPolicy().stream()).anyMatch(of -> of.getId().equals("urn:offer_id"));
 		assertTrue(offerExists);
 
-		offerExists = CatalogMockObjectUtil.CATALOG.getDataset().stream()
+		offerExists = MockObjectUtil.CATALOG.getDataset().stream()
 				.flatMap(dataset -> dataset.getHasPolicy().stream()).anyMatch(of -> of.getId().equals("urn:offer_id_not_found"));
 		assertFalse(offerExists);
 	}
@@ -88,7 +88,7 @@ public class CatalogTest {
 	@Test
 	@DisplayName("Plain serialize/deserialize")
 	public void equalsTestPlain() {
-		Catalog catalog = CatalogMockObjectUtil.CATALOG;
+		Catalog catalog = MockObjectUtil.CATALOG;
 		String ss = Serializer.serializePlain(catalog);
 		Catalog catalog2 = Serializer.deserializePlain(ss, Catalog.class);
 		assertThat(catalog).usingRecursiveComparison().isEqualTo(catalog2);
@@ -97,7 +97,7 @@ public class CatalogTest {
 	@Test
 	@DisplayName("Protocol serialize/deserialize")
 	public void equalsTestProtocol() {
-		Catalog catalog = CatalogMockObjectUtil.CATALOG;
+		Catalog catalog = MockObjectUtil.CATALOG;
 		String ss = Serializer.serializeProtocol(catalog);
 		Catalog catalog2 = Serializer.deserializeProtocol(ss, Catalog.class);
 		assertThat(catalog).usingRecursiveComparison().isEqualTo(catalog2);

@@ -42,7 +42,7 @@ import it.eng.datatransfer.model.TransferSuspensionMessage;
 import it.eng.datatransfer.model.TransferTerminationMessage;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.Serializer;
-import it.eng.datatransfer.util.DataTransferMockObjectUtil;
+import it.eng.datatransfer.util.MockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
 
 /**
@@ -57,10 +57,10 @@ public class DataTransferTest extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void initiateDataTransfer() throws Exception {
 		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
-	    		.consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+	    		.consumerPid(MockObjectUtil.CONSUMER_PID)
 	    		.agreementId("urn:uuid:AGREEMENT_ID_INITIALIZED")
 	    		.format(DataTransferFormat.HTTP_PULL.format())
-	    		.callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+	    		.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
 	    		.build();
 		
     	String body = Serializer.serializeProtocol(transferRequestMessage);
@@ -83,10 +83,10 @@ public class DataTransferTest extends BaseIntegrationTest {
     public void getCatalog_UnauthorizedTest() throws Exception {
     	
 		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
-	    		.consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+	    		.consumerPid(MockObjectUtil.CONSUMER_PID)
 	    		.agreementId("urn:uuid:AGREEMENT_ID") // this one should be present in init_data.json
 	    		.format(DataTransferFormat.HTTP_PULL.format())
-	    		.callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+	    		.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
 	    		.build();
 		
     	String body = Serializer.serializeProtocol(transferRequestMessage);
@@ -107,10 +107,10 @@ public class DataTransferTest extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void initiateDataTransfer_agreement_exists() throws Exception {
 		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
-	    		.consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+	    		.consumerPid(MockObjectUtil.CONSUMER_PID)
 	    		.agreementId("urn:uuid:AGREEMENT_ID") // this one should be present in init_data.json
 	    		.format(DataTransferFormat.HTTP_PULL.format())
-	    		.callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+	    		.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
 	    		.build();
 		
     	String body = Serializer.serializeProtocol(transferRequestMessage);
@@ -240,7 +240,7 @@ public class DataTransferTest extends BaseIntegrationTest {
 	    		.consumerPid(consumerPid)
 	    		.agreementId("urn:uuid:AGREEMENT_ID_COMPLETED_TRANSFER_TEST")
 	    		.format(DataTransferFormat.HTTP_PULL.format())
-	    		.callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+	    		.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
 	    		.build();
 		MvcResult mvcResult = mockMvc.perform(
     					post("/transfers/request")
@@ -318,7 +318,7 @@ public class DataTransferTest extends BaseIntegrationTest {
 				.consumerPid(consumerPid)
 				.agreementId("urn:uuid:AGREEMENT_ID_TERMINATE_TRANSFER_TEST")
 				.format(DataTransferFormat.HTTP_PULL.format())
-				.callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+				.callbackAddress(MockObjectUtil.CALLBACK_ADDRESS)
 				.build();
 		MvcResult mvcResult = mockMvc.perform(
 				post("/transfers/request")

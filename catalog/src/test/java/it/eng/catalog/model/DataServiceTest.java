@@ -18,7 +18,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.util.DataServiceUtil;
-import it.eng.catalog.util.CatalogMockObjectUtil;
+import it.eng.catalog.util.MockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 
@@ -96,28 +96,28 @@ public class DataServiceTest {
 	            .keyword(Set.of("keyword1", "keyword2"))
 	            .theme(Set.of("red", "green", "black"))
 	            .creator("Updater")
-	            .description(Set.of(CatalogMockObjectUtil.MULTILANGUAGE))
+	            .description(Set.of(MockObjectUtil.MULTILANGUAGE))
 	            .endpointDescription("Description for test")
 	            .endpointURL("updatedEndpointUrl")
 	            .build();
 		
-		DataService updated = CatalogMockObjectUtil.DATA_SERVICE.updateInstance(dataServiceForUpdate);
+		DataService updated = MockObjectUtil.DATA_SERVICE.updateInstance(dataServiceForUpdate);
 		assertEquals("Updater", updated.getCreator());
-		assertEquals(CatalogMockObjectUtil.CONFORMSTO, updated.getConformsTo());
+		assertEquals(MockObjectUtil.CONFORMSTO, updated.getConformsTo());
 		assertTrue(updated.getKeyword().contains("keyword1"));
 		assertTrue(updated.getTheme().contains("red"));
 		assertTrue(updated.getTheme().contains("green"));
 		assertTrue(updated.getTheme().contains("black"));
 		assertEquals("updatedEndpointUrl", updated.getEndpointURL());
 		assertEquals("Description for test", updated.getEndpointDescription());
-		assertEquals(CatalogMockObjectUtil.ISSUED, updated.getIssued());
-		assertEquals(CatalogMockObjectUtil.TITLE, updated.getTitle());
+		assertEquals(MockObjectUtil.ISSUED, updated.getIssued());
+		assertEquals(MockObjectUtil.TITLE, updated.getTitle());
 	}
 	
 	@Test
 	@DisplayName("Plain serialize/deserialize")
 	public void equalsTestPlain() {
-		DataService dataService = CatalogMockObjectUtil.DATA_SERVICE;
+		DataService dataService = MockObjectUtil.DATA_SERVICE;
 		String ss = Serializer.serializePlain(dataService);
 		DataService dataService2 = Serializer.deserializePlain(ss, DataService.class);
 		assertThat(dataService).usingRecursiveComparison().isEqualTo(dataService2);
@@ -126,7 +126,7 @@ public class DataServiceTest {
 	@Test
 	@DisplayName("Protocol serialize/deserialize")
 	public void equalsTestProtocol() {
-		DataService dataService = CatalogMockObjectUtil.DATA_SERVICE;
+		DataService dataService = MockObjectUtil.DATA_SERVICE;
 		String ss = Serializer.serializeProtocol(dataService);
 		DataService dataService2 = Serializer.deserializeProtocol(ss, DataService.class);
 		assertThat(dataService).usingRecursiveComparison().isEqualTo(dataService2);

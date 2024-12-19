@@ -26,7 +26,7 @@ import it.eng.negotiation.exception.ContractNegotiationAPIException;
 import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationState;
-import it.eng.negotiation.model.NegotiationMockObjectUtil;
+import it.eng.negotiation.model.MockObjectUtil;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
@@ -63,15 +63,15 @@ public class ContractNegotiationEventHandlerServiceTest {
 	@Test
 	@DisplayName("Handle contract negotiation offer response success")
 	public void handleContractNegotiationOfferResponse_accepted_success() {
-		ContractNegotiationOfferResponseEvent offerResponse = new ContractNegotiationOfferResponseEvent(NegotiationMockObjectUtil.CONSUMER_PID, 
-				NegotiationMockObjectUtil.PROVIDER_PID, true, Serializer.serializePlainJsonNode(NegotiationMockObjectUtil.OFFER));
-		when(properties.getAssignee()).thenReturn(NegotiationMockObjectUtil.ASSIGNEE);
-		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+		ContractNegotiationOfferResponseEvent offerResponse = new ContractNegotiationOfferResponseEvent(MockObjectUtil.CONSUMER_PID, 
+				MockObjectUtil.PROVIDER_PID, true, Serializer.serializePlainJsonNode(MockObjectUtil.OFFER));
+		when(properties.getAssignee()).thenReturn(MockObjectUtil.ASSIGNEE);
+		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(true);
 		// TODO temporary until figure out how to get assignee and assigner
-		when(properties.providerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
+		when(properties.providerCallbackAddress()).thenReturn(MockObjectUtil.CALLBACK_ADDRESS);
 		
 		handlerService.handleContractNegotiationOfferResponse(offerResponse);
 		
@@ -81,10 +81,10 @@ public class ContractNegotiationEventHandlerServiceTest {
 	@Test
 	@DisplayName("Handle contract negotiation offer declined")
 	public void handleContractNegotiationOfferResponse_declined() {
-		ContractNegotiationOfferResponseEvent offerResponse = new ContractNegotiationOfferResponseEvent(NegotiationMockObjectUtil.CONSUMER_PID, 
-				NegotiationMockObjectUtil.PROVIDER_PID, false, Serializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
+		ContractNegotiationOfferResponseEvent offerResponse = new ContractNegotiationOfferResponseEvent(MockObjectUtil.CONSUMER_PID, 
+				MockObjectUtil.PROVIDER_PID, false, Serializer.serializeProtocolJsonNode(MockObjectUtil.OFFER));
 		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class)))
-			.thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+			.thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 
 		handlerService.handleContractNegotiationOfferResponse(offerResponse);
 		
@@ -95,11 +95,11 @@ public class ContractNegotiationEventHandlerServiceTest {
 	@DisplayName("Handle agreement verification message success")
 	public void contractAgreementVerificationMessage_success() {
 		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_AGREED));
+		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_AGREED));
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(true);
 
-		handlerService.verifyNegotiation(NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.PROVIDER_PID);
+		handlerService.verifyNegotiation(MockObjectUtil.CONSUMER_PID, MockObjectUtil.PROVIDER_PID);
 		
 		verify(repository).save(any(ContractNegotiation.class));
 	}
@@ -110,34 +110,34 @@ public class ContractNegotiationEventHandlerServiceTest {
 	public void contractAgreementVerificationMessage_contractNegotiationNotFound() {
 		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.empty());
 
-		assertThrows(ContractNegotiationAPIException.class, () -> handlerService.verifyNegotiation(NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.PROVIDER_PID));
+		assertThrows(ContractNegotiationAPIException.class, () -> handlerService.verifyNegotiation(MockObjectUtil.CONSUMER_PID, MockObjectUtil.PROVIDER_PID));
 	}
 	
 	@Disabled
 	@Test
 	@DisplayName("Handle agreement verification message - invalid state")
 	public void contractAgreementVerificationMessage_invalidState() {
-		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 
-		assertThrows(ContractNegotiationAPIException.class, () -> handlerService.verifyNegotiation(NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.PROVIDER_PID));
+		assertThrows(ContractNegotiationAPIException.class, () -> handlerService.verifyNegotiation(MockObjectUtil.CONSUMER_PID, MockObjectUtil.PROVIDER_PID));
 	}
 	
 	@Test
 	@DisplayName("Handle agreement verification message - bad request")
 	public void contractAgreementVerificationMessage_badRequest() {
 		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_AGREED));
+		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_AGREED));
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		
 		assertThrows(ContractNegotiationAPIException.class, 
-				() -> handlerService.verifyNegotiation(NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.PROVIDER_PID));
+				() -> handlerService.verifyNegotiation(MockObjectUtil.CONSUMER_PID, MockObjectUtil.PROVIDER_PID));
 	}
 	
 	@Test
 	@DisplayName("Provider terminate contract negotiation")
 	public void terminateNegotiation() {
 		String contractNegotaitionId = UUID.randomUUID().toString(); 
-		when(repository.findById(contractNegotaitionId)).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
+		when(repository.findById(contractNegotaitionId)).thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
 		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(true);
@@ -165,7 +165,7 @@ public class ContractNegotiationEventHandlerServiceTest {
 	@DisplayName("Provider terminate contract negotiation - consumer did not respond")
 	public void terminateNegotiation_consumer_error() {
 		String contractNegotaitionId = UUID.randomUUID().toString(); 
-		when(repository.findById(contractNegotaitionId)).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
+		when(repository.findById(contractNegotaitionId)).thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
 		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(false);

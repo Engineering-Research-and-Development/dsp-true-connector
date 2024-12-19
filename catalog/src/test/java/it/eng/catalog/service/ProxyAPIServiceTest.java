@@ -19,7 +19,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.catalog.exceptions.CatalogErrorAPIException;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.serializer.Serializer;
-import it.eng.catalog.util.CatalogMockObjectUtil;
+import it.eng.catalog.util.MockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
@@ -43,7 +43,7 @@ class ProxyAPIServiceTest {
 	@DisplayName("Get formats success")
 	void getFormatsFromDataset() {
 		mockCatalogCall();
-		List<String> formats = service.getFormatsFromDataset(CatalogMockObjectUtil.DATASET_ID, forwardTo);
+		List<String> formats = service.getFormatsFromDataset(MockObjectUtil.DATASET_ID, forwardTo);
 		assertNotNull(formats);
 		assertEquals(1, formats.size());
 	}
@@ -57,7 +57,7 @@ class ProxyAPIServiceTest {
 		when(genericApiResponse.isSuccess()).thenReturn(false);
 		
 		assertThrows(CatalogErrorAPIException.class, 
-				() -> service.getFormatsFromDataset(CatalogMockObjectUtil.DATASET_ID, forwardTo));
+				() -> service.getFormatsFromDataset(MockObjectUtil.DATASET_ID, forwardTo));
 	}
 
 	@Test
@@ -73,6 +73,6 @@ class ProxyAPIServiceTest {
 		when(okHttpClient.sendRequestProtocol(anyString(), any(JsonNode.class), anyString()))
 				.thenReturn(genericApiResponse);
 		when(genericApiResponse.isSuccess()).thenReturn(true);
-		when(genericApiResponse.getData()).thenReturn(Serializer.serializeProtocol(CatalogMockObjectUtil.CATALOG));
+		when(genericApiResponse.getData()).thenReturn(Serializer.serializeProtocol(MockObjectUtil.CATALOG));
 	}
 }

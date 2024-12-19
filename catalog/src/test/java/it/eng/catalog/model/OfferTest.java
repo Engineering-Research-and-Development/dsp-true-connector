@@ -11,7 +11,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 import it.eng.catalog.serializer.Serializer;
-import it.eng.catalog.util.CatalogMockObjectUtil;
+import it.eng.catalog.util.MockObjectUtil;
 
 public class OfferTest {
 	
@@ -47,7 +47,7 @@ public class OfferTest {
 			.target(TARGET_B)
 			.assignee(ASSIGNEE)
 			.assigner(ASSIGNER)
-			.permission(Set.of(CatalogMockObjectUtil.PERMISSION_ANONYMIZE))
+			.permission(Set.of(MockObjectUtil.PERMISSION_ANONYMIZE))
 			.build();
 	@Test
 	public void equalsTrue() {
@@ -103,14 +103,14 @@ public class OfferTest {
 	@Test
 	public void collection() {
 		Set<Permission> permissions = new HashSet<>();
-		permissions.add(CatalogMockObjectUtil.PERMISSION);
+		permissions.add(MockObjectUtil.PERMISSION);
 		Offer o = Offer.Builder.newInstance()
 				.assignee(ASSIGNEE)
 				.assigner(ASSIGNER)
 				.permission(permissions)
 				.build();
 		
-		o.getPermission().add(CatalogMockObjectUtil.PERMISSION_ANONYMIZE);
+		o.getPermission().add(MockObjectUtil.PERMISSION_ANONYMIZE);
 		o.getPermission();
 		
 		
@@ -132,7 +132,7 @@ public class OfferTest {
 	
 	@Test
 	public void equalsTestPlain() {
-		Offer offer = CatalogMockObjectUtil.OFFER;
+		Offer offer = MockObjectUtil.OFFER;
 		String ss = Serializer.serializePlain(offer);
 		Offer offer2 = Serializer.deserializePlain(ss, Offer.class);
 		assertThat(offer).usingRecursiveComparison().isEqualTo(offer2);
@@ -140,7 +140,7 @@ public class OfferTest {
 	
 	@Test
 	public void equalsTestProtocol() {
-		Offer offer = CatalogMockObjectUtil.OFFER;
+		Offer offer = MockObjectUtil.OFFER;
 		String ss = Serializer.serializeProtocol(offer);
 		Offer offer2 = Serializer.deserializeProtocol(ss, Offer.class);
 		assertThat(offer).usingRecursiveComparison().isEqualTo(offer2);

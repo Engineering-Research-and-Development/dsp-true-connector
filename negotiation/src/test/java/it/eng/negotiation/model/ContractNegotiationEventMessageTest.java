@@ -18,8 +18,8 @@ import jakarta.validation.ValidationException;
 public class ContractNegotiationEventMessageTest {
 
 	private ContractNegotiationEventMessage contractNegotiationEventMessage = ContractNegotiationEventMessage.Builder.newInstance()
-			.consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
-			.providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
+			.consumerPid(MockObjectUtil.CONSUMER_PID)
+			.providerPid(MockObjectUtil.PROVIDER_PID)
 			.eventType(ContractNegotiationEventType.ACCEPTED)
 			.build();
 	

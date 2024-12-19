@@ -18,7 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
-import it.eng.datatransfer.util.DataTransferMockObjectUtil;
+import it.eng.datatransfer.util.MockObjectUtil;
 
 @ExtendWith(MockitoExtension.class)
 class DataTransferEventListenerTest {
@@ -35,8 +35,8 @@ class DataTransferEventListenerTest {
 	@DisplayName("Handle TransferProcessChange event")
 	void handleTransferProcessChange() {
 		TransferProcessChangeEvent changeEvent = TransferProcessChangeEvent.Builder.newInstance()
-				.oldTransferProcess(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)
-				.newTransferProcess(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED)
+				.oldTransferProcess(MockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)
+				.newTransferProcess(MockObjectUtil.TRANSFER_PROCESS_STARTED)
 				.build();
 		assertDoesNotThrow(() -> dataTransferEventListener.handleTransferProcessChange(changeEvent));
 	}
@@ -45,9 +45,9 @@ class DataTransferEventListenerTest {
 	@DisplayName("Handle TransferStartMessage")
 	void handleTransferStartMessage() {
 		when(transferRequestMessageRepository.findByConsumerPid(anyString()))
-			.thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_REQUEST_MESSAGE));
+			.thenReturn(Optional.of(MockObjectUtil.TRANSFER_REQUEST_MESSAGE));
 		
-		dataTransferEventListener.handleTransferStartMessage(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE);
+		dataTransferEventListener.handleTransferStartMessage(MockObjectUtil.TRANSFER_START_MESSAGE);
 		
 		verify(publisher, times(0)).publishEvent(any(StartFTPServerEvent.class));
 	}
@@ -56,9 +56,9 @@ class DataTransferEventListenerTest {
 	@DisplayName("Handle TransferStartMessage - SFTP")
 	void handleTransferStartMessage_sftp() {
 		when(transferRequestMessageRepository.findByConsumerPid(anyString()))
-			.thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_REQUEST_MESSAGE_SFTP));
+			.thenReturn(Optional.of(MockObjectUtil.TRANSFER_REQUEST_MESSAGE_SFTP));
 		
-		dataTransferEventListener.handleTransferStartMessage(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE);
+		dataTransferEventListener.handleTransferStartMessage(MockObjectUtil.TRANSFER_START_MESSAGE);
 		
 		verify(publisher).publishEvent(any(StartFTPServerEvent.class));
 	}
@@ -67,9 +67,9 @@ class DataTransferEventListenerTest {
 	@DisplayName("Handle TransferSuspensionMessage")
 	void handleTransferSuspensionMessage() {
 		when(transferRequestMessageRepository.findByConsumerPid(anyString()))
-			.thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_REQUEST_MESSAGE));
+			.thenReturn(Optional.of(MockObjectUtil.TRANSFER_REQUEST_MESSAGE));
 		
-		dataTransferEventListener.handleTransferSuspensionMessage(DataTransferMockObjectUtil.TRANSFER_SUSPENSION_MESSAGE);
+		dataTransferEventListener.handleTransferSuspensionMessage(MockObjectUtil.TRANSFER_SUSPENSION_MESSAGE);
 		
 		verify(publisher, times(0)).publishEvent(any(StopFTPServerEvent.class));
 	}
@@ -78,9 +78,9 @@ class DataTransferEventListenerTest {
 	@DisplayName("Handle TransferSuspensionMessage - SFTP")
 	void handleTransferSuspensionMessage_sftp() {
 		when(transferRequestMessageRepository.findByConsumerPid(anyString()))
-			.thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_REQUEST_MESSAGE_SFTP));
+			.thenReturn(Optional.of(MockObjectUtil.TRANSFER_REQUEST_MESSAGE_SFTP));
 		
-		dataTransferEventListener.handleTransferSuspensionMessage(DataTransferMockObjectUtil.TRANSFER_SUSPENSION_MESSAGE);
+		dataTransferEventListener.handleTransferSuspensionMessage(MockObjectUtil.TRANSFER_SUSPENSION_MESSAGE);
 		
 		verify(publisher).publishEvent(any(StopFTPServerEvent.class));
 	}
@@ -89,9 +89,9 @@ class DataTransferEventListenerTest {
 	@DisplayName("Handle TransferCompletionMessage")
 	void handleTransferCompletionMessage() {
 		when(transferRequestMessageRepository.findByConsumerPid(anyString()))
-			.thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_REQUEST_MESSAGE));
+			.thenReturn(Optional.of(MockObjectUtil.TRANSFER_REQUEST_MESSAGE));
 	
-		dataTransferEventListener.handleTransferCompletionMessage(DataTransferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE);
+		dataTransferEventListener.handleTransferCompletionMessage(MockObjectUtil.TRANSFER_COMPLETION_MESSAGE);
 		
 		verify(publisher, times(0)).publishEvent(any(StopFTPServerEvent.class));
 	}
@@ -100,9 +100,9 @@ class DataTransferEventListenerTest {
 	@DisplayName("Handle TransferCompletionMessage - SFTP")
 	void handleTransferCompletionMessage_sftp() {
 		when(transferRequestMessageRepository.findByConsumerPid(anyString()))
-			.thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_REQUEST_MESSAGE_SFTP));
+			.thenReturn(Optional.of(MockObjectUtil.TRANSFER_REQUEST_MESSAGE_SFTP));
 	
-		dataTransferEventListener.handleTransferCompletionMessage(DataTransferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE);
+		dataTransferEventListener.handleTransferCompletionMessage(MockObjectUtil.TRANSFER_COMPLETION_MESSAGE);
 		
 		verify(publisher).publishEvent(any(StopFTPServerEvent.class));
 	}

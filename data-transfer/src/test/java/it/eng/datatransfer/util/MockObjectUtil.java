@@ -18,7 +18,7 @@ import it.eng.datatransfer.model.TransferSuspensionMessage;
 import it.eng.datatransfer.model.TransferTerminationMessage;
 import it.eng.tools.model.IConstants;
 
-public class DataTransferMockObjectUtil {
+public class MockObjectUtil {
 
 	public static final String CONSUMER_PID = "urn:uuid:CONSUMER_PID";
 	public static final String PROVIDER_PID = "urn:uuid:PROVIDER_PID";

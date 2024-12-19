@@ -22,7 +22,7 @@ import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.service.CatalogService;
-import it.eng.catalog.util.CatalogMockObjectUtil;
+import it.eng.catalog.util.MockObjectUtil;
 import it.eng.tools.response.GenericApiResponse;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,44 +36,44 @@ public class CatalogAPIControllerTest {
     @Test
     @DisplayName("Get catalog - success")
     public void getCatalogSuccessfulTest() {
-        when(catalogService.getCatalogForApi()).thenReturn(CatalogMockObjectUtil.CATALOG);
+        when(catalogService.getCatalogForApi()).thenReturn(MockObjectUtil.CATALOG);
         ResponseEntity<GenericApiResponse<JsonNode>> response = catalogAPIController.getCatalog();
 
         verify(catalogService).getCatalogForApi();
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
-        assertTrue(StringUtils.contains(response.getBody().toString(), CatalogMockObjectUtil.CATALOG.getType()));
+        assertTrue(StringUtils.contains(response.getBody().toString(), MockObjectUtil.CATALOG.getType()));
     }
 
 
     @Test
     @DisplayName("Get catalog by id - success")
     public void getCatalogByIdSuccessfulTest() {
-        when(catalogService.getCatalogById(CatalogMockObjectUtil.CATALOG.getId())).thenReturn(CatalogMockObjectUtil.CATALOG);
-        ResponseEntity<GenericApiResponse<JsonNode>> response = catalogAPIController.getCatalogById(CatalogMockObjectUtil.CATALOG.getId());
+        when(catalogService.getCatalogById(MockObjectUtil.CATALOG.getId())).thenReturn(MockObjectUtil.CATALOG);
+        ResponseEntity<GenericApiResponse<JsonNode>> response = catalogAPIController.getCatalogById(MockObjectUtil.CATALOG.getId());
 
-        verify(catalogService).getCatalogById(CatalogMockObjectUtil.CATALOG.getId());
+        verify(catalogService).getCatalogById(MockObjectUtil.CATALOG.getId());
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
-        assertTrue(StringUtils.contains(response.getBody().toString(), CatalogMockObjectUtil.CATALOG.getType()));
+        assertTrue(StringUtils.contains(response.getBody().toString(), MockObjectUtil.CATALOG.getType()));
     }
 
     @Test
     @DisplayName("Get catalog - catalog not found")
     public void getCatalogByIdNotFoundTest() {
-        when(catalogService.getCatalogById(CatalogMockObjectUtil.CATALOG.getId())).thenThrow(new ResourceNotFoundAPIException("Catalog with id" + CatalogMockObjectUtil.CATALOG.getId() + " not found"));
+        when(catalogService.getCatalogById(MockObjectUtil.CATALOG.getId())).thenThrow(new ResourceNotFoundAPIException("Catalog with id" + MockObjectUtil.CATALOG.getId() + " not found"));
 
-        Exception e = assertThrows(ResourceNotFoundAPIException.class, () -> catalogAPIController.getCatalogById(CatalogMockObjectUtil.CATALOG.getId()));
+        Exception e = assertThrows(ResourceNotFoundAPIException.class, () -> catalogAPIController.getCatalogById(MockObjectUtil.CATALOG.getId()));
 
-        assertTrue(StringUtils.contains(e.getMessage(), "Catalog with id" + CatalogMockObjectUtil.CATALOG.getId() + " not found"));
+        assertTrue(StringUtils.contains(e.getMessage(), "Catalog with id" + MockObjectUtil.CATALOG.getId() + " not found"));
     }
 
 
     @Test
     @DisplayName("Create catalog - success")
     public void createCatalogSuccessfulTest() {
-        String catalog = Serializer.serializePlain(CatalogMockObjectUtil.CATALOG);
-        when(catalogService.saveCatalog(any(Catalog.class))).thenReturn(CatalogMockObjectUtil.CATALOG);
+        String catalog = Serializer.serializePlain(MockObjectUtil.CATALOG);
+        when(catalogService.saveCatalog(any(Catalog.class))).thenReturn(MockObjectUtil.CATALOG);
 
         ResponseEntity<GenericApiResponse<JsonNode>> response = catalogAPIController.createCatalog(catalog);
 
@@ -81,13 +81,13 @@ public class CatalogAPIControllerTest {
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
         assertNotNull(response.getBody());
-        assertTrue(StringUtils.contains(response.getBody().getData().get("type").toString(), CatalogMockObjectUtil.CATALOG.getType()));
+        assertTrue(StringUtils.contains(response.getBody().getData().get("type").toString(), MockObjectUtil.CATALOG.getType()));
     }
 
     @Test
     @DisplayName("Delete catalog - success")
     public void deleteCatalogSuccessfulTest() {
-        ResponseEntity<GenericApiResponse<Object>> response = catalogAPIController.deleteCatalog(CatalogMockObjectUtil.CATALOG.getId());
+        ResponseEntity<GenericApiResponse<Object>> response = catalogAPIController.deleteCatalog(MockObjectUtil.CATALOG.getId());
 
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
@@ -97,15 +97,15 @@ public class CatalogAPIControllerTest {
     @Test
     @DisplayName("Update catalog - success")
     public void updateCatalogSuccessfulTest() {
-        String catalog = Serializer.serializePlain(CatalogMockObjectUtil.CATALOG_FOR_UPDATE);
-        when(catalogService.updateCatalog(any(String.class), any(Catalog.class))).thenReturn(CatalogMockObjectUtil.CATALOG_FOR_UPDATE);
+        String catalog = Serializer.serializePlain(MockObjectUtil.CATALOG_FOR_UPDATE);
+        when(catalogService.updateCatalog(any(String.class), any(Catalog.class))).thenReturn(MockObjectUtil.CATALOG_FOR_UPDATE);
 
-        ResponseEntity<GenericApiResponse<JsonNode>> response = catalogAPIController.updateCatalog(CatalogMockObjectUtil.CATALOG_FOR_UPDATE.getId(), catalog);
+        ResponseEntity<GenericApiResponse<JsonNode>> response = catalogAPIController.updateCatalog(MockObjectUtil.CATALOG_FOR_UPDATE.getId(), catalog);
 
         verify(catalogService).updateCatalog(any(String.class), any(Catalog.class));
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
         assertNotNull(response.getBody());
-        assertTrue(StringUtils.contains(response.getBody().getData().get("type").toString(), CatalogMockObjectUtil.CATALOG.getType()));
+        assertTrue(StringUtils.contains(response.getBody().getData().get("type").toString(), MockObjectUtil.CATALOG.getType()));
     }
 }

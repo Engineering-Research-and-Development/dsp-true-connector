@@ -56,17 +56,17 @@ public class RestArtifactControllerTest {
 	@DisplayName("Get artifact file - success")
 	public void getArtifactFile_success() throws IllegalStateException, IOException  {
 		MockHttpServletResponse httpServletResponse = new MockHttpServletResponse();
-		when(restArtifactService.getArtifact(TRANSACTION_ID)).thenReturn(it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_FILE);
-		when(restArtifactService.streamAttachment(it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_FILE.getValue())).thenReturn(gridFsResource);
+		when(restArtifactService.getArtifact(TRANSACTION_ID)).thenReturn(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE);
+		when(restArtifactService.streamAttachment(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE.getValue())).thenReturn(gridFsResource);
 		when(gridFsResource.getInputStream()).thenReturn(inputStream);
-		when(gridFsResource.getFilename()).thenReturn(it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_FILE.getFilename());
-		when(gridFsResource.getContentType()).thenReturn(it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_FILE.getContentType());
+		when(gridFsResource.getFilename()).thenReturn(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE.getFilename());
+		when(gridFsResource.getContentType()).thenReturn(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE.getContentType());
 		
 		restArtifactController.getArtifact(httpServletResponse, null, TRANSACTION_ID);
 		
-		assertEquals(httpServletResponse.getContentType(), it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_FILE.getContentType());
+		assertEquals(httpServletResponse.getContentType(), it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE.getContentType());
 		assertEquals(httpServletResponse.getContentAsString(), DATA);
-		assertTrue(httpServletResponse.getHeader(HttpHeaders.CONTENT_DISPOSITION).contains(it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_FILE.getFilename()));
+		assertTrue(httpServletResponse.getHeader(HttpHeaders.CONTENT_DISPOSITION).contains(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE.getFilename()));
 		assertEquals(httpServletResponse.getStatus(), HttpStatus.OK.value());
 	}
 	
@@ -74,8 +74,8 @@ public class RestArtifactControllerTest {
 	@DisplayName("Get artifact file - fail")
 	public void getArtifactFile_fail() throws IllegalStateException, IOException {
 		MockHttpServletResponse httpServletResponse = new MockHttpServletResponse();
-		when(restArtifactService.getArtifact(TRANSACTION_ID)).thenReturn(it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_FILE);
-		when(restArtifactService.streamAttachment(it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_FILE.getValue())).thenReturn(gridFsResource);
+		when(restArtifactService.getArtifact(TRANSACTION_ID)).thenReturn(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE);
+		when(restArtifactService.streamAttachment(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE.getValue())).thenReturn(gridFsResource);
 		when(gridFsResource.getInputStream()).thenThrow(IOException.class);
 		
 		assertThrows(DownloadException.class, () -> restArtifactController.getArtifact(httpServletResponse, null, TRANSACTION_ID));
@@ -85,8 +85,8 @@ public class RestArtifactControllerTest {
 	@DisplayName("Get artifact external - success")
 	public void getArtifactExternal_success() throws IllegalStateException, IOException  {
 		MockHttpServletResponse httpServletResponse = new MockHttpServletResponse();
-		when(restArtifactService.getArtifact(TRANSACTION_ID)).thenReturn(it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_EXTERNAL);
-		when(restArtifactService.getExternalData(it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_EXTERNAL.getValue())).thenReturn(response);
+		when(restArtifactService.getArtifact(TRANSACTION_ID)).thenReturn(it.eng.tools.util.MockObjectUtil.ARTIFACT_EXTERNAL);
+		when(restArtifactService.getExternalData(it.eng.tools.util.MockObjectUtil.ARTIFACT_EXTERNAL.getValue())).thenReturn(response);
 		when(response.body()).thenReturn(responseBody);
 		when(responseBody.byteStream()).thenReturn(inputStream);
 		when(response.header(HttpHeaders.CONTENT_TYPE)).thenReturn(MediaType.APPLICATION_JSON_VALUE);
@@ -103,8 +103,8 @@ public class RestArtifactControllerTest {
 	@DisplayName("Get artifact external - fail")
 	public void getArtifactExternal_fail() throws IllegalStateException, IOException {
 		HttpServletResponse httpServletResponse = mock(HttpServletResponse.class);
-		when(restArtifactService.getArtifact(TRANSACTION_ID)).thenReturn(it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_EXTERNAL);
-		when(restArtifactService.getExternalData(it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_EXTERNAL.getValue())).thenReturn(response);
+		when(restArtifactService.getArtifact(TRANSACTION_ID)).thenReturn(it.eng.tools.util.MockObjectUtil.ARTIFACT_EXTERNAL);
+		when(restArtifactService.getExternalData(it.eng.tools.util.MockObjectUtil.ARTIFACT_EXTERNAL.getValue())).thenReturn(response);
 		when(response.body()).thenReturn(responseBody);
 		when(responseBody.byteStream()).thenReturn(inputStream);
 		when(httpServletResponse.getOutputStream()).thenThrow(IOException.class);

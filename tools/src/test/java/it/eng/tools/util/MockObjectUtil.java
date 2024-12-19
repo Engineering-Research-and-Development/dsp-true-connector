@@ -10,7 +10,7 @@ import it.eng.tools.model.ApplicationProperty;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
 
-public class ToolsMockObjectUtil {
+public class MockObjectUtil {
 
 	public static final String CREATOR = "admin@mail.com";
 	public static final Instant NOW = Instant.now();

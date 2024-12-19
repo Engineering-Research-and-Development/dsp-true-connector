@@ -16,7 +16,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import it.eng.catalog.model.CatalogError;
 import it.eng.catalog.serializer.Serializer;
-import it.eng.catalog.util.CatalogMockObjectUtil;
+import it.eng.catalog.util.MockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.tools.model.DSpaceConstants;
@@ -28,7 +28,7 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void getCatalogSuccessfulTest() throws Exception {
     	
-    	String body = Serializer.serializeProtocol(CatalogMockObjectUtil.CATALOG_REQUEST_MESSAGE);
+    	String body = Serializer.serializeProtocol(MockObjectUtil.CATALOG_REQUEST_MESSAGE);
     	
     	final ResultActions result =
     			mockMvc.perform(
@@ -37,7 +37,7 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isOk())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(CatalogMockObjectUtil.CATALOG.getType())))
+    	.andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CATALOG.getType())))
     	.andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
     }
     
@@ -45,7 +45,7 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
     @DisplayName("Get catalog - unauthorized")
     public void getCatalogSUnauthorizedTest() throws Exception {
     	
-    	String body = Serializer.serializeProtocol(CatalogMockObjectUtil.CATALOG_REQUEST_MESSAGE);
+    	String body = Serializer.serializeProtocol(MockObjectUtil.CATALOG_REQUEST_MESSAGE);
     	
     	final ResultActions result =
     			mockMvc.perform(
@@ -64,7 +64,7 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.CONNECTOR_USER)
 	public void notValidCatalogRequestMessageTest() throws Exception {
     	
-    	String body = Serializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
+    	String body = Serializer.serializeProtocol(MockObjectUtil.DATASET_REQUEST_MESSAGE);
 		
 		final ResultActions result =
 				mockMvc.perform(
@@ -73,7 +73,7 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
 		            .contentType(MediaType.APPLICATION_JSON));
 		    result.andExpect(status().isBadRequest())
 		        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(CatalogMockObjectUtil.CATALOG_ERROR.getType())))
+		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CATALOG_ERROR.getType())))
 		        .andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)))
 		        .andExpect(jsonPath("['"+DSpaceConstants.DSPACE_REASON+"'][0]['"+DSpaceConstants.VALUE+"']", containsString("@type field not correct, expected dspace:CatalogRequestMessage")));
 	}
@@ -83,7 +83,7 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
 	@WithUserDetails(TestUtil.CONNECTOR_USER)
 	public void getDatasetSuccessfulTest() throws Exception {
 		
-		String body = Serializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
+		String body = Serializer.serializeProtocol(MockObjectUtil.DATASET_REQUEST_MESSAGE);
 		
 		final ResultActions result =
 		        mockMvc.perform(
@@ -92,7 +92,7 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
 		            .contentType(MediaType.APPLICATION_JSON));
 		    result.andExpect(status().isOk())
 		        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(CatalogMockObjectUtil.DATASET.getType())))
+		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.DATASET.getType())))
 		        .andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)));
 	}
 	
@@ -101,7 +101,7 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
 	@WithUserDetails(TestUtil.CONNECTOR_USER)
 	public void notValidDatasetRequestMessageTest() throws Exception {
 		
-		String body = Serializer.serializeProtocol(CatalogMockObjectUtil.CATALOG_REQUEST_MESSAGE);
+		String body = Serializer.serializeProtocol(MockObjectUtil.CATALOG_REQUEST_MESSAGE);
 		
 		final ResultActions result =
 		        mockMvc.perform(
@@ -110,7 +110,7 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
 		            .contentType(MediaType.APPLICATION_JSON));
 		    result.andExpect(status().isBadRequest())
 		        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(CatalogMockObjectUtil.CATALOG_ERROR.getType())))
+		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CATALOG_ERROR.getType())))
 		        .andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)))
 		        .andExpect(jsonPath("['"+DSpaceConstants.DSPACE_REASON+"'][0]['"+DSpaceConstants.VALUE+"']", containsString("@type field not correct, expected dspace:DatasetRequestMessage")));
 	}
@@ -120,7 +120,7 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
 	@WithUserDetails(TestUtil.CONNECTOR_USER)
 	public void noDatasetFoundTest() throws Exception {
 		
-		String body = Serializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
+		String body = Serializer.serializeProtocol(MockObjectUtil.DATASET_REQUEST_MESSAGE);
 		
 		final ResultActions result =
 		        mockMvc.perform(
@@ -129,7 +129,7 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
 		            .contentType(MediaType.APPLICATION_JSON));
 		    result.andExpect(status().isNotFound())
 		        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(CatalogMockObjectUtil.CATALOG_ERROR.getType())))
+		        .andExpect(jsonPath("['"+DSpaceConstants.TYPE+"']", is(MockObjectUtil.CATALOG_ERROR.getType())))
 		        .andExpect(jsonPath("['"+DSpaceConstants.CONTEXT+"']", is(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE)))
 		        .andExpect(jsonPath("['"+DSpaceConstants.DSPACE_REASON+"'][0]['"+DSpaceConstants.VALUE+"']", containsString("Dataset with id: 1 not found")));
 	}

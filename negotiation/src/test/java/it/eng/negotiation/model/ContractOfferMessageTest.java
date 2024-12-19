@@ -22,7 +22,7 @@ public class ContractOfferMessageTest {
 	@Test
 	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() throws JsonProcessingException {
-		String result = Serializer.serializePlain(NegotiationMockObjectUtil.CONTRACT_OFFER_MESSAGE);
+		String result = Serializer.serializePlain(MockObjectUtil.CONTRACT_OFFER_MESSAGE);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
 		assertTrue(result.contains(DSpaceConstants.ID));
@@ -37,7 +37,7 @@ public class ContractOfferMessageTest {
 	@Test
 	@DisplayName("Verify valid protocol object serialization")
 	public void testProtocol() throws JsonProcessingException {
-		JsonNode result = Serializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_OFFER_MESSAGE);
+		JsonNode result = Serializer.serializeProtocolJsonNode(MockObjectUtil.CONTRACT_OFFER_MESSAGE);
 		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
 		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
 		assertNotNull(result.get(DSpaceConstants.DSPACE_CONSUMER_PID).asText());
@@ -63,14 +63,14 @@ public class ContractOfferMessageTest {
 	@Test
 	@DisplayName("Missing @context and @type")
 	public void missingContextAndType() {
-		JsonNode result = Serializer.serializePlainJsonNode(NegotiationMockObjectUtil.CONTRACT_OFFER_MESSAGE);
+		JsonNode result = Serializer.serializePlainJsonNode(MockObjectUtil.CONTRACT_OFFER_MESSAGE);
 		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, ContractOfferMessage.class));
 	}
 	
 	@Test
 	@DisplayName("Plain serialize/deserialize")
 	public void equalsTestPlain() {
-		ContractOfferMessage contractOfferMessage = NegotiationMockObjectUtil.CONTRACT_OFFER_MESSAGE;
+		ContractOfferMessage contractOfferMessage = MockObjectUtil.CONTRACT_OFFER_MESSAGE;
 		String ss = Serializer.serializePlain(contractOfferMessage);
 		ContractOfferMessage obj = Serializer.deserializePlain(ss, ContractOfferMessage.class);
 		assertThat(contractOfferMessage).usingRecursiveComparison().isEqualTo(obj);
@@ -79,7 +79,7 @@ public class ContractOfferMessageTest {
 	@Test
 	@DisplayName("Protocol serialize/deserialize")
 	public void equalsTestProtocol() {
-		ContractOfferMessage contractOfferMessage = NegotiationMockObjectUtil.CONTRACT_OFFER_MESSAGE;
+		ContractOfferMessage contractOfferMessage = MockObjectUtil.CONTRACT_OFFER_MESSAGE;
 		String ss = Serializer.serializeProtocol(contractOfferMessage);
 		ContractOfferMessage obj = Serializer.deserializeProtocol(ss, ContractOfferMessage.class);
 		assertThat(contractOfferMessage).usingRecursiveComparison().isEqualTo(obj);
@@ -98,9 +98,9 @@ public class ContractOfferMessageTest {
 	
 	private void validateJavaObj(ContractOfferMessage javaObj) {
 		assertNotNull(javaObj);
-		assertEquals(NegotiationMockObjectUtil.CONSUMER_PID, javaObj.getConsumerPid());
-		assertEquals(NegotiationMockObjectUtil.PROVIDER_PID, javaObj.getProviderPid());
-		assertEquals(NegotiationMockObjectUtil.CALLBACK_ADDRESS, javaObj.getCallbackAddress());
+		assertEquals(MockObjectUtil.CONSUMER_PID, javaObj.getConsumerPid());
+		assertEquals(MockObjectUtil.PROVIDER_PID, javaObj.getProviderPid());
+		assertEquals(MockObjectUtil.CALLBACK_ADDRESS, javaObj.getCallbackAddress());
 		assertNotNull(javaObj.getOffer());
 	}
 	
