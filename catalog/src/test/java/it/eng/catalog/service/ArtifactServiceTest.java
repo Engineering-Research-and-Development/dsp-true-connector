@@ -39,7 +39,6 @@ import it.eng.tools.model.Artifact;
 import it.eng.tools.repository.ArtifactRepository;
 
 @ExtendWith(MockitoExtension.class)
-@Disabled
 public class ArtifactServiceTest {
 	
 	@Mock
@@ -89,6 +88,7 @@ public class ArtifactServiceTest {
 	
 	@Test
     @DisplayName("Upload file - success")
+	@Disabled
     public void uploadFile_success() throws IOException {
 		ObjectId objectId = new ObjectId();
 		when(mongoTemplate.getDb()).thenReturn(mongoDatabase);
@@ -111,6 +111,7 @@ public class ArtifactServiceTest {
 	
 	@Test
     @DisplayName("Upload file - fail")
+	@Disabled
     public void uploadFile_fail() throws IOException {
 		when(mongoTemplate.getDb()).thenReturn(mongoDatabase);
 		when(file.getContentType()).thenReturn(MediaType.APPLICATION_JSON_VALUE);
