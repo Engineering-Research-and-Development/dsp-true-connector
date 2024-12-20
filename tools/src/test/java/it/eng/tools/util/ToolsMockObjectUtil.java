@@ -72,7 +72,7 @@ public class ToolsMockObjectUtil {
 			 * strictTypeChecking(true) to change that behavior). - the introspection
 			 * strategy used was: DefaultRecursiveComparisonIntrospectionStrategy
 			 */
-//			.id("urn:uuid:" + UUID.randomUUID())
+			.id("urn:uuid:" + UUID.randomUUID())
 			.artifactType(ArtifactType.FILE)
 			.contentType(MediaType.APPLICATION_JSON.getType())
 			.createdBy(CREATOR)
@@ -85,7 +85,7 @@ public class ToolsMockObjectUtil {
 			.build();
 	
 	public static final Artifact ARTIFACT_EXTERNAL = Artifact.Builder.newInstance()
-//			.id("urn:uuid:" + UUID.randomUUID())
+			.id("urn:uuid:" + UUID.randomUUID())
 			.artifactType(ArtifactType.EXTERNAL)
 			.createdBy(CREATOR)
 			.created(NOW)
