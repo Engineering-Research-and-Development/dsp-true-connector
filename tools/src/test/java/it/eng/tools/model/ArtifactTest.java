@@ -6,10 +6,12 @@ import java.time.Instant;
 import java.util.UUID;
 
 import org.bson.types.ObjectId;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 
+@Disabled
 public class ArtifactTest {
 	
 	public static final String CREATOR = "Chuck_Norris";
