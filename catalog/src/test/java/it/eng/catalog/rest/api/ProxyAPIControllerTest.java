@@ -23,7 +23,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import it.eng.catalog.exceptions.CatalogErrorAPIException;
 import it.eng.catalog.service.ProxyAPIService;
-import it.eng.catalog.util.MockObjectUtil;
+import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.response.GenericApiResponse;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,7 +46,7 @@ class ProxyAPIControllerTest {
 		when(proxyApiService.getFormatsFromDataset(anyString(), anyString()))
 			.thenReturn(Arrays.asList("format1", "format2"));
 		ResponseEntity<GenericApiResponse<List<String>>> response = 
-				controller.getFormatsFromDataset(MockObjectUtil.DATASET_ID, requestBody);
+				controller.getFormatsFromDataset(CatalogMockObjectUtil.DATASET_ID, requestBody);
 		assertNotNull(response);
 	}
 
@@ -57,14 +57,14 @@ class ProxyAPIControllerTest {
 		doThrow(CatalogErrorAPIException.class).when(proxyApiService).getFormatsFromDataset(anyString(), anyString());
 		
 		assertThrows(CatalogErrorAPIException.class, 
-				()-> controller.getFormatsFromDataset(MockObjectUtil.DATASET_ID, requestBody));
+				()-> controller.getFormatsFromDataset(CatalogMockObjectUtil.DATASET_ID, requestBody));
 	}
 	
 	@Test
 	@DisplayName("Get catalog")
 	void getCatalog() {
 		mockJsonRequestBody();
-		when(proxyApiService.getCatalog(anyString())).thenReturn(MockObjectUtil.CATALOG);
+		when(proxyApiService.getCatalog(anyString())).thenReturn(CatalogMockObjectUtil.CATALOG);
 		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.getCatalog(requestBody);
 		assertNotNull(response);
 	}

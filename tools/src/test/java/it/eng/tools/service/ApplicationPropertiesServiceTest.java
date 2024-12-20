@@ -3,7 +3,7 @@ package it.eng.tools.service;
 import it.eng.tools.exception.ApplicationPropertyErrorException;
 import it.eng.tools.model.ApplicationProperty;
 import it.eng.tools.repository.ApplicationPropertiesRepository;
-import it.eng.tools.util.MockObjectUtil;
+import it.eng.tools.util.ToolsMockObjectUtil;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,7 +29,7 @@ public class ApplicationPropertiesServiceTest {
 	@InjectMocks
 	private ApplicationPropertiesService service;
 
-	private ApplicationProperty property = MockObjectUtil.PROPERTY;
+	private ApplicationProperty property = ToolsMockObjectUtil.PROPERTY;
 
 	@Test
 	@DisplayName("Get application properties successfully")
@@ -62,8 +62,8 @@ public class ApplicationPropertiesServiceTest {
         when(repository.findById(anyString())).thenReturn(Optional.of(property));
         when(repository.save(any(ApplicationProperty.class))).thenReturn(property);
 
-        ApplicationProperty updatedApplicationPropertyData = MockObjectUtil.APPLICATION_PROPERTY_FOR_UPDATE;
-        ApplicationProperty oldUpdatedApplicationPropertyData = MockObjectUtil.OLD_APPLICATION_PROPERTY_FOR_UPDATE;
+        ApplicationProperty updatedApplicationPropertyData = ToolsMockObjectUtil.APPLICATION_PROPERTY_FOR_UPDATE;
+        ApplicationProperty oldUpdatedApplicationPropertyData = ToolsMockObjectUtil.OLD_APPLICATION_PROPERTY_FOR_UPDATE;
 
         ApplicationProperty updatedApplicationProperty = service.updateProperty(updatedApplicationPropertyData, oldUpdatedApplicationPropertyData);
         assertNotNull(updatedApplicationProperty);

@@ -11,7 +11,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
 
-import it.eng.negotiation.model.MockObjectUtil;
+import it.eng.negotiation.model.NegotiationMockObjectUtil;
 import jakarta.validation.ValidationException;
 
 public class ContractNegotiationExceptionAdviceTest {
@@ -26,7 +26,7 @@ public class ContractNegotiationExceptionAdviceTest {
 	
 	@Test
 	public void handleContractNegotiationNotFoundException() {
-		ContractNegotiationNotFoundException ex = new ContractNegotiationNotFoundException(TEST_ERROR_MESSAGE, MockObjectUtil.CONSUMER_PID, MockObjectUtil.PROVIDER_PID);
+		ContractNegotiationNotFoundException ex = new ContractNegotiationNotFoundException(TEST_ERROR_MESSAGE, NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.PROVIDER_PID);
 		ResponseEntity<Object> response = advice.handleContractNegotiationNotFoundException(ex, request);
 		assertNotNull(response);
 		assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
@@ -42,7 +42,7 @@ public class ContractNegotiationExceptionAdviceTest {
 
 	@Test
 	public void handleContractNegotiationExistsException() {
-		ContractNegotiationExistsException ex =  new ContractNegotiationExistsException(TEST_ERROR_MESSAGE, MockObjectUtil.CONSUMER_PID, MockObjectUtil.PROVIDER_PID);
+		ContractNegotiationExistsException ex =  new ContractNegotiationExistsException(TEST_ERROR_MESSAGE, NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.PROVIDER_PID);
 		ResponseEntity<Object> response = advice.handleContractNegotiationExistsException(ex, request);
 		assertNotNull(response);
 		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
@@ -50,7 +50,7 @@ public class ContractNegotiationExceptionAdviceTest {
 
 	@Test
 	public void handleContractNegotiationInvalidStateException() {
-		ContractNegotiationInvalidStateException ex = new ContractNegotiationInvalidStateException(TEST_ERROR_MESSAGE, MockObjectUtil.CONSUMER_PID, MockObjectUtil.PROVIDER_PID);
+		ContractNegotiationInvalidStateException ex = new ContractNegotiationInvalidStateException(TEST_ERROR_MESSAGE, NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.PROVIDER_PID);
 		ResponseEntity<Object> response = advice.handleContractNegotiationInvalidStateException(ex, request);
 		assertNotNull(response);
 		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
@@ -58,7 +58,7 @@ public class ContractNegotiationExceptionAdviceTest {
 
 	@Test
 	public void handleContractNegotiationInvalidEventTypeException() {
-		ContractNegotiationInvalidEventTypeException ex = new ContractNegotiationInvalidEventTypeException(TEST_ERROR_MESSAGE, MockObjectUtil.CONSUMER_PID, MockObjectUtil.PROVIDER_PID);
+		ContractNegotiationInvalidEventTypeException ex = new ContractNegotiationInvalidEventTypeException(TEST_ERROR_MESSAGE, NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.PROVIDER_PID);
 		ResponseEntity<Object> response = advice.handleContractNegotiationInvalidEventTypeException(ex, request);
 		assertNotNull(response);
 		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
@@ -66,7 +66,7 @@ public class ContractNegotiationExceptionAdviceTest {
 
 	@Test
 	public void handleOfferNotFoundException() {
-		OfferNotFoundException ex = new OfferNotFoundException(TEST_ERROR_MESSAGE, MockObjectUtil.CONSUMER_PID, MockObjectUtil.PROVIDER_PID);
+		OfferNotFoundException ex = new OfferNotFoundException(TEST_ERROR_MESSAGE, NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.PROVIDER_PID);
 		ResponseEntity<Object> response = advice.handleOfferNotFoundException(ex, request);
 		assertNotNull(response);
 		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
@@ -82,7 +82,7 @@ public class ContractNegotiationExceptionAdviceTest {
 
 	@Test
 	void handleOfferNotValidException() {
-		OfferNotValidException ex = new OfferNotValidException(TEST_ERROR_MESSAGE, MockObjectUtil.CONSUMER_PID, MockObjectUtil.PROVIDER_PID);
+		OfferNotValidException ex = new OfferNotValidException(TEST_ERROR_MESSAGE, NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.PROVIDER_PID);
 		ResponseEntity<Object> response = advice.handleOfferNotValidException(ex, request);
 		assertNotNull(response);
 		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());

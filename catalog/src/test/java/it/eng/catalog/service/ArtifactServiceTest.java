@@ -33,7 +33,7 @@ import com.mongodb.client.gridfs.model.GridFSUploadOptions;
 
 import it.eng.catalog.exceptions.CatalogErrorAPIException;
 import it.eng.catalog.repository.DatasetRepository;
-import it.eng.catalog.util.MockObjectUtil;
+import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.repository.ArtifactRepository;
 
@@ -63,12 +63,12 @@ public class ArtifactServiceTest {
 	@Test
     @DisplayName("Get artifacts by id - success")
     public void getArtifactById_success() {
-		when(artifactRepository.findById("1")).thenReturn(Optional.of(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE));
+		when(artifactRepository.findById("1")).thenReturn(Optional.of(it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_FILE));
 
 		List<Artifact> result = artifactService.getArtifacts("1");
 
 		assertEquals(1, result.size());
-        assertEquals(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE.getId(), result.get(0).getId());
+        assertEquals(it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_FILE.getId(), result.get(0).getId());
         verify(artifactRepository).findById("1");
     }
 	
@@ -76,12 +76,12 @@ public class ArtifactServiceTest {
     @DisplayName("Get all artifacts - success")
     public void getAllArtifacts_success() {
 		when(artifactRepository.findAll())
-		.thenReturn(List.of(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE, it.eng.tools.util.MockObjectUtil.ARTIFACT_EXTERNAL));
+		.thenReturn(List.of(it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_FILE, it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_EXTERNAL));
 
 		List<Artifact> result = artifactService.getArtifacts(null);
 
 		assertEquals(2, result.size());
-        assertEquals(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE.getId(), result.get(0).getId());
+        assertEquals(it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_FILE.getId(), result.get(0).getId());
         verify(artifactRepository).findAll();
     }
 	
@@ -93,16 +93,16 @@ public class ArtifactServiceTest {
 		when(file.getContentType()).thenReturn(MediaType.APPLICATION_JSON_VALUE);
 		when(file.getInputStream()).thenReturn(inputStream);
 		when(gridFSBucket.uploadFromStream(anyString(), any(InputStream.class), any(GridFSUploadOptions.class))).thenReturn(objectId);
-		when(file.getOriginalFilename()).thenReturn(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE.getFilename());
-		when(artifactRepository.save(any(Artifact.class))).thenReturn(it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE);
-		when(datasetService.getDatasetByIdForApi(MockObjectUtil.DATASET_ID)).thenReturn(MockObjectUtil.DATASET);
+		when(file.getOriginalFilename()).thenReturn(it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_FILE.getFilename());
+		when(artifactRepository.save(any(Artifact.class))).thenReturn(it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_FILE);
+		when(datasetService.getDatasetByIdForApi(CatalogMockObjectUtil.DATASET_ID)).thenReturn(CatalogMockObjectUtil.DATASET);
 		try (MockedStatic<GridFSBuckets> buckets = Mockito.mockStatic(GridFSBuckets.class)) {
 			buckets.when(() -> GridFSBuckets.create(mongoTemplate.getDb()))
 	          .thenReturn(gridFSBucket);
 
-		Artifact artifact = artifactService.uploadArtifact(file, MockObjectUtil.DATASET_ID, null);
+		Artifact artifact = artifactService.uploadArtifact(file, CatalogMockObjectUtil.DATASET_ID, null);
 		
-		assertEquals(artifact, it.eng.tools.util.MockObjectUtil.ARTIFACT_FILE);
+		assertEquals(artifact, it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_FILE);
 
 		}
     }
@@ -117,7 +117,7 @@ public class ArtifactServiceTest {
 			buckets.when(() -> GridFSBuckets.create(mongoTemplate.getDb()))
 	          .thenReturn(gridFSBucket);
 
-		assertThrows(CatalogErrorAPIException.class, ()-> artifactService.uploadArtifact(file, MockObjectUtil.DATASET_ID, null));
+		assertThrows(CatalogErrorAPIException.class, ()-> artifactService.uploadArtifact(file, CatalogMockObjectUtil.DATASET_ID, null));
 		
 		}
     }
@@ -125,12 +125,12 @@ public class ArtifactServiceTest {
 	@Test
     @DisplayName("Upload external - success")
     public void uploadExternal_success() throws IOException {
-		when(artifactRepository.save(any(Artifact.class))).thenReturn(it.eng.tools.util.MockObjectUtil.ARTIFACT_EXTERNAL);
-		when(datasetService.getDatasetByIdForApi(MockObjectUtil.DATASET_ID)).thenReturn(MockObjectUtil.DATASET);
+		when(artifactRepository.save(any(Artifact.class))).thenReturn(it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_EXTERNAL);
+		when(datasetService.getDatasetByIdForApi(CatalogMockObjectUtil.DATASET_ID)).thenReturn(CatalogMockObjectUtil.DATASET);
 
-		Artifact artifact = artifactService.uploadArtifact(null, MockObjectUtil.DATASET_ID, new URL(it.eng.tools.util.MockObjectUtil.ARTIFACT_EXTERNAL.getValue()));
+		Artifact artifact = artifactService.uploadArtifact(null, CatalogMockObjectUtil.DATASET_ID, new URL(it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_EXTERNAL.getValue()));
 		
-		assertEquals(artifact, it.eng.tools.util.MockObjectUtil.ARTIFACT_EXTERNAL);
+		assertEquals(artifact, it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_EXTERNAL);
 
     }
 	
@@ -139,7 +139,7 @@ public class ArtifactServiceTest {
     public void uploadExternal_fail() throws IOException {
 		when(artifactRepository.save(any(Artifact.class))).thenThrow(IllegalArgumentException.class);
 
-		assertThrows(CatalogErrorAPIException.class, ()-> artifactService.uploadArtifact(null, MockObjectUtil.DATASET_ID, new URL(it.eng.tools.util.MockObjectUtil.ARTIFACT_EXTERNAL.getValue())));
+		assertThrows(CatalogErrorAPIException.class, ()-> artifactService.uploadArtifact(null, CatalogMockObjectUtil.DATASET_ID, new URL(it.eng.tools.util.ToolsMockObjectUtil.ARTIFACT_EXTERNAL.getValue())));
 		
     }
 	
@@ -147,7 +147,7 @@ public class ArtifactServiceTest {
     @DisplayName("Upload no data - fail")
     public void uploadNoData_fail() throws IOException {
 
-		assertThrows(CatalogErrorAPIException.class, ()-> artifactService.uploadArtifact(null, MockObjectUtil.DATASET_ID, null));
+		assertThrows(CatalogErrorAPIException.class, ()-> artifactService.uploadArtifact(null, CatalogMockObjectUtil.DATASET_ID, null));
 		
     }
 

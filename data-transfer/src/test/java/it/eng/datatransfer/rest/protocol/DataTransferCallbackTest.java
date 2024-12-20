@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
 
-import it.eng.datatransfer.util.MockObjectUtil;
+import it.eng.datatransfer.util.DataTranferMockObjectUtil;
 
 public class DataTransferCallbackTest {
 
@@ -13,33 +13,33 @@ public class DataTransferCallbackTest {
 
 	@Test
 	public void getConsumerDataTransferStart() {
-		String replacedUrl = DataTransferCallback.getConsumerDataTransferStart(URL_WITHOUT_SLASH, MockObjectUtil.CONSUMER_PID);
-		String replacedUrlWithSlash = DataTransferCallback.getConsumerDataTransferStart(URL_WITH_SLASH, MockObjectUtil.CONSUMER_PID);
-		assertEquals(URL_WITH_SLASH + "transfers/" + MockObjectUtil.CONSUMER_PID + "/start", replacedUrl);
+		String replacedUrl = DataTransferCallback.getConsumerDataTransferStart(URL_WITHOUT_SLASH, DataTranferMockObjectUtil.CONSUMER_PID);
+		String replacedUrlWithSlash = DataTransferCallback.getConsumerDataTransferStart(URL_WITH_SLASH, DataTranferMockObjectUtil.CONSUMER_PID);
+		assertEquals(URL_WITH_SLASH + "transfers/" + DataTranferMockObjectUtil.CONSUMER_PID + "/start", replacedUrl);
 		assertEquals(replacedUrl, replacedUrlWithSlash);
 	}
 	
 	@Test
 	public void getConsumerDataTransferCompletion() {
-		String replacedUrl = DataTransferCallback.getConsumerDataTransferCompletion(URL_WITHOUT_SLASH, MockObjectUtil.CONSUMER_PID);
-		String replacedUrlWithSlash = DataTransferCallback.getConsumerDataTransferCompletion(URL_WITH_SLASH, MockObjectUtil.CONSUMER_PID);
-		assertEquals(URL_WITH_SLASH + "transfers/" + MockObjectUtil.CONSUMER_PID + "/completion", replacedUrl);
+		String replacedUrl = DataTransferCallback.getConsumerDataTransferCompletion(URL_WITHOUT_SLASH, DataTranferMockObjectUtil.CONSUMER_PID);
+		String replacedUrlWithSlash = DataTransferCallback.getConsumerDataTransferCompletion(URL_WITH_SLASH, DataTranferMockObjectUtil.CONSUMER_PID);
+		assertEquals(URL_WITH_SLASH + "transfers/" + DataTranferMockObjectUtil.CONSUMER_PID + "/completion", replacedUrl);
 		assertEquals(replacedUrl, replacedUrlWithSlash);
 	}
 	
 	@Test
 	public void getConsumerDataTransferTermination() {
-		String replacedUrl = DataTransferCallback.getConsumerDataTransferTermination(URL_WITHOUT_SLASH, MockObjectUtil.CONSUMER_PID);
-		String replacedUrlWithSlash = DataTransferCallback.getConsumerDataTransferTermination(URL_WITH_SLASH, MockObjectUtil.CONSUMER_PID);
-		assertEquals(URL_WITH_SLASH + "transfers/" + MockObjectUtil.CONSUMER_PID + "/termination", replacedUrl);
+		String replacedUrl = DataTransferCallback.getConsumerDataTransferTermination(URL_WITHOUT_SLASH, DataTranferMockObjectUtil.CONSUMER_PID);
+		String replacedUrlWithSlash = DataTransferCallback.getConsumerDataTransferTermination(URL_WITH_SLASH, DataTranferMockObjectUtil.CONSUMER_PID);
+		assertEquals(URL_WITH_SLASH + "transfers/" + DataTranferMockObjectUtil.CONSUMER_PID + "/termination", replacedUrl);
 		assertEquals(replacedUrl, replacedUrlWithSlash);
 	}
 	
 	@Test
 	public void getConsumerDataTransferSuspension() {
-		String replacedUrl = DataTransferCallback.getConsumerDataTransferSuspension(URL_WITHOUT_SLASH, MockObjectUtil.CONSUMER_PID);
-		String replacedUrlWithSlash = DataTransferCallback.getConsumerDataTransferSuspension(URL_WITH_SLASH, MockObjectUtil.CONSUMER_PID);
-		assertEquals(URL_WITH_SLASH + "transfers/" + MockObjectUtil.CONSUMER_PID + "/suspension", replacedUrl);
+		String replacedUrl = DataTransferCallback.getConsumerDataTransferSuspension(URL_WITHOUT_SLASH, DataTranferMockObjectUtil.CONSUMER_PID);
+		String replacedUrlWithSlash = DataTransferCallback.getConsumerDataTransferSuspension(URL_WITH_SLASH, DataTranferMockObjectUtil.CONSUMER_PID);
+		assertEquals(URL_WITH_SLASH + "transfers/" + DataTranferMockObjectUtil.CONSUMER_PID + "/suspension", replacedUrl);
 		assertEquals(replacedUrl, replacedUrlWithSlash);
 	}
 	

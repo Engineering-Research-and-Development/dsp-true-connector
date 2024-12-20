@@ -30,7 +30,7 @@ import it.eng.catalog.model.Permission;
 import it.eng.catalog.model.Reference;
 import it.eng.catalog.serializer.Serializer;
 
-public class MockObjectUtil {
+public class CatalogMockObjectUtil {
 
 	public static final String CONSUMER_PID = "urn:uuid:CONSUMER_PID";
 	public static final String PROVIDER_PID = "urn:uuid:PROVIDER_PID";

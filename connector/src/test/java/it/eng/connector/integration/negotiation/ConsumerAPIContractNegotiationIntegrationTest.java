@@ -31,7 +31,7 @@ import it.eng.connector.util.TestUtil;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationErrorMessage;
 import it.eng.negotiation.model.ContractNegotiationState;
-import it.eng.negotiation.model.MockObjectUtil;
+import it.eng.negotiation.model.NegotiationMockObjectUtil;
 import it.eng.negotiation.model.Reason;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.serializer.Serializer;
@@ -70,7 +70,7 @@ public class ConsumerAPIContractNegotiationIntegrationTest extends BaseIntegrati
 		// send API request
 		Map<String, Object> apiContractNegotiationRequest = new HashMap<>();
 		apiContractNegotiationRequest.put("Forward-To", wiremock.baseUrl());
-		apiContractNegotiationRequest.put("offer", MockObjectUtil.OFFER);
+		apiContractNegotiationRequest.put("offer", NegotiationMockObjectUtil.OFFER);
 		final ResultActions result = mockMvc.perform(post(ApiEndpoints.NEGOTIATION_V1)
 				.content(Serializer.serializePlain(apiContractNegotiationRequest))
 				.contentType(MediaType.APPLICATION_JSON));
@@ -110,7 +110,7 @@ public class ConsumerAPIContractNegotiationIntegrationTest extends BaseIntegrati
 		// send API request
 		Map<String, Object> apiContractNegotiationRequest = new HashMap<>();
 		apiContractNegotiationRequest.put("Forward-To", wiremock.baseUrl());
-		apiContractNegotiationRequest.put("offer", MockObjectUtil.OFFER);
+		apiContractNegotiationRequest.put("offer", NegotiationMockObjectUtil.OFFER);
 		final ResultActions result = mockMvc.perform(post(ApiEndpoints.NEGOTIATION_V1)
 				.content(Serializer.serializePlain(apiContractNegotiationRequest))
 				.contentType(MediaType.APPLICATION_JSON));
