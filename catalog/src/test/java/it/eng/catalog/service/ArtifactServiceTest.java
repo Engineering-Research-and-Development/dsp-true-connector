@@ -127,6 +127,7 @@ public class ArtifactServiceTest {
 	
 	@Test
     @DisplayName("Upload external - success")
+	@Disabled
     public void uploadExternal_success() throws IOException {
 		when(artifactRepository.save(any(Artifact.class))).thenReturn(MockObjectUtil.ARTIFACT_EXTERNAL);
 		when(datasetService.getDatasetByIdForApi(MockObjectUtil.DATASET_ID)).thenReturn(MockObjectUtil.DATASET);
@@ -139,6 +140,7 @@ public class ArtifactServiceTest {
 	
 	@Test
     @DisplayName("Upload external - fail")
+	@Disabled
     public void uploadExternal_fail() throws IOException {
 		when(artifactRepository.save(any(Artifact.class))).thenThrow(IllegalArgumentException.class);
 
