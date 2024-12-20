@@ -12,9 +12,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import it.eng.catalog.model.Artifact;
 import it.eng.catalog.service.ArtifactService;
 import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.model.Artifact;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 

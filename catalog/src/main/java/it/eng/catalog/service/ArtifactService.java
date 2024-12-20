@@ -23,8 +23,8 @@ import com.mongodb.client.gridfs.model.GridFSUploadOptions;
 import com.mongodb.client.model.Filters;
 
 import it.eng.catalog.exceptions.CatalogErrorAPIException;
-import it.eng.catalog.model.Artifact;
 import it.eng.catalog.model.Dataset;
+import it.eng.tools.model.Artifact;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -93,12 +93,12 @@ public class ArtifactService {
 			    @Override
 			    public void accept(final GridFSFile gridFSFile) {
 			    	Artifact artifact = new Artifact();
-			    	artifact.setId(gridFSFile.getObjectId().toHexString());
-			    	artifact.setFilename(gridFSFile.getFilename());
-			    	artifact.setLength(gridFSFile.getLength());
-			    	artifact.setUploadDate(gridFSFile.getUploadDate().toString());
-			    	artifact.setContentType(gridFSFile.getMetadata().getString(HttpHeaders.CONTENT_TYPE));
-			    	artifact.setDatasetId(gridFSFile.getMetadata().getString(DATASET_ID_METADATA));
+//			    	artifact.setId(gridFSFile.getObjectId().toHexString());
+//			    	artifact.setFilename(gridFSFile.getFilename());
+//			    	artifact.setLength(gridFSFile.getLength());
+//			    	artifact.setUploadDate(gridFSFile.getUploadDate().toString());
+//			    	artifact.setContentType(gridFSFile.getMetadata().getString(HttpHeaders.CONTENT_TYPE));
+//			    	artifact.setDatasetId(gridFSFile.getMetadata().getString(DATASET_ID_METADATA));
 			    	result.add(artifact);
 			    }
 			});

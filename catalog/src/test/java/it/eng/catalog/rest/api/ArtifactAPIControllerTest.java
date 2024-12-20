@@ -16,9 +16,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
 
-import it.eng.catalog.model.Artifact;
 import it.eng.catalog.service.ArtifactService;
 import it.eng.catalog.util.MockObjectUtil;
+import it.eng.tools.model.Artifact;
 import it.eng.tools.response.GenericApiResponse;
 
 @ExtendWith(MockitoExtension.class)
