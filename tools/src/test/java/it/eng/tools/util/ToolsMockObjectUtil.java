@@ -52,27 +52,6 @@ public class ToolsMockObjectUtil {
 			.build();
 	
 	public static final Artifact ARTIFACT_FILE = Artifact.Builder.newInstance()
-			/*
-			 * Removed due to following test failing, reason still unknown:
-			 * Error: DatasetTest.equalsTestProtocol:97 Expecting actual:
-			 * it.eng.catalog.model.Dataset@4cecc15a to be equal to:
-			 * it.eng.catalog.model.Dataset@574ffd63 when recursively comparing field by
-			 * field, but found the following difference:
-			 * 
-			 * field/property 'artifact' differ: - actual value :
-			 * "urn:uuid:4a8b93c9-1b0e-46a6-a78d-3fa7ace4404f" - expected value: null
-			 * 
-			 * The recursive comparison was performed with this configuration: - no
-			 * overridden equals methods were used in the comparison (except for java types)
-			 * - these types were compared with the following comparators: -
-			 * java.lang.Double -> DoubleComparator[precision=1.0E-15] - java.lang.Float ->
-			 * FloatComparator[precision=1.0E-6] - java.nio.file.Path -> lexicographic
-			 * comparator (Path natural order) - actual and expected objects and their
-			 * fields were compared field by field recursively even if they were not of the
-			 * same type, this allows for example to compare a Person to a PersonDto (call
-			 * strictTypeChecking(true) to change that behavior). - the introspection
-			 * strategy used was: DefaultRecursiveComparisonIntrospectionStrategy
-			 */
 			.id("urn:uuid:" + UUID.randomUUID())
 			.artifactType(ArtifactType.FILE)
 			.contentType(MediaType.APPLICATION_JSON.getType())

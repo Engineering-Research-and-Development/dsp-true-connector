@@ -137,6 +137,7 @@ public class CatalogMockObjectUtil {
     		.id(DATASET_ID)
             .conformsTo(CONFORMSTO)
             .creator(CREATOR)
+            .artifact(null)
             .distribution(Arrays.asList(DISTRIBUTION).stream().collect(Collectors.toCollection(HashSet::new)))
             .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
             .issued(ISSUED)
@@ -155,7 +156,6 @@ public class CatalogMockObjectUtil {
             .distribution(Arrays.asList(DISTRIBUTION).stream().collect(Collectors.toCollection(HashSet::new)))
             .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
             .issued(ISSUED)
-            .artifact(FILE_ID)
             .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
             .identifier(IDENTIFIER)
             .modified(MODIFIED)
@@ -271,7 +271,7 @@ public class CatalogMockObjectUtil {
     public static final Collection<DataService> DATA_SERVICES = Arrays.asList(DATA_SERVICE);
     
     public static final Artifact ARTIFACT_FILE = Artifact.Builder.newInstance()
-//			.id("urn:uuid:" + UUID.randomUUID())
+			.id("urn:uuid:" + UUID.randomUUID())
 			.artifactType(ArtifactType.FILE)
 			.contentType(MediaType.APPLICATION_JSON.getType())
 			.createdBy(CREATOR)
@@ -284,7 +284,7 @@ public class CatalogMockObjectUtil {
 			.build();
 	
 	public static final Artifact ARTIFACT_EXTERNAL = Artifact.Builder.newInstance()
-//			.id("urn:uuid:" + UUID.randomUUID())
+			.id("urn:uuid:" + UUID.randomUUID())
 			.artifactType(ArtifactType.EXTERNAL)
 			.createdBy(CREATOR)
 			.created(NOW)
