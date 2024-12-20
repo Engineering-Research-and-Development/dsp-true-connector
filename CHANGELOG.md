@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 ### Added
  
  - User CRUD endpoints and logic (create user, find, update user and update password)
- - Tools module - ExcaptionApiAdvice handler
+ - Tools module - ExceptionApiAdvice handler
  - org.passay:passay:1.6.6 and password strength check library
  - GHA API user test cases
 
