@@ -7,7 +7,7 @@ on:
 jobs:
   build-and-push-image:
     if: "!contains(github.event.head_commit.message, '[maven-release-plugin]')"
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     
     permissions:
       contents: read
@@ -59,7 +59,7 @@ jobs:
       
   negotiation-api-tests:
     needs: build-and-push-image
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     
     steps:
       - name: Git Checkout
@@ -87,7 +87,7 @@ jobs:
 
   datatransfer-api-tests:
     needs: build-and-push-image
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     
     steps:
       - name: Git Checkout
@@ -115,7 +115,7 @@ jobs:
         
   api-endpoints-tests:
     needs: build-and-push-image
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     
     steps:
       - name: Git Checkout
