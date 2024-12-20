@@ -1,30 +1,27 @@
 package it.eng.catalog.service;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
+import java.net.URL;
 import java.util.List;
-import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.bson.Document;
-import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.mongodb.client.gridfs.GridFSBucket;
 import com.mongodb.client.gridfs.GridFSBuckets;
-import com.mongodb.client.gridfs.model.GridFSFile;
 import com.mongodb.client.gridfs.model.GridFSUploadOptions;
-import com.mongodb.client.model.Filters;
 
 import it.eng.catalog.exceptions.CatalogErrorAPIException;
 import it.eng.catalog.model.Dataset;
 import it.eng.tools.model.Artifact;
+import it.eng.tools.model.ArtifactType;
+import it.eng.tools.repository.ArtifactRepository;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -37,18 +34,51 @@ public class ArtifactService {
 	
 	private final MongoTemplate mongoTemplate;
 	private final DatasetService datasetService;
+	private final ArtifactRepository artifactRepository;
 	
-	public ArtifactService(MongoTemplate mongoTemplate, DatasetService datasetService) {
+	public List<Artifact> getArtifacts(String artifactId) {
+		if(StringUtils.isNotBlank(artifactId)) {
+			return artifactRepository.findById(artifactId)
+					.stream()
+					.collect(Collectors.toList());
+		}
+		return artifactRepository.findAll();
+	}
+	
+	public ArtifactService(MongoTemplate mongoTemplate, DatasetService datasetService, ArtifactRepository artifactRepository) {
 		super();
 		this.mongoTemplate = mongoTemplate;
 		this.datasetService = datasetService;
+		this.artifactRepository = artifactRepository;
 	}
 
-	public ObjectId storeFile(MultipartFile file, String datasetId) {
+	public Artifact uploadArtifact(MultipartFile file, String datasetId, URL externalURL) {
+		if (file != null) {
+			return storeFile(file, datasetId);
+		} else if (externalURL != null) {
+			return insertExternalArtifact(datasetId, externalURL);
+		}
+		log.warn("Artifact and file not found");
+		throw new CatalogErrorAPIException("Artifact and file not found");
+	}
+
+	private Artifact insertExternalArtifact(String datasetId, URL externalURL) {
 		try {
-			if (file.isEmpty()) {
-				throw new CatalogErrorAPIException("Failed to store empty file.");
-			}
+			Artifact artifact = Artifact.Builder.newInstance()
+					.artifactType(ArtifactType.EXTERNAL)
+					.value(externalURL.toString())
+					.build();
+			artifact = artifactRepository.save(artifact);
+			updateDataset(datasetId, artifact.getId());
+			return artifact;
+		} catch (Exception e) {
+			log.error("Failed to insert external artifact", e);
+			throw new CatalogErrorAPIException("Failed to insert external artifact. " + e.getLocalizedMessage());
+		}
+	}
+
+	private Artifact storeFile(MultipartFile file, String datasetId) {
+		try {
 			GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
 			Document doc = new Document();
 			//TODO check what happens if file.getContentType() is null
@@ -57,52 +87,35 @@ public class ArtifactService {
 			GridFSUploadOptions options = new GridFSUploadOptions()
 			        .chunkSizeBytes(1048576) // 1MB chunk size
 			        .metadata(doc);
-			try (InputStream inputStream = file.getInputStream()) {
-				   ObjectId objId = gridFSBucket.uploadFromStream(file.getOriginalFilename(), inputStream, options);
-				   Dataset dataset = datasetService.getDatasetById(datasetId);
-				   // TODO not most elegant solution to change one field since we do not have setters
-				   Field fileIdField = dataset.getClass().getDeclaredField("fileId");
-				   fileIdField.setAccessible(true);
-				   fileIdField.set(dataset, objId.toHexString());
-				   datasetService.updateDataset(datasetId, dataset);
-				   return objId;
-			} catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
-				log.error("Error while updating dataset with file reference", e);
-				throw new CatalogErrorAPIException("Failed to update dataset.fileId. " + e.getLocalizedMessage());
-			}
+			ObjectId fileId = gridFSBucket.uploadFromStream(file.getOriginalFilename(), file.getInputStream(), options);
+			Artifact artifact = Artifact.Builder.newInstance()
+					.artifactType(ArtifactType.FILE)
+					.value(fileId.toHexString())
+					.contentType(file.getContentType())
+					.filename(file.getOriginalFilename())
+					.build();
+			artifact = artifactRepository.save(artifact);
+			updateDataset(datasetId, artifact.getId());
+			return artifact;
 		}
 		catch (IOException e) {
-			log.error("Error while uploading file to dataset", e);
+			log.error("Error while uploading file", e);
 			throw new CatalogErrorAPIException("Failed to store file. " + e.getLocalizedMessage());
 		}
 	}
 	
-	public List<Artifact> listArtifacts(String artifactId) {
-		Bson query = null;
-		if(StringUtils.isNotBlank(artifactId)) {
-			ObjectId fileId = new ObjectId(artifactId);
-			query = Filters.eq("_id", fileId);
-		} else {
-			query = Filters.empty();
+	private void updateDataset(String datasetId, String artifactId) {
+		Dataset dataset = datasetService.getDatasetByIdForApi(datasetId);
+		// TODO not most elegant solution to change one field since we do not have setters
+		try {
+			Field artifactIdField = dataset.getClass().getDeclaredField("artifact");
+			artifactIdField.setAccessible(true);
+			artifactIdField.set(dataset, artifactId);
+		} catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
+			log.error("Error while updating dataset with artifact reference", e);
+			throw new CatalogErrorAPIException("Failed to update dataset.artifactId. " + e.getLocalizedMessage());
 		}
-		
-		GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
-		List<Artifact> result = new ArrayList<>();
-			gridFSBucket.find(query)
-			.forEach(new Consumer<GridFSFile>() {
-			    @Override
-			    public void accept(final GridFSFile gridFSFile) {
-			    	Artifact artifact = new Artifact();
-//			    	artifact.setId(gridFSFile.getObjectId().toHexString());
-//			    	artifact.setFilename(gridFSFile.getFilename());
-//			    	artifact.setLength(gridFSFile.getLength());
-//			    	artifact.setUploadDate(gridFSFile.getUploadDate().toString());
-//			    	artifact.setContentType(gridFSFile.getMetadata().getString(HttpHeaders.CONTENT_TYPE));
-//			    	artifact.setDatasetId(gridFSFile.getMetadata().getString(DATASET_ID_METADATA));
-			    	result.add(artifact);
-			    }
-			});
-			return result;
+		datasetService.updateDataset(datasetId, dataset);
 	}
 	
 }

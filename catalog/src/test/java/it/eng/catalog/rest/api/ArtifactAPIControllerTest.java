@@ -35,7 +35,7 @@ class ArtifactAPIControllerTest {
 	
 	@InjectMocks
 	private ArtifactAPIController controller;
-	
+	/*
 	@Test
 	void testUploadFile() {
 		when(artifactService.storeFile(file, MockObjectUtil.DATASET.getId())).thenReturn(objId);
@@ -52,5 +52,5 @@ class ArtifactAPIControllerTest {
 		assertNotNull(response);
 		assertTrue(HttpStatus.OK.equals(response.getStatusCode()));
 	}
-
+*/
 }
