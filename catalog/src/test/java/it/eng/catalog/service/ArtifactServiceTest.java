@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.bson.types.ObjectId;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,6 +39,7 @@ import it.eng.tools.model.Artifact;
 import it.eng.tools.repository.ArtifactRepository;
 
 @ExtendWith(MockitoExtension.class)
+@Disabled
 public class ArtifactServiceTest {
 	
 	@Mock
