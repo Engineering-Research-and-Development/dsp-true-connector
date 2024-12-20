@@ -8,7 +8,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
+
+import org.bson.types.ObjectId;
+import org.springframework.http.MediaType;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -29,6 +33,8 @@ import it.eng.catalog.model.Operator;
 import it.eng.catalog.model.Permission;
 import it.eng.catalog.model.Reference;
 import it.eng.catalog.serializer.Serializer;
+import it.eng.tools.model.Artifact;
+import it.eng.tools.model.ArtifactType;
 
 public class CatalogMockObjectUtil {
 
@@ -49,6 +55,8 @@ public class CatalogMockObjectUtil {
     public static final String TITLE = "Title_for_test";
     public static final String ENDPOINT_URL = "https://provider-a.com/connector";
     public static final String FILE_ID = "some_file";
+	public static final Instant NOW = Instant.now();
+
 
     public static final Multilanguage MULTILANGUAGE =
             Multilanguage.Builder.newInstance().language("en").value("For test").build();
@@ -261,6 +269,30 @@ public class CatalogMockObjectUtil {
             .build();
     
     public static final Collection<DataService> DATA_SERVICES = Arrays.asList(DATA_SERVICE);
+    
+    public static final Artifact ARTIFACT_FILE = Artifact.Builder.newInstance()
+			.id("urn:uuid:" + UUID.randomUUID())
+			.artifactType(ArtifactType.FILE)
+			.contentType(MediaType.APPLICATION_JSON.getType())
+			.createdBy(CREATOR)
+			.created(NOW)
+			.lastModifiedDate(NOW)
+			.filename("Employees.txt")
+			.lastModifiedBy(CREATOR)
+			.value(new ObjectId().toHexString())
+			.version(0L)
+			.build();
+	
+	public static final Artifact ARTIFACT_EXTERNAL = Artifact.Builder.newInstance()
+			.id("urn:uuid:" + UUID.randomUUID())
+			.artifactType(ArtifactType.EXTERNAL)
+			.createdBy(CREATOR)
+			.created(NOW)
+			.lastModifiedDate(NOW)
+			.lastModifiedBy(CREATOR)
+			.value("https://example.com/employees")
+			.version(0L)
+			.build();
 
 
     public static void getAllKeysUsingJsonNodeFieldNames(JsonNode jsonNode, Set<String> keys) {
