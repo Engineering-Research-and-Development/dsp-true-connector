@@ -1,7 +1,6 @@
 package it.eng.catalog.service;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.net.URL;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -107,15 +106,11 @@ public class ArtifactService {
 	private void updateDataset(String datasetId, String artifactId) {
 		Dataset dataset = datasetService.getDatasetByIdForApi(datasetId);
 		// TODO not most elegant solution to change one field since we do not have setters
-		try {
-			Field artifactIdField = dataset.getClass().getDeclaredField("artifact");
-			artifactIdField.setAccessible(true);
-			artifactIdField.set(dataset, artifactId);
-		} catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
-			log.error("Error while updating dataset with artifact reference", e);
-			throw new CatalogErrorAPIException("Failed to update dataset.artifactId. " + e.getLocalizedMessage());
-		}
-		datasetService.updateDataset(datasetId, dataset);
+			Dataset datasetWithArtifact = Dataset.Builder.newInstance()
+					.id(datasetId)
+					.artifact(artifactId)
+					.build();
+		datasetService.updateDataset(datasetId, datasetWithArtifact);
 	}
 	
 }

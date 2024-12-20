@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Optional;
 
 import org.bson.types.ObjectId;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -125,7 +124,6 @@ public class ArtifactServiceTest {
 	
 	@Test
     @DisplayName("Upload external - success")
-	@Disabled
     public void uploadExternal_success() throws IOException {
 		when(artifactRepository.save(any(Artifact.class))).thenReturn(MockObjectUtil.ARTIFACT_EXTERNAL);
 		when(datasetService.getDatasetByIdForApi(MockObjectUtil.DATASET_ID)).thenReturn(MockObjectUtil.DATASET);
@@ -138,7 +136,6 @@ public class ArtifactServiceTest {
 	
 	@Test
     @DisplayName("Upload external - fail")
-	@Disabled
     public void uploadExternal_fail() throws IOException {
 		when(artifactRepository.save(any(Artifact.class))).thenThrow(IllegalArgumentException.class);
 
