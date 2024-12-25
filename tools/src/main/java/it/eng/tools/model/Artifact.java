@@ -2,6 +2,7 @@ package it.eng.tools.model;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.UUID;
 
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
@@ -126,6 +127,9 @@ public class Artifact implements Serializable{
 		}
 		
 		public Artifact build() {
+			if (artifact.id == null) {
+				artifact.id = "urn:uuid:" + UUID.randomUUID();
+			}
 			return artifact;
 		}
 	}	

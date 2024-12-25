@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import it.eng.tools.model.ExternalData;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -122,7 +123,7 @@ public class OkHttpRestClient {
 	 * @param authorization
 	 * @return
 	 */
-	public GenericApiResponse<Response> downloadData(String targetAddress, String authorization) {
+	public GenericApiResponse<ExternalData> downloadData(String targetAddress, String authorization) {
 		Request.Builder requestBuilder = new Request.Builder()
 				.url(targetAddress);
 		if(StringUtils.isNotBlank(authorization)) {
@@ -130,12 +131,14 @@ public class OkHttpRestClient {
 		}
 		Request request = requestBuilder.build();
 		log.info("Sending request using address: " + targetAddress);
-		try {
-			Response response = okHttpClient.newCall(request).execute();
+		try (Response response = okHttpClient.newCall(request).execute()) {
 			int code = response.code();
 			log.info("Status {}", code);
 			if(response.isSuccessful()) { // code in 200..299
-				return GenericApiResponse.success(response, "Response received from " + targetAddress);
+				ExternalData externalData = new ExternalData();
+				externalData.setData(response.body().bytes());
+				externalData.setContentType(response.body().contentType());
+				return GenericApiResponse.success(externalData, "Response received from " + targetAddress);
 			} else {
 				return GenericApiResponse.error(response.message());
 			}

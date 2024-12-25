@@ -35,6 +35,13 @@ public class ArtifactService {
 	private final DatasetService datasetService;
 	private final ArtifactRepository artifactRepository;
 	
+	public ArtifactService(MongoTemplate mongoTemplate, DatasetService datasetService, ArtifactRepository artifactRepository) {
+		super();
+		this.mongoTemplate = mongoTemplate;
+		this.datasetService = datasetService;
+		this.artifactRepository = artifactRepository;
+	}
+
 	public List<Artifact> getArtifacts(String artifactId) {
 		if(StringUtils.isNotBlank(artifactId)) {
 			return artifactRepository.findById(artifactId)
@@ -42,13 +49,6 @@ public class ArtifactService {
 					.collect(Collectors.toList());
 		}
 		return artifactRepository.findAll();
-	}
-	
-	public ArtifactService(MongoTemplate mongoTemplate, DatasetService datasetService, ArtifactRepository artifactRepository) {
-		super();
-		this.mongoTemplate = mongoTemplate;
-		this.datasetService = datasetService;
-		this.artifactRepository = artifactRepository;
 	}
 
 	public Artifact uploadArtifact(MultipartFile file, String datasetId, URL externalURL) {
