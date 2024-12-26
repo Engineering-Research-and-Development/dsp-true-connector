@@ -23,7 +23,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.connector.model.PasswordValidationResult;
-import it.eng.connector.model.Role;
 import it.eng.connector.model.User;
 import it.eng.connector.model.UserDTO;
 import it.eng.connector.repository.UserRepository;
@@ -111,7 +110,6 @@ class UserServiceTest {
 		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(TestUtil.USER));
 		when(userDTO.getFirstName()).thenReturn("First Name update");
 		when(userDTO.getLastName()).thenReturn("Last Name update");
-		when(userDTO.getRole()).thenReturn(Role.ROLE_ADMIN);
 		
 		userService.updateUser(USER_ID, TestUtil.USER.getEmail(), userDTO);
 		

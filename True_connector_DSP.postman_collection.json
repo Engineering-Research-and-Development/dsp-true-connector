@@ -1730,7 +1730,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n  \"firstName\" : \"UPDATE_NAME\",\r\n  \"lastName\" : \"UPDATE_LAST_NAME\",\r\n  \"role\" : \"ROLE_ADMIN\"\r\n}",
+									"raw": "{\r\n  \"firstName\" : \"UPDATE_NAME\",\r\n  \"lastName\" : \"UPDATE_LAST_NAME\"\r\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -1795,7 +1795,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n  \"email\" : \"{{userEmail}}\",\r\n  \"newPassword\" : \"ValidaPasswordUpdate123!\",\r\n  \"password\" : \"ValidPassword123!\"\r\n}",
+									"raw": "{\r\n  \"newPassword\" : \"ValidaPasswordUpdate123!\",\r\n  \"password\" : \"ValidPassword123!\"\r\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -2661,6 +2661,14 @@
 		},
 		{
 			"key": "transactionId",
+			"value": ""
+		},
+		{
+			"key": "userId",
+			"value": ""
+		},
+		{
+			"key": "userEmail",
 			"value": ""
 		},
 		{

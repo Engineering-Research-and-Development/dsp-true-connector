@@ -75,11 +75,8 @@ public class UserService {
 				.orElseThrow(() -> new BadRequestException("User not found"));
 		
 		if(user.getEmail().equals(loggedInUser)) {
-				// current password matches with old provided
-//				user.setPassword(encoder.encode(userDTO.getNewPassword()));
 				user.setFirstName(userDTO.getFirstName() != null ? userDTO.getFirstName() : user.getFirstName());
 				user.setLastName(userDTO.getLastName() != null ? userDTO.getLastName() : user.getLastName());
-				user.setRole(userDTO.getRole() != null ? userDTO.getRole() : user.getRole());
 				userRepository.save(user);
 				return Serializer.serializePlainJsonNode(user);
 		} else {
