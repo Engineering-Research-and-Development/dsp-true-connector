@@ -313,14 +313,16 @@
 									"formdata": [
 										{
 											"key": "file",
+											"description": "File for upload",
 											"type": "file",
 											"src": [],
 											"disabled": true
 										},
 										{
-											"key": "artifactRequest",
-											"value": "{\n    \"artifactType\": \"EXTERNAL\",\n    \"value\":\"https://www.google.com/\"\n}",
-											"contentType": "application/json",
+											"key": "url",
+											"value": "",
+											"contentType": "",
+											"description": "URL for external download",
 											"type": "text",
 											"disabled": true
 										}
