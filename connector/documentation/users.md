@@ -1,17 +1,32 @@
-# Users in Connector
+# Connector authorization
 
-There are 2 types of users that can access Connector API:
+There are 2 types of authorizations that can access Connector endpoints:
 
- * connector (performing contract negotiation and requesting data) 
- * human (api) user (performing actions for configuring connector and updating catalogs)
+ * connector  
+ * human user
  
-## Connector "user"
+## Connector
 
-This user does not represent human in real life, but it is used to identify and authorize other connectors performing actions like requesting catalog, doing contract negotiation or requesting data. Authorization is performed via Bearer token - in form of JWT (Json Web Token). Token should be send with each request and connector will evaluate token and if all checks are successful, action will be allowed. Otherwise 403 Http status response will be returned.
+This authorization does not represent human in real life, but it is used to identify and authorize other connectors performing when interacting with connector. Authorization will be used to access endpoints defined by [Dataspace Protocol.](https://docs.internationaldataspaces.org/ids-knowledgebase/dataspace-protocol)
 
-## API (human) user
+ - [requesting catalog](https://docs.internationaldataspaces.org/ids-knowledgebase/dataspace-protocol/catalog/catalog.binding.https), 
+ - [contract negotiation](https://docs.internationaldataspaces.org/ids-knowledgebase/dataspace-protocol/contract-negotiation/contract.negotiation.binding.https) 
+ - [transfer process](https://docs.internationaldataspaces.org/ids-knowledgebase/dataspace-protocol/transfer-process/transfer.process.binding.https)
+ 
+If connector protocol endpoints are secured with Basic authorization, then user with role CONNECTOR should be created. And when other connectors are interacting with it, they should send Authorization header with Basic auth.
 
-Api user represents real human user, responsible for configuring connector, making configuration modifications and updating catalogs. This user is identified with username, password and role. From API perspective, authorization is done using Basic authorization (header key - 'Authorization', header value 'Basic encoded(username:password)'.
+In case when authorization is performed via Bearer token - in form of JWT (Json Web Token), then connector authorization should not exist. 
+JWToken should be send with each request and connector will evaluate token and if all checks are successful, action will be allowed.
+
+## Human user
+
+Human user represents real human user, responsible for interacting with connector, via API endpoints:
+ - making configuration modifications 
+ - updating catalog
+ - interacting with contract negotiation (start, approve, verify...)
+ - performing actual data transfer
+ 
+This user is identified with username, password and role.ADMIN. From API perspective, authorization is done using Basic authorization (header key - 'Authorization', header value 'Basic encoded(username:password)'.
 
 Information about users and their roles are stored in database.
 
