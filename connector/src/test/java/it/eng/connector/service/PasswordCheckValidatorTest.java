@@ -2,20 +2,37 @@ package it.eng.connector.service;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.when;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import it.eng.connector.configuration.PasswordValidationConfiguration;
 import it.eng.connector.model.PasswordValidationResult;
 
 @ExtendWith(MockitoExtension.class)
 class PasswordCheckValidatorTest {
 	
+	@Mock
+	private PasswordValidationConfiguration passwordValidationConfiguration;
+	
 	@InjectMocks
-	private PasswordCheckValidator passwordCheckValidator;// = new PasswordCheckValidator();
+	private PasswordCheckValidator passwordCheckValidator;
+	
+	@BeforeEach
+	public void getPasswordConfiguration() {
+		when(passwordValidationConfiguration.getMinLength()).thenReturn(8);
+		when(passwordValidationConfiguration.getMaxLength()).thenReturn(16);
+		when(passwordValidationConfiguration.getMinUpperCase()).thenReturn(1);
+		when(passwordValidationConfiguration.getMinLowerCase()).thenReturn(1); 
+		when(passwordValidationConfiguration.getMinDigit()).thenReturn(1);
+		when(passwordValidationConfiguration.getMinSpecial()).thenReturn(1);
+	}
 
 	@Test
 	@DisplayName("Password check - invalid password, not cmpliant with restrictions")

@@ -319,7 +319,49 @@
 	            "issued": "2024-06-24T16:26:00.000Z",
 	            "modified": "2024-06-24T16:26:00.000Z",
 	            "version": 0
-	        }
+	        }, {
+				"_id": "application.password.validator.minLength",
+				"value": "8",
+				"mandatory": false,
+				"issued": "2024-12-24T16:26:00.000Z",
+				"modified": "2024-12-24T16:26:00.000Z",
+				"version": 0
+			}, {
+				"_id": "application.password.validator.maxLength",
+				"value": "16",
+				"mandatory": false,
+				"issued": "2024-12-24T16:26:00.000Z",
+				"modified": "2024-12-24T16:26:00.000Z",
+				"version": 0
+			}, {
+				"_id": "application.password.validator.minUpperCase",
+				"value": "1",
+				"mandatory": false,
+				"issued": "2024-12-24T16:26:00.000Z",
+				"modified": "2024-12-24T16:26:00.000Z",
+				"version": 0
+			}, {
+				"_id": "application.password.validator.minLowerCase",
+				"value": "1",
+				"mandatory": false,
+				"issued": "2024-12-24T16:26:00.000Z",
+				"modified": "2024-12-24T16:26:00.000Z",
+				"version": 0
+			}, {
+				"_id": "application.password.validator.minDigit",
+				"value": "1",
+				"mandatory": false,
+				"issued": "2024-12-24T16:26:00.000Z",
+				"modified": "2024-12-24T16:26:00.000Z",
+				"version": 0
+			}, {
+				"_id": "application.password.validator.minSpecial",
+				"value": "1",
+				"mandatory": false,
+				"issued": "2024-12-24T16:26:00.000Z",
+				"modified": "2024-12-24T16:26:00.000Z",
+				"version": 0
+			}
 	    ],
 	    "agreements": [{
 	            "_id": "urn:uuid:AGREEMENT_ID_OK",

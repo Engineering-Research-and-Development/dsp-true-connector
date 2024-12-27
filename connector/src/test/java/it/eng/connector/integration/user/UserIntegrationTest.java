@@ -57,7 +57,7 @@ public class UserIntegrationTest extends BaseIntegrationTest {
 	@Test
 	@WithUserDetails(TestUtil.ADMIN_USER)
 	public void createUser() throws Exception {
-		UserDTO userDTO = new UserDTO("firstName", "lastName", "test@mail.com", "StrongPassword123!", null, Role.ROLE_ADMIN);
+		UserDTO userDTO = new UserDTO("firstName", "lastName", "test@mail.com", "StrongPasswrd12!", null, Role.ROLE_ADMIN);
 		
 		final ResultActions result = mockMvc.perform(post(ApiEndpoints.USERS_V1)
 				.content(Serializer.serializePlain(userDTO))
@@ -163,7 +163,7 @@ public class UserIntegrationTest extends BaseIntegrationTest {
 				passwordEncoder.encode("password"), true, Role.ROLE_ADMIN);
 		userRepository.save(user);
 		
-		UserDTO userDTO = new UserDTO("FirstNameTestUpdate", "LastNameTestUpdate", null, "password", "NewUpdatedPassword123!", Role.ROLE_ADMIN);
+		UserDTO userDTO = new UserDTO("FirstNameTestUpdate", "LastNameTestUpdate", null, "password", "NewUpdPass123!", Role.ROLE_ADMIN);
 		
 		HttpHeaders headers = new HttpHeaders();
 		headers.setBasicAuth("otherUser1@mail.com", "password");

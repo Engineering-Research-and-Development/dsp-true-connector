@@ -8,23 +8,28 @@ import org.passay.LengthRule;
 import org.passay.PasswordData;
 import org.passay.PasswordValidator;
 import org.passay.RuleResult;
-import org.passay.WhitespaceRule;
 import org.springframework.stereotype.Component;
 
+import it.eng.connector.configuration.PasswordValidationConfiguration;
 import it.eng.connector.model.PasswordValidationResult;
 
 @Component
 public class PasswordCheckValidator {
+	
+	private final PasswordValidationConfiguration passwordValidationConfiguration;
+	
+	public PasswordCheckValidator(PasswordValidationConfiguration passwordValidationConfiguration) {
+		super();
+		this.passwordValidationConfiguration = passwordValidationConfiguration;
+	}
 
 	public PasswordValidationResult isValid(String password) {
-		// TODO make this config from Mongo or property files
 		final PasswordValidator validator = new PasswordValidator(Arrays.asList(
-				new LengthRule(8, 30), 
-				new CharacterRule(EnglishCharacterData.UpperCase, 1),
-				new CharacterRule(EnglishCharacterData.LowerCase, 1), 
-				new CharacterRule(EnglishCharacterData.Digit, 1),
-				new CharacterRule(EnglishCharacterData.Special, 1), 
-				new WhitespaceRule()));
+				new LengthRule(passwordValidationConfiguration.getMinLength(), passwordValidationConfiguration.getMaxLength()), 
+				new CharacterRule(EnglishCharacterData.UpperCase, passwordValidationConfiguration.getMinUpperCase()),
+				new CharacterRule(EnglishCharacterData.LowerCase, passwordValidationConfiguration.getMinLowerCase()), 
+				new CharacterRule(EnglishCharacterData.Digit, passwordValidationConfiguration.getMinDigit()),
+				new CharacterRule(EnglishCharacterData.Special, passwordValidationConfiguration.getMinSpecial())));
 		final RuleResult result = validator.validate(new PasswordData(password));
 		PasswordValidationResult validationResult = new PasswordValidationResult();
 		if (result.isValid()) {

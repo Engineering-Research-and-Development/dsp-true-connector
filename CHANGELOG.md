@@ -1,6 +1,14 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 27-12-2024
+
+### Added
+
+ - New password strength validation properties
+ - Logic for reading password validation properties and configuring validator
+ - Tools Serializer - deserializePlain(String jsonStringPlain, TypeReference<T> typeRef)
+
 ## [0.1.1] - 20-12-2024
 
 ### Added
