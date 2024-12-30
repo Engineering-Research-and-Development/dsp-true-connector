@@ -13,9 +13,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 import it.eng.tools.exception.ApplicationPropertyNotChangedAPIException;
 import it.eng.tools.exception.ApplicationPropertyNotFoundAPIException;
 import it.eng.tools.model.ApplicationProperty;
+import it.eng.tools.model.Serializer;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.ApplicationPropertiesService;
 import lombok.extern.java.Log;
@@ -46,12 +49,13 @@ public class ApplicationPropertiesAPIController {
 	 * @return List of properties
 	 */
 	@GetMapping(path = "/")
-	public ResponseEntity<GenericApiResponse<List<ApplicationProperty>>> getProperties(@RequestParam(required = false) String key_prefix) {
+	public ResponseEntity<GenericApiResponse<JsonNode>> getProperties(@RequestParam(required = false) String key_prefix) {
 		log.info("getProperties()");
 		if(key_prefix != null && !key_prefix.isBlank()) log.info(" with key_prefix " + key_prefix);
-		var properties = propertiesService.getProperties(key_prefix);
+		List<ApplicationProperty> properties = propertiesService.getProperties(key_prefix);
 
-		GenericApiResponse<List<ApplicationProperty>> genericApiResponse = GenericApiResponse.success(properties, "Application properties with prefix");
+		GenericApiResponse<JsonNode> genericApiResponse = 
+				GenericApiResponse.success(Serializer.serializePlainJsonNode(properties), "Application properties with prefix");
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
 				.body(genericApiResponse);
 	}
@@ -62,13 +66,13 @@ public class ApplicationPropertiesAPIController {
 	 * @return property
 	 */
 	@GetMapping(path = "/{key}")
-	public ResponseEntity<GenericApiResponse<ApplicationProperty>> getPropertyByKey(@PathVariable String key) {
+	public ResponseEntity<GenericApiResponse<JsonNode>> getPropertyByKey(@PathVariable String key) {
 		log.info("Fetching property with key " + key);
 
 		ApplicationProperty property = propertiesService.getPropertyByKey(key).orElseThrow(() -> new ApplicationPropertyNotFoundAPIException("Property with key " + key + " not found"));
 
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-				.body(GenericApiResponse.success(property, "Application property for key"));
+				.body(GenericApiResponse.success(Serializer.serializePlainJsonNode(property), "Application property for key"));
 	}
 
 	/**
@@ -77,7 +81,7 @@ public class ApplicationPropertiesAPIController {
 	 * @return Response
 	 */
 	@PutMapping(path = "/")
-	public ResponseEntity<GenericApiResponse<ApplicationProperty>> modifyProperty(@RequestBody ApplicationProperty property) {
+	public ResponseEntity<GenericApiResponse<JsonNode>> modifyProperty(@RequestBody ApplicationProperty property) {
 		log.info("modifyProperty(...) ");
 		log.info("property = " + property);
 
@@ -94,7 +98,7 @@ public class ApplicationPropertiesAPIController {
 		}
 
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-				.body(GenericApiResponse.success(storedProperty, "Application property updated"));
+				.body(GenericApiResponse.success(Serializer.serializePlainJsonNode(storedProperty), "Application property updated"));
 	}
 
 }

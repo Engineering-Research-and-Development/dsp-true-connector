@@ -12,26 +12,26 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import it.eng.connector.configuration.PasswordValidationConfiguration;
+import it.eng.connector.configuration.properties.PasswordStrengthProperties;
 import it.eng.connector.model.PasswordValidationResult;
 
 @ExtendWith(MockitoExtension.class)
 class PasswordCheckValidatorTest {
 	
 	@Mock
-	private PasswordValidationConfiguration passwordValidationConfiguration;
+	private PasswordStrengthProperties passwordStrengthProperties;
 	
 	@InjectMocks
 	private PasswordCheckValidator passwordCheckValidator;
 	
 	@BeforeEach
 	public void getPasswordConfiguration() {
-		when(passwordValidationConfiguration.getMinLength()).thenReturn(8);
-		when(passwordValidationConfiguration.getMaxLength()).thenReturn(16);
-		when(passwordValidationConfiguration.getMinUpperCase()).thenReturn(1);
-		when(passwordValidationConfiguration.getMinLowerCase()).thenReturn(1); 
-		when(passwordValidationConfiguration.getMinDigit()).thenReturn(1);
-		when(passwordValidationConfiguration.getMinSpecial()).thenReturn(1);
+		when(passwordStrengthProperties.getMinLength()).thenReturn(8);
+		when(passwordStrengthProperties.getMaxLength()).thenReturn(16);
+		when(passwordStrengthProperties.getMinUpperCase()).thenReturn(1);
+		when(passwordStrengthProperties.getMinLowerCase()).thenReturn(1); 
+		when(passwordStrengthProperties.getMinDigit()).thenReturn(1);
+		when(passwordStrengthProperties.getMinSpecial()).thenReturn(1);
 	}
 
 	@Test
