@@ -68,7 +68,7 @@ public class ArtifactService {
 					.value(externalURL.toString())
 					.build();
 			artifact = artifactRepository.save(artifact);
-			updateDataset(datasetId, artifact.getId());
+			updateDataset(datasetId, artifact);
 			return artifact;
 		} catch (Exception e) {
 			log.error("Failed to insert external artifact", e);
@@ -94,7 +94,7 @@ public class ArtifactService {
 					.filename(file.getOriginalFilename())
 					.build();
 			artifact = artifactRepository.save(artifact);
-			updateDataset(datasetId, artifact.getId());
+			updateDataset(datasetId, artifact);
 			return artifact;
 		}
 		catch (IOException e) {
@@ -103,11 +103,11 @@ public class ArtifactService {
 		}
 	}
 	
-	private void updateDataset(String datasetId, String artifactId) {
+	private void updateDataset(String datasetId, Artifact artifact) {
 		Dataset dataset = datasetService.getDatasetByIdForApi(datasetId);
 		Dataset datasetWithArtifact = Dataset.Builder.newInstance()
 				.id(dataset.getId())
-				.artifact(artifactId)
+				.artifact(artifact)
 				.conformsTo(dataset.getConformsTo())
 				.createdBy(dataset.getCreatedBy())
 				.creator(dataset.getCreator())

@@ -148,6 +148,27 @@ public class Serializer {
         }
         return null;
     }
+    
+    /**
+     * Converts json string (plain) to java object
+     *
+     * @param <T>             Type of class
+     * @param jsonStringPlain json string
+     * @param clazz
+     * @return Java object converted from json
+     */
+    public static <T> T deserializePlain(JsonNode jsonNode, Class<T> clazz) {
+            T obj = jsonMapperPlain.convertValue(jsonNode, clazz);
+            Set<ConstraintViolation<T>> violations = validator.validate(obj);
+            if (violations.isEmpty()) {
+                return obj;
+            }
+            throw new ValidationException(
+                    violations
+                            .stream()
+                            .map(v -> v.getPropertyPath() + " " + v.getMessage())
+                            .collect(Collectors.joining(",")));
+    }
 
     /**
      * Serialize java object to json compliant with Dataspace protocol (contains prefixes for json fields)

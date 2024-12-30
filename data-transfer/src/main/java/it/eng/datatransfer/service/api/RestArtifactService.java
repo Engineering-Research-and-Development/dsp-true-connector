@@ -15,6 +15,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.mongodb.client.gridfs.GridFSBucket;
 import com.mongodb.client.gridfs.GridFSBuckets;
 import com.mongodb.client.gridfs.GridFSDownloadStream;
@@ -30,7 +31,6 @@ import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ExternalData;
-import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.response.GenericApiResponse;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -43,17 +43,15 @@ public class RestArtifactService {
 	private final MongoTemplate mongoTemplate;
 	private final OkHttpRestClient okHttpRestClient;
 	private final ApplicationEventPublisher publisher;
-	private final ArtifactRepository artifactRepository;
 	private GridFsResource gridFsResource;
 	
 	public RestArtifactService(DataTransferService dataTransferService, MongoTemplate mongoTemplate,
-			OkHttpRestClient okHttpRestClient, ApplicationEventPublisher publisher, ArtifactRepository artifactRepository) {
+			OkHttpRestClient okHttpRestClient, ApplicationEventPublisher publisher) {
 		super();
 		this.dataTransferService = dataTransferService;
 		this.mongoTemplate = mongoTemplate;
 		this.okHttpRestClient = okHttpRestClient;
 		this.publisher = publisher;
-		this.artifactRepository = artifactRepository;
 	}
 	
 
@@ -82,11 +80,14 @@ public class RestArtifactService {
 	private Artifact findArtifact(TransferProcess transferProcess) {
 		String response = okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + transferProcess.getDatasetId() + "/artifact", HttpMethod.GET, null);
 		
-		GenericApiResponse<String> rr = Serializer.deserializePlain(response, GenericApiResponse.class);
+		@SuppressWarnings("unchecked")
+		GenericApiResponse<JsonNode> genericResponse = Serializer.deserializePlain(response, GenericApiResponse.class);
 		
-		String artifactId = rr.getData();
-		Artifact artifact = artifactRepository.findById(artifactId)
-				.orElseThrow(() -> new DownloadException("No such data exists", HttpStatus.NOT_FOUND));
+		if (genericResponse.getData() == null) {
+			throw new DownloadException("No such data exists", HttpStatus.NOT_FOUND);
+		}
+		// has to be like this because the GenericApiResponse deserialization makes a LinkedHashMap
+		Artifact artifact = Serializer.deserializePlain(Serializer.serializePlain(genericResponse.getData()), Artifact.class);
 		return artifact;
 	}
 

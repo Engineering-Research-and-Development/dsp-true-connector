@@ -20,6 +20,7 @@ import it.eng.catalog.model.Dataset;
 import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.service.DatasetService;
 import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.model.Artifact;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 
@@ -62,18 +63,18 @@ public class DatasetAPIController {
     }
     
     /**
-     * Used for fetching the artifactId from a Dataset
+     * Used for fetching the artifact from a Dataset
      * 
      * @param id id of Dataset
-     * @return artifact id
+     * @return Artifact
      */
     @GetMapping(path = "/{id}/artifact")
-    public ResponseEntity<GenericApiResponse<String>> getArtifactIdFromDataset(@PathVariable String id) {
-        log.info("Fetching artifactId from dataset with id: '" + id + "'");
-        String artifactId = datasetService.getArtifactIdFromDataset(id);
+    public ResponseEntity<GenericApiResponse<JsonNode>> getArtifactFromDataset(@PathVariable String id) {
+        log.info("Fetching artifact from dataset with id: '" + id + "'");
+        Artifact artifact = datasetService.getArtifactFromDataset(id);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(artifactId, "Fetched artifact Id"));
+                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(artifact), "Fetched artifact"));
     }
 
     @GetMapping

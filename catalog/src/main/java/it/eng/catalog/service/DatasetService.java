@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import it.eng.catalog.exceptions.CatalogErrorException;
@@ -14,6 +13,7 @@ import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.Distribution;
 import it.eng.catalog.repository.DatasetRepository;
+import it.eng.tools.model.Artifact;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -146,11 +146,11 @@ public class DatasetService {
 		return formats;
 	}
 
-	public String getArtifactIdFromDataset(String id) {
-		String artifactId = getDatasetByIdForApi(id).getArtifact();
-		if (StringUtils.isBlank(artifactId)) {
-			throw new ResourceNotFoundAPIException("Dataset with id: " + id + " has no artifact id");
+	public Artifact getArtifactFromDataset(String id) {
+		Artifact artifact = getDatasetByIdForApi(id).getArtifact();
+		if (artifact == null) {
+			throw new ResourceNotFoundAPIException("Dataset with id: " + id + " has no artifact");
 		}
-		return artifactId;
+		return artifact;
 	}
 }

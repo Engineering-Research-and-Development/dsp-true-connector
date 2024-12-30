@@ -118,7 +118,10 @@
 	                    "$id": "urn:uuid:1dc45797-json-4932-8baf-ab7fd66ql4d5"
 	                }
 	            ],
-				"artifact": "urn:uuid:fdc45798-a123-4955-8baf-vc3gh22qh3j8",
+				"artifact":{
+	                "$ref": "artifacts",
+					"$id": "urn:uuid:fdc45798-a123-4955-8baf-vc3gh22qh3j8"
+				},
 	            "createdBy": "admin@mail.com",
 	            "lastModifiedBy": "admin@mail.com",
 	            "version": 0

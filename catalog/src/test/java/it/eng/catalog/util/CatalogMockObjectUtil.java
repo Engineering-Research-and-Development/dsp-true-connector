@@ -77,7 +77,29 @@ public class CatalogMockObjectUtil {
             .operator(Operator.EQ)
             .build();
 
-    public static final Permission PERMISSION = Permission.Builder.newInstance()
+    public static final Artifact ARTIFACT_FILE = Artifact.Builder.newInstance()
+	.id("urn:uuid:" + UUID.randomUUID())
+	.artifactType(ArtifactType.FILE)
+	.contentType(MediaType.APPLICATION_JSON.getType())
+	.createdBy(CREATOR)
+	.created(NOW)
+	.lastModifiedDate(NOW)
+	.filename("Employees.txt")
+	.lastModifiedBy(CREATOR)
+	.value(new ObjectId().toHexString())
+	.version(0L)
+	.build();
+	public static final Artifact ARTIFACT_EXTERNAL = Artifact.Builder.newInstance()
+	.id("urn:uuid:" + UUID.randomUUID())
+	.artifactType(ArtifactType.EXTERNAL)
+	.createdBy(CREATOR)
+	.created(NOW)
+	.lastModifiedDate(NOW)
+	.lastModifiedBy(CREATOR)
+	.value("https://example.com/employees")
+	.version(0L)
+	.build();
+	public static final Permission PERMISSION = Permission.Builder.newInstance()
             .action(Action.USE)
             .constraint(Arrays.asList(CONSTRAINT).stream().collect(Collectors.toCollection(HashSet::new)))
             .build();
@@ -148,11 +170,11 @@ public class CatalogMockObjectUtil {
             .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
             .build();
     
-    public static final Dataset DATASET_WITH_FILE_ID = Dataset.Builder.newInstance()
+    public static final Dataset DATASET_WITH_ARTIFACT = Dataset.Builder.newInstance()
     		.id(DATASET_ID)
             .conformsTo(CONFORMSTO)
             .creator(CREATOR)
-            .artifact(FILE_ID)
+            .artifact(ARTIFACT_FILE)
             .distribution(Arrays.asList(DISTRIBUTION).stream().collect(Collectors.toCollection(HashSet::new)))
             .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
             .issued(ISSUED)
@@ -270,31 +292,6 @@ public class CatalogMockObjectUtil {
     
     public static final Collection<DataService> DATA_SERVICES = Arrays.asList(DATA_SERVICE);
     
-    public static final Artifact ARTIFACT_FILE = Artifact.Builder.newInstance()
-			.id("urn:uuid:" + UUID.randomUUID())
-			.artifactType(ArtifactType.FILE)
-			.contentType(MediaType.APPLICATION_JSON.getType())
-			.createdBy(CREATOR)
-			.created(NOW)
-			.lastModifiedDate(NOW)
-			.filename("Employees.txt")
-			.lastModifiedBy(CREATOR)
-			.value(new ObjectId().toHexString())
-			.version(0L)
-			.build();
-	
-	public static final Artifact ARTIFACT_EXTERNAL = Artifact.Builder.newInstance()
-			.id("urn:uuid:" + UUID.randomUUID())
-			.artifactType(ArtifactType.EXTERNAL)
-			.createdBy(CREATOR)
-			.created(NOW)
-			.lastModifiedDate(NOW)
-			.lastModifiedBy(CREATOR)
-			.value("https://example.com/employees")
-			.version(0L)
-			.build();
-
-
     public static void getAllKeysUsingJsonNodeFieldNames(JsonNode jsonNode, Set<String> keys) {
         if (jsonNode.isObject()) {
             Iterator<Entry<String, JsonNode>> fields = jsonNode.fields();

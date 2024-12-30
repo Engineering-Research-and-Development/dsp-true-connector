@@ -29,6 +29,7 @@ import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
+import it.eng.tools.model.Artifact;
 
 @ExtendWith(MockitoExtension.class)
 public class DatasetServiceTest {
@@ -57,12 +58,12 @@ public class DatasetServiceTest {
     @Test
     @DisplayName("Get dataset by id - success")
     public void getDatasetById_success() {
-        when(repository.findById(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId())).thenReturn(Optional.of(CatalogMockObjectUtil.DATASET_WITH_FILE_ID));
+        when(repository.findById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId())).thenReturn(Optional.of(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT));
 
-        Dataset result = datasetService.getDatasetById(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId());
+        Dataset result = datasetService.getDatasetById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
 
-        assertEquals(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId(), result.getId());
-        verify(repository).findById(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId());
+        assertEquals(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), result.getId());
+        verify(repository).findById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
     }
 
     @Test
@@ -78,12 +79,12 @@ public class DatasetServiceTest {
     @Test
     @DisplayName("Get formats from dataset - success")
     public void getFormatsFromDataset_success() {
-        when(repository.findById(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId())).thenReturn(Optional.of(CatalogMockObjectUtil.DATASET_WITH_FILE_ID));
+        when(repository.findById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId())).thenReturn(Optional.of(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT));
 
-        List<String> formats = datasetService.getFormatsFromDataset(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId());
+        List<String> formats = datasetService.getFormatsFromDataset(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
 
-        assertEquals(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getDistribution().stream().findFirst().get().getFormat().getId(), formats.get(0));
-        verify(repository).findById(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId());
+        assertEquals(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getDistribution().stream().findFirst().get().getFormat().getId(), formats.get(0));
+        verify(repository).findById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
     }
 
     @Test
@@ -109,12 +110,12 @@ public class DatasetServiceTest {
     @Test
     @DisplayName("Get artifact id from dataset - success")
     public void getArtifactIdFromDataset_success() {
-        when(repository.findById(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId())).thenReturn(Optional.of(CatalogMockObjectUtil.DATASET_WITH_FILE_ID));
+        when(repository.findById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId())).thenReturn(Optional.of(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT));
 
-        String result = datasetService.getArtifactIdFromDataset(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId());
+        Artifact result = datasetService.getArtifactFromDataset(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
 
-        assertEquals(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getArtifact(), result);
-        verify(repository).findById(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId());
+        assertEquals(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getArtifact(), result);
+        verify(repository).findById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
     }
 
     @Test
@@ -124,7 +125,7 @@ public class DatasetServiceTest {
         when(repository.findById(CatalogMockObjectUtil.DATASET.getId())).thenReturn(Optional.of(mockDataset));
         when(mockDataset.getArtifact()).thenReturn(null);
 
-        assertThrows(ResourceNotFoundAPIException.class, () -> datasetService.getArtifactIdFromDataset(CatalogMockObjectUtil.DATASET.getId()));
+        assertThrows(ResourceNotFoundAPIException.class, () -> datasetService.getArtifactFromDataset(CatalogMockObjectUtil.DATASET.getId()));
 
         verify(repository).findById(CatalogMockObjectUtil.DATASET.getId());
     }
@@ -139,25 +140,25 @@ public class DatasetServiceTest {
     @Test
     @DisplayName("Save dataset")
     public void saveDataset_success() {
-        when(repository.save(any(Dataset.class))).thenReturn(CatalogMockObjectUtil.DATASET_WITH_FILE_ID);
+        when(repository.save(any(Dataset.class))).thenReturn(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT);
 
-        Dataset result = datasetService.saveDataset(CatalogMockObjectUtil.DATASET_WITH_FILE_ID);
+        Dataset result = datasetService.saveDataset(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT);
 
-        assertEquals(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId(), result.getId());
-        verify(repository).save(CatalogMockObjectUtil.DATASET_WITH_FILE_ID);
-        verify(catalogService).updateCatalogDatasetAfterSave(CatalogMockObjectUtil.DATASET_WITH_FILE_ID);
+        assertEquals(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), result.getId());
+        verify(repository).save(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT);
+        verify(catalogService).updateCatalogDatasetAfterSave(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT);
     }
 
     @Test
     @DisplayName("Delete dataset - success")
     public void deleteDataset_success() {
-        when(repository.findById(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId())).thenReturn(Optional.of(CatalogMockObjectUtil.DATASET_WITH_FILE_ID));
+        when(repository.findById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId())).thenReturn(Optional.of(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT));
 
-        datasetService.deleteDataset(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId());
+        datasetService.deleteDataset(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
 
-        verify(repository).findById(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId());
-        verify(repository).deleteById(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId());
-        verify(catalogService).updateCatalogDatasetAfterDelete(CatalogMockObjectUtil.DATASET_WITH_FILE_ID);
+        verify(repository).findById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
+        verify(repository).deleteById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
+        verify(catalogService).updateCatalogDatasetAfterDelete(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT);
     }
 
     @Test
@@ -175,13 +176,13 @@ public class DatasetServiceTest {
     @Test
     @DisplayName("Update dataset - success")
     public void updateDataset_success() {
-        when(repository.findById(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId())).thenReturn(Optional.of(CatalogMockObjectUtil.DATASET_WITH_FILE_ID));
-        when(repository.save(any(Dataset.class))).thenReturn(CatalogMockObjectUtil.DATASET_WITH_FILE_ID);
+        when(repository.findById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId())).thenReturn(Optional.of(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT));
+        when(repository.save(any(Dataset.class))).thenReturn(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT);
 
-        Dataset result = datasetService.updateDataset(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId(), CatalogMockObjectUtil.DATASET_FOR_UPDATE);
+        Dataset result = datasetService.updateDataset(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), CatalogMockObjectUtil.DATASET_FOR_UPDATE);
 
-        assertEquals(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId(), result.getId());
-        verify(repository).findById(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId());
+        assertEquals(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), result.getId());
+        verify(repository).findById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
         verify(repository).save(argCaptorDataset.capture());
         
         assertTrue(argCaptorDataset.getValue().getCreator().contains("update"));

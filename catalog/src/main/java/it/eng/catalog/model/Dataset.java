@@ -23,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
+import it.eng.tools.model.Artifact;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -76,7 +77,8 @@ public class Dataset extends AbstractCatalogObject {
     private Set<Distribution> distribution;
     
     @JsonIgnore
-    private String artifact;
+    @DBRef
+    private Artifact artifact;
     
     @JsonIgnore
     @CreatedBy
@@ -181,7 +183,7 @@ public class Dataset extends AbstractCatalogObject {
         }
 
         @JsonProperty("artifact")
-        public Builder artifact(String artifact) {
+        public Builder artifact(Artifact artifact) {
             dataset.artifact = artifact;
             return this;
         }

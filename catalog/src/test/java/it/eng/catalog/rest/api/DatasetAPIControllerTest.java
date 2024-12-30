@@ -1,5 +1,6 @@
 package it.eng.catalog.rest.api;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -26,6 +27,7 @@ import it.eng.catalog.model.Dataset;
 import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.service.DatasetService;
 import it.eng.catalog.util.CatalogMockObjectUtil;
+import it.eng.tools.model.Artifact;
 import it.eng.tools.response.GenericApiResponse;
 
 @ExtendWith(MockitoExtension.class)
@@ -101,40 +103,40 @@ public class DatasetAPIControllerTest {
     }
     
     @Test
-    @DisplayName("Get fileId from Dataset - success")
-    public void getFileIdFromDatasetSuccessfulTest() {
-        when(datasetService.getArtifactIdFromDataset(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId())).thenReturn(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getArtifact());
-        ResponseEntity<GenericApiResponse<String>> response = datasetAPIController.getArtifactIdFromDataset(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId());
+    @DisplayName("Get artifact from Dataset - success")
+    public void getArtifactFromDatasetSuccessfulTest() {
+        when(datasetService.getArtifactFromDataset(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId())).thenReturn(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getArtifact());
+        ResponseEntity<GenericApiResponse<JsonNode>> response = datasetAPIController.getArtifactFromDataset(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
 
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
-        assertTrue(StringUtils.contains(response.getBody().toString(), CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getArtifact()));
+        assertEquals(Serializer.deserializePlain(response.getBody().getData(), Artifact.class), CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getArtifact());
     }
     
     @Test
-    @DisplayName("Get fileId from Dataset - failed")
-    public void getFileIdFromDatasetFailedTest() {
-    	when(datasetService.getArtifactIdFromDataset(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId())).thenThrow(new ResourceNotFoundAPIException());
-    	assertThrows(ResourceNotFoundAPIException.class,() -> datasetAPIController.getArtifactIdFromDataset(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId()));
+    @DisplayName("Get artifact from Dataset - failed")
+    public void getArtifactFromDatasetFailedTest() {
+    	when(datasetService.getArtifactFromDataset(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId())).thenThrow(new ResourceNotFoundAPIException());
+    	assertThrows(ResourceNotFoundAPIException.class,() -> datasetAPIController.getArtifactFromDataset(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId()));
     }
     
     @Test
     @DisplayName("Get formats from Dataset - success")
     public void getFormatsFromDatasetSuccessfulTest() {
-        when(datasetService.getFormatsFromDataset(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId())).thenReturn(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getDistribution().stream().map(dist -> dist.getFormat().getId()).collect(Collectors.toList()));
-        ResponseEntity<GenericApiResponse<List<String>>> response = datasetAPIController.getFormatsFromDataset(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId());
+        when(datasetService.getFormatsFromDataset(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId())).thenReturn(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getDistribution().stream().map(dist -> dist.getFormat().getId()).collect(Collectors.toList()));
+        ResponseEntity<GenericApiResponse<List<String>>> response = datasetAPIController.getFormatsFromDataset(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
 
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
         assertTrue(StringUtils.contains(response.getBody().getData().get(0),
-        		CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getDistribution().stream().findFirst().get().getFormat().getId()));
+        		CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getDistribution().stream().findFirst().get().getFormat().getId()));
     }
     
     @Test
     @DisplayName("Get formats from Dataset - failed")
     public void getFormatsFromDatasetFailedTest() {
-        when(datasetService.getFormatsFromDataset(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId())).thenThrow(new ResourceNotFoundAPIException());
-        assertThrows(ResourceNotFoundAPIException.class,() -> datasetAPIController.getFormatsFromDataset(CatalogMockObjectUtil.DATASET_WITH_FILE_ID.getId()));
+        when(datasetService.getFormatsFromDataset(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId())).thenThrow(new ResourceNotFoundAPIException());
+        assertThrows(ResourceNotFoundAPIException.class,() -> datasetAPIController.getFormatsFromDataset(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId()));
     }
 
 }
