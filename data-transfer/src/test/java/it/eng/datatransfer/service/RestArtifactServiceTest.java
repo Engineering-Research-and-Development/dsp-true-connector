@@ -7,7 +7,6 @@ import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.Optional;
 
 import org.apache.tomcat.util.codec.binary.Base64;
 import org.apache.tomcat.util.http.fileupload.IOUtils;
@@ -25,7 +24,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletResponse;
 
 import com.mongodb.client.MongoDatabase;
@@ -41,6 +39,7 @@ import it.eng.datatransfer.service.api.RestArtifactService;
 import it.eng.datatransfer.util.DataTranferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ExternalData;
 import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.response.GenericApiResponse;
@@ -95,31 +94,17 @@ public class RestArtifactServiceTest {
 	}
 	
 	@Test
-	@DisplayName("Get artifact - dataset has no artifactId")
+	@DisplayName("Get artifact - dataset has no artifact")
 	public void getArtifact_datasetHasNoArtifactId() {
 		when(dataTransferService.findTransferProcess(CONSUMER_PID, PROVIDER_PID)).thenReturn(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED);
-		GenericApiResponse<String> apiResponse = new GenericApiResponse<String>();
-		apiResponse.setData("Dataset has no artifact");
-		apiResponse.setSuccess(true);
+		GenericApiResponse<Artifact> apiResponse = new GenericApiResponse<Artifact>();
+		apiResponse.setData(null);
+		apiResponse.setSuccess(false);
 		when(okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getDatasetId() + "/artifact", HttpMethod.GET, null))
 		.thenReturn(Serializer.serializePlain(apiResponse));
 		
 		assertThrows(DownloadException.class, () -> restArtifactService.getArtifact(TRANSACTION_ID, mockHttpServletResponse));
 		
-	}
-	
-	@Test
-	@DisplayName("Get artifact - artifact not present")
-	public void getArtifact_artifactNotPresent() {
-		when(dataTransferService.findTransferProcess(CONSUMER_PID, PROVIDER_PID)).thenReturn(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED);
-		GenericApiResponse<String> apiResponse = new GenericApiResponse<String>();
-		apiResponse.setData(DataTranferMockObjectUtil.ARTIFACT_FILE.getId());
-		apiResponse.setSuccess(true);
-		when(okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getDatasetId() + "/artifact", HttpMethod.GET, null))
-		.thenReturn(Serializer.serializePlain(apiResponse));
-		when(artifactRepository.findById(DataTranferMockObjectUtil.ARTIFACT_FILE.getId())).thenThrow(new DownloadException("No such artifact", HttpStatus.NOT_FOUND));
-		
-		assertThrows(DownloadException.class, () -> restArtifactService.getArtifact(TRANSACTION_ID, mockHttpServletResponse));
 	}
 	
 	@Test
@@ -127,12 +112,11 @@ public class RestArtifactServiceTest {
 	public void getExternalData_success() {
 		mockHttpServletResponse = new MockHttpServletResponse();
 		when(dataTransferService.findTransferProcess(CONSUMER_PID, PROVIDER_PID)).thenReturn(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED);
-		GenericApiResponse<String> apiResponse = new GenericApiResponse<String>();
-		apiResponse.setData(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL.getId());
+		GenericApiResponse<Artifact> apiResponse = new GenericApiResponse<Artifact>();
+		apiResponse.setData(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL);
 		apiResponse.setSuccess(true);
 		when(okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getDatasetId() + "/artifact", HttpMethod.GET, null))
 		.thenReturn(Serializer.serializePlain(apiResponse));
-		when(artifactRepository.findById(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL.getId())).thenReturn(Optional.of(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL));
 		ExternalData externalData = new ExternalData();
 		externalData.setData("some_data".getBytes());
 		externalData.setContentType(MediaType.parse("text/plain; charset=utf-8"));
@@ -157,12 +141,11 @@ public class RestArtifactServiceTest {
 	@DisplayName("Get extranal data - fail")
 	public void getExternalData_fail() {
 		when(dataTransferService.findTransferProcess(CONSUMER_PID, PROVIDER_PID)).thenReturn(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED);
-		GenericApiResponse<String> apiResponse = new GenericApiResponse<String>();
-		apiResponse.setData(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL.getId());
+		GenericApiResponse<Artifact> apiResponse = new GenericApiResponse<Artifact>();
+		apiResponse.setData(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL);
 		apiResponse.setSuccess(true);
 		when(okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getDatasetId() + "/artifact", HttpMethod.GET, null))
 		.thenReturn(Serializer.serializePlain(apiResponse));
-		when(artifactRepository.findById(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL.getId())).thenReturn(Optional.of(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL));
 		GenericApiResponse<ExternalData> externalResponse = new GenericApiResponse<ExternalData>();
 		externalResponse.setSuccess(false);
 		when(okHttpRestClient.downloadData(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), null)).thenReturn(externalResponse);
@@ -176,12 +159,11 @@ public class RestArtifactServiceTest {
     public void getdFile_success() throws IOException {
 		mockHttpServletResponse = new MockHttpServletResponse();
 		when(dataTransferService.findTransferProcess(CONSUMER_PID, PROVIDER_PID)).thenReturn(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED);
-		GenericApiResponse<String> apiResponse = new GenericApiResponse<String>();
-		apiResponse.setData(DataTranferMockObjectUtil.ARTIFACT_FILE.getId());
+		GenericApiResponse<Artifact> apiResponse = new GenericApiResponse<Artifact>();
+		apiResponse.setData(DataTranferMockObjectUtil.ARTIFACT_FILE);
 		apiResponse.setSuccess(true);
 		when(okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getDatasetId() + "/artifact", HttpMethod.GET, null))
 		.thenReturn(Serializer.serializePlain(apiResponse));
-		when(artifactRepository.findById(DataTranferMockObjectUtil.ARTIFACT_FILE.getId())).thenReturn(Optional.of(DataTranferMockObjectUtil.ARTIFACT_FILE));
 		ObjectId objectId = new ObjectId(DataTranferMockObjectUtil.ARTIFACT_FILE.getValue());
 		when(mongoTemplate.getDb()).thenReturn(mongoDatabase);
 		when(gridFSBucket.find(any(Bson.class))).thenReturn(gridFSFindIterable);
@@ -207,12 +189,11 @@ public class RestArtifactServiceTest {
     public void getFile_fail() throws IOException {
 		mockHttpServletResponse = new MockHttpServletResponse();
 		when(dataTransferService.findTransferProcess(CONSUMER_PID, PROVIDER_PID)).thenReturn(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED);
-		GenericApiResponse<String> apiResponse = new GenericApiResponse<String>();
-		apiResponse.setData(DataTranferMockObjectUtil.ARTIFACT_FILE.getId());
+		GenericApiResponse<Artifact> apiResponse = new GenericApiResponse<Artifact>();
+		apiResponse.setData(DataTranferMockObjectUtil.ARTIFACT_FILE);
 		apiResponse.setSuccess(true);
 		when(okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getDatasetId() + "/artifact", HttpMethod.GET, null))
 		.thenReturn(Serializer.serializePlain(apiResponse));
-		when(artifactRepository.findById(DataTranferMockObjectUtil.ARTIFACT_FILE.getId())).thenReturn(Optional.of(DataTranferMockObjectUtil.ARTIFACT_FILE));
 		when(mongoTemplate.getDb()).thenReturn(mongoDatabase);
 		when(gridFSBucket.find(any(Bson.class))).thenReturn(gridFSFindIterable);
 		when(gridFSFindIterable.first()).thenReturn(null);
