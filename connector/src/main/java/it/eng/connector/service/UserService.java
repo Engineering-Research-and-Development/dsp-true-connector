@@ -61,7 +61,7 @@ public class UserService {
 		PasswordValidationResult validationResult = passwordValidator.isValid(userDTO.getPassword());
 		if(validationResult.isValid()) {
 			User user = new User(createNewPid(), userDTO.getFirstName(), userDTO.getLastName(), userDTO.getEmail(), 
-					encoder.encode(userDTO.getPassword()), true, userDTO.getRole());
+					encoder.encode(userDTO.getPassword()), true, false, false, userDTO.getRole());
 			User u = userRepository.save(user);
 			return Serializer.serializePlainJsonNode(u);
 		} else {

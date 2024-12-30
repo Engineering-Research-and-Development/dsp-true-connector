@@ -96,7 +96,8 @@ public class UserIntegrationTest extends BaseIntegrationTest {
 	@Test
 	@WithUserDetails(TestUtil.ADMIN_USER)
 	public void createUser_already_exists() throws Exception {
-		User user = new User(createNewId(), "FirstNameTest", "LastNameTest", "email_test@mail.com", "password", true, Role.ROLE_ADMIN);
+		User user = new User(createNewId(), "FirstNameTest", "LastNameTest", "email_test@mail.com", "password", 
+				true, false, false, Role.ROLE_ADMIN);
 		userRepository.save(user);
 		
 		UserDTO userDTO = new UserDTO("FirstNameTest", "LastNameTest", "email_test@mail.com", "StrongPassword123!", null, Role.ROLE_ADMIN);
@@ -115,7 +116,8 @@ public class UserIntegrationTest extends BaseIntegrationTest {
 	@Test
 	@WithUserDetails(TestUtil.ADMIN_USER)
 	public void updateUser() throws Exception {
-		User user = new User(createNewId(), "FirstNameTest", "LastNameTest", TestUtil.ADMIN_USER, "password", true, Role.ROLE_ADMIN);
+		User user = new User(createNewId(), "FirstNameTest", "LastNameTest", TestUtil.ADMIN_USER, "password", 
+				true, false, false,Role.ROLE_ADMIN);
 		userRepository.save(user);
 		
 		UserDTO userDTO = new UserDTO("FirstNameTestUpdate", "LastNameTestUpdate", null, null, null, Role.ROLE_ADMIN);
@@ -137,7 +139,8 @@ public class UserIntegrationTest extends BaseIntegrationTest {
 	@Test
 	@WithUserDetails(TestUtil.ADMIN_USER)
 	public void updateUser_other_user() throws Exception {
-		User user = new User(createNewId(), "FirstNameTest", "LastNameTest", "otherUser@mail.com", "password", true, Role.ROLE_ADMIN);
+		User user = new User(createNewId(), "FirstNameTest", "LastNameTest", "otherUser@mail.com", "password", 
+				true, false, false, Role.ROLE_ADMIN);
 		userRepository.save(user);
 		
 		UserDTO userDTO = new UserDTO("FirstNameTestUpdate", "LastNameTestUpdate", null, null, null, Role.ROLE_ADMIN);
@@ -160,7 +163,7 @@ public class UserIntegrationTest extends BaseIntegrationTest {
 	@Test
 	public void updatePassword() throws Exception {
 		User user = new User(createNewId(), "FirstNameTest", "LastNameTest", "otherUser1@mail.com", 
-				passwordEncoder.encode("password"), true, Role.ROLE_ADMIN);
+				passwordEncoder.encode("password"), true, false, false, Role.ROLE_ADMIN);
 		userRepository.save(user);
 		
 		UserDTO userDTO = new UserDTO("FirstNameTestUpdate", "LastNameTestUpdate", null, "password", "NewUpdPass123!", Role.ROLE_ADMIN);
@@ -182,7 +185,7 @@ public class UserIntegrationTest extends BaseIntegrationTest {
 	@Test
 	public void updatePassword_weak() throws Exception {
 		User user = new User(createNewId(), "FirstNameTest", "LastNameTest", "otherUser3@mail.com", 
-				passwordEncoder.encode("password"), true, Role.ROLE_ADMIN);
+				passwordEncoder.encode("password"), true, false, false, Role.ROLE_ADMIN);
 		userRepository.save(user);
 		
 		UserDTO userDTO = new UserDTO("FirstNameTestUpdate", "LastNameTestUpdate", null, "password", "weak123!", Role.ROLE_ADMIN);
@@ -203,7 +206,8 @@ public class UserIntegrationTest extends BaseIntegrationTest {
 	
 	@Test
 	public void updatePassword_othe_user() throws Exception {
-		User user = new User(createNewId(), "FirstNameTest", "LastNameTest", "otherUser4@mail.com", passwordEncoder.encode("password"), true, Role.ROLE_ADMIN);
+		User user = new User(createNewId(), "FirstNameTest", "LastNameTest", "otherUser4@mail.com", 
+				passwordEncoder.encode("password"), true, false, false, Role.ROLE_ADMIN);
 		userRepository.save(user);
 		
 		Optional<User> u = userRepository.findByEmail(TestUtil.ADMIN_USER);

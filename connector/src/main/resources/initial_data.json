@@ -6,7 +6,9 @@
             "lastName": "Role",
             "email": "admin@mail.com",
             "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
-            "enabled": "true",
+            "enabled": true,
+			"expired" : false,
+			"locked" : false,
             "role": "ROLE_ADMIN"
         }, {
             "_class": "it.eng.connector.model.User",
@@ -16,6 +18,8 @@
             "email": "connector@mail.com",
             "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
             "enabled": "true",
+			"expired" : false,
+			"locked" : false,
             "role": "ROLE_CONNECTOR"
         }
     ],
@@ -322,42 +326,42 @@
 	        }, {
 				"_id": "application.password.validator.minLength",
 				"value": "8",
-				"mandatory": false,
+				"mandatory": true,
 				"issued": "2024-12-24T16:26:00.000Z",
 				"modified": "2024-12-24T16:26:00.000Z",
 				"version": 0
 			}, {
 				"_id": "application.password.validator.maxLength",
 				"value": "16",
-				"mandatory": false,
+				"mandatory": true,
 				"issued": "2024-12-24T16:26:00.000Z",
 				"modified": "2024-12-24T16:26:00.000Z",
 				"version": 0
 			}, {
 				"_id": "application.password.validator.minUpperCase",
 				"value": "1",
-				"mandatory": false,
+				"mandatory": true,
 				"issued": "2024-12-24T16:26:00.000Z",
 				"modified": "2024-12-24T16:26:00.000Z",
 				"version": 0
 			}, {
 				"_id": "application.password.validator.minLowerCase",
 				"value": "1",
-				"mandatory": false,
+				"mandatory": true,
 				"issued": "2024-12-24T16:26:00.000Z",
 				"modified": "2024-12-24T16:26:00.000Z",
 				"version": 0
 			}, {
 				"_id": "application.password.validator.minDigit",
 				"value": "1",
-				"mandatory": false,
+				"mandatory": true,
 				"issued": "2024-12-24T16:26:00.000Z",
 				"modified": "2024-12-24T16:26:00.000Z",
 				"version": 0
 			}, {
 				"_id": "application.password.validator.minSpecial",
 				"value": "1",
-				"mandatory": false,
+				"mandatory": true,
 				"issued": "2024-12-24T16:26:00.000Z",
 				"modified": "2024-12-24T16:26:00.000Z",
 				"version": 0
