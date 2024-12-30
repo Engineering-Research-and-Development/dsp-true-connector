@@ -6,7 +6,9 @@
             "lastName": "Role",
             "email": "admin@mail.com",
             "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
-            "enabled": "true",
+            "enabled": true,
+			"expired" : false,
+			"locked" : false,
             "role": "ROLE_ADMIN"
         }, {
             "_class": "it.eng.connector.model.User",
@@ -16,6 +18,8 @@
             "email": "connector@mail.com",
             "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
             "enabled": "true",
+			"expired" : false,
+			"locked" : false,
             "role": "ROLE_CONNECTOR"
         }
     ],

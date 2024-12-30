@@ -13,6 +13,6 @@ public class TestUtil {
 	public static final String CONSUMER_PID = "urn:uuid:32541fe6-c580-409e-85a8-8a9a32fbe833";
 	public static final String USER_ID = "urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5";
 	
-	public static User USER = new User(USER_ID, "first name", "last name", "test@mail.com", "secret", true, Role.ROLE_ADMIN);
+	public static User USER = new User(USER_ID, "first name", "last name", "test@mail.com", "secret", true, false, false, Role.ROLE_ADMIN);
 
 }
