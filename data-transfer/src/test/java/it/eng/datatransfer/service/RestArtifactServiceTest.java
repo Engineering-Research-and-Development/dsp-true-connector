@@ -179,8 +179,7 @@ public class RestArtifactServiceTest {
 	          .thenReturn(gridFSBucket);
 			utils.when(() -> IOUtils.copy(any(), any())).thenReturn(1);
 
-			assertDoesNotThrow(() ->restArtifactService.getArtifact(TRANSACTION_ID, mockHttpServletResponse));
-		
+			assertDoesNotThrow(() ->restArtifactService.getArtifact(TRANSACTION_ID, mockHttpServletResponse));		
 		}
     }
 	

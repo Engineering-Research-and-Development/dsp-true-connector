@@ -15,9 +15,7 @@ public class ArtifactTest {
 	public void equalsTestPlain() {
 		String ss = Serializer.serializePlain(ToolsMockObjectUtil.ARTIFACT_FILE);
 		Artifact obj = Serializer.deserializePlain(ss, Artifact.class);
-		assertEquals(ToolsMockObjectUtil.ARTIFACT_FILE.getArtifactType(), obj.getArtifactType());
-		assertEquals(ToolsMockObjectUtil.ARTIFACT_FILE.getContentType(), obj.getContentType());
-		assertEquals(ToolsMockObjectUtil.ARTIFACT_FILE.getValue(), obj.getValue());
+		assertEquals(obj, ToolsMockObjectUtil.ARTIFACT_FILE);
 	}
 
 }

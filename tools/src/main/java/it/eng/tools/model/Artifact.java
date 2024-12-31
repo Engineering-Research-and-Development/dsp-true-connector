@@ -20,12 +20,14 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
 import jakarta.validation.constraints.NotNull;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
 @JsonDeserialize(builder = Artifact.Builder.class)
 @NoArgsConstructor
+@EqualsAndHashCode
 @Document(collection = "artifacts")
 public class Artifact implements Serializable{
 

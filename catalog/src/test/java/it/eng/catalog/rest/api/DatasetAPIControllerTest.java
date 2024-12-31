@@ -27,6 +27,7 @@ import it.eng.catalog.model.Dataset;
 import it.eng.catalog.serializer.Serializer;
 import it.eng.catalog.service.DatasetService;
 import it.eng.catalog.util.CatalogMockObjectUtil;
+import it.eng.tools.model.Artifact;
 import it.eng.tools.response.GenericApiResponse;
 
 @ExtendWith(MockitoExtension.class)
@@ -109,7 +110,7 @@ public class DatasetAPIControllerTest {
 
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
-        assertTrue(StringUtils.contains(response.getBody().getData().toPrettyString(), Serializer.serializePlain(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getArtifact())));
+        assertEquals(Serializer.deserializePlain(response.getBody().getData(), Artifact.class), CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getArtifact());
     }
     
     @Test
