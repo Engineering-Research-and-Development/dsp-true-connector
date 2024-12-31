@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Sort;
 
 import java.util.Collections;
@@ -25,6 +26,8 @@ public class ApplicationPropertiesServiceTest {
 
 	@Mock
 	private ApplicationPropertiesRepository repository;
+	@Mock
+	private ApplicationEventPublisher applicationEventPublisher;
 
 	@InjectMocks
 	private ApplicationPropertiesService service;
@@ -69,6 +72,7 @@ public class ApplicationPropertiesServiceTest {
         assertNotNull(updatedApplicationProperty);
         verify(repository).findById(updatedApplicationProperty.getKey());
         verify(repository).save(any(ApplicationProperty.class));
+        verify(applicationEventPublisher).publishEvent(any(ApplicationProperty.class));
     }
 
 }

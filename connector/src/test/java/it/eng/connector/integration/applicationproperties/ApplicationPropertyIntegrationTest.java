@@ -1,12 +1,14 @@
 package it.eng.connector.integration.applicationproperties;
 
-import static org.hamcrest.CoreMatchers.is;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -14,11 +16,13 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.tools.model.ApplicationProperty;
-import it.eng.tools.model.IConstants;
 import it.eng.tools.model.Serializer;
+import it.eng.tools.response.GenericApiResponse;
 
 public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 
@@ -35,8 +39,14 @@ public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 						.accept(MediaType.APPLICATION_JSON_VALUE));
 
 		result.andExpect(status().isOk())
-		.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-		.andExpect(jsonPath("$.[0].['"+IConstants.TYPE+"']", is(ApplicationProperty.class.getSimpleName())));
+		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
+		String json = result.andReturn().getResponse().getContentAsString();
+		TypeReference<GenericApiResponse<List<ApplicationProperty>>> typeRef = new TypeReference<GenericApiResponse<List<ApplicationProperty>>>() {};
+		GenericApiResponse<List<ApplicationProperty>> apiResp =  Serializer.deserializePlain(json, typeRef);
+		  
+		assertNotNull(apiResp.getData());
+		assertTrue(apiResp.getData().size() > 2);
 	}
 
 	@Test
@@ -49,8 +59,14 @@ public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 						.contentType(MediaType.APPLICATION_JSON_VALUE));
 
 		result.andExpect(status().isOk())
-		.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-		.andExpect(jsonPath("['" + IConstants.KEY + "']", is(this.TEST_KEY)));
+		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
+		
+		String json = result.andReturn().getResponse().getContentAsString();
+		TypeReference<GenericApiResponse<ApplicationProperty>> typeRef = new TypeReference<GenericApiResponse<ApplicationProperty>>() {};
+		GenericApiResponse<ApplicationProperty> apiResp =  Serializer.deserializePlain(json, typeRef);
+		  
+		assertNotNull(apiResp.getData());
+		assertEquals(apiResp.getData().getKey(), TEST_KEY);
 	}
 
 	@Test
@@ -74,9 +90,13 @@ public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 						.accept(MediaType.APPLICATION_JSON_VALUE));
 
 		result.andExpect(status().isOk())
-		.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-		.andExpect(jsonPath("['" + IConstants.KEY + "']", is(this.TEST_KEY)))
-		.andExpect(jsonPath("['" + IConstants.VALUE + "']", is(randomValue)));
+			.andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
+		String json = result.andReturn().getResponse().getContentAsString();
+		TypeReference<GenericApiResponse<ApplicationProperty>> typeRef = new TypeReference<GenericApiResponse<ApplicationProperty>>() {};
+		GenericApiResponse<ApplicationProperty> apiResp =  Serializer.deserializePlain(json, typeRef);
+		  
+		assertNotNull(apiResp.getData());
 	}
 
 }

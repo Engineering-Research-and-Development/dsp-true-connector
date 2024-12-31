@@ -2363,6 +2363,24 @@
 		{
 			"key": "dataAddress_endpoint",
 			"value": ""
+		},
+		{
+			"key": "userId",
+			"value": ""
+		},
+		{
+			"key": "userEmail",
+			"value": ""
+		},
+		{
+			"key": "newUserPassword",
+			"value": "ValidPassword123!",
+			"type": "string"
+		},
+		{
+			"key": "newUserEmail",
+			"value": "newUser@mail.com",
+			"type": "string"
 		}
 	]
 }

@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.MapPropertySource;
@@ -32,6 +33,7 @@ public class ApplicationPropertiesService {
 	private Environment env;
 
 	private final ApplicationPropertiesRepository repository;
+	private final ApplicationEventPublisher applicationEventPublisher;
 
 	private Sort sortByIdAsc() {
 		return Sort.by("id");
@@ -42,9 +44,11 @@ public class ApplicationPropertiesService {
 	 * @param repository ApplicationPropertiesRepository
 	 * @param env Environment
 	 */
-	public ApplicationPropertiesService(ApplicationPropertiesRepository repository, Environment env) {
+	public ApplicationPropertiesService(ApplicationPropertiesRepository repository, Environment env, 
+			ApplicationEventPublisher applicationEventPublisher) {
 		this.repository = repository;
 		this.env = env;
+		this.applicationEventPublisher = applicationEventPublisher;
 	}
 
 	/**
@@ -98,6 +102,7 @@ public class ApplicationPropertiesService {
 	}
 
 	private ApplicationProperty addPropertyOnMongo(ApplicationProperty property) {
+		applicationEventPublisher.publishEvent(property);
 		return repository.save(property);
 	}
 
