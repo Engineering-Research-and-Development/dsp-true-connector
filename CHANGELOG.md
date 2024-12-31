@@ -1,6 +1,16 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 31-12-2024
+
+### Added
+
+ - Added external data download
+
+### Changed
+
+ - Now using artifact object for storing file and external metadata and using it on data download
+ 
 ## [0.1.1] - 27-12-2024
 
 ### Added

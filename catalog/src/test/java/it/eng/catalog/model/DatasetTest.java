@@ -7,13 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import it.eng.catalog.serializer.Serializer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import it.eng.catalog.util.MockObjectUtil;
+import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 
@@ -22,7 +22,7 @@ public class DatasetTest {
 	@Test
 	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() {
-		String result = Serializer.serializePlain(MockObjectUtil.DATASET);
+		String result = Serializer.serializePlain(CatalogMockObjectUtil.DATASET);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
 		assertTrue(result.contains(DSpaceConstants.ID));
@@ -45,7 +45,7 @@ public class DatasetTest {
 	@Test
 	@DisplayName("Verify valid protocol object serialization")
 	public void testProtocol() {
-		JsonNode result = Serializer.serializeProtocolJsonNode(MockObjectUtil.DATASET);
+		JsonNode result = Serializer.serializeProtocolJsonNode(CatalogMockObjectUtil.DATASET);
 		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
 		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
 		assertNotNull(result.get(DSpaceConstants.DCAT_KEYWORD).asText());
@@ -67,7 +67,7 @@ public class DatasetTest {
 	@Test
 	@DisplayName("Missing @context and @type")
 	public void missingContextAndType() {
-		JsonNode result = Serializer.serializePlainJsonNode(MockObjectUtil.DATASET);
+		JsonNode result = Serializer.serializePlainJsonNode(CatalogMockObjectUtil.DATASET);
 		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, Dataset.class));
 	}
 	
@@ -82,7 +82,7 @@ public class DatasetTest {
 	@Test
 	@DisplayName("Plain serialize/deserialize")
 	public void equalsTestPlain() {
-		Dataset dataset = MockObjectUtil.DATASET;
+		Dataset dataset = CatalogMockObjectUtil.DATASET;
 		String ss = Serializer.serializePlain(dataset);
 		Dataset dataset2 = Serializer.deserializePlain(ss, Dataset.class);
 		assertThat(dataset).usingRecursiveComparison().isEqualTo(dataset2);
@@ -91,7 +91,7 @@ public class DatasetTest {
 	@Test
 	@DisplayName("Protocol serialize/deserialize")
 	public void equalsTestProtocol() {
-		Dataset dataset = MockObjectUtil.DATASET;
+		Dataset dataset = CatalogMockObjectUtil.DATASET;
 		String ss = Serializer.serializeProtocol(dataset);
 		Dataset dataset2 = Serializer.deserializeProtocol(ss, Dataset.class);
 		assertThat(dataset).usingRecursiveComparison().isEqualTo(dataset2);

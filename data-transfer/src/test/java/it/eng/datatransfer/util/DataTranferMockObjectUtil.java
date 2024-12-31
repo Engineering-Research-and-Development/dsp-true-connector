@@ -3,6 +3,10 @@ package it.eng.datatransfer.util;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
+
+import org.bson.types.ObjectId;
+import org.springframework.http.MediaType;
 
 import it.eng.datatransfer.model.DataAddress;
 import it.eng.datatransfer.model.DataTransferFormat;
@@ -16,9 +20,11 @@ import it.eng.datatransfer.model.TransferStartMessage;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.model.TransferSuspensionMessage;
 import it.eng.datatransfer.model.TransferTerminationMessage;
+import it.eng.tools.model.Artifact;
+import it.eng.tools.model.ArtifactType;
 import it.eng.tools.model.IConstants;
 
-public class MockObjectUtil {
+public class DataTranferMockObjectUtil {
 
 	public static final String CONSUMER_PID = "urn:uuid:CONSUMER_PID";
 	public static final String PROVIDER_PID = "urn:uuid:PROVIDER_PID";
@@ -39,6 +45,9 @@ public class MockObjectUtil {
     public static final String ENDPOINT_TYPE = "https://w3id.org/idsa/v4.1/HTTP";
     public static final String CALLBACK_ADDRESS = "https://example.com/callback";
 	public static final String FORWARD_TO = "https://forward-to.com";
+	public static final String DATASET_ID = "datasetId";
+	public static final Instant NOW = Instant.now();
+
 	
 	public static final EndpointProperty ENDPOINT_PROPERTY = EndpointProperty.Builder.newInstance()
 			.name("authorization")
@@ -90,6 +99,7 @@ public class MockObjectUtil {
     		.consumerPid(CONSUMER_PID)
     		.providerPid(PROVIDER_PID)
     		.dataAddress(DATA_ADDRESS)
+    		.datasetId(DATASET_ID)
     		.agreementId(AGREEMENT_ID)
     		.callbackAddress(CALLBACK_ADDRESS)
     		.role(IConstants.ROLE_PROVIDER)
@@ -172,5 +182,29 @@ public class MockObjectUtil {
     		.providerPid(PROVIDER_PID)
     		.code("123")
     		.build();
+    
+    public static final Artifact ARTIFACT_FILE = Artifact.Builder.newInstance()
+			.id("urn:uuid:" + UUID.randomUUID())
+			.artifactType(ArtifactType.FILE)
+			.contentType(MediaType.APPLICATION_JSON.getType())
+			.createdBy(CREATOR)
+			.created(NOW)
+			.lastModifiedDate(NOW)
+			.filename("Employees.txt")
+			.lastModifiedBy(CREATOR)
+			.value(new ObjectId().toHexString())
+			.version(0L)
+			.build();
+	
+	public static final Artifact ARTIFACT_EXTERNAL = Artifact.Builder.newInstance()
+			.id("urn:uuid:" + UUID.randomUUID())
+			.artifactType(ArtifactType.EXTERNAL)
+			.createdBy(CREATOR)
+			.created(NOW)
+			.lastModifiedDate(NOW)
+			.lastModifiedBy(CREATOR)
+			.value("https://example.com/employees")
+			.version(0L)
+			.build();
     
 }

@@ -22,7 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.DataService;
 import it.eng.catalog.repository.DataServiceRepository;
-import it.eng.catalog.util.MockObjectUtil;
+import it.eng.catalog.util.CatalogMockObjectUtil;
 
 @ExtendWith(MockitoExtension.class)
 public class DataServiceServiceTest {
@@ -39,7 +39,7 @@ public class DataServiceServiceTest {
     @InjectMocks
     private DataServiceService dataServiceService;
 
-    private DataService dataService = MockObjectUtil.DATA_SERVICE;
+    private DataService dataService = CatalogMockObjectUtil.DATA_SERVICE;
 
     @Test
     @DisplayName("Get data service by id - success")
@@ -111,7 +111,7 @@ public class DataServiceServiceTest {
         when(repository.findById(dataService.getId())).thenReturn(Optional.of(dataService));
         when(repository.save(any(DataService.class))).thenReturn(dataService);
 
-        DataService result = dataServiceService.updateDataService(dataService.getId(), MockObjectUtil.DATA_SERVICE_FOR_UPDATE);
+        DataService result = dataServiceService.updateDataService(dataService.getId(), CatalogMockObjectUtil.DATA_SERVICE_FOR_UPDATE);
 
         assertEquals(dataService.getId(), result.getId());
         verify(repository).findById(dataService.getId());

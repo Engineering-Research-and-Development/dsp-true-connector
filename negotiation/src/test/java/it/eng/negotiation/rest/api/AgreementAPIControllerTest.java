@@ -16,7 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
-import it.eng.negotiation.model.MockObjectUtil;
+import it.eng.negotiation.model.NegotiationMockObjectUtil;
 import it.eng.negotiation.service.AgreementAPIService;
 import it.eng.tools.response.GenericApiResponse;
 
@@ -32,8 +32,8 @@ class AgreementAPIControllerTest {
 	@Test
 	@DisplayName("Enforce agreement")
 	void enforceAgreement() {
-		doNothing().when(agreementAPIService).enforceAgreement(MockObjectUtil.AGREEMENT.getId());
-		ResponseEntity<GenericApiResponse<String>> response = controller.enforceAgreement(MockObjectUtil.AGREEMENT.getId());
+		doNothing().when(agreementAPIService).enforceAgreement(NegotiationMockObjectUtil.AGREEMENT.getId());
+		ResponseEntity<GenericApiResponse<String>> response = controller.enforceAgreement(NegotiationMockObjectUtil.AGREEMENT.getId());
 		assertNotNull(response);
 		assertTrue(response.getBody().isSuccess());
 	}
@@ -44,6 +44,6 @@ class AgreementAPIControllerTest {
 		doThrow(new ContractNegotiationAPIException("Something not correct - tests"))
 		.when(agreementAPIService).enforceAgreement(any(String.class));
 		assertThrows(ContractNegotiationAPIException.class, 
-				() -> controller.enforceAgreement(MockObjectUtil.AGREEMENT.getId()));
+				() -> controller.enforceAgreement(NegotiationMockObjectUtil.AGREEMENT.getId()));
 	}
 }

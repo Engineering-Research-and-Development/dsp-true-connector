@@ -203,7 +203,21 @@ public class DataTransferAPIService {
 				credentialUtils.getConnectorCredentials());
 		log.info("Response received {}", response);
 		if (response.isSuccess()) {
-			TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.STARTED);
+			TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
+			.id(transferProcess.getId())
+			.agreementId(transferProcess.getAgreementId())
+			.consumerPid(transferProcess.getConsumerPid())
+			.providerPid(transferProcess.getProviderPid())
+			.callbackAddress(transferProcess.getCallbackAddress())
+   			.dataAddress(transferStartMessage.getDataAddress())
+			.format(transferProcess.getFormat())
+			.state(TransferState.STARTED)
+			.role(transferProcess.getRole())
+			.datasetId(transferProcess.getDatasetId())
+			.createdBy(transferProcess.getCreatedBy())
+			.lastModifiedBy(transferProcess.getLastModifiedBy())
+			.version(transferProcess.getVersion())
+			.build();
 			transferProcessRepository.save(transferProcessStarted);
 			log.info("Transfer process {} saved", transferProcessStarted.getId());
 			return Serializer.serializePlainJsonNode(transferProcessStarted);

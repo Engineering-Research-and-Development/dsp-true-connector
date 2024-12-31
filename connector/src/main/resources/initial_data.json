@@ -122,7 +122,10 @@
 	                    "$id": "urn:uuid:1dc45797-json-4932-8baf-ab7fd66ql4d5"
 	                }
 	            ],
-				"fileId": "673c80eb4909383cb15db673",
+				"artifact":{
+	                "$ref": "artifacts",
+					"$id": "urn:uuid:fdc45798-a123-4955-8baf-vc3gh22qh3j8"
+				},
 	            "createdBy": "admin@mail.com",
 	            "lastModifiedBy": "admin@mail.com",
 	            "version": 0
@@ -194,6 +197,27 @@
 	            "version": 0
 	        }
 	    ],
+		"artifacts": [{
+				"_id": "urn:uuid:fdc45798-a123-4955-8baf-vc3gh22qh3j8",
+				"artifactType": "FILE",
+				"filename": "ENG employee.json",
+				"value": "673c80eb4909383cb15db673",
+				"contentType": "application/json",
+				"created": {
+					"$date": "2024-12-10T16:04:59.358Z"
+				},
+				"lastModifiedDate": {
+					"$date": "2024-12-10T16:04:59.358Z"
+				},
+				"createdBy": "admin@mail.com",
+				"lastModifiedBy": "admin@mail.com",
+				"version": {
+					"$numberLong": "0"
+				},
+				"_class": "it.eng.tools.model.Artifact"
+				}
+		
+		],
 	    "contract_negotiations": [{
 	            "_id": "urn:uuid:58c9c224-1a23-40a2-b38d-be1520r24e5a",
 	            "callbackAddress": "http://localhost:8080/consumer",

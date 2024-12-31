@@ -8,7 +8,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
+
+import org.bson.types.ObjectId;
+import org.springframework.http.MediaType;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -29,8 +33,10 @@ import it.eng.catalog.model.Operator;
 import it.eng.catalog.model.Permission;
 import it.eng.catalog.model.Reference;
 import it.eng.catalog.serializer.Serializer;
+import it.eng.tools.model.Artifact;
+import it.eng.tools.model.ArtifactType;
 
-public class MockObjectUtil {
+public class CatalogMockObjectUtil {
 
 	public static final String CONSUMER_PID = "urn:uuid:CONSUMER_PID";
 	public static final String PROVIDER_PID = "urn:uuid:PROVIDER_PID";
@@ -49,6 +55,8 @@ public class MockObjectUtil {
     public static final String TITLE = "Title_for_test";
     public static final String ENDPOINT_URL = "https://provider-a.com/connector";
     public static final String FILE_ID = "some_file";
+	public static final Instant NOW = Instant.now();
+
 
     public static final Multilanguage MULTILANGUAGE =
             Multilanguage.Builder.newInstance().language("en").value("For test").build();
@@ -69,7 +77,29 @@ public class MockObjectUtil {
             .operator(Operator.EQ)
             .build();
 
-    public static final Permission PERMISSION = Permission.Builder.newInstance()
+    public static final Artifact ARTIFACT_FILE = Artifact.Builder.newInstance()
+	.id("urn:uuid:" + UUID.randomUUID())
+	.artifactType(ArtifactType.FILE)
+	.contentType(MediaType.APPLICATION_JSON.getType())
+	.createdBy(CREATOR)
+	.created(NOW)
+	.lastModifiedDate(NOW)
+	.filename("Employees.txt")
+	.lastModifiedBy(CREATOR)
+	.value(new ObjectId().toHexString())
+	.version(0L)
+	.build();
+	public static final Artifact ARTIFACT_EXTERNAL = Artifact.Builder.newInstance()
+	.id("urn:uuid:" + UUID.randomUUID())
+	.artifactType(ArtifactType.EXTERNAL)
+	.createdBy(CREATOR)
+	.created(NOW)
+	.lastModifiedDate(NOW)
+	.lastModifiedBy(CREATOR)
+	.value("https://example.com/employees")
+	.version(0L)
+	.build();
+	public static final Permission PERMISSION = Permission.Builder.newInstance()
             .action(Action.USE)
             .constraint(Arrays.asList(CONSTRAINT).stream().collect(Collectors.toCollection(HashSet::new)))
             .build();
@@ -140,14 +170,14 @@ public class MockObjectUtil {
             .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
             .build();
     
-    public static final Dataset DATASET_WITH_FILE_ID = Dataset.Builder.newInstance()
+    public static final Dataset DATASET_WITH_ARTIFACT = Dataset.Builder.newInstance()
     		.id(DATASET_ID)
             .conformsTo(CONFORMSTO)
             .creator(CREATOR)
+            .artifact(ARTIFACT_FILE)
             .distribution(Arrays.asList(DISTRIBUTION).stream().collect(Collectors.toCollection(HashSet::new)))
             .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
             .issued(ISSUED)
-            .fileId(FILE_ID)
             .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
             .identifier(IDENTIFIER)
             .modified(MODIFIED)
@@ -259,10 +289,9 @@ public class MockObjectUtil {
             .createdBy("admin@mail.com")
             .lastModifiedBy("admin@mail.com")
             .build();
-
+    
     public static final Collection<DataService> DATA_SERVICES = Arrays.asList(DATA_SERVICE);
-
-
+    
     public static void getAllKeysUsingJsonNodeFieldNames(JsonNode jsonNode, Set<String> keys) {
         if (jsonNode.isObject()) {
             Iterator<Entry<String, JsonNode>> fields = jsonNode.fields();

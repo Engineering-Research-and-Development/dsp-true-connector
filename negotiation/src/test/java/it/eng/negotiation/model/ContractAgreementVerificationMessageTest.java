@@ -19,8 +19,8 @@ public class ContractAgreementVerificationMessageTest {
 
 	private ContractAgreementVerificationMessage contractAgreementVerificationMessage = ContractAgreementVerificationMessage.Builder
 			.newInstance()
-			.consumerPid(MockObjectUtil.CONSUMER_PID)
-			.providerPid(MockObjectUtil.PROVIDER_PID)
+			.consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
+			.providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
 			.build();
 	
 	@Test

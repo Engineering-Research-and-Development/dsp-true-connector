@@ -3,7 +3,6 @@ package it.eng.tools.client.rest;
 import java.io.IOException;
 
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -11,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import it.eng.tools.model.ExternalData;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -89,12 +89,10 @@ public class OkHttpRestClient {
 	/**
 	 * Sends GET request
 	 * @param targetAddress
-	 * @param jsonNode
 	 * @param authorization
 	 * @return
 	 */
 	public GenericApiResponse<String> sendGETRequest(String targetAddress, String authorization) {
-		// send response to targetAddress
 		Request.Builder requestBuilder = new Request.Builder()
 				.url(targetAddress);
 		if(StringUtils.isNotBlank(authorization)) {
@@ -117,6 +115,37 @@ public class OkHttpRestClient {
 			log.error(e.getLocalizedMessage());
 			return GenericApiResponse.error(e.getLocalizedMessage());
 		}
+	}
+	
+	/**
+	 * Sends GET request to download data
+	 * @param targetAddress
+	 * @param authorization
+	 * @return
+	 */
+	public GenericApiResponse<ExternalData> downloadData(String targetAddress, String authorization) {
+		Request.Builder requestBuilder = new Request.Builder()
+				.url(targetAddress);
+		if(StringUtils.isNotBlank(authorization)) {
+			requestBuilder.addHeader(HttpHeaders.AUTHORIZATION, authorization);
+		}
+		Request request = requestBuilder.build();
+		log.info("Sending request using address: " + targetAddress);
+		try (Response response = okHttpClient.newCall(request).execute()) {
+			int code = response.code();
+			log.info("Status {}", code);
+			if(response.isSuccessful()) { // code in 200..299
+				ExternalData externalData = new ExternalData();
+				externalData.setData(response.body().bytes());
+				externalData.setContentType(response.body().contentType());
+				return GenericApiResponse.success(externalData, "Response received from " + targetAddress);
+			} else {
+				return GenericApiResponse.error(response.message());
+			}
+        } catch (IOException e) {
+			log.error(e.getLocalizedMessage());
+			return GenericApiResponse.error(e.getLocalizedMessage());
+        }
 	}
 	
 	public String sendInternalRequest(String contextAddress, HttpMethod method, JsonNode jsonBody) {
