@@ -6,6 +6,7 @@ import org.bson.Document;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.mongodb.core.MongoTemplate;
 
@@ -19,16 +20,28 @@ import lombok.extern.slf4j.Slf4j;
 public class MongoDataLoader {
 
     private final MongoTemplate mongoTemplate;
-
-    public MongoDataLoader(MongoTemplate mongoTemplate) {
+    private final Environment environment;
+    
+    public MongoDataLoader(MongoTemplate mongoTemplate, Environment environment) {
         this.mongoTemplate = mongoTemplate;
+        this.environment = environment;
     }
 
     @Bean
     CommandLineRunner loadInitialData() {
         return args -> {
             ObjectMapper mapper = new ObjectMapper();
-            try (InputStream inputStream = new ClassPathResource("initial_data.json").getInputStream()) {
+            String filename = null;
+            String[] activeProfiles = environment.getActiveProfiles();
+            if(activeProfiles.length == 0) {
+            	log.debug("No active profiles set, using initial_data.json for populating Mongo");
+            	filename = "initial_data.json";
+            } else {
+            	String activeProfile = activeProfiles[0];
+            	filename = "initial_data-" + activeProfile + ".json";
+            	log.debug("No active profiles set, using {} for populating Mongo", filename);
+            }
+            try (InputStream inputStream = new ClassPathResource(filename).getInputStream()) {
                 JsonNode rootNode = mapper.readTree(inputStream);
 
                 rootNode.fields().forEachRemaining(entry -> {

@@ -292,7 +292,7 @@ public class ContractNegotiationAPIServiceTest {
 				.thenReturn(Arrays.asList(
 						NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED,
 						NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
-		Collection<JsonNode> response = service.findContractNegotiations(null, null, null);
+		Collection<JsonNode> response = service.findContractNegotiations(null, null, null, null, null);
 		assertNotNull(response);
 		assertEquals(2, response.size());
 	}
@@ -304,7 +304,7 @@ public class ContractNegotiationAPIServiceTest {
 				.thenReturn(Arrays.asList(
 						NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED,
 						NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
-		Collection<JsonNode> response = service.findContractNegotiations(null, null, IConstants.ROLE_CONSUMER);
+		Collection<JsonNode> response = service.findContractNegotiations(null, null, IConstants.ROLE_CONSUMER, null, null);
 		assertNotNull(response);
 		assertEquals(2, response.size());
 	}
@@ -330,11 +330,11 @@ public class ContractNegotiationAPIServiceTest {
 								.offer(NegotiationMockObjectUtil.OFFER_COUNT_5)
 								.role(IConstants.ROLE_PROVIDER)
 								.build()));
-		Collection<JsonNode> response = service.findContractNegotiations(null, null, IConstants.ROLE_CONSUMER);
+		Collection<JsonNode> response = service.findContractNegotiations(null, null, IConstants.ROLE_CONSUMER, null, null);
 		assertNotNull(response);
 		assertEquals(1, response.size());
 		
-		response = service.findContractNegotiations(null, null, IConstants.ROLE_PROVIDER);
+		response = service.findContractNegotiations(null, null, IConstants.ROLE_PROVIDER, null, null);
 		assertNotNull(response);
 		assertEquals(1, response.size());
 	}
@@ -346,7 +346,7 @@ public class ContractNegotiationAPIServiceTest {
 				.thenReturn(Arrays.asList(
 						NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED,
 						NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
-		Collection<JsonNode> response = service.findContractNegotiations(null, null, IConstants.ROLE_PROVIDER);
+		Collection<JsonNode> response = service.findContractNegotiations(null, null, IConstants.ROLE_PROVIDER, null, null);
 		assertNotNull(response);
 		assertEquals(0, response.size());
 	}
@@ -356,7 +356,7 @@ public class ContractNegotiationAPIServiceTest {
 	public void findContractNegotiationById() {
 		when(contractNegotiationRepository.findById(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId()))
 				.thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
-		Collection<JsonNode> response = service.findContractNegotiations(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId(), null, null);
+		Collection<JsonNode> response = service.findContractNegotiations(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId(), null, null, null, null);
 		assertNotNull(response);
 		assertEquals(1, response.size());
 	}
@@ -366,7 +366,19 @@ public class ContractNegotiationAPIServiceTest {
 	public void findContractNegotiationByState() {
 		when(contractNegotiationRepository.findByState(ContractNegotiationState.ACCEPTED.name()))
 				.thenReturn(Arrays.asList(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
-		Collection<JsonNode> response = service.findContractNegotiations(null, ContractNegotiationState.ACCEPTED.name(), null);
+		Collection<JsonNode> response = service.findContractNegotiations(null, ContractNegotiationState.ACCEPTED.name(), null, null, null);
+		assertNotNull(response);
+		assertEquals(1, response.size());
+	}
+	
+	@Test
+	@DisplayName("Find contract negotiations by pids")
+	public void findContractNegotiationByPids() {
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(
+				NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getProviderPid(), NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getConsumerPid()))
+			.thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+		Collection<JsonNode> response = service.findContractNegotiations(null, null, null,
+				NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getConsumerPid(), NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getProviderPid());
 		assertNotNull(response);
 		assertEquals(1, response.size());
 	}
