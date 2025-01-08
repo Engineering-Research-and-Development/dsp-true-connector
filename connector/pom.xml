@@ -187,6 +187,7 @@
 						<exclude>**/*.jks</exclude>
 						<exclude>**/*.sql</exclude>
 						<exclude>*.properties</exclude>
+						<exclude>*.json</exclude>
 					</excludes>
 					<archive>
 						<manifest>

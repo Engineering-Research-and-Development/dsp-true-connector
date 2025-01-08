@@ -22,7 +22,6 @@ services:
       - mongodb-a
     environment:
       - "JDK_JAVA_OPTIONS=-Xmx1024m"
-      - "SPRING_PROFILES_ACTIVE=docker"
       - CALLBACK_ADDRESS=${CONNECTOR_A_CALLBACK_ADDRESS}
       - KEYSTORE_NAME=${KEYSTORE_NAME}
       - KEY_PASSWORD=${KEY_PASSWORD}
@@ -73,7 +72,6 @@ services:
       - mongodb-b
     environment:
       - "JDK_JAVA_OPTIONS=-Xmx1024m"
-      - "SPRING_PROFILES_ACTIVE=docker"
       - CALLBACK_ADDRESS=${CONNECTOR_B_CALLBACK_ADDRESS}
       - KEYSTORE_NAME=${KEYSTORE_NAME}
       - KEY_PASSWORD=${KEY_PASSWORD}

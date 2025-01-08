@@ -1,6 +1,17 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 08-01-2025
+
+### Added
+
+ - Spring profile for reading initial data
+ 
+### Changed
+
+ - Refactor integration tests, split into separate classes
+ - Excluded *.json files from target jar archive
+
 ## [0.1.1] - 31-12-2024
 
 ### Added
