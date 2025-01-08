@@ -39,7 +39,7 @@ public class MongoDataLoader {
             } else {
             	String activeProfile = activeProfiles[0];
             	filename = "initial_data-" + activeProfile + ".json";
-            	log.debug("No active profiles set, using {} for populating Mongo", filename);
+            	log.debug("Active profile set {}, using {} for populating Mongo", activeProfile, filename);
             }
             try (InputStream inputStream = new ClassPathResource(filename).getInputStream()) {
                 JsonNode rootNode = mapper.readTree(inputStream);
