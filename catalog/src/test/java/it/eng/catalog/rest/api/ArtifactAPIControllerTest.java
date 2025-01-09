@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -41,8 +43,8 @@ class ArtifactAPIControllerTest {
 	private ArtifactAPIController controller;
 	
 	@Test
-	@DisplayName("Upload - success")
-	public void testUpload() {
+	@DisplayName("Upload artifact - success")
+	public void testUploadArtifact() {
 		when(artifactService.uploadArtifact(file, CatalogMockObjectUtil.DATASET.getId(), null)).thenReturn(CatalogMockObjectUtil.ARTIFACT_FILE);
 		
 		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.uploadArtifact(file, null, CatalogMockObjectUtil.DATASET.getId());
@@ -52,8 +54,8 @@ class ArtifactAPIControllerTest {
 	}
 	
 	@Test
-	@DisplayName("Upload - fail")
-	public void testUpload_failed() {
+	@DisplayName("Upload artifact - fail")
+	public void testUploadArtifact_failed() {
 		when(artifactService.uploadArtifact(file, CatalogMockObjectUtil.DATASET.getId(), null)).thenThrow(CatalogErrorAPIException.class);
 		
 		assertThrows(CatalogErrorAPIException.class, ()-> controller.uploadArtifact(file, null, CatalogMockObjectUtil.DATASET.getId()));
@@ -85,6 +87,26 @@ class ArtifactAPIControllerTest {
 		assertTrue(response.getBody().getData().has(0));
 		assertFalse(response.getBody().getData().has(1));
 		assertEquals(HttpStatus.OK, response.getStatusCode());
+	}
+	
+	@Test
+	@DisplayName("Delete artifact - success")
+	public void testDeleteArtifact() {
+		doNothing().when(artifactService).deleteArtifact(CatalogMockObjectUtil.ARTIFACT_FILE.getId());
+		
+		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.deleteArtifact(CatalogMockObjectUtil.ARTIFACT_FILE.getId());
+		
+		assertTrue(StringUtils.isNotBlank(response.getBody().getMessage().toString()));
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+	}
+	
+	@Test
+	@DisplayName("Delete artifact - fail")
+	public void testDeleteArtifact_failed() {
+		doThrow(CatalogErrorAPIException.class).when(artifactService).deleteArtifact(CatalogMockObjectUtil.ARTIFACT_FILE.getId());
+		
+		assertThrows(CatalogErrorAPIException.class, ()-> controller.deleteArtifact(CatalogMockObjectUtil.ARTIFACT_FILE.getId()));
+		
 	}
 
 }

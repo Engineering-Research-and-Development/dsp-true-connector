@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,6 +35,12 @@ public class ArtifactAPIController {
 		this.artifactService = artifactService;
 	}
 
+	@GetMapping(path = {"", "/{artifact}"})
+	public ResponseEntity<GenericApiResponse<JsonNode>> getArtifacts(@PathVariable(required = false) String artifact) {
+		List<Artifact> result = artifactService.getArtifacts(artifact);
+		return ResponseEntity.ok(GenericApiResponse.success(Serializer.serializePlainJsonNode(result), "Fetched artifacts"));
+	}
+
 	@PostMapping("/upload/{datasetId}")
 	public ResponseEntity<GenericApiResponse<JsonNode>> uploadArtifact(
 			@RequestPart(value = "file", required = false) MultipartFile file,
@@ -43,12 +50,16 @@ public class ArtifactAPIController {
 		Artifact artifact = artifactService.uploadArtifact(file, datasetId, externalURL);
 		log.info("Artifact uploaded {} ", artifact.getId());
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(artifact), "Artifact uploaded"));
+                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(artifact), "Artifact uploaded successfully"));
 	}
 	
-	@GetMapping(path = {"", "/{artifact}"})
-	public ResponseEntity<GenericApiResponse<JsonNode>> getArtifacts(@PathVariable(required = false) String artifact) {
-		List<Artifact> result = artifactService.getArtifacts(artifact);
-		return ResponseEntity.ok(GenericApiResponse.success(Serializer.serializePlainJsonNode(result), "Stored artifacts"));
-	}
+	@DeleteMapping(path = "/{id}")
+    public ResponseEntity<GenericApiResponse<JsonNode>> deleteArtifact(@PathVariable String id) {
+        log.info("Deleting artifact with id: " + id);
+
+        artifactService.deleteArtifact(id);
+
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(GenericApiResponse.success(null, "Artifact deleted successfully"));
+    }
 }

@@ -8,7 +8,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.bson.types.ObjectId;
@@ -78,27 +77,27 @@ public class CatalogMockObjectUtil {
             .build();
 
     public static final Artifact ARTIFACT_FILE = Artifact.Builder.newInstance()
-	.id("urn:uuid:" + UUID.randomUUID())
-	.artifactType(ArtifactType.FILE)
-	.contentType(MediaType.APPLICATION_JSON.getType())
-	.createdBy(CREATOR)
-	.created(NOW)
-	.lastModifiedDate(NOW)
-	.filename("Employees.txt")
-	.lastModifiedBy(CREATOR)
-	.value(new ObjectId().toHexString())
-	.version(0L)
-	.build();
+			.artifactType(ArtifactType.FILE)
+			.contentType(MediaType.APPLICATION_JSON.getType())
+			.createdBy(CREATOR)
+			.created(NOW)
+			.lastModifiedDate(NOW)
+			.filename("Employees.txt")
+			.lastModifiedBy(CREATOR)
+			.value(new ObjectId().toHexString())
+			.version(0L)
+			.build();
+    
 	public static final Artifact ARTIFACT_EXTERNAL = Artifact.Builder.newInstance()
-	.id("urn:uuid:" + UUID.randomUUID())
-	.artifactType(ArtifactType.EXTERNAL)
-	.createdBy(CREATOR)
-	.created(NOW)
-	.lastModifiedDate(NOW)
-	.lastModifiedBy(CREATOR)
-	.value("https://example.com/employees")
-	.version(0L)
-	.build();
+			.artifactType(ArtifactType.EXTERNAL)
+			.createdBy(CREATOR)
+			.created(NOW)
+			.lastModifiedDate(NOW)
+			.lastModifiedBy(CREATOR)
+			.value("https://example.com/employees")
+			.version(0L)
+			.build();
+	
 	public static final Permission PERMISSION = Permission.Builder.newInstance()
             .action(Action.USE)
             .constraint(Arrays.asList(CONSTRAINT).stream().collect(Collectors.toCollection(HashSet::new)))

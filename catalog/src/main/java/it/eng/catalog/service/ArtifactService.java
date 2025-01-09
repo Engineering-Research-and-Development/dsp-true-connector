@@ -60,6 +60,12 @@ public class ArtifactService {
 		log.warn("Artifact and file not found");
 		throw new CatalogErrorAPIException("Artifact and file not found");
 	}
+	
+	public void deleteArtifact (String id) {
+		Artifact artifact = artifactRepository.findById(id)
+				.orElseThrow(() -> new CatalogErrorAPIException("Could not delete artifact, artifact with id: " + id + " does not exist"));
+		deleteArtifactAndData(artifact);
+	}
 
 	private Artifact insertExternalArtifact(String datasetId, URL externalURL) {
 		try {
@@ -105,6 +111,10 @@ public class ArtifactService {
 	
 	private void updateDataset(String datasetId, Artifact artifact) {
 		Dataset dataset = datasetService.getDatasetByIdForApi(datasetId);
+		//first remove old artifact
+		if (dataset.getArtifact() != null) {
+			deleteArtifactAndData(dataset.getArtifact());
+		}
 		Dataset datasetWithArtifact = Dataset.Builder.newInstance()
 				.id(dataset.getId())
 				.artifact(artifact)
@@ -123,6 +133,29 @@ public class ArtifactService {
 				.version(dataset.getVersion())
 				.build();
 		datasetService.updateDataset(datasetId, datasetWithArtifact);
+	}
+
+	private void deleteArtifactAndData(Artifact artifact) {
+		log.info("Deleting artifact {}", artifact.getId());
+		switch (artifact.getArtifactType()) {
+		case EXTERNAL: {
+			artifactRepository.delete(artifact);
+			break;
+		}
+		case FILE: {
+			try {
+				GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
+				ObjectId objectId = new ObjectId(artifact.getValue());
+				gridFSBucket.delete(objectId);
+			} catch (Exception e) {
+				log.info("Artifact {}, had no data to delete, proceeding with artifact removal");
+			}
+			artifactRepository.delete(artifact);
+			break;
+		}
+		default:
+			throw new CatalogErrorAPIException("Could not delete artifact, unexpected artifact type: " + artifact.getArtifactType());
+		}
 	}
 	
 }
