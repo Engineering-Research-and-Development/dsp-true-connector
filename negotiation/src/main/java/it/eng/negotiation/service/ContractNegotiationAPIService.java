@@ -271,7 +271,7 @@ public class ContractNegotiationAPIService {
 		}
 	}
 
-	public Collection<JsonNode> findContractNegotiations(String contractNegotiationId, String state, String role) {
+	public Collection<JsonNode> findContractNegotiations(String contractNegotiationId, String state, String role, String consumerPid, String providerPid) {
 		if (StringUtils.isNotBlank(contractNegotiationId)) {
 			return contractNegotiationRepository.findById(contractNegotiationId)
 					.stream()
@@ -282,6 +282,11 @@ public class ContractNegotiationAPIService {
 			return contractNegotiationRepository.findByState(state)
 					.stream()
 					.filter(cn -> getContractNegotiation(cn, role))
+					.map(cn -> Serializer.serializePlainJsonNode(cn))
+					.collect(Collectors.toList());
+		} else if(StringUtils.isNotBlank(consumerPid) && StringUtils.isNotBlank(providerPid)) {
+			return contractNegotiationRepository.findByProviderPidAndConsumerPid(providerPid, consumerPid)
+					.stream()
 					.map(cn -> Serializer.serializePlainJsonNode(cn))
 					.collect(Collectors.toList());
 		}

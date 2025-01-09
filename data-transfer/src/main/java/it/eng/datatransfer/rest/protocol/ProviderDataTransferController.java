@@ -57,7 +57,7 @@ public class ProviderDataTransferController {
 		log.info("Starting data transfer for providerPid {} and consumerPid {}", providerPid, transferStartMessage.getConsumerPid());
 		TransferProcess transferProcessStarted = dataTransferService.startDataTransfer(transferStartMessage, null, providerPid);
 		log.info("TransferProcess {} state changed to {}", transferProcessStarted.getId(), transferProcessStarted.getState());
-		return ResponseEntity.ok(null);
+		return ResponseEntity.ok().build();
 	}
 
 	@PostMapping(path = "/{providerPid}/completion")
@@ -67,7 +67,7 @@ public class ProviderDataTransferController {
 		log.info("Completing data transfer for providerPid {} and consumerPid {}", providerPid, transferCompletionMessage.getConsumerPid());
 		TransferProcess transferProcessCompleted = dataTransferService.completeDataTransfer(transferCompletionMessage, null, providerPid);
 		log.info("TransferProcess {} state changed to {}", transferProcessCompleted.getId(), transferProcessCompleted.getState());
-		return ResponseEntity.ok(null);
+		return ResponseEntity.ok().build();
 	}
 
 	@PostMapping(path = "/{providerPid}/termination")
@@ -77,7 +77,7 @@ public class ProviderDataTransferController {
 		log.info("Terminating data transfer for providerPid {} and comsumerPid {}", providerPid, transferTerminationMessage.getConsumerPid());
 		TransferProcess transferProcessTerminated = dataTransferService.terminateDataTransfer(transferTerminationMessage, null, providerPid);
 		log.info("TransferProcess {} state changed to {}", transferProcessTerminated.getId(), transferProcessTerminated.getState());
-		return ResponseEntity.ok(null);
+		return ResponseEntity.ok().build();
 	}
 
 	@PostMapping(path = "/{providerPid}/suspension")
@@ -87,6 +87,6 @@ public class ProviderDataTransferController {
 		log.info("Suspending data transfer for providerPid {} and consumerPid {}", providerPid, transferSuspensionMessage.getConsumerPid());
 		TransferProcess transferProcessSuspended = dataTransferService.suspendDataTransfer(transferSuspensionMessage, null, providerPid);
 		log.info("TransferProcess {} state changed to {}", transferProcessSuspended.getId(), transferProcessSuspended.getState());
-		return ResponseEntity.ok(null);
+		return ResponseEntity.ok().build();
 	}
 }

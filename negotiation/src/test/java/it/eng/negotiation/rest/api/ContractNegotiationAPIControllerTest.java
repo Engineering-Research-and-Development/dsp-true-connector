@@ -51,11 +51,11 @@ public class ContractNegotiationAPIControllerTest {
 	@Test
 	@DisplayName("Find all contract negotiations")
 	public void findAll() {
-		when(apiService.findContractNegotiations(null, null, null))
+		when(apiService.findContractNegotiations(null, null, null, null, null))
 				.thenReturn(Arrays.asList(
 						Serializer.serializePlainJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED),
 						Serializer.serializePlainJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED)));
-		ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getContractNegotiations(null, null, null);
+		ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getContractNegotiations(null, null, null, null, null);
 		assertNotNull(response);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 	}
@@ -63,9 +63,9 @@ public class ContractNegotiationAPIControllerTest {
 	@Test
 	@DisplayName("Find contract negotiations by state")
 	public void findContractNegotiationByState() {
-		when(apiService.findContractNegotiations(null, ContractNegotiationState.ACCEPTED.name(), null))
+		when(apiService.findContractNegotiations(null, ContractNegotiationState.ACCEPTED.name(), null, null, null))
 				.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED)));
-		ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getContractNegotiations(null, ContractNegotiationState.ACCEPTED.name(), null);
+		ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getContractNegotiations(null, ContractNegotiationState.ACCEPTED.name(), null, null, null);
 		assertNotNull(response);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 	}
@@ -73,9 +73,21 @@ public class ContractNegotiationAPIControllerTest {
 	@Test
 	@DisplayName("Find contract negotiations by id")
 	public void findContractNegotiationById() {
-		when(apiService.findContractNegotiations(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId(), null, null))
+		when(apiService.findContractNegotiations(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId(), null, null, null, null))
 				.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED)));
-		ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getContractNegotiations(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId(), null, null);
+		ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getContractNegotiations(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId(), null, null, null, null);
+		assertNotNull(response);
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+	}
+	
+	@Test
+	@DisplayName("Find contract negotiations by pids")
+	public void findContractNegotiationByPids() {
+		when(apiService.findContractNegotiations(null, null, null, 
+				NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getConsumerPid(), NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getProviderPid()))
+			.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED)));
+		ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getContractNegotiations(null, null, null,
+				NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getConsumerPid(), NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getProviderPid());
 		assertNotNull(response);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 	}
