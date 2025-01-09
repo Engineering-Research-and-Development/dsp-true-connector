@@ -23,6 +23,7 @@ import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
+import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.negotiation.model.Action;
 import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.Constraint;
@@ -37,7 +38,7 @@ import it.eng.negotiation.model.Permission;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.controller.ApiEndpoints;
 
 public class ContractNegotiationFinalizeIntegrationTest extends BaseIntegrationTest {
@@ -103,13 +104,13 @@ public class ContractNegotiationFinalizeIntegrationTest extends BaseIntegrationT
     	final ResultActions result =
     			mockMvc.perform(
     					post("/consumer/negotiations/" + contractNegotiationVerified.getConsumerPid() + "/events")
-    					.content(Serializer.serializeProtocol(contractNegotiationEventMessage))
+    					.content(NegotiationSerializer.serializeProtocol(contractNegotiationEventMessage))
     					.contentType(MediaType.APPLICATION_JSON));
     	// no response required
     	result.andExpect(status().isOk());
     	
     	JsonNode contractNegotiation = getContractNegotiationOverAPI();
-		ContractNegotiation contractNegotiationFinalized = Serializer.deserializePlain(contractNegotiation.toPrettyString(), ContractNegotiation.class);
+		ContractNegotiation contractNegotiationFinalized = NegotiationSerializer.deserializePlain(contractNegotiation.toPrettyString(), ContractNegotiation.class);
 		assertEquals(ContractNegotiationState.FINALIZED, contractNegotiationFinalized.getState());
 		offerCheck(contractNegotiationFinalized);
 		agreementCheck(contractNegotiationFinalized);
@@ -128,7 +129,7 @@ public class ContractNegotiationFinalizeIntegrationTest extends BaseIntegrationT
 			.andExpect(content().contentType(MediaType.APPLICATION_JSON));
 		
 		JsonNode jsonNode = jsonMapper.readTree(tp.andReturn().getResponse().getContentAsString());
-		TransferProcess transferProcess = it.eng.datatransfer.serializer.Serializer.deserializePlain(jsonNode.findValues("data").get(0).get(jsonNode.findValues("data").get(0).size()-1).toString(), TransferProcess.class);
+		TransferProcess transferProcess = TransferSerializer.deserializePlain(jsonNode.findValues("data").get(0).get(jsonNode.findValues("data").get(0).size()-1).toString(), TransferProcess.class);
 		
 		assertEquals(TransferState.INITIALIZED, transferProcess.getState());
 		assertNotNull(transferProcess.getAgreementId());
@@ -154,7 +155,7 @@ public class ContractNegotiationFinalizeIntegrationTest extends BaseIntegrationT
     	final ResultActions result =
     			mockMvc.perform(
     					post("/consumer/negotiations/" + contractNegotiationEventMessage.getConsumerPid() + "/events")
-    					.content(Serializer.serializeProtocol(contractNegotiationEventMessage))
+    					.content(NegotiationSerializer.serializeProtocol(contractNegotiationEventMessage))
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isNotFound());
 		
@@ -196,7 +197,7 @@ public class ContractNegotiationFinalizeIntegrationTest extends BaseIntegrationT
     	final ResultActions result =
     			mockMvc.perform(
     					post("/consumer/negotiations/" + contractNegotiationVerified.getConsumerPid() + "/events")
-    					.content(Serializer.serializeProtocol(contractNegotiationEventMessage))
+    					.content(NegotiationSerializer.serializeProtocol(contractNegotiationEventMessage))
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isBadRequest());
     }

@@ -25,7 +25,7 @@ import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferRequestMessage;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.repository.TransferProcessRepository;
-import it.eng.datatransfer.serializer.Serializer;
+import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.util.DataTranferMockObjectUtil;
 import it.eng.negotiation.model.Action;
 import it.eng.negotiation.model.Agreement;
@@ -102,13 +102,13 @@ public class DataTransferProcessRequestedIntegrationTest extends BaseIntegration
     	final ResultActions result =
     			mockMvc.perform(
     					post("/transfers/request")
-    					.content(Serializer.serializeProtocol(transferRequestMessage))
+    					.content(TransferSerializer.serializeProtocol(transferRequestMessage))
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isCreated())
     		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
     	
        	String response = result.andReturn().getResponse().getContentAsString();
-    	TransferProcess transferProcessRequested = Serializer.deserializeProtocol(response, TransferProcess.class);
+    	TransferProcess transferProcessRequested = TransferSerializer.deserializeProtocol(response, TransferProcess.class);
     	assertNotNull(transferProcessRequested);
     	assertEquals(TransferState.REQUESTED, transferProcessRequested.getState());
     	
@@ -140,13 +140,13 @@ public class DataTransferProcessRequestedIntegrationTest extends BaseIntegration
     	final ResultActions result =
     			mockMvc.perform(
     					post("/transfers/request")
-    					.content(Serializer.serializeProtocol(transferRequestMessage))
+    					.content(TransferSerializer.serializeProtocol(transferRequestMessage))
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isBadRequest())
     		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
     	
        	String response = result.andReturn().getResponse().getContentAsString();
-      	TransferError transferError = Serializer.deserializeProtocol(response, TransferError.class);
+      	TransferError transferError = TransferSerializer.deserializeProtocol(response, TransferError.class);
       	assertNotNull(transferError);
 	}
 	
@@ -173,13 +173,13 @@ public class DataTransferProcessRequestedIntegrationTest extends BaseIntegration
     	final ResultActions result =
     			mockMvc.perform(
     					post("/transfers/request")
-    					.content(Serializer.serializeProtocol(transferRequestMessage))
+    					.content(TransferSerializer.serializeProtocol(transferRequestMessage))
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isBadRequest())
     		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
     	
        	String response = result.andReturn().getResponse().getContentAsString();
-      	TransferError transferError = Serializer.deserializeProtocol(response, TransferError.class);
+      	TransferError transferError = TransferSerializer.deserializeProtocol(response, TransferError.class);
       	assertNotNull(transferError);
 	}
 	
@@ -197,13 +197,13 @@ public class DataTransferProcessRequestedIntegrationTest extends BaseIntegration
     	final ResultActions result =
     			mockMvc.perform(
     					post("/transfers/request")
-    					.content(Serializer.serializeProtocol(transferRequestMessage))
+    					.content(TransferSerializer.serializeProtocol(transferRequestMessage))
     					.contentType(MediaType.APPLICATION_JSON)
     					.header("Authorization", "Basic YXNkckBtYWlsLmNvbTpwYXNzd29yZA=="));
     	result.andExpect(status().isUnauthorized())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON));
     	String response = result.andReturn().getResponse().getContentAsString();
-    	TransferError transferError = Serializer.deserializeProtocol(response, TransferError.class);
+    	TransferError transferError = TransferSerializer.deserializeProtocol(response, TransferError.class);
       	assertNotNull(transferError);
     }
 }

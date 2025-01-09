@@ -24,7 +24,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.Dataset;
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.service.DatasetService;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.model.Artifact;
@@ -66,7 +66,7 @@ public class DatasetAPIControllerTest {
     @Test
     @DisplayName("Save dataset - success")
     public void saveDatasetSuccessfulTest() {
-        String dataset = Serializer.serializePlain(CatalogMockObjectUtil.DATASET);
+        String dataset = CatalogSerializer.serializePlain(CatalogMockObjectUtil.DATASET);
         when(datasetService.saveDataset(any())).thenReturn(CatalogMockObjectUtil.DATASET);
         ResponseEntity<GenericApiResponse<JsonNode>> response = datasetAPIController.saveDataset(dataset);
 
@@ -90,7 +90,7 @@ public class DatasetAPIControllerTest {
     @Test
     @DisplayName("Update dataset - success")
     public void updateDatasetSuccessfulTest() {
-        String dataset = Serializer.serializePlain(CatalogMockObjectUtil.DATASET_FOR_UPDATE);
+        String dataset = CatalogSerializer.serializePlain(CatalogMockObjectUtil.DATASET_FOR_UPDATE);
         when(datasetService.updateDataset(any(String.class), any())).thenReturn(CatalogMockObjectUtil.DATASET_FOR_UPDATE);
         ResponseEntity<GenericApiResponse<JsonNode>> response = datasetAPIController.updateDataset(CatalogMockObjectUtil.DATASET_FOR_UPDATE.getId(), dataset);
 
@@ -110,7 +110,7 @@ public class DatasetAPIControllerTest {
 
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
-        assertEquals(Serializer.deserializePlain(response.getBody().getData(), Artifact.class), CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getArtifact());
+        assertEquals(CatalogSerializer.deserializePlain(response.getBody().getData(), Artifact.class), CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getArtifact());
     }
     
     @Test

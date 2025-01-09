@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.catalog.model.Dataset;
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.service.DatasetService;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.Artifact;
@@ -43,7 +43,7 @@ public class DatasetAPIController {
         Dataset dataset = datasetService.getDatasetByIdForApi(id);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(dataset), "Fetched dataset"));
+                .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(dataset), "Fetched dataset"));
     }
     
     /**
@@ -74,7 +74,7 @@ public class DatasetAPIController {
         Artifact artifact = datasetService.getArtifactFromDataset(id);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(artifact), "Fetched artifact"));
+                .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(artifact), "Fetched artifact"));
     }
 
     @GetMapping
@@ -83,19 +83,19 @@ public class DatasetAPIController {
         Collection<Dataset> datasets = datasetService.getAllDatasets();
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(datasets), "Fetched all datasets"));
+                .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(datasets), "Fetched all datasets"));
     }
 
     @PostMapping
     public ResponseEntity<GenericApiResponse<JsonNode>> saveDataset(@RequestBody String dataset) {
-        Dataset ds = Serializer.deserializePlain(dataset, Dataset.class);
+        Dataset ds = CatalogSerializer.deserializePlain(dataset, Dataset.class);
 
         log.info("Saving new dataset");
 
         Dataset storedDataset = datasetService.saveDataset(ds);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(storedDataset), "Saved dataset"));
+                .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(storedDataset), "Saved dataset"));
     }
 
     @DeleteMapping(path = "/{id}")
@@ -110,14 +110,14 @@ public class DatasetAPIController {
 
     @PutMapping(path = "/{id}")
     public ResponseEntity<GenericApiResponse<JsonNode>> updateDataset(@PathVariable String id, @RequestBody String dataset) {
-        Dataset ds = Serializer.deserializePlain(dataset, Dataset.class);
+        Dataset ds = CatalogSerializer.deserializePlain(dataset, Dataset.class);
 
         log.info("Updating dataset with id: " + id);
 
         Dataset storedDataset = datasetService.updateDataset(id, ds);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(storedDataset), "Dataset updated"));
+                .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(storedDataset), "Dataset updated"));
     }
 }
 

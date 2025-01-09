@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import it.eng.datatransfer.serializer.Serializer;
+import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 
@@ -39,7 +39,7 @@ public class TransferRequestMessageTest {
 	@Test
 	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() {
-		String result = Serializer.serializePlain(transferRequestMessage);
+		String result = TransferSerializer.serializePlain(transferRequestMessage);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
 		assertTrue(result.contains(DSpaceConstants.ID));
@@ -49,14 +49,14 @@ public class TransferRequestMessageTest {
 		assertTrue(result.contains(DSpaceConstants.DATA_ADDRESS));
 		assertTrue(result.contains(DSpaceConstants.ENDPOINT_PROPERTIES));
 		
-		TransferRequestMessage javaObj = Serializer.deserializePlain(result, TransferRequestMessage.class);
+		TransferRequestMessage javaObj = TransferSerializer.deserializePlain(result, TransferRequestMessage.class);
 		validateJavaObject(javaObj);
 	}
 	
 	@Test
 	@DisplayName("Verify valid protocol object serialization")
 	public void testProtocol() {
-		JsonNode result = Serializer.serializeProtocolJsonNode(transferRequestMessage);
+		JsonNode result = TransferSerializer.serializeProtocolJsonNode(transferRequestMessage);
 		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
 		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
 		assertNotNull(result.get(DSpaceConstants.DSPACE_CONSUMER_PID).asText());
@@ -67,7 +67,7 @@ public class TransferRequestMessageTest {
 		assertNotNull(dataAddres);
 		validateDataAddress(dataAddres);
 		
-		TransferRequestMessage javaObj = Serializer.deserializeProtocol(result, TransferRequestMessage.class);
+		TransferRequestMessage javaObj = TransferSerializer.deserializeProtocol(result, TransferRequestMessage.class);
 		validateJavaObject(javaObj);
 	}
 	
@@ -82,8 +82,8 @@ public class TransferRequestMessageTest {
 	@Test
 	@DisplayName("Missing @context and @type")
 	public void missingContextAndType() {
-		JsonNode result = Serializer.serializePlainJsonNode(transferRequestMessage);
-		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, TransferRequestMessage.class));
+		JsonNode result = TransferSerializer.serializePlainJsonNode(transferRequestMessage);
+		assertThrows(ValidationException.class, () -> TransferSerializer.deserializeProtocol(result, TransferRequestMessage.class));
 	}
 	
 	private void validateJavaObject(TransferRequestMessage javaObj) {

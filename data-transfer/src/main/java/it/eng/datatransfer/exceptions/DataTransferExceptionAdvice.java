@@ -12,7 +12,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 import it.eng.datatransfer.model.TransferError;
 import it.eng.datatransfer.rest.protocol.ProviderDataTransferController;
-import it.eng.datatransfer.serializer.Serializer;
+import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.DataTransferService;
 import jakarta.validation.ValidationException;
 
@@ -27,7 +27,7 @@ public class DataTransferExceptionAdvice extends ResponseEntityExceptionHandler 
 				.code(HttpStatus.BAD_REQUEST.getReasonPhrase())
 				.reason(Collections.singletonList(ex.getLocalizedMessage()))
 				.build();
-		return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(),
+		return handleExceptionInternal(ex, TransferSerializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(),
 				HttpStatus.BAD_REQUEST, request);
 	}
 	
@@ -39,7 +39,7 @@ public class DataTransferExceptionAdvice extends ResponseEntityExceptionHandler 
 				.code(HttpStatus.BAD_REQUEST.getReasonPhrase())
 				.reason(Collections.singletonList(ex.getLocalizedMessage()))
 				.build();
-		return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(),
+		return handleExceptionInternal(ex, TransferSerializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(),
 				HttpStatus.BAD_REQUEST, request);
 	}
 
@@ -52,7 +52,7 @@ public class DataTransferExceptionAdvice extends ResponseEntityExceptionHandler 
 				.code(HttpStatus.BAD_REQUEST.getReasonPhrase())
 				.reason(Collections.singletonList(ex.getLocalizedMessage()))
 				.build();
-		return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(),
+		return handleExceptionInternal(ex, TransferSerializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(),
 				HttpStatus.BAD_REQUEST, request);
 	}
 	
@@ -65,7 +65,7 @@ public class DataTransferExceptionAdvice extends ResponseEntityExceptionHandler 
 				.code(HttpStatus.BAD_REQUEST.getReasonPhrase())
 				.reason(Collections.singletonList(ex.getLocalizedMessage()))
 				.build();
-		return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(),
+		return handleExceptionInternal(ex, TransferSerializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(),
 				HttpStatus.BAD_REQUEST, request);
 	}
 	
@@ -78,7 +78,7 @@ public class DataTransferExceptionAdvice extends ResponseEntityExceptionHandler 
 				.code(HttpStatus.BAD_REQUEST.getReasonPhrase())
 				.reason(Collections.singletonList(ex.getLocalizedMessage()))
 				.build();
-		return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(),
+		return handleExceptionInternal(ex, TransferSerializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(),
 				HttpStatus.BAD_REQUEST, request);
 	}
 }

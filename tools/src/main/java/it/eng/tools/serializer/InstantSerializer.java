@@ -1,4 +1,4 @@
-package it.eng.datatransfer.serializer;
+package it.eng.tools.serializer;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonSerializer;
@@ -13,7 +13,7 @@ import java.time.format.DateTimeFormatter;
  * This serializer converts an {@link Instant} to a string representation using the system's default time zone.
  */
 public class InstantSerializer extends JsonSerializer<Instant> {
-    private static final DateTimeFormatter formatter = DateTimeFormatter.ISO_ZONED_DATE_TIME;
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
     /**
      * Serializes an {@link Instant} object to JSON as a string in ISO-8601 zoned date-time format.

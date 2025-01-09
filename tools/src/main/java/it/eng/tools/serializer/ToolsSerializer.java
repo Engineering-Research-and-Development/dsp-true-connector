@@ -1,4 +1,4 @@
-package it.eng.tools.model;
+package it.eng.tools.serializer;
 
 import java.lang.annotation.Annotation;
 import java.time.Instant;
@@ -30,7 +30,7 @@ import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
 import jakarta.validation.Validator;
 
-public class Serializer {
+public class ToolsSerializer {
 
 	private static JsonMapper jsonMapperPlain;
 	private static JsonMapper jsonMapper;
@@ -71,9 +71,10 @@ public class Serializer {
 				.configure(SerializationFeature.INDENT_OUTPUT, true)
 				.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
 				.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-				.annotationIntrospector(ignoreJsonPropertyIntrospector)
-				.addModule(instantConverterModule)
-				.addModule(new JavaTimeModule())
+//				.annotationIntrospector(ignoreJsonPropertyIntrospector)
+				// this one needs to be in following order to serialize Instants in correct format
+				// otherwise it will serialize them in unix format
+				.addModules(new JavaTimeModule(), instantConverterModule)
 				.build();
 
         jsonMapper = JsonMapper.builder()
@@ -81,8 +82,7 @@ public class Serializer {
 				.serializationInclusion(Include.NON_EMPTY)
 				.configure(SerializationFeature.INDENT_OUTPUT, true)
 				.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
-				.addModule(instantConverterModule)
-				.addModule(new JavaTimeModule())
+				.addModules(new JavaTimeModule(), instantConverterModule)
 				.build();
 
 		validator = Validation.buildDefaultValidatorFactory().getValidator();

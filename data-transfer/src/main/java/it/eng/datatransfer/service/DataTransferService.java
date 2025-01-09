@@ -7,6 +7,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+
 import it.eng.datatransfer.event.TransferProcessChangeEvent;
 import it.eng.datatransfer.exceptions.TransferProcessInternalException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidFormatException;
@@ -21,7 +23,7 @@ import it.eng.datatransfer.model.TransferSuspensionMessage;
 import it.eng.datatransfer.model.TransferTerminationMessage;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
-import it.eng.datatransfer.serializer.Serializer;
+import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.IConstants;
@@ -106,7 +108,7 @@ public class DataTransferService {
 		transferProcessRepository.save(transferProcessRequested);
 		log.info("Requested TransferProcess created");
 		if(log.isDebugEnabled()) {
-			log.debug("message: " + Serializer.serializePlain(transferProcessRequested));
+			log.debug("message: " + TransferSerializer.serializePlain(transferProcessRequested));
 		}
 		return transferProcessRequested;
 	}
@@ -117,19 +119,13 @@ public class DataTransferService {
 				HttpMethod.GET,
 				null);
 
-//		ObjectMapper objectMapper = new ObjectMapper();
-//		LocalDateTimeDeserializer localDateTimeDeserializer = new LocalDateTimeDeserializer(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-//		JavaTimeModule module = new JavaTimeModule();
-//		module.addDeserializer(LocalDateTime.class, localDateTimeDeserializer);
-//		objectMapper.registerModule(module);
-//		
-//		TypeReference<GenericApiResponse<List<String>>> typeRef = new TypeReference<GenericApiResponse<List<String>>>() {};
-//	    try {
 		if(StringUtils.isBlank(response)) {
 			throw new TransferProcessInternalException("Internal error", 
 					transferProcess.getConsumerPid(), transferProcess.getProviderPid());
 		}
-        GenericApiResponse<List<String>> apiResp = Serializer.deserializePlain(response, GenericApiResponse.class);
+		
+		TypeReference<GenericApiResponse<List<String>>> typeRef = new TypeReference<GenericApiResponse<List<String>>>() {}; 
+        GenericApiResponse<List<String>> apiResp = TransferSerializer.deserializePlain(response, typeRef);
         boolean formatValid = apiResp.getData().stream().anyMatch(f -> f.equals(format));
         if(formatValid) {
         	log.debug("Found supported format");

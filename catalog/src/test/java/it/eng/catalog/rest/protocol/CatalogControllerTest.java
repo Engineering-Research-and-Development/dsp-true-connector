@@ -19,7 +19,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.catalog.model.CatalogRequestMessage;
 import it.eng.catalog.model.DatasetRequestMessage;
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.service.CatalogService;
 import it.eng.catalog.service.DatasetService;
 import it.eng.catalog.util.CatalogMockObjectUtil;
@@ -40,7 +40,7 @@ public class CatalogControllerTest {
 
     private CatalogRequestMessage catalogRequestMessage = CatalogRequestMessage.Builder.newInstance().build();
     private DatasetRequestMessage datasetRequestMessage = DatasetRequestMessage.Builder.newInstance()
-            .dataset(Serializer.serializeProtocol(CatalogMockObjectUtil.DATASET))
+            .dataset(CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.DATASET))
             .build();
 
 
@@ -48,7 +48,7 @@ public class CatalogControllerTest {
     @DisplayName("Get catalog - success")
     public void getCatalogSuccessfulTest() throws Exception {
         when(catalogService.getCatalog()).thenReturn(CatalogMockObjectUtil.CATALOG);
-        JsonNode jsonNode = Serializer.serializeProtocolJsonNode(catalogRequestMessage);
+        JsonNode jsonNode = CatalogSerializer.serializeProtocolJsonNode(catalogRequestMessage);
 
         ResponseEntity<JsonNode> response = catalogController.getCatalog(null, jsonNode);
 
@@ -61,7 +61,7 @@ public class CatalogControllerTest {
     @Test
     @DisplayName("Get catalog - not valid catalog request message")
     public void notValidCatalogRequestMessageTest() throws Exception {
-        JsonNode jsonNode = Serializer.serializeProtocolJsonNode(datasetRequestMessage);
+        JsonNode jsonNode = CatalogSerializer.serializeProtocolJsonNode(datasetRequestMessage);
 
         Exception e = assertThrows(ValidationException.class, () -> catalogController.getCatalog(null, jsonNode));
 
@@ -73,7 +73,7 @@ public class CatalogControllerTest {
     public void getDatasetSuccessfulTest() throws Exception {
         when(datasetService.getDatasetById(any())).thenReturn(CatalogMockObjectUtil.DATASET);
 
-        JsonNode jsonNode = Serializer.serializeProtocolJsonNode(datasetRequestMessage);
+        JsonNode jsonNode = CatalogSerializer.serializeProtocolJsonNode(datasetRequestMessage);
 
         ResponseEntity<JsonNode> response = catalogController.getDataset(null, "1", jsonNode);
 
@@ -86,7 +86,7 @@ public class CatalogControllerTest {
     @Test
     @DisplayName("Get dataset - not valid dataset request message")
     public void notValidDatasetRequestMessageTest() throws Exception {
-        JsonNode jsonNode = Serializer.serializeProtocolJsonNode(catalogRequestMessage);
+        JsonNode jsonNode = CatalogSerializer.serializeProtocolJsonNode(catalogRequestMessage);
 
         Exception e = assertThrows(ValidationException.class, () -> catalogController.getDataset(null, "1", jsonNode));
 

@@ -15,7 +15,7 @@ import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 
 import it.eng.catalog.model.CatalogError;
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
@@ -28,7 +28,7 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void getCatalogSuccessfulTest() throws Exception {
     	
-    	String body = Serializer.serializeProtocol(CatalogMockObjectUtil.CATALOG_REQUEST_MESSAGE);
+    	String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.CATALOG_REQUEST_MESSAGE);
     	
     	final ResultActions result =
     			mockMvc.perform(
@@ -45,7 +45,7 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
     @DisplayName("Get catalog - unauthorized")
     public void getCatalogSUnauthorizedTest() throws Exception {
     	
-    	String body = Serializer.serializeProtocol(CatalogMockObjectUtil.CATALOG_REQUEST_MESSAGE);
+    	String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.CATALOG_REQUEST_MESSAGE);
     	
     	final ResultActions result =
     			mockMvc.perform(
@@ -64,7 +64,7 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.CONNECTOR_USER)
 	public void notValidCatalogRequestMessageTest() throws Exception {
     	
-    	String body = Serializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
+    	String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
 		
 		final ResultActions result =
 				mockMvc.perform(
@@ -83,7 +83,7 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
 	@WithUserDetails(TestUtil.CONNECTOR_USER)
 	public void getDatasetSuccessfulTest() throws Exception {
 		
-		String body = Serializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
+		String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
 		
 		final ResultActions result =
 		        mockMvc.perform(
@@ -101,7 +101,7 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
 	@WithUserDetails(TestUtil.CONNECTOR_USER)
 	public void notValidDatasetRequestMessageTest() throws Exception {
 		
-		String body = Serializer.serializeProtocol(CatalogMockObjectUtil.CATALOG_REQUEST_MESSAGE);
+		String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.CATALOG_REQUEST_MESSAGE);
 		
 		final ResultActions result =
 		        mockMvc.perform(
@@ -120,7 +120,7 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
 	@WithUserDetails(TestUtil.CONNECTOR_USER)
 	public void noDatasetFoundTest() throws Exception {
 		
-		String body = Serializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
+		String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
 		
 		final ResultActions result =
 		        mockMvc.perform(

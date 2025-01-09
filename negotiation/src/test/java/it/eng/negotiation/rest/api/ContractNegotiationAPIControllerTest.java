@@ -32,7 +32,7 @@ import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.NegotiationMockObjectUtil;
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.negotiation.service.ContractNegotiationAPIService;
 import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.response.GenericApiResponse;
@@ -53,8 +53,8 @@ public class ContractNegotiationAPIControllerTest {
 	public void findAll() {
 		when(apiService.findContractNegotiations(null, null, null, null, null))
 				.thenReturn(Arrays.asList(
-						Serializer.serializePlainJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED),
-						Serializer.serializePlainJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED)));
+						NegotiationSerializer.serializePlainJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED),
+						NegotiationSerializer.serializePlainJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED)));
 		ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getContractNegotiations(null, null, null, null, null);
 		assertNotNull(response);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -64,7 +64,7 @@ public class ContractNegotiationAPIControllerTest {
 	@DisplayName("Find contract negotiations by state")
 	public void findContractNegotiationByState() {
 		when(apiService.findContractNegotiations(null, ContractNegotiationState.ACCEPTED.name(), null, null, null))
-				.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED)));
+				.thenReturn(Arrays.asList(NegotiationSerializer.serializePlainJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED)));
 		ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getContractNegotiations(null, ContractNegotiationState.ACCEPTED.name(), null, null, null);
 		assertNotNull(response);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -74,7 +74,7 @@ public class ContractNegotiationAPIControllerTest {
 	@DisplayName("Find contract negotiations by id")
 	public void findContractNegotiationById() {
 		when(apiService.findContractNegotiations(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId(), null, null, null, null))
-				.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED)));
+				.thenReturn(Arrays.asList(NegotiationSerializer.serializePlainJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED)));
 		ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getContractNegotiations(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId(), null, null, null, null);
 		assertNotNull(response);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -85,7 +85,7 @@ public class ContractNegotiationAPIControllerTest {
 	public void findContractNegotiationByPids() {
 		when(apiService.findContractNegotiations(null, null, null, 
 				NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getConsumerPid(), NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getProviderPid()))
-			.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED)));
+			.thenReturn(Arrays.asList(NegotiationSerializer.serializePlainJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED)));
 		ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getContractNegotiations(null, null, null,
 				NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getConsumerPid(), NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getProviderPid());
 		assertNotNull(response);
@@ -97,10 +97,10 @@ public class ContractNegotiationAPIControllerTest {
 	public void startNegotiation_success() {
 		Map<String, Object> map = new HashMap<>();
 		map.put("Forward-To", NegotiationMockObjectUtil.FORWARD_TO);
-		map.put("offer", Serializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
+		map.put("offer", NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
 				
 		when(apiService.startNegotiation(any(String.class), any(JsonNode.class)))
-			.thenReturn(Serializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+			.thenReturn(NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 		
 		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.startNegotiation(mapper.convertValue(map, JsonNode.class));
 		assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -132,10 +132,10 @@ public class ContractNegotiationAPIControllerTest {
 	public void providerPostsOffer_success() {
 		Map<String, Object> map = new HashMap<>();
 		map.put("Forward-To", NegotiationMockObjectUtil.FORWARD_TO);
-		map.put("offer", Serializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
+		map.put("offer", NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
 		
 		when(apiService.sendContractOffer(any(String.class), any(JsonNode.class)))
-			.thenReturn(Serializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_OFFERED));
+			.thenReturn(NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_OFFERED));
 		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.sendContractOffer(mapper.convertValue(map, JsonNode.class));
 	
 		assertNotNull(response);
@@ -150,7 +150,7 @@ public class ContractNegotiationAPIControllerTest {
 	public void providerPostsOffer_error() {
 		Map<String, Object> map = new HashMap<>();
 		map.put("Forward-To", NegotiationMockObjectUtil.FORWARD_TO);
-		map.put("offer", Serializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
+		map.put("offer", NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
 		
 		when(apiService.sendContractOffer(any(String.class), any(JsonNode.class)))
 			.thenThrow(new ContractNegotiationAPIException("Something not correct - tests"));
@@ -165,7 +165,7 @@ public class ContractNegotiationAPIControllerTest {
 		Map<String, Object> map = new HashMap<>();
 		map.put("consumerPid", NegotiationMockObjectUtil.CONSUMER_PID);
 		map.put("providerPid", NegotiationMockObjectUtil.PROVIDER_PID);
-		map.put("agreement", Serializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.AGREEMENT));
+		map.put("agreement", NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.AGREEMENT));
 				
 		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.sendAgreement(mapper.convertValue(map, JsonNode.class));
 		assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -178,7 +178,7 @@ public class ContractNegotiationAPIControllerTest {
 		Map<String, Object> map = new HashMap<>();
 		map.put("consumerPid", NegotiationMockObjectUtil.CONSUMER_PID);
 		map.put("providerPid", NegotiationMockObjectUtil.PROVIDER_PID);
-		map.put("agreement", Serializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.AGREEMENT));
+		map.put("agreement", NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.AGREEMENT));
 				
 		doThrow(new ContractNegotiationAPIException("Something not correct - tests"))
 		.when(apiService).sendAgreement(any(String.class), any(String.class), any(JsonNode.class));

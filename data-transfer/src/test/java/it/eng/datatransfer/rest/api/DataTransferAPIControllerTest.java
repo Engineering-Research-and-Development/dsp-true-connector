@@ -34,7 +34,7 @@ import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.DataTransferRequest;
 import it.eng.datatransfer.model.TransferState;
-import it.eng.datatransfer.serializer.Serializer;
+import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.DataTransferAPIService;
 import it.eng.datatransfer.util.DataTranferMockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
@@ -58,7 +58,7 @@ class DataTransferAPIControllerTest {
 	@DisplayName("Find transfer process by id, state and all")
 	public void getTransfersProcess() {
 		when(apiService.findDataTransfers(anyString(), anyString(), isNull()))
-			.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
+			.thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
 		ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess("test", TransferState.REQUESTED.name(), null);
 		assertNotNull(response);
 		assertTrue(response.getBody().isSuccess());
@@ -72,15 +72,15 @@ class DataTransferAPIControllerTest {
 		assertTrue(response.getBody().getData().isEmpty());
 		
 		when(apiService.findDataTransfers(isNull(), anyString(), anyString()))
-			.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED)));
+			.thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED)));
 		response = controller.getTransfersProcess(null, TransferState.STARTED.name(), DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getRole());
 		assertNotNull(response);
 		assertTrue(response.getBody().isSuccess());
 		assertFalse(response.getBody().getData().isEmpty());
 	
 		when(apiService.findDataTransfers(isNull(), isNull(), isNull()))
-			.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER),
-					Serializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED)));
+			.thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER),
+					TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED)));
 		response = controller.getTransfersProcess(null, null, null);
 		assertNotNull(response);
 		assertTrue(response.getBody().isSuccess());
@@ -94,10 +94,10 @@ class DataTransferAPIControllerTest {
 		Map<String, Object> map = new HashMap<>();
 		map.put("transferProcessId", DataTranferMockObjectUtil.FORWARD_TO);
 		map.put(DSpaceConstants.FORMAT, DataTransferFormat.HTTP_PULL.name());
-		map.put(DSpaceConstants.DATA_ADDRESS, Serializer.serializePlainJsonNode(DataTranferMockObjectUtil.DATA_ADDRESS));
+		map.put(DSpaceConstants.DATA_ADDRESS, TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.DATA_ADDRESS));
 				
 		when(apiService.requestTransfer(any(DataTransferRequest.class)))
-			.thenReturn(Serializer.serializeProtocolJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+			.thenReturn(TransferSerializer.serializeProtocolJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
 		
 		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.requestTransfer(dataTransferRequest);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -110,7 +110,7 @@ class DataTransferAPIControllerTest {
 		Map<String, Object> map = new HashMap<>();
 		map.put("transferProcessId", DataTranferMockObjectUtil.FORWARD_TO);
 		map.put(DSpaceConstants.FORMAT, DataTransferFormat.HTTP_PULL.name());
-		map.put(DSpaceConstants.DATA_ADDRESS, Serializer.serializePlainJsonNode(DataTranferMockObjectUtil.DATA_ADDRESS));
+		map.put(DSpaceConstants.DATA_ADDRESS, TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.DATA_ADDRESS));
 				
 		doThrow(new DataTransferAPIException("Something not correct - tests"))
 			.when(apiService).requestTransfer(any(DataTransferRequest.class));

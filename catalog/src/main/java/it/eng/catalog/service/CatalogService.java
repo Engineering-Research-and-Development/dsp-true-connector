@@ -15,7 +15,7 @@ import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.Distribution;
 import it.eng.catalog.model.Offer;
 import it.eng.catalog.repository.CatalogRepository;
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
 import lombok.extern.slf4j.Slf4j;
@@ -134,10 +134,10 @@ public class CatalogService {
 	@Deprecated
     public void validateOffer(ContractNegotationOfferRequestEvent offerRequest) {
         log.info("Comparing if offer is valid or not");
-        Offer offer = Serializer.deserializeProtocol(offerRequest.getOffer(), Offer.class);
+        Offer offer = CatalogSerializer.deserializeProtocol(offerRequest.getOffer(), Offer.class);
         boolean valid = validateOffer(offer);
         ContractNegotiationOfferResponseEvent contractNegotiationOfferResponse = new ContractNegotiationOfferResponseEvent(offerRequest.getConsumerPid(),
-                offerRequest.getProviderPid(), valid, Serializer.serializeProtocolJsonNode(offer));
+                offerRequest.getProviderPid(), valid, CatalogSerializer.serializeProtocolJsonNode(offer));
         publisher.publishEvent(contractNegotiationOfferResponse);
     }
 

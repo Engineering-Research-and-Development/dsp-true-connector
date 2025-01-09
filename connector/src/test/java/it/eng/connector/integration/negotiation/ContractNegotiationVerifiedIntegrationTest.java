@@ -29,7 +29,7 @@ import it.eng.negotiation.model.Permission;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 
 public class ContractNegotiationVerifiedIntegrationTest extends BaseIntegrationTest {
 
@@ -92,12 +92,12 @@ public class ContractNegotiationVerifiedIntegrationTest extends BaseIntegrationT
 
 		final ResultActions result = mockMvc
 				.perform(post("/negotiations/" + contractNegotiationVerified.getProviderPid() + "/agreement/verification")
-						.content(Serializer.serializeProtocol(verificationMessage))
+						.content(NegotiationSerializer.serializeProtocol(verificationMessage))
 						.contentType(MediaType.APPLICATION_JSON));
 		result.andExpect(status().isOk());
 
 		JsonNode contractNegotiation = getContractNegotiationOverAPI();
-		ContractNegotiation contractNegotiationResponse = Serializer
+		ContractNegotiation contractNegotiationResponse = NegotiationSerializer
 				.deserializePlain(contractNegotiation.toPrettyString(), ContractNegotiation.class);
 		assertEquals(ContractNegotiationState.VERIFIED, contractNegotiationResponse.getState());
 		offerCheck(contractNegotiationResponse);
@@ -130,7 +130,7 @@ public class ContractNegotiationVerifiedIntegrationTest extends BaseIntegrationT
 
 		final ResultActions result = mockMvc
 				.perform(post("/negotiations/" + contractNegotiationVerified.getProviderPid() + "/agreement/verification")
-						.content(Serializer.serializeProtocol(verificationMessage))
+						.content(NegotiationSerializer.serializeProtocol(verificationMessage))
 						.contentType(MediaType.APPLICATION_JSON));
 		result.andExpect(status().isBadRequest());
 
@@ -148,7 +148,7 @@ public class ContractNegotiationVerifiedIntegrationTest extends BaseIntegrationT
 
 		final ResultActions result = mockMvc
 				.perform(post("/negotiations/" + verificationMessage.getProviderPid() + "/agreement/verification")
-						.content(Serializer.serializeProtocol(verificationMessage))
+						.content(NegotiationSerializer.serializeProtocol(verificationMessage))
 						.contentType(MediaType.APPLICATION_JSON));
 		result.andExpect(status().isNotFound());
 	}

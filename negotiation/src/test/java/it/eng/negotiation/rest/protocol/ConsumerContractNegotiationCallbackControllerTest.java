@@ -32,7 +32,7 @@ import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
 import it.eng.negotiation.model.ContractOfferMessage;
 import it.eng.negotiation.model.NegotiationMockObjectUtil;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.negotiation.service.ContractNegotiationConsumerService;
 
 @ExtendWith(MockitoExtension.class)
@@ -50,10 +50,10 @@ public class ConsumerContractNegotiationCallbackControllerTest {
 
     @Test
     public void handleNegotiationOffers() throws JsonProcessingException {
-        String json = Serializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_OFFER_MESSAGE);
+        String json = NegotiationSerializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_OFFER_MESSAGE);
         JsonNode jsonNode = mapper.readTree(json);
         when(contractNegotiationConsumerService.processContractOffer(any(ContractOfferMessage.class)))
-                .thenReturn(Serializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_OFFERED));
+                .thenReturn(NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_OFFERED));
         when(properties.providerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
         ResponseEntity<JsonNode> response = controller.handleNegotiationOffers(jsonNode);
         assertNotNull(response);
@@ -62,7 +62,7 @@ public class ConsumerContractNegotiationCallbackControllerTest {
 
     @Test
     public void handleNegotiationOfferConsumerPid() throws InterruptedException, ExecutionException, JsonMappingException, JsonProcessingException {
-        String json = Serializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_OFFER_MESSAGE);
+        String json = NegotiationSerializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_OFFER_MESSAGE);
         JsonNode jsonNode = mapper.readTree(json);
 
         ResponseEntity<JsonNode> response = controller.handleNegotiationOfferConsumerPid(NegotiationMockObjectUtil.CONSUMER_PID, jsonNode);
@@ -72,7 +72,7 @@ public class ConsumerContractNegotiationCallbackControllerTest {
 
     @Test
     public void handleAgreement_success() throws InterruptedException, ExecutionException, JsonMappingException, JsonProcessingException {
-        String json = Serializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE);
+        String json = NegotiationSerializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE);
         JsonNode jsonNode = mapper.readTree(json);
         doNothing().when(contractNegotiationConsumerService).handleAgreement(any(ContractAgreementMessage.class));
 
@@ -85,7 +85,7 @@ public class ConsumerContractNegotiationCallbackControllerTest {
     
     @Test
     public void handleAgreement_failed() throws InterruptedException, ExecutionException, JsonMappingException, JsonProcessingException {
-        String json = Serializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE);
+        String json = NegotiationSerializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE);
         JsonNode jsonNode = mapper.readTree(json);
 
         doThrow(new ContractNegotiationInvalidStateException("Something not correct - tests", NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.PROVIDER_PID))
@@ -97,7 +97,7 @@ public class ConsumerContractNegotiationCallbackControllerTest {
 
     @Test
     public void handleFinalizeEvent_success() throws InterruptedException, ExecutionException, JsonMappingException, JsonProcessingException {
-        String json = Serializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_EVENT_MESSAGE);
+        String json = NegotiationSerializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_EVENT_MESSAGE);
         JsonNode jsonNode = mapper.readTree(json);
         doNothing().when(contractNegotiationConsumerService).handleFinalizeEvent(any(ContractNegotiationEventMessage.class));
 
@@ -108,7 +108,7 @@ public class ConsumerContractNegotiationCallbackControllerTest {
     
     @Test
     public void handleFinalizeEvent_failed()  {
-		JsonNode jsonNode = Serializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_EVENT_MESSAGE);
+		JsonNode jsonNode = NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_EVENT_MESSAGE);
 
         doThrow(new ContractNegotiationInvalidStateException("Something not correct - tests", NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.PROVIDER_PID))
 		.when(contractNegotiationConsumerService).handleFinalizeEvent(any(ContractNegotiationEventMessage.class));
@@ -119,7 +119,7 @@ public class ConsumerContractNegotiationCallbackControllerTest {
 
     @Test
     public void handleTerminationResponse() {
-    	JsonNode jsonNode = Serializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.TERMINATION_MESSAGE);
+    	JsonNode jsonNode = NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.TERMINATION_MESSAGE);
 
         ResponseEntity<JsonNode> response = controller.handleTerminationResponse(NegotiationMockObjectUtil.CONSUMER_PID, jsonNode);
         assertNotNull(response);
@@ -128,7 +128,7 @@ public class ConsumerContractNegotiationCallbackControllerTest {
     
     @Test
     public void handleTerminationResponse_error_service() {
-    	JsonNode jsonNode = Serializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.TERMINATION_MESSAGE);
+    	JsonNode jsonNode = NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.TERMINATION_MESSAGE);
     	doThrow(ContractNegotiationNotFoundException.class).when(contractNegotiationConsumerService)
     		.handleTerminationRequest(any(String.class), any(ContractNegotiationTerminationMessage.class));
     	assertThrows(ContractNegotiationNotFoundException.class, 

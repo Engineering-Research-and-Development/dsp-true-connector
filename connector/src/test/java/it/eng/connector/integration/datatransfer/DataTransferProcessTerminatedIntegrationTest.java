@@ -31,7 +31,7 @@ import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.model.TransferTerminationMessage;
 import it.eng.datatransfer.repository.TransferProcessRepository;
-import it.eng.datatransfer.serializer.Serializer;
+import it.eng.datatransfer.serializer.TransferSerializer;
 
 public class DataTransferProcessTerminatedIntegrationTest extends BaseIntegrationTest {
 
@@ -63,7 +63,7 @@ public class DataTransferProcessTerminatedIntegrationTest extends BaseIntegratio
 		
 		mockMvc.perform(
 				post("/transfers/" + transferTerminationMessage.getProviderPid() + "/termination")
-				.content(Serializer.serializeProtocol(transferTerminationMessage))
+				.content(TransferSerializer.serializeProtocol(transferTerminationMessage))
 				.contentType(MediaType.APPLICATION_JSON))
 			.andExpect(status().isOk());
 		// no response
@@ -98,7 +98,7 @@ public class DataTransferProcessTerminatedIntegrationTest extends BaseIntegratio
 		
 		mockMvc.perform(
 				post("/consumer/transfers/" + transferTerminationMessage.getConsumerPid() + "/termination")
-				.content(Serializer.serializeProtocol(transferTerminationMessage))
+				.content(TransferSerializer.serializeProtocol(transferTerminationMessage))
 				.contentType(MediaType.APPLICATION_JSON))
 			.andExpect(status().isOk());
 		// no response
@@ -124,12 +124,12 @@ public class DataTransferProcessTerminatedIntegrationTest extends BaseIntegratio
 		final ResultActions result =
     			mockMvc.perform(
     					post("/transfers/" + transferTerminationMessage.getProviderPid() +"/start")
-    					.content(Serializer.serializeProtocol(transferTerminationMessage))
+    					.content(TransferSerializer.serializeProtocol(transferTerminationMessage))
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isBadRequest());
 
     	String response = result.andReturn().getResponse().getContentAsString();
-    	TransferError transferError = Serializer.deserializeProtocol(response, TransferError.class);
+    	TransferError transferError = TransferSerializer.deserializeProtocol(response, TransferError.class);
     	assertNotNull(transferError);
 	}
 	
@@ -147,12 +147,12 @@ public class DataTransferProcessTerminatedIntegrationTest extends BaseIntegratio
 		final ResultActions result =
     			mockMvc.perform(
     					post("/consumer/transfers/" + transferTerminationMessage.getConsumerPid() +"/start")
-    					.content(Serializer.serializeProtocol(transferTerminationMessage))
+    					.content(TransferSerializer.serializeProtocol(transferTerminationMessage))
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isBadRequest());
 
     	String response = result.andReturn().getResponse().getContentAsString();
-    	TransferError transferError = Serializer.deserializeProtocol(response, TransferError.class);
+    	TransferError transferError = TransferSerializer.deserializeProtocol(response, TransferError.class);
     	assertNotNull(transferError);
 	}
 	
@@ -168,8 +168,8 @@ public class DataTransferProcessTerminatedIntegrationTest extends BaseIntegratio
     			.andExpect(status().isOk())
             	.andReturn();	
     	String jsonTransferProcessCompleted = resultCompletedMessage.getResponse().getContentAsString();
-    	JsonNode jsonNodeCompleted = Serializer.serializeStringToProtocolJsonNode(jsonTransferProcessCompleted);
-    	TransferProcess transferProcessCompleted = Serializer.deserializeProtocol(jsonNodeCompleted, TransferProcess.class);
+    	JsonNode jsonNodeCompleted = TransferSerializer.serializeStringToProtocolJsonNode(jsonTransferProcessCompleted);
+    	TransferProcess transferProcessCompleted = TransferSerializer.deserializeProtocol(jsonNodeCompleted, TransferProcess.class);
 		return transferProcessCompleted;
 	}
 }

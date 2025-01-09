@@ -18,7 +18,7 @@ import org.springframework.http.ResponseEntity;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.catalog.model.Distribution;
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.service.DistributionService;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.response.GenericApiResponse;
@@ -60,7 +60,7 @@ public class DistributionAPIControllerTest {
     @Test
     @DisplayName("Save distribution - success")
     public void saveDistribution_success() {
-        String distribution = Serializer.serializePlain(CatalogMockObjectUtil.DISTRIBUTION);
+        String distribution = CatalogSerializer.serializePlain(CatalogMockObjectUtil.DISTRIBUTION);
         when(distributionService.saveDistribution(any())).thenReturn(CatalogMockObjectUtil.DISTRIBUTION);
         ResponseEntity<GenericApiResponse<JsonNode>> response = distributionAPIController.saveDistribution(distribution);
 
@@ -84,7 +84,7 @@ public class DistributionAPIControllerTest {
     @Test
     @DisplayName("Update distribution - success")
     public void updateDistribution_success() {
-        String distribution = Serializer.serializePlain(CatalogMockObjectUtil.DISTRIBUTION_FOR_UPDATE);
+        String distribution = CatalogSerializer.serializePlain(CatalogMockObjectUtil.DISTRIBUTION_FOR_UPDATE);
         when(distributionService.updateDistribution(any(String.class), any())).thenReturn(CatalogMockObjectUtil.DISTRIBUTION_FOR_UPDATE);
         ResponseEntity<GenericApiResponse<JsonNode>> response = distributionAPIController.updateDistribution(CatalogMockObjectUtil.DISTRIBUTION_FOR_UPDATE.getId(), distribution);
 

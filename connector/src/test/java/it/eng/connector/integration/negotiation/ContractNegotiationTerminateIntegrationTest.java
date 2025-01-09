@@ -23,7 +23,7 @@ import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
 import it.eng.negotiation.model.Reason;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.model.IConstants;
 
 public class ContractNegotiationTerminateIntegrationTest extends BaseIntegrationTest {
@@ -47,7 +47,7 @@ public class ContractNegotiationTerminateIntegrationTest extends BaseIntegration
     			.code("test")
     			.reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("test").build()))
     			.build();
-    	String body = Serializer.serializeProtocol(terminaionMessage);
+    	String body = NegotiationSerializer.serializeProtocol(terminaionMessage);
     	
     	//negotiations/:id/termination resource
     	final ResultActions result =
@@ -76,7 +76,7 @@ public class ContractNegotiationTerminateIntegrationTest extends BaseIntegration
     			.code("test")
     			.reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("test").build()))
     			.build();
-    	String body = Serializer.serializeProtocol(terminaionMessage);
+    	String body = NegotiationSerializer.serializeProtocol(terminaionMessage);
     	
     	//negotiations/:id/termination resource
     	final ResultActions result =
@@ -88,7 +88,7 @@ public class ContractNegotiationTerminateIntegrationTest extends BaseIntegration
     	result.andExpect(status().is4xxClientError())
     		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
     	
-    	ContractNegotiationErrorMessage erroMessage = Serializer.deserializeProtocol(result.andReturn().getResponse().getContentAsString(), 
+    	ContractNegotiationErrorMessage erroMessage = NegotiationSerializer.deserializeProtocol(result.andReturn().getResponse().getContentAsString(), 
     			ContractNegotiationErrorMessage.class);
     	assertNotNull(erroMessage);
     	assertEquals(cn.getConsumerPid(), erroMessage.getConsumerPid());
@@ -110,7 +110,7 @@ public class ContractNegotiationTerminateIntegrationTest extends BaseIntegration
     			.code("test")
     			.reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("test").build()))
     			.build();
-    	String body = Serializer.serializeProtocol(terminaionMessage);
+    	String body = NegotiationSerializer.serializeProtocol(terminaionMessage);
     	
     	// /consumer/negotiations/{consumerPid}/termination
     	final ResultActions result =
@@ -138,7 +138,7 @@ public class ContractNegotiationTerminateIntegrationTest extends BaseIntegration
     			.code("test")
     			.reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("test").build()))
     			.build();
-    	String body = Serializer.serializeProtocol(terminaionMessage);
+    	String body = NegotiationSerializer.serializeProtocol(terminaionMessage);
     	
     	// /consumer/negotiations/{consumerPid}/termination
     	final ResultActions result =
@@ -149,7 +149,7 @@ public class ContractNegotiationTerminateIntegrationTest extends BaseIntegration
     	// result is 400 error
     	result.andExpect(status().is4xxClientError())
     		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
-    	ContractNegotiationErrorMessage erroMessage = Serializer.deserializeProtocol(result.andReturn().getResponse().getContentAsString(), 
+    	ContractNegotiationErrorMessage erroMessage = NegotiationSerializer.deserializeProtocol(result.andReturn().getResponse().getContentAsString(), 
     			ContractNegotiationErrorMessage.class);
     	assertNotNull(erroMessage);
     	assertEquals(INVALID_PID, erroMessage.getConsumerPid());

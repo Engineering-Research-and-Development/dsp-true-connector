@@ -26,6 +26,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockHttpServletResponse;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.gridfs.GridFSBucket;
 import com.mongodb.client.gridfs.GridFSBuckets;
@@ -34,7 +35,7 @@ import com.mongodb.client.gridfs.GridFSFindIterable;
 import com.mongodb.client.gridfs.model.GridFSFile;
 
 import it.eng.datatransfer.exceptions.DownloadException;
-import it.eng.datatransfer.serializer.Serializer;
+import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.api.RestArtifactService;
 import it.eng.datatransfer.util.DataTranferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
@@ -43,6 +44,7 @@ import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ExternalData;
 import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.serializer.ToolsSerializer;
 import okhttp3.MediaType;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
@@ -101,7 +103,7 @@ public class RestArtifactServiceTest {
 		apiResponse.setData(null);
 		apiResponse.setSuccess(false);
 		when(okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getDatasetId() + "/artifact", HttpMethod.GET, null))
-		.thenReturn(Serializer.serializePlain(apiResponse));
+		.thenReturn(TransferSerializer.serializePlain(apiResponse));
 		
 		assertThrows(DownloadException.class, () -> restArtifactService.getArtifact(TRANSACTION_ID, mockHttpServletResponse));
 		
@@ -116,7 +118,7 @@ public class RestArtifactServiceTest {
 		apiResponse.setData(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL);
 		apiResponse.setSuccess(true);
 		when(okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getDatasetId() + "/artifact", HttpMethod.GET, null))
-		.thenReturn(Serializer.serializePlain(apiResponse));
+		.thenReturn(TransferSerializer.serializePlain(apiResponse));
 		ExternalData externalData = new ExternalData();
 		externalData.setData("some_data".getBytes());
 		externalData.setContentType(MediaType.parse("text/plain; charset=utf-8"));
@@ -145,7 +147,7 @@ public class RestArtifactServiceTest {
 		apiResponse.setData(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL);
 		apiResponse.setSuccess(true);
 		when(okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getDatasetId() + "/artifact", HttpMethod.GET, null))
-		.thenReturn(Serializer.serializePlain(apiResponse));
+		.thenReturn(TransferSerializer.serializePlain(apiResponse));
 		GenericApiResponse<ExternalData> externalResponse = new GenericApiResponse<ExternalData>();
 		externalResponse.setSuccess(false);
 		when(okHttpRestClient.downloadData(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), null)).thenReturn(externalResponse);
@@ -159,11 +161,11 @@ public class RestArtifactServiceTest {
     public void getdFile_success() throws IOException {
 		mockHttpServletResponse = new MockHttpServletResponse();
 		when(dataTransferService.findTransferProcess(CONSUMER_PID, PROVIDER_PID)).thenReturn(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED);
-		GenericApiResponse<Artifact> apiResponse = new GenericApiResponse<Artifact>();
-		apiResponse.setData(DataTranferMockObjectUtil.ARTIFACT_FILE);
+		GenericApiResponse<JsonNode> apiResponse = new GenericApiResponse<JsonNode>();
+		apiResponse.setData(ToolsSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.ARTIFACT_FILE));
 		apiResponse.setSuccess(true);
 		when(okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getDatasetId() + "/artifact", HttpMethod.GET, null))
-		.thenReturn(Serializer.serializePlain(apiResponse));
+			.thenReturn(TransferSerializer.serializePlain(apiResponse));
 		ObjectId objectId = new ObjectId(DataTranferMockObjectUtil.ARTIFACT_FILE.getValue());
 		when(mongoTemplate.getDb()).thenReturn(mongoDatabase);
 		when(gridFSBucket.find(any(Bson.class))).thenReturn(gridFSFindIterable);
@@ -192,7 +194,7 @@ public class RestArtifactServiceTest {
 		apiResponse.setData(DataTranferMockObjectUtil.ARTIFACT_FILE);
 		apiResponse.setSuccess(true);
 		when(okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getDatasetId() + "/artifact", HttpMethod.GET, null))
-		.thenReturn(Serializer.serializePlain(apiResponse));
+		.thenReturn(TransferSerializer.serializePlain(apiResponse));
 		when(mongoTemplate.getDb()).thenReturn(mongoDatabase);
 		when(gridFSBucket.find(any(Bson.class))).thenReturn(gridFSFindIterable);
 		when(gridFSFindIterable.first()).thenReturn(null);

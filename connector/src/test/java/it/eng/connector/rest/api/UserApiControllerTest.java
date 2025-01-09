@@ -25,8 +25,8 @@ import it.eng.connector.model.UserDTO;
 import it.eng.connector.service.UserService;
 import it.eng.connector.util.TestUtil;
 import it.eng.tools.exception.BadRequestException;
-import it.eng.tools.model.Serializer;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.serializer.ToolsSerializer;
 
 @ExtendWith(MockitoExtension.class)
 class UserApiControllerTest {
@@ -48,14 +48,14 @@ class UserApiControllerTest {
 	void getUsers() {
 		// find all
 		when(userService.findUsers(isNull()))
-			.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(TestUtil.USER)));
+			.thenReturn(Arrays.asList(ToolsSerializer.serializePlainJsonNode(TestUtil.USER)));
 		GenericApiResponse<Collection<JsonNode>> response = controller.getUsers(null).getBody();
 		assertNotNull(response);
 		assertNotNull(response.getData());
 		
 		// found by email
 		when(userService.findUsers(TestUtil.USER.getEmail()))
-			.thenReturn(Arrays.asList(Serializer.serializePlainJsonNode(TestUtil.USER)));
+			.thenReturn(Arrays.asList(ToolsSerializer.serializePlainJsonNode(TestUtil.USER)));
 		response = controller.getUsers(TestUtil.USER.getEmail()).getBody();
 		assertNotNull(response);
 		assertNotNull(response.getData());
@@ -71,7 +71,7 @@ class UserApiControllerTest {
 	@Test
 	@DisplayName("Create user")
 	void createUser() {
-		when(userService.createUser(userDTO)).thenReturn(Serializer.serializePlainJsonNode(TestUtil.USER));
+		when(userService.createUser(userDTO)).thenReturn(ToolsSerializer.serializePlainJsonNode(TestUtil.USER));
 		GenericApiResponse<JsonNode> response = controller.createUser(userDTO).getBody();
 		assertNotNull(response);
 		assertNotNull(response.getData());
@@ -89,7 +89,7 @@ class UserApiControllerTest {
 	@DisplayName("Update user")
 	void updateUser() {
 		when(principal.getName()).thenReturn(USER);
-		when(userService.updateUser(USER_ID, USER, userDTO)).thenReturn(Serializer.serializePlainJsonNode(TestUtil.API_USER));
+		when(userService.updateUser(USER_ID, USER, userDTO)).thenReturn(ToolsSerializer.serializePlainJsonNode(TestUtil.API_USER));
 		GenericApiResponse<JsonNode> response =  controller.updateUser(USER_ID, userDTO, principal).getBody();
 		assertNotNull(response);
 		assertNotNull(response.getData());
@@ -106,7 +106,7 @@ class UserApiControllerTest {
 	@Test
 	void updatePassword() {
 		when(principal.getName()).thenReturn(USER);
-		when(userService.updatePassword(USER_ID, USER, userDTO)).thenReturn(Serializer.serializePlainJsonNode(TestUtil.API_USER));
+		when(userService.updatePassword(USER_ID, USER, userDTO)).thenReturn(ToolsSerializer.serializePlainJsonNode(TestUtil.API_USER));
 		GenericApiResponse<JsonNode> response =  controller.updatePassword(USER_ID, userDTO, principal).getBody();
 		assertNotNull(response);
 		assertNotNull(response.getData());

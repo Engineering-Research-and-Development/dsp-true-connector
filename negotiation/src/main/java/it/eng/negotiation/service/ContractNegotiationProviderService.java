@@ -19,7 +19,7 @@ import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
@@ -90,7 +90,7 @@ public class ContractNegotiationProviderService extends BaseProtocolService {
         checkIfContractNegotiationExists(contractRequestMessage.getConsumerPid(), contractRequestMessage.getProviderPid());
 
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + properties.serverPort() + ApiEndpoints.CATALOG_OFFERS_V1 + "/validate", 
-				Serializer.serializePlainJsonNode(contractRequestMessage.getOffer()), 
+				NegotiationSerializer.serializePlainJsonNode(contractRequestMessage.getOffer()), 
 				credentialUtils.getAPICredentials());
         
 		if (!response.isSuccess()) {
@@ -129,7 +129,7 @@ public class ContractNegotiationProviderService extends BaseProtocolService {
 			publisher.publishEvent(new ContractNegotationOfferRequestEvent(
 					contractNegotiation.getConsumerPid(),
 					contractNegotiation.getProviderPid(),
-					Serializer.serializeProtocolJsonNode(contractRequestMessage.getOffer())));
+					NegotiationSerializer.serializeProtocolJsonNode(contractRequestMessage.getOffer())));
 		} else {
 			log.debug("PROVIDER - Offer evaluation will have to be done by human");
 		}

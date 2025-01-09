@@ -37,7 +37,7 @@ import it.eng.datatransfer.model.TransferError;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.repository.TransferProcessRepository;
-import it.eng.datatransfer.serializer.Serializer;
+import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
 
@@ -100,7 +100,7 @@ public class DataTransferApiTest extends BaseIntegrationTest {
 		assertTrue(genericApiResponse.isSuccess());
 		assertEquals(1, genericApiResponse.getData().size());
 		// so far, must do like this because List<LinkedHashMap> was not able to get it to be List<TransferProcess>
-		TransferProcess transferProcessFromDB = Serializer.deserializePlain(jsonMapper.valueToTree(genericApiResponse.getData().get(0)), 
+		TransferProcess transferProcessFromDB = TransferSerializer.deserializePlain(jsonMapper.valueToTree(genericApiResponse.getData().get(0)), 
 				TransferProcess.class);
 		assertNotNull(transferProcessFromDB);
 		assertEquals(transferProcessRequested.getId(), transferProcessFromDB.getId());
@@ -138,7 +138,7 @@ public class DataTransferApiTest extends BaseIntegrationTest {
 				.withRequestBody(WireMock.containing("dspace:TransferRequestMessage"))
 				.willReturn(
 	                aResponse().withHeader("Content-Type", "application/json")
-	                .withBody(Serializer.serializeProtocol(providerResponse))));
+	                .withBody(TransferSerializer.serializeProtocol(providerResponse))));
     	
     	final ResultActions result =
     			mockMvc.perform(
@@ -191,7 +191,7 @@ public class DataTransferApiTest extends BaseIntegrationTest {
 				.willReturn(
 	                aResponse().withHeader("Content-Type", "application/json")
 	                .withStatus(400)
-	                .withBody(Serializer.serializeProtocol(providerErrorResponse))));
+	                .withBody(TransferSerializer.serializeProtocol(providerErrorResponse))));
     	
     	final ResultActions result =
     			mockMvc.perform(

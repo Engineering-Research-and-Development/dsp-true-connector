@@ -20,7 +20,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.Catalog;
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.service.CatalogService;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.response.GenericApiResponse;
@@ -72,7 +72,7 @@ public class CatalogAPIControllerTest {
     @Test
     @DisplayName("Create catalog - success")
     public void createCatalogSuccessfulTest() {
-        String catalog = Serializer.serializePlain(CatalogMockObjectUtil.CATALOG);
+        String catalog = CatalogSerializer.serializePlain(CatalogMockObjectUtil.CATALOG);
         when(catalogService.saveCatalog(any(Catalog.class))).thenReturn(CatalogMockObjectUtil.CATALOG);
 
         ResponseEntity<GenericApiResponse<JsonNode>> response = catalogAPIController.createCatalog(catalog);
@@ -97,7 +97,7 @@ public class CatalogAPIControllerTest {
     @Test
     @DisplayName("Update catalog - success")
     public void updateCatalogSuccessfulTest() {
-        String catalog = Serializer.serializePlain(CatalogMockObjectUtil.CATALOG_FOR_UPDATE);
+        String catalog = CatalogSerializer.serializePlain(CatalogMockObjectUtil.CATALOG_FOR_UPDATE);
         when(catalogService.updateCatalog(any(String.class), any(Catalog.class))).thenReturn(CatalogMockObjectUtil.CATALOG_FOR_UPDATE);
 
         ResponseEntity<GenericApiResponse<JsonNode>> response = catalogAPIController.updateCatalog(CatalogMockObjectUtil.CATALOG_FOR_UPDATE.getId(), catalog);

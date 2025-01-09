@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.negotiation.model.ContractNegotiation;
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.negotiation.service.ContractNegotiationAPIService;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.DSpaceConstants;
@@ -68,7 +68,7 @@ public class ContractNegotiationAPIController {
         log.info("Handling contract negotiation accepted by consumer");
         ContractNegotiation contractNegotiationApproved = apiService.handleContractNegotiationAccepted(contractNegotiationId);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-        		.body(GenericApiResponse.success(Serializer.serializeProtocolJsonNode(contractNegotiationApproved),
+        		.body(GenericApiResponse.success(NegotiationSerializer.serializeProtocolJsonNode(contractNegotiationApproved),
         				"Contract negotiation approved"));
     }
     
@@ -78,7 +78,7 @@ public class ContractNegotiationAPIController {
         ContractNegotiation contractNegotiationTerminated = apiService.handleContractNegotiationTerminated(contractNegotiationId);
         
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-        		.body(GenericApiResponse.success(Serializer.serializeProtocolJsonNode(contractNegotiationTerminated),
+        		.body(GenericApiResponse.success(NegotiationSerializer.serializeProtocolJsonNode(contractNegotiationTerminated),
         				"Contract negotiation terminated"));
     }
     
@@ -118,7 +118,7 @@ public class ContractNegotiationAPIController {
         log.info("Handling contract negotiation approved");
         ContractNegotiation contractNegotiationApproved = apiService.approveContractNegotiation(contractNegotiationId);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-        		.body(GenericApiResponse.success(Serializer.serializeProtocolJsonNode(contractNegotiationApproved),
+        		.body(GenericApiResponse.success(NegotiationSerializer.serializeProtocolJsonNode(contractNegotiationApproved),
         				"Contract negotiation approved"));
     }
     
