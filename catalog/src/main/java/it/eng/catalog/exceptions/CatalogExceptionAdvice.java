@@ -3,7 +3,7 @@ package it.eng.catalog.exceptions;
 import it.eng.catalog.model.CatalogError;
 import it.eng.catalog.model.Reason;
 import it.eng.catalog.rest.protocol.CatalogController;
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import jakarta.validation.ValidationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -25,7 +25,7 @@ public class CatalogExceptionAdvice extends ResponseEntityExceptionHandler {
                 .reason(Arrays.asList(Reason.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()))
                 .build();
 
-        return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(catalogError), new HttpHeaders(), HttpStatus.NOT_FOUND, request);
+        return handleExceptionInternal(ex, CatalogSerializer.serializeProtocolJsonNode(catalogError), new HttpHeaders(), HttpStatus.NOT_FOUND, request);
     }
 
     @ExceptionHandler(value = {ValidationException.class})
@@ -35,6 +35,6 @@ public class CatalogExceptionAdvice extends ResponseEntityExceptionHandler {
                 .reason(Arrays.asList(Reason.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()))
                 .build();
 
-        return handleExceptionInternal(ex, Serializer.serializeProtocolJsonNode(catalogError), new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
+        return handleExceptionInternal(ex, CatalogSerializer.serializeProtocolJsonNode(catalogError), new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
     }
 }

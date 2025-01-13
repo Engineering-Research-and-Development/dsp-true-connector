@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 
@@ -32,7 +32,7 @@ public class ContractNegotiationTest {
 	@Test
 	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() {
-		String result = Serializer.serializePlain(contractNegotiation);
+		String result = NegotiationSerializer.serializePlain(contractNegotiation);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
 		assertTrue(result.contains(DSpaceConstants.ID));
@@ -40,21 +40,21 @@ public class ContractNegotiationTest {
 		assertTrue(result.contains(DSpaceConstants.PROVIDER_PID));
 		assertTrue(result.contains("ACCEPTED"));
 		
-		ContractNegotiation javaObj = Serializer.deserializePlain(result, ContractNegotiation.class);
+		ContractNegotiation javaObj = NegotiationSerializer.deserializePlain(result, ContractNegotiation.class);
 		validateJavaObj(javaObj);
 	}
 
 	@Test
 	@DisplayName("Verify valid protocol object serialization")
 	public void testProtocol() {
-		JsonNode result = Serializer.serializeProtocolJsonNode(contractNegotiation);
+		JsonNode result = NegotiationSerializer.serializeProtocolJsonNode(contractNegotiation);
 		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
 		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
 		assertNotNull(result.get(DSpaceConstants.DSPACE_CONSUMER_PID).asText());
 		assertNotNull(result.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText());
 		assertNotNull(result.get(DSpaceConstants.DSPACE_STATE).asText());
 		assertNull(result.get(DSpaceConstants.ID));
-		ContractNegotiation javaObj = Serializer.deserializeProtocol(result, ContractNegotiation.class);
+		ContractNegotiation javaObj = NegotiationSerializer.deserializeProtocol(result, ContractNegotiation.class);
 		validateJavaObj(javaObj);
 	}
 	
@@ -69,8 +69,8 @@ public class ContractNegotiationTest {
 	@Test
 	@DisplayName("Missing @context and @type")
 	public void missingContextAndType() {
-		JsonNode result = Serializer.serializePlainJsonNode(contractNegotiation);
-		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, ContractNegotiation.class));
+		JsonNode result = NegotiationSerializer.serializePlainJsonNode(contractNegotiation);
+		assertThrows(ValidationException.class, () -> NegotiationSerializer.deserializeProtocol(result, ContractNegotiation.class));
 	}
 	
 	@Test
@@ -142,8 +142,8 @@ public class ContractNegotiationTest {
 	@Test
 	@DisplayName("Plain serialize/deserialize")
 	public void equalsTestPlain() {
-		String ss = Serializer.serializePlain(contractNegotiation);
-		ContractNegotiation obj = Serializer.deserializePlain(ss, ContractNegotiation.class);
+		String ss = NegotiationSerializer.serializePlain(contractNegotiation);
+		ContractNegotiation obj = NegotiationSerializer.deserializePlain(ss, ContractNegotiation.class);
 		// must exclude id since it is not according to protocol but internally
 		assertThat(contractNegotiation).usingRecursiveComparison().ignoringFieldsMatchingRegexes("id").isEqualTo(obj);
 		assertEquals(contractNegotiation.getId(), obj.getId());
@@ -152,8 +152,8 @@ public class ContractNegotiationTest {
 	@Test
 	@DisplayName("Protocol serialize/deserialize")
 	public void equalsTestProtocol() {
-		String ss = Serializer.serializeProtocol(contractNegotiation);
-		ContractNegotiation obj = Serializer.deserializeProtocol(ss, ContractNegotiation.class);
+		String ss = NegotiationSerializer.serializeProtocol(contractNegotiation);
+		ContractNegotiation obj = NegotiationSerializer.deserializeProtocol(ss, ContractNegotiation.class);
 		// must exclude id since it is not according to protocol but internally
 		assertThat(contractNegotiation).usingRecursiveComparison().ignoringFieldsMatchingRegexes("id").isEqualTo(obj);
 		// protocol does not have id field

@@ -18,8 +18,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.tools.exception.ApplicationPropertyNotChangedAPIException;
 import it.eng.tools.exception.ApplicationPropertyNotFoundAPIException;
 import it.eng.tools.model.ApplicationProperty;
-import it.eng.tools.model.Serializer;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.serializer.ToolsSerializer;
 import it.eng.tools.service.ApplicationPropertiesService;
 import lombok.extern.java.Log;
 
@@ -55,7 +55,7 @@ public class ApplicationPropertiesAPIController {
 		List<ApplicationProperty> properties = propertiesService.getProperties(key_prefix);
 
 		GenericApiResponse<JsonNode> genericApiResponse = 
-				GenericApiResponse.success(Serializer.serializePlainJsonNode(properties), "Application properties with prefix");
+				GenericApiResponse.success(ToolsSerializer.serializePlainJsonNode(properties), "Application properties with prefix");
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
 				.body(genericApiResponse);
 	}
@@ -72,7 +72,7 @@ public class ApplicationPropertiesAPIController {
 		ApplicationProperty property = propertiesService.getPropertyByKey(key).orElseThrow(() -> new ApplicationPropertyNotFoundAPIException("Property with key " + key + " not found"));
 
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-				.body(GenericApiResponse.success(Serializer.serializePlainJsonNode(property), "Application property for key"));
+				.body(GenericApiResponse.success(ToolsSerializer.serializePlainJsonNode(property), "Application property for key"));
 	}
 
 	/**
@@ -98,7 +98,7 @@ public class ApplicationPropertiesAPIController {
 		}
 
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-				.body(GenericApiResponse.success(Serializer.serializePlainJsonNode(storedProperty), "Application property updated"));
+				.body(GenericApiResponse.success(ToolsSerializer.serializePlainJsonNode(storedProperty), "Application property updated"));
 	}
 
 }

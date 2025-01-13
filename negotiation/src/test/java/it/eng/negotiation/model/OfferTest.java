@@ -11,7 +11,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 import jakarta.validation.ValidationException;
 
 public class OfferTest {
@@ -66,8 +66,8 @@ public class OfferTest {
 	@Test
 	public void equalsTest() {
 		Offer offer = NegotiationMockObjectUtil.OFFER;
-		String ss = Serializer.serializePlain(offer);
-		Offer offer2 = Serializer.deserializePlain(ss, Offer.class);
+		String ss = NegotiationSerializer.serializePlain(offer);
+		Offer offer2 = NegotiationSerializer.deserializePlain(ss, Offer.class);
 		assertThat(offer).usingRecursiveComparison().isEqualTo(offer2);
 	}
 	
@@ -75,8 +75,8 @@ public class OfferTest {
 	@DisplayName("Plain serialize/deserialize")
 	public void equalsTestPlain() {
 		Offer offer = NegotiationMockObjectUtil.OFFER;
-		String ss = Serializer.serializePlain(offer);
-		Offer obj = Serializer.deserializePlain(ss, Offer.class);
+		String ss = NegotiationSerializer.serializePlain(offer);
+		Offer obj = NegotiationSerializer.deserializePlain(ss, Offer.class);
 		assertThat(offer).usingRecursiveComparison().isEqualTo(obj);
 	}
 	
@@ -84,8 +84,8 @@ public class OfferTest {
 	@DisplayName("Protocol serialize/deserialize")
 	public void equalsTestProtocol() {
 		Offer offer = NegotiationMockObjectUtil.OFFER;
-		String ss = Serializer.serializeProtocol(offer);
-		Offer obj = Serializer.deserializeProtocol(ss, Offer.class);
+		String ss = NegotiationSerializer.serializeProtocol(offer);
+		Offer obj = NegotiationSerializer.deserializeProtocol(ss, Offer.class);
 		assertThat(offer).usingRecursiveComparison().isEqualTo(obj);
 	}
 	

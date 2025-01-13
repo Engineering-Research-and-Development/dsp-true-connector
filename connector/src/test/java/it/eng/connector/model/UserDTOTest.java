@@ -1,8 +1,10 @@
 package it.eng.connector.model;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 import org.junit.jupiter.api.Test;
 
-import it.eng.tools.model.Serializer;
+import it.eng.tools.serializer.ToolsSerializer;
 
 class UserDTOTest {
 
@@ -14,7 +16,7 @@ class UserDTOTest {
 		userDTO.setLastName("lastName");
 		userDTO.setRole(Role.ROLE_ADMIN);
 		userDTO.setPassword("password");
-		System.out.println(Serializer.serializePlain(userDTO));
+		assertNotNull(ToolsSerializer.serializePlain(userDTO));
 	}
 
 }

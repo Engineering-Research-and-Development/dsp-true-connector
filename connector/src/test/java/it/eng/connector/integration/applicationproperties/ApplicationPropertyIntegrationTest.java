@@ -21,8 +21,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.tools.model.ApplicationProperty;
-import it.eng.tools.model.Serializer;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.serializer.ToolsSerializer;
 
 public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 
@@ -43,7 +43,7 @@ public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 
 		String json = result.andReturn().getResponse().getContentAsString();
 		TypeReference<GenericApiResponse<List<ApplicationProperty>>> typeRef = new TypeReference<GenericApiResponse<List<ApplicationProperty>>>() {};
-		GenericApiResponse<List<ApplicationProperty>> apiResp =  Serializer.deserializePlain(json, typeRef);
+		GenericApiResponse<List<ApplicationProperty>> apiResp =  ToolsSerializer.deserializePlain(json, typeRef);
 		  
 		assertNotNull(apiResp.getData());
 		assertTrue(apiResp.getData().size() > 2);
@@ -63,7 +63,7 @@ public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 		
 		String json = result.andReturn().getResponse().getContentAsString();
 		TypeReference<GenericApiResponse<ApplicationProperty>> typeRef = new TypeReference<GenericApiResponse<ApplicationProperty>>() {};
-		GenericApiResponse<ApplicationProperty> apiResp =  Serializer.deserializePlain(json, typeRef);
+		GenericApiResponse<ApplicationProperty> apiResp =  ToolsSerializer.deserializePlain(json, typeRef);
 		  
 		assertNotNull(apiResp.getData());
 		assertEquals(apiResp.getData().getKey(), TEST_KEY);
@@ -80,7 +80,7 @@ public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 				.value(randomValue)
 				.build();
 
-		String body = Serializer.serializeProtocolJsonNode(changedProperty).toString();
+		String body = ToolsSerializer.serializeProtocolJsonNode(changedProperty).toString();
 
 		final ResultActions result =
 				mockMvc.perform(
@@ -94,7 +94,7 @@ public class ApplicationPropertyIntegrationTest extends BaseIntegrationTest {
 
 		String json = result.andReturn().getResponse().getContentAsString();
 		TypeReference<GenericApiResponse<ApplicationProperty>> typeRef = new TypeReference<GenericApiResponse<ApplicationProperty>>() {};
-		GenericApiResponse<ApplicationProperty> apiResp =  Serializer.deserializePlain(json, typeRef);
+		GenericApiResponse<ApplicationProperty> apiResp =  ToolsSerializer.deserializePlain(json, typeRef);
 		  
 		assertNotNull(apiResp.getData());
 	}

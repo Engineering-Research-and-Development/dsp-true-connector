@@ -1,6 +1,15 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 09-01-2025
+
+### Changed
+
+ - Rename serializers to match module they belong to (Tools/Catalog/Negotiation/TransferSerializer)
+ - ToolsSerializer does not use JacksonAnnotationIntrospector
+ - Moved InstantSerializer and InstantDeserializer to tools module
+ - Serializer must have following ordering for modules - .addModules(new JavaTimeModule(), instantConverterModule)
+ 
 ## [0.1.1] - 08-01-2025
 
 ### Added

@@ -29,7 +29,7 @@ import it.eng.datatransfer.model.TransferTerminationMessage;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.rest.protocol.DataTransferCallback;
-import it.eng.datatransfer.serializer.Serializer;
+import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
@@ -61,19 +61,19 @@ public class DataTransferAPIService {
 		if(StringUtils.isNotBlank(transferProcessId)) {
 			return transferProcessRepository.findById(transferProcessId)
 					.stream()
-					.map(dt -> Serializer.serializePlainJsonNode(dt))
+					.map(dt -> TransferSerializer.serializePlainJsonNode(dt))
 					.collect(Collectors.toList());
 		} else if(StringUtils.isNotBlank(state)) {
 			return transferProcessRepository.findByState(state)
 					.stream()
 					.filter(tp -> filterByRole(tp, role))
-					.map(dt -> Serializer.serializePlainJsonNode(dt))
+					.map(dt -> TransferSerializer.serializePlainJsonNode(dt))
 					.collect(Collectors.toList());
 		}
 		return transferProcessRepository.findAll()
 				.stream()
 				.filter(tp -> filterByRole(tp, role))
-				.map(dt -> Serializer.serializePlainJsonNode(dt))
+				.map(dt -> TransferSerializer.serializePlainJsonNode(dt))
 				.collect(Collectors.toList());
 	}
 	
@@ -85,7 +85,7 @@ public class DataTransferAPIService {
 		stateTransitionCheck(TransferState.REQUESTED, transferProcess.getState());
 		DataAddress dataAddressForMessage = null;
 		if (StringUtils.isNotBlank(dataTransferRequest.getFormat()) && dataTransferRequest.getDataAddress() != null && !dataTransferRequest.getDataAddress().isEmpty()) {
-			dataAddressForMessage = Serializer.deserializePlain(dataTransferRequest.getDataAddress().toPrettyString(), DataAddress.class);
+			dataAddressForMessage = TransferSerializer.deserializePlain(dataTransferRequest.getDataAddress().toPrettyString(), DataAddress.class);
 		}
 		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
 				.agreementId(transferProcess.getAgreementId())
@@ -97,14 +97,14 @@ public class DataTransferAPIService {
 		
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
 				DataTransferCallback.getConsumerDataTransferRequest(transferProcess.getCallbackAddress()), 
-				Serializer.serializeProtocolJsonNode(transferRequestMessage), 
+				TransferSerializer.serializeProtocolJsonNode(transferRequestMessage), 
 				credentialUtils.getConnectorCredentials());
 		log.info("Response received {}", response);
 		TransferProcess transferProcessForDB = null;
 		if (response.isSuccess()) {
 			try {
 				JsonNode jsonNode = mapper.readTree(response.getData());
-				TransferProcess transferProcessFromResponse = Serializer.deserializeProtocol(jsonNode, TransferProcess.class);
+				TransferProcess transferProcessFromResponse = TransferSerializer.deserializeProtocol(jsonNode, TransferProcess.class);
 				
 				transferProcessForDB = TransferProcess.Builder.newInstance()
 						.id(transferProcess.getId())
@@ -135,13 +135,13 @@ public class DataTransferAPIService {
 			JsonNode jsonNode;
 			try {
 				jsonNode = mapper.readTree(response.getData());
-				TransferError transferError = Serializer.deserializeProtocol(jsonNode, TransferError.class);
+				TransferError transferError = TransferSerializer.deserializeProtocol(jsonNode, TransferError.class);
 				throw new DataTransferAPIException(transferError, "Error making request");
 			} catch (JsonProcessingException ex) {
 				throw new DataTransferAPIException("Error occured");
 			}
 		}
-		return Serializer.serializePlainJsonNode(transferProcessForDB);
+		return TransferSerializer.serializePlainJsonNode(transferProcessForDB);
 	}
 
 	/**
@@ -199,7 +199,7 @@ public class DataTransferAPIService {
 	   	
 		GenericApiResponse<String> response = okHttpRestClient
 				.sendRequestProtocol(address,
-				Serializer.serializeProtocolJsonNode(transferStartMessage),
+				TransferSerializer.serializeProtocolJsonNode(transferStartMessage),
 				credentialUtils.getConnectorCredentials());
 		log.info("Response received {}", response);
 		if (response.isSuccess()) {
@@ -220,7 +220,7 @@ public class DataTransferAPIService {
 			.build();
 			transferProcessRepository.save(transferProcessStarted);
 			log.info("Transfer process {} saved", transferProcessStarted.getId());
-			return Serializer.serializePlainJsonNode(transferProcessStarted);
+			return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
 		} else {
 			log.error("Error response received!");
 			throw new DataTransferAPIException(response.getMessage());
@@ -254,14 +254,14 @@ public class DataTransferAPIService {
 		}
 		GenericApiResponse<String> response = okHttpRestClient
 				.sendRequestProtocol(address,
-				Serializer.serializeProtocolJsonNode(transferCompletionMessage),
+				TransferSerializer.serializeProtocolJsonNode(transferCompletionMessage),
 				credentialUtils.getConnectorCredentials());
 		log.info("Response received {}", response);
 		if (response.isSuccess()) {
 			TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.COMPLETED);
 			transferProcessRepository.save(transferProcessStarted);
 			log.info("Transfer process {} saved", transferProcessStarted.getId());
-			return Serializer.serializePlainJsonNode(transferProcessStarted);
+			return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
 		} else {
 			log.error("Error response received!");
 			throw new DataTransferAPIException(response.getMessage());
@@ -298,14 +298,14 @@ public class DataTransferAPIService {
 		}
 		GenericApiResponse<String> response = okHttpRestClient
 				.sendRequestProtocol(address,
-				Serializer.serializeProtocolJsonNode(transferSuspensionMessage),
+				TransferSerializer.serializeProtocolJsonNode(transferSuspensionMessage),
 				credentialUtils.getConnectorCredentials());
 		log.info("Response received {}", response);
 		if (response.isSuccess()) {
 			TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED);
 			transferProcessRepository.save(transferProcessStarted);
 			log.info("Transfer process {} saved", transferProcessStarted.getId());
-			return Serializer.serializePlainJsonNode(transferProcessStarted);
+			return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
 		} else {
 			log.error("Error response received!");
 			throw new DataTransferAPIException(response.getMessage());
@@ -342,14 +342,14 @@ public class DataTransferAPIService {
 		}
 		GenericApiResponse<String> response = okHttpRestClient
 				.sendRequestProtocol(address,
-				Serializer.serializeProtocolJsonNode(transferTerminationMessage),
+				TransferSerializer.serializeProtocolJsonNode(transferTerminationMessage),
 				credentialUtils.getConnectorCredentials());
 		log.info("Response received {}", response);
 		if (response.isSuccess()) {
 			TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);
 			transferProcessRepository.save(transferProcessStarted);
 			log.info("Transfer process {} saved", transferProcessStarted.getId());
-			return Serializer.serializePlainJsonNode(transferProcessStarted);
+			return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
 		} else {
 			log.error("Error response received!");
 			throw new DataTransferAPIException(response.getMessage());

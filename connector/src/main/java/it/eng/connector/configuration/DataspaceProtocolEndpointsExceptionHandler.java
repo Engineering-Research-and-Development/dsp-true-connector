@@ -21,7 +21,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.catalog.model.CatalogError;
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.datatransfer.model.TransferError;
 import it.eng.negotiation.model.ContractNegotiationErrorMessage;
 import it.eng.tools.model.DSpaceConstants;
@@ -45,7 +45,7 @@ public class DataspaceProtocolEndpointsExceptionHandler extends ResponseEntityEx
 			String body = ( (ServletWebRequest) request).getRequest().getReader().lines().reduce("",String::concat);
 			if(StringUtils.isNotBlank(body)) {
 				// TODO maybe use plain jsonMapper here and not one from sub modules
-				JsonNode node = Serializer.deserializeProtocol(body, JsonNode.class);
+				JsonNode node = CatalogSerializer.deserializeProtocol(body, JsonNode.class);
 				consumerPid = node.get(DSpaceConstants.DSPACE_CONSUMER_PID) != null ? 
 						node.get(DSpaceConstants.DSPACE_CONSUMER_PID).asText() : 
 							"NA";
@@ -72,14 +72,14 @@ public class DataspaceProtocolEndpointsExceptionHandler extends ResponseEntityEx
 					return createProblemDetail(ex, getStatusCode(), uri, NOT_AUTH, null, request);
 				}
 			};
-			error = Serializer.serializeProtocolJsonNode(errorResponse);
+			error = CatalogSerializer.serializeProtocolJsonNode(errorResponse);
 		} else {
 			if(uri.contains("catalog")) {
 				CatalogError catalogError = CatalogError.Builder.newInstance()
 						.code(NOT_AUTH_CODE)
 						.reason(Arrays.asList(it.eng.catalog.model.Reason.Builder.newInstance().language(EN).value(NOT_AUTH).build()))
 						.build();
-				error = Serializer.serializeProtocolJsonNode(catalogError);
+				error = CatalogSerializer.serializeProtocolJsonNode(catalogError);
 			} else if(uri.contains("negotiations")) {
 				ContractNegotiationErrorMessage negotationError = ContractNegotiationErrorMessage.Builder.newInstance()
 						.consumerPid(consumerPid)
@@ -87,7 +87,7 @@ public class DataspaceProtocolEndpointsExceptionHandler extends ResponseEntityEx
 						.code(NOT_AUTH_CODE)
 						.reason(Arrays.asList(it.eng.negotiation.model.Reason.Builder.newInstance().language(EN).value(NOT_AUTH).build()))
 						.build();
-				error = Serializer.serializeProtocolJsonNode(negotationError);
+				error = CatalogSerializer.serializeProtocolJsonNode(negotationError);
 			} else if(uri.contains("transfers")) {
 				TransferError transferError = TransferError.Builder.newInstance()
 						.consumerPid(consumerPid)
@@ -95,7 +95,7 @@ public class DataspaceProtocolEndpointsExceptionHandler extends ResponseEntityEx
 						.code(NOT_AUTH_CODE)
 						.reason(Arrays.asList(it.eng.datatransfer.model.Reason.Builder.newInstance().language(EN).value(NOT_AUTH).build()))
 						.build();
-				error = Serializer.serializeProtocolJsonNode(transferError);
+				error = CatalogSerializer.serializeProtocolJsonNode(transferError);
 			}
 		}
 		return ResponseEntity.status(HttpStatus.UNAUTHORIZED).contentType(MediaType.APPLICATION_JSON).body(error);

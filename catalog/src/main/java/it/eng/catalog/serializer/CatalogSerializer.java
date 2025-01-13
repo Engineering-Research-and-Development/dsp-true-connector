@@ -30,6 +30,8 @@ import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.Distribution;
 import it.eng.catalog.model.Offer;
 import it.eng.tools.model.DSpaceConstants;
+import it.eng.tools.serializer.InstantDeserializer;
+import it.eng.tools.serializer.InstantSerializer;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
@@ -37,7 +39,7 @@ import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class Serializer {
+public class CatalogSerializer {
 
     private static JsonMapper jsonMapperPlain;
     private static JsonMapper jsonMapper;
@@ -80,8 +82,7 @@ public class Serializer {
                 .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-                .addModule(new JavaTimeModule())
-                .addModule(instantConverterModule)
+                .addModules(new JavaTimeModule(), instantConverterModule)
                 .annotationIntrospector(ignoreJsonPropertyIntrospector)
                 .build();
 
@@ -91,8 +92,7 @@ public class Serializer {
                 .configure(SerializationFeature.INDENT_OUTPUT, true)
                 .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-                .addModule(new JavaTimeModule())
-                .addModule(instantConverterModule)
+                .addModules(new JavaTimeModule(), instantConverterModule)
                 .build();
 
         validator = Validation.buildDefaultValidatorFactory().getValidator();

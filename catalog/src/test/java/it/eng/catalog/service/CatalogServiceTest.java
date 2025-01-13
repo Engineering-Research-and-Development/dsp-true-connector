@@ -37,7 +37,7 @@ import it.eng.catalog.model.Offer;
 import it.eng.catalog.model.Operator;
 import it.eng.catalog.model.Permission;
 import it.eng.catalog.repository.CatalogRepository;
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
@@ -144,7 +144,7 @@ public class CatalogServiceTest {
     public void providedOfferExists() {
     	when(repository.findAll()).thenReturn(new ArrayList<>(CatalogMockObjectUtil.CATALOGS));
     	ContractNegotationOfferRequestEvent offerRequest = new ContractNegotationOfferRequestEvent(CatalogMockObjectUtil.CONSUMER_PID,
-    			CatalogMockObjectUtil.PROVIDER_PID, Serializer.serializeProtocolJsonNode(CatalogMockObjectUtil.OFFER_WITH_TARGET));
+    			CatalogMockObjectUtil.PROVIDER_PID, CatalogSerializer.serializeProtocolJsonNode(CatalogMockObjectUtil.OFFER_WITH_TARGET));
     	service.validateOffer(offerRequest);
     	
     	verify(publisher).publishEvent(argCaptorContractNegotiationOfferResponse.capture());
@@ -161,7 +161,7 @@ public class CatalogServiceTest {
 	
     	when(repository.findAll()).thenReturn(new ArrayList<>(CatalogMockObjectUtil.CATALOGS));
     	ContractNegotationOfferRequestEvent offerRequest = new ContractNegotationOfferRequestEvent(CatalogMockObjectUtil.CONSUMER_PID,
-    			CatalogMockObjectUtil.PROVIDER_PID, Serializer.serializeProtocolJsonNode(differentOffer));
+    			CatalogMockObjectUtil.PROVIDER_PID, CatalogSerializer.serializeProtocolJsonNode(differentOffer));
     	service.validateOffer(offerRequest);
     	
     	verify(publisher).publishEvent(argCaptorContractNegotiationOfferResponse.capture());

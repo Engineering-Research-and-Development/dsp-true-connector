@@ -30,7 +30,7 @@ import it.eng.negotiation.model.NegotiationMockObjectUtil;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
 import it.eng.tools.response.GenericApiResponse;
@@ -64,7 +64,7 @@ public class ContractNegotiationEventHandlerServiceTest {
 	@DisplayName("Handle contract negotiation offer response success")
 	public void handleContractNegotiationOfferResponse_accepted_success() {
 		ContractNegotiationOfferResponseEvent offerResponse = new ContractNegotiationOfferResponseEvent(NegotiationMockObjectUtil.CONSUMER_PID, 
-				NegotiationMockObjectUtil.PROVIDER_PID, true, Serializer.serializePlainJsonNode(NegotiationMockObjectUtil.OFFER));
+				NegotiationMockObjectUtil.PROVIDER_PID, true, NegotiationSerializer.serializePlainJsonNode(NegotiationMockObjectUtil.OFFER));
 		when(properties.getAssignee()).thenReturn(NegotiationMockObjectUtil.ASSIGNEE);
 		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
@@ -82,7 +82,7 @@ public class ContractNegotiationEventHandlerServiceTest {
 	@DisplayName("Handle contract negotiation offer declined")
 	public void handleContractNegotiationOfferResponse_declined() {
 		ContractNegotiationOfferResponseEvent offerResponse = new ContractNegotiationOfferResponseEvent(NegotiationMockObjectUtil.CONSUMER_PID, 
-				NegotiationMockObjectUtil.PROVIDER_PID, false, Serializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
+				NegotiationMockObjectUtil.PROVIDER_PID, false, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
 		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class)))
 			.thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 

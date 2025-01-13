@@ -22,7 +22,7 @@ import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.rest.protocol.ContractNegotiationCallback;
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.negotiation.service.policy.PolicyManager;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
@@ -65,12 +65,12 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
 					.consumerPid(contractNegotiation.getConsumerPid())
 					.providerPid(contractNegotiation.getProviderPid())
 					.callbackAddress(properties.providerCallbackAddress())
-					.agreement(agreementFromOffer(Serializer.deserializePlain(offerResponse.getOffer().toPrettyString(), Offer.class), contractNegotiation.getAssigner()))
+					.agreement(agreementFromOffer(NegotiationSerializer.deserializePlain(offerResponse.getOffer().toPrettyString(), Offer.class), contractNegotiation.getAssigner()))
 					.build();
 			
 			GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
 					ContractNegotiationCallback.getContractAgreementCallback(contractNegotiation.getCallbackAddress(), contractNegotiation.getConsumerPid()), 
-					Serializer.serializeProtocolJsonNode(agreementMessage),
+					NegotiationSerializer.serializeProtocolJsonNode(agreementMessage),
 					credentialUtils.getConnectorCredentials());
 			if(response.isSuccess()) {
 				log.info("Updating status for negotiation {} to agreed", contractNegotiation.getId());
@@ -105,7 +105,7 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
 			
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
 				ContractNegotiationCallback.getContractTerminationCallback(contractNegotiation.getCallbackAddress(), contractNegotiation.getConsumerPid()), 
-				Serializer.serializeProtocolJsonNode(negotiationTerminatedEventMessage),
+				NegotiationSerializer.serializeProtocolJsonNode(negotiationTerminatedEventMessage),
 				credentialUtils.getConnectorCredentials());
 		if(response.isSuccess()) {
 			log.info("Updating status for negotiation {} to terminated", contractNegotiation.getId());
@@ -145,7 +145,7 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
 		String callbackAddress = ContractNegotiationCallback.getProviderAgreementVerificationCallback(contractNegotiation.getCallbackAddress(), providerPid);
 		log.info("Sending verification message to provider to {}", callbackAddress);
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(callbackAddress, 
-				Serializer.serializeProtocolJsonNode(verificationMessage),
+				NegotiationSerializer.serializeProtocolJsonNode(verificationMessage),
 				credentialUtils.getConnectorCredentials());
 		
 		if(response.isSuccess()) {

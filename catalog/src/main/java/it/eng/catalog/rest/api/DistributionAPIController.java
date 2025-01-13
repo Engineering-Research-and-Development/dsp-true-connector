@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.catalog.model.Distribution;
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.service.DistributionService;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
@@ -38,7 +38,7 @@ public class DistributionAPIController {
         Distribution distribution = distributionService.getDistributionById(id);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(distribution), "Fetched distribution"));
+                .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(distribution), "Fetched distribution"));
     }
 
     @GetMapping
@@ -47,19 +47,19 @@ public class DistributionAPIController {
         var distributions = distributionService.getAllDistributions();
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(distributions), "Fetched all distributions"));
+                .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(distributions), "Fetched all distributions"));
     }
 
     @PostMapping
     public ResponseEntity<GenericApiResponse<JsonNode>> saveDistribution(@RequestBody String distribution) {
-        Distribution ds = Serializer.deserializePlain(distribution, Distribution.class);
+        Distribution ds = CatalogSerializer.deserializePlain(distribution, Distribution.class);
 
         log.info("Saving new distribution");
 
         Distribution storedDistribution = distributionService.saveDistribution(ds);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(storedDistribution), "Distribution saved"));
+                .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(storedDistribution), "Distribution saved"));
     }
 
     @DeleteMapping(path = "/{id}")
@@ -74,14 +74,14 @@ public class DistributionAPIController {
 
     @PutMapping(path = "/{id}")
     public ResponseEntity<GenericApiResponse<JsonNode>> updateDistribution(@PathVariable String id, @RequestBody String distribution) {
-        Distribution ds = Serializer.deserializePlain(distribution, Distribution.class);
+        Distribution ds = CatalogSerializer.deserializePlain(distribution, Distribution.class);
 
         log.info("Updating distribution with id: " + id);
 
         Distribution updatedDistribution = distributionService.updateDistribution(id, ds);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(updatedDistribution), "Distribution updated"));
+                .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(updatedDistribution), "Distribution updated"));
     }
 
 

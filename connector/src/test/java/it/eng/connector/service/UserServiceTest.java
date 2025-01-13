@@ -1,5 +1,6 @@
 package it.eng.connector.service;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -57,11 +58,13 @@ class UserServiceTest {
 		when(userRepository.findAll()).thenReturn(Arrays.asList(TestUtil.USER));
 		Collection<JsonNode> response = userService.findUsers(null);
 		assertNotNull(response);
+		assertFalse(response.stream().allMatch(jn -> jn.toPrettyString().contains("password")));
 		
 		// found by email
 		when(userRepository.findByEmail(TestUtil.USER.getEmail())).thenReturn(Optional.of(TestUtil.USER));
 		response = userService.findUsers(TestUtil.USER.getEmail());
 		assertNotNull(response);
+		assertFalse(response.stream().allMatch(jn -> jn.toPrettyString().contains("password")));
 		
 		// not found by email
 		when(userRepository.findByEmail("not found")).thenReturn(Optional.empty());

@@ -17,7 +17,7 @@ import it.eng.connector.model.UserDTO;
 import it.eng.connector.repository.UserRepository;
 import it.eng.tools.exception.BadRequestException;
 import it.eng.tools.exception.ResourceNotFoundException;
-import it.eng.tools.model.Serializer;
+import it.eng.tools.serializer.ToolsSerializer;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -38,7 +38,7 @@ public class UserService {
 	public Collection<JsonNode> findUsers(String email) throws ResourceNotFoundException {
 		if(StringUtils.isNotBlank(email)) {
 			User user = userRepository.findByEmail(email).orElseThrow(ResourceNotFoundException::new);
-			return Collections.singletonList(Serializer.serializePlainJsonNode(user));
+			return Collections.singletonList(ToolsSerializer.serializePlainJsonNode(user));
 //					.ifPresentOrElse(u -> { 
 //						Serializer.serializePlainJsonNode(u);
 //					}, () -> { throw new IllegalStateException(); });
@@ -48,7 +48,7 @@ public class UserService {
 		} 
 		return userRepository.findAll()
 				.stream()
-				.map(u -> Serializer.serializePlainJsonNode(u))
+				.map(u -> ToolsSerializer.serializePlainJsonNode(u))
 				.collect(Collectors.toList());
 	}
 
@@ -63,7 +63,7 @@ public class UserService {
 			User user = new User(createNewPid(), userDTO.getFirstName(), userDTO.getLastName(), userDTO.getEmail(), 
 					encoder.encode(userDTO.getPassword()), true, false, false, userDTO.getRole());
 			User u = userRepository.save(user);
-			return Serializer.serializePlainJsonNode(u);
+			return ToolsSerializer.serializePlainJsonNode(u);
 		} else {
 			throw new BadRequestException(validationResult.getViolations().stream().collect(Collectors.joining(", ")));
 		}
@@ -78,7 +78,7 @@ public class UserService {
 				user.setFirstName(userDTO.getFirstName() != null ? userDTO.getFirstName() : user.getFirstName());
 				user.setLastName(userDTO.getLastName() != null ? userDTO.getLastName() : user.getLastName());
 				userRepository.save(user);
-				return Serializer.serializePlainJsonNode(user);
+				return ToolsSerializer.serializePlainJsonNode(user);
 		} else {
 			log.error("Not allowed to change other user email");
 			throw new BadRequestException("Not allowed to change other user email");
@@ -98,7 +98,7 @@ public class UserService {
 				if(validationResult.isValid()) {
 					user.setPassword(encoder.encode(userDTO.getNewPassword()));
 					userRepository.save(user);
-					return Serializer.serializePlainJsonNode(user);
+					return ToolsSerializer.serializePlainJsonNode(user);
 				} else {
 					log.warn("Password not valid with sthength check");
 					throw new BadRequestException(validationResult.getViolations().stream().collect(Collectors.joining(", ")));

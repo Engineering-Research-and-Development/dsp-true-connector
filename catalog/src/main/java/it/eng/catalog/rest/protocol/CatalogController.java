@@ -16,7 +16,7 @@ import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.CatalogRequestMessage;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.DatasetRequestMessage;
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.service.CatalogService;
 import it.eng.catalog.service.DatasetService;
 import lombok.extern.slf4j.Slf4j;
@@ -42,11 +42,11 @@ public class CatalogController {
     protected ResponseEntity<JsonNode> getCatalog(@RequestHeader(required = false) String authorization,
                                                   @RequestBody JsonNode jsonBody) {
         log.info("Handling catalog request");
-        Serializer.deserializeProtocol(jsonBody, CatalogRequestMessage.class);
+        CatalogSerializer.deserializeProtocol(jsonBody, CatalogRequestMessage.class);
         Catalog catalog = catalogService.getCatalog();
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(Serializer.serializeProtocolJsonNode(catalog));
+                .body(CatalogSerializer.serializeProtocolJsonNode(catalog));
 
     }
 
@@ -54,10 +54,10 @@ public class CatalogController {
     public ResponseEntity<JsonNode> getDataset(@RequestHeader(required = false) String authorization,
                                                @PathVariable String id, @RequestBody JsonNode jsonBody) {
         log.info("Preparing dataset");
-        Serializer.deserializeProtocol(jsonBody, DatasetRequestMessage.class);
+        CatalogSerializer.deserializeProtocol(jsonBody, DatasetRequestMessage.class);
         Dataset dataSet = datasetService.getDatasetById(id);
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(Serializer.serializeProtocolJsonNode(dataSet));
+                .body(CatalogSerializer.serializeProtocolJsonNode(dataSet));
     }
 }

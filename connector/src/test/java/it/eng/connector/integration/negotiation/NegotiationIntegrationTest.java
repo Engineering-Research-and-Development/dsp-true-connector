@@ -18,7 +18,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.negotiation.model.ContractNegotiationErrorMessage;
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 
 @TestMethodOrder(OrderAnnotation.class)
 public class NegotiationIntegrationTest extends BaseIntegrationTest {
@@ -36,7 +36,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
 	    	.andExpect(content().contentType(MediaType.APPLICATION_JSON));
     	
       	String response = result.andReturn().getResponse().getContentAsString();
-      	ContractNegotiationErrorMessage contractNegotiationErrorMessage = Serializer.deserializeProtocol(response, ContractNegotiationErrorMessage.class);
+      	ContractNegotiationErrorMessage contractNegotiationErrorMessage = NegotiationSerializer.deserializeProtocol(response, ContractNegotiationErrorMessage.class);
     	assertNotNull(contractNegotiationErrorMessage);
     }
     
@@ -51,7 +51,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     	result.andExpect(status().isNotFound())
     		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
      	String response = result.andReturn().getResponse().getContentAsString();
-      	ContractNegotiationErrorMessage contractNegotiationErrorMessage = Serializer.deserializeProtocol(response, ContractNegotiationErrorMessage.class);
+      	ContractNegotiationErrorMessage contractNegotiationErrorMessage = NegotiationSerializer.deserializeProtocol(response, ContractNegotiationErrorMessage.class);
     	assertNotNull(contractNegotiationErrorMessage);
     }
 
@@ -66,7 +66,7 @@ public class NegotiationIntegrationTest extends BaseIntegrationTest {
     		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
     	
     	String response = result.andReturn().getResponse().getContentAsString();
-      	ContractNegotiationErrorMessage contractNegotiationErrorMessage = Serializer.deserializeProtocol(response, ContractNegotiationErrorMessage.class);
+      	ContractNegotiationErrorMessage contractNegotiationErrorMessage = NegotiationSerializer.deserializeProtocol(response, ContractNegotiationErrorMessage.class);
     	assertNotNull(contractNegotiationErrorMessage);
     	}
 }

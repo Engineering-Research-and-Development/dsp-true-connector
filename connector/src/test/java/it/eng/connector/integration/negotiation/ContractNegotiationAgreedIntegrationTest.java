@@ -30,7 +30,7 @@ import it.eng.negotiation.model.Permission;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 
 public class ContractNegotiationAgreedIntegrationTest extends BaseIntegrationTest {
 
@@ -95,12 +95,12 @@ public class ContractNegotiationAgreedIntegrationTest extends BaseIntegrationTes
 
 		final ResultActions result = mockMvc
 				.perform(post("/consumer/negotiations/" + contractNegotiationRequested.getConsumerPid() + "/agreement")
-						.content(Serializer.serializeProtocol(agreementMessage))
+						.content(NegotiationSerializer.serializeProtocol(agreementMessage))
 						.contentType(MediaType.APPLICATION_JSON));
 		result.andExpect(status().isOk());
 
 		JsonNode contractNegotiation = getContractNegotiationOverAPI();
-		ContractNegotiation contractNegotiationAgreed = Serializer.deserializePlain(contractNegotiation.toPrettyString(), ContractNegotiation.class);
+		ContractNegotiation contractNegotiationAgreed = NegotiationSerializer.deserializePlain(contractNegotiation.toPrettyString(), ContractNegotiation.class);
 		assertEquals(ContractNegotiationState.AGREED, contractNegotiationAgreed.getState());
 		offerCheck(contractNegotiationAgreed);
 		agreementCheck(contractNegotiationAgreed);
@@ -122,7 +122,7 @@ public class ContractNegotiationAgreedIntegrationTest extends BaseIntegrationTes
     	
     	final ResultActions result = mockMvc
 				.perform(post("/consumer/negotiations/" + agreementMessage.getConsumerPid() + "/agreement")
-						.content(Serializer.serializeProtocol(agreementMessage))
+						.content(NegotiationSerializer.serializeProtocol(agreementMessage))
 						.contentType(MediaType.APPLICATION_JSON));
 		
     	result.andExpect(status().isNotFound());
@@ -149,7 +149,7 @@ public class ContractNegotiationAgreedIntegrationTest extends BaseIntegrationTes
     	
     	final ResultActions result = mockMvc
 				.perform(post("/consumer/negotiations/" + contractNegotiationRequested.getConsumerPid() + "/agreement")
-						.content(Serializer.serializeProtocol(agreementMessage))
+						.content(NegotiationSerializer.serializeProtocol(agreementMessage))
 						.contentType(MediaType.APPLICATION_JSON));
 		result.andExpect(status().isBadRequest());
 

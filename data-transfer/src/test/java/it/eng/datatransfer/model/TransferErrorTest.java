@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import it.eng.datatransfer.serializer.Serializer;
+import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 
@@ -25,26 +25,26 @@ public class TransferErrorTest {
 	@Test
 	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() {
-		String result = Serializer.serializePlain(transferError);
+		String result = TransferSerializer.serializePlain(transferError);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
 		assertTrue(result.contains(DSpaceConstants.CONSUMER_PID));
 		assertTrue(result.contains(DSpaceConstants.PROVIDER_PID));
 		
-		TransferError javaObj = Serializer.deserializePlain(result, TransferError.class);
+		TransferError javaObj = TransferSerializer.deserializePlain(result, TransferError.class);
 		validateJavaObject(javaObj);
 	}
 	
 	@Test
 	@DisplayName("Verify valid protocol object serialization")
 	public void testPlain_protocol() {
-		JsonNode result = Serializer.serializeProtocolJsonNode(transferError);
+		JsonNode result = TransferSerializer.serializeProtocolJsonNode(transferError);
 		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
 		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
 		assertNotNull(result.get(DSpaceConstants.DSPACE_CONSUMER_PID).asText());
 		assertNotNull(result.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText());
 		
-		TransferError javaObj = Serializer.deserializeProtocol(result, TransferError.class);
+		TransferError javaObj = TransferSerializer.deserializeProtocol(result, TransferError.class);
 		validateJavaObject(javaObj);
 	}
 	
@@ -59,8 +59,8 @@ public class TransferErrorTest {
 	@Test
 	@DisplayName("Missing @context and @type")
 	public void missingContextAndType() {
-		JsonNode result = Serializer.serializePlainJsonNode(transferError);
-		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, TransferError.class));
+		JsonNode result = TransferSerializer.serializePlainJsonNode(transferError);
+		assertThrows(ValidationException.class, () -> TransferSerializer.deserializeProtocol(result, TransferError.class));
 	}
 
 	public void validateJavaObject(TransferError javaObj) {

@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.catalog.model.Catalog;
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.service.ProxyAPIService;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
@@ -50,6 +50,6 @@ public class ProxyAPIController {
 		Catalog catalog = proxyApiService.getCatalog(forwardTo);
 
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-				.body(GenericApiResponse.success(Serializer.serializePlainJsonNode(catalog), "Fetched catalog"));
+				.body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(catalog), "Fetched catalog"));
 	}
 }

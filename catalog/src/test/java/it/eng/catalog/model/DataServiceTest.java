@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.DataServiceUtil;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
@@ -27,7 +27,7 @@ public class DataServiceTest {
 	@Test
 	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() {
-		String result = Serializer.serializePlain(DataServiceUtil.DATA_SERVICE);
+		String result = CatalogSerializer.serializePlain(DataServiceUtil.DATA_SERVICE);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
 		
@@ -46,14 +46,14 @@ public class DataServiceTest {
 		assertTrue(result.contains(DSpaceConstants.ENDPOINT_URL));
 		assertTrue(result.contains(DSpaceConstants.ENDPOINT_DESCRIPTION));
 		
-		DataService javaObj = Serializer.deserializePlain(result, DataService.class);
+		DataService javaObj = CatalogSerializer.deserializePlain(result, DataService.class);
 		validateDataService(javaObj);
 	}
 
 	@Test
 	@DisplayName("Verify valid protocol object serialization")
 	public void testProtocol() {
-		JsonNode result = Serializer.serializeProtocolJsonNode(DataServiceUtil.DATA_SERVICE);
+		JsonNode result = CatalogSerializer.serializeProtocolJsonNode(DataServiceUtil.DATA_SERVICE);
 		assertNull(result.get(DSpaceConstants.CONTEXT), "Not root element to have context");
 		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
 
@@ -72,15 +72,15 @@ public class DataServiceTest {
 		assertNotNull(result.get(DSpaceConstants.DCAT_ENDPOINT_URL).asText());
 		assertNotNull(result.get(DSpaceConstants.DCAT_ENDPOINT_DESCRIPTION).asText());
 		
-		DataService javaObj = Serializer.deserializeProtocol(result, DataService.class);
+		DataService javaObj = CatalogSerializer.deserializeProtocol(result, DataService.class);
 		validateDataService(javaObj);
 	}
 
 	@Test
 	@DisplayName("Missing @context and @type")
 	public void missingContextAndType() {
-		JsonNode result = Serializer.serializePlainJsonNode(DataServiceUtil.DATA_SERVICE);
-		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, DataService.class));
+		JsonNode result = CatalogSerializer.serializePlainJsonNode(DataServiceUtil.DATA_SERVICE);
+		assertThrows(ValidationException.class, () -> CatalogSerializer.deserializeProtocol(result, DataService.class));
 	}
 	
 	@Test
@@ -118,8 +118,8 @@ public class DataServiceTest {
 	@DisplayName("Plain serialize/deserialize")
 	public void equalsTestPlain() {
 		DataService dataService = CatalogMockObjectUtil.DATA_SERVICE;
-		String ss = Serializer.serializePlain(dataService);
-		DataService dataService2 = Serializer.deserializePlain(ss, DataService.class);
+		String ss = CatalogSerializer.serializePlain(dataService);
+		DataService dataService2 = CatalogSerializer.deserializePlain(ss, DataService.class);
 		assertThat(dataService).usingRecursiveComparison().isEqualTo(dataService2);
 	}
 	
@@ -127,8 +127,8 @@ public class DataServiceTest {
 	@DisplayName("Protocol serialize/deserialize")
 	public void equalsTestProtocol() {
 		DataService dataService = CatalogMockObjectUtil.DATA_SERVICE;
-		String ss = Serializer.serializeProtocol(dataService);
-		DataService dataService2 = Serializer.deserializeProtocol(ss, DataService.class);
+		String ss = CatalogSerializer.serializeProtocol(dataService);
+		DataService dataService2 = CatalogSerializer.deserializeProtocol(ss, DataService.class);
 		assertThat(dataService).usingRecursiveComparison().isEqualTo(dataService2);
 	}
 	

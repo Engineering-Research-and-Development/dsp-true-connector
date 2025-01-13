@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 
@@ -27,32 +27,32 @@ public class CatalogRequestMessageTest {
 	@Test
 	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() {
-		String result = Serializer.serializePlain(catalogRequestMessage);
+		String result = CatalogSerializer.serializePlain(catalogRequestMessage);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
 		assertTrue(result.contains(DSpaceConstants.FILTER));
 		
-		CatalogRequestMessage javaObj = Serializer.deserializePlain(result, CatalogRequestMessage.class);
+		CatalogRequestMessage javaObj = CatalogSerializer.deserializePlain(result, CatalogRequestMessage.class);
 		validateJavaObj(javaObj);
 	}
 
 	@Test
 	@DisplayName("Verify valid protocol object serialization")
 	public void testPlain_protocol() {
-		JsonNode result = Serializer.serializeProtocolJsonNode(catalogRequestMessage);
+		JsonNode result = CatalogSerializer.serializeProtocolJsonNode(catalogRequestMessage);
 		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
 		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
 		assertNotNull(result.get(DSpaceConstants.DSPACE_FILTER).asText());
 		
-		CatalogRequestMessage javaObj = Serializer.deserializeProtocol(result, CatalogRequestMessage.class);
+		CatalogRequestMessage javaObj = CatalogSerializer.deserializeProtocol(result, CatalogRequestMessage.class);
 		validateJavaObj(javaObj);
 	}
 	
 	@Test
 	@DisplayName("Missing @context and @type")
 	public void missingContextAndType() {
-		JsonNode result = Serializer.serializePlainJsonNode(catalogRequestMessage);
-		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, CatalogRequestMessage.class));
+		JsonNode result = CatalogSerializer.serializePlainJsonNode(catalogRequestMessage);
+		assertThrows(ValidationException.class, () -> CatalogSerializer.deserializeProtocol(result, CatalogRequestMessage.class));
 	}
 	
 	@Test
@@ -65,16 +65,16 @@ public class CatalogRequestMessageTest {
 	@Test
 	@DisplayName("Plain serialize/deserialize")
 	public void equalsTestPlain() {
-		String ss = Serializer.serializePlain(catalogRequestMessage);
-		CatalogRequestMessage catalogRequestMessage2 = Serializer.deserializePlain(ss, CatalogRequestMessage.class);
+		String ss = CatalogSerializer.serializePlain(catalogRequestMessage);
+		CatalogRequestMessage catalogRequestMessage2 = CatalogSerializer.deserializePlain(ss, CatalogRequestMessage.class);
 		assertThat(catalogRequestMessage).usingRecursiveComparison().isEqualTo(catalogRequestMessage2);
 	}
 	
 	@Test
 	@DisplayName("Protocol serialize/deserialize")
 	public void equalsTestProtocol() {
-		String ss = Serializer.serializeProtocol(catalogRequestMessage);
-		CatalogRequestMessage catalogRequestMessage2 = Serializer.deserializeProtocol(ss, CatalogRequestMessage.class);
+		String ss = CatalogSerializer.serializeProtocol(catalogRequestMessage);
+		CatalogRequestMessage catalogRequestMessage2 = CatalogSerializer.deserializeProtocol(ss, CatalogRequestMessage.class);
 		assertThat(catalogRequestMessage).usingRecursiveComparison().isEqualTo(catalogRequestMessage2);
 	}
 	
