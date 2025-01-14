@@ -1,6 +1,5 @@
 package it.eng.catalog.rest.api;
 
-import java.net.URL;
 import java.util.List;
 
 import org.springframework.http.MediaType;
@@ -44,7 +43,7 @@ public class ArtifactAPIController {
 	@PostMapping("/upload/{datasetId}")
 	public ResponseEntity<GenericApiResponse<JsonNode>> uploadArtifact(
 			@RequestPart(value = "file", required = false) MultipartFile file,
-			@RequestPart(value = "url", required = false) URL externalURL,
+			@RequestPart(value = "url", required = false) String externalURL,
 			@PathVariable(required = true) String datasetId) {
 		log.info("Uploading artifact");
 		Artifact artifact = artifactService.uploadArtifact(file, datasetId, externalURL);

@@ -11,7 +11,6 @@ import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
 import java.util.List;
 import java.util.Optional;
 
@@ -130,7 +129,7 @@ public class ArtifactServiceTest {
 		when(artifactRepository.save(any(Artifact.class))).thenReturn(CatalogMockObjectUtil.ARTIFACT_EXTERNAL);
 		when(datasetService.getDatasetByIdForApi(CatalogMockObjectUtil.DATASET_ID)).thenReturn(CatalogMockObjectUtil.DATASET);
 
-		Artifact artifact = artifactService.uploadArtifact(null, CatalogMockObjectUtil.DATASET_ID, new URL(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue()));
+		Artifact artifact = artifactService.uploadArtifact(null, CatalogMockObjectUtil.DATASET_ID, CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue());
 		
 		assertEquals(artifact, CatalogMockObjectUtil.ARTIFACT_EXTERNAL);
 
@@ -141,7 +140,7 @@ public class ArtifactServiceTest {
     public void uploadExternal_fail() throws IOException {
 		when(artifactRepository.save(any(Artifact.class))).thenThrow(IllegalArgumentException.class);
 
-		assertThrows(CatalogErrorAPIException.class, ()-> artifactService.uploadArtifact(null, CatalogMockObjectUtil.DATASET_ID, new URL(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue())));
+		assertThrows(CatalogErrorAPIException.class, ()-> artifactService.uploadArtifact(null, CatalogMockObjectUtil.DATASET_ID, CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue()));
 		
     }
 	

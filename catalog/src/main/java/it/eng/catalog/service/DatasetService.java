@@ -126,6 +126,28 @@ public class DatasetService {
 
         return storedDataset;
     }
+    
+    /**
+     * Updates a dataset in the repository.
+     *
+     * @param dataset to be updated
+     * @param newDataset the dataset used for updating
+     * @return the updated dataset
+     * @throws ResourceNotFoundAPIException if no data service is found with the provided ID
+     * @throws InternalServerErrorAPIException if updating fails
+     */
+    public Dataset updateDataset(Dataset existingDataset, Dataset newDataset) {
+    	Dataset storedDataset = null;
+		try {
+			Dataset updatedDataset= existingDataset.updateInstance(newDataset);
+			storedDataset = repository.save(updatedDataset);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			throw new InternalServerErrorAPIException("Dataset could not be updated");
+		}
+
+        return storedDataset;
+    }
 
 	public List<String> getFormatsFromDataset(String id) {
 		Set<Distribution> distributions = getDatasetByIdForApi(id).getDistribution();
@@ -152,5 +174,10 @@ public class DatasetService {
 			throw new ResourceNotFoundAPIException("Dataset with id: " + id + " has no artifact");
 		}
 		return artifact;
+	}
+
+	public Dataset getDatasetByArtifactForApi(String id) {
+        return repository.findByArtifact(id).orElse(null);
+
 	}
 }

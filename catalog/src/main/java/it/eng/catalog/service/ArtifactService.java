@@ -1,15 +1,15 @@
 package it.eng.catalog.service;
 
 import java.io.IOException;
-import java.net.URL;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 import org.apache.commons.lang3.StringUtils;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.mongodb.client.gridfs.GridFSBucket;
@@ -17,6 +17,7 @@ import com.mongodb.client.gridfs.GridFSBuckets;
 import com.mongodb.client.gridfs.model.GridFSUploadOptions;
 
 import it.eng.catalog.exceptions.CatalogErrorAPIException;
+import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.Dataset;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
@@ -44,37 +45,44 @@ public class ArtifactService {
 
 	public List<Artifact> getArtifacts(String artifactId) {
 		if(StringUtils.isNotBlank(artifactId)) {
-			return artifactRepository.findById(artifactId)
-					.stream()
-					.collect(Collectors.toList());
+			Optional<Artifact> artifact = artifactRepository.findById(artifactId);
+			if (artifact.isPresent()) {
+				return List.of(artifact.get());
+			} else {
+				throw new ResourceNotFoundAPIException("Artifact with id " + artifactId + " not found");
+			}
 		}
 		return artifactRepository.findAll();
 	}
 
-	public Artifact uploadArtifact(MultipartFile file, String datasetId, URL externalURL) {
+	@Transactional
+	public Artifact uploadArtifact(MultipartFile file, String datasetId, String externalURL) {
+		Dataset dataset = datasetService.getDatasetByIdForApi(datasetId);
 		if (file != null) {
-			return storeFile(file, datasetId);
+			return storeFile(file, dataset);
 		} else if (externalURL != null) {
-			return insertExternalArtifact(datasetId, externalURL);
+			return insertExternalArtifact(dataset, externalURL);
 		}
 		log.warn("Artifact and file not found");
 		throw new CatalogErrorAPIException("Artifact and file not found");
 	}
 	
+	@Transactional
 	public void deleteArtifact (String id) {
 		Artifact artifact = artifactRepository.findById(id)
 				.orElseThrow(() -> new CatalogErrorAPIException("Could not delete artifact, artifact with id: " + id + " does not exist"));
 		deleteArtifactAndData(artifact);
+		removeArtifactFromDataset(artifact);
 	}
 
-	private Artifact insertExternalArtifact(String datasetId, URL externalURL) {
+	private Artifact insertExternalArtifact(Dataset dataset, String externalURL) {
 		try {
 			Artifact artifact = Artifact.Builder.newInstance()
 					.artifactType(ArtifactType.EXTERNAL)
-					.value(externalURL.toString())
+					.value(externalURL)
 					.build();
 			artifact = artifactRepository.save(artifact);
-			updateDataset(datasetId, artifact);
+			updateDataset(dataset, artifact);
 			return artifact;
 		} catch (Exception e) {
 			log.error("Failed to insert external artifact", e);
@@ -82,13 +90,13 @@ public class ArtifactService {
 		}
 	}
 
-	private Artifact storeFile(MultipartFile file, String datasetId) {
+	private Artifact storeFile(MultipartFile file, Dataset dataset) {
 		try {
 			GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
 			Document doc = new Document();
 			//TODO check what happens if file.getContentType() is null
 			doc.append(CONTENT_TYPE_FIELD, file.getContentType());
-			doc.append(DATASET_ID_METADATA, datasetId);
+			doc.append(DATASET_ID_METADATA, dataset.getId());
 			GridFSUploadOptions options = new GridFSUploadOptions()
 			        .chunkSizeBytes(1048576) // 1MB chunk size
 			        .metadata(doc);
@@ -100,7 +108,7 @@ public class ArtifactService {
 					.filename(file.getOriginalFilename())
 					.build();
 			artifact = artifactRepository.save(artifact);
-			updateDataset(datasetId, artifact);
+			updateDataset(dataset, artifact);
 			return artifact;
 		}
 		catch (IOException e) {
@@ -109,12 +117,8 @@ public class ArtifactService {
 		}
 	}
 	
-	private void updateDataset(String datasetId, Artifact artifact) {
-		Dataset dataset = datasetService.getDatasetByIdForApi(datasetId);
-		//first remove old artifact
-		if (dataset.getArtifact() != null) {
-			deleteArtifactAndData(dataset.getArtifact());
-		}
+	private void updateDataset(Dataset dataset, Artifact artifact) {
+		Artifact oldArtifact = dataset.getArtifact();
 		Dataset datasetWithArtifact = Dataset.Builder.newInstance()
 				.id(dataset.getId())
 				.artifact(artifact)
@@ -132,7 +136,10 @@ public class ArtifactService {
 				.title(dataset.getTitle())
 				.version(dataset.getVersion())
 				.build();
-		datasetService.updateDataset(datasetId, datasetWithArtifact);
+		datasetService.updateDataset(dataset, datasetWithArtifact);
+		if (oldArtifact != null) {
+			deleteArtifactAndData(oldArtifact);
+		}
 	}
 
 	private void deleteArtifactAndData(Artifact artifact) {
@@ -155,6 +162,31 @@ public class ArtifactService {
 		}
 		default:
 			throw new CatalogErrorAPIException("Could not delete artifact, unexpected artifact type: " + artifact.getArtifactType());
+		}
+	}
+	
+	private void removeArtifactFromDataset(Artifact artifact) {
+		Dataset dataset = datasetService.getDatasetByArtifactForApi(artifact.getId());
+		// if the Artifact belonged to a Dataset then remove the Dataset
+		if (dataset != null) {
+			Dataset datasetWithoutArtifact = Dataset.Builder.newInstance()
+					.id(dataset.getId())
+					.artifact(null)
+					.conformsTo(dataset.getConformsTo())
+					.createdBy(dataset.getCreatedBy())
+					.creator(dataset.getCreator())
+					.description(dataset.getDescription())
+					.distribution(dataset.getDistribution())
+					.hasPolicy(dataset.getHasPolicy())
+					.issued(dataset.getIssued())
+					.keyword(dataset.getKeyword())
+					.lastModifiedBy(dataset.getLastModifiedBy())
+					.modified(dataset.getModified())
+					.theme(dataset.getTheme())
+					.title(dataset.getTitle())
+					.version(dataset.getVersion())
+					.build();
+			datasetService.updateDataset(dataset, datasetWithoutArtifact);
 		}
 	}
 	

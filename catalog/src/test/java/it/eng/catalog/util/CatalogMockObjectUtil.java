@@ -85,7 +85,6 @@ public class CatalogMockObjectUtil {
 			.filename("Employees.txt")
 			.lastModifiedBy(CREATOR)
 			.value(new ObjectId().toHexString())
-			.version(0L)
 			.build();
     
 	public static final Artifact ARTIFACT_EXTERNAL = Artifact.Builder.newInstance()
@@ -95,7 +94,6 @@ public class CatalogMockObjectUtil {
 			.lastModifiedDate(NOW)
 			.lastModifiedBy(CREATOR)
 			.value("https://example.com/employees")
-			.version(0L)
 			.build();
 	
 	public static final Permission PERMISSION = Permission.Builder.newInstance()
