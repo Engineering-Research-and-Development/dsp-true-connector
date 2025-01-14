@@ -113,6 +113,7 @@ public class ArtifactServiceTest {
     public void uploadFile_fail() throws IOException {
 		when(mongoTemplate.getDb()).thenReturn(mongoDatabase);
 		when(file.getContentType()).thenReturn(MediaType.APPLICATION_JSON_VALUE);
+		when(datasetService.getDatasetByIdForApi(CatalogMockObjectUtil.DATASET_ID)).thenReturn(CatalogMockObjectUtil.DATASET);
 		when(file.getInputStream()).thenThrow(IOException.class);
 		try (MockedStatic<GridFSBuckets> buckets = Mockito.mockStatic(GridFSBuckets.class)) {
 			buckets.when(() -> GridFSBuckets.create(mongoTemplate.getDb()))

@@ -9,7 +9,6 @@ import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.mongodb.client.gridfs.GridFSBucket;
@@ -55,7 +54,6 @@ public class ArtifactService {
 		return artifactRepository.findAll();
 	}
 
-	@Transactional
 	public Artifact uploadArtifact(MultipartFile file, String datasetId, String externalURL) {
 		Dataset dataset = datasetService.getDatasetByIdForApi(datasetId);
 		if (file != null) {
@@ -67,7 +65,6 @@ public class ArtifactService {
 		throw new CatalogErrorAPIException("Artifact and file not found");
 	}
 	
-	@Transactional
 	public void deleteArtifact (String id) {
 		Artifact artifact = artifactRepository.findById(id)
 				.orElseThrow(() -> new CatalogErrorAPIException("Could not delete artifact, artifact with id: " + id + " does not exist"));
