@@ -1,9 +1,10 @@
 {
 	"info": {
-		"_postman_id": "da605012-3910-469e-9a15-7f38358c649e",
+		"_postman_id": "1ad41a00-9e22-41a1-ae27-87310782e191",
 		"name": "Negotiation tests",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "36278855"
+		"_exporter_id": "21815221",
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-1ad41a00-9e22-41a1-ae27-87310782e191?action=share&source=collection_link&creator=21815221"
 	},
 	"item": [
 		{
@@ -669,9 +670,15 @@
 							}
 						],
 						"url": {
-							"raw": "{{CONSUMER_SERVER_API_TRANSFERS}}",
+							"raw": "{{CONSUMER_SERVER_API_TRANSFERS}}?role=consumer",
 							"host": [
 								"{{CONSUMER_SERVER_API_TRANSFERS}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "consumer"
+								}
 							]
 						}
 					},
@@ -713,9 +720,15 @@
 							}
 						],
 						"url": {
-							"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}",
+							"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}?role=provider",
 							"host": [
 								"{{PROVIDER_SERVER_API_TRANSFERS}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "provider"
+								}
 							]
 						}
 					},
