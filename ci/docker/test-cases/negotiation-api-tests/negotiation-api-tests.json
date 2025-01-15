@@ -1,10 +1,10 @@
 {
 	"info": {
-		"_postman_id": "1ad41a00-9e22-41a1-ae27-87310782e191",
-		"name": "Negotiation tests",
+		"_postman_id": "04c08cce-8b0b-4708-b7c8-ee0c4e19c16d",
+		"name": "Contract Negotiation API tests",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "21815221",
-		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-1ad41a00-9e22-41a1-ae27-87310782e191?action=share&source=collection_link&creator=21815221"
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-04c08cce-8b0b-4708-b7c8-ee0c4e19c16d?action=share&source=collection_link&creator=21815221"
 	},
 	"item": [
 		{
@@ -46,7 +46,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER_PROTOCOL_ENDPOINT}}\",\r\n    \"offer\": {\r\n        \"@id\": \"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"{{datasetId}}\",\r\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"LTEQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+							"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER_PROTOCOL_ENDPOINT}}/request\",\r\n    \"offer\": {\r\n        \"@id\": \"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"{{datasetId}}\",\r\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"LTEQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -93,9 +93,15 @@
 							}
 						],
 						"url": {
-							"raw": "{{PROVIDER_API_ENDPOINT}}",
+							"raw": "{{PROVIDER_API_ENDPOINT}}?role=provider",
 							"host": [
 								"{{PROVIDER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "provider"
+								}
 							]
 						}
 					},
@@ -145,9 +151,15 @@
 							}
 						],
 						"url": {
-							"raw": "{{CONSUMER_API_ENDPOINT}}",
+							"raw": "{{CONSUMER_API_ENDPOINT}}?role=consumer",
 							"host": [
 								"{{CONSUMER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "consumer"
+								}
 							]
 						}
 					},
@@ -187,9 +199,15 @@
 							}
 						],
 						"url": {
-							"raw": "{{PROVIDER_API_ENDPOINT}}",
+							"raw": "{{PROVIDER_API_ENDPOINT}}?role=provider",
 							"host": [
 								"{{PROVIDER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "provider"
+								}
 							]
 						}
 					},
@@ -299,9 +317,15 @@
 							}
 						],
 						"url": {
-							"raw": "{{CONSUMER_API_ENDPOINT}}",
+							"raw": "{{CONSUMER_API_ENDPOINT}}?role=consumer",
 							"host": [
 								"{{CONSUMER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "consumer"
+								}
 							]
 						}
 					},
@@ -342,9 +366,15 @@
 							}
 						],
 						"url": {
-							"raw": "{{PROVIDER_API_ENDPOINT}}",
+							"raw": "{{PROVIDER_API_ENDPOINT}}?role=provider",
 							"host": [
 								"{{PROVIDER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "provider"
+								}
 							]
 						}
 					},
@@ -441,9 +471,15 @@
 							}
 						],
 						"url": {
-							"raw": "{{CONSUMER_API_ENDPOINT}}",
+							"raw": "{{CONSUMER_API_ENDPOINT}}?role=consumer",
 							"host": [
 								"{{CONSUMER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "consumer"
+								}
 							]
 						}
 					},
@@ -484,9 +520,15 @@
 							}
 						],
 						"url": {
-							"raw": "{{PROVIDER_API_ENDPOINT}}",
+							"raw": "{{PROVIDER_API_ENDPOINT}}?role=provider",
 							"host": [
 								"{{PROVIDER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "provider"
+								}
 							]
 						}
 					},
@@ -583,9 +625,15 @@
 							}
 						],
 						"url": {
-							"raw": "{{CONSUMER_API_ENDPOINT}}",
+							"raw": "{{CONSUMER_API_ENDPOINT}}?role=consumer",
 							"host": [
 								"{{CONSUMER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "consumer"
+								}
 							]
 						}
 					},
@@ -626,9 +674,15 @@
 							}
 						],
 						"url": {
-							"raw": "{{PROVIDER_API_ENDPOINT}}",
+							"raw": "{{PROVIDER_API_ENDPOINT}}?role=provider",
 							"host": [
 								"{{PROVIDER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "provider"
+								}
 							]
 						}
 					},
@@ -792,7 +846,7 @@
 		},
 		{
 			"key": "PROVIDER_PROTOCOL_ENDPOINT",
-			"value": "http://172.17.0.1:8090/",
+			"value": "http://172.17.0.1:8090/negotiations",
 			"type": "string"
 		},
 		{
