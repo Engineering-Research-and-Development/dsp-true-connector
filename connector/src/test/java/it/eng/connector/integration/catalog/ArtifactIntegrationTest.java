@@ -41,9 +41,9 @@ import it.eng.connector.util.TestUtil;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
-import it.eng.tools.model.Serializer;
 import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.serializer.ToolsSerializer;
 
 public class ArtifactIntegrationTest extends BaseIntegrationTest {
 	
@@ -95,7 +95,7 @@ public class ArtifactIntegrationTest extends BaseIntegrationTest {
 			.andReturn();
 		
 		String jsonList = resultList.getResponse().getContentAsString();
-		GenericApiResponse<List<Artifact>> apiRespList =  Serializer.deserializePlain(jsonList, typeRef);
+		GenericApiResponse<List<Artifact>> apiRespList =  ToolsSerializer.deserializePlain(jsonList, typeRef);
 		  
 		assertNotNull(apiRespList.getData());
 		assertTrue(apiRespList.getData().size() > 2);
@@ -106,7 +106,7 @@ public class ArtifactIntegrationTest extends BaseIntegrationTest {
 			.andReturn();
 		
 		String jsonSingle = resultSingle.getResponse().getContentAsString();
-		GenericApiResponse<List<Artifact>> apiRespSingle = Serializer.deserializePlain(jsonSingle, typeRef);
+		GenericApiResponse<List<Artifact>> apiRespSingle = ToolsSerializer.deserializePlain(jsonSingle, typeRef);
 
 		assertNotNull(apiRespSingle);
 		assertTrue(apiRespSingle.isSuccess());
@@ -124,7 +124,7 @@ public class ArtifactIntegrationTest extends BaseIntegrationTest {
 		TypeReference<GenericApiResponse<Object>> typeRefFail = new TypeReference<GenericApiResponse<Object>>() {};
 
 		String jsonFail = resultFail.getResponse().getContentAsString();
-		GenericApiResponse<Object> apiRespFail = Serializer.deserializePlain(jsonFail, typeRefFail);
+		GenericApiResponse<Object> apiRespFail = ToolsSerializer.deserializePlain(jsonFail, typeRefFail);
 		
 		assertNotNull(apiRespFail);
 		assertNull(apiRespFail.getData());
@@ -157,7 +157,7 @@ public class ArtifactIntegrationTest extends BaseIntegrationTest {
 			.andReturn();
 		
 		String json = result.getResponse().getContentAsString();
-		GenericApiResponse<Artifact> apiResp =  Serializer.deserializePlain(json, typeRef);
+		GenericApiResponse<Artifact> apiResp =  ToolsSerializer.deserializePlain(json, typeRef);
 		  
 		assertTrue(apiResp.isSuccess());
 		assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), apiResp.getData().getValue());
@@ -195,7 +195,7 @@ public class ArtifactIntegrationTest extends BaseIntegrationTest {
 			.andReturn();
 		
 		String json = result.getResponse().getContentAsString();
-		GenericApiResponse<Artifact> apiResp =  Serializer.deserializePlain(json, typeRef);
+		GenericApiResponse<Artifact> apiResp =  ToolsSerializer.deserializePlain(json, typeRef);
 		  
 		assertTrue(apiResp.isSuccess());
 		assertEquals(file.getOriginalFilename(), apiResp.getData().getFilename());
