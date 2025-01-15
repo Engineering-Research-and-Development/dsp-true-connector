@@ -17,8 +17,10 @@ public interface ContractNegotiationRepository extends MongoRepository<ContractN
 
 	Optional<ContractNegotiation> findByProviderPidAndConsumerPid(String providerPid, String consumerPid);
 
-	Collection<ContractNegotiation> findByState(String state);
-
 	Optional<ContractNegotiation> findByAgreement(String agreement);
+
+	Collection<ContractNegotiation> findByStateAndRole(String state, String role);
+	
+	Collection<ContractNegotiation> findByRole(String role);
 
 }
