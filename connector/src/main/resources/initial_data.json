@@ -7,8 +7,8 @@
             "email": "admin@mail.com",
             "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
             "enabled": true,
-			"expired" : false,
-			"locked" : false,
+            "expired": false,
+            "locked": false,
             "role": "ROLE_ADMIN"
         }, {
             "_class": "it.eng.connector.model.User",
@@ -18,276 +18,287 @@
             "email": "connector@mail.com",
             "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
             "enabled": "true",
-			"expired" : false,
-			"locked" : false,
+            "expired": false,
+            "locked": false,
             "role": "ROLE_CONNECTOR"
         }
     ],
-	"catalogs": [{
-	            "_class": "it.eng.catalog.model.Catalog",
-	            "_id": "urn:uuid:1dc45797-3333-4955-8baf-ab7fd66ac4d5",
-	            "keyword": [
-	                "Employee",
-	                "Information",
-	                "Test",
-	                "TRUEConnector team information"
-	            ],
-	            "theme": [
-	                "dark theme",
-	                "light theme"
-	            ],
-	            "conformsTo": "conformsToSomething",
-	            "creator": "Engineering Informatica S.p.A.",
-	            "description": [{
-	                    "value": "Sample catalog offering TRUEConnector team information",
-	                    "language": "en"
-	                }
-	            ],
-	            "identifier": "Unique identifier for test Catalog",
-	            "issued": "2024-04-23T16:26:00.000Z",
-	            "modified": "2024-04-23T16:26:00.000Z",
-	            "title": "Testcatalog - TRUEConnector team information",
-	            "distribution": [{
-	                    "$ref": "distributions",
-	                    "$id": "urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5"
-	                }, {
-	                    "$ref": "distributions",
-	                    "$id": "urn:uuid:1dc45797-json-4932-8baf-ab7fd66ql4d5"
-	                }
-	            ],
-	            "dataset": [{
-	                    "$ref": "datasets",
-	                    "$id": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
-	                }
-	            ],
-	            "service": [{
-	                    "$ref": "dataservices",
-	                    "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
-	                }
-	            ],
-	            "participantId": "urn:example:DSP_TRUEConnector",
-	            "homepage": "https://www.homepage.com/test",
-	            "createdBy": "admin@mail.com",
-	            "lastModifiedBy": "admin@mail.com",
-	            "version": 0
-	        }
-	    ],
-	    "datasets": [{
-	            "_class": "it.eng.catalog.model.Dataset",
-	            "_id": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
-	            "keyword": [
-	                "Personal information",
-	                "Employee",
-	                "TRUEConnector team",
-	                "REST",
-	                "SFTP",
-	                "json",
-	                "pdf"
-	            ],
-	            "theme": [
-	                "dark theme",
-	                "light theme"
-	            ],
-	            "description": [{
-	                    "value": "Dataset offering TRUEConnector team information",
-	                    "language": "en"
-	                }
-	            ],
-	            "conformsTo": "conformsToSomething",
-	            "creator": "Engineering Informatica S.p.A.",
-	            "identifier": "Unique identifier for test Dataset",
-	            "issued": "2024-04-23T16:26:00.000Z",
-	            "modified": "2024-04-23T16:26:00.000Z",
-	            "title": "TRUEConnector team information dataset",
-	            "hasPolicy": [{
-	                    "_id": "urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5",
-	                    "_class": "it.eng.catalog.model.Offer",
-	                    "permission": [{
-	                            "action": "USE",
-	                            "constraint": [{
-	                                    "leftOperand": "COUNT",
-	                                    "operator": "LTEQ",
-	                                    "rightOperand": "5"
-	                                }
-	                            ]
-	                        }
-	                    ]
-	                }
-	            ],
-	            "distribution": [{
-	                    "$ref": "distributions",
-	                    "$id": "urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5"
-	                }, {
-	                    "$ref": "distributions",
-	                    "$id": "urn:uuid:1dc45797-json-4932-8baf-ab7fd66ql4d5"
-	                }
-	            ],
-				"artifact":{
-	                "$ref": "artifacts",
-					"$id": "urn:uuid:fdc45798-a123-4955-8baf-vc3gh22qh3j8"
-				},
-	            "createdBy": "admin@mail.com",
-	            "lastModifiedBy": "admin@mail.com",
-	            "version": 0
-	        }
-	    ],
-	    "dataservices": [{
-	            "_id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5",
-	            "_class": "it.eng.catalog.model.DataService",
-	            "keyword": [
-	                "REST",
-	                "SFTP",
-	                "transfer"
-	            ],
-	            "theme": [
-	                "dark theme",
-	                "light theme"
-	            ],
-	            "conformsTo": "conformsToSomething",
-	            "creator": "Engineering Informatica S.p.A.",
-	            "description": [{
-	                    "value": "DSP TRUEConnector service offering team information",
-	                    "language": "en"
-	                }
-	            ],
-	            "identifier": "DSP TRUE Connector Unique identifier for testing",
-	            "issued": "2024-04-23T16:26:00.000Z",
-	            "modified": "2024-04-23T16:26:00.000Z",
-	            "title": "DSP TRUE Connector",
-	            "endpointDescription": "dspace:connector",
-	            "endpointURL": "http://localhost:8090/",
-	            "createdBy": "admin@mail.com",
-	            "lastModifiedBy": "admin@mail.com",
-	            "version": 0
-	        }
-	    ],
-	    "distributions": [{
-	            "_id": "urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5",
-	            "_class": "it.eng.catalog.model.Distribution",
-	            "title": "PDF file",
-	            "format": {
-	                "_id": "HttpData-PULL"
-	            },
-	            "accessService": [{
-	                    "$ref": "dataservices",
-	                    "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
-	                }
-	            ],
-	            "createdBy": "admin@mail.com",
-	            "lastModifiedBy": "admin@mail.com",
-	            "issued": "2024-04-23T16:26:00.000Z",
-	            "modified": "2024-04-23T16:26:00.000Z",
-	            "version": 0
-	        }, {
-	            "_id": "urn:uuid:1dc45797-json-4932-8baf-ab7fd66ql4d5",
-	            "_class": "it.eng.catalog.model.Distribution",
-	            "title": "JSON file",
-	            "format": {
-	                "_id": "HttpData-PULL"
-	            },
-	            "accessService": [{
-	                    "$ref": "dataservices",
-	                    "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
-	                }
-	            ],
-	            "createdBy": "admin@mail.com",
-	            "lastModifiedBy": "admin@mail.com",
-	            "issued": "2024-04-23T16:26:00.000Z",
-	            "modified": "2024-04-23T16:26:00.000Z",
-	            "version": 0
-	        }
-	    ],
-		"artifacts": [{
-				"_id": "urn:uuid:fdc45798-a123-4955-8baf-vc3gh22qh3j8",
-				"artifactType": "FILE",
-				"filename": "ENG employee.json",
-				"value": "673c80eb4909383cb15db673",
-				"contentType": "application/json",
-				"created": {
-					"$date": "2024-12-10T16:04:59.358Z"
-				},
-				"lastModifiedDate": {
-					"$date": "2024-12-10T16:04:59.358Z"
-				},
-				"createdBy": "admin@mail.com",
-				"lastModifiedBy": "admin@mail.com",
-				"version": {
-					"$numberLong": "0"
-				},
-				"_class": "it.eng.tools.model.Artifact"
-				}
-		
-		],
-	    "application_properties": [{
-	            "_id": "application.daps.dapsJWKSUrl",
-	            "value": "https://daps.aisec.fraunhofer.de/.well-known/jwks.json",
-	            "mandatory": false,
-	            "issued": "2024-06-24T16:26:00.000Z",
-	            "modified": "2024-06-24T16:26:00.000Z",
-	            "version": 0
-	        }, {
-	            "_id": "application.daps.dapsUrl",
-	            "value": "https://daps.aisec.fraunhofer.de/v2/token",
-	            "mandatory": false,
-	            "issued": "2024-06-24T16:26:00.000Z",
-	            "modified": "2024-06-24T16:26:00.000Z",
-	            "version": 0
-	        }, {
-	            "_id": "application.daps.enabledDapsInteraction",
-	            "value": "false",
-	            "mandatory": false,
-	            "issued": "2024-06-24T16:26:00.000Z",
-	            "modified": "2024-06-24T16:26:00.000Z",
-	            "version": 0
-	        }, {
-	            "_id": "application.daps.extendedTokenValidation",
-	            "value": "false",
-	            "mandatory": false,
-	            "issued": "2024-06-24T16:26:00.000Z",
-	            "modified": "2024-06-24T16:26:00.000Z",
-	            "version": 0
-	        }, {
-	            "_id": "application.daps.fetchTokenOnStartup",
-	            "value": "false",
-	            "mandatory": false,
-	            "issued": "2024-06-24T16:26:00.000Z",
-	            "modified": "2024-06-24T16:26:00.000Z",
-	            "version": 0
-	        }, {
-	            "_id": "application.daps.tokenCaching",
-	            "value": "false",
-	            "mandatory": false,
-	            "issued": "2024-06-24T16:26:00.000Z",
-	            "modified": "2024-06-24T16:26:00.000Z",
-	            "version": 0
-	        }
-	    ],
-  "contract_negotiations": [],
-  "agreements": [],
-  "transfer_request_messages" : [],
-  "transfer_process": [],
-  "transfer_start_messages": [],
-  "policy_enforcements" : [],
-  "fs.files": [
-		{
-			"_id": {"$oid": "673c80eb4909383cb15db673"},
-			"chunkSize": 1048576,
-			"filename": "ENG employee.json",
-			"length": 113,
-			"metadata": {
-				"_contentType": "application/json",
-				"datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
-			},
-			"uploadDate": {"$date": "2024-11-19T12:13:31.437Z"}
-		}
-	],
-  "fs.chunks": [
-		{
-			"_id": {"$oid": "673c80eb4909383cb15db674"},
-			"data": {"$binary": {"base64": "Ww0KICB7DQogICAgImVtcGxveWVlIjogew0KICAgICAgIm5hbWUiOiAiSm9obiBEb2UiLA0KICAgICAgImFnZSI6IDMwLA0KICAgICAgImNpdHkiOiAiTmV3IFlvcmsiDQogICAgfQ0KICB9DQpdDQo=", "subType": "00"}},
-			"files_id": {"$oid": "673c80eb4909383cb15db673"},
-			"n": 0
-		}
-	]
-	
+    "catalogs": [{
+            "_class": "it.eng.catalog.model.Catalog",
+            "_id": "urn:uuid:1dc45797-3333-4955-8baf-ab7fd66ac4d5",
+            "keyword": [
+                "Employee",
+                "Information",
+                "Test",
+                "TRUEConnector team information"
+            ],
+            "theme": [
+                "dark theme",
+                "light theme"
+            ],
+            "conformsTo": "conformsToSomething",
+            "creator": "Engineering Informatica S.p.A.",
+            "description": [{
+                    "value": "Sample catalog offering TRUEConnector team information",
+                    "language": "en"
+                }
+            ],
+            "identifier": "Unique identifier for test Catalog",
+            "issued": "2024-04-23T16:26:00.000Z",
+            "modified": "2024-04-23T16:26:00.000Z",
+            "title": "Testcatalog - TRUEConnector team information",
+            "distribution": [{
+                    "$ref": "distributions",
+                    "$id": "urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5"
+                }, {
+                    "$ref": "distributions",
+                    "$id": "urn:uuid:1dc45797-json-4932-8baf-ab7fd66ql4d5"
+                }
+            ],
+            "dataset": [{
+                    "$ref": "datasets",
+                    "$id": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
+                }
+            ],
+            "service": [{
+                    "$ref": "dataservices",
+                    "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
+                }
+            ],
+            "participantId": "urn:example:DSP_TRUEConnector",
+            "homepage": "https://www.homepage.com/test",
+            "createdBy": "admin@mail.com",
+            "lastModifiedBy": "admin@mail.com",
+            "version": 0
+        }
+    ],
+    "datasets": [{
+            "_class": "it.eng.catalog.model.Dataset",
+            "_id": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+            "keyword": [
+                "Personal information",
+                "Employee",
+                "TRUEConnector team",
+                "REST",
+                "SFTP",
+                "json",
+                "pdf"
+            ],
+            "theme": [
+                "dark theme",
+                "light theme"
+            ],
+            "description": [{
+                    "value": "Dataset offering TRUEConnector team information",
+                    "language": "en"
+                }
+            ],
+            "conformsTo": "conformsToSomething",
+            "creator": "Engineering Informatica S.p.A.",
+            "identifier": "Unique identifier for test Dataset",
+            "issued": "2024-04-23T16:26:00.000Z",
+            "modified": "2024-04-23T16:26:00.000Z",
+            "title": "TRUEConnector team information dataset",
+            "hasPolicy": [{
+                    "_id": "urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5",
+                    "_class": "it.eng.catalog.model.Offer",
+                    "permission": [{
+                            "action": "USE",
+                            "constraint": [{
+                                    "leftOperand": "COUNT",
+                                    "operator": "LTEQ",
+                                    "rightOperand": "5"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "distribution": [{
+                    "$ref": "distributions",
+                    "$id": "urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5"
+                }, {
+                    "$ref": "distributions",
+                    "$id": "urn:uuid:1dc45797-json-4932-8baf-ab7fd66ql4d5"
+                }
+            ],
+            "artifact": {
+                "$ref": "artifacts",
+                "$id": "urn:uuid:fdc45798-a123-4955-8baf-vc3gh22qh3j8"
+            },
+            "createdBy": "admin@mail.com",
+            "lastModifiedBy": "admin@mail.com",
+            "version": 0
+        }
+    ],
+    "dataservices": [{
+            "_id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5",
+            "_class": "it.eng.catalog.model.DataService",
+            "keyword": [
+                "REST",
+                "SFTP",
+                "transfer"
+            ],
+            "theme": [
+                "dark theme",
+                "light theme"
+            ],
+            "conformsTo": "conformsToSomething",
+            "creator": "Engineering Informatica S.p.A.",
+            "description": [{
+                    "value": "DSP TRUEConnector service offering team information",
+                    "language": "en"
+                }
+            ],
+            "identifier": "DSP TRUE Connector Unique identifier for testing",
+            "issued": "2024-04-23T16:26:00.000Z",
+            "modified": "2024-04-23T16:26:00.000Z",
+            "title": "DSP TRUE Connector",
+            "endpointDescription": "dspace:connector",
+            "endpointURL": "http://localhost:8090/",
+            "createdBy": "admin@mail.com",
+            "lastModifiedBy": "admin@mail.com",
+            "version": 0
+        }
+    ],
+    "distributions": [{
+            "_id": "urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5",
+            "_class": "it.eng.catalog.model.Distribution",
+            "title": "PDF file",
+            "format": {
+                "_id": "HttpData-PULL"
+            },
+            "accessService": [{
+                    "$ref": "dataservices",
+                    "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
+                }
+            ],
+            "createdBy": "admin@mail.com",
+            "lastModifiedBy": "admin@mail.com",
+            "issued": "2024-04-23T16:26:00.000Z",
+            "modified": "2024-04-23T16:26:00.000Z",
+            "version": 0
+        }, {
+            "_id": "urn:uuid:1dc45797-json-4932-8baf-ab7fd66ql4d5",
+            "_class": "it.eng.catalog.model.Distribution",
+            "title": "JSON file",
+            "format": {
+                "_id": "HttpData-PULL"
+            },
+            "accessService": [{
+                    "$ref": "dataservices",
+                    "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
+                }
+            ],
+            "createdBy": "admin@mail.com",
+            "lastModifiedBy": "admin@mail.com",
+            "issued": "2024-04-23T16:26:00.000Z",
+            "modified": "2024-04-23T16:26:00.000Z",
+            "version": 0
+        }
+    ],
+    "artifacts": [{
+            "_id": "urn:uuid:fdc45798-a123-4955-8baf-vc3gh22qh3j8",
+            "artifactType": "FILE",
+            "filename": "ENG employee.json",
+            "value": "673c80eb4909383cb15db673",
+            "contentType": "application/json",
+            "created": {
+                "$date": "2024-12-10T16:04:59.358Z"
+            },
+            "lastModifiedDate": {
+                "$date": "2024-12-10T16:04:59.358Z"
+            },
+            "createdBy": "admin@mail.com",
+            "lastModifiedBy": "admin@mail.com",
+            "version": {
+                "$numberLong": "0"
+            },
+            "_class": "it.eng.tools.model.Artifact"
+        }
+
+    ],
+    "application_properties": [{
+            "_id": "application.daps.dapsJWKSUrl",
+            "value": "https://daps.aisec.fraunhofer.de/.well-known/jwks.json",
+            "mandatory": false,
+            "issued": "2024-06-24T16:26:00.000Z",
+            "modified": "2024-06-24T16:26:00.000Z",
+            "version": 0
+        }, {
+            "_id": "application.daps.dapsUrl",
+            "value": "https://daps.aisec.fraunhofer.de/v2/token",
+            "mandatory": false,
+            "issued": "2024-06-24T16:26:00.000Z",
+            "modified": "2024-06-24T16:26:00.000Z",
+            "version": 0
+        }, {
+            "_id": "application.daps.enabledDapsInteraction",
+            "value": "false",
+            "mandatory": false,
+            "issued": "2024-06-24T16:26:00.000Z",
+            "modified": "2024-06-24T16:26:00.000Z",
+            "version": 0
+        }, {
+            "_id": "application.daps.extendedTokenValidation",
+            "value": "false",
+            "mandatory": false,
+            "issued": "2024-06-24T16:26:00.000Z",
+            "modified": "2024-06-24T16:26:00.000Z",
+            "version": 0
+        }, {
+            "_id": "application.daps.fetchTokenOnStartup",
+            "value": "false",
+            "mandatory": false,
+            "issued": "2024-06-24T16:26:00.000Z",
+            "modified": "2024-06-24T16:26:00.000Z",
+            "version": 0
+        }, {
+            "_id": "application.daps.tokenCaching",
+            "value": "false",
+            "mandatory": false,
+            "issued": "2024-06-24T16:26:00.000Z",
+            "modified": "2024-06-24T16:26:00.000Z",
+            "version": 0
+        }
+    ],
+    "contract_negotiations": [],
+    "agreements": [],
+    "transfer_request_messages": [],
+    "transfer_process": [],
+    "transfer_start_messages": [],
+    "policy_enforcements": [],
+    "fs.files": [{
+            "_id": {
+                "$oid": "673c80eb4909383cb15db673"
+            },
+            "chunkSize": 1048576,
+            "filename": "ENG employee.json",
+            "length": 113,
+            "metadata": {
+                "_contentType": "application/json",
+                "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
+            },
+            "uploadDate": {
+                "$date": "2024-11-19T12:13:31.437Z"
+            }
+        }
+    ],
+    "fs.chunks": [{
+            "_id": {
+                "$oid": "673c80eb4909383cb15db674"
+            },
+            "data": {
+                "$binary": {
+                    "base64": "Ww0KICB7DQogICAgImVtcGxveWVlIjogew0KICAgICAgIm5hbWUiOiAiSm9obiBEb2UiLA0KICAgICAgImFnZSI6IDMwLA0KICAgICAgImNpdHkiOiAiTmV3IFlvcmsiDQogICAgfQ0KICB9DQpdDQo=",
+                    "subType": "00"
+                }
+            },
+            "files_id": {
+                "$oid": "673c80eb4909383cb15db673"
+            },
+            "n": 0
+        }
+    ]
+
 }
