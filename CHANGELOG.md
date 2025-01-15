@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 15-01-2025
+
+### Added
+
+ - Added delete artifact
+
 ## [0.1.1] - 09-01-2025
 
 ### Changed
