@@ -23,7 +23,7 @@ import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.negotiation.service.policy.PolicyEnforcementService;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.datatransfer.InitializeTransferProcess;
@@ -74,7 +74,7 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
                 .callbackAddress(contractOfferMessage.getCallbackAddress())
                 .build();
         contractNegotiationRepository.save(contractNegotiation);
-        return Serializer.serializeProtocolJsonNode(contractNegotiation);
+        return NegotiationSerializer.serializeProtocolJsonNode(contractNegotiation);
     }
     
     private void processContractOffer(Offer offer) {

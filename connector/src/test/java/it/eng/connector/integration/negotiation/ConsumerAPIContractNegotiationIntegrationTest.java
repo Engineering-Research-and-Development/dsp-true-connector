@@ -34,7 +34,7 @@ import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.NegotiationMockObjectUtil;
 import it.eng.negotiation.model.Reason;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
@@ -65,14 +65,14 @@ public class ConsumerAPIContractNegotiationIntegrationTest extends BaseIntegrati
 				.withRequestBody(WireMock.containing("dspace:ContractRequestMessage"))
 				.willReturn(
 	                aResponse().withHeader("Content-Type", "application/json")
-	                .withBody(Serializer.serializeProtocol(contractNegotiationResponse))));
+	                .withBody(NegotiationSerializer.serializeProtocol(contractNegotiationResponse))));
 		 
 		// send API request
 		Map<String, Object> apiContractNegotiationRequest = new HashMap<>();
 		apiContractNegotiationRequest.put("Forward-To", wiremock.baseUrl());
 		apiContractNegotiationRequest.put("offer", NegotiationMockObjectUtil.OFFER);
 		final ResultActions result = mockMvc.perform(post(ApiEndpoints.NEGOTIATION_V1)
-				.content(Serializer.serializePlain(apiContractNegotiationRequest))
+				.content(NegotiationSerializer.serializePlain(apiContractNegotiationRequest))
 				.contentType(MediaType.APPLICATION_JSON));
 		
 		// verify expected behavior
@@ -105,14 +105,14 @@ public class ConsumerAPIContractNegotiationIntegrationTest extends BaseIntegrati
 				.willReturn(
 	                aResponse().withHeader("Content-Type", "application/json")
 	                .withStatus(400)
-	                .withBody(Serializer.serializeProtocol(contractNegotiationError))));
+	                .withBody(NegotiationSerializer.serializeProtocol(contractNegotiationError))));
 		
 		// send API request
 		Map<String, Object> apiContractNegotiationRequest = new HashMap<>();
 		apiContractNegotiationRequest.put("Forward-To", wiremock.baseUrl());
 		apiContractNegotiationRequest.put("offer", NegotiationMockObjectUtil.OFFER);
 		final ResultActions result = mockMvc.perform(post(ApiEndpoints.NEGOTIATION_V1)
-				.content(Serializer.serializePlain(apiContractNegotiationRequest))
+				.content(NegotiationSerializer.serializePlain(apiContractNegotiationRequest))
 				.contentType(MediaType.APPLICATION_JSON));
 		
 		// verify expected behavior
@@ -195,7 +195,7 @@ public class ConsumerAPIContractNegotiationIntegrationTest extends BaseIntegrati
 				.willReturn(
 	                aResponse().withHeader("Content-Type", "application/json")
 	                .withStatus(400)
-	                .withBody(Serializer.serializeProtocol(contractNegotiationError))));
+	                .withBody(NegotiationSerializer.serializeProtocol(contractNegotiationError))));
 		
 		// send API request
 		//{contractNegotiationId}/verify
@@ -289,7 +289,7 @@ public class ConsumerAPIContractNegotiationIntegrationTest extends BaseIntegrati
 				.willReturn(
 	                aResponse().withHeader("Content-Type", "application/json")
 	                .withStatus(400)
-	                .withBody(Serializer.serializeProtocol(contractNegotiationError))));
+	                .withBody(NegotiationSerializer.serializeProtocol(contractNegotiationError))));
 
 		// send API request
 		//{contractNegotiationId}/terminate

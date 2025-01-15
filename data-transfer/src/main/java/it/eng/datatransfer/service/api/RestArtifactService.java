@@ -15,7 +15,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.mongodb.client.gridfs.GridFSBucket;
 import com.mongodb.client.gridfs.GridFSBuckets;
 import com.mongodb.client.gridfs.GridFSDownloadStream;
@@ -24,7 +24,7 @@ import com.mongodb.client.model.Filters;
 
 import it.eng.datatransfer.exceptions.DownloadException;
 import it.eng.datatransfer.model.TransferProcess;
-import it.eng.datatransfer.serializer.Serializer;
+import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.DataTransferService;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
@@ -53,8 +53,6 @@ public class RestArtifactService {
 		this.okHttpRestClient = okHttpRestClient;
 		this.publisher = publisher;
 	}
-	
-
 
 	public void getArtifact(String transactionId, HttpServletResponse response) {
 		TransferProcess transferProcess = getTransferProcessForTransactionId(transactionId);
@@ -75,20 +73,16 @@ public class RestArtifactService {
 		publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId()));
 	}
 
-
-
 	private Artifact findArtifact(TransferProcess transferProcess) {
+		TypeReference<GenericApiResponse<Artifact>> typeRef = new TypeReference<GenericApiResponse<Artifact>>() {};
+
 		String response = okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + transferProcess.getDatasetId() + "/artifact", HttpMethod.GET, null);
-		
-		@SuppressWarnings("unchecked")
-		GenericApiResponse<JsonNode> genericResponse = Serializer.deserializePlain(response, GenericApiResponse.class);
+		GenericApiResponse<Artifact> genericResponse = TransferSerializer.deserializePlain(response, typeRef);
 		
 		if (genericResponse.getData() == null) {
 			throw new DownloadException("No such data exists", HttpStatus.NOT_FOUND);
 		}
-		// has to be like this because the GenericApiResponse deserialization makes a LinkedHashMap
-		Artifact artifact = Serializer.deserializePlain(Serializer.serializePlain(genericResponse.getData()), Artifact.class);
-		return artifact;
+		return genericResponse.getData();
 	}
 
 	private void getFile(String fileId, HttpServletResponse response) {

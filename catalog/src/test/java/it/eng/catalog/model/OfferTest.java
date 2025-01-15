@@ -10,7 +10,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 
 public class OfferTest {
@@ -124,7 +124,7 @@ public class OfferTest {
 				+ "                        }\r\n"
 				+ "                    ]\r\n"
 				+ "                }";
-		Permission p = Serializer.deserializePlain(oString, Permission.class);
+		Permission p = CatalogSerializer.deserializePlain(oString, Permission.class);
 		p.getConstraint();
 		p.getConstraint().add(Constraint.Builder.newInstance().leftOperand(LeftOperand.COUNT).operator(Operator.GT).rightOperand("5").build());
 		p.getConstraint();
@@ -133,16 +133,16 @@ public class OfferTest {
 	@Test
 	public void equalsTestPlain() {
 		Offer offer = CatalogMockObjectUtil.OFFER;
-		String ss = Serializer.serializePlain(offer);
-		Offer offer2 = Serializer.deserializePlain(ss, Offer.class);
+		String ss = CatalogSerializer.serializePlain(offer);
+		Offer offer2 = CatalogSerializer.deserializePlain(ss, Offer.class);
 		assertThat(offer).usingRecursiveComparison().isEqualTo(offer2);
 	}
 	
 	@Test
 	public void equalsTestProtocol() {
 		Offer offer = CatalogMockObjectUtil.OFFER;
-		String ss = Serializer.serializeProtocol(offer);
-		Offer offer2 = Serializer.deserializeProtocol(ss, Offer.class);
+		String ss = CatalogSerializer.serializeProtocol(offer);
+		Offer offer2 = CatalogSerializer.deserializeProtocol(ss, Offer.class);
 		assertThat(offer).usingRecursiveComparison().isEqualTo(offer2);
 	}
 	

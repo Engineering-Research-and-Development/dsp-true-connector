@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -26,12 +27,14 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import it.eng.tools.model.DSpaceConstants;
+import it.eng.tools.serializer.InstantDeserializer;
+import it.eng.tools.serializer.InstantSerializer;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
 import jakarta.validation.Validator;
 
-public class Serializer {
+public class TransferSerializer {
 
 	private static JsonMapper jsonMapperPlain;
 	private static JsonMapper jsonMapper;
@@ -72,8 +75,7 @@ public class Serializer {
 				.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
 				.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
 				.annotationIntrospector(ignoreJsonPropertyIntrospector)
-				.addModule(instantConverterModule)
-				.addModule(new JavaTimeModule())
+				.addModules(new JavaTimeModule(), instantConverterModule)
 				.build();
 		
 		jsonMapper = JsonMapper.builder()
@@ -81,8 +83,7 @@ public class Serializer {
 				.serializationInclusion(Include.NON_EMPTY)
 				.configure(SerializationFeature.INDENT_OUTPUT, true)
 				.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
-				.addModule(instantConverterModule)
-				.addModule(new JavaTimeModule())
+				.addModules(new JavaTimeModule(), instantConverterModule)
 				.build();
 		
 		validator = Validation.buildDefaultValidatorFactory().getValidator();
@@ -135,6 +136,25 @@ public class Serializer {
 		}
 		return null;
 	}
+	
+	public static <T> T deserializePlain(String jsonStringPlain, TypeReference<T> typeRef) {
+		try {
+			T obj = jsonMapperPlain.readValue(jsonStringPlain, typeRef);
+			Set<ConstraintViolation<T>> violations = validator.validate(obj);
+			if(violations.isEmpty()) {
+				return obj;
+			}
+			throw new ValidationException(
+					violations
+					.stream()
+					.map(v -> v.getPropertyPath() + " " + v.getMessage())
+					.collect(Collectors.joining(",")));
+		} catch (JsonProcessingException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
 	
 	/**
      * Converts json string (plain) to java object

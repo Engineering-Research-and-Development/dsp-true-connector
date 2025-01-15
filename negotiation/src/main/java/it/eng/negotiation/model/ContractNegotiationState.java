@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 import it.eng.tools.model.DSpaceConstants;
@@ -63,13 +64,20 @@ public enum ContractNegotiationState {
 	static {
         Map<String,ContractNegotiationState> map = new ConcurrentHashMap<String, ContractNegotiationState>();
         for (ContractNegotiationState instance : ContractNegotiationState.values()) {
-            map.put(instance.toString().toLowerCase(), instance);
+            map.put(instance.toString(), instance);//.toLowerCase()
+            map.put(instance.name(), instance);
         }
         ENUM_MAP = Collections.unmodifiableMap(map);
     }
 	
-	public static ContractNegotiationState fromContractNegotiationState(String state) {
-		return ENUM_MAP.get(state.toLowerCase());
+	@JsonCreator
+	public static ContractNegotiationState fromContractNegotiationState(String stateString) {
+//		return ENUM_MAP.get(state); //.toLowerCase()
+		ContractNegotiationState state = ENUM_MAP.get(stateString);
+		if (state == null) {
+			throw new IllegalArgumentException(stateString + " has no corresponding value");
+		}
+		return state;
 	}
 
 	ContractNegotiationState(final String state) {

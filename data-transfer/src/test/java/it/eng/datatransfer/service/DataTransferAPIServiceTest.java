@@ -38,7 +38,7 @@ import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
-import it.eng.datatransfer.serializer.Serializer;
+import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.util.DataTranferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.model.IConstants;
@@ -103,7 +103,7 @@ class DataTransferAPIServiceTest {
 		when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
 		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
-		when(apiResponse.getData()).thenReturn(Serializer.serializeProtocol(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+		when(apiResponse.getData()).thenReturn(TransferSerializer.serializeProtocol(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
 		when(apiResponse.isSuccess()).thenReturn(true);
 		when(properties.consumerCallbackAddress()).thenReturn(DataTranferMockObjectUtil.CALLBACK_ADDRESS);
 		when(transferProcessRepository.save(any(TransferProcess.class))).thenReturn(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER);
@@ -120,7 +120,7 @@ class DataTransferAPIServiceTest {
 		when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
 		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
-		when(apiResponse.getData()).thenReturn(Serializer.serializeProtocol(DataTranferMockObjectUtil.TRANSFER_ERROR));
+		when(apiResponse.getData()).thenReturn(TransferSerializer.serializeProtocol(DataTranferMockObjectUtil.TRANSFER_ERROR));
 		when(properties.consumerCallbackAddress()).thenReturn(DataTranferMockObjectUtil.CALLBACK_ADDRESS);
 		
 		assertThrows(DataTransferAPIException.class, ()->

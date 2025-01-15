@@ -22,7 +22,7 @@ import it.eng.negotiation.model.ContractNegotiationEventMessage;
 import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
 import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.Description;
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.negotiation.service.ContractNegotiationProviderService;
 import lombok.extern.slf4j.Slf4j;
 
@@ -48,7 +48,7 @@ public class ProviderContractNegotiationController {
         ContractNegotiation contractNegotiation = providerService.getNegotiationByProviderPid(providerPid);
         
 		return ResponseEntity.ok()
-        		.body(Serializer.serializeProtocolJsonNode(contractNegotiation));
+        		.body(NegotiationSerializer.serializeProtocolJsonNode(contractNegotiation));
     }
 
     // 2.2 The provider negotiations/request resource
@@ -57,7 +57,7 @@ public class ProviderContractNegotiationController {
     @PostMapping(path = "/request")
     public ResponseEntity<JsonNode> createNegotiation(@RequestBody JsonNode contractRequestMessageJsonNode) throws InterruptedException {
         log.info("Creating negotiation");
-        ContractRequestMessage crm = Serializer.deserializeProtocol(contractRequestMessageJsonNode, ContractRequestMessage.class);
+        ContractRequestMessage crm = NegotiationSerializer.deserializeProtocol(contractRequestMessageJsonNode, ContractRequestMessage.class);
         ContractNegotiation cn = providerService.startContractNegotiation(crm);
         
         URI location = ServletUriComponentsBuilder
@@ -65,7 +65,7 @@ public class ProviderContractNegotiationController {
                 .buildAndExpand(cn.getProviderPid()).toUri();
 
         return ResponseEntity.created(location)
-        		.body(Serializer.serializeProtocolJsonNode(cn));
+        		.body(NegotiationSerializer.serializeProtocolJsonNode(cn));
     }
 
     // 2.3 The provider negotiations/:providerPid/request resource
@@ -74,12 +74,12 @@ public class ProviderContractNegotiationController {
     @PostMapping(path = "/{providerPid}/request")
     public ResponseEntity<JsonNode> handleConsumerMakesOffer(@PathVariable String providerPid,
                                                                          @RequestBody JsonNode contractRequestMessageJsonNode) {
-        ContractRequestMessage crm = Serializer.deserializeProtocol(contractRequestMessageJsonNode, ContractRequestMessage.class);
+        ContractRequestMessage crm = NegotiationSerializer.deserializeProtocol(contractRequestMessageJsonNode, ContractRequestMessage.class);
 
         ContractNegotiationErrorMessage error = methodNotYetImplemented();
         
         return ResponseEntity.internalServerError()
-        		.body(Serializer.serializeProtocolJsonNode(error));
+        		.body(NegotiationSerializer.serializeProtocolJsonNode(error));
     }
 
     // 2.4 The provider negotiations/:providerPid/events
@@ -88,13 +88,13 @@ public class ProviderContractNegotiationController {
     @PostMapping(path = "/{providerPid}/events")
     public ResponseEntity<JsonNode> handleNegotiationEventMessage(@PathVariable String providerPid, 
     		@RequestBody JsonNode contractNegotiationEventMessageJsonNode) {
-    	 ContractNegotiationEventMessage contractNegotiationEventMessage = Serializer.deserializeProtocol(contractNegotiationEventMessageJsonNode, ContractNegotiationEventMessage.class);
+    	 ContractNegotiationEventMessage contractNegotiationEventMessage = NegotiationSerializer.deserializeProtocol(contractNegotiationEventMessageJsonNode, ContractNegotiationEventMessage.class);
          log.info(contractNegotiationEventMessage.toString());
          
          ContractNegotiation contractNegotiation = providerService.handleContractNegotationEventMessage(contractNegotiationEventMessage);
        
          return ResponseEntity.ok()
-        		 .body(Serializer.serializeProtocolJsonNode(contractNegotiation));
+        		 .body(NegotiationSerializer.serializeProtocolJsonNode(contractNegotiation));
     }
 
     // 2.5 The provider negotiations/:providerPid/agreement/verification resource
@@ -104,7 +104,7 @@ public class ProviderContractNegotiationController {
     public ResponseEntity<JsonNode> handleVerifyAgreement(@PathVariable String providerPid,
                                                                @RequestBody JsonNode contractAgreementVerificationMessageJsonNode) {
         ContractAgreementVerificationMessage cavm = 
-        		Serializer.deserializeProtocol(contractAgreementVerificationMessageJsonNode, ContractAgreementVerificationMessage.class);
+        		NegotiationSerializer.deserializeProtocol(contractAgreementVerificationMessageJsonNode, ContractAgreementVerificationMessage.class);
         log.info("Verification message received");
         
         providerService.verifyNegotiation(cavm);
@@ -121,7 +121,7 @@ public class ProviderContractNegotiationController {
     public ResponseEntity<JsonNode> handleTerminationMessage(@PathVariable String providerPid, 
     		@RequestBody JsonNode contractNegotiationTerminationMessageJsonNode) {
         ContractNegotiationTerminationMessage contractNegotiationTerminationMessage = 
-        		Serializer.deserializeProtocol(contractNegotiationTerminationMessageJsonNode, ContractNegotiationTerminationMessage.class);
+        		NegotiationSerializer.deserializeProtocol(contractNegotiationTerminationMessageJsonNode, ContractNegotiationTerminationMessage.class);
 
         providerService.handleTerminationRequest(providerPid, contractNegotiationTerminationMessage);
         

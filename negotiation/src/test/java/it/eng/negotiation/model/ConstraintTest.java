@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 
 public class ConstraintTest {
 
@@ -36,8 +36,8 @@ public class ConstraintTest {
 	@DisplayName("Plain serialize/deserialize")
 	public void equalsTestPlain() {
 		Constraint constraint = NegotiationMockObjectUtil.CONSTRAINT;
-		String ss = Serializer.serializePlain(constraint);
-		Constraint obj = Serializer.deserializePlain(ss, Constraint.class);
+		String ss = NegotiationSerializer.serializePlain(constraint);
+		Constraint obj = NegotiationSerializer.deserializePlain(ss, Constraint.class);
 		assertThat(constraint).usingRecursiveComparison().isEqualTo(obj);
 	}
 	
@@ -45,8 +45,8 @@ public class ConstraintTest {
 	@DisplayName("Protocol serialize/deserialize")
 	public void equalsTestProtocol() {
 		Constraint constraint = NegotiationMockObjectUtil.CONSTRAINT;
-		String ss = Serializer.serializeProtocol(constraint);
-		Constraint obj = Serializer.deserializeProtocol(ss, Constraint.class);
+		String ss = NegotiationSerializer.serializeProtocol(constraint);
+		Constraint obj = NegotiationSerializer.deserializeProtocol(ss, Constraint.class);
 		assertThat(constraint).usingRecursiveComparison().isEqualTo(obj);
 	}
 }

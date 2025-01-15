@@ -23,8 +23,8 @@ import it.eng.connector.model.User;
 import it.eng.connector.model.UserDTO;
 import it.eng.connector.repository.UserRepository;
 import it.eng.connector.util.TestUtil;
-import it.eng.negotiation.serializer.Serializer;
 import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.serializer.ToolsSerializer;
 
 public class UserIntegrationTest extends BaseIntegrationTest {
 
@@ -60,7 +60,7 @@ public class UserIntegrationTest extends BaseIntegrationTest {
 		UserDTO userDTO = new UserDTO("firstName", "lastName", "test@mail.com", "StrongPasswrd12!", null, Role.ROLE_ADMIN);
 		
 		final ResultActions result = mockMvc.perform(post(ApiEndpoints.USERS_V1)
-				.content(Serializer.serializePlain(userDTO))
+				.content(ToolsSerializer.serializePlain(userDTO))
 				.contentType(MediaType.APPLICATION_JSON));
 		
 		// verify expected behavior
@@ -84,7 +84,7 @@ public class UserIntegrationTest extends BaseIntegrationTest {
 		UserDTO userDTO = new UserDTO("firstName", "lastName", "test@mail.com", "pass", null, Role.ROLE_ADMIN);
 		
 		final ResultActions result = mockMvc.perform(post(ApiEndpoints.USERS_V1)
-				.content(Serializer.serializePlain(userDTO))
+				.content(ToolsSerializer.serializePlain(userDTO))
 				.contentType(MediaType.APPLICATION_JSON));
 		
 		// verify expected behavior
@@ -103,7 +103,7 @@ public class UserIntegrationTest extends BaseIntegrationTest {
 		UserDTO userDTO = new UserDTO("FirstNameTest", "LastNameTest", "email_test@mail.com", "StrongPassword123!", null, Role.ROLE_ADMIN);
 		
 		final ResultActions result = mockMvc.perform(post(ApiEndpoints.USERS_V1)
-				.content(Serializer.serializePlain(userDTO))
+				.content(ToolsSerializer.serializePlain(userDTO))
 				.contentType(MediaType.APPLICATION_JSON));
 		
 		// verify expected behavior
@@ -123,7 +123,7 @@ public class UserIntegrationTest extends BaseIntegrationTest {
 		UserDTO userDTO = new UserDTO("FirstNameTestUpdate", "LastNameTestUpdate", null, null, null, Role.ROLE_ADMIN);
 		
 		final ResultActions result = mockMvc.perform(put(ApiEndpoints.USERS_V1 + "/" + user.getId() + "/update")
-				.content(Serializer.serializePlain(userDTO))
+				.content(ToolsSerializer.serializePlain(userDTO))
 				.contentType(MediaType.APPLICATION_JSON));
 	
 		result.andExpect(status().isOk())
@@ -146,7 +146,7 @@ public class UserIntegrationTest extends BaseIntegrationTest {
 		UserDTO userDTO = new UserDTO("FirstNameTestUpdate", "LastNameTestUpdate", null, null, null, Role.ROLE_ADMIN);
 		
 		final ResultActions result = mockMvc.perform(put(ApiEndpoints.USERS_V1 + "/" + user.getId() + "/update")
-				.content(Serializer.serializePlain(userDTO))
+				.content(ToolsSerializer.serializePlain(userDTO))
 				.contentType(MediaType.APPLICATION_JSON));
 	
 		result.andExpect(status().is4xxClientError())
@@ -173,7 +173,7 @@ public class UserIntegrationTest extends BaseIntegrationTest {
 		
 		final ResultActions result = mockMvc.perform(put(ApiEndpoints.USERS_V1 + "/" + user.getId() + "/password")
 				.headers(headers)
-				.content(Serializer.serializePlain(userDTO))
+				.content(ToolsSerializer.serializePlain(userDTO))
 				.contentType(MediaType.APPLICATION_JSON));
 	
 		result.andExpect(status().is2xxSuccessful())
@@ -195,7 +195,7 @@ public class UserIntegrationTest extends BaseIntegrationTest {
 		
 		final ResultActions result = mockMvc.perform(put(ApiEndpoints.USERS_V1 + "/" + user.getId() + "/password")
 				.headers(headers)
-				.content(Serializer.serializePlain(userDTO))
+				.content(ToolsSerializer.serializePlain(userDTO))
 				.contentType(MediaType.APPLICATION_JSON));
 	
 		result.andExpect(status().is4xxClientError())
@@ -220,7 +220,7 @@ public class UserIntegrationTest extends BaseIntegrationTest {
 		// updating password for TestUtil.ADMIN_USER while sending request with otherUser@mail.com
 		final ResultActions result = mockMvc.perform(put(ApiEndpoints.USERS_V1 + "/" + u.get().getId() + "/password")
 				.headers(headers)
-				.content(Serializer.serializePlain(userDTO))
+				.content(ToolsSerializer.serializePlain(userDTO))
 				.contentType(MediaType.APPLICATION_JSON));
 	
 		result.andExpect(status().is4xxClientError())

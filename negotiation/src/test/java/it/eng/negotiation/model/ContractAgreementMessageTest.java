@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 
@@ -54,7 +54,7 @@ public class ContractAgreementMessageTest {
 	@Test
 	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() {
-		String result = Serializer.serializePlain(contractAgreementMessage);
+		String result = NegotiationSerializer.serializePlain(contractAgreementMessage);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
 		assertTrue(result.contains(DSpaceConstants.ID));
@@ -62,14 +62,14 @@ public class ContractAgreementMessageTest {
 		assertTrue(result.contains(DSpaceConstants.PROVIDER_PID));
 		assertTrue(result.contains(DSpaceConstants.AGREEMENT));
 		
-		ContractAgreementMessage javaObj = Serializer.deserializePlain(result, ContractAgreementMessage.class);
+		ContractAgreementMessage javaObj = NegotiationSerializer.deserializePlain(result, ContractAgreementMessage.class);
 		validateJavaObj(javaObj);
 	}
 
 	@Test
 	@DisplayName("Verify valid protocol object serialization")
 	public void testProtocol() {
-		JsonNode result = Serializer.serializeProtocolJsonNode(contractAgreementMessage);
+		JsonNode result = NegotiationSerializer.serializeProtocolJsonNode(contractAgreementMessage);
 		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
 		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
 		assertNotNull(result.get(DSpaceConstants.DSPACE_CONSUMER_PID).asText());
@@ -77,7 +77,7 @@ public class ContractAgreementMessageTest {
 		assertNotNull(result.get(DSpaceConstants.DSPACE_AGREEMENT).asText());
 		validateAgreementProtocol(result.get(DSpaceConstants.DSPACE_AGREEMENT));
 		
-		ContractAgreementMessage javaObj = Serializer.deserializeProtocol(result, ContractAgreementMessage.class);
+		ContractAgreementMessage javaObj = NegotiationSerializer.deserializeProtocol(result, ContractAgreementMessage.class);
 		validateJavaObj(javaObj);
 	}
 	
@@ -95,23 +95,23 @@ public class ContractAgreementMessageTest {
 	@Test
 	@DisplayName("Missing @context and @type")
 	public void missingContextAndType() {
-		JsonNode result = Serializer.serializePlainJsonNode(contractAgreementMessage);
-		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, ContractAgreementMessage.class));
+		JsonNode result = NegotiationSerializer.serializePlainJsonNode(contractAgreementMessage);
+		assertThrows(ValidationException.class, () -> NegotiationSerializer.deserializeProtocol(result, ContractAgreementMessage.class));
 	}
 	
 	@Test
 	@DisplayName("Plain serialize/deserialize")
 	public void equalsTestPlain() {
-		String ss = Serializer.serializePlain(contractAgreementMessage);
-		ContractAgreementMessage obj = Serializer.deserializePlain(ss, ContractAgreementMessage.class);
+		String ss = NegotiationSerializer.serializePlain(contractAgreementMessage);
+		ContractAgreementMessage obj = NegotiationSerializer.deserializePlain(ss, ContractAgreementMessage.class);
 		assertThat(contractAgreementMessage).usingRecursiveComparison().isEqualTo(obj);
 	}
 	
 	@Test
 	@DisplayName("Protocol serialize/deserialize")
 	public void equalsTestProtocol() {
-		String ss = Serializer.serializeProtocol(contractAgreementMessage);
-		ContractAgreementMessage obj = Serializer.deserializeProtocol(ss, ContractAgreementMessage.class);
+		String ss = NegotiationSerializer.serializeProtocol(contractAgreementMessage);
+		ContractAgreementMessage obj = NegotiationSerializer.deserializeProtocol(ss, ContractAgreementMessage.class);
 		assertThat(contractAgreementMessage).usingRecursiveComparison().isEqualTo(obj);
 	}
 	

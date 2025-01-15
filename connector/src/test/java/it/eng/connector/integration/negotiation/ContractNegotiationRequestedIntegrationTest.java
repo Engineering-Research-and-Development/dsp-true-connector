@@ -21,7 +21,7 @@ import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.NegotiationMockObjectUtil;
 import it.eng.negotiation.model.Offer;
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 
 public class ContractNegotiationRequestedIntegrationTest extends BaseIntegrationTest {
 // -> REQUESTED
@@ -48,13 +48,13 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
     	final ResultActions result =
     			mockMvc.perform(
     					post("/negotiations/request")
-    					.content(Serializer.serializeProtocol(contractRequestMessage))
+    					.content(NegotiationSerializer.serializeProtocol(contractRequestMessage))
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isCreated())
 	    	.andExpect(content().contentType(MediaType.APPLICATION_JSON));
 	    	
     	String response = result.andReturn().getResponse().getContentAsString();
-    	ContractNegotiation contractNegotiationRequested = Serializer.deserializeProtocol(response, ContractNegotiation.class);
+    	ContractNegotiation contractNegotiationRequested = NegotiationSerializer.deserializeProtocol(response, ContractNegotiation.class);
     	assertNotNull(contractNegotiationRequested);
     	assertEquals(ContractNegotiationState.REQUESTED, contractNegotiationRequested.getState());
     	
@@ -81,13 +81,13 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
     	final ResultActions result =
     			mockMvc.perform(
     					post("/negotiations/request")
-    					.content(Serializer.serializeProtocol(crm))
+    					.content(NegotiationSerializer.serializeProtocol(crm))
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isBadRequest())
     		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
     	
     	String response = result.andReturn().getResponse().getContentAsString();
-    	ContractNegotiationErrorMessage errorMessage = Serializer.deserializeProtocol(response, ContractNegotiationErrorMessage.class);
+    	ContractNegotiationErrorMessage errorMessage = NegotiationSerializer.deserializeProtocol(response, ContractNegotiationErrorMessage.class);
     	assertNotNull(errorMessage);
     }
     
@@ -118,13 +118,13 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
     	final ResultActions result =
     			mockMvc.perform(
     					post("/negotiations/request")
-    					.content(Serializer.serializeProtocol(crm))
+    					.content(NegotiationSerializer.serializeProtocol(crm))
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isBadRequest())
     		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
     	
     	String response = result.andReturn().getResponse().getContentAsString();
-    	ContractNegotiationErrorMessage errorMessage = Serializer.deserializeProtocol(response, ContractNegotiationErrorMessage.class);
+    	ContractNegotiationErrorMessage errorMessage = NegotiationSerializer.deserializeProtocol(response, ContractNegotiationErrorMessage.class);
     	assertNotNull(errorMessage);
     }
     
@@ -155,13 +155,13 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
     	final ResultActions result =
     			mockMvc.perform(
     					post("/negotiations/request")
-    					.content(Serializer.serializeProtocol(crm))
+    					.content(NegotiationSerializer.serializeProtocol(crm))
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isBadRequest())
     		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
     	
     	String response = result.andReturn().getResponse().getContentAsString();
-    	ContractNegotiationErrorMessage errorMessage = Serializer.deserializeProtocol(response, ContractNegotiationErrorMessage.class);
+    	ContractNegotiationErrorMessage errorMessage = NegotiationSerializer.deserializeProtocol(response, ContractNegotiationErrorMessage.class);
     	assertNotNull(errorMessage);
     }
 }

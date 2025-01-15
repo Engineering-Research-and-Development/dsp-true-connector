@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.catalog.model.DataService;
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.service.DataServiceService;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
@@ -39,7 +39,7 @@ public class DataServiceAPIController {
         DataService dataService = dataServiceService.getDataServiceById(id);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(dataService), "Fetched data service"));
+                .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(dataService), "Fetched data service"));
     }
 
     @GetMapping
@@ -48,19 +48,19 @@ public class DataServiceAPIController {
         var dataServices = dataServiceService.getAllDataServices();
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(dataServices), "Fetched all data service"));
+                .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(dataServices), "Fetched all data service"));
     }
 
     @PostMapping
     public ResponseEntity<GenericApiResponse<JsonNode>> saveDataService(@RequestBody String dataService) {
-        DataService ds = Serializer.deserializePlain(dataService, DataService.class);
+        DataService ds = CatalogSerializer.deserializePlain(dataService, DataService.class);
 
         log.info("Saving new data service");
 
         DataService storedDataService = dataServiceService.saveDataService(ds);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(storedDataService), "Data service saved"));
+                .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(storedDataService), "Data service saved"));
     }
 
     @DeleteMapping(path = "/{id}")
@@ -75,13 +75,13 @@ public class DataServiceAPIController {
 
     @PutMapping(path = "/{id}")
     public ResponseEntity<GenericApiResponse<JsonNode>> updateDataService(@PathVariable String id, @RequestBody String dataService) {
-        DataService ds = Serializer.deserializePlain(dataService, DataService.class);
+        DataService ds = CatalogSerializer.deserializePlain(dataService, DataService.class);
 
         log.info("Updating data service with id: " + id);
 
         DataService updatedDataService = dataServiceService.updateDataService(id, ds);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(updatedDataService), "Data service updated"));
+                .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(updatedDataService), "Data service updated"));
     }
 }

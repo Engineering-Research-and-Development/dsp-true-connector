@@ -18,8 +18,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.catalog.service.ArtifactService;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.Artifact;
-import it.eng.tools.model.Serializer;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.serializer.ToolsSerializer;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
@@ -37,7 +37,7 @@ public class ArtifactAPIController {
 	@GetMapping(path = {"", "/{artifact}"})
 	public ResponseEntity<GenericApiResponse<JsonNode>> getArtifacts(@PathVariable(required = false) String artifact) {
 		List<Artifact> result = artifactService.getArtifacts(artifact);
-		return ResponseEntity.ok(GenericApiResponse.success(Serializer.serializePlainJsonNode(result), "Fetched artifacts"));
+		return ResponseEntity.ok(GenericApiResponse.success(ToolsSerializer.serializePlainJsonNode(result), "Fetched artifacts"));
 	}
 
 	@PostMapping("/upload/{datasetId}")
@@ -49,7 +49,7 @@ public class ArtifactAPIController {
 		Artifact artifact = artifactService.uploadArtifact(file, datasetId, externalURL);
 		log.info("Artifact uploaded {} ", artifact.getId());
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(artifact), "Artifact uploaded successfully"));
+                .body(GenericApiResponse.success(ToolsSerializer.serializePlainJsonNode(artifact), "Artifact uploaded successfully"));
 	}
 	
 	@DeleteMapping(path = "/{id}")

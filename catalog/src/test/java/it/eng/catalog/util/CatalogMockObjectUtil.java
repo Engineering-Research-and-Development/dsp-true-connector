@@ -31,7 +31,7 @@ import it.eng.catalog.model.Offer;
 import it.eng.catalog.model.Operator;
 import it.eng.catalog.model.Permission;
 import it.eng.catalog.model.Reference;
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
 
@@ -253,7 +253,7 @@ public class CatalogMockObjectUtil {
     public static final Collection<Catalog> CATALOGS = Arrays.asList(CATALOG);
 
     public static final DatasetRequestMessage DATASET_REQUEST_MESSAGE = DatasetRequestMessage.Builder.newInstance()
-            .dataset(Serializer.serializeProtocol(DATASET))
+            .dataset(CatalogSerializer.serializeProtocol(DATASET))
             .build();
 
     public static final DataService DATA_SERVICE = DataService.Builder.newInstance()

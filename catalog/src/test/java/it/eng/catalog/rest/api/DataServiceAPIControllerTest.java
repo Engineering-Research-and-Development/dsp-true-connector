@@ -18,7 +18,7 @@ import org.springframework.http.ResponseEntity;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.catalog.model.DataService;
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.service.DataServiceService;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.response.GenericApiResponse;
@@ -60,7 +60,7 @@ public class DataServiceAPIControllerTest {
     @Test
     @DisplayName("Save data service - success")
     public void saveDataService_success() {
-        String dataService = Serializer.serializePlain(CatalogMockObjectUtil.DATA_SERVICE);
+        String dataService = CatalogSerializer.serializePlain(CatalogMockObjectUtil.DATA_SERVICE);
         when(dataServiceService.saveDataService(any())).thenReturn(CatalogMockObjectUtil.DATA_SERVICE);
         ResponseEntity<GenericApiResponse<JsonNode>> response = dataServiceAPIController.saveDataService(dataService);
 
@@ -84,7 +84,7 @@ public class DataServiceAPIControllerTest {
     @Test
     @DisplayName("Update data service - success")
     public void updateDataService_success() {
-        String dataService = Serializer.serializePlain(CatalogMockObjectUtil.DATA_SERVICE_FOR_UPDATE);
+        String dataService = CatalogSerializer.serializePlain(CatalogMockObjectUtil.DATA_SERVICE_FOR_UPDATE);
         when(dataServiceService.updateDataService(any(String.class), any())).thenReturn(CatalogMockObjectUtil.DATA_SERVICE_FOR_UPDATE);
         ResponseEntity<GenericApiResponse<JsonNode>> response = dataServiceAPIController.updateDataService(CatalogMockObjectUtil.DATA_SERVICE_FOR_UPDATE.getId(), dataService);
 

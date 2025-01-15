@@ -1,4 +1,4 @@
-package it.eng.datatransfer.serializer;
+package it.eng.tools.serializer;
 
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
@@ -13,10 +13,7 @@ import java.time.format.DateTimeFormatter;
  * This deserializer converts a string representation of a zoned date-time to an {@link Instant}.
  */
 public class InstantDeserializer extends StdDeserializer<Instant> {
-	
-	private static final long serialVersionUID = 5523161078643788108L;
-	
-	private static final DateTimeFormatter formatter = DateTimeFormatter.ISO_ZONED_DATE_TIME;
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
     public InstantDeserializer() {
         super(Instant.class);

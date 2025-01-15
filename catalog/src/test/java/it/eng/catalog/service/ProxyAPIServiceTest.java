@@ -18,7 +18,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.catalog.exceptions.CatalogErrorAPIException;
 import it.eng.catalog.model.Catalog;
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.response.GenericApiResponse;
@@ -73,6 +73,6 @@ class ProxyAPIServiceTest {
 		when(okHttpClient.sendRequestProtocol(anyString(), any(JsonNode.class), anyString()))
 				.thenReturn(genericApiResponse);
 		when(genericApiResponse.isSuccess()).thenReturn(true);
-		when(genericApiResponse.getData()).thenReturn(Serializer.serializeProtocol(CatalogMockObjectUtil.CATALOG));
+		when(genericApiResponse.getData()).thenReturn(CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.CATALOG));
 	}
 }

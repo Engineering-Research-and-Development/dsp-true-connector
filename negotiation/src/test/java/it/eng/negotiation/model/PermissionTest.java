@@ -9,7 +9,7 @@ import java.util.Arrays;
 
 import org.junit.jupiter.api.Test;
 
-import it.eng.tools.model.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 import jakarta.validation.ValidationException;
 
 public class PermissionTest {
@@ -60,9 +60,9 @@ public class PermissionTest {
 	
 	@Test
 	public void serializePlain() {
-		String permissionString = Serializer.serializePlain(NegotiationMockObjectUtil.PERMISSION_COUNT_5);
+		String permissionString = NegotiationSerializer.serializePlain(NegotiationMockObjectUtil.PERMISSION_COUNT_5);
 		assertNotNull(permissionString);
-		Permission p = Serializer.deserializePlain(permissionString, Permission.class);
+		Permission p = NegotiationSerializer.deserializePlain(permissionString, Permission.class);
 		assertNotNull(p);
 	}
 }

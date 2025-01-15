@@ -39,7 +39,7 @@ import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
-import it.eng.datatransfer.serializer.Serializer;
+import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.util.DataTranferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.response.GenericApiResponse;
@@ -113,7 +113,7 @@ public class DataTransferServiceTest {
 		formats.add(DataTransferFormat.HTTP_PULL.name());
 		GenericApiResponse<List<String>> resp = GenericApiResponse.success(formats, "Ok");
 		when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
-			.thenReturn(Serializer.serializePlain(resp));
+			.thenReturn(TransferSerializer.serializePlain(resp));
     	
 		TransferProcess transferProcessRequested = service.initiateDataTransfer(DataTranferMockObjectUtil.TRANSFER_REQUEST_MESSAGE);
 		
@@ -132,7 +132,7 @@ public class DataTransferServiceTest {
 		formats.add("ABC");
 		GenericApiResponse<List<String>> resp = GenericApiResponse.success(formats, "Ok");
 		when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
-			.thenReturn(Serializer.serializePlain(resp));
+			.thenReturn(TransferSerializer.serializePlain(resp));
     	
 		assertThrows(TransferProcessInvalidFormatException.class, 
 					() -> service.initiateDataTransfer(DataTranferMockObjectUtil.TRANSFER_REQUEST_MESSAGE));

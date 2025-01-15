@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import it.eng.catalog.exceptions.CatalogErrorAPIException;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.CatalogRequestMessage;
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
@@ -39,10 +39,10 @@ public class ProxyAPIService {
 
 	public Catalog getCatalog(String forwardTo) {
 		CatalogRequestMessage catalogRequestMessage = CatalogRequestMessage.Builder.newInstance().build();
-		GenericApiResponse<String> catalogResponse = okHttpClient.sendRequestProtocol(forwardTo + "/catalog/request", Serializer.serializeProtocolJsonNode(catalogRequestMessage), 
+		GenericApiResponse<String> catalogResponse = okHttpClient.sendRequestProtocol(forwardTo + "/catalog/request", CatalogSerializer.serializeProtocolJsonNode(catalogRequestMessage), 
 				credentialUtils.getConnectorCredentials());
 		if(catalogResponse.isSuccess()) {
-			Catalog catalog = Serializer.deserializeProtocol(catalogResponse.getData(), Catalog.class);
+			Catalog catalog = CatalogSerializer.deserializeProtocol(catalogResponse.getData(), Catalog.class);
 			return catalog;
 		} else {
 			log.error("Catalog response not received from  {}", forwardTo);

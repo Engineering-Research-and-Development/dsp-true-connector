@@ -16,7 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 
 import it.eng.catalog.model.Offer;
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.service.CatalogService;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.response.GenericApiResponse;
@@ -36,7 +36,7 @@ public class OfferAPIControllerTest {
 	        Offer offer = CatalogMockObjectUtil.OFFER;
 	    	when(catalogService.validateOffer(any(Offer.class))).thenReturn(true);
 	        
-	        ResponseEntity<GenericApiResponse<String>> response = offerAPIController.validateOffer(Serializer.serializePlain(offer));
+	        ResponseEntity<GenericApiResponse<String>> response = offerAPIController.validateOffer(CatalogSerializer.serializePlain(offer));
 
 	        verify(catalogService).validateOffer(any(Offer.class));
 	        assertNotNull(response);
@@ -50,40 +50,11 @@ public class OfferAPIControllerTest {
 	    	Offer offer = CatalogMockObjectUtil.OFFER;
 	    	when(catalogService.validateOffer(any(Offer.class))).thenReturn(false);
 		    
-	    	ResponseEntity<GenericApiResponse<String>> response = offerAPIController.validateOffer(Serializer.serializePlain(offer));
+	    	ResponseEntity<GenericApiResponse<String>> response = offerAPIController.validateOffer(CatalogSerializer.serializePlain(offer));
 
 		    verify(catalogService).validateOffer(any(Offer.class));
 	        assertNotNull(response);
 	        assertTrue(response.getStatusCode().is4xxClientError());
 	        assertTrue(StringUtils.contains(response.getBody().getMessage(), "Offer not valid"));
 	    }
-	    
-	    @Test
-	    public void aaa() {
-	    	String ss = Serializer.serializePlain(CatalogMockObjectUtil.OFFER);
-	    	System.out.println(ss);
-	    	String o = "{\r\n"
-	    			+ "  \"consumerPid\" : null,\r\n"
-	    			+ "  \"providerPid\" : null,\r\n"
-	    			+ "  \"id\" : \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n"
-	    			+ "  \"target\" : \"urn:uuid:TARGET\",\r\n"
-	    			+ "  \"assigner\" : \"urn:uuid:ASSIGNER_PROVIDER\",\r\n"
-	    			+ "  \"assignee\" : null,\r\n"
-	    			+ "  \"permission\" : [ {\r\n"
-	    			+ "    \"assigner\" : null,\r\n"
-	    			+ "    \"assignee\" : null,\r\n"
-	    			+ "    \"target\" : \"urn:uuid:TARGET\",\r\n"
-	    			+ "    \"action\" : \"use\",\r\n"
-	    			+ "    \"constraint\" : [ {\r\n"
-	    			+ "      \"leftOperand\" : \"COUNT\",\r\n"
-	    			+ "      \"operator\" : \"EQ\",\r\n"
-	    			+ "      \"rightOperand\" : \"5\"\r\n"
-	    			+ "    } ]\r\n"
-	    			+ "  } ]\r\n"
-	    			+ "}";
-	    
-	    Offer of = Serializer.deserializePlain(ss, Offer.class);
-	    assertNotNull(of);
-	    }
-
 }

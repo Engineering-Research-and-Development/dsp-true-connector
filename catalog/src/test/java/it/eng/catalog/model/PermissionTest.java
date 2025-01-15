@@ -9,7 +9,7 @@ import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 
 public class PermissionTest {
@@ -90,8 +90,8 @@ public class PermissionTest {
 	@DisplayName("Plain serialize/deserialize")
 	public void equalsTestPlain() {
 		Permission permission = CatalogMockObjectUtil.PERMISSION;
-		String ss = Serializer.serializePlain(permission);
-		Permission permission2 = Serializer.deserializePlain(ss, Permission.class);
+		String ss = CatalogSerializer.serializePlain(permission);
+		Permission permission2 = CatalogSerializer.deserializePlain(ss, Permission.class);
 		assertThat(permission).usingRecursiveComparison().isEqualTo(permission2);
 	}
 	
@@ -99,8 +99,8 @@ public class PermissionTest {
 	@DisplayName("Protocol serialize/deserialize")
 	public void equalsTestProtocol() {
 		Permission permission = CatalogMockObjectUtil.PERMISSION;
-		String ss = Serializer.serializeProtocol(permission);
-		Permission permission2 = Serializer.deserializeProtocol(ss, Permission.class);
+		String ss = CatalogSerializer.serializeProtocol(permission);
+		Permission permission2 = CatalogSerializer.deserializeProtocol(ss, Permission.class);
 		assertThat(permission).usingRecursiveComparison().isEqualTo(permission2);
 	}
 	

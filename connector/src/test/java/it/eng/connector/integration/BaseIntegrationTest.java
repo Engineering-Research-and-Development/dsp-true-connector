@@ -34,12 +34,12 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import it.eng.connector.util.TestUtil;
 import it.eng.negotiation.model.ContractNegotiation;
-import it.eng.negotiation.serializer.InstantDeserializer;
-import it.eng.negotiation.serializer.InstantSerializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.IConstants;
-import it.eng.tools.model.Serializer;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.serializer.InstantDeserializer;
+import it.eng.tools.serializer.InstantSerializer;
 
 @SpringBootTest(
 		  webEnvironment = WebEnvironment.DEFINED_PORT,
@@ -125,7 +125,7 @@ public class BaseIntegrationTest {
 		String json = result.andReturn().getResponse().getContentAsString();
 //		GenericApiResponse<List<ContractNegotiation>>
 		TypeReference<GenericApiResponse<List<ContractNegotiation>>> typeRef = new TypeReference<GenericApiResponse<List<ContractNegotiation>>>() {};
-		GenericApiResponse<List<ContractNegotiation>> apiResp =  Serializer.deserializePlain(json, typeRef);
+		GenericApiResponse<List<ContractNegotiation>> apiResp =  NegotiationSerializer.deserializePlain(json, typeRef);
 		// should be exactly one in list
 		return apiResp.getData().get(0);
 	}
