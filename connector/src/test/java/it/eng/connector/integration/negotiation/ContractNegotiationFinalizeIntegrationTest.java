@@ -90,7 +90,7 @@ public class ContractNegotiationFinalizeIntegrationTest extends BaseIntegrationT
     			.agreement(agreement)
     			.offer(offer)
     			.state(ContractNegotiationState.VERIFIED)
-    			.role("consumer")
+    			.role(IConstants.ROLE_CONSUMER)
     			.build();
     	
     	contractNegotiationRepository.save(contractNegotiationVerified);

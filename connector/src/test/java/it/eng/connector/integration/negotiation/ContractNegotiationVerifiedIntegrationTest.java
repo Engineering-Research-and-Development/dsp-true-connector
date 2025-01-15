@@ -30,6 +30,7 @@ import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.serializer.Serializer;
+import it.eng.tools.model.IConstants;
 
 public class ContractNegotiationVerifiedIntegrationTest extends BaseIntegrationTest {
 
@@ -80,7 +81,7 @@ public class ContractNegotiationVerifiedIntegrationTest extends BaseIntegrationT
     			.offer(offer)
     			.agreement(agreement)
     			.state(ContractNegotiationState.AGREED)
-    			.role("consumer")
+    			.role(IConstants.ROLE_CONSUMER)
     			.build();
 		contractNegotiationRepository.save(contractNegotiationVerified);
 		
@@ -118,7 +119,7 @@ public class ContractNegotiationVerifiedIntegrationTest extends BaseIntegrationT
     			.providerPid(createNewId())
     			.callbackAddress("callbackAddress.test")
     			.state(ContractNegotiationState.REQUESTED)
-    			.role("consumer")
+    			.role(IConstants.ROLE_CONSUMER)
     			.build();
 		contractNegotiationRepository.save(contractNegotiationVerified);
 		

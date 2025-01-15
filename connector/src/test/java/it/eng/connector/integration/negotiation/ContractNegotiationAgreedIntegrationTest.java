@@ -31,6 +31,7 @@ import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.serializer.Serializer;
+import it.eng.tools.model.IConstants;
 
 public class ContractNegotiationAgreedIntegrationTest extends BaseIntegrationTest {
 
@@ -81,7 +82,7 @@ public class ContractNegotiationAgreedIntegrationTest extends BaseIntegrationTes
     			.agreement(agreement)
     			.offer(offer)
     			.state(ContractNegotiationState.REQUESTED)
-    			.role("consumer")
+    			.role(IConstants.ROLE_CONSUMER)
     			.build();
     	
     	contractNegotiationRepository.save(contractNegotiationRequested);
