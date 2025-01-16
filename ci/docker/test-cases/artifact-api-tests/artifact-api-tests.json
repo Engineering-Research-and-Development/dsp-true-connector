@@ -1,10 +1,10 @@
 {
 	"info": {
-		"_postman_id": "67acb2dc-b03b-4aa9-b839-48c2f9a35954",
+		"_postman_id": "2bbf3247-6eb0-4d87-b609-0a03e033668c",
 		"name": "Artifact API test",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "21815221",
-		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-67acb2dc-b03b-4aa9-b839-48c2f9a35954?action=share&source=collection_link&creator=21815221"
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-2bbf3247-6eb0-4d87-b609-0a03e033668c?action=share&source=collection_link&creator=21815221"
 	},
 	"item": [
 		{
@@ -102,8 +102,8 @@
 							"    pm.response.to.have.status(200);\r",
 							"});\r",
 							"\r",
-							"pm.test(\"Response is a JSON array of 2\", function () {\r",
-							"    pm.expect(pm.response.json().data).to.have.length(2);\r",
+							"pm.test(\"Response is a JSON array of 1\", function () {\r",
+							"    pm.expect(pm.response.json().data).to.have.length(1);\r",
 							"});\r",
 							""
 						],
@@ -150,7 +150,7 @@
 							"key": "file",
 							"description": "File for upload",
 							"type": "file",
-							"src": "/config/ENG employee.json"
+							"src": "/config/ENG-employee.json"
 						},
 						{
 							"key": "url",
@@ -186,8 +186,8 @@
 							"    pm.response.to.have.status(200);\r",
 							"});\r",
 							"\r",
-							"pm.test(\"Response is a JSON array of 2\", function () {\r",
-							"    pm.expect(pm.response.json().data).to.have.length(2);\r",
+							"pm.test(\"Response is a JSON array of 1\", function () {\r",
+							"    pm.expect(pm.response.json().data).to.have.length(1);\r",
 							"});\r",
 							"\r",
 							"pm.test(\"Retrieve artifact id\", function () {\r",
@@ -323,6 +323,11 @@
 		{
 			"key": "PROVIDER_API_ARTIFACTS",
 			"value": "http://localhost:8090/api/v1/artifacts",
+			"type": "string"
+		},
+		{
+			"key": "artifactId",
+			"value": "",
 			"type": "string"
 		}
 	]
