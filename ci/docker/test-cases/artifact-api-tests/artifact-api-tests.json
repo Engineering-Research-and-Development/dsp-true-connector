@@ -19,7 +19,7 @@
 							"});\r",
 							"\r",
 							"pm.test(\"Response is a JSON array of 1\", function () {\r",
-							"    pm.response.to.have.jsonBody('length', 1);\r",
+							"    pm.expect(pm.response.json().data).to.have.length(1);\r",
 							"});\r",
 							""
 						],
@@ -103,7 +103,7 @@
 							"});\r",
 							"\r",
 							"pm.test(\"Response is a JSON array of 2\", function () {\r",
-							"    pm.response.to.have.jsonBody('length', 2);\r",
+							"    pm.expect(pm.response.json().data).to.have.length(2);\r",
 							"});\r",
 							""
 						],
@@ -187,14 +187,13 @@
 							"});\r",
 							"\r",
 							"pm.test(\"Response is a JSON array of 2\", function () {\r",
-							"    pm.response.to.have.jsonBody('length', 2);\r",
+							"    pm.expect(pm.response.json().data).to.have.length(2);\r",
 							"});\r",
 							"\r",
 							"pm.test(\"Retrieve artifact id\", function () {\r",
 							"    var jsonData = pm.response.json();\r",
-							"    pm.collectionVariables.set(\"artifactId\", jsonData[\"data\"][jsonData.data.length-1][\"@id\"])\r",
-							"});\r",
-							""
+							"    pm.collectionVariables.set(\"artifactId\", jsonData[\"data\"][jsonData.data.length-1][\"@id\"]);\r",
+							"});"
 						],
 						"type": "text/javascript",
 						"packages": {}
@@ -256,7 +255,7 @@
 							"});\r",
 							"\r",
 							"pm.test(\"Response is a JSON array of 1\", function () {\r",
-							"    pm.response.to.have.jsonBody('length', 1);\r",
+							"    pm.expect(pm.response.json().data).to.have.length(1);\r",
 							"});\r",
 							""
 						],
