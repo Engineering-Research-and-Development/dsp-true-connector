@@ -151,7 +151,7 @@
 							"contentType": "application/octet-stream",
 							"description": "File for upload",
 							"type": "file",
-							"src": "/home/nobody/data/ENG-employee.json"
+							"src": "/ci/docker/connector_b_resources/ENG-employee.json"
 						},
 						{
 							"key": "url",

@@ -83,7 +83,6 @@ services:
       - TRUSTSTORE_PASSWORD=${TRUSTSTORE_PASSWORD}
     volumes:
       - ./connector_b_resources:/config
-      - ./connector_b_data:/home/nobody/data
       - ./tc_cert:/cert
       - ./:/home/nobody/ftp
       - tc_b_log:/var/log/tc
