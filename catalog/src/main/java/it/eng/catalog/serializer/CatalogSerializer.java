@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -169,6 +170,24 @@ public class CatalogSerializer {
                             .map(v -> v.getPropertyPath() + " " + v.getMessage())
                             .collect(Collectors.joining(",")));
     }
+    
+    public static <T> T deserializePlain(String jsonStringPlain, TypeReference<T> typeRef) {
+		try {
+			T obj = jsonMapperPlain.readValue(jsonStringPlain, typeRef);
+			Set<ConstraintViolation<T>> violations = validator.validate(obj);
+			if(violations.isEmpty()) {
+				return obj;
+			}
+			throw new ValidationException(
+					violations
+					.stream()
+					.map(v -> v.getPropertyPath() + " " + v.getMessage())
+					.collect(Collectors.joining(",")));
+		} catch (JsonProcessingException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
 
     /**
      * Serialize java object to json compliant with Dataspace protocol (contains prefixes for json fields)
