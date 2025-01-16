@@ -1,4 +1,4 @@
-package it.eng.datatransfer.service;
+package it.eng.datatransfer.service.api;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -36,6 +36,7 @@ import com.mongodb.client.gridfs.model.GridFSFile;
 
 import it.eng.datatransfer.exceptions.DownloadException;
 import it.eng.datatransfer.serializer.TransferSerializer;
+import it.eng.datatransfer.service.DataTransferService;
 import it.eng.datatransfer.service.api.RestArtifactService;
 import it.eng.datatransfer.util.DataTranferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;

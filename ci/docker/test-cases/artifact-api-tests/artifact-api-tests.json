@@ -72,7 +72,7 @@
 						{
 							"key": "url",
 							"value": "https://example.com/file",
-							"contentType": "",
+							"contentType": "text/plain",
 							"description": "URL for external download",
 							"type": "text"
 						}
@@ -148,6 +148,7 @@
 					"formdata": [
 						{
 							"key": "file",
+							"contentType": "application/octet-stream",
 							"description": "File for upload",
 							"type": "file",
 							"src": "/config/ENG-employee.json"

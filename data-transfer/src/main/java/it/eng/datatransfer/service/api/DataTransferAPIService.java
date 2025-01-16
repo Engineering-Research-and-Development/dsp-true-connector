@@ -1,4 +1,4 @@
-package it.eng.datatransfer.service;
+package it.eng.datatransfer.service.api;
 
 import java.io.UnsupportedEncodingException;
 import java.util.Collection;
