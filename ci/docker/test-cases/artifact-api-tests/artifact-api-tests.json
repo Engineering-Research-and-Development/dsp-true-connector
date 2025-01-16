@@ -151,7 +151,7 @@
 							"contentType": "application/octet-stream",
 							"description": "File for upload",
 							"type": "file",
-							"src": "/config/ENG-employee.json"
+							"src": "/home/nobody/data/ENG-employee.json"
 						},
 						{
 							"key": "url",
