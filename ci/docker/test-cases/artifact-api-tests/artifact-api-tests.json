@@ -193,7 +193,7 @@
 							"\r",
 							"pm.test(\"Retrieve artifact id\", function () {\r",
 							"    var jsonData = pm.response.json();\r",
-							"    pm.collectionVariables.set(\"artifactId\", jsonData[\"data\"][jsonData.data.length-1][\"@id\"]);\r",
+							"    pm.collectionVariables.set(\"artifactId\", jsonData[\"data\"][jsonData.data.length-1][\"id\"]);\r",
 							"});"
 						],
 						"type": "text/javascript",
