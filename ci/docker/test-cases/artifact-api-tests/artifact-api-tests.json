@@ -1,0 +1,330 @@
+{
+	"info": {
+		"_postman_id": "67acb2dc-b03b-4aa9-b839-48c2f9a35954",
+		"name": "Artifact API test",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "21815221",
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-67acb2dc-b03b-4aa9-b839-48c2f9a35954?action=share&source=collection_link&creator=21815221"
+	},
+	"item": [
+		{
+			"name": "List all artifacts",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Response is a JSON array of 1\", function () {\r",
+							"    pm.response.to.have.jsonBody('length', 1);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{PROVIDER_API_ARTIFACTS}}",
+					"host": [
+						"{{PROVIDER_API_ARTIFACTS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Upload artifact external",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"description": "File for upload",
+							"type": "file",
+							"src": [],
+							"disabled": true
+						},
+						{
+							"key": "url",
+							"value": "https://example.com/file",
+							"contentType": "",
+							"description": "URL for external download",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{PROVIDER_API_ARTIFACTS}}/upload/{{datasetId}}",
+					"host": [
+						"{{PROVIDER_API_ARTIFACTS}}"
+					],
+					"path": [
+						"upload",
+						"{{datasetId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List all artifacts",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Response is a JSON array of 2\", function () {\r",
+							"    pm.response.to.have.jsonBody('length', 2);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{PROVIDER_API_ARTIFACTS}}",
+					"host": [
+						"{{PROVIDER_API_ARTIFACTS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Upload artifact file",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"description": "File for upload",
+							"type": "file",
+							"src": "/config/ENG employee.json"
+						},
+						{
+							"key": "url",
+							"value": "",
+							"contentType": "",
+							"description": "URL for external download",
+							"type": "text",
+							"disabled": true
+						}
+					]
+				},
+				"url": {
+					"raw": "{{PROVIDER_API_ARTIFACTS}}/upload/{{datasetId}}",
+					"host": [
+						"{{PROVIDER_API_ARTIFACTS}}"
+					],
+					"path": [
+						"upload",
+						"{{datasetId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List all artifacts",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Response is a JSON array of 2\", function () {\r",
+							"    pm.response.to.have.jsonBody('length', 2);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Retrieve artifact id\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.collectionVariables.set(\"artifactId\", jsonData[\"data\"][jsonData.data.length-1][\"@id\"])\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{PROVIDER_API_ARTIFACTS}}",
+					"host": [
+						"{{PROVIDER_API_ARTIFACTS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete artifact",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{PROVIDER_API_ARTIFACTS}}/{{artifactId}}",
+					"host": [
+						"{{PROVIDER_API_ARTIFACTS}}"
+					],
+					"path": [
+						"{{artifactId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List all artifacts",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Response is a JSON array of 1\", function () {\r",
+							"    pm.response.to.have.jsonBody('length', 1);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{PROVIDER_API_ARTIFACTS}}",
+					"host": [
+						"{{PROVIDER_API_ARTIFACTS}}"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "basic",
+		"basic": [
+			{
+				"key": "password",
+				"value": "password",
+				"type": "string"
+			},
+			{
+				"key": "username",
+				"value": "admin@mail.com",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "datasetId",
+			"value": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+			"type": "string"
+		},
+		{
+			"key": "PROVIDER_API_ARTIFACTS",
+			"value": "http://localhost:8090/api/v1/artifacts",
+			"type": "string"
+		}
+	]
+}

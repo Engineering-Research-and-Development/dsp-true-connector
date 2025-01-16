@@ -59,7 +59,7 @@ public class DistributionService {
 			savedDistribution = repository.save(distribution);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			throw new InternalServerErrorAPIException("Distribution could not be deleted");
+			throw new InternalServerErrorAPIException("Distribution could not be saved");
 		}
         catalogService.updateCatalogDistributionAfterSave(savedDistribution);
         return distribution;
