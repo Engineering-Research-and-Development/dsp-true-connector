@@ -56,38 +56,31 @@ public class ArtifactService {
 
 	public Artifact uploadArtifact(MultipartFile file, String datasetId, String externalURL) {
 		Dataset dataset = datasetService.getDatasetByIdForApi(datasetId);
+		Artifact artifact = null;
 		if (file != null) {
-			return storeFile(file, dataset);
+			ObjectId fileId = storeFile(file, dataset);
+			artifact = Artifact.Builder.newInstance()
+					.artifactType(ArtifactType.FILE)
+					.value(fileId.toHexString())
+					.contentType(file.getContentType())
+					.filename(file.getOriginalFilename())
+					.build();
 		} else if (externalURL != null) {
-			return insertExternalArtifact(dataset, externalURL);
-		}
-		log.warn("Artifact and file not found");
-		throw new CatalogErrorAPIException("Artifact and file not found");
-	}
-	
-	public void deleteArtifact (String id) {
-		Artifact artifact = artifactRepository.findById(id)
-				.orElseThrow(() -> new CatalogErrorAPIException("Could not delete artifact, artifact with id: " + id + " does not exist"));
-		deleteArtifactAndData(artifact);
-		removeArtifactFromDataset(artifact);
-	}
-
-	private Artifact insertExternalArtifact(Dataset dataset, String externalURL) {
-		try {
-			Artifact artifact = Artifact.Builder.newInstance()
+			artifact = Artifact.Builder.newInstance()
 					.artifactType(ArtifactType.EXTERNAL)
 					.value(externalURL)
 					.build();
-			artifact = artifactRepository.save(artifact);
-			updateDataset(dataset, artifact);
-			return artifact;
-		} catch (Exception e) {
-			log.error("Failed to insert external artifact", e);
-			throw new CatalogErrorAPIException("Failed to insert external artifact. " + e.getLocalizedMessage());
+		} else {
+			log.warn("Artifact and file not found");
+			throw new CatalogErrorAPIException("Artifact and file not found");
 		}
+		artifact = artifactRepository.save(artifact);
+		updateDataset(dataset, artifact);
+		
+		return artifact;
 	}
-
-	private Artifact storeFile(MultipartFile file, Dataset dataset) {
+	
+	private ObjectId storeFile(MultipartFile file, Dataset dataset) {
 		try {
 			GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
 			Document doc = new Document();
@@ -97,16 +90,7 @@ public class ArtifactService {
 			GridFSUploadOptions options = new GridFSUploadOptions()
 			        .chunkSizeBytes(1048576) // 1MB chunk size
 			        .metadata(doc);
-			ObjectId fileId = gridFSBucket.uploadFromStream(file.getOriginalFilename(), file.getInputStream(), options);
-			Artifact artifact = Artifact.Builder.newInstance()
-					.artifactType(ArtifactType.FILE)
-					.value(fileId.toHexString())
-					.contentType(file.getContentType())
-					.filename(file.getOriginalFilename())
-					.build();
-			artifact = artifactRepository.save(artifact);
-			updateDataset(dataset, artifact);
-			return artifact;
+			return gridFSBucket.uploadFromStream(file.getOriginalFilename(), file.getInputStream(), options);
 		}
 		catch (IOException e) {
 			log.error("Error while uploading file", e);
@@ -135,15 +119,14 @@ public class ArtifactService {
 				.build();
 		datasetService.updateDataset(dataset, datasetWithArtifact);
 		if (oldArtifact != null) {
-			deleteArtifactAndData(oldArtifact);
+			deleteOldArtifact(oldArtifact);
 		}
 	}
 
-	private void deleteArtifactAndData(Artifact artifact) {
+	private void deleteOldArtifact(Artifact artifact) {
 		log.info("Deleting artifact {}", artifact.getId());
 		switch (artifact.getArtifactType()) {
 		case EXTERNAL: {
-			artifactRepository.delete(artifact);
 			break;
 		}
 		case FILE: {
@@ -152,39 +135,12 @@ public class ArtifactService {
 				ObjectId objectId = new ObjectId(artifact.getValue());
 				gridFSBucket.delete(objectId);
 			} catch (Exception e) {
-				log.info("Artifact {}, had no data to delete, proceeding with artifact removal");
+				log.warn("!!!!!  Artifact {}, had no data to delete proceeding with artifact removal  !!!!!");
 			}
-			artifactRepository.delete(artifact);
 			break;
 		}
 		default:
-			throw new CatalogErrorAPIException("Could not delete artifact, unexpected artifact type: " + artifact.getArtifactType());
+			artifactRepository.delete(artifact);
 		}
 	}
-	
-	private void removeArtifactFromDataset(Artifact artifact) {
-		Dataset dataset = datasetService.getDatasetByArtifactForApi(artifact.getId());
-		// if the Artifact belonged to a Dataset then remove the Dataset
-		if (dataset != null) {
-			Dataset datasetWithoutArtifact = Dataset.Builder.newInstance()
-					.id(dataset.getId())
-					.artifact(null)
-					.conformsTo(dataset.getConformsTo())
-					.createdBy(dataset.getCreatedBy())
-					.creator(dataset.getCreator())
-					.description(dataset.getDescription())
-					.distribution(dataset.getDistribution())
-					.hasPolicy(dataset.getHasPolicy())
-					.issued(dataset.getIssued())
-					.keyword(dataset.getKeyword())
-					.lastModifiedBy(dataset.getLastModifiedBy())
-					.modified(dataset.getModified())
-					.theme(dataset.getTheme())
-					.title(dataset.getTitle())
-					.version(dataset.getVersion())
-					.build();
-			datasetService.updateDataset(dataset, datasetWithoutArtifact);
-		}
-	}
-	
 }

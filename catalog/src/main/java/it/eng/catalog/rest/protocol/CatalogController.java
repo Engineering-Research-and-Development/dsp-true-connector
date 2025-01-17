@@ -42,6 +42,7 @@ public class CatalogController {
     protected ResponseEntity<JsonNode> getCatalog(@RequestHeader(required = false) String authorization,
                                                   @RequestBody JsonNode jsonBody) {
         log.info("Handling catalog request");
+        //TODO don't show datasets which don't have atifacts
         CatalogSerializer.deserializeProtocol(jsonBody, CatalogRequestMessage.class);
         Catalog catalog = catalogService.getCatalog();
         return ResponseEntity.ok()

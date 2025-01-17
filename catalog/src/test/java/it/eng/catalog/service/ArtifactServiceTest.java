@@ -1,11 +1,9 @@
 package it.eng.catalog.service;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -152,54 +150,4 @@ public class ArtifactServiceTest {
 		assertThrows(CatalogErrorAPIException.class, ()-> artifactService.uploadArtifact(null, CatalogMockObjectUtil.DATASET_ID, null));
 		
     }
-	
-	@Test
-    @DisplayName("Delete artifact file - success")
-    public void deleteArtifactFile_success() {
-		when(artifactRepository.findById(CatalogMockObjectUtil.ARTIFACT_FILE.getId())).thenReturn(Optional.of(CatalogMockObjectUtil.ARTIFACT_FILE));
-
-		try (MockedStatic<GridFSBuckets> buckets = Mockito.mockStatic(GridFSBuckets.class)) {
-			buckets.when(() -> GridFSBuckets.create(mongoTemplate.getDb()))
-	          .thenReturn(gridFSBucket);
-			
-			doNothing().when(gridFSBucket).delete(any(ObjectId.class));
-			assertDoesNotThrow(() -> artifactService.deleteArtifact(CatalogMockObjectUtil.ARTIFACT_FILE.getId()));
-
-		}
-    }
-	
-	@Test
-    @DisplayName("Delete artifact without file - success")
-    public void deleteArtifactWithoutFile_success() {
-		when(artifactRepository.findById(CatalogMockObjectUtil.ARTIFACT_FILE.getId())).thenReturn(Optional.of(CatalogMockObjectUtil.ARTIFACT_FILE));
-
-		try (MockedStatic<GridFSBuckets> buckets = Mockito.mockStatic(GridFSBuckets.class)) {
-			buckets.when(() -> GridFSBuckets.create(mongoTemplate.getDb()))
-	          .thenReturn(gridFSBucket);
-			
-			assertDoesNotThrow(() -> artifactService.deleteArtifact(CatalogMockObjectUtil.ARTIFACT_FILE.getId()));
-
-		}
-    }
-	
-	@Test
-    @DisplayName("Delete artifact external - success")
-    public void deleteArtifactExternal_success() {
-		when(artifactRepository.findById(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getId())).thenReturn(Optional.of(CatalogMockObjectUtil.ARTIFACT_EXTERNAL));
-		doNothing().when(artifactRepository).delete(CatalogMockObjectUtil.ARTIFACT_EXTERNAL);
-
-
-		assertDoesNotThrow(() -> artifactService.deleteArtifact(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getId()));
-
-    }
-	
-	@Test
-    @DisplayName("Delete artifact - fail")
-    public void deleteArtifact_fail() {
-		when(artifactRepository.findById(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getId())).thenReturn(Optional.empty());
-
-		assertThrows(CatalogErrorAPIException.class, () -> artifactService.deleteArtifact(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getId()));
-
-    }
-
 }

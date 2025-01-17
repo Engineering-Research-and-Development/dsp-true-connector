@@ -4,8 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -88,25 +86,4 @@ class ArtifactAPIControllerTest {
 		assertFalse(response.getBody().getData().has(1));
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 	}
-	
-	@Test
-	@DisplayName("Delete artifact - success")
-	public void testDeleteArtifact() {
-		doNothing().when(artifactService).deleteArtifact(CatalogMockObjectUtil.ARTIFACT_FILE.getId());
-		
-		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.deleteArtifact(CatalogMockObjectUtil.ARTIFACT_FILE.getId());
-		
-		assertTrue(StringUtils.isNotBlank(response.getBody().getMessage().toString()));
-		assertEquals(HttpStatus.OK, response.getStatusCode());
-	}
-	
-	@Test
-	@DisplayName("Delete artifact - fail")
-	public void testDeleteArtifact_failed() {
-		doThrow(CatalogErrorAPIException.class).when(artifactService).deleteArtifact(CatalogMockObjectUtil.ARTIFACT_FILE.getId());
-		
-		assertThrows(CatalogErrorAPIException.class, ()-> controller.deleteArtifact(CatalogMockObjectUtil.ARTIFACT_FILE.getId()));
-		
-	}
-
 }

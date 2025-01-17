@@ -4,7 +4,6 @@ import java.util.List;
 
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -51,14 +50,4 @@ public class ArtifactAPIController {
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(GenericApiResponse.success(ToolsSerializer.serializePlainJsonNode(artifact), "Artifact uploaded successfully"));
 	}
-	
-	@DeleteMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<JsonNode>> deleteArtifact(@PathVariable String id) {
-        log.info("Deleting artifact with id: " + id);
-
-        artifactService.deleteArtifact(id);
-
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(null, "Artifact deleted successfully"));
-    }
 }

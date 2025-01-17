@@ -5,21 +5,22 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
 
-import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.gridfs.GridFsResource;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.mock.web.MockPart;
@@ -31,7 +32,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.mongodb.client.gridfs.GridFSBucket;
 import com.mongodb.client.gridfs.GridFSBuckets;
-import com.mongodb.client.gridfs.model.GridFSUploadOptions;
+import com.mongodb.client.gridfs.GridFSDownloadStream;
+import com.mongodb.client.gridfs.model.GridFSFile;
+import com.mongodb.client.model.Filters;
 
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.repository.DatasetRepository;
@@ -121,10 +124,10 @@ public class ArtifactIntegrationTest extends BaseIntegrationTest {
 			.andExpect(status().isNotFound())
 			.andReturn();
 		
-		TypeReference<GenericApiResponse<Object>> typeRefFail = new TypeReference<GenericApiResponse<Object>>() {};
+		TypeReference<GenericApiResponse<String>> typeRefFail = new TypeReference<GenericApiResponse<String>>() {};
 
 		String jsonFail = resultFail.getResponse().getContentAsString();
-		GenericApiResponse<Object> apiRespFail = ToolsSerializer.deserializePlain(jsonFail, typeRefFail);
+		GenericApiResponse<String> apiRespFail = ToolsSerializer.deserializePlain(jsonFail, typeRefFail);
 		
 		assertNotNull(apiRespFail);
 		assertNull(apiRespFail.getData());
@@ -158,10 +161,22 @@ public class ArtifactIntegrationTest extends BaseIntegrationTest {
 		
 		String json = result.getResponse().getContentAsString();
 		GenericApiResponse<Artifact> apiResp =  ToolsSerializer.deserializePlain(json, typeRef);
-		  
+		
+		// check if response is correct
 		assertTrue(apiResp.isSuccess());
 		assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), apiResp.getData().getValue());
-		assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getArtifactType(), apiResp.getData().getArtifactType());
+		assertEquals(ArtifactType.EXTERNAL, apiResp.getData().getArtifactType());
+
+		// check if the artifact is inserted in the database
+		Artifact artifactFromDb = artifactRepository.findById(apiResp.getData().getId()).get();
+
+		assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), artifactFromDb.getValue());
+		assertEquals(ArtifactType.EXTERNAL, artifactFromDb.getArtifactType());
+
+		// check if the Dataset is updated with the inserted Artifact
+		Dataset datasetFromDb = datasetRepository.findById(dataset.getId()).get();
+
+		assertEquals(artifactFromDb.getId(), datasetFromDb.getArtifact().getId());
 		
 		// cleanup
 		datasetRepository.deleteById(dataset.getId());
@@ -179,12 +194,14 @@ public class ArtifactIntegrationTest extends BaseIntegrationTest {
 		
 		TypeReference<GenericApiResponse<Artifact>> typeRef = new TypeReference<GenericApiResponse<Artifact>>() {};
 		
+		String fileContent = "Hello, World!";
+		
 		MockMultipartFile file 
 	      = new MockMultipartFile(
 	        "file", 
 	        "hello.txt", 
 	        MediaType.TEXT_PLAIN_VALUE, 
-	        "Hello, World!".getBytes()
+	        fileContent.getBytes()
 	      );
 		
 		MvcResult result = mockMvc.perform(
@@ -197,93 +214,37 @@ public class ArtifactIntegrationTest extends BaseIntegrationTest {
 		String json = result.getResponse().getContentAsString();
 		GenericApiResponse<Artifact> apiResp =  ToolsSerializer.deserializePlain(json, typeRef);
 		  
+		// check if response is correct
 		assertTrue(apiResp.isSuccess());
 		assertEquals(file.getOriginalFilename(), apiResp.getData().getFilename());
 		assertEquals(ArtifactType.FILE, apiResp.getData().getArtifactType());
+		
+		// check if the artifact is inserted in the database
+		Artifact artifactFromDb = artifactRepository.findById(apiResp.getData().getId()).get();
+
+		assertEquals(file.getOriginalFilename(), artifactFromDb.getFilename());
+		assertEquals(file.getContentType(), artifactFromDb.getContentType());
+		assertEquals(ArtifactType.FILE, artifactFromDb.getArtifactType());
+
+		// check if the Dataset is updated with the inserted Artifact
+		Dataset datasetFromDb = datasetRepository.findById(dataset.getId()).get();
+
+		assertEquals(artifactFromDb.getId(), datasetFromDb.getArtifact().getId());
+		
+		// check if the file is inserted in the database
+		GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
+		ObjectId fileIdentifier = new ObjectId(artifactFromDb.getValue());
+		Bson query = Filters.eq("_id", fileIdentifier);
+		GridFSFile fileInDb = gridFSBucket.find(query).first();
+		GridFSDownloadStream gridFSDownloadStream = gridFSBucket.openDownloadStream(fileInDb.getObjectId());
+		GridFsResource gridFsResource = new GridFsResource(fileInDb, gridFSDownloadStream);
+		
+		assertEquals(file.getContentType(), gridFsResource.getContentType());
+		assertEquals(file.getOriginalFilename(), gridFsResource.getFilename());
+		assertEquals(fileContent, gridFsResource.getContentAsString(StandardCharsets.UTF_8));
 		
 		// cleanup
 		datasetRepository.deleteById(dataset.getId());
 		artifactRepository.deleteById(apiResp.getData().getId());
 	}
-	
-	@Test
-	@DisplayName("Artifact API - delete external")
-	@WithUserDetails(TestUtil.API_USER)
-	public void deleteArtifactExternal() throws Exception {
-		Artifact artifactExternal = Artifact.Builder.newInstance()
-				.artifactType(ArtifactType.EXTERNAL)
-				.createdBy(CatalogMockObjectUtil.CREATOR)
-				.created(CatalogMockObjectUtil.NOW)
-				.lastModifiedDate(CatalogMockObjectUtil.NOW)
-				.lastModifiedBy(CatalogMockObjectUtil.CREATOR)
-				.value("https://example.com/employees")
-				.build();
-		artifactRepository.save(artifactExternal);
-		
-		Dataset dataset = Dataset.Builder.newInstance()
-				.hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
-				.artifact(artifactExternal)
-				.build();
-		datasetRepository.save(dataset);
-		
-		
-		mockMvc.perform(
-    			delete(ApiEndpoints.CATALOG_ARTIFACT_V1 + "/" + artifactExternal.getId()))
-			.andExpect(status().isOk())
-			.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-			.andReturn();
-		
-	}
-	
-	@Test
-	@DisplayName("Artifact API - delete file")
-	@WithUserDetails(TestUtil.API_USER)
-	public void deleteArtifactFile() throws Exception {
-		
-		String datasetId = createNewId();
-		
-		MockMultipartFile file 
-	      = new MockMultipartFile(
-	        "file", 
-	        "hello.txt", 
-	        MediaType.TEXT_PLAIN_VALUE, 
-	        "Hello, World!".getBytes()
-	      );
-		
-		GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
-		Document doc = new Document();
-		doc.append("_contentType", file.getContentType());
-		doc.append("datasetId", datasetId);
-		GridFSUploadOptions options = new GridFSUploadOptions()
-		        .chunkSizeBytes(1048576) // 1MB chunk size
-		        .metadata(doc);
-		ObjectId fileId = gridFSBucket.uploadFromStream(file.getOriginalFilename(), file.getInputStream(), options);
-		
-		Artifact artifactFile = Artifact.Builder.newInstance()
-				.artifactType(ArtifactType.FILE)
-				.createdBy(CatalogMockObjectUtil.CREATOR)
-				.created(CatalogMockObjectUtil.NOW)
-				.lastModifiedDate(CatalogMockObjectUtil.NOW)
-				.lastModifiedBy(CatalogMockObjectUtil.CREATOR)
-				.value(fileId.toHexString())
-				.contentType(file.getContentType())
-				.filename(file.getOriginalFilename())
-				.build();
-		artifactRepository.save(artifactFile);
-		
-		Dataset dataset = Dataset.Builder.newInstance()
-				.id(datasetId)
-				.hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
-				.artifact(artifactFile)
-				.build();
-		datasetRepository.save(dataset);
-		
-		mockMvc.perform(
-    			delete(ApiEndpoints.CATALOG_ARTIFACT_V1 + "/" + artifactFile.getId()))
-			.andExpect(status().isOk())
-			.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-			.andReturn();
-		
-	}
-
 }

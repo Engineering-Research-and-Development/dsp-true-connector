@@ -175,9 +175,4 @@ public class DatasetService {
 		}
 		return artifact;
 	}
-
-	public Dataset getDatasetByArtifactForApi(String id) {
-        return repository.findByArtifact(id).orElse(null);
-
-	}
 }
