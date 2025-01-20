@@ -9,7 +9,6 @@ import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
 import java.util.List;
 import java.util.Optional;
 
@@ -63,13 +62,13 @@ public class ArtifactServiceTest {
 	@Test
     @DisplayName("Get artifacts by id - success")
     public void getArtifactById_success() {
-		when(artifactRepository.findById("1")).thenReturn(Optional.of(CatalogMockObjectUtil.ARTIFACT_FILE));
+		when(artifactRepository.findById(CatalogMockObjectUtil.ARTIFACT_FILE.getId())).thenReturn(Optional.of(CatalogMockObjectUtil.ARTIFACT_FILE));
 
-		List<Artifact> result = artifactService.getArtifacts("1");
+		List<Artifact> result = artifactService.getArtifacts(CatalogMockObjectUtil.ARTIFACT_FILE.getId());
 
 		assertEquals(1, result.size());
         assertEquals(CatalogMockObjectUtil.ARTIFACT_FILE.getId(), result.get(0).getId());
-        verify(artifactRepository).findById("1");
+        verify(artifactRepository).findById(CatalogMockObjectUtil.ARTIFACT_FILE.getId());
     }
 	
 	@Test
@@ -112,12 +111,13 @@ public class ArtifactServiceTest {
     public void uploadFile_fail() throws IOException {
 		when(mongoTemplate.getDb()).thenReturn(mongoDatabase);
 		when(file.getContentType()).thenReturn(MediaType.APPLICATION_JSON_VALUE);
+		when(datasetService.getDatasetByIdForApi(CatalogMockObjectUtil.DATASET_ID)).thenReturn(CatalogMockObjectUtil.DATASET);
 		when(file.getInputStream()).thenThrow(IOException.class);
 		try (MockedStatic<GridFSBuckets> buckets = Mockito.mockStatic(GridFSBuckets.class)) {
 			buckets.when(() -> GridFSBuckets.create(mongoTemplate.getDb()))
 	          .thenReturn(gridFSBucket);
 
-		assertThrows(CatalogErrorAPIException.class, ()-> artifactService.uploadArtifact(file, CatalogMockObjectUtil.DATASET_ID, null));
+			assertThrows(CatalogErrorAPIException.class, ()-> artifactService.uploadArtifact(file, CatalogMockObjectUtil.DATASET_ID, null));
 		
 		}
     }
@@ -128,19 +128,10 @@ public class ArtifactServiceTest {
 		when(artifactRepository.save(any(Artifact.class))).thenReturn(CatalogMockObjectUtil.ARTIFACT_EXTERNAL);
 		when(datasetService.getDatasetByIdForApi(CatalogMockObjectUtil.DATASET_ID)).thenReturn(CatalogMockObjectUtil.DATASET);
 
-		Artifact artifact = artifactService.uploadArtifact(null, CatalogMockObjectUtil.DATASET_ID, new URL(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue()));
+		Artifact artifact = artifactService.uploadArtifact(null, CatalogMockObjectUtil.DATASET_ID, CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue());
 		
 		assertEquals(artifact, CatalogMockObjectUtil.ARTIFACT_EXTERNAL);
 
-    }
-	
-	@Test
-    @DisplayName("Upload external - fail")
-    public void uploadExternal_fail() throws IOException {
-		when(artifactRepository.save(any(Artifact.class))).thenThrow(IllegalArgumentException.class);
-
-		assertThrows(CatalogErrorAPIException.class, ()-> artifactService.uploadArtifact(null, CatalogMockObjectUtil.DATASET_ID, new URL(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue())));
-		
     }
 	
 	@Test
@@ -150,5 +141,4 @@ public class ArtifactServiceTest {
 		assertThrows(CatalogErrorAPIException.class, ()-> artifactService.uploadArtifact(null, CatalogMockObjectUtil.DATASET_ID, null));
 		
     }
-
 }

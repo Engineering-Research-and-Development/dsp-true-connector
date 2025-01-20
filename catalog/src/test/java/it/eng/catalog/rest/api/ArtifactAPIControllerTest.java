@@ -41,8 +41,8 @@ class ArtifactAPIControllerTest {
 	private ArtifactAPIController controller;
 	
 	@Test
-	@DisplayName("Upload - success")
-	public void testUpload() {
+	@DisplayName("Upload artifact - success")
+	public void testUploadArtifact() {
 		when(artifactService.uploadArtifact(file, CatalogMockObjectUtil.DATASET.getId(), null)).thenReturn(CatalogMockObjectUtil.ARTIFACT_FILE);
 		
 		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.uploadArtifact(file, null, CatalogMockObjectUtil.DATASET.getId());
@@ -52,8 +52,8 @@ class ArtifactAPIControllerTest {
 	}
 	
 	@Test
-	@DisplayName("Upload - fail")
-	public void testUpload_failed() {
+	@DisplayName("Upload artifact - fail")
+	public void testUploadArtifact_failed() {
 		when(artifactService.uploadArtifact(file, CatalogMockObjectUtil.DATASET.getId(), null)).thenThrow(CatalogErrorAPIException.class);
 		
 		assertThrows(CatalogErrorAPIException.class, ()-> controller.uploadArtifact(file, null, CatalogMockObjectUtil.DATASET.getId()));
@@ -86,5 +86,4 @@ class ArtifactAPIControllerTest {
 		assertFalse(response.getBody().getData().has(1));
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 	}
-
 }

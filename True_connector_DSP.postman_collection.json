@@ -302,58 +302,6 @@
 								}
 							},
 							"response": []
-						},
-						{
-							"name": "Upload artifact",
-							"request": {
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "formdata",
-									"formdata": [
-										{
-											"key": "file",
-											"description": "File for upload",
-											"type": "file",
-											"src": [],
-											"disabled": true
-										},
-										{
-											"key": "url",
-											"value": "",
-											"contentType": "",
-											"description": "URL for external download",
-											"type": "text",
-											"disabled": true
-										}
-									]
-								},
-								"url": {
-									"raw": "{{PROVIDER_SERVER_API_ARTIFACTS}}/upload/urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
-									"host": [
-										"{{PROVIDER_SERVER_API_ARTIFACTS}}"
-									],
-									"path": [
-										"upload",
-										"urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "List all artifacts",
-							"request": {
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{PROVIDER_SERVER_API_ARTIFACTS}}",
-									"host": [
-										"{{PROVIDER_SERVER_API_ARTIFACTS}}"
-									]
-								}
-							},
-							"response": []
 						}
 					],
 					"event": [
@@ -708,9 +656,15 @@
 									}
 								],
 								"url": {
-									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}",
+									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}?role=provider",
 									"host": [
 										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
+									],
+									"query": [
+										{
+											"key": "role",
+											"value": "provider"
+										}
 									]
 								}
 							},
@@ -1183,9 +1137,15 @@
 									}
 								],
 								"url": {
-									"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}",
+									"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}?role=provider",
 									"host": [
 										"{{PROVIDER_SERVER_API_TRANSFERS}}"
+									],
+									"query": [
+										{
+											"key": "role",
+											"value": "provider"
+										}
 									]
 								}
 							},
@@ -1510,6 +1470,90 @@
 										"v1",
 										"proxy",
 										"catalogs"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Artifact",
+					"item": [
+						{
+							"name": "Upload artifact",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "file",
+											"description": "File for upload",
+											"type": "file",
+											"src": [],
+											"disabled": true
+										},
+										{
+											"key": "url",
+											"value": "https://example.com/dfg",
+											"contentType": "",
+											"description": "URL for external download",
+											"type": "text"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_ARTIFACTS}}/upload/urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+									"host": [
+										"{{PROVIDER_SERVER_API_ARTIFACTS}}"
+									],
+									"path": [
+										"upload",
+										"urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List all artifacts",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_ARTIFACTS}}",
+									"host": [
+										"{{PROVIDER_SERVER_API_ARTIFACTS}}"
 									]
 								}
 							},
@@ -2363,24 +2407,6 @@
 		{
 			"key": "dataAddress_endpoint",
 			"value": ""
-		},
-		{
-			"key": "userId",
-			"value": ""
-		},
-		{
-			"key": "userEmail",
-			"value": ""
-		},
-		{
-			"key": "newUserPassword",
-			"value": "ValidPassword123!",
-			"type": "string"
-		},
-		{
-			"key": "newUserEmail",
-			"value": "newUser@mail.com",
-			"type": "string"
 		}
 	]
 }

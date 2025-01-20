@@ -40,6 +40,7 @@ import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.model.IConstants;
 
 public class ContractNegotiationFinalizeIntegrationTest extends BaseIntegrationTest {
 	
@@ -90,7 +91,7 @@ public class ContractNegotiationFinalizeIntegrationTest extends BaseIntegrationT
     			.agreement(agreement)
     			.offer(offer)
     			.state(ContractNegotiationState.VERIFIED)
-    			.role("consumer")
+    			.role(IConstants.ROLE_CONSUMER)
     			.build();
     	
     	contractNegotiationRepository.save(contractNegotiationVerified);
@@ -121,7 +122,7 @@ public class ContractNegotiationFinalizeIntegrationTest extends BaseIntegrationT
     	//check if Transfer Process is initialized
     	final ResultActions tp =
 				mockMvc.perform(
-						get(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
+						get(ApiEndpoints.TRANSFER_DATATRANSFER_V1).param("role", IConstants.ROLE_CONSUMER)
 						.with(user(TestUtil.CONNECTOR_USER).password("password").roles("ADMIN"))
 						.contentType(MediaType.APPLICATION_JSON));
 		

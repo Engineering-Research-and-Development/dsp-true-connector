@@ -1,4 +1,4 @@
-package it.eng.datatransfer.service;
+package it.eng.datatransfer.service.api;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -39,6 +39,7 @@ import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
+import it.eng.datatransfer.service.api.DataTransferAPIService;
 import it.eng.datatransfer.util.DataTranferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.model.IConstants;
@@ -85,22 +86,14 @@ class DataTransferAPIServiceTest {
 		assertNotNull(response);
 		assertTrue(response.isEmpty());
 
-		when(transferProcessRepository.findByState(anyString())).thenReturn(Arrays.asList(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED, DataTranferMockObjectUtil.TRANSFER_PROCESS_COMPLETED));
-		response =  apiService.findDataTransfers(null, TransferState.STARTED.name(), null);
-		assertNotNull(response);
-		assertEquals(response.size(), 2);
-		
+		when(transferProcessRepository.findByStateAndRole(anyString(), anyString())).thenReturn(Arrays.asList(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
 		response =  apiService.findDataTransfers(null, TransferState.STARTED.name(), IConstants.ROLE_PROVIDER);
 		assertNotNull(response);
 		assertEquals(response.size(), 1);
 		
-		response =  apiService.findDataTransfers(null, TransferState.STARTED.name(), IConstants.ROLE_CONSUMER);
-		assertNotNull(response);
-		assertEquals(response.size(), 1);
-
-		when(transferProcessRepository.findAll())
+		when(transferProcessRepository.findByRole(anyString()))
 				.thenReturn(Arrays.asList(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER, DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
-		response =  apiService.findDataTransfers(null, null, null);
+		response =  apiService.findDataTransfers(null, null, IConstants.ROLE_PROVIDER);
 		assertNotNull(response);
 		assertEquals(response.size(), 2);
 	}

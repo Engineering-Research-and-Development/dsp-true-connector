@@ -36,6 +36,7 @@ import it.eng.connector.util.TestUtil;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.serializer.InstantDeserializer;
 import it.eng.tools.serializer.InstantSerializer;
@@ -78,6 +79,7 @@ public class BaseIntegrationTest {
 		final ResultActions result =
 				mockMvc.perform(
 						get(ApiEndpoints.NEGOTIATION_V1)
+						.param("role", IConstants.ROLE_CONSUMER)
 						.with(user(TestUtil.CONNECTOR_USER).password("password").roles("ADMIN"))
 						.contentType(MediaType.APPLICATION_JSON));
 		

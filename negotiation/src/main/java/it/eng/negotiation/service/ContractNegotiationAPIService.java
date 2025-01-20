@@ -72,6 +72,29 @@ public class ContractNegotiationAPIService {
 		this.publisher = publisher;
 	}
 
+	public Collection<JsonNode> findContractNegotiations(String contractNegotiationId, String state, String role, String consumerPid, String providerPid) {
+		if (StringUtils.isNotBlank(contractNegotiationId)) {
+			return contractNegotiationRepository.findById(contractNegotiationId)
+					.stream()
+					.map(cn -> NegotiationSerializer.serializePlainJsonNode(cn))
+					.collect(Collectors.toList());
+		} else if (StringUtils.isNotBlank(state)) {
+			return contractNegotiationRepository.findByStateAndRole(state, role)
+					.stream()
+					.map(cn -> NegotiationSerializer.serializePlainJsonNode(cn))
+					.collect(Collectors.toList());
+		} else if(StringUtils.isNotBlank(consumerPid) && StringUtils.isNotBlank(providerPid)) {
+			return contractNegotiationRepository.findByProviderPidAndConsumerPid(providerPid, consumerPid)
+					.stream()
+					.map(cn -> NegotiationSerializer.serializePlainJsonNode(cn))
+					.collect(Collectors.toList());
+		}
+		return contractNegotiationRepository.findByRole(role)
+				.stream()
+				.map(cn -> NegotiationSerializer.serializePlainJsonNode(cn))
+				.collect(Collectors.toList());
+	}
+
 	/**
 	 * Start negotiation as consumer<br>
 	 * Contract request message will be created and sent to connector behind forwardTo URL
@@ -156,7 +179,7 @@ public class ContractNegotiationAPIService {
 		
 		// this offer check
 //		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + properties.serverPort() + "/api/offer/validateOffer", 
-//				Serializer.serializePlainJsonNode(offer), 
+//				NegotiationSerializer.serializePlainJsonNode(offer), 
 //				credentialUtils.getAPICredentials());
 
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(forwardTo, 
@@ -268,40 +291,6 @@ public class ContractNegotiationAPIService {
 		} else {
 			log.error("Error response received!");
 			throw new ContractNegotiationAPIException(response.getMessage());
-		}
-	}
-
-	public Collection<JsonNode> findContractNegotiations(String contractNegotiationId, String state, String role, String consumerPid, String providerPid) {
-		if (StringUtils.isNotBlank(contractNegotiationId)) {
-			return contractNegotiationRepository.findById(contractNegotiationId)
-					.stream()
-					.filter(cn -> getContractNegotiation(cn, role))
-					.map(cn -> NegotiationSerializer.serializePlainJsonNode(cn))
-					.collect(Collectors.toList());
-		} else if (StringUtils.isNotBlank(state)) {
-			return contractNegotiationRepository.findByState(state)
-					.stream()
-					.filter(cn -> getContractNegotiation(cn, role))
-					.map(cn -> NegotiationSerializer.serializePlainJsonNode(cn))
-					.collect(Collectors.toList());
-		} else if(StringUtils.isNotBlank(consumerPid) && StringUtils.isNotBlank(providerPid)) {
-			return contractNegotiationRepository.findByProviderPidAndConsumerPid(providerPid, consumerPid)
-					.stream()
-					.map(cn -> NegotiationSerializer.serializePlainJsonNode(cn))
-					.collect(Collectors.toList());
-		}
-		return contractNegotiationRepository.findAll()
-				.stream()
-				.filter(cn -> getContractNegotiation(cn, role))
-				.map(cn -> NegotiationSerializer.serializePlainJsonNode(cn))
-				.collect(Collectors.toList());
-	}
-
-	private boolean getContractNegotiation(ContractNegotiation cn, String role) {
-		if(role == null) {
-			return true;
-		} else {
-			return role.equalsIgnoreCase(cn.getRole());//.equals(role);
 		}
 	}
 

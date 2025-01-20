@@ -21,7 +21,7 @@ import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.tools.model.DSpaceConstants;
 
-class CatalogIntegrationTest extends BaseIntegrationTest {
+public class CatalogIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Get catalog - success")

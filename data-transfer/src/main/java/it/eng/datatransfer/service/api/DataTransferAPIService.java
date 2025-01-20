@@ -1,4 +1,4 @@
-package it.eng.datatransfer.service;
+package it.eng.datatransfer.service.api;
 
 import java.io.UnsupportedEncodingException;
 import java.util.Collection;
@@ -58,25 +58,23 @@ public class DataTransferAPIService {
 	}
 
 	public Collection<JsonNode> findDataTransfers(String transferProcessId, String state, String role) {
-		if(StringUtils.isNotBlank(transferProcessId)) {
-			return transferProcessRepository.findById(transferProcessId)
-					.stream()
-					.map(dt -> TransferSerializer.serializePlainJsonNode(dt))
-					.collect(Collectors.toList());
-		} else if(StringUtils.isNotBlank(state)) {
-			return transferProcessRepository.findByState(state)
-					.stream()
-					.filter(tp -> filterByRole(tp, role))
-					.map(dt -> TransferSerializer.serializePlainJsonNode(dt))
-					.collect(Collectors.toList());
-		}
-		return transferProcessRepository.findAll()
-				.stream()
-				.filter(tp -> filterByRole(tp, role))
-				.map(dt -> TransferSerializer.serializePlainJsonNode(dt))
-				.collect(Collectors.toList());
+		  if(StringUtils.isNotBlank(transferProcessId)) {
+		   return transferProcessRepository.findById(transferProcessId)
+		     .stream()
+		     .map(dt -> TransferSerializer.serializePlainJsonNode(dt))
+		     .collect(Collectors.toList());
+		  } else if(StringUtils.isNotBlank(state)) {
+		   return transferProcessRepository.findByStateAndRole(state, role)
+		     .stream()
+		     .map(dt -> TransferSerializer.serializePlainJsonNode(dt))
+		     .collect(Collectors.toList());
+		  }
+		  return transferProcessRepository.findByRole(role)
+		    .stream()
+		    .map(dt -> TransferSerializer.serializePlainJsonNode(dt))
+		    .collect(Collectors.toList());
 	}
-	
+
 	/********* CONSUMER ***********/
 	
 	public JsonNode requestTransfer(DataTransferRequest dataTransferRequest) {
@@ -368,13 +366,4 @@ public class DataTransferAPIService {
     	        .orElseThrow(() ->
                 new DataTransferAPIException("Transfer process with id " + transferProcessId + " not found"));
     }
-	
-	private boolean filterByRole(TransferProcess cn, String role) {
-		if(role == null) {
-			return true;
-		} else {
-			return role.equalsIgnoreCase(cn.getRole());
-		}
-	}
-
 }

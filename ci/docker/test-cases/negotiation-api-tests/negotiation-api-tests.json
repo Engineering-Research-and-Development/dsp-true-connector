@@ -1,9 +1,10 @@
 {
 	"info": {
-		"_postman_id": "da605012-3910-469e-9a15-7f38358c649e",
+		"_postman_id": "aeb12869-f11c-4b91-995c-2dd9e59bb3f1",
 		"name": "Negotiation tests",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "36278855"
+		"_exporter_id": "21815221",
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-aeb12869-f11c-4b91-995c-2dd9e59bb3f1?action=share&source=collection_link&creator=21815221"
 	},
 	"item": [
 		{
@@ -92,9 +93,15 @@
 							}
 						],
 						"url": {
-							"raw": "{{PROVIDER_API_ENDPOINT}}",
+							"raw": "{{PROVIDER_API_ENDPOINT}}?role=provider",
 							"host": [
 								"{{PROVIDER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "provider"
+								}
 							]
 						}
 					},
@@ -144,9 +151,15 @@
 							}
 						],
 						"url": {
-							"raw": "{{CONSUMER_API_ENDPOINT}}",
+							"raw": "{{CONSUMER_API_ENDPOINT}}?role=consumer",
 							"host": [
 								"{{CONSUMER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "consumer"
+								}
 							]
 						}
 					},
@@ -186,9 +199,15 @@
 							}
 						],
 						"url": {
-							"raw": "{{PROVIDER_API_ENDPOINT}}",
+							"raw": "{{PROVIDER_API_ENDPOINT}}?role=provider",
 							"host": [
 								"{{PROVIDER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "provider"
+								}
 							]
 						}
 					},
@@ -298,9 +317,15 @@
 							}
 						],
 						"url": {
-							"raw": "{{CONSUMER_API_ENDPOINT}}",
+							"raw": "{{CONSUMER_API_ENDPOINT}}?role=consumer",
 							"host": [
 								"{{CONSUMER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "consumer"
+								}
 							]
 						}
 					},
@@ -341,9 +366,15 @@
 							}
 						],
 						"url": {
-							"raw": "{{PROVIDER_API_ENDPOINT}}",
+							"raw": "{{PROVIDER_API_ENDPOINT}}?role=provider",
 							"host": [
 								"{{PROVIDER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "provider"
+								}
 							]
 						}
 					},
@@ -440,9 +471,15 @@
 							}
 						],
 						"url": {
-							"raw": "{{CONSUMER_API_ENDPOINT}}",
+							"raw": "{{CONSUMER_API_ENDPOINT}}?role=consumer",
 							"host": [
 								"{{CONSUMER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "consumer"
+								}
 							]
 						}
 					},
@@ -483,9 +520,15 @@
 							}
 						],
 						"url": {
-							"raw": "{{PROVIDER_API_ENDPOINT}}",
+							"raw": "{{PROVIDER_API_ENDPOINT}}?role=provider",
 							"host": [
 								"{{PROVIDER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "provider"
+								}
 							]
 						}
 					},
@@ -582,9 +625,15 @@
 							}
 						],
 						"url": {
-							"raw": "{{CONSUMER_API_ENDPOINT}}",
+							"raw": "{{CONSUMER_API_ENDPOINT}}?role=consumer",
 							"host": [
 								"{{CONSUMER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "consumer"
+								}
 							]
 						}
 					},
@@ -625,9 +674,15 @@
 							}
 						],
 						"url": {
-							"raw": "{{PROVIDER_API_ENDPOINT}}",
+							"raw": "{{PROVIDER_API_ENDPOINT}}?role=provider",
 							"host": [
 								"{{PROVIDER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "provider"
+								}
 							]
 						}
 					},
@@ -669,9 +724,15 @@
 							}
 						],
 						"url": {
-							"raw": "{{CONSUMER_SERVER_API_TRANSFERS}}",
+							"raw": "{{CONSUMER_SERVER_API_TRANSFERS}}?role=consumer",
 							"host": [
 								"{{CONSUMER_SERVER_API_TRANSFERS}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "consumer"
+								}
 							]
 						}
 					},
@@ -713,9 +774,15 @@
 							}
 						],
 						"url": {
-							"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}",
+							"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}?role=provider",
 							"host": [
 								"{{PROVIDER_SERVER_API_TRANSFERS}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "provider"
+								}
 							]
 						}
 					},

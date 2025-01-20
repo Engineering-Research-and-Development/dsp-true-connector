@@ -1,6 +1,5 @@
 package it.eng.catalog.rest.api;
 
-import java.net.URL;
 import java.util.List;
 
 import org.springframework.http.MediaType;
@@ -34,21 +33,21 @@ public class ArtifactAPIController {
 		this.artifactService = artifactService;
 	}
 
+	@GetMapping(path = {"", "/{artifact}"})
+	public ResponseEntity<GenericApiResponse<JsonNode>> getArtifacts(@PathVariable(required = false) String artifact) {
+		List<Artifact> result = artifactService.getArtifacts(artifact);
+		return ResponseEntity.ok(GenericApiResponse.success(ToolsSerializer.serializePlainJsonNode(result), "Fetched artifacts"));
+	}
+
 	@PostMapping("/upload/{datasetId}")
 	public ResponseEntity<GenericApiResponse<JsonNode>> uploadArtifact(
 			@RequestPart(value = "file", required = false) MultipartFile file,
-			@RequestPart(value = "url", required = false) URL externalURL,
+			@RequestPart(value = "url", required = false) String externalURL,
 			@PathVariable(required = true) String datasetId) {
 		log.info("Uploading artifact");
 		Artifact artifact = artifactService.uploadArtifact(file, datasetId, externalURL);
 		log.info("Artifact uploaded {} ", artifact.getId());
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(ToolsSerializer.serializePlainJsonNode(artifact), "Artifact uploaded"));
-	}
-	
-	@GetMapping(path = {"", "/{artifact}"})
-	public ResponseEntity<GenericApiResponse<JsonNode>> getArtifacts(@PathVariable(required = false) String artifact) {
-		List<Artifact> result = artifactService.getArtifacts(artifact);
-		return ResponseEntity.ok(GenericApiResponse.success(ToolsSerializer.serializePlainJsonNode(result), "Stored artifacts"));
+                .body(GenericApiResponse.success(ToolsSerializer.serializePlainJsonNode(artifact), "Artifact uploaded successfully"));
 	}
 }

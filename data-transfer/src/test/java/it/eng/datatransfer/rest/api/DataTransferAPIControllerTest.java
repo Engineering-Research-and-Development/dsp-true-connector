@@ -35,7 +35,7 @@ import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.DataTransferRequest;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.serializer.TransferSerializer;
-import it.eng.datatransfer.service.DataTransferAPIService;
+import it.eng.datatransfer.service.api.DataTransferAPIService;
 import it.eng.datatransfer.util.DataTranferMockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.response.GenericApiResponse;
