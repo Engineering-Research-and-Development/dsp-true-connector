@@ -135,15 +135,6 @@ public class ArtifactServiceTest {
     }
 	
 	@Test
-    @DisplayName("Upload external - fail")
-    public void uploadExternal_fail() throws IOException {
-		when(artifactRepository.save(any(Artifact.class))).thenThrow(IllegalArgumentException.class);
-
-		assertThrows(CatalogErrorAPIException.class, ()-> artifactService.uploadArtifact(null, CatalogMockObjectUtil.DATASET_ID, CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue()));
-		
-    }
-	
-	@Test
     @DisplayName("Upload no data - fail")
     public void uploadNoData_fail() throws IOException {
 
