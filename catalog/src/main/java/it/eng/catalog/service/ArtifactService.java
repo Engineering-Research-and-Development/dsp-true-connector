@@ -140,7 +140,8 @@ public class ArtifactService {
 			break;
 		}
 		default:
-			artifactRepository.delete(artifact);
+			break;
 		}
+		artifactRepository.delete(artifact);
 	}
 }
