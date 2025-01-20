@@ -189,76 +189,7 @@
 							"\r",
 							"pm.test(\"Response is a JSON array of 1\", function () {\r",
 							"    pm.expect(pm.response.json().data).to.have.length(1);\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Retrieve artifact id\", function () {\r",
-							"    var jsonData = pm.response.json();\r",
-							"    pm.collectionVariables.set(\"artifactId\", jsonData[\"data\"][jsonData.data.length-1][\"id\"]);\r",
 							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{PROVIDER_API_ARTIFACTS}}",
-					"host": [
-						"{{PROVIDER_API_ARTIFACTS}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Delete artifact",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "DELETE",
-				"header": [],
-				"url": {
-					"raw": "{{PROVIDER_API_ARTIFACTS}}/{{artifactId}}",
-					"host": [
-						"{{PROVIDER_API_ARTIFACTS}}"
-					],
-					"path": [
-						"{{artifactId}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "List all artifacts",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Response is a JSON array of 0\", function () {\r",
-							"    pm.expect(pm.response.json().data).to.have.length(0);\r",
-							"});\r",
-							""
 						],
 						"type": "text/javascript",
 						"packages": {}

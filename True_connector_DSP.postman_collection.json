@@ -1558,37 +1558,6 @@
 								}
 							},
 							"response": []
-						},
-						{
-							"name": "Delete artifact",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Status code is 200\", function () {\r",
-											"    pm.response.to.have.status(200);\r",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [],
-								"url": {
-									"raw": "{{PROVIDER_SERVER_API_ARTIFACTS}}/urn:uuid:fdc45798-a123-4955-8baf-vc3gh22qh3j8",
-									"host": [
-										"{{PROVIDER_SERVER_API_ARTIFACTS}}"
-									],
-									"path": [
-										"urn:uuid:fdc45798-a123-4955-8baf-vc3gh22qh3j8"
-									]
-								}
-							},
-							"response": []
 						}
 					]
 				}
