@@ -5,7 +5,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.exceptions.InternalServerErrorAPIException;
@@ -26,11 +28,13 @@ public class DatasetService {
 
     private final DatasetRepository repository;
     private final CatalogService catalogService;
+    private final ArtifactService artifactService;
 
 
-    public DatasetService(DatasetRepository repository, CatalogService catalogService) {
+    public DatasetService(DatasetRepository repository, CatalogService catalogService, ArtifactService artifactService) {
         this.repository = repository;
         this.catalogService = catalogService;
+		this.artifactService = artifactService;
     }
 
     /********* PROTOCOL ***********/
@@ -71,13 +75,17 @@ public class DatasetService {
      * Saves a dataset to the repository and updates the catalog.
      *
      * @param dataset the dataset to be saved
+     * @param externalURL 
+     * @param file 
      * @return saved dataset
      * @throws InternalServerErrorAPIException if saving fails
      */
-    public Dataset saveDataset(Dataset dataset) {
+    public Dataset saveDataset(Dataset dataset, MultipartFile file, String externalURL) {
         Dataset savedDataSet = null;
         try {
-        	savedDataSet = repository.save(dataset);
+        	Artifact artifact = artifactService.uploadArtifact(dataset, file, externalURL);
+        	Dataset datasetWithArtifact = addArtifactToDataset(dataset, artifact);
+        	savedDataSet = repository.save(datasetWithArtifact);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			throw new InternalServerErrorAPIException("Dataset could not be saved");
@@ -86,7 +94,7 @@ public class DatasetService {
         return dataset;
     }
 
-    /**
+	/**
      * Deletes a dataset by its ID and updates the catalog.
      *
      * @param id the unique ID of the dataset to delete
@@ -108,37 +116,21 @@ public class DatasetService {
      * Updates a dataset in the repository.
      *
      * @param id the unique ID of the dataset to be updated
-     * @param dataset the dataset to update
+     * @param newDataset the dataset to update
+     * @param externalURL 
+     * @param file 
      * @return the updated dataset
      * @throws ResourceNotFoundAPIException if no data service is found with the provided ID
      * @throws InternalServerErrorAPIException if updating fails
      */
-    public Dataset updateDataset(String id, Dataset dataset) {
+    public Dataset updateDataset(String id, Dataset newDataset, MultipartFile file, String externalURL) {
     	Dataset existingDataset = getDatasetByIdForApi(id);
     	Dataset storedDataset = null;
 		try {
-			Dataset updatedDataset= existingDataset.updateInstance(dataset);
-			storedDataset = repository.save(updatedDataset);
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-			throw new InternalServerErrorAPIException("Dataset could not be updated");
-		}
-
-        return storedDataset;
-    }
-    
-    /**
-     * Updates a dataset in the repository.
-     *
-     * @param dataset to be updated
-     * @param newDataset the dataset used for updating
-     * @return the updated dataset
-     * @throws ResourceNotFoundAPIException if no data service is found with the provided ID
-     * @throws InternalServerErrorAPIException if updating fails
-     */
-    public Dataset updateDataset(Dataset existingDataset, Dataset newDataset) {
-    	Dataset storedDataset = null;
-		try {
+			if (file != null || StringUtils.isNotBlank(externalURL)) {
+				Artifact newArtifact = artifactService.updateDatasetArtifact(newDataset, file, externalURL);
+				addArtifactToDataset(newDataset, newArtifact);
+			}
 			Dataset updatedDataset= existingDataset.updateInstance(newDataset);
 			storedDataset = repository.save(updatedDataset);
 		} catch (Exception e) {
@@ -148,7 +140,7 @@ public class DatasetService {
 
         return storedDataset;
     }
-
+    
 	public List<String> getFormatsFromDataset(String id) {
 		Set<Distribution> distributions = getDatasetByIdForApi(id).getDistribution();
 		
@@ -174,5 +166,26 @@ public class DatasetService {
 			throw new ResourceNotFoundAPIException("Dataset with id: " + id + " has no artifact");
 		}
 		return artifact;
+	}
+	
+	private Dataset addArtifactToDataset(Dataset dataset, Artifact artifact) {
+		Dataset datasetWithArtifact = Dataset.Builder.newInstance()
+				.id(dataset.getId())
+				.artifact(artifact)
+				.conformsTo(dataset.getConformsTo())
+				.createdBy(dataset.getCreatedBy())
+				.creator(dataset.getCreator())
+				.description(dataset.getDescription())
+				.distribution(dataset.getDistribution())
+				.hasPolicy(dataset.getHasPolicy())
+				.issued(dataset.getIssued())
+				.keyword(dataset.getKeyword())
+				.lastModifiedBy(dataset.getLastModifiedBy())
+				.modified(dataset.getModified())
+				.theme(dataset.getTheme())
+				.title(dataset.getTitle())
+				.version(dataset.getVersion())
+				.build();
+		return datasetWithArtifact;
 	}
 }

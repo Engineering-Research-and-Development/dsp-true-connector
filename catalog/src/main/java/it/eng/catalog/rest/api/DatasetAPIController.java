@@ -10,9 +10,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -87,17 +88,20 @@ public class DatasetAPIController {
     }
 
     @PostMapping
-    public ResponseEntity<GenericApiResponse<JsonNode>> saveDataset(@RequestBody String dataset) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> saveDataset(
+    		@RequestPart(value = "file", required = false) MultipartFile file,
+			@RequestPart(value = "url", required = false) String externalURL,
+			@RequestPart(value = "dataset", required = true) String dataset) {
         Dataset ds = CatalogSerializer.deserializePlain(dataset, Dataset.class);
 
         log.info("Saving new dataset");
 
-        Dataset storedDataset = datasetService.saveDataset(ds);
+        Dataset storedDataset = datasetService.saveDataset(ds, file, externalURL);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(storedDataset), "Saved dataset"));
     }
-
+    
     @DeleteMapping(path = "/{id}")
     public ResponseEntity<GenericApiResponse<Object>> deleteDataset(@PathVariable String id) {
         log.info("Deleting dataset with id: " + id);
@@ -109,12 +113,16 @@ public class DatasetAPIController {
     }
 
     @PutMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<JsonNode>> updateDataset(@PathVariable String id, @RequestBody String dataset) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> updateDataset(
+    		@PathVariable String id,
+    		@RequestPart(value = "file", required = false) MultipartFile file,
+			@RequestPart(value = "url", required = false) String externalURL,
+			@RequestPart(value = "dataset", required = false) String dataset) {
         Dataset ds = CatalogSerializer.deserializePlain(dataset, Dataset.class);
 
         log.info("Updating dataset with id: " + id);
 
-        Dataset storedDataset = datasetService.updateDataset(id, ds);
+        Dataset storedDataset = datasetService.updateDataset(id, ds, file, externalURL);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(storedDataset), "Dataset updated"));
