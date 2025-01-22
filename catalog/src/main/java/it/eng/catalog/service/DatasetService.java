@@ -91,7 +91,8 @@ public class DatasetService {
 			throw new InternalServerErrorAPIException("Dataset could not be saved");
 		}
         catalogService.updateCatalogDatasetAfterSave(savedDataSet);
-        return dataset;
+        log.info("Inserted Dataset with id {}", savedDataSet.getId());
+        return savedDataSet;
     }
 
 	/**

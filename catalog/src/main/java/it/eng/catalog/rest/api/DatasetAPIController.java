@@ -47,7 +47,16 @@ public class DatasetAPIController {
                 .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(dataset), "Fetched dataset"));
     }
     
-    /**
+    @GetMapping
+	public ResponseEntity<GenericApiResponse<JsonNode>> getAllDatasets() {
+	    log.info("Fetching all datasets");
+	    Collection<Dataset> datasets = datasetService.getAllDatasets();
+	
+	    return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+	            .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(datasets), "Fetched all datasets"));
+	}
+
+	/**
      * Used for fetching all dct:formats for a Dataset </br>
      * Generally used for creating Transfer Processes with INITIALIZED state
      * 
@@ -76,15 +85,6 @@ public class DatasetAPIController {
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(artifact), "Fetched artifact"));
-    }
-
-    @GetMapping
-    public ResponseEntity<GenericApiResponse<JsonNode>> getAllDatasets() {
-        log.info("Fetching all datasets");
-        Collection<Dataset> datasets = datasetService.getAllDatasets();
-
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(datasets), "Fetched all datasets"));
     }
 
     @PostMapping

@@ -72,7 +72,7 @@ public class ArtifactService {
 			throw new CatalogErrorAPIException("Artifact and file not found");
 		}
 		artifact = artifactRepository.save(artifact);
-		
+		log.info("Inserted Artifact {}", artifact.getValue());
 		return artifact;
 	}
 	
