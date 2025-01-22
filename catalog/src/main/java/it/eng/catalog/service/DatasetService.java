@@ -129,9 +129,9 @@ public class DatasetService {
 		try {
 			if (file != null || StringUtils.isNotBlank(externalURL)) {
 				Artifact newArtifact = artifactService.updateDatasetArtifact(newDataset, file, externalURL);
-				addArtifactToDataset(newDataset, newArtifact);
+				newDataset = addArtifactToDataset(newDataset, newArtifact);
 			}
-			Dataset updatedDataset= existingDataset.updateInstance(newDataset);
+			Dataset updatedDataset = existingDataset.updateInstance(newDataset);
 			storedDataset = repository.save(updatedDataset);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);

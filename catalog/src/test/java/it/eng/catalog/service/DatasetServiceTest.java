@@ -188,7 +188,7 @@ public class DatasetServiceTest {
     public void updateDataset_success() {
         when(repository.findById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId())).thenReturn(Optional.of(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT));
         when(repository.save(any(Dataset.class))).thenReturn(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT);
-        when(artifactService.updateDatasetArtifact(CatalogMockObjectUtil.DATASET, null, CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue()))
+        when(artifactService.updateDatasetArtifact(CatalogMockObjectUtil.DATASET_FOR_UPDATE, null, CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue()))
         .thenReturn(CatalogMockObjectUtil.ARTIFACT_EXTERNAL);
 
         Dataset result = datasetService.updateDataset(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(),
@@ -206,6 +206,6 @@ public class DatasetServiceTest {
         assertTrue(argCaptorDataset.getValue().getHasPolicy().stream().findFirst().get().getId().contains("update"));
         assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getId(), argCaptorDataset.getValue().getArtifact().getId());
         assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), argCaptorDataset.getValue().getArtifact().getValue());
-        assertEquals(CatalogMockObjectUtil.DATASET_FOR_UPDATE.getId(), argCaptorDataset.getValue().getId());
+        assertEquals(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), argCaptorDataset.getValue().getId());
     }
 }
