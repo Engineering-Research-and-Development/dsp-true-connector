@@ -2,14 +2,11 @@ package it.eng.catalog.rest.api;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
 
-import org.apache.commons.lang3.StringUtils;
-import org.bson.types.ObjectId;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,11 +15,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import it.eng.catalog.exceptions.CatalogErrorAPIException;
 import it.eng.catalog.service.ArtifactService;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.response.GenericApiResponse;
@@ -32,34 +27,10 @@ class ArtifactAPIControllerTest {
 	
 	@Mock
 	private ArtifactService artifactService;
-	@Mock
-	private MultipartFile file;
-	@Mock
-	private ObjectId objId;
 	
 	@InjectMocks
 	private ArtifactAPIController controller;
 	
-	@Test
-	@DisplayName("Upload artifact - success")
-	public void testUploadArtifact() {
-		when(artifactService.uploadArtifact(file, CatalogMockObjectUtil.DATASET.getId(), null)).thenReturn(CatalogMockObjectUtil.ARTIFACT_FILE);
-		
-		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.uploadArtifact(file, null, CatalogMockObjectUtil.DATASET.getId());
-		
-		assertTrue(StringUtils.isNotBlank(response.getBody().getData().toString()));
-		assertEquals(HttpStatus.OK, response.getStatusCode());
-	}
-	
-	@Test
-	@DisplayName("Upload artifact - fail")
-	public void testUploadArtifact_failed() {
-		when(artifactService.uploadArtifact(file, CatalogMockObjectUtil.DATASET.getId(), null)).thenThrow(CatalogErrorAPIException.class);
-		
-		assertThrows(CatalogErrorAPIException.class, ()-> controller.uploadArtifact(file, null, CatalogMockObjectUtil.DATASET.getId()));
-		
-	}
-
 	@Test
 	@DisplayName("Get all artifacts - success")
 	public void testListArtifacts() {

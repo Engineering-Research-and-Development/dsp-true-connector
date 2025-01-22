@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -67,10 +69,10 @@ public class DatasetAPIControllerTest {
     @DisplayName("Save dataset - success")
     public void saveDatasetSuccessfulTest() {
         String dataset = CatalogSerializer.serializePlain(CatalogMockObjectUtil.DATASET);
-        when(datasetService.saveDataset(any())).thenReturn(CatalogMockObjectUtil.DATASET);
-        ResponseEntity<GenericApiResponse<JsonNode>> response = datasetAPIController.saveDataset(dataset);
+        when(datasetService.saveDataset(any(), isNull(), anyString())).thenReturn(CatalogMockObjectUtil.DATASET);
+        ResponseEntity<GenericApiResponse<JsonNode>> response = datasetAPIController.saveDataset(null, CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), dataset);
 
-        verify(datasetService).saveDataset(any());
+        verify(datasetService).saveDataset(any(), isNull(), anyString());
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
         assertNotNull(response.getBody());
@@ -91,10 +93,14 @@ public class DatasetAPIControllerTest {
     @DisplayName("Update dataset - success")
     public void updateDatasetSuccessfulTest() {
         String dataset = CatalogSerializer.serializePlain(CatalogMockObjectUtil.DATASET_FOR_UPDATE);
-        when(datasetService.updateDataset(any(String.class), any())).thenReturn(CatalogMockObjectUtil.DATASET_FOR_UPDATE);
-        ResponseEntity<GenericApiResponse<JsonNode>> response = datasetAPIController.updateDataset(CatalogMockObjectUtil.DATASET_FOR_UPDATE.getId(), dataset);
+        when(datasetService.updateDataset(any(String.class), any(Dataset.class), isNull(), anyString())).thenReturn(CatalogMockObjectUtil.DATASET_FOR_UPDATE);
+        ResponseEntity<GenericApiResponse<JsonNode>> response = 
+        		datasetAPIController.updateDataset(CatalogMockObjectUtil.DATASET_FOR_UPDATE.getId(),
+        				null,
+        				CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(),
+        				dataset);
 
-        verify(datasetService).updateDataset(any(String.class), any(Dataset.class));
+        verify(datasetService).updateDataset(any(String.class), any(Dataset.class), isNull(), anyString());
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
         assertNotNull(response.getBody());
@@ -119,7 +125,7 @@ public class DatasetAPIControllerTest {
     	when(datasetService.getArtifactFromDataset(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId())).thenThrow(new ResourceNotFoundAPIException());
     	assertThrows(ResourceNotFoundAPIException.class,() -> datasetAPIController.getArtifactFromDataset(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId()));
     }
-    
+
     @Test
     @DisplayName("Get formats from Dataset - success")
     public void getFormatsFromDatasetSuccessfulTest() {

@@ -141,7 +141,7 @@ jobs:
       - name: Stop docker container api-endpoints-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
         
-  artifact-api-tests:
+  dataset-api-tests:
     needs: build-and-push-image
     runs-on: ubuntu-latest
     
@@ -149,7 +149,7 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v4
         
-      - name: Run docker container for artifact-api-tests
+      - name: Run docker container for dataset-api-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
         
       - name: Wait for container starting
@@ -160,13 +160,13 @@ jobs:
 
       - uses: matt-ball/newman-action@v2.0.0
         with:
-          collection: ./ci/docker/test-cases/artifact-api-tests/artifact-api-tests.json
+          collection: ./ci/docker/test-cases/dataset-api-tests/dataset-api-tests.json
           
-      - name: Dump docker artifact-api-tests
+      - name: Dump docker dataset-api-tests
         if: failure()
         uses: jwalton/gh-docker-logs@v2
 
-      - name: Stop docker container artifact-api-tests
+      - name: Stop docker container dataset-api-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
 
 
