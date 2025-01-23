@@ -81,6 +81,20 @@
 		},
 		{
 			"name": "Add Dataset with File",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
 			"request": {
 				"method": "POST",
 				"header": [
@@ -94,7 +108,7 @@
 					"formdata": [
 						{
 							"key": "dataset",
-							"value": "{\n    \"keyword\": [\n        \"keyword1\",\n        \"keyword2\",\n        \"keyword3\"\n    ],\n    \"theme\": [\n        \"dark theme\",\n        \"light theme\"\n    ],\n    \"conformsTo\": \"conformsToSomethingNew\",\n    \"creator\": \"Engineering Informatica S.p.A.\",\n    \"description\": [\n        {\n            \"value\": \"Some text for multi language Dataset\",\n            \"language\": \"en\"\n        }\n    ],\n    \"identifier\": \"Unique identifier for testing Dataset\",\n    \"title\": \"Title for test Dataset new created\",\n    \"hasPolicy\": [\n        {\n            \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\n            \"permission\": [\n                {\n                    \"action\": \"USE\",\n                    \"constraint\": [\n                        {\n                            \"leftOperand\": \"COUNT\",\n                            \"operator\": \"EQ\",\n                            \"rightOperand\": \"5\"\n                        }\n                    ]\n                }\n            ]\n        }\n    ],\n    \"distribution\": [\n        {\n            \"id\": \"1dc45797-4444-4932-8baf-ab7fd66ql4d5\",\n            \"title\": \"Flash lightning distribution\",\n            \"issued\": \"2024-04-23T16:26:00Z\",\n            \"modified\": \"2024-04-23T16:26:00Z\",\n            \"type\": \"dspace:Distribution\"\n        }\n    ]\n}",
+							"value": "{\n    \"@id\": \"dataset_uuid_test\",\n    \"artifact\": null,\n    \"conformsTo\": \"conformsToSomething\",\n    \"createdBy\": null,\n    \"creator\": \"Chuck_Norris\",\n    \"description\": [{\n            \"value\": \"For test\",\n            \"language\": \"en\"\n        }\n    ],\n    \"distribution\": [{\n            \"@id\": \"urn:uuid:128a7504-989f-4f5e-8e19-694e0bdacbd7\",\n            \"accessService\": [{\n                    \"@id\": \"e84adca0-eb09-47b0-975c-f182aac8377f\",\n                    \"conformsTo\": \"conformsToSomething\",\n                    \"createdBy\": null,\n                    \"creator\": \"Chuck_Norris\",\n                    \"description\": [{\n                            \"value\": \"For test\",\n                            \"language\": \"en\"\n                        }\n                    ],\n                    \"endpointDescription\": \"endpoint description\",\n                    \"endpointURL\": \"http://dataservice.com\",\n                    \"identifier\": \"Unique_identifier_for_tests\",\n                    \"issued\": \"2024-04-23T18:26:00+02:00\",\n                    \"keyword\": [\"DataService keyword1\", \"DataService keyword2\"],\n                    \"lastModifiedBy\": null,\n                    \"modified\": \"2024-04-23T18:26:00+02:00\",\n                    \"theme\": [\"DataService theme1\", \"DataService theme2\"],\n                    \"title\": \"Title_for_test\",\n                    \"type\": \"dcat:DataService\",\n                    \"version\": null\n                }\n            ],\n            \"createdBy\": null,\n            \"description\": [{\n                    \"value\": \"For test\",\n                    \"language\": \"en\"\n                }\n            ],\n            \"format\": {\n                \"@id\": \"HTTP:PULL\"\n            },\n            \"hasPolicy\": [{\n                    \"@id\": \"urn:offer_id\",\n                    \"assignee\": null,\n                    \"assigner\": null,\n                    \"permission\": [{\n                            \"assigner\": null,\n                            \"assignee\": null,\n                            \"target\": null,\n                            \"action\": \"USE\",\n                            \"constraint\": [{\n                                    \"leftOperand\": \"COUNT\",\n                                    \"operator\": \"EQ\",\n                                    \"rightOperand\": \"5\"\n                                }\n                            ]\n                        }\n                    ],\n                    \"target\": null\n                }\n            ],\n            \"issued\": \"2024-04-23T18:26:00+02:00\",\n            \"lastModifiedBy\": null,\n            \"modified\": \"2024-04-23T18:26:00+02:00\",\n            \"title\": \"Title_for_test\",\n            \"type\": \"dspace:Distribution\",\n            \"version\": null\n        }\n    ],\n    \"hasPolicy\": [{\n            \"@id\": \"urn:offer_id\",\n            \"assignee\": null,\n            \"assigner\": null,\n            \"permission\": [{\n                    \"assigner\": null,\n                    \"assignee\": null,\n                    \"target\": null,\n                    \"action\": \"USE\",\n                    \"constraint\": [{\n                            \"leftOperand\": \"COUNT\",\n                            \"operator\": \"EQ\",\n                            \"rightOperand\": \"5\"\n                        }\n                    ]\n                }\n            ],\n            \"target\": null\n        }\n    ],\n    \"identifier\": \"Unique_identifier_for_tests\",\n    \"issued\": \"2024-04-23T18:26:00+02:00\",\n    \"keyword\": [\"keyword1\", \"keyword2\"],\n    \"lastModifiedBy\": null,\n    \"modified\": \"2024-04-23T18:26:00+02:00\",\n    \"theme\": [\"aqua\", \"white\", \"blue\"],\n    \"title\": \"Title_for_test\",\n    \"type\": \"dcat:Dataset\",\n    \"version\": null\n}\n",
 							"description": "Dataset to insert",
 							"type": "text"
 						},
@@ -196,6 +210,20 @@
 		},
 		{
 			"name": "Update Dataset with External URL",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
 			"request": {
 				"method": "PUT",
 				"header": [
@@ -209,7 +237,7 @@
 					"formdata": [
 						{
 							"key": "dataset",
-							"value": "{\n    \"keyword\": [\n        \"keyword1\",\n        \"keyword2\",\n        \"keyword3\"\n    ],\n    \"theme\": [\n        \"dark theme\",\n        \"light theme\"\n    ],\n    \"conformsTo\": \"conformsToSomethingNew\",\n    \"creator\": \"Engineering Informatica S.p.A.\",\n    \"description\": [\n        {\n            \"value\": \"Some text for multi language Dataset\",\n            \"language\": \"en\"\n        }\n    ],\n    \"identifier\": \"Unique identifier for testing Dataset\",\n    \"title\": \"Title for test Dataset new created\",\n    \"hasPolicy\": [\n        {\n            \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\n            \"permission\": [\n                {\n                    \"action\": \"USE\",\n                    \"constraint\": [\n                        {\n                            \"leftOperand\": \"COUNT\",\n                            \"operator\": \"EQ\",\n                            \"rightOperand\": \"5\"\n                        }\n                    ]\n                }\n            ]\n        }\n    ],\n    \"distribution\": [\n        {\n            \"id\": \"1dc45797-4444-4932-8baf-ab7fd66ql4d5\",\n            \"title\": \"Flash lightning distribution\",\n            \"issued\": \"2024-04-23T16:26:00Z\",\n            \"modified\": \"2024-04-23T16:26:00Z\",\n            \"type\": \"dspace:Distribution\"\n        }\n    ]\n}",
+							"value": "{\n    \"@id\": \"dataset_uuid_test\",\n    \"artifact\": null,\n    \"conformsTo\": \"conformsToSomething\",\n    \"createdBy\": null,\n    \"creator\": \"Chuck_Norris\",\n    \"description\": [{\n            \"value\": \"For test\",\n            \"language\": \"en\"\n        }\n    ],\n    \"distribution\": [{\n            \"@id\": \"urn:uuid:128a7504-989f-4f5e-8e19-694e0bdacbd7\",\n            \"accessService\": [{\n                    \"@id\": \"e84adca0-eb09-47b0-975c-f182aac8377f\",\n                    \"conformsTo\": \"conformsToSomething\",\n                    \"createdBy\": null,\n                    \"creator\": \"Chuck_Norris\",\n                    \"description\": [{\n                            \"value\": \"For test\",\n                            \"language\": \"en\"\n                        }\n                    ],\n                    \"endpointDescription\": \"endpoint description\",\n                    \"endpointURL\": \"http://dataservice.com\",\n                    \"identifier\": \"Unique_identifier_for_tests\",\n                    \"issued\": \"2024-04-23T18:26:00+02:00\",\n                    \"keyword\": [\"DataService keyword1\", \"DataService keyword2\"],\n                    \"lastModifiedBy\": null,\n                    \"modified\": \"2024-04-23T18:26:00+02:00\",\n                    \"theme\": [\"DataService theme1\", \"DataService theme2\"],\n                    \"title\": \"Title_for_test\",\n                    \"type\": \"dcat:DataService\",\n                    \"version\": null\n                }\n            ],\n            \"createdBy\": null,\n            \"description\": [{\n                    \"value\": \"For test\",\n                    \"language\": \"en\"\n                }\n            ],\n            \"format\": {\n                \"@id\": \"HTTP:PULL\"\n            },\n            \"hasPolicy\": [{\n                    \"@id\": \"urn:offer_id\",\n                    \"assignee\": null,\n                    \"assigner\": null,\n                    \"permission\": [{\n                            \"assigner\": null,\n                            \"assignee\": null,\n                            \"target\": null,\n                            \"action\": \"USE\",\n                            \"constraint\": [{\n                                    \"leftOperand\": \"COUNT\",\n                                    \"operator\": \"EQ\",\n                                    \"rightOperand\": \"5\"\n                                }\n                            ]\n                        }\n                    ],\n                    \"target\": null\n                }\n            ],\n            \"issued\": \"2024-04-23T18:26:00+02:00\",\n            \"lastModifiedBy\": null,\n            \"modified\": \"2024-04-23T18:26:00+02:00\",\n            \"title\": \"Title_for_test\",\n            \"type\": \"dspace:Distribution\",\n            \"version\": null\n        }\n    ],\n    \"hasPolicy\": [{\n            \"@id\": \"urn:offer_id\",\n            \"assignee\": null,\n            \"assigner\": null,\n            \"permission\": [{\n                    \"assigner\": null,\n                    \"assignee\": null,\n                    \"target\": null,\n                    \"action\": \"USE\",\n                    \"constraint\": [{\n                            \"leftOperand\": \"COUNT\",\n                            \"operator\": \"EQ\",\n                            \"rightOperand\": \"5\"\n                        }\n                    ]\n                }\n            ],\n            \"target\": null\n        }\n    ],\n    \"identifier\": \"Unique_identifier_for_tests\",\n    \"issued\": \"2024-04-23T18:26:00+02:00\",\n    \"keyword\": [\"keyword1\", \"keyword2\"],\n    \"lastModifiedBy\": null,\n    \"modified\": \"2024-04-23T18:26:00+02:00\",\n    \"theme\": [\"aqua\", \"white\", \"blue\"],\n    \"title\": \"Title_for_test\",\n    \"type\": \"dcat:Dataset\",\n    \"version\": null\n}\n",
 							"description": "Dataset to insert",
 							"type": "text"
 						},
@@ -229,12 +257,12 @@
 					]
 				},
 				"url": {
-					"raw": "{{PROVIDER_API_DATASETS}}/datasetId",
+					"raw": "{{PROVIDER_API_DATASETS}}/{{datasetId}}",
 					"host": [
 						"{{PROVIDER_API_DATASETS}}"
 					],
 					"path": [
-						"datasetId"
+						"{{datasetId}}"
 					]
 				}
 			},
