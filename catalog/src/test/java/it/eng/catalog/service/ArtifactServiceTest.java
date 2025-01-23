@@ -1,9 +1,11 @@
 package it.eng.catalog.service;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -138,4 +140,35 @@ public class ArtifactServiceTest {
 		assertThrows(CatalogErrorAPIException.class, ()-> artifactService.uploadArtifact(CatalogMockObjectUtil.DATASET, null, null));
 		
     }
+	
+	@Test
+    @DisplayName("Delete artifact file - success")
+    public void deleteArtifactFile_success() {
+		try (MockedStatic<GridFSBuckets> buckets = Mockito.mockStatic(GridFSBuckets.class)) {
+			buckets.when(() -> GridFSBuckets.create(mongoTemplate.getDb()))
+	          .thenReturn(gridFSBucket);
+			
+			doNothing().when(gridFSBucket).delete(any(ObjectId.class));
+			assertDoesNotThrow(() -> artifactService.deleteOldArtifact(CatalogMockObjectUtil.ARTIFACT_FILE));
+		}
+    }
+	
+	@Test
+    @DisplayName("Delete artifact without file - success")
+    public void deleteArtifactWithoutFile_success() {
+		try (MockedStatic<GridFSBuckets> buckets = Mockito.mockStatic(GridFSBuckets.class)) {
+			buckets.when(() -> GridFSBuckets.create(mongoTemplate.getDb()))
+	          .thenReturn(gridFSBucket);
+			
+			assertDoesNotThrow(() -> artifactService.deleteOldArtifact(CatalogMockObjectUtil.ARTIFACT_FILE));
+		}
+    }
+	
+	@Test
+    @DisplayName("Delete artifact external - success")
+    public void deleteArtifactExternal_success() {
+		doNothing().when(artifactRepository).delete(CatalogMockObjectUtil.ARTIFACT_EXTERNAL);
+		assertDoesNotThrow(() -> artifactService.deleteOldArtifact(CatalogMockObjectUtil.ARTIFACT_EXTERNAL));
+    }
+	
 }
