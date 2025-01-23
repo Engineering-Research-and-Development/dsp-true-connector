@@ -1,10 +1,10 @@
 {
 	"info": {
-		"_postman_id": "155cd482-c073-4910-a540-666dc3adf31c",
+		"_postman_id": "6f090928-bed2-415e-bc2d-e2ce3cc12bb4",
 		"name": "Dataset API tests",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "21815221",
-		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-155cd482-c073-4910-a540-666dc3adf31c?action=share&source=collection_link&creator=21815221"
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-6f090928-bed2-415e-bc2d-e2ce3cc12bb4?action=share&source=collection_link&creator=21815221"
 	},
 	"item": [
 		{
@@ -63,7 +63,13 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
 				"url": {
 					"raw": "{{PROVIDER_API_DATASETS}}",
 					"host": [
@@ -172,7 +178,13 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
 				"url": {
 					"raw": "{{PROVIDER_API_DATASETS}}",
 					"host": [
@@ -284,7 +296,13 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
 				"url": {
 					"raw": "{{PROVIDER_API_DATASETS}}",
 					"host": [
