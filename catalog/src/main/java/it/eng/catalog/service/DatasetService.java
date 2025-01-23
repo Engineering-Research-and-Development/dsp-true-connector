@@ -128,11 +128,15 @@ public class DatasetService {
     	Dataset existingDataset = getDatasetByIdForApi(id);
     	Dataset storedDataset = null;
 		try {
-			if (file != null || StringUtils.isNotBlank(externalURL)) {
-				Artifact newArtifact = artifactService.updateDatasetArtifact(newDataset, file, externalURL);
-				newDataset = addArtifactToDataset(newDataset, newArtifact);
-			}
 			Dataset updatedDataset = existingDataset.updateInstance(newDataset);
+			if (file != null || StringUtils.isNotBlank(externalURL)) {
+				Artifact newArtifact = artifactService.uploadArtifact(updatedDataset, file, externalURL);
+				updatedDataset = addArtifactToDataset(updatedDataset, newArtifact);
+				// remove old artifact
+				if (existingDataset.getArtifact() != null) {
+					artifactService.deleteOldArtifact(existingDataset.getArtifact());
+				}
+			}
 			storedDataset = repository.save(updatedDataset);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);

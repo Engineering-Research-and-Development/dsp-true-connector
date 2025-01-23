@@ -214,12 +214,16 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 		assertTrue(datasetFromDb.getHasPolicy().contains(CatalogMockObjectUtil.OFFER));
 		assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), datasetFromDb.getArtifact().getValue());
 		assertEquals(ArtifactType.EXTERNAL, datasetFromDb.getArtifact().getArtifactType());
+		// 1 from initial data + 1 from test
+		assertEquals(2, datasetRepository.findAll().size());
 		
 		// check if the artifact is inserted in the database
 		Artifact artifactFromDb = artifactRepository.findById(datasetFromDb.getArtifact().getId()).get();
 
 		assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), artifactFromDb.getValue());
 		assertEquals(ArtifactType.EXTERNAL, artifactFromDb.getArtifactType());
+		// 1 from initial data + 1 from test
+		assertEquals(2, artifactRepository.findAll().size());
 
 		
 		// cleanup
@@ -274,6 +278,8 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 		assertTrue(datasetFromDb.getHasPolicy().contains(CatalogMockObjectUtil.OFFER));
 		assertEquals(filePart.getOriginalFilename(), datasetFromDb.getArtifact().getFilename());
 		assertEquals(ArtifactType.FILE, datasetFromDb.getArtifact().getArtifactType());
+		// 1 from initial data + 1 from test
+		assertEquals(2, datasetRepository.findAll().size());
 		
 		// check if the Artifact is inserted in the database
 		Artifact artifactFromDb = artifactRepository.findById(datasetFromDb.getArtifact().getId()).get();
@@ -281,6 +287,8 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 		assertEquals(filePart.getOriginalFilename(), artifactFromDb.getFilename());
 		assertEquals(filePart.getContentType(), artifactFromDb.getContentType());
 		assertEquals(ArtifactType.FILE, artifactFromDb.getArtifactType());
+		// 1 from initial data + 1 from test
+		assertEquals(2, artifactRepository.findAll().size());
 		
 		// check if the file is inserted in the database
 		GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
@@ -293,6 +301,8 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 		assertEquals(filePart.getContentType(), gridFsResource.getContentType());
 		assertEquals(filePart.getOriginalFilename(), gridFsResource.getFilename());
 		assertEquals(fileContent, gridFsResource.getContentAsString(StandardCharsets.UTF_8));
+		// 1 from initial data + 1 from test
+		assertEquals(2, mongoTemplate.getCollection("fs.files").countDocuments());
 		
 		// cleanup
 		datasetRepository.deleteById(dataset.getId());

@@ -72,39 +72,11 @@ public class ArtifactService {
 			throw new CatalogErrorAPIException("Artifact and file not found");
 		}
 		artifact = artifactRepository.save(artifact);
-		log.info("Inserted Artifact {}", artifact.getValue());
+		log.info("Inserted Artifact {}", artifact.getFilename() != null ? artifact.getFilename() : artifact.getValue());
 		return artifact;
 	}
 	
-	private ObjectId storeFile(MultipartFile file, Dataset dataset) {
-		try {
-			GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
-			Document doc = new Document();
-			//TODO check what happens if file.getContentType() is null
-			doc.append(CONTENT_TYPE_FIELD, file.getContentType());
-			doc.append(DATASET_ID_METADATA, dataset.getId());
-			GridFSUploadOptions options = new GridFSUploadOptions()
-			        .chunkSizeBytes(1048576) // 1MB chunk size
-			        .metadata(doc);
-			return gridFSBucket.uploadFromStream(file.getOriginalFilename(), file.getInputStream(), options);
-		}
-		catch (IOException e) {
-			log.error("Error while uploading file", e);
-			throw new CatalogErrorAPIException("Failed to store file. " + e.getLocalizedMessage());
-		}
-	}
-	
-	public Artifact updateDatasetArtifact(Dataset dataset, MultipartFile file, String externalURL) {
-		Artifact newArtifact = uploadArtifact(dataset, file, externalURL);
-		// remove old artifact
-		if (dataset.getArtifact() != null) {
-			deleteOldArtifact(dataset.getArtifact());
-		}
-		
-		return newArtifact;
-	}
-
-	private void deleteOldArtifact(Artifact artifact) {
+	public void deleteOldArtifact(Artifact artifact) {
 		log.info("Deleting artifact {}", artifact.getId());
 		switch (artifact.getArtifactType()) {
 		case EXTERNAL: {
@@ -124,5 +96,23 @@ public class ArtifactService {
 			break;
 		}
 		artifactRepository.delete(artifact);
+	}
+
+	private ObjectId storeFile(MultipartFile file, Dataset dataset) {
+		try {
+			GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
+			Document doc = new Document();
+			//TODO check what happens if file.getContentType() is null
+			doc.append(CONTENT_TYPE_FIELD, file.getContentType());
+			doc.append(DATASET_ID_METADATA, dataset.getId());
+			GridFSUploadOptions options = new GridFSUploadOptions()
+			        .chunkSizeBytes(1048576) // 1MB chunk size
+			        .metadata(doc);
+			return gridFSBucket.uploadFromStream(file.getOriginalFilename(), file.getInputStream(), options);
+		}
+		catch (IOException e) {
+			log.error("Error while uploading file", e);
+			throw new CatalogErrorAPIException("Failed to store file. " + e.getLocalizedMessage());
+		}
 	}
 }

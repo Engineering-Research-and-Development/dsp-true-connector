@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -188,7 +190,7 @@ public class DatasetServiceTest {
     public void updateDataset_success() {
         when(repository.findById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId())).thenReturn(Optional.of(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT));
         when(repository.save(any(Dataset.class))).thenReturn(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT);
-        when(artifactService.updateDatasetArtifact(CatalogMockObjectUtil.DATASET_FOR_UPDATE, null, CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue()))
+        when(artifactService.uploadArtifact(any(Dataset.class), isNull(), anyString()))
         .thenReturn(CatalogMockObjectUtil.ARTIFACT_EXTERNAL);
 
         Dataset result = datasetService.updateDataset(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(),
