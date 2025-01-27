@@ -162,6 +162,7 @@ public class WebSecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+        configuration.addExposedHeader("Content-Disposition");
 
         if (StringUtils.isBlank(allowedOrigins)) {
             configuration.addAllowedOrigin("*");

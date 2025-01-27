@@ -3,6 +3,7 @@ package it.eng.catalog.rest.api;
 import java.util.Collection;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -118,7 +119,12 @@ public class DatasetAPIController {
     		@RequestPart(value = "file", required = false) MultipartFile file,
 			@RequestPart(value = "url", required = false) String externalURL,
 			@RequestPart(value = "dataset", required = false) String dataset) {
-        Dataset ds = CatalogSerializer.deserializePlain(dataset, Dataset.class);
+    	
+        Dataset ds = null;
+        // if we are updating just the artifact, the dataset can be null
+		if (StringUtils.isNotBlank(dataset)) {
+			ds = CatalogSerializer.deserializePlain(dataset, Dataset.class);
+		}
 
         log.info("Updating dataset with id: " + id);
 

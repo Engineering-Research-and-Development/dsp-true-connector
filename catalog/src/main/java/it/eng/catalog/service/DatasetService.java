@@ -75,8 +75,8 @@ public class DatasetService {
      * Saves a dataset to the repository and updates the catalog.
      *
      * @param dataset the dataset to be saved
-     * @param externalURL 
-     * @param file 
+     * @param externalURL URL of external data
+     * @param file File that is going to be stored in database locally
      * @return saved dataset
      * @throws InternalServerErrorAPIException if saving fails
      */
@@ -117,24 +117,33 @@ public class DatasetService {
      * Updates a dataset in the repository.
      *
      * @param id the unique ID of the dataset to be updated
-     * @param newDataset the dataset to update
-     * @param externalURL 
-     * @param file 
+     * @param newDataset the dataset with new data
+     * @param externalURL URL of external data
+     * @param file File that is going to be stored in database locally
      * @return the updated dataset
      * @throws ResourceNotFoundAPIException if no data service is found with the provided ID
      * @throws InternalServerErrorAPIException if updating fails
      */
     public Dataset updateDataset(String id, Dataset newDataset, MultipartFile file, String externalURL) {
     	Dataset existingDataset = getDatasetByIdForApi(id);
+    	Dataset updatedDataset = null;
     	Dataset storedDataset = null;
 		try {
-			Dataset updatedDataset = existingDataset.updateInstance(newDataset);
+			// store old artifact; will be deleted if new artifact is successfully updated
+			Artifact oldArtifact = existingDataset.getArtifact();
+			if (newDataset != null) {
+				// update old dataset if new one is present
+				updatedDataset = existingDataset.updateInstance(newDataset);
+			} else {
+				// use the old dataset if we are updating only the artifact
+				updatedDataset = existingDataset;
+			}
 			if (file != null || StringUtils.isNotBlank(externalURL)) {
 				Artifact newArtifact = artifactService.uploadArtifact(updatedDataset, file, externalURL);
 				updatedDataset = addArtifactToDataset(updatedDataset, newArtifact);
 				// remove old artifact
-				if (existingDataset.getArtifact() != null) {
-					artifactService.deleteOldArtifact(existingDataset.getArtifact());
+				if (oldArtifact != null) {
+					artifactService.deleteOldArtifact(oldArtifact);
 				}
 			}
 			storedDataset = repository.save(updatedDataset);

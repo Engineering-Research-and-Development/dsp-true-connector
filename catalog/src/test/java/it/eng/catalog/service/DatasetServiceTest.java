@@ -26,7 +26,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import it.eng.catalog.exceptions.CatalogErrorAPIException;
 import it.eng.catalog.exceptions.CatalogErrorException;
+import it.eng.catalog.exceptions.InternalServerErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.repository.DatasetRepository;
@@ -143,7 +145,7 @@ public class DatasetServiceTest {
     }
 
     @Test
-    @DisplayName("Save dataset")
+    @DisplayName("Save dataset - success")
     public void saveDataset_success() {
         when(repository.save(any(Dataset.class))).thenReturn(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT);
         when(artifactService.uploadArtifact(CatalogMockObjectUtil.DATASET, null, CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue()))
@@ -160,8 +162,42 @@ public class DatasetServiceTest {
         assertEquals(CatalogMockObjectUtil.DATASET.getId(), argCaptorDataset.getValue().getId());
         
     }
+    
+    @Test
+    @DisplayName("Save dataset - fail - no artifact")
+    public void saveDataset_fail() {
+    	when(artifactService.uploadArtifact(CatalogMockObjectUtil.DATASET, null, null))
+        .thenThrow(CatalogErrorAPIException.class);
+    	assertThrows(InternalServerErrorAPIException.class, () -> datasetService.saveDataset(CatalogMockObjectUtil.DATASET, null, null));
+    }
 
     @Test
+	@DisplayName("Update dataset - success")
+	public void updateDataset_success() {
+	    when(repository.findById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId())).thenReturn(Optional.of(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT));
+	    when(repository.save(any(Dataset.class))).thenReturn(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT);
+	    when(artifactService.uploadArtifact(any(Dataset.class), isNull(), anyString()))
+	    .thenReturn(CatalogMockObjectUtil.ARTIFACT_EXTERNAL);
+	
+	    Dataset result = datasetService.updateDataset(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(),
+	    		CatalogMockObjectUtil.DATASET_FOR_UPDATE,
+	    		null,
+	    		CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue());
+	
+	    assertEquals(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), result.getId());
+	    verify(repository).findById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
+	    verify(repository).save(argCaptorDataset.capture());
+	    
+	    assertTrue(argCaptorDataset.getValue().getCreator().contains("update"));
+	    assertTrue(argCaptorDataset.getValue().getTitle().contains("update"));
+	    assertTrue(argCaptorDataset.getValue().getDescription().stream().filter(d -> d.getValue().contains("update")).findFirst().isPresent());
+	    assertTrue(argCaptorDataset.getValue().getHasPolicy().stream().findFirst().get().getId().contains("update"));
+	    assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getId(), argCaptorDataset.getValue().getArtifact().getId());
+	    assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), argCaptorDataset.getValue().getArtifact().getValue());
+	    assertEquals(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), argCaptorDataset.getValue().getId());
+	}
+
+	@Test
     @DisplayName("Delete dataset - success")
     public void deleteDataset_success() {
         when(repository.findById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId())).thenReturn(Optional.of(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT));
@@ -183,31 +219,5 @@ public class DatasetServiceTest {
         verify(repository).findById("1");
         verify(repository, never()).deleteById("1");
         verify(catalogService, never()).updateCatalogDatasetAfterDelete(any(Dataset.class));
-    }
-
-    @Test
-    @DisplayName("Update dataset - success")
-    public void updateDataset_success() {
-        when(repository.findById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId())).thenReturn(Optional.of(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT));
-        when(repository.save(any(Dataset.class))).thenReturn(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT);
-        when(artifactService.uploadArtifact(any(Dataset.class), isNull(), anyString()))
-        .thenReturn(CatalogMockObjectUtil.ARTIFACT_EXTERNAL);
-
-        Dataset result = datasetService.updateDataset(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(),
-        		CatalogMockObjectUtil.DATASET_FOR_UPDATE,
-        		null,
-        		CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue());
-
-        assertEquals(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), result.getId());
-        verify(repository).findById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
-        verify(repository).save(argCaptorDataset.capture());
-        
-        assertTrue(argCaptorDataset.getValue().getCreator().contains("update"));
-        assertTrue(argCaptorDataset.getValue().getTitle().contains("update"));
-        assertTrue(argCaptorDataset.getValue().getDescription().stream().filter(d -> d.getValue().contains("update")).findFirst().isPresent());
-        assertTrue(argCaptorDataset.getValue().getHasPolicy().stream().findFirst().get().getId().contains("update"));
-        assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getId(), argCaptorDataset.getValue().getArtifact().getId());
-        assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), argCaptorDataset.getValue().getArtifact().getValue());
-        assertEquals(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), argCaptorDataset.getValue().getId());
     }
 }
