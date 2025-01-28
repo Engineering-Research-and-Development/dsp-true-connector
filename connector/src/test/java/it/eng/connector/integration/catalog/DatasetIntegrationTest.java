@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -12,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.bson.Document;
@@ -519,13 +521,13 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 		  
 		// check if response is correct
 		assertTrue(apiResp.isSuccess());
-		assertEquals(dataset.getId(), apiResp.getData().getId());
-		assertTrue(dataset.getHasPolicy().contains(CatalogMockObjectUtil.OFFER));
+		assertEquals(datasetWithFile.getId(), apiResp.getData().getId());
+		assertTrue(datasetWithFile.getHasPolicy().contains(CatalogMockObjectUtil.OFFER));
 		assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), apiResp.getData().getArtifact().getValue());
 		assertEquals(ArtifactType.EXTERNAL, apiResp.getData().getArtifact().getArtifactType());
 
 		// check if the Dataset is inserted in the database
-		Dataset datasetFromDb = datasetRepository.findById(dataset.getId()).get();
+		Dataset datasetFromDb = datasetRepository.findById(datasetWithFile.getId()).get();
 
 		assertTrue(datasetFromDb.getHasPolicy().contains(CatalogMockObjectUtil.OFFER));
 		assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), datasetFromDb.getArtifact().getValue());
@@ -545,8 +547,174 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 		assertEquals(1, mongoTemplate.getCollection("fs.files").countDocuments());
 		
 		// cleanup
-		datasetRepository.deleteById(dataset.getId());
+		datasetRepository.deleteById(datasetWithFile.getId());
 		artifactRepository.deleteById(artifactFromDb.getId());
+	}
+	
+	@Test
+	@DisplayName("Dataset API - delete dataset with file")
+	@WithUserDetails(TestUtil.API_USER)
+	public void deleteDatasetWithFile() throws Exception {
+		Dataset dataset = Dataset.Builder.newInstance()
+				.hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
+				.build();
+		
+		String fileContent = "Hello, World!";
+		
+		MockMultipartFile file 
+		= new MockMultipartFile(
+				"file", 
+				"hello.txt", 
+				MediaType.TEXT_PLAIN_VALUE, 
+				fileContent.getBytes()
+				);
+		
+		GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
+		Document doc = new Document();
+		//TODO check what happens if file.getContentType() is null
+		doc.append(CONTENT_TYPE_FIELD, file.getContentType());
+		doc.append(DATASET_ID_METADATA, dataset.getId());
+		GridFSUploadOptions options = new GridFSUploadOptions()
+				.chunkSizeBytes(1048576) // 1MB chunk size
+				.metadata(doc);
+		ObjectId fileId = gridFSBucket.uploadFromStream(file.getOriginalFilename(), file.getInputStream(), options);
+		
+		Artifact artifactFile = Artifact.Builder.newInstance()
+				.artifactType(ArtifactType.FILE)
+				.contentType(file.getContentType())
+				.createdBy(CatalogMockObjectUtil.CREATOR)
+				.created(CatalogMockObjectUtil.NOW)
+				.lastModifiedDate(CatalogMockObjectUtil.NOW)
+				.lastModifiedBy(CatalogMockObjectUtil.CREATOR)
+				.filename(file.getOriginalFilename())
+				.value(fileId.toHexString())
+				.build();
+		
+		Dataset datasetWithFile = Dataset.Builder.newInstance()
+				.id(dataset.getId())
+				.hasPolicy(dataset.getHasPolicy())
+				.artifact(artifactFile)
+				.build();
+		
+		artifactRepository.save(artifactFile);
+		datasetRepository.save(datasetWithFile);
+		
+		TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {};
+		
+		MvcResult result = mockMvc.perform(
+				delete(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + datasetWithFile.getId()))
+			.andExpect(status().isOk())
+			.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+			.andReturn();
+		
+		String json = result.getResponse().getContentAsString();
+		GenericApiResponse<String> apiResp =  CatalogSerializer.deserializePlain(json, typeRef);
+		  
+		// check if response is correct
+		assertTrue(apiResp.isSuccess());
+		assertNull(apiResp.getData());
+		assertNotNull(apiResp.getMessage());
+
+		// check if the Dataset is deleted from the database
+		assertEquals(Optional.empty(), datasetRepository.findById(dataset.getId()));
+
+		// 1 from initial data
+		assertEquals(1, datasetRepository.findAll().size());
+
+		// check if the artifact is deleted from the database
+		assertEquals(Optional.empty(), artifactRepository.findById(artifactFile.getId()));
+
+		// 1 from initial data
+		assertEquals(1, artifactRepository.findAll().size());
+
+		// 1 from initial data, the one from testing should be deleted
+		assertEquals(1, mongoTemplate.getCollection("fs.files").countDocuments());
+		
+	}
+	
+	@Test
+	@DisplayName("Dataset API - delete dataset with external")
+	@WithUserDetails(TestUtil.API_USER)
+	public void deleteDatasetWithExternal() throws Exception {
+		Artifact artifactExternal = Artifact.Builder.newInstance()
+				.artifactType(ArtifactType.EXTERNAL)
+				.createdBy(CatalogMockObjectUtil.CREATOR)
+				.created(CatalogMockObjectUtil.NOW)
+				.lastModifiedDate(CatalogMockObjectUtil.NOW)
+				.lastModifiedBy(CatalogMockObjectUtil.CREATOR)
+				.value("https://example.com/employees")
+				.build();
+		
+		Dataset dataset = Dataset.Builder.newInstance()
+				.hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
+				.artifact(artifactExternal)
+				.build();
+		
+		artifactRepository.save(artifactExternal);
+		datasetRepository.save(dataset);
+		
+		
+		TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {};
+		
+		MvcResult result = mockMvc.perform(
+				delete(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + dataset.getId()))
+			.andExpect(status().isOk())
+			.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+			.andReturn();
+		
+		String json = result.getResponse().getContentAsString();
+		GenericApiResponse<String> apiResp =  CatalogSerializer.deserializePlain(json, typeRef);
+		
+		// check if response is correct
+		assertTrue(apiResp.isSuccess());
+		assertNull(apiResp.getData());
+		assertNotNull(apiResp.getMessage());
+
+		// check if the Dataset is deleted from the database
+		assertEquals(Optional.empty(), datasetRepository.findById(dataset.getId()));
+
+		// 1 from initial data
+		assertEquals(1, datasetRepository.findAll().size());
+
+		// check if the artifact is deleted from the database
+		assertEquals(Optional.empty(), artifactRepository.findById(artifactExternal.getId()));
+
+		// 1 from initial data
+		assertEquals(1, artifactRepository.findAll().size());
+
+	}
+	
+	@Test
+	@DisplayName("Dataset API - delete fail")
+	@WithUserDetails(TestUtil.API_USER)
+	public void deleteDatasetFail() throws Exception {
+		
+		TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {};
+		
+		MvcResult result = mockMvc.perform(
+				delete(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + 1))
+			.andExpect(status().isNotFound())
+			.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+			.andReturn();
+		
+		String json = result.getResponse().getContentAsString();
+		GenericApiResponse<String> apiResp =  CatalogSerializer.deserializePlain(json, typeRef);
+		
+		// check if response is correct
+		assertFalse(apiResp.isSuccess());
+		assertNull(apiResp.getData());
+		assertNotNull(apiResp.getMessage());
+
+
+		// 1 from initial data
+		assertEquals(1, datasetRepository.findAll().size());
+
+		// 1 from initial data
+		assertEquals(1, artifactRepository.findAll().size());
+		
+		// 1 from initial data
+		assertEquals(1, mongoTemplate.getCollection("fs.files").countDocuments());
+
 	}
 	
 

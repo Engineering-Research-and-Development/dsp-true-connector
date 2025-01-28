@@ -205,6 +205,7 @@ public class DatasetServiceTest {
         datasetService.deleteDataset(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
 
         verify(repository).findById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
+        verify(artifactService).deleteOldArtifact(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getArtifact());
         verify(repository).deleteById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
         verify(catalogService).updateCatalogDatasetAfterDelete(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT);
     }
