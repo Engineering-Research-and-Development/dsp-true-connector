@@ -1,6 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 27-01-2025
+
+### Changed
+
+ - Artifact logic is directly tied to dataset (you can't insert a dataset without an artifact)
+
+
 ## [0.1.1] - 15-01-2025
 
 ### Added

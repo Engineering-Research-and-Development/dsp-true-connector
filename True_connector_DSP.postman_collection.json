@@ -503,13 +503,28 @@
 									}
 								],
 								"body": {
-									"mode": "raw",
-									"raw": "{\r\n    \"keyword\": [\r\n        \"keyword1\",\r\n        \"keyword2\",\r\n        \"keyword3\"\r\n    ],\r\n    \"theme\": [\r\n        \"dark theme\",\r\n        \"light theme\"\r\n    ],\r\n    \"conformsTo\": \"conformsToSomethingNew\",\r\n    \"creator\": \"Engineering Informatica S.p.A.\",\r\n    \"description\": [\r\n        {\r\n            \"value\": \"Some text for multi language Dataset\",\r\n            \"language\": \"en\"\r\n        }\r\n    ],\r\n    \"identifier\": \"Unique identifier for testing Dataset\",\r\n    \"title\": \"Title for test Dataset new created\",\r\n    \"hasPolicy\": [\r\n        {\r\n            \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n            \"permission\": [\r\n                {\r\n                    \"action\": \"USE\",\r\n                    \"constraint\": [\r\n                        {\r\n                            \"leftOperand\": \"COUNT\",\r\n                            \"operator\": \"EQ\",\r\n                            \"rightOperand\": \"5\"\r\n                        }\r\n                    ]\r\n                }\r\n            ]\r\n        }\r\n    ],\r\n    \"distribution\": [\r\n        {\r\n            \"id\": \"1dc45797-4444-4932-8baf-ab7fd66ql4d5\",\r\n            \"title\": \"Flash lightning distribution\",\r\n            \"issued\": \"2024-04-23T16:26:00Z\",\r\n            \"modified\": \"2024-04-23T16:26:00Z\",\r\n            \"type\": \"dspace:Distribution\"\r\n        }\r\n    ]\r\n}",
-									"options": {
-										"raw": {
-											"language": "json"
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "dataset",
+											"value": "{\n    \"keyword\": [\n        \"keyword1\",\n        \"keyword2\",\n        \"keyword3\"\n    ],\n    \"theme\": [\n        \"dark theme\",\n        \"light theme\"\n    ],\n    \"conformsTo\": \"conformsToSomethingNew\",\n    \"creator\": \"Engineering Informatica S.p.A.\",\n    \"description\": [\n        {\n            \"value\": \"Some text for multi language Dataset\",\n            \"language\": \"en\"\n        }\n    ],\n    \"identifier\": \"Unique identifier for testing Dataset\",\n    \"title\": \"Title for test Dataset new created\",\n    \"hasPolicy\": [\n        {\n            \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\n            \"permission\": [\n                {\n                    \"action\": \"USE\",\n                    \"constraint\": [\n                        {\n                            \"leftOperand\": \"COUNT\",\n                            \"operator\": \"EQ\",\n                            \"rightOperand\": \"5\"\n                        }\n                    ]\n                }\n            ]\n        }\n    ],\n    \"distribution\": [\n        {\n            \"id\": \"1dc45797-4444-4932-8baf-ab7fd66ql4d5\",\n            \"title\": \"Flash lightning distribution\",\n            \"issued\": \"2024-04-23T16:26:00Z\",\n            \"modified\": \"2024-04-23T16:26:00Z\",\n            \"type\": \"dspace:Distribution\"\n        }\n    ]\n}",
+											"description": "Dataset to insert",
+											"type": "text"
+										},
+										{
+											"key": "file",
+											"description": "File for upload",
+											"type": "file",
+											"src": [],
+											"disabled": true
+										},
+										{
+											"key": "url",
+											"value": "https://example.com/dsptc",
+											"description": "URL for external download",
+											"type": "text"
 										}
-									}
+									]
 								},
 								"url": {
 									"raw": "{{CONSUMER_SERVER_API_DATASET}}",
@@ -524,15 +539,35 @@
 							"name": "Update Dataset",
 							"request": {
 								"method": "PUT",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\r\n    \"keyword\": [\r\n        \"keyword1\",\r\n        \"keyword2\",\r\n        \"keyword3\"\r\n    ],\r\n    \"theme\": [\r\n        \"dark theme\",\r\n        \"light theme\"\r\n    ],\r\n    \"conformsTo\": \"conformsToSomethingEdit\",\r\n    \"creator\": \"Engineering Informatica S.p.A.\",\r\n    \"description\": [\r\n        {\r\n            \"value\": \"Some text for multi language Dataset\",\r\n            \"language\": \"en\"\r\n        }\r\n    ],\r\n    \"identifier\": \"Unique identifier for testing Dataset\",\r\n    \"title\": \"Title for test Dataset\",\r\n    \"hasPolicy\": [\r\n        {\r\n            \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n            \"permission\": [\r\n                {\r\n                    \"action\": \"USE\",\r\n                    \"constraint\": [\r\n                        {\r\n                            \"leftOperand\": \"COUNT\",\r\n                            \"operator\": \"EQ\",\r\n                            \"rightOperand\": \"5\"\r\n                        }\r\n                    ]\r\n                }\r\n            ]\r\n        }\r\n    ],\r\n    \"distribution\": [\r\n        {\r\n            \"id\": \"1dc45797-4444-4932-8baf-ab7fd66ql4d5\",\r\n            \"title\": \"Flash lightning distribution\",\r\n            \"issued\": \"2024-04-23T16:26:00Z\",\r\n            \"modified\": \"2024-04-23T16:26:00Z\",\r\n            \"accessService\": [\r\n                {\r\n                    \"id\": \"1dc45797-4444-4955-8baf-ab7fd66ac4d5\",\r\n                    \"keyword\": [\r\n                        \"keyword1\",\r\n                        \"keyword2\",\r\n                        \"keyword3\"\r\n                    ],\r\n                    \"theme\": [\r\n                        \"dark theme\",\r\n                        \"light theme\"\r\n                    ],\r\n                    \"conformsTo\": \"conformsToSomething\",\r\n                    \"creator\": \"Engineering Informatica S.p.A.\",\r\n                    \"description\": [\r\n                        {\r\n                            \"value\": \"Some text for multi language\",\r\n                            \"language\": \"en\"\r\n                        }\r\n                    ],\r\n                    \"identifier\": \"Unique identifier for testing Data Service\",\r\n                    \"issued\": \"2024-04-23T16:26:00Z\",\r\n                    \"modified\": \"2024-04-23T16:26:00Z\",\r\n                    \"title\": \"Title for testing Data Service\",\r\n                    \"endpointDescription\": \"endpoint description\",\r\n                    \"endpointURL\": \"https://provider-a.com/connector\",\r\n                    \"createdBy\": \"admin@mail.com\",\r\n                    \"lastModifiedBy\": \"admin@mail.com\",\r\n                    \"version\": 0,\r\n                    \"type\": \"dcat:DataService\"\r\n                }\r\n            ],\r\n            \"type\": \"dspace:Distribution\"\r\n        }\r\n    ]\r\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
 									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "dataset",
+											"value": "{\n    \"keyword\": [\n        \"keyword1\",\n        \"keyword2\",\n        \"keyword3\"\n    ],\n    \"theme\": [\n        \"dark theme\",\n        \"light theme\"\n    ],\n    \"conformsTo\": \"conformsToSomethingNew\",\n    \"creator\": \"Engineering Informatica S.p.A.\",\n    \"description\": [\n        {\n            \"value\": \"Some text for multi language Dataset\",\n            \"language\": \"en\"\n        }\n    ],\n    \"identifier\": \"Unique identifier for testing Dataset\",\n    \"title\": \"Title for test Dataset new created\",\n    \"hasPolicy\": [\n        {\n            \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\n            \"permission\": [\n                {\n                    \"action\": \"USE\",\n                    \"constraint\": [\n                        {\n                            \"leftOperand\": \"COUNT\",\n                            \"operator\": \"EQ\",\n                            \"rightOperand\": \"5\"\n                        }\n                    ]\n                }\n            ]\n        }\n    ],\n    \"distribution\": [\n        {\n            \"id\": \"1dc45797-4444-4932-8baf-ab7fd66ql4d5\",\n            \"title\": \"Flash lightning distribution\",\n            \"issued\": \"2024-04-23T16:26:00Z\",\n            \"modified\": \"2024-04-23T16:26:00Z\",\n            \"type\": \"dspace:Distribution\"\n        }\n    ]\n}",
+											"description": "Dataset to insert",
+											"type": "text"
+										},
+										{
+											"key": "file",
+											"description": "File for upload",
+											"type": "file",
+											"src": [],
+											"disabled": true
+										},
+										{
+											"key": "url",
+											"value": "https://example.com/dsptc",
+											"description": "URL for external download",
+											"type": "text"
+										}
+									]
 								},
 								"url": {
 									"raw": "{{CONSUMER_SERVER_API_DATASET}}/{$ID}",
@@ -1480,57 +1515,6 @@
 				{
 					"name": "Artifact",
 					"item": [
-						{
-							"name": "Upload artifact",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Status code is 200\", function () {\r",
-											"    pm.response.to.have.status(200);\r",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "formdata",
-									"formdata": [
-										{
-											"key": "file",
-											"description": "File for upload",
-											"type": "file",
-											"src": [],
-											"disabled": true
-										},
-										{
-											"key": "url",
-											"value": "https://example.com/dfg",
-											"contentType": "",
-											"description": "URL for external download",
-											"type": "text"
-										}
-									]
-								},
-								"url": {
-									"raw": "{{PROVIDER_SERVER_API_ARTIFACTS}}/upload/urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
-									"host": [
-										"{{PROVIDER_SERVER_API_ARTIFACTS}}"
-									],
-									"path": [
-										"upload",
-										"urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
-									]
-								}
-							},
-							"response": []
-						},
 						{
 							"name": "List all artifacts",
 							"event": [

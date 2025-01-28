@@ -3,6 +3,7 @@ package it.eng.catalog.rest.api;
 import java.util.Collection;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -10,9 +11,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -25,7 +27,7 @@ import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, 
+@RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE, 
 	path = ApiEndpoints.CATALOG_DATASETS_V1)
 @Slf4j
 public class DatasetAPIController {
@@ -46,7 +48,16 @@ public class DatasetAPIController {
                 .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(dataset), "Fetched dataset"));
     }
     
-    /**
+    @GetMapping
+	public ResponseEntity<GenericApiResponse<JsonNode>> getAllDatasets() {
+	    log.info("Fetching all datasets");
+	    Collection<Dataset> datasets = datasetService.getAllDatasets();
+	
+	    return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+	            .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(datasets), "Fetched all datasets"));
+	}
+
+	/**
      * Used for fetching all dct:formats for a Dataset </br>
      * Generally used for creating Transfer Processes with INITIALIZED state
      * 
@@ -77,27 +88,21 @@ public class DatasetAPIController {
                 .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(artifact), "Fetched artifact"));
     }
 
-    @GetMapping
-    public ResponseEntity<GenericApiResponse<JsonNode>> getAllDatasets() {
-        log.info("Fetching all datasets");
-        Collection<Dataset> datasets = datasetService.getAllDatasets();
-
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(datasets), "Fetched all datasets"));
-    }
-
     @PostMapping
-    public ResponseEntity<GenericApiResponse<JsonNode>> saveDataset(@RequestBody String dataset) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> saveDataset(
+    		@RequestPart(value = "file", required = false) MultipartFile file,
+			@RequestPart(value = "url", required = false) String externalURL,
+			@RequestPart(value = "dataset", required = true) String dataset) {
         Dataset ds = CatalogSerializer.deserializePlain(dataset, Dataset.class);
 
         log.info("Saving new dataset");
 
-        Dataset storedDataset = datasetService.saveDataset(ds);
+        Dataset storedDataset = datasetService.saveDataset(ds, file, externalURL);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(storedDataset), "Saved dataset"));
     }
-
+    
     @DeleteMapping(path = "/{id}")
     public ResponseEntity<GenericApiResponse<Object>> deleteDataset(@PathVariable String id) {
         log.info("Deleting dataset with id: " + id);
@@ -109,12 +114,21 @@ public class DatasetAPIController {
     }
 
     @PutMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<JsonNode>> updateDataset(@PathVariable String id, @RequestBody String dataset) {
-        Dataset ds = CatalogSerializer.deserializePlain(dataset, Dataset.class);
+    public ResponseEntity<GenericApiResponse<JsonNode>> updateDataset(
+    		@PathVariable String id,
+    		@RequestPart(value = "file", required = false) MultipartFile file,
+			@RequestPart(value = "url", required = false) String externalURL,
+			@RequestPart(value = "dataset", required = false) String dataset) {
+    	
+        Dataset ds = null;
+        // if we are updating just the artifact, the dataset can be null
+		if (StringUtils.isNotBlank(dataset)) {
+			ds = CatalogSerializer.deserializePlain(dataset, Dataset.class);
+		}
 
         log.info("Updating dataset with id: " + id);
 
-        Dataset storedDataset = datasetService.updateDataset(id, ds);
+        Dataset storedDataset = datasetService.updateDataset(id, ds, file, externalURL);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(storedDataset), "Dataset updated"));

@@ -179,7 +179,7 @@ public class DataTransferAPIService {
 	   					.build();
 	   			EndpointProperty endpointTypeProperty = EndpointProperty.Builder.newInstance()
 	   					.name("https://w3id.org/edc/v0.0.1/ns/endpointType")
-	   					.value(address)
+	   					.value("https://w3id.org/idsa/v4.1/HTTP")
 	   					.build();
 				dataAddress = DataAddress.Builder.newInstance()
 						.endpoint(artifactURL)

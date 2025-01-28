@@ -32,13 +32,11 @@ public class ArtifactService {
 	private static final String DATASET_ID_METADATA = "datasetId";
 	
 	private final MongoTemplate mongoTemplate;
-	private final DatasetService datasetService;
 	private final ArtifactRepository artifactRepository;
 	
-	public ArtifactService(MongoTemplate mongoTemplate, DatasetService datasetService, ArtifactRepository artifactRepository) {
+	public ArtifactService(MongoTemplate mongoTemplate, ArtifactRepository artifactRepository) {
 		super();
 		this.mongoTemplate = mongoTemplate;
-		this.datasetService = datasetService;
 		this.artifactRepository = artifactRepository;
 	}
 
@@ -54,8 +52,7 @@ public class ArtifactService {
 		return artifactRepository.findAll();
 	}
 
-	public Artifact uploadArtifact(MultipartFile file, String datasetId, String externalURL) {
-		Dataset dataset = datasetService.getDatasetByIdForApi(datasetId);
+	public Artifact uploadArtifact(Dataset dataset, MultipartFile file, String externalURL) {
 		Artifact artifact = null;
 		if (file != null) {
 			ObjectId fileId = storeFile(file, dataset);
@@ -75,55 +72,11 @@ public class ArtifactService {
 			throw new CatalogErrorAPIException("Artifact and file not found");
 		}
 		artifact = artifactRepository.save(artifact);
-		updateDataset(dataset, artifact);
-		
+		log.info("Inserted Artifact {}", artifact.getFilename() != null ? artifact.getFilename() : artifact.getValue());
 		return artifact;
 	}
 	
-	private ObjectId storeFile(MultipartFile file, Dataset dataset) {
-		try {
-			GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
-			Document doc = new Document();
-			//TODO check what happens if file.getContentType() is null
-			doc.append(CONTENT_TYPE_FIELD, file.getContentType());
-			doc.append(DATASET_ID_METADATA, dataset.getId());
-			GridFSUploadOptions options = new GridFSUploadOptions()
-			        .chunkSizeBytes(1048576) // 1MB chunk size
-			        .metadata(doc);
-			return gridFSBucket.uploadFromStream(file.getOriginalFilename(), file.getInputStream(), options);
-		}
-		catch (IOException e) {
-			log.error("Error while uploading file", e);
-			throw new CatalogErrorAPIException("Failed to store file. " + e.getLocalizedMessage());
-		}
-	}
-	
-	private void updateDataset(Dataset dataset, Artifact artifact) {
-		Artifact oldArtifact = dataset.getArtifact();
-		Dataset datasetWithArtifact = Dataset.Builder.newInstance()
-				.id(dataset.getId())
-				.artifact(artifact)
-				.conformsTo(dataset.getConformsTo())
-				.createdBy(dataset.getCreatedBy())
-				.creator(dataset.getCreator())
-				.description(dataset.getDescription())
-				.distribution(dataset.getDistribution())
-				.hasPolicy(dataset.getHasPolicy())
-				.issued(dataset.getIssued())
-				.keyword(dataset.getKeyword())
-				.lastModifiedBy(dataset.getLastModifiedBy())
-				.modified(dataset.getModified())
-				.theme(dataset.getTheme())
-				.title(dataset.getTitle())
-				.version(dataset.getVersion())
-				.build();
-		datasetService.updateDataset(dataset, datasetWithArtifact);
-		if (oldArtifact != null) {
-			deleteOldArtifact(oldArtifact);
-		}
-	}
-
-	private void deleteOldArtifact(Artifact artifact) {
+	public void deleteOldArtifact(Artifact artifact) {
 		log.info("Deleting artifact {}", artifact.getId());
 		switch (artifact.getArtifactType()) {
 		case EXTERNAL: {
@@ -143,5 +96,23 @@ public class ArtifactService {
 			break;
 		}
 		artifactRepository.delete(artifact);
+	}
+
+	private ObjectId storeFile(MultipartFile file, Dataset dataset) {
+		try {
+			GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
+			Document doc = new Document();
+			//TODO check what happens if file.getContentType() is null
+			doc.append(CONTENT_TYPE_FIELD, file.getContentType());
+			doc.append(DATASET_ID_METADATA, dataset.getId());
+			GridFSUploadOptions options = new GridFSUploadOptions()
+			        .chunkSizeBytes(1048576) // 1MB chunk size
+			        .metadata(doc);
+			return gridFSBucket.uploadFromStream(file.getOriginalFilename(), file.getInputStream(), options);
+		}
+		catch (IOException e) {
+			log.error("Error while uploading file", e);
+			throw new CatalogErrorAPIException("Failed to store file. " + e.getLocalizedMessage());
+		}
 	}
 }
