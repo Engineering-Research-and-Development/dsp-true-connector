@@ -125,7 +125,7 @@ public class DatasetAPIController {
 	}
 
 	@DeleteMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<Object>> deleteDataset(@PathVariable String id) {
+    public ResponseEntity<GenericApiResponse<Void>> deleteDataset(@PathVariable String id) {
         log.info("Deleting dataset with id: " + id);
 
         datasetService.deleteDataset(id);

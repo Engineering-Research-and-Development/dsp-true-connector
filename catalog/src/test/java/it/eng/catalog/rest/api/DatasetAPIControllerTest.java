@@ -82,7 +82,7 @@ public class DatasetAPIControllerTest {
     @Test
     @DisplayName("Delete dataset - success")
     public void deleteDatasetSuccessfulTest() {
-        ResponseEntity<GenericApiResponse<Object>> response = datasetAPIController.deleteDataset(CatalogMockObjectUtil.DATASET.getId());
+        ResponseEntity<GenericApiResponse<Void>> response = datasetAPIController.deleteDataset(CatalogMockObjectUtil.DATASET.getId());
 
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
