@@ -87,7 +87,7 @@ public class CatalogAPIControllerTest {
     @Test
     @DisplayName("Delete catalog - success")
     public void deleteCatalogSuccessfulTest() {
-        ResponseEntity<GenericApiResponse<Object>> response = catalogAPIController.deleteCatalog(CatalogMockObjectUtil.CATALOG.getId());
+        ResponseEntity<GenericApiResponse<Void>> response = catalogAPIController.deleteCatalog(CatalogMockObjectUtil.CATALOG.getId());
 
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());

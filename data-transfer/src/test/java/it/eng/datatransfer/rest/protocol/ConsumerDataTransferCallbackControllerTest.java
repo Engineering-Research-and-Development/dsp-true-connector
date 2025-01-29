@@ -15,14 +15,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import com.fasterxml.jackson.databind.JsonNode;
-
 import it.eng.datatransfer.exceptions.TransferProcessNotFoundException;
-import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.model.TransferCompletionMessage;
 import it.eng.datatransfer.model.TransferStartMessage;
 import it.eng.datatransfer.model.TransferSuspensionMessage;
 import it.eng.datatransfer.model.TransferTerminationMessage;
+import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.DataTransferService;
 import it.eng.datatransfer.util.DataTranferMockObjectUtil;
 import jakarta.validation.ValidationException;
@@ -70,7 +68,7 @@ public class ConsumerDataTransferCallbackControllerTest {
 	public void completeDataTransfer() {
 		when(dataTransferService.completeDataTransfer(any(TransferCompletionMessage.class), any(String.class), isNull()))
 		.thenReturn(DataTranferMockObjectUtil.TRANSFER_PROCESS_COMPLETED);
-		ResponseEntity<JsonNode> response = controller.completeDataTransfer(DataTranferMockObjectUtil.CONSUMER_PID,
+		ResponseEntity<Void> response = controller.completeDataTransfer(DataTranferMockObjectUtil.CONSUMER_PID,
 				TransferSerializer.serializeProtocolJsonNode(DataTranferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE));
 		assertEquals(HttpStatus.OK, response.getStatusCode());	
 		}
@@ -99,7 +97,7 @@ public class ConsumerDataTransferCallbackControllerTest {
 	public void terminateDataTransfer() {
 		when(dataTransferService.terminateDataTransfer(any(TransferTerminationMessage.class), any(String.class), isNull()))
 			.thenReturn(DataTranferMockObjectUtil.TRANSFER_PROCESS_TERMINATED);
-		ResponseEntity<JsonNode> response = controller.terminateDataTransfer(DataTranferMockObjectUtil.CONSUMER_PID,
+		ResponseEntity<Void> response = controller.terminateDataTransfer(DataTranferMockObjectUtil.CONSUMER_PID,
 				TransferSerializer.serializeProtocolJsonNode(DataTranferMockObjectUtil.TRANSFER_TERMINATION_MESSAGE));
 		assertEquals(HttpStatus.OK, response.getStatusCode());	
 	}
@@ -128,7 +126,7 @@ public class ConsumerDataTransferCallbackControllerTest {
 	public void suspenseDataTransfer() {
 		when(dataTransferService.suspendDataTransfer(any(TransferSuspensionMessage.class), any(String.class), isNull()))
 		.thenReturn(DataTranferMockObjectUtil.TRANSFER_PROCESS_COMPLETED);
-		ResponseEntity<JsonNode> response = controller.suspenseDataTransfer(DataTranferMockObjectUtil.CONSUMER_PID,
+		ResponseEntity<Void> response = controller.suspenseDataTransfer(DataTranferMockObjectUtil.CONSUMER_PID,
 				TransferSerializer.serializeProtocolJsonNode(DataTranferMockObjectUtil.TRANSFER_SUSPENSION_MESSAGE));
 		assertEquals(HttpStatus.OK, response.getStatusCode());	
 	}

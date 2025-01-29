@@ -74,7 +74,7 @@ public class DataServiceAPIControllerTest {
     @Test
     @DisplayName("Delete data service - success")
     public void deleteDataService_success() {
-        ResponseEntity<GenericApiResponse<Object>> response = dataServiceAPIController.deleteDataService(CatalogMockObjectUtil.DATA_SERVICE.getId());
+        ResponseEntity<GenericApiResponse<Void>> response = dataServiceAPIController.deleteDataService(CatalogMockObjectUtil.DATA_SERVICE.getId());
 
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());

@@ -82,7 +82,7 @@ public class ConsumerContractNegotiationCallbackController {
     // https://consumer.com/:callback/negotiations/:consumerPid/agreement	POST	ContractAgreementMessage
     // after successful processing - 200 ok; body not specified
     @PostMapping("/consumer/negotiations/{consumerPid}/agreement")
-    public ResponseEntity<JsonNode> handleAgreement(@PathVariable String consumerPid,
+    public ResponseEntity<Void> handleAgreement(@PathVariable String consumerPid,
                                                     @RequestBody JsonNode contractAgreementMessageJsonNode) throws InterruptedException, ExecutionException {
 
     	log.info("Received agreement from provider, consumerPid - {}", consumerPid);
@@ -100,7 +100,7 @@ public class ConsumerContractNegotiationCallbackController {
     // https://consumer.com/:callback/negotiations/:consumerPid/events	POST	ContractNegotiationEventMessage
     // No callbackAddress
     @PostMapping("/consumer/negotiations/{consumerPid}/events")
-    public ResponseEntity<JsonNode> handleFinalizeEvent(@PathVariable String consumerPid,
+    public ResponseEntity<Void> handleFinalizeEvent(@PathVariable String consumerPid,
                                                          @RequestBody JsonNode contractNegotiationEventMessageJsonNode) throws InterruptedException, ExecutionException {
 
         ContractNegotiationEventMessage contractNegotiationEventMessage =
