@@ -101,7 +101,7 @@ public class ProviderContractNegotiationController {
     // POST
 	// Provider must return an HTTP code 200 (OK). The response body is not specified and clients are not required to process it.
     @PostMapping(path = "/{providerPid}/agreement/verification")
-    public ResponseEntity<JsonNode> handleVerifyAgreement(@PathVariable String providerPid,
+    public ResponseEntity<Void> handleVerifyAgreement(@PathVariable String providerPid,
                                                                @RequestBody JsonNode contractAgreementVerificationMessageJsonNode) {
         ContractAgreementVerificationMessage cavm = 
         		NegotiationSerializer.deserializeProtocol(contractAgreementVerificationMessageJsonNode, ContractAgreementVerificationMessage.class);
@@ -118,7 +118,7 @@ public class ProviderContractNegotiationController {
     // POST
     // Provider must return HTTP code 200 (OK). The response body is not specified and clients are not required to process it.
     @PostMapping(path = "/{providerPid}/termination")
-    public ResponseEntity<JsonNode> handleTerminationMessage(@PathVariable String providerPid, 
+    public ResponseEntity<Void> handleTerminationMessage(@PathVariable String providerPid, 
     		@RequestBody JsonNode contractNegotiationTerminationMessageJsonNode) {
         ContractNegotiationTerminationMessage contractNegotiationTerminationMessage = 
         		NegotiationSerializer.deserializeProtocol(contractNegotiationTerminationMessageJsonNode, ContractNegotiationTerminationMessage.class);

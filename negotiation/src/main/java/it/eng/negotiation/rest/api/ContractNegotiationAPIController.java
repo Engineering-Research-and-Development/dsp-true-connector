@@ -83,7 +83,7 @@ public class ContractNegotiationAPIController {
     }
     
 	@PutMapping(path = "/{contractNegotiationId}/verify")
-    public ResponseEntity<GenericApiResponse<JsonNode>> verifyContractNegotiation(@PathVariable String contractNegotiationId) {
+    public ResponseEntity<GenericApiResponse<Void>> verifyContractNegotiation(@PathVariable String contractNegotiationId) {
     	log.info("Manual handling for verification message");
     	
         apiService.verifyNegotiation(contractNegotiationId);
@@ -104,7 +104,7 @@ public class ContractNegotiationAPIController {
     
 	@Deprecated
 	@PostMapping(path = "/agreements")
-    public ResponseEntity<GenericApiResponse<JsonNode>> sendAgreement(@RequestBody JsonNode contractAgreementRequest) {
+    public ResponseEntity<GenericApiResponse<Void>> sendAgreement(@RequestBody JsonNode contractAgreementRequest) {
     	JsonNode agreementNode = contractAgreementRequest.get(DSpaceConstants.AGREEMENT);
     	String consumerPid = contractAgreementRequest.get(DSpaceConstants.CONSUMER_PID).asText();
         String providerPid = contractAgreementRequest.get(DSpaceConstants.PROVIDER_PID).asText();
@@ -123,7 +123,7 @@ public class ContractNegotiationAPIController {
     }
     
 	@PutMapping(path = "/{contractNegotiationId}/finalize")
-    public ResponseEntity<GenericApiResponse<JsonNode>> finalizeNegotiation(@PathVariable String contractNegotiationId) {
+    public ResponseEntity<GenericApiResponse<Void>> finalizeNegotiation(@PathVariable String contractNegotiationId) {
     	apiService.finalizeNegotiation(contractNegotiationId);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
     			.body(GenericApiResponse.success(null, "Contract negotiation finalized"));

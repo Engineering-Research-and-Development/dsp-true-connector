@@ -111,7 +111,7 @@ public class ContractNegotiationAPIControllerTest {
 	@DisplayName("Verify negotiation success")
 	public void verifyNegotiation_success() {
 		
-		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.verifyContractNegotiation(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId());
+		ResponseEntity<GenericApiResponse<Void>> response = controller.verifyContractNegotiation(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId());
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 		verify(apiService).verifyNegotiation(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId());
 	}
@@ -167,7 +167,7 @@ public class ContractNegotiationAPIControllerTest {
 		map.put("providerPid", NegotiationMockObjectUtil.PROVIDER_PID);
 		map.put("agreement", NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.AGREEMENT));
 				
-		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.sendAgreement(mapper.convertValue(map, JsonNode.class));
+		ResponseEntity<GenericApiResponse<Void>> response = controller.sendAgreement(mapper.convertValue(map, JsonNode.class));
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 		verify(apiService).sendAgreement(any(String.class), any(String.class), any(JsonNode.class));
 	}
@@ -191,7 +191,7 @@ public class ContractNegotiationAPIControllerTest {
 	@DisplayName("Finalize negotiation success")
 	public void finalizeNegotiation_success() {
 				
-		ResponseEntity<GenericApiResponse<JsonNode>> response = controller.finalizeNegotiation(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId());
+		ResponseEntity<GenericApiResponse<Void>> response = controller.finalizeNegotiation(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId());
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 		verify(apiService).finalizeNegotiation(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId());
 	}

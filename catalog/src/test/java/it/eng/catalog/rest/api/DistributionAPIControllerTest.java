@@ -74,7 +74,7 @@ public class DistributionAPIControllerTest {
     @Test
     @DisplayName("Delete distribution - success")
     public void deleteDistribution_success() {
-        ResponseEntity<GenericApiResponse<Object>> response = distributionAPIController.deleteDistribution(CatalogMockObjectUtil.DISTRIBUTION.getId());
+        ResponseEntity<GenericApiResponse<Void>> response = distributionAPIController.deleteDistribution(CatalogMockObjectUtil.DISTRIBUTION.getId());
 
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());

@@ -64,7 +64,7 @@ public class DataServiceAPIController {
     }
 
     @DeleteMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<Object>> deleteDataService(@PathVariable String id) {
+    public ResponseEntity<GenericApiResponse<Void>> deleteDataService(@PathVariable String id) {
         log.info("Deleting data service with id: " + id);
 
         dataServiceService.deleteDataService(id);

@@ -96,24 +96,6 @@ public class DatasetService {
     }
 
 	/**
-     * Deletes a dataset by its ID and updates the catalog.
-     *
-     * @param id the unique ID of the dataset to delete
-     * @throws ResourceNotFoundAPIException if no dataset is found with the provided ID
-     * @throws InternalServerErrorAPIException if deleting fails
-     */
-    public void deleteDataset(String id) {
-        Dataset ds = getDatasetByIdForApi(id);
-        try {
-			repository.deleteById(id);
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-			throw new InternalServerErrorAPIException("Dataset could not be deleted");
-		}
-        catalogService.updateCatalogDatasetAfterDelete(ds);
-    }
-
-    /**
      * Updates a dataset in the repository.
      *
      * @param id the unique ID of the dataset to be updated
@@ -155,6 +137,25 @@ public class DatasetService {
         return storedDataset;
     }
     
+	/**
+	 * Deletes a dataset by its ID and updates the catalog.
+	 *
+	 * @param id the unique ID of the dataset to delete
+	 * @throws ResourceNotFoundAPIException if no dataset is found with the provided ID
+	 * @throws InternalServerErrorAPIException if deleting fails
+	 */
+	public void deleteDataset(String id) {
+	    Dataset ds = getDatasetByIdForApi(id);
+	    try {
+	    	artifactService.deleteOldArtifact(ds.getArtifact());
+			repository.deleteById(id);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			throw new InternalServerErrorAPIException("Dataset could not be deleted");
+		}
+	    catalogService.updateCatalogDatasetAfterDelete(ds);
+	}
+
 	public List<String> getFormatsFromDataset(String id) {
 		Set<Distribution> distributions = getDatasetByIdForApi(id).getDistribution();
 		

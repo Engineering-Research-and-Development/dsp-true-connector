@@ -65,7 +65,7 @@ public class CatalogAPIController {
     }
 
     @DeleteMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<Object>> deleteCatalog(@PathVariable String id) {
+    public ResponseEntity<GenericApiResponse<Void>> deleteCatalog(@PathVariable String id) {
         log.info("Deleting catalog with id: " + id);
 
         catalogService.deleteCatalog(id);

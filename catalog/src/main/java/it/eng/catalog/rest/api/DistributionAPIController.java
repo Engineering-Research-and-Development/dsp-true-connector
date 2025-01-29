@@ -63,7 +63,7 @@ public class DistributionAPIController {
     }
 
     @DeleteMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<Object>> deleteDistribution(@PathVariable String id) {
+    public ResponseEntity<GenericApiResponse<Void>> deleteDistribution(@PathVariable String id) {
         log.info("Deleting distribution with id: " + id);
 
         distributionService.deleteDistribution(id);

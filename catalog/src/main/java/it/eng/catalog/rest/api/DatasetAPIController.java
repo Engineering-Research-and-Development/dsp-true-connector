@@ -103,35 +103,35 @@ public class DatasetAPIController {
                 .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(storedDataset), "Saved dataset"));
     }
     
-    @DeleteMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<Object>> deleteDataset(@PathVariable String id) {
+    @PutMapping(path = "/{id}")
+	public ResponseEntity<GenericApiResponse<JsonNode>> updateDataset(
+			@PathVariable String id,
+			@RequestPart(value = "file", required = false) MultipartFile file,
+			@RequestPart(value = "url", required = false) String externalURL,
+			@RequestPart(value = "dataset", required = false) String dataset) {
+		
+	    Dataset ds = null;
+	    // if we are updating just the artifact, the dataset can be null
+		if (StringUtils.isNotBlank(dataset)) {
+			ds = CatalogSerializer.deserializePlain(dataset, Dataset.class);
+		}
+	
+	    log.info("Updating dataset with id: " + id);
+	
+	    Dataset storedDataset = datasetService.updateDataset(id, ds, file, externalURL);
+	
+	    return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+	            .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(storedDataset), "Dataset updated"));
+	}
+
+	@DeleteMapping(path = "/{id}")
+    public ResponseEntity<GenericApiResponse<Void>> deleteDataset(@PathVariable String id) {
         log.info("Deleting dataset with id: " + id);
 
         datasetService.deleteDataset(id);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(GenericApiResponse.success(null, "Dataset deleted successfully"));
-    }
-
-    @PutMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<JsonNode>> updateDataset(
-    		@PathVariable String id,
-    		@RequestPart(value = "file", required = false) MultipartFile file,
-			@RequestPart(value = "url", required = false) String externalURL,
-			@RequestPart(value = "dataset", required = false) String dataset) {
-    	
-        Dataset ds = null;
-        // if we are updating just the artifact, the dataset can be null
-		if (StringUtils.isNotBlank(dataset)) {
-			ds = CatalogSerializer.deserializePlain(dataset, Dataset.class);
-		}
-
-        log.info("Updating dataset with id: " + id);
-
-        Dataset storedDataset = datasetService.updateDataset(id, ds, file, externalURL);
-
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(storedDataset), "Dataset updated"));
     }
 }
 

@@ -51,7 +51,7 @@ public class ProviderDataTransferController {
 	}
 
 	@PostMapping(path = "/{providerPid}/start")
-	public ResponseEntity<JsonNode> startDataTransfer(@PathVariable String providerPid,
+	public ResponseEntity<Void> startDataTransfer(@PathVariable String providerPid,
 			@RequestBody JsonNode transferStartMessageJsonNode) {
 		TransferStartMessage transferStartMessage = TransferSerializer.deserializeProtocol(transferStartMessageJsonNode, TransferStartMessage.class);
 		log.info("Starting data transfer for providerPid {} and consumerPid {}", providerPid, transferStartMessage.getConsumerPid());
@@ -61,7 +61,7 @@ public class ProviderDataTransferController {
 	}
 
 	@PostMapping(path = "/{providerPid}/completion")
-	public ResponseEntity<JsonNode> completeDataTransfer(@PathVariable String providerPid,
+	public ResponseEntity<Void> completeDataTransfer(@PathVariable String providerPid,
 			@RequestBody JsonNode transferCompletionMessageJsonNode) {
 		TransferCompletionMessage transferCompletionMessage = TransferSerializer.deserializeProtocol(transferCompletionMessageJsonNode, TransferCompletionMessage.class);
 		log.info("Completing data transfer for providerPid {} and consumerPid {}", providerPid, transferCompletionMessage.getConsumerPid());
@@ -71,7 +71,7 @@ public class ProviderDataTransferController {
 	}
 
 	@PostMapping(path = "/{providerPid}/termination")
-	public ResponseEntity<JsonNode> terminateDataTransfer(@PathVariable String providerPid,
+	public ResponseEntity<Void> terminateDataTransfer(@PathVariable String providerPid,
 			@RequestBody JsonNode transferTerminationMessageJsonNode) {
 		TransferTerminationMessage transferTerminationMessage = TransferSerializer.deserializeProtocol(transferTerminationMessageJsonNode, TransferTerminationMessage.class);
 		log.info("Terminating data transfer for providerPid {} and comsumerPid {}", providerPid, transferTerminationMessage.getConsumerPid());
@@ -81,7 +81,7 @@ public class ProviderDataTransferController {
 	}
 
 	@PostMapping(path = "/{providerPid}/suspension")
-	public ResponseEntity<JsonNode> suspenseDataTransfer(@PathVariable String providerPid,
+	public ResponseEntity<Void> suspenseDataTransfer(@PathVariable String providerPid,
 			@RequestBody JsonNode transferSuspensionMessageJsonNode) {
 		TransferSuspensionMessage transferSuspensionMessage = TransferSerializer.deserializeProtocol(transferSuspensionMessageJsonNode, TransferSuspensionMessage.class);
 		log.info("Suspending data transfer for providerPid {} and consumerPid {}", providerPid, transferSuspensionMessage.getConsumerPid());

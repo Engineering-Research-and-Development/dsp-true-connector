@@ -76,7 +76,7 @@ public class ConsumerContractNegotiationCallbackControllerTest {
         JsonNode jsonNode = mapper.readTree(json);
         doNothing().when(contractNegotiationConsumerService).handleAgreement(any(ContractAgreementMessage.class));
 
-        ResponseEntity<JsonNode> response = controller.handleAgreement(NegotiationMockObjectUtil.CONSUMER_PID, jsonNode);
+        ResponseEntity<Void> response = controller.handleAgreement(NegotiationMockObjectUtil.CONSUMER_PID, jsonNode);
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
 
@@ -101,7 +101,7 @@ public class ConsumerContractNegotiationCallbackControllerTest {
         JsonNode jsonNode = mapper.readTree(json);
         doNothing().when(contractNegotiationConsumerService).handleFinalizeEvent(any(ContractNegotiationEventMessage.class));
 
-        ResponseEntity<JsonNode> response = controller.handleFinalizeEvent(NegotiationMockObjectUtil.CONSUMER_PID, jsonNode);
+        ResponseEntity<Void> response = controller.handleFinalizeEvent(NegotiationMockObjectUtil.CONSUMER_PID, jsonNode);
         assertNull(response.getBody());
         assertTrue(response.getStatusCode().is2xxSuccessful());
     }

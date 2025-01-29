@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 28-01-2025
+
+### Changed
+
+ - Deleting the dataset now deletes also the artifact
+
 ## [0.1.1] - 27-01-2025
 
 ### Changed

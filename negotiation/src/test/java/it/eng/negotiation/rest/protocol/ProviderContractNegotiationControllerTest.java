@@ -127,7 +127,7 @@ public class ProviderContractNegotiationControllerTest {
 				.consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
 				.providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
 				.build();
-		ResponseEntity<JsonNode> response = controller.handleVerifyAgreement(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializeProtocolJsonNode(cavm));
+		ResponseEntity<Void> response = controller.handleVerifyAgreement(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializeProtocolJsonNode(cavm));
 		assertNotNull(response, "Response is not null");
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 	}
@@ -148,7 +148,7 @@ public class ProviderContractNegotiationControllerTest {
 				.code("1")
 				.reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("test").build()))
 				.build();
-		ResponseEntity<JsonNode> response = controller.handleTerminationMessage(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializeProtocolJsonNode(cntm));
+		ResponseEntity<Void> response = controller.handleTerminationMessage(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializeProtocolJsonNode(cntm));
 		assertNotNull(response, "Response is not null");
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 	}
