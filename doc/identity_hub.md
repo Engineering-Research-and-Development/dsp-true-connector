@@ -8,6 +8,7 @@ Table of content:
   - [DID Documents](#did-documents)
   - [Verifiable credentials](#vc)
   - [Dataspace-issuer did document](#issuer-did-document)
+  - [Further reading](#more)
 
 Note: informations gathered so far:
 
@@ -746,3 +747,10 @@ public class JwtIdentityHubTest {
 ```
 
 </details>
+
+
+## Further reading <a name="more"></a>
+
+[Decentralized Claims Protocol](https://github.com/eclipse-dataspace-dcp/decentralized-claims-protocol/tree/main)
+
+[Identity Hub EDC](https://eclipse-edc.github.io/documentation/for-adopters/identity-hub/)
