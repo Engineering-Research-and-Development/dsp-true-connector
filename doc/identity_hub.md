@@ -3,7 +3,7 @@
 Table of content:
 
   - [Download and customize to run locally](#download)
-  - [Creating participant context](#creating-participant-context)
+  - [Creating participant context](#participant-context)
   - [Get participants](#get-participants)
   - [DID Documents](#did-documents)
   - [Verifiable credentials](#vc)
@@ -72,7 +72,7 @@ gradlew :launcher:identityhub:shadowJar
 ```
 
 
-When bult, run using following command
+When built, run using following command
 
 ```
 java -Dweb.http.presentation.port=10001 -Dweb.http.presentation.path="/api/presentation" -Dweb.http.port=8181 -Dweb.http.path="/api" -Dweb.http.identity.port=8182 -Dweb.http.identity.path="/api/identity" -Dedc.ih.api.superuser.key="c3VwZXItdXNlcg==.c3VwZXItc2VjcmV0Cg==" -Dedc.api.accounts.key="password" -jar launcher/identityhub/build/libs/identity-hub.jar

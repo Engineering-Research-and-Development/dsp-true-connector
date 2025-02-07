@@ -2,8 +2,8 @@
 
 ## Table of Contents
 
-- [Identity with centralized provider](#"centralized")
-- [User/Organization as IdP]("user-idp")
+- [Identity with centralized provider](#centralized)
+- [User/Organization as IdP](#user-idp)
 - [Verifiable credential](#verifiable-credential)
 - [DID *D*ecentralized *ID*entifier](#did)
 	- [DID method](#did-method)
