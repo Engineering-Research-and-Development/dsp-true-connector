@@ -37,6 +37,7 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -75,6 +76,8 @@ class DataTransferAPIServiceTest {
 	
 	private MockHttpServletResponse mockHttpServletResponse;
 	
+	@Mock
+	private ApplicationEventPublisher publisher;
 	@Mock
 	private UsageControlProperties usageControlProperties;
 	@Mock
