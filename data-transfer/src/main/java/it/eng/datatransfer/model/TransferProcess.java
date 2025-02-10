@@ -56,7 +56,9 @@ public class TransferProcess extends AbstractTransferMessage {
 	@JsonProperty(DSpaceConstants.DSPACE_STATE)
 	private TransferState state;
 	
-	// used to store agreement so we can enforce it
+	/**
+	 *  used to store agreement so we can enforce it
+	 */
 	@JsonIgnore
 	private String agreementId;
 	@JsonIgnore
@@ -64,12 +66,26 @@ public class TransferProcess extends AbstractTransferMessage {
 	@JsonIgnore
 	private String datasetId;
 	
-	// determins which role the connector is for that contract negotiation (consumer or provider)
+	/**
+	 * determins which role the connector is for that contract negotiation (consumer or provider)
+	 */
     @JsonIgnore
     private String role;
     
     @JsonIgnore
     private DataAddress dataAddress;
+    
+    /**
+     * flag to check if the data is downloaded on consumer side
+     */
+    @JsonIgnore
+    private boolean isDownloaded;
+    
+    /*
+     * Id of the downloaded and stored data on consumer side
+     */
+    @JsonIgnore
+    private String dataId;
     
     @JsonIgnore
 	private String format;
@@ -130,6 +146,16 @@ public class TransferProcess extends AbstractTransferMessage {
 		
 		public Builder dataAddress(DataAddress dataAddress) {
         	message.dataAddress = dataAddress;
+        	return this;
+        }
+		
+		public Builder isDownloaded(boolean isDownloaded) {
+        	message.isDownloaded = isDownloaded;
+        	return this;
+        }
+		
+		public Builder dataId(String dataId) {
+        	message.dataId = dataId;
         	return this;
         }
 		
@@ -213,6 +239,8 @@ public class TransferProcess extends AbstractTransferMessage {
 				.providerPid(this.providerPid)
 				.callbackAddress(this.callbackAddress)
 				.dataAddress(this.dataAddress)
+				.isDownloaded(this.isDownloaded)
+				.dataId(this.dataId)
 				.format(this.format)
 				.state(newTransferState)
 				.role(this.role)

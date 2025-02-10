@@ -138,6 +138,7 @@ public class OkHttpRestClient {
 				ExternalData externalData = new ExternalData();
 				externalData.setData(response.body().bytes());
 				externalData.setContentType(response.body().contentType());
+				externalData.setContentDisposition(response.header(HttpHeaders.CONTENT_DISPOSITION));
 				return GenericApiResponse.success(externalData, "Response received from " + targetAddress);
 			} else {
 				return GenericApiResponse.error(response.message());

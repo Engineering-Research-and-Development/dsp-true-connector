@@ -1,14 +1,14 @@
 {
 	"info": {
-		"_postman_id": "c1268923-e00d-45a1-bfa7-22395ea150ff",
+		"_postman_id": "aeb056ff-5a87-4458-ae9a-dbe902fe3833",
 		"name": "Data Transfer API test",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "21815221",
-		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-c1268923-e00d-45a1-bfa7-22395ea150ff?action=share&source=collection_link&creator=21815221"
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-aeb056ff-5a87-4458-ae9a-dbe902fe3833?action=share&source=collection_link&creator=21815221"
 	},
 	"item": [
 		{
-			"name": "[C] Download data fail",
+			"name": "[P] Download data fail",
 			"event": [
 				{
 					"listen": "test",
@@ -90,6 +90,82 @@
 		},
 		{
 			"name": "[C] Download data fail",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is client error or server error\", () => {\r",
+							"    pm.expect(pm.response.code).to.be.oneOf([400, 401, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 422, 423, 424, 425, 426, 428, 429, 431, 451, 500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511]);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"download"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[C] View data fail",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is client error or server error\", () => {\r",
+							"    pm.expect(pm.response.code).to.be.oneOf([400, 401, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 422, 423, 424, 425, 426, 428, 429, 431, 451, 500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511]);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"view"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[P] Download data fail",
 			"event": [
 				{
 					"listen": "test",
@@ -223,6 +299,84 @@
 					"listen": "test",
 					"script": {
 						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"download"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[C] View data",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check expected response\", ()=> {\r",
+							"    pm.response.to.have.status(200);\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"view"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[P] Download data",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
 							"pm.test(\"Check expected response\", ()=> {\r",
 							"    pm.response.to.have.status(200);\r",
 							"    var jsonData = pm.response.json();\r",
@@ -315,6 +469,84 @@
 			],
 			"request": {
 				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"download"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[C] View data",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check expected response\", ()=> {\r",
+							"    pm.response.to.have.status(200);\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"view"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[P] Download data fail",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is client error or server error\", () => {\r",
+							"    pm.expect(pm.response.code).to.be.oneOf([400, 401, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 422, 423, 424, 425, 426, 428, 429, 431, 451, 500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511]);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
 				"header": [],
 				"url": {
 					"raw": "{{PROVIDER}}/artifacts/{{transactionId}}",
@@ -378,6 +610,84 @@
 		},
 		{
 			"name": "[C] Download data",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"download"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[C] View data",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check expected response\", ()=> {\r",
+							"    pm.response.to.have.status(200);\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"view"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[P] Download data",
 			"event": [
 				{
 					"listen": "test",
@@ -459,6 +769,84 @@
 		},
 		{
 			"name": "[C] Download data fail",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is client error or server error\", () => {\r",
+							"    pm.expect(pm.response.code).to.be.oneOf([400, 401, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 422, 423, 424, 425, 426, 428, 429, 431, 451, 500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511]);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"download"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[C] View data",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check expected response\", ()=> {\r",
+							"    pm.response.to.have.status(200);\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"view"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[P] Download data fail",
 			"event": [
 				{
 					"listen": "test",

@@ -1,5 +1,6 @@
 package it.eng.datatransfer.rest.api;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -8,10 +9,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,10 +42,14 @@ import it.eng.datatransfer.service.api.DataTransferAPIService;
 import it.eng.datatransfer.util.DataTranferMockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.response.GenericApiResponse;
+import jakarta.servlet.http.HttpServletResponse;
 
 @ExtendWith(MockitoExtension.class)
 class DataTransferAPIControllerTest {
 
+	@Mock
+	private HttpServletResponse response;
+	
 	@Mock
 	private DataTransferAPIService apiService;
 	
@@ -192,5 +199,41 @@ class DataTransferAPIControllerTest {
 			.when(apiService).terminateTransfer(DataTranferMockObjectUtil.TRANSFER_PROCESS_TERMINATED.getId());
 		
 		assertThrows(DataTransferAPIException.class, () -> controller.terminateTransfer(DataTranferMockObjectUtil.TRANSFER_PROCESS_TERMINATED.getId()));
+	}
+	
+	@Test
+	@DisplayName("Download data - success")
+	public void downloadData_success() throws IllegalStateException, IOException  {
+		doNothing().when(apiService).downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());;
+
+		
+		assertDoesNotThrow(() -> controller.downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+		
+	}
+	
+	@Test
+	@DisplayName("Download data - fail")
+	public void downloadData_fail() throws IllegalStateException, IOException {
+		doThrow(new DataTransferAPIException("message")).when(apiService).downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+		
+		assertThrows(DataTransferAPIException.class, () -> controller.downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+	}
+	
+	@Test
+	@DisplayName("View data - success")
+	public void viewData_success() throws IllegalStateException, IOException  {
+		doNothing().when(apiService).viewData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(), response);
+
+		
+		assertDoesNotThrow(() -> controller.viewData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(), response));
+		
+	}
+	
+	@Test
+	@DisplayName("View data - fail")
+	public void viewData_fail() throws IllegalStateException, IOException {
+		doThrow(new DataTransferAPIException("message")).when(apiService).viewData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(), response);
+		
+		assertThrows(DataTransferAPIException.class, () -> controller.viewData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(), response));
 	}
 }
