@@ -187,7 +187,7 @@ public class DataTransferAPIViewDataTest extends BaseIntegrationTest{
 		
 		agreementRepository.save(agreement);
 		
-		PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 5);
+		PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 6);
 		
 		policyEnforcementRepository.save(policyEnforcement);
 		
@@ -210,11 +210,8 @@ public class DataTransferAPIViewDataTest extends BaseIntegrationTest{
     					get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/view")
     					.contentType(MediaType.APPLICATION_JSON));
     	
-    	result.andExpect(status().isOk())
-    		.andExpect(content().contentType(MediaType.TEXT_PLAIN));
-    	
-		
-    	result.andExpect(status().isBadRequest());
+    	result.andExpect(status().isBadRequest())
+    		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
     	
     	TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {};
 		
