@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.io.ByteArrayInputStream;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
 
 import org.bson.Document;
 import org.bson.types.ObjectId;
@@ -152,6 +153,8 @@ public class DataTransferAPIViewDataTest extends BaseIntegrationTest{
 		assertEquals(transferProcessStarted.getState(), transferProcessFromDb.getState());
 		
 		// check if the PolicyEnforcement count is increased
+		// waiting for 1 second to give time to the publisher to increase the policy access count
+		TimeUnit.SECONDS.sleep(1);
 		PolicyEnforcement enforcementFromDb = policyEnforcementRepository.findById(policyEnforcement.getId()).get();
 		
 		assertEquals(policyEnforcement.getCount() + 1, enforcementFromDb.getCount());
