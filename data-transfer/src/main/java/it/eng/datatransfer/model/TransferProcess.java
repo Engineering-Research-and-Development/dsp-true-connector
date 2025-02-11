@@ -204,6 +204,9 @@ public class TransferProcess extends AbstractTransferMessage {
 			if (message.id == null) {
 				message.id = message.createNewPid();
 			}
+			if (message.consumerPid == null) {
+				message.consumerPid = message.createNewPid();
+			}
 			if (message.providerPid == null) {
 				message.providerPid = message.createNewPid();
 			}
