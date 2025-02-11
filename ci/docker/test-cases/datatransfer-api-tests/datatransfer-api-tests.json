@@ -72,7 +72,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"transferProcessId\": \"{{consumer_transferProcessId}}\",\r\n    \"format\": \"HttpData-PULL\",\r\n    \"dataAddress\": {\r\n        \"endpointType\": \"https://w3id.org/idsa/v4.1/HTTP\",\r\n        \"endpoint\": \"http://example.com\",\r\n        \"endpointProperties\": [\r\n            {\r\n                \"name\": \"authorization\",\r\n                \"value\": \"TOKEN-ABCDEFG\"\r\n            },\r\n            {\r\n                \"name\": \"authType\",\r\n                \"value\": \"bearer\"\r\n            }\r\n        ]\r\n    }\r\n}",
+					"raw": "{\r\n    \"transferProcessId\": \"{{consumer_transferProcessId}}\",\r\n    \"format\": \"HttpData-PULL\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
