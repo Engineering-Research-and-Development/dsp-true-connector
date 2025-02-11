@@ -17,6 +17,7 @@ import it.eng.datatransfer.model.TransferTerminationMessage;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.tools.event.datatransfer.InitializeTransferProcess;
+import it.eng.tools.model.IConstants;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
@@ -37,15 +38,21 @@ public class DataTransferEventListener {
 	@EventListener
 	public void initializeTransferProcess(InitializeTransferProcess initializeTransferProcess) {
 		log.info("Initializing transfer process");
-		TransferProcess transferProcess = TransferProcess.Builder.newInstance()
-				.consumerPid("temporary_consumer_pid")
+		TransferProcess.Builder transferProcessBuilder = TransferProcess.Builder.newInstance()
 				.callbackAddress(initializeTransferProcess.getCallbackAddress())
 				.agreementId(initializeTransferProcess.getAgreementId())
 				.datasetId(initializeTransferProcess.getDatasetId())
 				.state(TransferState.INITIALIZED)
-				.role(initializeTransferProcess.getRole())
-				.build();
-		transferProcessRepository.save(transferProcess);
+				.role(initializeTransferProcess.getRole());
+		
+		if (initializeTransferProcess.getRole().equals(IConstants.ROLE_CONSUMER)) {
+			transferProcessBuilder.providerPid("temporary_provider_pid");
+		}
+		if (initializeTransferProcess.getRole().equals(IConstants.ROLE_PROVIDER)) {
+			transferProcessBuilder.consumerPid("temporary_consumer_pid");
+		}
+		
+		transferProcessRepository.save(transferProcessBuilder.build());
 	}
 
 	@EventListener

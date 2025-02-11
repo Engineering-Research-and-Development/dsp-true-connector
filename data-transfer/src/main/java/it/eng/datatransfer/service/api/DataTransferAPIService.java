@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.Collection;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
@@ -113,23 +112,23 @@ public class DataTransferAPIService {
 	/********* CONSUMER ***********/
 	
 	public JsonNode requestTransfer(DataTransferRequest dataTransferRequest) {
-		TransferProcess transferProcess = findTransferProcessById(dataTransferRequest.getTransferProcessId());
+		TransferProcess transferProcessInitialized = findTransferProcessById(dataTransferRequest.getTransferProcessId());
 		
-		stateTransitionCheck(TransferState.REQUESTED, transferProcess.getState());
+		stateTransitionCheck(TransferState.REQUESTED, transferProcessInitialized.getState());
 		DataAddress dataAddressForMessage = null;
 		if (StringUtils.isNotBlank(dataTransferRequest.getFormat()) && dataTransferRequest.getDataAddress() != null && !dataTransferRequest.getDataAddress().isEmpty()) {
 			dataAddressForMessage = TransferSerializer.deserializePlain(dataTransferRequest.getDataAddress().toPrettyString(), DataAddress.class);
 		}
 		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
-				.agreementId(transferProcess.getAgreementId())
+				.agreementId(transferProcessInitialized.getAgreementId())
 				.callbackAddress(dataTransferProperties.consumerCallbackAddress())
-				.consumerPid("urn:uuid:" + UUID.randomUUID())
+				.consumerPid(transferProcessInitialized.getConsumerPid())
 				.format(dataTransferRequest.getFormat())
 				.dataAddress(dataAddressForMessage)
 				.build();
 		
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
-				DataTransferCallback.getConsumerDataTransferRequest(transferProcess.getCallbackAddress()), 
+				DataTransferCallback.getConsumerDataTransferRequest(transferProcessInitialized.getCallbackAddress()), 
 				TransferSerializer.serializeProtocolJsonNode(transferRequestMessage), 
 				credentialUtils.getConnectorCredentials());
 		log.info("Response received {}", response);
@@ -140,22 +139,22 @@ public class DataTransferAPIService {
 				TransferProcess transferProcessFromResponse = TransferSerializer.deserializeProtocol(jsonNode, TransferProcess.class);
 				
 				transferProcessForDB = TransferProcess.Builder.newInstance()
-						.id(transferProcess.getId())
-						.agreementId(transferProcess.getAgreementId())
-						.consumerPid(transferProcessFromResponse.getConsumerPid())
+						.id(transferProcessInitialized.getId())
+						.agreementId(transferProcessInitialized.getAgreementId())
+						.consumerPid(transferProcessInitialized.getConsumerPid())
 						.providerPid(transferProcessFromResponse.getProviderPid())
 						.format(dataTransferRequest.getFormat())
 						.dataAddress(dataAddressForMessage)
-						.isDownloaded(transferProcess.isDownloaded())
-			   			.dataId(transferProcess.getDataId())
-						.callbackAddress(transferProcess.getCallbackAddress())
+						.isDownloaded(transferProcessInitialized.isDownloaded())
+			   			.dataId(transferProcessInitialized.getDataId())
+						.callbackAddress(transferProcessInitialized.getCallbackAddress())
 						.role(IConstants.ROLE_CONSUMER)
 						.state(transferProcessFromResponse.getState())
-						.createdBy(transferProcess.getCreatedBy())
-						.lastModifiedBy(transferProcess.getLastModifiedBy())
-						.version(transferProcess.getVersion())
+						.createdBy(transferProcessInitialized.getCreatedBy())
+						.lastModifiedBy(transferProcessInitialized.getLastModifiedBy())
+						.version(transferProcessInitialized.getVersion())
 						// although not needed on consumer side it is added here to avoid duplicate id exception from mongodb
-						.datasetId(transferProcess.getDatasetId())
+						.datasetId(transferProcessInitialized.getDatasetId())
 						.build();
 				
 				transferProcessRepository.save(transferProcessForDB);

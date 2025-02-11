@@ -39,6 +39,7 @@ import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 
 /**
@@ -116,10 +117,11 @@ public class DataTransferApiTest extends BaseIntegrationTest {
 	public void initiateDataTransfer() throws Exception {
 		TransferProcess transferProcessInitialized = TransferProcess.Builder.newInstance()
 				.consumerPid(createNewId())
-				.providerPid(createNewId())
+				.providerPid("temporary_provider_pid")
 				.agreementId(createNewId())
 				.callbackAddress(wiremock.baseUrl())
 				.state(TransferState.INITIALIZED)
+				.role(IConstants.ROLE_CONSUMER)
 				.build();
 		transferProcessRepository.save(transferProcessInitialized);
 		
@@ -157,6 +159,13 @@ public class DataTransferApiTest extends BaseIntegrationTest {
 		assertNotNull(genericApiResponse.getData());
 		assertEquals(TransferProcess.class, genericApiResponse.getData().getClass());
 		
+		// check if the Transfer Process is properly inserted and that consumerPid and providerPid are correct
+    	TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessInitialized.getId()).get();
+    	
+    	assertEquals(transferProcessInitialized.getConsumerPid(), transferProcessFromDb.getConsumerPid());
+    	assertEquals(genericApiResponse.getData().getProviderPid(), transferProcessFromDb.getProviderPid());
+    	assertEquals(TransferState.REQUESTED, transferProcessFromDb.getState());
+
     	// cleanup
     	transferProcessRepository.deleteById(transferProcessInitialized.getId());
     }
@@ -209,6 +218,16 @@ public class DataTransferApiTest extends BaseIntegrationTest {
 		assertFalse(genericApiResponse.isSuccess());
 		assertNotNull(genericApiResponse.getData());
 		assertEquals(TransferError.class, genericApiResponse.getData().getClass());
+		
+		// check if the Transfer Process is unchanged and that consumerPid and providerPid are correct
+    	TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessInitialized.getId()).get();
+    	
+    	assertEquals(transferProcessInitialized.getProviderPid(), transferProcessFromDb.getProviderPid());
+    	assertEquals(transferProcessInitialized.getConsumerPid(), transferProcessFromDb.getConsumerPid());
+    	assertEquals(TransferState.INITIALIZED, transferProcessFromDb.getState());
+    	
+    	// cleanup
+    	transferProcessRepository.deleteById(transferProcessInitialized.getId());
 	}
 	
 	
