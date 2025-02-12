@@ -13,6 +13,10 @@ public interface IConstants {
 	public static final String ROLE_CONSUMER = "consumer";
 	public static final String ROLE_PROVIDER = "provider";
 	public static final String ARTIFACT_TYPE = "artifactType";
+	public static final String AUTH_TYPE = "authType";
+	public static final String AUTHORIZATION = "authorization";
+	public static final String AUTH_BEARER = "Bearer";
+	public static final String AUTH_BASIC = "Basic";
 	
 	
 }

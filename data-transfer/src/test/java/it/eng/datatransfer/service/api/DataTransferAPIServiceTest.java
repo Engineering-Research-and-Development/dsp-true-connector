@@ -421,7 +421,7 @@ class DataTransferAPIServiceTest {
 		when(usageControlProperties.usageControlEnabled()).thenReturn(true);
 		when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
 		.thenReturn(TransferSerializer.serializePlain(internalResponse));
-		when(okHttpRestClient.downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getDataAddress().getEndpoint(), null))
+		when(okHttpRestClient.downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getDataAddress().getEndpoint(), null, null))
 		.thenReturn(dataResponse);
 		when(gridFSBucket.uploadFromStream(anyString(), any(InputStream.class), any(GridFSUploadOptions.class))).thenReturn(objectId);
 		when(transferProcessRepository.save(any(TransferProcess.class)))
@@ -453,7 +453,7 @@ class DataTransferAPIServiceTest {
 		when(usageControlProperties.usageControlEnabled()).thenReturn(true);
 		when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
 		.thenReturn(TransferSerializer.serializePlain(internalResponse));
-		when(okHttpRestClient.downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getDataAddress().getEndpoint(), null))
+		when(okHttpRestClient.downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getDataAddress().getEndpoint(), null, null))
 		.thenReturn(dataResponse);
 		
 		try (MockedStatic<GridFSBuckets> buckets = Mockito.mockStatic(GridFSBuckets.class)) {
@@ -477,7 +477,7 @@ class DataTransferAPIServiceTest {
 		when(usageControlProperties.usageControlEnabled()).thenReturn(true);
 		when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
 		.thenReturn(TransferSerializer.serializePlain(internalResponse));
-		when(okHttpRestClient.downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getDataAddress().getEndpoint(), null))
+		when(okHttpRestClient.downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getDataAddress().getEndpoint(), null, null))
 		.thenReturn(dataResponse);
 		
 

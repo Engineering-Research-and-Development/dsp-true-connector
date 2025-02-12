@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.List;
 
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
@@ -42,6 +43,7 @@ import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.DataAddress;
+import it.eng.datatransfer.model.EndpointProperty;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.repository.TransferProcessRepository;
@@ -57,7 +59,9 @@ import it.eng.negotiation.model.PolicyEnforcement;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.PolicyEnforcementRepository;
 import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import okhttp3.Credentials;
 
 public class DataTransferAPIDownloadDataTest extends BaseIntegrationTest{
 	
@@ -113,9 +117,25 @@ public class DataTransferAPIDownloadDataTest extends BaseIntegrationTest{
 		String transactionId = Base64.getEncoder().encodeToString((consumerPid + "|" + providerPid)
 				.getBytes(Charset.forName("UTF-8")));
 		
+		String mockUser = "mockUser";
+		String mockPassword = "mockPassword";
+		
+		EndpointProperty authType = EndpointProperty.Builder.newInstance()
+				.name(IConstants.AUTH_TYPE)
+				.value(IConstants.AUTH_BASIC)
+				.build();
+		
+		EndpointProperty authorization = EndpointProperty.Builder.newInstance()
+				.name(IConstants.AUTHORIZATION)
+				.value(Credentials.basic(mockUser, mockPassword).replaceFirst(IConstants.AUTH_BASIC + " ", ""))
+				.build();
+		
+		List<EndpointProperty> properties = List.of(authType, authorization);
+		
 		DataAddress dataAddress = DataAddress.Builder.newInstance()
 				.endpoint(wiremock.baseUrl() + "/artifacts/" + transactionId)
 				.endpointType(DataTranferMockObjectUtil.ENDPOINT_TYPE)
+				.endpointProperties(properties)
 				.build();
 		
 		TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
@@ -133,6 +153,7 @@ public class DataTransferAPIDownloadDataTest extends BaseIntegrationTest{
 		
 		
 		WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.get("/artifacts/" + transactionId)
+				.withBasicAuth(mockUser, mockPassword)
 				.willReturn(
 	                aResponse().withHeader(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN_VALUE)
 	                .withHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + FILE_NAME)

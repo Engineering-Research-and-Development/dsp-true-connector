@@ -110,7 +110,7 @@ public class RestArtifactService {
     }
 	
 	private void getExternalData(String value, HttpServletResponse response) {
-		GenericApiResponse<ExternalData> externalData = okHttpRestClient.downloadData(value, null);
+		GenericApiResponse<ExternalData> externalData = okHttpRestClient.downloadData(value, null, null);
 		
 		if (externalData.isSuccess()) {
 			try {
