@@ -117,7 +117,7 @@ public class DataTransferApiTest extends BaseIntegrationTest {
 	public void initiateDataTransfer() throws Exception {
 		TransferProcess transferProcessInitialized = TransferProcess.Builder.newInstance()
 				.consumerPid(createNewId())
-				.providerPid("temporary_provider_pid")
+				.providerPid(IConstants.TEMPORARY_PROVIDER_PID)
 				.agreementId(createNewId())
 				.callbackAddress(wiremock.baseUrl())
 				.state(TransferState.INITIALIZED)

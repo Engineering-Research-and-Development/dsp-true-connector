@@ -46,10 +46,10 @@ public class DataTransferEventListener {
 				.role(initializeTransferProcess.getRole());
 		
 		if (initializeTransferProcess.getRole().equals(IConstants.ROLE_CONSUMER)) {
-			transferProcessBuilder.providerPid("temporary_provider_pid");
+			transferProcessBuilder.providerPid(IConstants.TEMPORARY_PROVIDER_PID);
 		}
 		if (initializeTransferProcess.getRole().equals(IConstants.ROLE_PROVIDER)) {
-			transferProcessBuilder.consumerPid("temporary_consumer_pid");
+			transferProcessBuilder.consumerPid(IConstants.TEMPORARY_CONSUMER_PID);
 		}
 		
 		transferProcessRepository.save(transferProcessBuilder.build());

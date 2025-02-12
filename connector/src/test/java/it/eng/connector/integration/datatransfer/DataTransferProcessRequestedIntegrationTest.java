@@ -80,9 +80,9 @@ public class DataTransferProcessRequestedIntegrationTest extends BaseIntegration
     			.role(IConstants.ROLE_PROVIDER)
     			.build();
     	contractNegotiationRepository.save(contractNegotiationFinalized);
-		
+    	
     	TransferProcess transferProcessInitialized = TransferProcess.Builder.newInstance()
-    			.consumerPid("temporary_consumer_pid")
+    			.consumerPid(IConstants.TEMPORARY_CONSUMER_PID)
     			.providerPid(createNewId())
     			.format(DataTransferFormat.HTTP_PULL.format())
     			.agreementId(agreement.getId())
@@ -192,7 +192,7 @@ public class DataTransferProcessRequestedIntegrationTest extends BaseIntegration
 		    	contractNegotiationRepository.save(contractNegotiationFinalized);
 				
 		    	TransferProcess transferProcessInitialized = TransferProcess.Builder.newInstance()
-		    			.consumerPid("temporary_consumer_pid")
+		    			.consumerPid(IConstants.TEMPORARY_CONSUMER_PID)
 		    			.providerPid(createNewId())
 		    			.format(DataTransferFormat.HTTP_PULL.format())
 		    			.agreementId(agreement.getId())

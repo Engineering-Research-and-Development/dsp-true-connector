@@ -124,7 +124,7 @@ public class ContractNegotiationFinalizeIntegrationTest extends BaseIntegrationT
 		assertNotNull(transferProcess.getCallbackAddress());
 		assertNotNull(transferProcess.getRole());
 		assertNotNull(transferProcess.getDatasetId());
-		assertEquals("temporary_provider_pid", transferProcess.getProviderPid());
+		assertEquals(IConstants.TEMPORARY_PROVIDER_PID, transferProcess.getProviderPid());
 		
 		agreementRepository.delete(agreement);
 		offerRepository.delete(offer);
