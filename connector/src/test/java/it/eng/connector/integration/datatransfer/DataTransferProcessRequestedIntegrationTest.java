@@ -1,11 +1,10 @@
 package it.eng.connector.integration.datatransfer;
 
-import static org.hamcrest.CoreMatchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.Arrays;
@@ -37,7 +36,7 @@ import it.eng.negotiation.model.Operator;
 import it.eng.negotiation.model.Permission;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
-import it.eng.tools.model.DSpaceConstants;
+import it.eng.tools.model.IConstants;
 
 public class DataTransferProcessRequestedIntegrationTest extends BaseIntegrationTest {
 // Consumer -> REQUESTED
@@ -78,12 +77,12 @@ public class DataTransferProcessRequestedIntegrationTest extends BaseIntegration
     			.callbackAddress("callbackAddress.test")
     			.agreement(agreement)
     			.state(ContractNegotiationState.FINALIZED)
-    			.role("consumer")
+    			.role(IConstants.ROLE_PROVIDER)
     			.build();
     	contractNegotiationRepository.save(contractNegotiationFinalized);
-		
+    	
     	TransferProcess transferProcessInitialized = TransferProcess.Builder.newInstance()
-    			.consumerPid(createNewId())
+    			.consumerPid(IConstants.TEMPORARY_CONSUMER_PID)
     			.providerPid(createNewId())
     			.format(DataTransferFormat.HTTP_PULL.format())
     			.agreementId(agreement.getId())
@@ -112,6 +111,14 @@ public class DataTransferProcessRequestedIntegrationTest extends BaseIntegration
     	assertNotNull(transferProcessRequested);
     	assertEquals(TransferState.REQUESTED, transferProcessRequested.getState());
     	
+    	// check if the Transfer Process is properly inserted and that consumerPid and providerPid are correct
+    	TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessInitialized.getId()).get();
+    	
+    	assertEquals(transferProcessInitialized.getProviderPid(), transferProcessFromDb.getProviderPid());
+    	assertEquals(transferRequestMessage.getConsumerPid(), transferProcessFromDb.getConsumerPid());
+    	assertEquals(TransferState.REQUESTED, transferProcessFromDb.getState());
+    	
+    	// cleanup
     	agreementRepository.delete(agreement);
     	contractNegotiationRepository.delete(contractNegotiationFinalized);
     	transferProcessRepository.deleteById(transferProcessInitialized.getId());
@@ -148,6 +155,83 @@ public class DataTransferProcessRequestedIntegrationTest extends BaseIntegration
        	String response = result.andReturn().getResponse().getContentAsString();
       	TransferError transferError = TransferSerializer.deserializeProtocol(response, TransferError.class);
       	assertNotNull(transferError);
+      	
+      	// cleanup
+    	transferProcessRepository.deleteById(transferProcessRequested.getId());
+	}
+	
+	@Test
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    public void initiateDataTransfer_wrongDatasetFormat() throws Exception {
+		// finalized contract negotiation
+				Permission permission = Permission.Builder.newInstance()
+		    			.action(Action.USE)
+		    			.constraint(Arrays.asList(Constraint.Builder.newInstance()
+		    					.leftOperand(LeftOperand.COUNT)
+		    					.operator(Operator.LTEQ)
+		    					.rightOperand("5")
+		    					.build()))
+		    			.build();
+				Agreement agreement = Agreement.Builder.newInstance()
+		    			.assignee("assignee")
+		    			.assigner("assigner")
+		    			.target("test_dataset")
+		    			.permission(Arrays.asList(permission))
+		    			.build();
+		    	agreementRepository.save(agreement);
+		    	
+		    	// finalized contract negotiation
+		    	ContractNegotiation contractNegotiationFinalized = ContractNegotiation.Builder.newInstance()
+		    			.consumerPid(createNewId())
+		    			.providerPid(createNewId())
+		    			.callbackAddress("callbackAddress.test")
+		    			.agreement(agreement)
+		    			.state(ContractNegotiationState.FINALIZED)
+		    			.role(IConstants.ROLE_PROVIDER)
+		    			.build();
+		    	contractNegotiationRepository.save(contractNegotiationFinalized);
+				
+		    	TransferProcess transferProcessInitialized = TransferProcess.Builder.newInstance()
+		    			.consumerPid(IConstants.TEMPORARY_CONSUMER_PID)
+		    			.providerPid(createNewId())
+		    			.format(DataTransferFormat.HTTP_PULL.format())
+		    			.agreementId(agreement.getId())
+		    			.state(TransferState.INITIALIZED)
+		    			.datasetId(datasetId)
+		    			.build();
+		    	transferProcessRepository.save(transferProcessInitialized);
+		    	
+				TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
+			    		.consumerPid(createNewId())
+			    		.agreementId(agreement.getId())
+			    		.format("some_format")
+			    		.callbackAddress(DataTranferMockObjectUtil.CALLBACK_ADDRESS)
+			    		.build();
+    	
+    	final ResultActions result =
+    			mockMvc.perform(
+    					post("/transfers/request")
+    					.content(TransferSerializer.serializeProtocol(transferRequestMessage))
+    					.contentType(MediaType.APPLICATION_JSON));
+    	result.andExpect(status().isBadRequest())
+    		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
+    	
+       	String response = result.andReturn().getResponse().getContentAsString();
+      	TransferError transferError = TransferSerializer.deserializeProtocol(response, TransferError.class);
+      	assertNotNull(transferError);
+      	
+      	// check if the Transfer Process is unchanged and that consumerPid and providerPid are correct
+    	TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessInitialized.getId()).get();
+    	
+    	assertEquals(transferProcessInitialized.getProviderPid(), transferProcessFromDb.getProviderPid());
+    	assertNotEquals(transferRequestMessage.getConsumerPid(), transferProcessFromDb.getConsumerPid());
+    	assertEquals(transferProcessInitialized.getConsumerPid(), transferProcessFromDb.getConsumerPid());
+    	assertEquals(TransferState.INITIALIZED, transferProcessFromDb.getState());
+      	
+      	// cleanup
+    	agreementRepository.delete(agreement);
+    	contractNegotiationRepository.delete(contractNegotiationFinalized);
+    	transferProcessRepository.deleteById(transferProcessInitialized.getId());
 	}
 	
 	@Test
@@ -181,6 +265,9 @@ public class DataTransferProcessRequestedIntegrationTest extends BaseIntegration
        	String response = result.andReturn().getResponse().getContentAsString();
       	TransferError transferError = TransferSerializer.deserializeProtocol(response, TransferError.class);
       	assertNotNull(transferError);
+      	
+      	// cleanup
+    	transferProcessRepository.deleteById(transferProcessRequested.getId());
 	}
 	
 	@Test

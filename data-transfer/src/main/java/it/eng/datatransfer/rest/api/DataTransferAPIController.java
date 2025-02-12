@@ -20,6 +20,7 @@ import it.eng.datatransfer.model.DataTransferRequest;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
@@ -43,6 +44,23 @@ public class DataTransferAPIController {
 		JsonNode response = apiService.requestTransfer(dataTransferRequest);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
 				.body(GenericApiResponse.success(response, "Data transfer requested"));
+	}
+	
+	@GetMapping(path = { "/{transferProcessId}/download" })
+	public ResponseEntity<GenericApiResponse<Void>> downloadData(
+			@PathVariable(required = true) String transferProcessId) {
+		log.info("Downloading transfer process id - {} data", transferProcessId);
+		apiService.downloadData(transferProcessId);
+		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+				.body(GenericApiResponse.success(null, "Data successfully downloaded"));
+	}
+	
+	@GetMapping(path = { "/{transferProcessId}/view" })
+	public void viewData(
+			@PathVariable(required = true) String transferProcessId,
+			HttpServletResponse response) {
+		log.info("Accessing transfer process id - {} data", transferProcessId);
+		apiService.viewData(transferProcessId, response);
 	}
 	
 	/********* CONSUMER & PROVIDER ***********/

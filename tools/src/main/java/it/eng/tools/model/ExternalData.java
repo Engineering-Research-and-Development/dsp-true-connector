@@ -10,5 +10,6 @@ public class ExternalData {
 	
 	private MediaType contentType;
 	private byte[] data;
+	private String contentDisposition;
 
 }

@@ -37,7 +37,6 @@ import com.mongodb.client.gridfs.model.GridFSFile;
 import it.eng.datatransfer.exceptions.DownloadException;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.DataTransferService;
-import it.eng.datatransfer.service.api.RestArtifactService;
 import it.eng.datatransfer.util.DataTranferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
@@ -126,13 +125,13 @@ public class RestArtifactServiceTest {
 		GenericApiResponse<ExternalData> externalResponse = new GenericApiResponse<ExternalData>();
 		externalResponse.setData(externalData);
 		externalResponse.setSuccess(true);
-		when(okHttpRestClient.downloadData(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), null)).thenReturn(externalResponse);
+		when(okHttpRestClient.downloadData(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), null, null)).thenReturn(externalResponse);
 		
 		try (MockedStatic<GridFSBuckets> buckets = Mockito.mockStatic(GridFSBuckets.class);
 				MockedStatic<IOUtils> utils = Mockito.mockStatic(IOUtils.class)) {
 				buckets.when(() -> GridFSBuckets.create(mongoTemplate.getDb()))
 		          .thenReturn(gridFSBucket);
-				utils.when(() -> IOUtils.copy(any(), any())).thenReturn(1);
+				utils.when(() -> IOUtils.copyLarge(any(), any())).thenReturn(1L);
 
 				assertDoesNotThrow(() ->restArtifactService.getArtifact(TRANSACTION_ID, mockHttpServletResponse));
 			
@@ -151,7 +150,7 @@ public class RestArtifactServiceTest {
 		.thenReturn(TransferSerializer.serializePlain(apiResponse));
 		GenericApiResponse<ExternalData> externalResponse = new GenericApiResponse<ExternalData>();
 		externalResponse.setSuccess(false);
-		when(okHttpRestClient.downloadData(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), null)).thenReturn(externalResponse);
+		when(okHttpRestClient.downloadData(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), null, null)).thenReturn(externalResponse);
 		
 		assertThrows(DownloadException.class, () -> restArtifactService.getArtifact(TRANSACTION_ID, mockHttpServletResponse));
 
@@ -159,7 +158,7 @@ public class RestArtifactServiceTest {
 	
 	@Test
     @DisplayName("Get file - success")
-    public void getdFile_success() throws IOException {
+    public void getFile_success() throws IOException {
 		mockHttpServletResponse = new MockHttpServletResponse();
 		when(dataTransferService.findTransferProcess(CONSUMER_PID, PROVIDER_PID)).thenReturn(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED);
 		GenericApiResponse<JsonNode> apiResponse = new GenericApiResponse<JsonNode>();
@@ -180,7 +179,7 @@ public class RestArtifactServiceTest {
 			MockedStatic<IOUtils> utils = Mockito.mockStatic(IOUtils.class)) {
 			buckets.when(() -> GridFSBuckets.create(mongoTemplate.getDb()))
 	          .thenReturn(gridFSBucket);
-			utils.when(() -> IOUtils.copy(any(), any())).thenReturn(1);
+			utils.when(() -> IOUtils.copyLarge(any(), any())).thenReturn(1L);
 
 			assertDoesNotThrow(() ->restArtifactService.getArtifact(TRANSACTION_ID, mockHttpServletResponse));		
 		}

@@ -2,10 +2,7 @@ package it.eng.connector.integration.negotiation;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.Arrays;
@@ -23,7 +20,7 @@ import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
-import it.eng.datatransfer.serializer.TransferSerializer;
+import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.negotiation.model.Action;
 import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.Constraint;
@@ -39,7 +36,6 @@ import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.serializer.NegotiationSerializer;
-import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.IConstants;
 
 public class ContractNegotiationFinalizeIntegrationTest extends BaseIntegrationTest {
@@ -54,6 +50,8 @@ public class ContractNegotiationFinalizeIntegrationTest extends BaseIntegrationT
 	private AgreementRepository agreementRepository;
 	@Autowired
 	private OfferRepository offerRepository;
+	@Autowired
+	private TransferProcessRepository transferProcessRepository;
 	
     @Test
     @WithUserDetails(TestUtil.CONNECTOR_USER)
@@ -120,27 +118,18 @@ public class ContractNegotiationFinalizeIntegrationTest extends BaseIntegrationT
     	TimeUnit.SECONDS.sleep(1);
     	
     	//check if Transfer Process is initialized
-    	final ResultActions tp =
-				mockMvc.perform(
-						get(ApiEndpoints.TRANSFER_DATATRANSFER_V1).param("role", IConstants.ROLE_CONSUMER)
-						.with(user(TestUtil.CONNECTOR_USER).password("password").roles("ADMIN"))
-						.contentType(MediaType.APPLICATION_JSON));
-		
-		tp.andExpect(status().isOk())
-			.andExpect(content().contentType(MediaType.APPLICATION_JSON));
-		
-		JsonNode jsonNode = jsonMapper.readTree(tp.andReturn().getResponse().getContentAsString());
-		TransferProcess transferProcess = TransferSerializer.deserializePlain(jsonNode.findValues("data").get(0).get(jsonNode.findValues("data").get(0).size()-1).toString(), TransferProcess.class);
+		TransferProcess transferProcess = transferProcessRepository.findByAgreementId(agreement.getId()).get();
 		
 		assertEquals(TransferState.INITIALIZED, transferProcess.getState());
-		assertNotNull(transferProcess.getAgreementId());
 		assertNotNull(transferProcess.getCallbackAddress());
 		assertNotNull(transferProcess.getRole());
 		assertNotNull(transferProcess.getDatasetId());
+		assertEquals(IConstants.TEMPORARY_PROVIDER_PID, transferProcess.getProviderPid());
 		
 		agreementRepository.delete(agreement);
 		offerRepository.delete(offer);
 		contractNegotiationRepository.deleteById(contractNegotiationVerified.getId());
+		transferProcessRepository.deleteById(transferProcess.getId());
     }
     
     @Test

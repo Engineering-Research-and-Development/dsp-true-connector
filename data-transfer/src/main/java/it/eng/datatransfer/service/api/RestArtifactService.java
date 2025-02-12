@@ -99,10 +99,10 @@ public class RestArtifactService {
         }
 		
 		try {
-			IOUtils.copy(gridFsResource.getInputStream(), response.getOutputStream());
+			IOUtils.copyLarge(gridFsResource.getInputStream(), response.getOutputStream());
 			response.setStatus(HttpStatus.OK.value());
 			response.setContentType(gridFsResource.getContentType());
-			response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=\"" + gridFsResource.getFilename() + "\"");
+			response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + gridFsResource.getFilename());
 		} catch (IOException e) {
 			log.error("Error while sending file", e);
 			throw new DownloadException("Error while downloading data", HttpStatus.INTERNAL_SERVER_ERROR);
@@ -110,13 +110,14 @@ public class RestArtifactService {
     }
 	
 	private void getExternalData(String value, HttpServletResponse response) {
-		GenericApiResponse<ExternalData> externalData = okHttpRestClient.downloadData(value, null);
+		GenericApiResponse<ExternalData> externalData = okHttpRestClient.downloadData(value, null, null);
 		
 		if (externalData.isSuccess()) {
 			try {
 				response.getOutputStream().write(externalData.getData().getData());
 				response.setStatus(HttpStatus.OK.value());
 				response.setContentType(externalData.getData().getContentType().type());
+				response.setHeader(HttpHeaders.CONTENT_DISPOSITION, externalData.getData().getContentDisposition());
 			} catch (IOException e) {
 				log.error("Error while downloading external data", e);
 				throw new DownloadException("Error while downloading data", HttpStatus.INTERNAL_SERVER_ERROR);

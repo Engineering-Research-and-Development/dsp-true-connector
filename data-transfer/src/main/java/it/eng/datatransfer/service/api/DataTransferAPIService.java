@@ -1,18 +1,36 @@
 package it.eng.datatransfer.service.api;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.Collection;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tomcat.util.codec.binary.Base64;
+import org.apache.tomcat.util.http.fileupload.IOUtils;
+import org.bson.Document;
+import org.bson.conversions.Bson;
+import org.bson.types.ObjectId;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.gridfs.GridFsResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mongodb.client.gridfs.GridFSBucket;
+import com.mongodb.client.gridfs.GridFSBuckets;
+import com.mongodb.client.gridfs.GridFSDownloadStream;
+import com.mongodb.client.gridfs.model.GridFSFile;
+import com.mongodb.client.gridfs.model.GridFSUploadOptions;
+import com.mongodb.client.model.Filters;
 
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.model.DataAddress;
@@ -31,30 +49,46 @@ import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.rest.protocol.DataTransferCallback;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
+import it.eng.tools.model.ExternalData;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.serializer.ToolsSerializer;
+import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
 public class DataTransferAPIService {
+	
+	private static final String CONTENT_TYPE_FIELD = "_contentType";
+	private static final String DATASET_ID_METADATA = "datasetId";
+	private static final String ATTACHMENT_FILENAME = "attachment;filename=";
 
 	private final TransferProcessRepository transferProcessRepository;
 	private final OkHttpRestClient okHttpRestClient;
 	private final CredentialUtils credentialUtils;
 	private final DataTransferProperties dataTransferProperties;
 	private final ObjectMapper mapper = new ObjectMapper();
+	private final UsageControlProperties usageControlProperties;
+	private final MongoTemplate mongoTemplate;
+	private final ApplicationEventPublisher publisher;
 	
 	public DataTransferAPIService(TransferProcessRepository transferProcessRepository,
 			OkHttpRestClient okHttpRestClient,
 			CredentialUtils credentialUtils,
-			DataTransferProperties dataTransferProperties) {
+			DataTransferProperties dataTransferProperties, UsageControlProperties usageControlProperties, MongoTemplate mongoTemplate, ApplicationEventPublisher publisher) {
 		super();
 		this.transferProcessRepository = transferProcessRepository;
 		this.okHttpRestClient = okHttpRestClient;
 		this.credentialUtils = credentialUtils;
 		this.dataTransferProperties = dataTransferProperties;
+		this.usageControlProperties = usageControlProperties;
+		this.mongoTemplate = mongoTemplate;
+		this.publisher = publisher;
 	}
 
 	public Collection<JsonNode> findDataTransfers(String transferProcessId, String state, String role) {
@@ -78,23 +112,23 @@ public class DataTransferAPIService {
 	/********* CONSUMER ***********/
 	
 	public JsonNode requestTransfer(DataTransferRequest dataTransferRequest) {
-		TransferProcess transferProcess = findTransferProcessById(dataTransferRequest.getTransferProcessId());
+		TransferProcess transferProcessInitialized = findTransferProcessById(dataTransferRequest.getTransferProcessId());
 		
-		stateTransitionCheck(TransferState.REQUESTED, transferProcess.getState());
+		stateTransitionCheck(TransferState.REQUESTED, transferProcessInitialized.getState());
 		DataAddress dataAddressForMessage = null;
 		if (StringUtils.isNotBlank(dataTransferRequest.getFormat()) && dataTransferRequest.getDataAddress() != null && !dataTransferRequest.getDataAddress().isEmpty()) {
 			dataAddressForMessage = TransferSerializer.deserializePlain(dataTransferRequest.getDataAddress().toPrettyString(), DataAddress.class);
 		}
 		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
-				.agreementId(transferProcess.getAgreementId())
+				.agreementId(transferProcessInitialized.getAgreementId())
 				.callbackAddress(dataTransferProperties.consumerCallbackAddress())
-				.consumerPid("urn:uuid:" + UUID.randomUUID())
+				.consumerPid(transferProcessInitialized.getConsumerPid())
 				.format(dataTransferRequest.getFormat())
 				.dataAddress(dataAddressForMessage)
 				.build();
 		
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
-				DataTransferCallback.getConsumerDataTransferRequest(transferProcess.getCallbackAddress()), 
+				DataTransferCallback.getConsumerDataTransferRequest(transferProcessInitialized.getCallbackAddress()), 
 				TransferSerializer.serializeProtocolJsonNode(transferRequestMessage), 
 				credentialUtils.getConnectorCredentials());
 		log.info("Response received {}", response);
@@ -105,20 +139,22 @@ public class DataTransferAPIService {
 				TransferProcess transferProcessFromResponse = TransferSerializer.deserializeProtocol(jsonNode, TransferProcess.class);
 				
 				transferProcessForDB = TransferProcess.Builder.newInstance()
-						.id(transferProcess.getId())
-						.agreementId(transferProcess.getAgreementId())
-						.consumerPid(transferProcessFromResponse.getConsumerPid())
+						.id(transferProcessInitialized.getId())
+						.agreementId(transferProcessInitialized.getAgreementId())
+						.consumerPid(transferProcessInitialized.getConsumerPid())
 						.providerPid(transferProcessFromResponse.getProviderPid())
 						.format(dataTransferRequest.getFormat())
 						.dataAddress(dataAddressForMessage)
-						.callbackAddress(transferProcess.getCallbackAddress())
+						.isDownloaded(transferProcessInitialized.isDownloaded())
+			   			.dataId(transferProcessInitialized.getDataId())
+						.callbackAddress(transferProcessInitialized.getCallbackAddress())
 						.role(IConstants.ROLE_CONSUMER)
 						.state(transferProcessFromResponse.getState())
-						.createdBy(transferProcess.getCreatedBy())
-						.lastModifiedBy(transferProcess.getLastModifiedBy())
-						.version(transferProcess.getVersion())
+						.createdBy(transferProcessInitialized.getCreatedBy())
+						.lastModifiedBy(transferProcessInitialized.getLastModifiedBy())
+						.version(transferProcessInitialized.getVersion())
 						// although not needed on consumer side it is added here to avoid duplicate id exception from mongodb
-						.datasetId(transferProcess.getDatasetId())
+						.datasetId(transferProcessInitialized.getDatasetId())
 						.build();
 				
 				transferProcessRepository.save(transferProcessForDB);
@@ -208,6 +244,8 @@ public class DataTransferAPIService {
 			.providerPid(transferProcess.getProviderPid())
 			.callbackAddress(transferProcess.getCallbackAddress())
    			.dataAddress(transferStartMessage.getDataAddress())
+   			.isDownloaded(transferProcess.isDownloaded())
+   			.dataId(transferProcess.getDataId())
 			.format(transferProcess.getFormat())
 			.state(TransferState.STARTED)
 			.role(transferProcess.getRole())
@@ -354,16 +392,154 @@ public class DataTransferAPIService {
 		}
 	}
 	
+	public void downloadData(String transferProcessId) {
+		TransferProcess transferProcess = findTransferProcessById(transferProcessId);
+		
+		if (!transferProcess.getState().equals(TransferState.STARTED)) {
+			log.error("Download aborted, Transfer Process is not in STARTED state");
+			throw new DataTransferAPIException("Download aborted, Transfer Process is not in STARTED state");
+		}
+		
+		policyCheck(transferProcess);
+		
+		log.info("Starting download transfer process id - {} data...", transferProcessId);
+		
+		// get authorization information from Data Adress if apresent
+		String authType = null;
+		String authorization = null;
+		if (transferProcess.getDataAddress().getEndpointProperties() != null) {
+			List<EndpointProperty> properties = transferProcess.getDataAddress().getEndpointProperties();
+			authType = properties.stream().filter(prop -> StringUtils.equals(prop.getName(), IConstants.AUTH_TYPE))
+					.findFirst().map(prop -> prop.getValue()).orElse(null);
+			authorization = properties.stream()
+					.filter(prop -> StringUtils.equals(prop.getName(), IConstants.AUTHORIZATION)).findFirst()
+					.map(prop -> prop.getValue()).orElse(null);
+		}
+		
+		GenericApiResponse<ExternalData> response = okHttpRestClient.downloadData(transferProcess.getDataAddress().getEndpoint(), 
+				authType, authorization);
+		
+		if (!response.isSuccess()) {
+			log.error("Download aborted, {}", response.getMessage());
+			throw new DataTransferAPIException("Download aborted, " + response.getMessage());
+		}
+		
+		log.info("Downloaded transfer process id - {} data!", transferProcessId);
+		
+		log.info("Storing transfer process id - {} data...", transferProcessId);
+		ObjectId dataId = storeFile(response.getData(), transferProcess);
+		log.info("Stored transfer process id - {} data!", transferProcessId);
+		
+		TransferProcess transferProcessWithData = TransferProcess.Builder.newInstance()
+				.id(transferProcess.getId())
+				.agreementId(transferProcess.getAgreementId())
+				.consumerPid(transferProcess.getConsumerPid())
+				.providerPid(transferProcess.getProviderPid())
+				.callbackAddress(transferProcess.getCallbackAddress())
+	   			.dataAddress(transferProcess.getDataAddress())
+	   			.isDownloaded(true)
+	   			.dataId(dataId.toHexString())
+				.format(transferProcess.getFormat())
+				.state(transferProcess.getState())
+				.role(transferProcess.getRole())
+				.datasetId(transferProcess.getDatasetId())
+				.createdBy(transferProcess.getCreatedBy())
+				.lastModifiedBy(transferProcess.getLastModifiedBy())
+				.version(transferProcess.getVersion())
+				.build();
+		
+		transferProcessRepository.save(transferProcessWithData);
+		
+	}
+
+	public void viewData(String transferProcessId, HttpServletResponse response) {
+		TransferProcess transferProcess = findTransferProcessById(transferProcessId);
+		
+		if (!transferProcess.isDownloaded()) {
+			log.error("Data not yet downloaded");
+			throw new DataTransferAPIException("Data not yet downloaded");
+		}
+		
+		policyCheck(transferProcess);
+		
+	 	GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
+	 	ObjectId fileIdentifier = new ObjectId(transferProcess.getDataId());
+	 	Bson query = Filters.eq("_id", fileIdentifier);
+	 	GridFSFile file = gridFSBucket.find(query).first();
+	 	GridFsResource gridFsResource = null;
+        if (file != null) {
+            GridFSDownloadStream gridFSDownloadStream = gridFSBucket.openDownloadStream(file.getObjectId());
+            gridFsResource = new GridFsResource(file, gridFSDownloadStream);
+        } else {
+	        log.error("Data not found in database");
+			throw new DataTransferAPIException("Data not found in database");
+        }
+		
+		try {
+			IOUtils.copyLarge(gridFsResource.getInputStream(), response.getOutputStream());
+			response.setStatus(HttpStatus.OK.value());
+			response.setContentType(gridFsResource.getContentType());
+			response.setHeader(HttpHeaders.CONTENT_DISPOSITION, ATTACHMENT_FILENAME + gridFsResource.getFilename());
+			publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId()));
+		} catch (IOException e) {
+			log.error("Error while accessing data", e);
+			throw new DataTransferAPIException("Error while accessing data" + e.getLocalizedMessage());
+		}
+		
+	}
+
+	private TransferProcess findTransferProcessById (String transferProcessId) {
+    	return transferProcessRepository.findById(transferProcessId)
+    	        .orElseThrow(() ->
+                new DataTransferAPIException("Transfer process with id " + transferProcessId + " not found"));
+    }
+	
 	private void stateTransitionCheck (TransferState newState, TransferState currentState) {
 		if (!currentState.canTransitTo(newState)) {
 			throw new DataTransferAPIException("State transition aborted, " + currentState.name()
 					+ " state can not transition to " + newState.name());
 		}
 	}
-    
-	private TransferProcess findTransferProcessById (String transferProcessId) {
-    	return transferProcessRepository.findById(transferProcessId)
-    	        .orElseThrow(() ->
-                new DataTransferAPIException("Transfer process with id " + transferProcessId + " not found"));
-    }
+
+	private void policyCheck(TransferProcess transferProcess) {
+		if(usageControlProperties.usageControlEnabled()) {
+			String agreementId = transferProcess.getAgreementId();
+			String response = okHttpRestClient.sendInternalRequest(ApiEndpoints.NEGOTIATION_AGREEMENTS_V1 + "/" + agreementId + "/enforce", 
+					HttpMethod.POST, 
+					null);
+			TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {};
+			GenericApiResponse<String> internalResponse = ToolsSerializer.deserializePlain(response, typeRef);
+			if (!internalResponse.isSuccess()) {
+				log.error("Download aborted, Policy is not valid anymore");
+				throw new DataTransferAPIException("Download aborted, Policy is not valid anymore");
+			}
+		} else {
+			log.warn("!!!!! UsageControl DISABLED - will not check if policy is present or valid !!!!!");
+		}
+	}
+
+	private ObjectId storeFile(ExternalData externalData, TransferProcess transferProcess) {
+		try {
+			GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
+			Document doc = new Document();
+			//TODO check what happens if file.getContentType() is null
+			doc.append(CONTENT_TYPE_FIELD, externalData.getContentType().toString());
+			doc.append(DATASET_ID_METADATA, transferProcess.getDatasetId());
+			GridFSUploadOptions options = new GridFSUploadOptions()
+			        .chunkSizeBytes(1048576) // 1MB chunk size
+			        .metadata(doc);
+			// ContentDisposition comes in format "attachment;filename=file.txt", one the line below we are extracting the file name
+			String fileName = externalData.getContentDisposition().substring(ATTACHMENT_FILENAME.length());
+			ObjectId newDataId = gridFSBucket.uploadFromStream(fileName, new ByteArrayInputStream(externalData.getData()), options);
+			if (StringUtils.isNotBlank(transferProcess.getDataId())) {
+				ObjectId objectId = new ObjectId(transferProcess.getDataId());
+				gridFSBucket.delete(objectId);
+			}
+			return newDataId;
+		}
+		catch (Exception e) {
+			log.error("Error while storing file", e);
+			throw new DataTransferAPIException("Failed to store file. " + e.getLocalizedMessage());
+		}
+	}
 }

@@ -121,13 +121,14 @@ public class OkHttpRestClient {
 	 * Sends GET request to download data
 	 * @param targetAddress
 	 * @param authorization
+	 * @param authorization 
 	 * @return
 	 */
-	public GenericApiResponse<ExternalData> downloadData(String targetAddress, String authorization) {
+	public GenericApiResponse<ExternalData> downloadData(String targetAddress, String authorizationType, String authorization) {
 		Request.Builder requestBuilder = new Request.Builder()
 				.url(targetAddress);
-		if(StringUtils.isNotBlank(authorization)) {
-			requestBuilder.addHeader(HttpHeaders.AUTHORIZATION, authorization);
+		if(StringUtils.isNotBlank(authorizationType) && StringUtils.isNotBlank(authorization)) {
+			requestBuilder.addHeader(HttpHeaders.AUTHORIZATION, authorizationType + " " + authorization);
 		}
 		Request request = requestBuilder.build();
 		log.info("Sending request using address: " + targetAddress);
@@ -138,6 +139,7 @@ public class OkHttpRestClient {
 				ExternalData externalData = new ExternalData();
 				externalData.setData(response.body().bytes());
 				externalData.setContentType(response.body().contentType());
+				externalData.setContentDisposition(response.header(HttpHeaders.CONTENT_DISPOSITION));
 				return GenericApiResponse.success(externalData, "Response received from " + targetAddress);
 			} else {
 				return GenericApiResponse.error(response.message());

@@ -56,8 +56,21 @@ public class DataTransferExceptionAdvice extends ResponseEntityExceptionHandler 
 				HttpStatus.BAD_REQUEST, request);
 	}
 	
-	@ExceptionHandler(value = { TransferProcessInvalidStateException.class, TransferProcessInvalidFormatException.class })
+	@ExceptionHandler(value = { TransferProcessInvalidStateException.class })
 	protected ResponseEntity<Object> handleTransferProcessInvalidStateException(TransferProcessInvalidStateException ex,
+			WebRequest request) {
+		TransferError errorMessage = TransferError.Builder.newInstance()
+				.consumerPid(ex.getConsumerPid())
+				.providerPid(ex.getProviderPid())
+				.code(HttpStatus.BAD_REQUEST.getReasonPhrase())
+				.reason(Collections.singletonList(ex.getLocalizedMessage()))
+				.build();
+		return handleExceptionInternal(ex, TransferSerializer.serializeProtocolJsonNode(errorMessage), new HttpHeaders(),
+				HttpStatus.BAD_REQUEST, request);
+	}
+	
+	@ExceptionHandler(value = { TransferProcessInvalidFormatException.class })
+	protected ResponseEntity<Object> handleTransferProcessInvalidFormatException(TransferProcessInvalidFormatException ex,
 			WebRequest request) {
 		TransferError errorMessage = TransferError.Builder.newInstance()
 				.consumerPid(ex.getConsumerPid())

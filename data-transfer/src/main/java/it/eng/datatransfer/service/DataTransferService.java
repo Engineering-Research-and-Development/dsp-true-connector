@@ -80,30 +80,31 @@ public class DataTransferService {
 	 * @return TransferProcess with status REQUESTED
 	 */
 	public TransferProcess initiateDataTransfer(TransferRequestMessage transferRequestMessage) {
-		TransferProcess transferProcess = transferProcessRepository.findByAgreementId(transferRequestMessage.getAgreementId())
+		TransferProcess transferProcessInitialized = transferProcessRepository.findByAgreementId(transferRequestMessage.getAgreementId())
 				.orElseThrow(() -> new TransferProcessNotFoundException("No agreement with id " + transferRequestMessage.getAgreementId() + 
 					" exists or Contract Negotiation not finalized"));
 		
-		stateTransitionCheck(transferProcess, TransferState.REQUESTED);
+		stateTransitionCheck(transferProcessInitialized, TransferState.REQUESTED);
 		
 		// check if TransferRequestMessage.format is supported by dataset.[distribution]
-		checkSupportedFormats(transferProcess, transferRequestMessage.getFormat());
+		checkSupportedFormats(transferProcessInitialized, transferRequestMessage.getFormat());
 		
 		transferRequestMessageRepository.save(transferRequestMessage);
 		
 		TransferProcess transferProcessRequested = TransferProcess.Builder.newInstance()
-				.id(transferProcess.getId())
+				.id(transferProcessInitialized.getId())
 				.agreementId(transferRequestMessage.getAgreementId())
 				.callbackAddress(transferRequestMessage.getCallbackAddress())
 				.consumerPid(transferRequestMessage.getConsumerPid())
+				.providerPid(transferProcessInitialized.getProviderPid())
 				.format(transferRequestMessage.getFormat())
 				.dataAddress(transferRequestMessage.getDataAddress())
 				.state(TransferState.REQUESTED)
 				.role(IConstants.ROLE_PROVIDER)
-				.datasetId(transferProcess.getDatasetId())
-				.createdBy(transferProcess.getCreatedBy())
-				.lastModifiedBy(transferProcess.getLastModifiedBy())
-				.version(transferProcess.getVersion())
+				.datasetId(transferProcessInitialized.getDatasetId())
+				.createdBy(transferProcessInitialized.getCreatedBy())
+				.lastModifiedBy(transferProcessInitialized.getLastModifiedBy())
+				.version(transferProcessInitialized.getVersion())
 				.build();
 		transferProcessRepository.save(transferProcessRequested);
 		log.info("Requested TransferProcess created");

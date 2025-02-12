@@ -1,21 +1,29 @@
 package it.eng.datatransfer.service.api;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import org.apache.tomcat.util.http.fileupload.IOUtils;
+import org.bson.Document;
+import org.bson.conversions.Bson;
+import org.bson.types.ObjectId;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,9 +34,23 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletResponse;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.gridfs.GridFSBucket;
+import com.mongodb.client.gridfs.GridFSBuckets;
+import com.mongodb.client.gridfs.GridFSDownloadStream;
+import com.mongodb.client.gridfs.GridFSFindIterable;
+import com.mongodb.client.gridfs.model.GridFSFile;
+import com.mongodb.client.gridfs.model.GridFSUploadOptions;
 
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.model.DataAddress;
@@ -39,16 +61,39 @@ import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
-import it.eng.datatransfer.service.api.DataTransferAPIService;
 import it.eng.datatransfer.util.DataTranferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.model.ExternalData;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
 
 @ExtendWith(MockitoExtension.class)
 class DataTransferAPIServiceTest {
 	
+	private static final String ATTACHMENT_FILENAME = "attachment;filename=\"";
+	
+	private MockHttpServletResponse mockHttpServletResponse;
+	
+	@Mock
+	private ApplicationEventPublisher publisher;
+	@Mock
+	private UsageControlProperties usageControlProperties;
+	@Mock
+	private InputStream inputStream;
+	@Mock
+	private GridFSFindIterable gridFSFindIterable;
+ 	@Mock
+ 	private GridFSFile gridFSFile;
+ 	@Mock
+ 	private GridFSDownloadStream gridFSDownloadStream;
+	@Mock
+	private GridFSBucket gridFSBucket;
+	@Mock
+	private MongoDatabase mongoDatabase;
+	@Mock
+	private MongoTemplate mongoTemplate;
 	@Mock
 	private OkHttpRestClient okHttpRestClient;
 	@Mock
@@ -358,6 +403,250 @@ class DataTransferAPIServiceTest {
 		verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 	}
 	
+	@Test
+    @DisplayName("Download data - success")
+    public void downloadData_success() throws IOException {
+		ExternalData data = new ExternalData();
+		data.setContentDisposition(ATTACHMENT_FILENAME + "file.txt\"");
+		data.setContentType(okhttp3.MediaType.get(MediaType.TEXT_PLAIN_VALUE));
+		data.setData("data".getBytes());
+		GenericApiResponse<ExternalData> dataResponse = GenericApiResponse.success(data, ATTACHMENT_FILENAME);
+		
+		GenericApiResponse<String> internalResponse = GenericApiResponse.success("successfull response", ATTACHMENT_FILENAME);
+		
+		ObjectId objectId = new ObjectId();
+		when(mongoTemplate.getDb()).thenReturn(mongoDatabase);
+		when(transferProcessRepository.findById(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
+		.thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+		when(usageControlProperties.usageControlEnabled()).thenReturn(true);
+		when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+		.thenReturn(TransferSerializer.serializePlain(internalResponse));
+		when(okHttpRestClient.downloadData(any(), any(), any()))
+		.thenReturn(dataResponse);
+		when(gridFSBucket.uploadFromStream(anyString(), any(InputStream.class), any(GridFSUploadOptions.class))).thenReturn(objectId);
+		when(transferProcessRepository.save(any(TransferProcess.class)))
+		.thenReturn(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED);
+		
+		try (MockedStatic<GridFSBuckets> buckets = Mockito.mockStatic(GridFSBuckets.class)) {
+			buckets.when(() -> GridFSBuckets.create(mongoTemplate.getDb()))
+	          .thenReturn(gridFSBucket);
+
+		assertDoesNotThrow(()->  apiService.downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+		
+		}
+    }
+	
+	@Test
+    @DisplayName("Download data - fail - can not store data")
+    public void downloadData_fail_canNotStoreData() throws IOException {
+		ExternalData data = new ExternalData();
+		data.setContentDisposition(ATTACHMENT_FILENAME + "file.txt\"");
+		data.setContentType(okhttp3.MediaType.get(MediaType.TEXT_PLAIN_VALUE));
+		data.setData(null);
+		GenericApiResponse<ExternalData> dataResponse = GenericApiResponse.success(data, ATTACHMENT_FILENAME);
+		
+		GenericApiResponse<String> internalResponse = GenericApiResponse.success("successfull response", ATTACHMENT_FILENAME);
+		
+		when(mongoTemplate.getDb()).thenReturn(mongoDatabase);
+		when(transferProcessRepository.findById(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
+		.thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+		when(usageControlProperties.usageControlEnabled()).thenReturn(true);
+		when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+		.thenReturn(TransferSerializer.serializePlain(internalResponse));
+		when(okHttpRestClient.downloadData(any(), any(), any()))
+		.thenReturn(dataResponse);
+		
+		try (MockedStatic<GridFSBuckets> buckets = Mockito.mockStatic(GridFSBuckets.class)) {
+			buckets.when(() -> GridFSBuckets.create(mongoTemplate.getDb()))
+	          .thenReturn(gridFSBucket);
+
+			assertThrows(DataTransferAPIException.class, ()->  apiService.downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+		
+		}
+    }
+	
+	@Test
+    @DisplayName("Download data - fail - can not download data")
+    public void downloadData_fail_canNotDownloadData() throws IOException {
+		GenericApiResponse<ExternalData> dataResponse = GenericApiResponse.error("Fail to download");
+		
+		GenericApiResponse<String> internalResponse = GenericApiResponse.success("successfull response", ATTACHMENT_FILENAME);
+		
+		when(transferProcessRepository.findById(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
+		.thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+		when(usageControlProperties.usageControlEnabled()).thenReturn(true);
+		when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+		.thenReturn(TransferSerializer.serializePlain(internalResponse));
+		when(okHttpRestClient.downloadData(any(), any(), any()))
+		.thenReturn(dataResponse);
+		
+
+		assertThrows(DataTransferAPIException.class,
+				() -> apiService.downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+
+    }
+	
+	@Test
+    @DisplayName("Download data - fail - policy not valid")
+    public void downloadData_fail_policyNotValid() throws IOException {
+		
+		GenericApiResponse<String> internalResponse = GenericApiResponse.error("Policy not valid");
+		
+		when(transferProcessRepository.findById(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
+		.thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+		when(usageControlProperties.usageControlEnabled()).thenReturn(true);
+		when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+		.thenReturn(TransferSerializer.serializePlain(internalResponse));
+		
+
+		assertThrows(DataTransferAPIException.class,
+				() -> apiService.downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+
+    }
+	
+	@ParameterizedTest
+    @DisplayName("Download data - fail - wrong state")
+	@MethodSource("download_wrongStates")
+    public void downloadData_fail_wrongState(TransferProcess input) throws IOException {
+		when(transferProcessRepository.findById(input.getId()))
+		.thenReturn(Optional.of(input));
+		
+
+		assertThrows(DataTransferAPIException.class,
+				() -> apiService.downloadData(input.getId()));
+
+    }
+	
+	@Test
+	@DisplayName("View data - success")
+	public void viewData_success() {
+		mockHttpServletResponse = new MockHttpServletResponse();
+		when(transferProcessRepository.findById(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId()))
+		.thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED));
+		when(usageControlProperties.usageControlEnabled()).thenReturn(true);
+		GenericApiResponse<String> internalResponse = GenericApiResponse.success("successfull response", ATTACHMENT_FILENAME);
+		when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+		.thenReturn(TransferSerializer.serializePlain(internalResponse));
+		ObjectId objectId = new ObjectId(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getDataId());
+		when(mongoTemplate.getDb()).thenReturn(mongoDatabase);
+		when(gridFSBucket.find(any(Bson.class))).thenReturn(gridFSFindIterable);
+		when(gridFSFindIterable.first()).thenReturn(gridFSFile);
+		when(gridFSFile.getObjectId()).thenReturn(objectId);
+		Document doc = new Document();
+		doc.append("_contentType", "application/json");
+		when(gridFSFile.getMetadata()).thenReturn(doc);
+		when(gridFSBucket.openDownloadStream(objectId)).thenReturn(gridFSDownloadStream);
+		
+		try (MockedStatic<GridFSBuckets> buckets = Mockito.mockStatic(GridFSBuckets.class);
+				MockedStatic<IOUtils> utils = Mockito.mockStatic(IOUtils.class)) {
+				buckets.when(() -> GridFSBuckets.create(mongoTemplate.getDb()))
+		          .thenReturn(gridFSBucket);
+				utils.when(() -> IOUtils.copyLarge(any(), any())).thenReturn(1L);
+
+				assertDoesNotThrow(() ->apiService.viewData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId(), mockHttpServletResponse));
+			
+		}
+		
+	}
+	
+	@Test
+	@DisplayName("View data - fail - can not access data")
+	public void viewData_fail_canNotAccessData() {
+		mockHttpServletResponse = new MockHttpServletResponse();
+		when(transferProcessRepository.findById(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId()))
+		.thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED));
+		when(usageControlProperties.usageControlEnabled()).thenReturn(true);
+		GenericApiResponse<String> internalResponse = GenericApiResponse.success("successfull response", ATTACHMENT_FILENAME);
+		when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+		.thenReturn(TransferSerializer.serializePlain(internalResponse));
+		ObjectId objectId = new ObjectId(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getDataId());
+		when(mongoTemplate.getDb()).thenReturn(mongoDatabase);
+		when(gridFSBucket.find(any(Bson.class))).thenReturn(gridFSFindIterable);
+		when(gridFSFindIterable.first()).thenReturn(gridFSFile);
+		when(gridFSFile.getObjectId()).thenReturn(objectId);
+		Document doc = new Document();
+		doc.append("_contentType", "application/json");
+		when(gridFSBucket.openDownloadStream(objectId)).thenReturn(gridFSDownloadStream);
+		
+		try (MockedStatic<GridFSBuckets> buckets = Mockito.mockStatic(GridFSBuckets.class);
+				MockedStatic<IOUtils> utils = Mockito.mockStatic(IOUtils.class)) {
+				buckets.when(() -> GridFSBuckets.create(mongoTemplate.getDb()))
+		          .thenReturn(gridFSBucket);
+				utils.when(() -> IOUtils.copyLarge(any(), any())).thenThrow(IOException.class);
+
+				assertThrows(DataTransferAPIException.class,
+						() -> apiService.viewData(
+								DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId(),
+								mockHttpServletResponse));
+
+		}
+		
+	}
+	
+	@Test
+	@DisplayName("View data - fail - no data")
+	public void viewData_fail_noData() {
+		mockHttpServletResponse = new MockHttpServletResponse();
+		when(transferProcessRepository.findById(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId()))
+		.thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED));
+		when(usageControlProperties.usageControlEnabled()).thenReturn(true);
+		GenericApiResponse<String> internalResponse = GenericApiResponse.success("successfull response", ATTACHMENT_FILENAME);
+		when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+		.thenReturn(TransferSerializer.serializePlain(internalResponse));
+		when(mongoTemplate.getDb()).thenReturn(mongoDatabase);
+		when(gridFSBucket.find(any(Bson.class))).thenReturn(gridFSFindIterable);
+		when(gridFSFindIterable.first()).thenReturn(null);
+		Document doc = new Document();
+		doc.append("_contentType", "application/json");
+		
+		try (MockedStatic<GridFSBuckets> buckets = Mockito.mockStatic(GridFSBuckets.class)) {
+				buckets.when(() -> GridFSBuckets.create(mongoTemplate.getDb()))
+		          .thenReturn(gridFSBucket);
+
+				assertThrows(DataTransferAPIException.class,
+						() -> apiService.viewData(
+								DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId(),
+								mockHttpServletResponse));
+
+		}
+		
+	}
+	
+	@Test
+    @DisplayName("View data - fail - policy not valid")
+    public void viewData_fail_policyNotValid() throws IOException {
+		
+		GenericApiResponse<String> internalResponse = GenericApiResponse.error("Policy not valid");
+		
+		when(transferProcessRepository.findById(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId()))
+		.thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED));
+		when(usageControlProperties.usageControlEnabled()).thenReturn(true);
+		when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+		.thenReturn(TransferSerializer.serializePlain(internalResponse));
+		
+
+		assertThrows(DataTransferAPIException.class,
+				() -> apiService.viewData(
+						DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId(),
+						mockHttpServletResponse));
+
+    }
+	
+	@Test
+    @DisplayName("View data - fail - not downloaded")
+    public void viewData_fail_notDownloaded() throws IOException {
+		
+		when(transferProcessRepository.findById(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
+		.thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+		
+
+		assertThrows(DataTransferAPIException.class,
+				() -> apiService.viewData(
+						DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(),
+						mockHttpServletResponse));
+
+    }
+	
 	private static Stream<Arguments> startTransfer_wrongStates() {
 	    return Stream.of(
 	      Arguments.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_COMPLETED),
@@ -388,6 +677,14 @@ class DataTransferAPIServiceTest {
 	    return Stream.of(
 	      Arguments.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_COMPLETED),
 	      Arguments.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_TERMINATED)
+	    );
+	}
+	
+	private static Stream<Arguments> download_wrongStates() {
+	    return Stream.of(
+	      Arguments.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_TERMINATED),
+	      Arguments.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER),
+	      Arguments.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_SUSPENDED_PROVIDER)
 	    );
 	}
 }
