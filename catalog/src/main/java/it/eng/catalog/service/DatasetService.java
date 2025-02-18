@@ -77,13 +77,14 @@ public class DatasetService {
      * @param dataset the dataset to be saved
      * @param externalURL URL of external data
      * @param file File that is going to be stored in database locally
+     * @param authorization 
      * @return saved dataset
      * @throws InternalServerErrorAPIException if saving fails
      */
-    public Dataset saveDataset(Dataset dataset, MultipartFile file, String externalURL) {
+    public Dataset saveDataset(Dataset dataset, MultipartFile file, String externalURL, String authorization) {
         Dataset savedDataSet = null;
         try {
-        	Artifact artifact = artifactService.uploadArtifact(dataset, file, externalURL);
+        	Artifact artifact = artifactService.uploadArtifact(dataset, file, externalURL, authorization);
         	Dataset datasetWithArtifact = addArtifactToDataset(dataset, artifact);
         	savedDataSet = repository.save(datasetWithArtifact);
 		} catch (Exception e) {
@@ -102,11 +103,12 @@ public class DatasetService {
      * @param newDataset the dataset with new data
      * @param externalURL URL of external data
      * @param file File that is going to be stored in database locally
+	 * @param authorization 
      * @return the updated dataset
      * @throws ResourceNotFoundAPIException if no data service is found with the provided ID
      * @throws InternalServerErrorAPIException if updating fails
      */
-    public Dataset updateDataset(String id, Dataset newDataset, MultipartFile file, String externalURL) {
+    public Dataset updateDataset(String id, Dataset newDataset, MultipartFile file, String externalURL, String authorization) {
     	Dataset existingDataset = getDatasetByIdForApi(id);
     	Dataset updatedDataset = null;
     	Dataset storedDataset = null;
@@ -121,7 +123,7 @@ public class DatasetService {
 				updatedDataset = existingDataset;
 			}
 			if (file != null || StringUtils.isNotBlank(externalURL)) {
-				Artifact newArtifact = artifactService.uploadArtifact(updatedDataset, file, externalURL);
+				Artifact newArtifact = artifactService.uploadArtifact(updatedDataset, file, externalURL, authorization);
 				updatedDataset = addArtifactToDataset(updatedDataset, newArtifact);
 				// remove old artifact
 				if (oldArtifact != null) {

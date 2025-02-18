@@ -120,15 +120,14 @@ public class OkHttpRestClient {
 	/**
 	 * Sends GET request to download data
 	 * @param targetAddress
-	 * @param authorization
 	 * @param authorization 
 	 * @return
 	 */
-	public GenericApiResponse<ExternalData> downloadData(String targetAddress, String authorizationType, String authorization) {
+	public GenericApiResponse<ExternalData> downloadData(String targetAddress, String authorization) {
 		Request.Builder requestBuilder = new Request.Builder()
 				.url(targetAddress);
-		if(StringUtils.isNotBlank(authorizationType) && StringUtils.isNotBlank(authorization)) {
-			requestBuilder.addHeader(HttpHeaders.AUTHORIZATION, authorizationType + " " + authorization);
+		if(StringUtils.isNotBlank(authorization)) {
+			requestBuilder.addHeader(HttpHeaders.AUTHORIZATION, authorization);
 		}
 		Request request = requestBuilder.build();
 		log.info("Sending request using address: " + targetAddress);
