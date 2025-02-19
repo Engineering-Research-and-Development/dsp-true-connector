@@ -100,7 +100,7 @@ public class ArtifactServiceTest {
 			buckets.when(() -> GridFSBuckets.create(mongoTemplate.getDb()))
 	          .thenReturn(gridFSBucket);
 
-		Artifact artifact = artifactService.uploadArtifact(CatalogMockObjectUtil.DATASET, file, null);
+		Artifact artifact = artifactService.uploadArtifact(CatalogMockObjectUtil.DATASET, file, null, null);
 		
 		assertEquals(artifact, CatalogMockObjectUtil.ARTIFACT_FILE);
 
@@ -117,7 +117,7 @@ public class ArtifactServiceTest {
 			buckets.when(() -> GridFSBuckets.create(mongoTemplate.getDb()))
 	          .thenReturn(gridFSBucket);
 
-			assertThrows(CatalogErrorAPIException.class, ()-> artifactService.uploadArtifact(CatalogMockObjectUtil.DATASET, file, null));
+			assertThrows(CatalogErrorAPIException.class, ()-> artifactService.uploadArtifact(CatalogMockObjectUtil.DATASET, file, null, null));
 		
 		}
     }
@@ -127,7 +127,7 @@ public class ArtifactServiceTest {
     public void uploadExternal_success() throws IOException {
 		when(artifactRepository.save(any(Artifact.class))).thenReturn(CatalogMockObjectUtil.ARTIFACT_EXTERNAL);
 
-		Artifact artifact = artifactService.uploadArtifact(CatalogMockObjectUtil.DATASET, null, CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue());
+		Artifact artifact = artifactService.uploadArtifact(CatalogMockObjectUtil.DATASET, null, CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), null);
 		
 		assertEquals(artifact, CatalogMockObjectUtil.ARTIFACT_EXTERNAL);
 
@@ -137,7 +137,7 @@ public class ArtifactServiceTest {
     @DisplayName("Upload no data - fail")
     public void uploadNoData_fail() throws IOException {
 
-		assertThrows(CatalogErrorAPIException.class, ()-> artifactService.uploadArtifact(CatalogMockObjectUtil.DATASET, null, null));
+		assertThrows(CatalogErrorAPIException.class, ()-> artifactService.uploadArtifact(CatalogMockObjectUtil.DATASET, null, null, null));
 		
     }
 	

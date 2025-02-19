@@ -63,7 +63,7 @@ public class RestArtifactService {
 			getFile(artifact.getValue(), response);
 			break;
 		case EXTERNAL:
-			getExternalData(artifact.getValue(), response);
+			getExternalData(artifact.getValue(), artifact.getAuthorization(), response);
 			break;
 
 		default:
@@ -109,14 +109,14 @@ public class RestArtifactService {
 		}
     }
 	
-	private void getExternalData(String value, HttpServletResponse response) {
-		GenericApiResponse<ExternalData> externalData = okHttpRestClient.downloadData(value, null, null);
+	private void getExternalData(String value, String authorization, HttpServletResponse response) {
+		GenericApiResponse<ExternalData> externalData = okHttpRestClient.downloadData(value, authorization);
 		
 		if (externalData.isSuccess()) {
 			try {
 				response.getOutputStream().write(externalData.getData().getData());
 				response.setStatus(HttpStatus.OK.value());
-				response.setContentType(externalData.getData().getContentType().type());
+				response.setContentType(externalData.getData().getContentType().toString());
 				response.setHeader(HttpHeaders.CONTENT_DISPOSITION, externalData.getData().getContentDisposition());
 			} catch (IOException e) {
 				log.error("Error while downloading external data", e);

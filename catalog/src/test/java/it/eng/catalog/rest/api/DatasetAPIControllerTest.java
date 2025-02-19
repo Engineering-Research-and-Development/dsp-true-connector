@@ -69,10 +69,10 @@ public class DatasetAPIControllerTest {
     @DisplayName("Save dataset - success")
     public void saveDatasetSuccessfulTest() {
         String dataset = CatalogSerializer.serializePlain(CatalogMockObjectUtil.DATASET);
-        when(datasetService.saveDataset(any(), isNull(), anyString())).thenReturn(CatalogMockObjectUtil.DATASET);
-        ResponseEntity<GenericApiResponse<JsonNode>> response = datasetAPIController.saveDataset(null, CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), dataset);
+        when(datasetService.saveDataset(any(), isNull(), anyString(), isNull())).thenReturn(CatalogMockObjectUtil.DATASET);
+        ResponseEntity<GenericApiResponse<JsonNode>> response = datasetAPIController.saveDataset(null, CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), null, dataset);
 
-        verify(datasetService).saveDataset(any(), isNull(), anyString());
+        verify(datasetService).saveDataset(any(), isNull(), anyString(), isNull());
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
         assertNotNull(response.getBody());
@@ -93,14 +93,15 @@ public class DatasetAPIControllerTest {
     @DisplayName("Update dataset - success")
     public void updateDatasetSuccessfulTest() {
         String dataset = CatalogSerializer.serializePlain(CatalogMockObjectUtil.DATASET_FOR_UPDATE);
-        when(datasetService.updateDataset(any(String.class), any(Dataset.class), isNull(), anyString())).thenReturn(CatalogMockObjectUtil.DATASET_FOR_UPDATE);
+        when(datasetService.updateDataset(any(String.class), any(Dataset.class), isNull(), anyString(), isNull())).thenReturn(CatalogMockObjectUtil.DATASET_FOR_UPDATE);
         ResponseEntity<GenericApiResponse<JsonNode>> response = 
         		datasetAPIController.updateDataset(CatalogMockObjectUtil.DATASET_FOR_UPDATE.getId(),
         				null,
         				CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(),
+        				null,
         				dataset);
 
-        verify(datasetService).updateDataset(any(String.class), any(Dataset.class), isNull(), anyString());
+        verify(datasetService).updateDataset(any(String.class), any(Dataset.class), isNull(), anyString(), isNull());
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
         assertNotNull(response.getBody());

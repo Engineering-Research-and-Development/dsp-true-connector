@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 19-02-2025
+
+### Added
+
+ - Added authorization for external artifact
+
 ## [0.1.1] - 10-02-2025
 
 ### Added

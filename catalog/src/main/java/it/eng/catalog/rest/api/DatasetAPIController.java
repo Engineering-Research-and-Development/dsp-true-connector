@@ -92,12 +92,13 @@ public class DatasetAPIController {
     public ResponseEntity<GenericApiResponse<JsonNode>> saveDataset(
     		@RequestPart(value = "file", required = false) MultipartFile file,
 			@RequestPart(value = "url", required = false) String externalURL,
+			@RequestPart(value = "authorization", required = false) String authorization,
 			@RequestPart(value = "dataset", required = true) String dataset) {
         Dataset ds = CatalogSerializer.deserializePlain(dataset, Dataset.class);
 
         log.info("Saving new dataset");
 
-        Dataset storedDataset = datasetService.saveDataset(ds, file, externalURL);
+        Dataset storedDataset = datasetService.saveDataset(ds, file, externalURL, authorization);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(storedDataset), "Saved dataset"));
@@ -108,6 +109,7 @@ public class DatasetAPIController {
 			@PathVariable String id,
 			@RequestPart(value = "file", required = false) MultipartFile file,
 			@RequestPart(value = "url", required = false) String externalURL,
+			@RequestPart(value = "authorization", required = false) String authorization,
 			@RequestPart(value = "dataset", required = false) String dataset) {
 		
 	    Dataset ds = null;
@@ -118,7 +120,7 @@ public class DatasetAPIController {
 	
 	    log.info("Updating dataset with id: " + id);
 	
-	    Dataset storedDataset = datasetService.updateDataset(id, ds, file, externalURL);
+	    Dataset storedDataset = datasetService.updateDataset(id, ds, file, externalURL, authorization);
 	
 	    return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
 	            .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(storedDataset), "Dataset updated"));
