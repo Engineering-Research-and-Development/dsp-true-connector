@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.negotiation.model.Action;
@@ -60,7 +61,7 @@ public class ContractNegotiationVerifiedIntegrationTest extends BaseIntegrationT
     	
     	Offer offer = Offer.Builder.newInstance()
     			.permission(Arrays.asList(permission))
-    			.originalId(offerID)
+    			.originalId(CatalogMockObjectUtil.OFFER.getId())
     			.target("test_dataset")
     			.assigner("assigner")
     			.build();
@@ -101,7 +102,7 @@ public class ContractNegotiationVerifiedIntegrationTest extends BaseIntegrationT
 		ContractNegotiation contractNegotiationResponse = NegotiationSerializer
 				.deserializePlain(contractNegotiation.toPrettyString(), ContractNegotiation.class);
 		assertEquals(ContractNegotiationState.VERIFIED, contractNegotiationResponse.getState());
-		offerCheck(contractNegotiationResponse);
+		offerCheck(contractNegotiationResponse, CatalogMockObjectUtil.OFFER.getId());
 		agreementCheck(contractNegotiationResponse);
 		
 		contractNegotiationRepository.deleteById(contractNegotiationVerified.getId());

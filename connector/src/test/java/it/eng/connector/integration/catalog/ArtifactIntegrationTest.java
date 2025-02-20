@@ -40,7 +40,7 @@ public class ArtifactIntegrationTest extends BaseIntegrationTest {
 	
 	@InjectWireMock 
 	private WireMockServer wiremock;
-	
+
 	@Test
 	@DisplayName("Artifact API - get")
 	@WithUserDetails(TestUtil.API_USER)
@@ -80,7 +80,7 @@ public class ArtifactIntegrationTest extends BaseIntegrationTest {
 		GenericApiResponse<List<Artifact>> apiRespList =  ToolsSerializer.deserializePlain(jsonList, typeRef);
 		  
 		assertNotNull(apiRespList.getData());
-		assertTrue(apiRespList.getData().size() > 2);
+		assertTrue(apiRespList.getData().size() == 2);
 		
 		MvcResult resultSingle = mockMvc.perform(
     			get(ApiEndpoints.CATALOG_ARTIFACT_V1 + "/" + artifactFile.getId()).contentType(MediaType.APPLICATION_JSON))

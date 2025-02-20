@@ -50,9 +50,6 @@ import it.eng.tools.serializer.InstantSerializer;
 @EnableWireMock
 public class BaseIntegrationTest {
 	
-	// From initial-data.json
-	protected static String offerID = "urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5";
-	
    @Autowired
    protected MockMvc mockMvc;
    protected JsonMapper jsonMapper;
@@ -130,8 +127,8 @@ public class BaseIntegrationTest {
 		return apiResp.getData().get(0);
 	}
 	
-	protected void offerCheck(ContractNegotiation contractNegotiation) {
-		assertEquals(offerID, contractNegotiation.getOffer().getOriginalId());
+	protected void offerCheck(ContractNegotiation contractNegotiation, String offerId) {
+		assertEquals(offerId, contractNegotiation.getOffer().getOriginalId());
 	}
 	
 	protected void agreementCheck(ContractNegotiation contractNegotiation) {

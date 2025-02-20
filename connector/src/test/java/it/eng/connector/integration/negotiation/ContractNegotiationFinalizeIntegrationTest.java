@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.TransferProcess;
@@ -68,7 +69,7 @@ public class ContractNegotiationFinalizeIntegrationTest extends BaseIntegrationT
     	
     	Offer offer = Offer.Builder.newInstance()
     			.permission(Arrays.asList(permission))
-    			.originalId(offerID)
+    			.originalId(CatalogMockObjectUtil.OFFER.getId())
     			.target("test_dataset")
     			.assigner("assigner")
     			.build();
@@ -111,7 +112,7 @@ public class ContractNegotiationFinalizeIntegrationTest extends BaseIntegrationT
     	JsonNode contractNegotiation = getContractNegotiationOverAPI();
 		ContractNegotiation contractNegotiationFinalized = NegotiationSerializer.deserializePlain(contractNegotiation.toPrettyString(), ContractNegotiation.class);
 		assertEquals(ContractNegotiationState.FINALIZED, contractNegotiationFinalized.getState());
-		offerCheck(contractNegotiationFinalized);
+		offerCheck(contractNegotiationFinalized, CatalogMockObjectUtil.OFFER.getId());
 		agreementCheck(contractNegotiationFinalized);
     	
     	// must wait for event that creates initial transfer process is completed
