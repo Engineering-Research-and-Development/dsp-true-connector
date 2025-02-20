@@ -45,6 +45,7 @@ public class Artifact implements Serializable{
      * external - URL of the data
      */
 	private String value;
+	private String authorization;
 	@JsonProperty(HttpHeaders.CONTENT_TYPE)
 	private String contentType;
 	@CreatedDate
@@ -86,6 +87,11 @@ public class Artifact implements Serializable{
 		
 		public Builder value(String value) {
         	artifact.value = value;
+        	return this;
+        }
+		
+		public Builder authorization(String authorization) {
+        	artifact.authorization = authorization;
         	return this;
         }
 		

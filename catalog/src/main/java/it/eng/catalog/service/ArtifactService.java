@@ -52,7 +52,7 @@ public class ArtifactService {
 		return artifactRepository.findAll();
 	}
 
-	public Artifact uploadArtifact(Dataset dataset, MultipartFile file, String externalURL) {
+	public Artifact uploadArtifact(Dataset dataset, MultipartFile file, String externalURL, String authorization) {
 		Artifact artifact = null;
 		if (file != null) {
 			ObjectId fileId = storeFile(file, dataset);
@@ -65,6 +65,7 @@ public class ArtifactService {
 		} else if (externalURL != null) {
 			artifact = Artifact.Builder.newInstance()
 					.artifactType(ArtifactType.EXTERNAL)
+					.authorization(authorization)
 					.value(externalURL)
 					.build();
 		} else {

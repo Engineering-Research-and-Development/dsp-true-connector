@@ -1,5 +1,6 @@
 package it.eng.connector.integration.datatransfer;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -9,7 +10,9 @@ import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.Set;
 
+import org.apache.commons.lang3.StringUtils;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.AfterEach;
@@ -17,11 +20,15 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.MvcResult;
+import org.wiremock.spring.InjectWireMock;
 
+import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.client.WireMock;
 import com.mongodb.client.gridfs.GridFSBucket;
 import com.mongodb.client.gridfs.GridFSBuckets;
 import com.mongodb.client.gridfs.model.GridFSUploadOptions;
@@ -46,11 +53,19 @@ import it.eng.negotiation.repository.PolicyEnforcementRepository;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
 import it.eng.tools.repository.ArtifactRepository;
+import okhttp3.Credentials;
 
 public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 	private static final String CONTENT_TYPE_FIELD = "_contentType";
 	private static final String DATASET_ID_METADATA = "datasetId";
 	
+	@InjectWireMock 
+	private WireMockServer wiremock;
+	
+	@Autowired
+	private ArtifactRepository artifactRepository;
+	@Autowired
+	private DatasetRepository datasetRepository;
 	@Autowired
 	private TransferProcessRepository transferProcessRepository;
 	@Autowired
@@ -58,10 +73,6 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 	@Autowired
 	private PolicyEnforcementRepository policyEnforcementRepository;
 	
-	@Autowired
-	private DatasetRepository datasetRepository;
-	@Autowired
-	private ArtifactRepository artifactRepository;
 	@Autowired
 	private MongoTemplate mongoTemplate;
 	
@@ -72,9 +83,9 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 	}
 	
 	@Test
-	@DisplayName("Download artifact")
+	@DisplayName("Download artifact file")
 	@WithUserDetails(TestUtil.CONNECTOR_USER)
-	public void downloadArtifact() throws Exception {
+	public void downloadArtifactFile() throws Exception {
 		String fileContent = "Hello, World!";
 		String datasetId = createNewId();
 		
@@ -153,6 +164,95 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 		
 		transferProcessRepository.deleteById(transferProcessStarted.getId());
 		agreementRepository.delete(agreement);
+		policyEnforcementRepository.deleteById(policyEnforcement.getId());
+	}
+	
+	@Test
+	@DisplayName("Download artifact external")
+	@WithUserDetails(TestUtil.CONNECTOR_USER)
+	public void downloadArtifactExternal() throws Exception {
+		
+		String mockUser = "mockUser";
+		String mockPassword = "mockPassword";
+		String mockAddress = wiremock.baseUrl() + "/helloworld";
+		
+		Artifact artifact = Artifact.Builder.newInstance()
+				.artifactType(ArtifactType.EXTERNAL)
+				.createdBy(CatalogMockObjectUtil.CREATOR)
+				.created(CatalogMockObjectUtil.NOW)
+				.lastModifiedDate(CatalogMockObjectUtil.NOW)
+				.lastModifiedBy(CatalogMockObjectUtil.CREATOR)
+				.value(mockAddress)
+				.authorization(Credentials.basic(mockUser, mockPassword))
+				.build();
+		
+		artifactRepository.save(artifact);
+		
+		Dataset dataset = Dataset.Builder.newInstance()
+				.hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
+				.artifact(artifact)
+				.build();
+		
+		datasetRepository.save(dataset);
+		
+		Permission permission = Permission.Builder.newInstance()
+    			.action(Action.USE)
+    			.constraint(Arrays.asList(Constraint.Builder.newInstance()
+    					.leftOperand(LeftOperand.COUNT)
+    					.operator(Operator.LTEQ)
+    					.rightOperand("5")
+    					.build()))
+    			.build();
+		
+		// Agreement valid
+		Agreement agreement = Agreement.Builder.newInstance()
+    			.assignee("assignee")
+    			.assigner("assigner")
+    			.target("test_dataset")
+    			.permission(Arrays.asList(permission))
+    			.build();
+    	agreementRepository.save(agreement);
+    	
+    	PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
+    	policyEnforcementRepository.save(policyEnforcement);
+    	
+		// TransferProcess started
+		TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
+				.consumerPid(createNewId())
+				.providerPid(createNewId())
+				.agreementId(agreement.getId())
+				.state(TransferState.STARTED)
+				.datasetId(dataset.getId())
+				.build();
+		transferProcessRepository.save(transferProcessStarted);
+    	
+		String transactionId = Base64.getEncoder().encodeToString((transferProcessStarted.getConsumerPid() + "|" + transferProcessStarted.getProviderPid())
+				.getBytes(Charset.forName("UTF-8")));
+		
+		// mock provider success response Download
+		String fileContent = "Hello, World!";
+		String fileName = "helloworld.txt";
+		
+		
+		WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.get("/helloworld")
+				.withBasicAuth(mockUser, mockPassword)
+				.willReturn(
+	                aResponse().withHeader(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN_VALUE)
+	                .withHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + fileName)
+	                .withBody(fileContent.getBytes())));
+		
+		MvcResult resultArtifact = mockMvc.perform(get("/artifacts/" + transactionId)
+				.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(status().isOk())
+				.andExpect(content().contentType(MediaType.TEXT_PLAIN))
+				.andReturn();
+		String response = resultArtifact.getResponse().getContentAsString();
+		assertTrue(StringUtils.equals(fileContent, response));
+		
+		artifactRepository.deleteById(artifact.getId());
+		datasetRepository.deleteById(dataset.getId());
+		transferProcessRepository.deleteById(transferProcessStarted.getId());
+		agreementRepository.deleteById(agreement.getId());
 		policyEnforcementRepository.deleteById(policyEnforcement.getId());
 	}
 	

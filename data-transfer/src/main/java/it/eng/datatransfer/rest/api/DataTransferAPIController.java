@@ -24,8 +24,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, 
-	path = ApiEndpoints.TRANSFER_DATATRANSFER_V1)
+@RequestMapping(path = ApiEndpoints.TRANSFER_DATATRANSFER_V1)
 @Slf4j
 public class DataTransferAPIController {
 
@@ -38,7 +37,7 @@ public class DataTransferAPIController {
 	/********* CONSUMER ***********/
 	
 	
-	@PostMapping
+	@PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<GenericApiResponse<JsonNode>> requestTransfer(@RequestBody DataTransferRequest dataTransferRequest ) {
 		log.info("Consumer sends transfer request {}", dataTransferRequest.getTransferProcessId());
 		JsonNode response = apiService.requestTransfer(dataTransferRequest);

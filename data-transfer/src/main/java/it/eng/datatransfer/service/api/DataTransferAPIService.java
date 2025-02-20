@@ -404,20 +404,21 @@ public class DataTransferAPIService {
 		
 		log.info("Starting download transfer process id - {} data...", transferProcessId);
 		
-		// get authorization information from Data Adress if apresent
-		String authType = null;
+		// get authorization information from Data Address if present
 		String authorization = null;
 		if (transferProcess.getDataAddress().getEndpointProperties() != null) {
 			List<EndpointProperty> properties = transferProcess.getDataAddress().getEndpointProperties();
-			authType = properties.stream().filter(prop -> StringUtils.equals(prop.getName(), IConstants.AUTH_TYPE))
+			String authType = properties.stream().filter(prop -> StringUtils.equals(prop.getName(), IConstants.AUTH_TYPE))
 					.findFirst().map(prop -> prop.getValue()).orElse(null);
-			authorization = properties.stream()
+			String token = properties.stream()
 					.filter(prop -> StringUtils.equals(prop.getName(), IConstants.AUTHORIZATION)).findFirst()
 					.map(prop -> prop.getValue()).orElse(null);
+			
+			authorization = authType + " " + token;
 		}
 		
 		GenericApiResponse<ExternalData> response = okHttpRestClient.downloadData(transferProcess.getDataAddress().getEndpoint(), 
-				authType, authorization);
+				authorization);
 		
 		if (!response.isSuccess()) {
 			log.error("Download aborted, {}", response.getMessage());

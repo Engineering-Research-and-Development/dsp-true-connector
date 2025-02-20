@@ -125,7 +125,7 @@ public class RestArtifactServiceTest {
 		GenericApiResponse<ExternalData> externalResponse = new GenericApiResponse<ExternalData>();
 		externalResponse.setData(externalData);
 		externalResponse.setSuccess(true);
-		when(okHttpRestClient.downloadData(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), null, null)).thenReturn(externalResponse);
+		when(okHttpRestClient.downloadData(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), null)).thenReturn(externalResponse);
 		
 		try (MockedStatic<GridFSBuckets> buckets = Mockito.mockStatic(GridFSBuckets.class);
 				MockedStatic<IOUtils> utils = Mockito.mockStatic(IOUtils.class)) {
@@ -150,7 +150,7 @@ public class RestArtifactServiceTest {
 		.thenReturn(TransferSerializer.serializePlain(apiResponse));
 		GenericApiResponse<ExternalData> externalResponse = new GenericApiResponse<ExternalData>();
 		externalResponse.setSuccess(false);
-		when(okHttpRestClient.downloadData(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), null, null)).thenReturn(externalResponse);
+		when(okHttpRestClient.downloadData(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), null)).thenReturn(externalResponse);
 		
 		assertThrows(DownloadException.class, () -> restArtifactService.getArtifact(TRANSACTION_ID, mockHttpServletResponse));
 
