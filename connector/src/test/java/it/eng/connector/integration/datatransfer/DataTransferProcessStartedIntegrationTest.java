@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,11 @@ public class DataTransferProcessStartedIntegrationTest extends BaseIntegrationTe
 	
 	@Autowired
 	private TransferProcessRepository transferProcessRepository;
+	
+	@AfterEach
+	public void cleanup() {
+		transferProcessRepository.deleteAll();
+	}
 	
 	@Test
 	@DisplayName("Start transfer process - from requested - provider - cannot transit")
@@ -64,8 +70,6 @@ public class DataTransferProcessStartedIntegrationTest extends BaseIntegrationTe
     	String response = result.andReturn().getResponse().getContentAsString();
     	TransferError transferError = TransferSerializer.deserializeProtocol(response, TransferError.class);
     	assertNotNull(transferError);
-    	
-    	transferProcessRepository.deleteById(transferProcessRequested.getId());
 	}
 	
 	@Test
@@ -149,8 +153,6 @@ public class DataTransferProcessStartedIntegrationTest extends BaseIntegrationTe
     	String response = transferProcessStartedAction.andReturn().getResponse().getContentAsString();
     	TransferProcess transferProcessStarted = TransferSerializer.deserializeProtocol(response, TransferProcess.class);
     	assertNotNull(transferProcessStarted);
-    	
-    	transferProcessRepository.deleteById(transferProcessRequested.getId());
 	}
 	
 	@Test
@@ -223,8 +225,6 @@ public class DataTransferProcessStartedIntegrationTest extends BaseIntegrationTe
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isOk());
 		// no response
-    	
-    	transferProcessRepository.deleteById(transferProcessSuspended.getId());
 	}
 	
 	@Test
@@ -255,8 +255,6 @@ public class DataTransferProcessStartedIntegrationTest extends BaseIntegrationTe
     	String response = result.andReturn().getResponse().getContentAsString();
     	TransferError transferError = TransferSerializer.deserializeProtocol(response, TransferError.class);
     	assertNotNull(transferError);
-    	
-    	transferProcessRepository.deleteById(transferProcessSuspended.getId());
 	}
 	
 	@Test
@@ -284,8 +282,6 @@ public class DataTransferProcessStartedIntegrationTest extends BaseIntegrationTe
     					.contentType(MediaType.APPLICATION_JSON));
     	result.andExpect(status().isOk());
 		// no response
-    	
-    	transferProcessRepository.deleteById(transferProcessSuspended.getId());
 	}
 	
 	@Test
@@ -316,8 +312,6 @@ public class DataTransferProcessStartedIntegrationTest extends BaseIntegrationTe
     	String response = result.andReturn().getResponse().getContentAsString();
     	TransferError transferError = TransferSerializer.deserializeProtocol(response, TransferError.class);
     	assertNotNull(transferError);
-    	
-    	transferProcessRepository.deleteById(transferProcessSuspended.getId());
 	}
 
 }

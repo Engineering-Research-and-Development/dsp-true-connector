@@ -66,7 +66,7 @@ public class CatalogMockObjectUtil {
 
     public static final Constraint CONSTRAINT = Constraint.Builder.newInstance()
             .leftOperand(LeftOperand.COUNT)
-            .operator(Operator.EQ)
+            .operator(Operator.LTEQ)
             .rightOperand(RIGHT_EXPRESSION_COUNT)
             .build();
     

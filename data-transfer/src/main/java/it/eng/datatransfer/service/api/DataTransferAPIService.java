@@ -477,10 +477,11 @@ public class DataTransferAPIService {
         }
 		
 		try {
-			IOUtils.copyLarge(gridFsResource.getInputStream(), response.getOutputStream());
 			response.setStatus(HttpStatus.OK.value());
 			response.setContentType(gridFsResource.getContentType());
 			response.setHeader(HttpHeaders.CONTENT_DISPOSITION, ATTACHMENT_FILENAME + gridFsResource.getFilename());
+			IOUtils.copyLarge(gridFsResource.getInputStream(), response.getOutputStream());
+			response.flushBuffer();
 			publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId()));
 		} catch (IOException e) {
 			log.error("Error while accessing data", e);

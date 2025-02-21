@@ -19,6 +19,7 @@ import java.util.Set;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,7 +45,9 @@ import com.mongodb.client.gridfs.model.GridFSFile;
 import com.mongodb.client.gridfs.model.GridFSUploadOptions;
 import com.mongodb.client.model.Filters;
 
+import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.Dataset;
+import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
@@ -57,6 +60,9 @@ import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.response.GenericApiResponse;
 
 public class DatasetIntegrationTest extends BaseIntegrationTest {
+	
+	@Autowired
+	private CatalogRepository catalogRepository;
 	
 	@Autowired
 	private ArtifactRepository artifactRepository;
@@ -72,6 +78,15 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 	
 	private static final String CONTENT_TYPE_FIELD = "_contentType";
 	private static final String DATASET_ID_METADATA = "datasetId";
+	
+	@AfterEach
+	private void cleanup() {
+		catalogRepository.deleteAll();
+		artifactRepository.deleteAll();
+		datasetRepository.deleteAll();
+		mongoTemplate.getCollection(FS_FILES).drop();
+		mongoTemplate.getCollection(FS_CHUNKS).drop();
+	}
 	
 	@Test
 	@DisplayName("Dataset API - get by id")
@@ -122,11 +137,8 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 		GenericApiResponse<List<Dataset>> apiRespList =  CatalogSerializer.deserializePlain(jsonList, typeRef);
 		  
 		assertNotNull(apiRespList.getData());
-		assertTrue(apiRespList.getData().size() > 2);
+		assertTrue(apiRespList.getData().size() >= 2);
 		
-		// cleanup
-		datasetRepository.deleteById(datasetFile.getId());
-		datasetRepository.deleteById(datasetExternal.getId());
 	}
 	
 	@Test
@@ -164,8 +176,6 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 		// Object equals won't work because the db Dataset has version
 		assertEquals(datasetExternal.getId(), apiRespSingle.getData().getId());
 		
-		// cleanup
-		datasetRepository.deleteById(datasetExternal.getId());
 	}
 	
 	@Test
@@ -193,9 +203,19 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 	@DisplayName("Dataset API - upload external")
 	@WithUserDetails(TestUtil.API_USER)
 	public void uploadArtifactExternal() throws Exception {
+		int initialDatasetSize = datasetRepository.findAll().size();
+		int initialArtifactSize = artifactRepository.findAll().size();
+		
+		Catalog catalog = Catalog.Builder.newInstance()
+				.dataset(Set.of())
+				.build();
+		
+		catalogRepository.save(catalog);
+		
 		Dataset dataset = Dataset.Builder.newInstance()
 				.hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
 				.build();
+		
 		
 		TypeReference<GenericApiResponse<Dataset>> typeRef = new TypeReference<GenericApiResponse<Dataset>>() {};
 		
@@ -225,31 +245,35 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 		assertTrue(datasetFromDb.getHasPolicy().contains(CatalogMockObjectUtil.OFFER));
 		assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), datasetFromDb.getArtifact().getValue());
 		assertEquals(ArtifactType.EXTERNAL, datasetFromDb.getArtifact().getArtifactType());
-		// 1 from initial data + 1 from test
-		assertEquals(2, datasetRepository.findAll().size());
+		assertEquals(initialDatasetSize + 1, datasetRepository.findAll().size());
 		
 		// check if the artifact is inserted in the database
 		Artifact artifactFromDb = artifactRepository.findById(datasetFromDb.getArtifact().getId()).get();
 
 		assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), artifactFromDb.getValue());
 		assertEquals(ArtifactType.EXTERNAL, artifactFromDb.getArtifactType());
-		// 1 from initial data + 1 from test
-		assertEquals(2, artifactRepository.findAll().size());
+		assertEquals(initialArtifactSize + 1, artifactRepository.findAll().size());
 
-		
-		// cleanup
-		datasetRepository.deleteById(dataset.getId());
-		artifactRepository.deleteById(artifactFromDb.getId());
 	}
 	
 	@Test
 	@DisplayName("Dataset API - upload file")
 	@WithUserDetails(TestUtil.API_USER)
 	public void uploadArtifactFile() throws Exception {
+		int initialDatasetSize = datasetRepository.findAll().size();
+		int initialArtifactSize = artifactRepository.findAll().size();
+		long initialFileSize = mongoTemplate.getCollection(FS_FILES).countDocuments();
+		
 		Dataset dataset = Dataset.Builder.newInstance()
 				.hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
 				.build();
 		datasetRepository.save(dataset);
+		
+		Catalog catalog = Catalog.Builder.newInstance()
+				.dataset(Set.of(dataset))
+				.build();
+		
+		catalogRepository.save(catalog);
 		
 		String fileContent = "Hello, World!";
 		
@@ -289,8 +313,7 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 		assertTrue(datasetFromDb.getHasPolicy().contains(CatalogMockObjectUtil.OFFER));
 		assertEquals(filePart.getOriginalFilename(), datasetFromDb.getArtifact().getFilename());
 		assertEquals(ArtifactType.FILE, datasetFromDb.getArtifact().getArtifactType());
-		// 1 from initial data + 1 from test
-		assertEquals(2, datasetRepository.findAll().size());
+		assertEquals(initialDatasetSize + 1, datasetRepository.findAll().size());
 		
 		// check if the Artifact is inserted in the database
 		Artifact artifactFromDb = artifactRepository.findById(datasetFromDb.getArtifact().getId()).get();
@@ -298,8 +321,7 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 		assertEquals(filePart.getOriginalFilename(), artifactFromDb.getFilename());
 		assertEquals(filePart.getContentType(), artifactFromDb.getContentType());
 		assertEquals(ArtifactType.FILE, artifactFromDb.getArtifactType());
-		// 1 from initial data + 1 from test
-		assertEquals(2, artifactRepository.findAll().size());
+		assertEquals(initialArtifactSize + 1, artifactRepository.findAll().size());
 		
 		// check if the file is inserted in the database
 		GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
@@ -313,13 +335,8 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 		assertEquals(filePart.getOriginalFilename(), gridFsResource.getFilename());
 		assertEquals(fileContent, gridFsResource.getContentAsString(StandardCharsets.UTF_8));
 		// 1 from initial data + 1 from test
-		assertEquals(2, mongoTemplate.getCollection("fs.files").countDocuments());
+		assertEquals(initialFileSize + 1, mongoTemplate.getCollection(FS_FILES).countDocuments());
 		
-		// cleanup
-		datasetRepository.deleteById(dataset.getId());
-		artifactRepository.deleteById(artifactFromDb.getId());
-		ObjectId objectId = new ObjectId(artifactFromDb.getValue());
-		gridFSBucket.delete(objectId);
 	}
 
 	@Test
@@ -371,6 +388,10 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 		artifactRepository.save(artifactExternal);
 		datasetRepository.save(dataset);
 		
+		int initialDatasetSize = datasetRepository.findAll().size();
+		int initialArtifactSize = artifactRepository.findAll().size();
+		long initialFileSize = mongoTemplate.getCollection(FS_FILES).countDocuments();
+		
 		String fileContent = "Hello, World!";
 		
 		MockMultipartFile filePart 
@@ -415,8 +436,7 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 		assertTrue(datasetFromDb.getHasPolicy().contains(CatalogMockObjectUtil.OFFER));
 		assertEquals(filePart.getOriginalFilename(), datasetFromDb.getArtifact().getFilename());
 		assertEquals(ArtifactType.FILE, datasetFromDb.getArtifact().getArtifactType());
-		// 1 from initial data + 1 from test
-		assertEquals(2, datasetRepository.findAll().size());
+		assertEquals(initialDatasetSize, datasetRepository.findAll().size());
 		
 		// check if the Artifact is inserted in the database
 		Artifact artifactFromDb = artifactRepository.findById(datasetFromDb.getArtifact().getId()).get();
@@ -424,8 +444,7 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 		assertEquals(filePart.getOriginalFilename(), artifactFromDb.getFilename());
 		assertEquals(filePart.getContentType(), artifactFromDb.getContentType());
 		assertEquals(ArtifactType.FILE, artifactFromDb.getArtifactType());
-		// 1 from initial data + 1 from test
-		assertEquals(2, artifactRepository.findAll().size());
+		assertEquals(initialArtifactSize, artifactRepository.findAll().size());
 		
 		// check if the file is inserted in the database
 		GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
@@ -438,20 +457,15 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 		assertEquals(filePart.getContentType(), gridFsResource.getContentType());
 		assertEquals(filePart.getOriginalFilename(), gridFsResource.getFilename());
 		assertEquals(fileContent, gridFsResource.getContentAsString(StandardCharsets.UTF_8));
-		// 1 from initial data + 1 from test
-		assertEquals(2, mongoTemplate.getCollection("fs.files").countDocuments());
+		assertEquals(initialFileSize + 1, mongoTemplate.getCollection(FS_FILES).countDocuments());
 		
-		// cleanup
-		datasetRepository.deleteById(dataset.getId());
-		artifactRepository.deleteById(artifactFromDb.getId());
-		ObjectId objectId = new ObjectId(artifactFromDb.getValue());
-		gridFSBucket.delete(objectId);
 	}
 	
 	@Test
 	@DisplayName("Dataset API - update from file to external")
 	@WithUserDetails(TestUtil.API_USER)
 	public void updateArtifactFileToExternal() throws Exception {
+		
 		Dataset dataset = Dataset.Builder.newInstance()
 				.hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
 				.build();
@@ -495,6 +509,10 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 		
 		artifactRepository.save(artifactFile);
 		datasetRepository.save(datasetWithFile);
+		
+		int initialDatasetSize = datasetRepository.findAll().size();
+		int initialArtifactSize = artifactRepository.findAll().size();
+		long initialFileSize = mongoTemplate.getCollection(FS_FILES).countDocuments();
 		
 		MockPart urlPart = new MockPart("url", CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue().getBytes());
 		
@@ -532,31 +550,34 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 		assertTrue(datasetFromDb.getHasPolicy().contains(CatalogMockObjectUtil.OFFER));
 		assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), datasetFromDb.getArtifact().getValue());
 		assertEquals(ArtifactType.EXTERNAL, datasetFromDb.getArtifact().getArtifactType());
-		// 1 from initial data + 1 from test
-		assertEquals(2, datasetRepository.findAll().size());
+		assertEquals(initialDatasetSize, datasetRepository.findAll().size());
 
 		// check if the artifact is inserted in the database
 		Artifact artifactFromDb = artifactRepository.findById(datasetFromDb.getArtifact().getId()).get();
 
 		assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), artifactFromDb.getValue());
 		assertEquals(ArtifactType.EXTERNAL, artifactFromDb.getArtifactType());
-		// 1 from initial data + 1 from test
-		assertEquals(2, artifactRepository.findAll().size());
+		assertEquals(initialArtifactSize, artifactRepository.findAll().size());
 
-		// 1 from initial data, the one from testing should be deleted
-		assertEquals(1, mongoTemplate.getCollection("fs.files").countDocuments());
+		// check if the file is inserted in the database and old one removed
+		assertEquals(initialFileSize - 1, mongoTemplate.getCollection(FS_FILES).countDocuments());
 		
-		// cleanup
-		datasetRepository.deleteById(datasetWithFile.getId());
-		artifactRepository.deleteById(artifactFromDb.getId());
 	}
 	
 	@Test
 	@DisplayName("Dataset API - delete dataset with file")
 	@WithUserDetails(TestUtil.API_USER)
 	public void deleteDatasetWithFile() throws Exception {
+		int initialDatasetSize = datasetRepository.findAll().size();
+		int initialArtifactSize = artifactRepository.findAll().size();
+		long initialFileSize = mongoTemplate.getCollection(FS_FILES).countDocuments();
+		
 		Dataset dataset = Dataset.Builder.newInstance()
 				.hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
+				.build();
+		
+		Catalog catalog = Catalog.Builder.newInstance()
+				.dataset(Set.of(dataset))
 				.build();
 		
 		String fileContent = "Hello, World!";
@@ -598,6 +619,8 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 		
 		artifactRepository.save(artifactFile);
 		datasetRepository.save(datasetWithFile);
+		catalogRepository.save(catalog);
+		
 		
 		TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {};
 		
@@ -617,18 +640,14 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 
 		// check if the Dataset is deleted from the database
 		assertEquals(Optional.empty(), datasetRepository.findById(dataset.getId()));
-
-		// 1 from initial data
-		assertEquals(1, datasetRepository.findAll().size());
+		assertEquals(initialDatasetSize, datasetRepository.findAll().size());
 
 		// check if the artifact is deleted from the database
 		assertEquals(Optional.empty(), artifactRepository.findById(artifactFile.getId()));
+		assertEquals(initialArtifactSize, artifactRepository.findAll().size());
 
-		// 1 from initial data
-		assertEquals(1, artifactRepository.findAll().size());
-
-		// 1 from initial data, the one from testing should be deleted
-		assertEquals(1, mongoTemplate.getCollection("fs.files").countDocuments());
+		// check if the file is deleted from the database
+		assertEquals(initialFileSize, mongoTemplate.getCollection(FS_FILES).countDocuments());
 		
 	}
 	
@@ -636,6 +655,9 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 	@DisplayName("Dataset API - delete dataset with external")
 	@WithUserDetails(TestUtil.API_USER)
 	public void deleteDatasetWithExternal() throws Exception {
+		int initialDatasetSize = datasetRepository.findAll().size();
+		int initialArtifactSize = artifactRepository.findAll().size();
+		
 		Artifact artifactExternal = Artifact.Builder.newInstance()
 				.artifactType(ArtifactType.EXTERNAL)
 				.createdBy(CatalogMockObjectUtil.CREATOR)
@@ -650,6 +672,11 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 				.artifact(artifactExternal)
 				.build();
 		
+		Catalog catalog = Catalog.Builder.newInstance()
+				.dataset(Set.of(dataset))
+				.build();
+		
+		catalogRepository.save(catalog);
 		artifactRepository.save(artifactExternal);
 		datasetRepository.save(dataset);
 		
@@ -672,15 +699,11 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 
 		// check if the Dataset is deleted from the database
 		assertEquals(Optional.empty(), datasetRepository.findById(dataset.getId()));
-
-		// 1 from initial data
-		assertEquals(1, datasetRepository.findAll().size());
+		assertEquals(initialDatasetSize, datasetRepository.findAll().size());
 
 		// check if the artifact is deleted from the database
 		assertEquals(Optional.empty(), artifactRepository.findById(artifactExternal.getId()));
-
-		// 1 from initial data
-		assertEquals(1, artifactRepository.findAll().size());
+		assertEquals(initialArtifactSize, artifactRepository.findAll().size());
 
 	}
 	
@@ -688,6 +711,10 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 	@DisplayName("Dataset API - delete fail")
 	@WithUserDetails(TestUtil.API_USER)
 	public void deleteDatasetFail() throws Exception {
+		
+		int initialDatasetSize = datasetRepository.findAll().size();
+		int initialArtifactSize = artifactRepository.findAll().size();
+		long initialFileSize = mongoTemplate.getCollection(FS_FILES).countDocuments();
 		
 		TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {};
 		
@@ -706,14 +733,10 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 		assertNotNull(apiResp.getMessage());
 
 
-		// 1 from initial data
-		assertEquals(1, datasetRepository.findAll().size());
-
-		// 1 from initial data
-		assertEquals(1, artifactRepository.findAll().size());
-		
-		// 1 from initial data
-		assertEquals(1, mongoTemplate.getCollection("fs.files").countDocuments());
+		// check that the count hasn't changed
+		assertEquals(initialDatasetSize, datasetRepository.findAll().size());
+		assertEquals(initialArtifactSize, artifactRepository.findAll().size());
+		assertEquals(initialFileSize, mongoTemplate.getCollection(FS_FILES).countDocuments());
 
 	}
 	

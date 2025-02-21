@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.Arrays;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +36,11 @@ public class ContractNegotiationTerminateIntegrationTest extends BaseIntegration
 	@Autowired
 	private ContractNegotiationRepository contractNegotiationRepository;
 
+	@AfterEach
+	public void cleanup() {
+		contractNegotiationRepository.deleteAll();
+	}
+	
     @Test
     @DisplayName("Provider endpoint terminate negotiation - success")
     @WithUserDetails(TestUtil.CONNECTOR_USER)
@@ -59,9 +65,6 @@ public class ContractNegotiationTerminateIntegrationTest extends BaseIntegration
     	result.andExpect(status().isOk());
     	// Spring does not set content type when there is no body - if DSP requires it, uncomment
 //    		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
-    	
-    	// cleanup
-    	contractNegotiationRepository.delete(cn);
     }
     
     @Test
@@ -93,9 +96,6 @@ public class ContractNegotiationTerminateIntegrationTest extends BaseIntegration
     	assertNotNull(erroMessage);
     	assertEquals(cn.getConsumerPid(), erroMessage.getConsumerPid());
     	assertEquals(INVALID_PID, erroMessage.getProviderPid());
-    	
-    	// cleanup
-    	contractNegotiationRepository.delete(cn);
     }
 
     @Test
@@ -121,9 +121,6 @@ public class ContractNegotiationTerminateIntegrationTest extends BaseIntegration
     	// result is 200 OK
     	result.andExpect(status().isOk());
 //    		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
-    	
-    	// cleanup
-    	contractNegotiationRepository.delete(cn);
     }
     
     @Test
@@ -154,9 +151,6 @@ public class ContractNegotiationTerminateIntegrationTest extends BaseIntegration
     	assertNotNull(erroMessage);
     	assertEquals(INVALID_PID, erroMessage.getConsumerPid());
     	assertEquals(cn.getProviderPid(), erroMessage.getProviderPid());
-    	
-    	// cleanup
-    	contractNegotiationRepository.delete(cn);
     }
     
 	private ContractNegotiation createContractNegotiation() {

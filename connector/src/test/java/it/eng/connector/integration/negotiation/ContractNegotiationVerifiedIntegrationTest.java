@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.Arrays;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -14,6 +15,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.negotiation.model.Action;
@@ -45,6 +47,13 @@ public class ContractNegotiationVerifiedIntegrationTest extends BaseIntegrationT
 	@Autowired
 	private OfferRepository offerRepository;
 	
+	@AfterEach
+	public void cleanup() {
+		contractNegotiationRepository.deleteAll();
+		agreementRepository.deleteAll();
+		offerRepository.deleteAll();
+	}
+	
 	@Test
 	@WithUserDetails(TestUtil.CONNECTOR_USER)
 	public void handleVerifyAgreementTest() throws Exception {
@@ -60,7 +69,7 @@ public class ContractNegotiationVerifiedIntegrationTest extends BaseIntegrationT
     	
     	Offer offer = Offer.Builder.newInstance()
     			.permission(Arrays.asList(permission))
-    			.originalId(offerID)
+    			.originalId(CatalogMockObjectUtil.OFFER.getId())
     			.target("test_dataset")
     			.assigner("assigner")
     			.build();
@@ -101,13 +110,8 @@ public class ContractNegotiationVerifiedIntegrationTest extends BaseIntegrationT
 		ContractNegotiation contractNegotiationResponse = NegotiationSerializer
 				.deserializePlain(contractNegotiation.toPrettyString(), ContractNegotiation.class);
 		assertEquals(ContractNegotiationState.VERIFIED, contractNegotiationResponse.getState());
-		offerCheck(contractNegotiationResponse);
+		offerCheck(contractNegotiationResponse, CatalogMockObjectUtil.OFFER.getId());
 		agreementCheck(contractNegotiationResponse);
-		
-		contractNegotiationRepository.deleteById(contractNegotiationVerified.getId());
-		agreementRepository.delete(agreement);
-		offerRepository.delete(offer);
-
 	}
 	
 	@Test
@@ -134,8 +138,6 @@ public class ContractNegotiationVerifiedIntegrationTest extends BaseIntegrationT
 						.content(NegotiationSerializer.serializeProtocol(verificationMessage))
 						.contentType(MediaType.APPLICATION_JSON));
 		result.andExpect(status().isBadRequest());
-
-		contractNegotiationRepository.deleteById(contractNegotiationVerified.getId());
 	}
 	
 	@Test

@@ -1,6 +1,14 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 21-02-2025
+
+### Changed
+
+ - Removed catalog data from test scope initial_data.json
+ - All IT inserts data before using it/verify logic and does cleanup after test
+ - Force buffer flush for get external data and transfer file
+
 ## [0.1.1] - 19-02-2025
 
 ### Added

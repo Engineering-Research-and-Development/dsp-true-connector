@@ -9,20 +9,29 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
+import org.bson.Document;
+import org.bson.types.ObjectId;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.MvcResult;
 import org.wiremock.spring.InjectWireMock;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
+import com.mongodb.client.gridfs.GridFSBucket;
+import com.mongodb.client.gridfs.GridFSBuckets;
+import com.mongodb.client.gridfs.model.GridFSUploadOptions;
 
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.repository.DatasetRepository;
@@ -47,9 +56,8 @@ import it.eng.tools.repository.ArtifactRepository;
 import okhttp3.Credentials;
 
 public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
-
-	// from initial_data
-	private String datasetId = "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5";
+	private static final String CONTENT_TYPE_FIELD = "_contentType";
+	private static final String DATASET_ID_METADATA = "datasetId";
 	
 	@InjectWireMock 
 	private WireMockServer wiremock;
@@ -65,10 +73,57 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 	@Autowired
 	private PolicyEnforcementRepository policyEnforcementRepository;
 	
+	@Autowired
+	private MongoTemplate mongoTemplate;
+	
+	@AfterEach
+	public void cleanup() {
+		datasetRepository.deleteAll();
+		artifactRepository.deleteAll();
+		transferProcessRepository.deleteAll();
+		agreementRepository.deleteAll();
+		policyEnforcementRepository.deleteAll();
+		mongoTemplate.getCollection(FS_FILES).drop();
+		mongoTemplate.getCollection(FS_CHUNKS).drop();
+	}
+	
 	@Test
 	@DisplayName("Download artifact file")
 	@WithUserDetails(TestUtil.CONNECTOR_USER)
 	public void downloadArtifactFile() throws Exception {
+		String fileContent = "Hello, World!";
+		String datasetId = createNewId();
+		
+		MockMultipartFile file 
+			= new MockMultipartFile(
+				"file", 
+				"hello.txt", 
+				MediaType.TEXT_PLAIN_VALUE, 
+				fileContent.getBytes()
+				);
+		
+		GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
+		Document doc = new Document();
+		//TODO check what happens if file.getContentType() is null
+		doc.append(CONTENT_TYPE_FIELD, file.getContentType());
+		doc.append(DATASET_ID_METADATA, datasetId);
+		GridFSUploadOptions options = new GridFSUploadOptions()
+				.chunkSizeBytes(1048576) // 1MB chunk size
+				.metadata(doc);
+		ObjectId fileId = gridFSBucket.uploadFromStream(file.getOriginalFilename(), file.getInputStream(), options);
+		
+		Artifact artifact = Artifact.Builder.newInstance()
+				.artifactType(ArtifactType.FILE)
+				.filename(file.getOriginalFilename())
+				.value(fileId.toHexString())
+				.build();
+		artifactRepository.save(artifact);
+		Dataset dataset = Dataset.Builder.newInstance()
+				.id(datasetId)
+				.hasPolicy(Collections.singleton(CatalogMockObjectUtil.OFFER))
+				.artifact(artifact)
+				.build();
+		datasetRepository.save(dataset);
 		
 		Permission permission = Permission.Builder.newInstance()
     			.action(Action.USE)
@@ -97,7 +152,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 				.providerPid(createNewId())
 				.agreementId(agreement.getId())
 				.state(TransferState.STARTED)
-				.datasetId(datasetId)
+				.datasetId(dataset.getId())
 				.build();
 		transferProcessRepository.save(transferProcessStarted);
     	
@@ -107,15 +162,10 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 		MvcResult resultArtifact = mockMvc.perform(get("/artifacts/" + transactionId)
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().isOk())
-				.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+				.andExpect(content().contentType(MediaType.TEXT_PLAIN_VALUE))
 				.andReturn();
-		String artifact = resultArtifact.getResponse().getContentAsString();
-		assertTrue(artifact.contains("John"));
-		assertTrue(artifact.contains("Doe"));
-		
-		transferProcessRepository.deleteById(transferProcessStarted.getId());
-		agreementRepository.delete(agreement);
-		policyEnforcementRepository.deleteById(policyEnforcement.getId());
+		String artifactResponse = resultArtifact.getResponse().getContentAsString();
+		assertTrue(artifactResponse.contains(fileContent));
 	}
 	
 	@Test
@@ -199,18 +249,16 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 				.andReturn();
 		String response = resultArtifact.getResponse().getContentAsString();
 		assertTrue(StringUtils.equals(fileContent, response));
-		
-		artifactRepository.deleteById(artifact.getId());
-		datasetRepository.deleteById(dataset.getId());
-		transferProcessRepository.deleteById(transferProcessStarted.getId());
-		agreementRepository.deleteById(agreement.getId());
-		policyEnforcementRepository.deleteById(policyEnforcement.getId());
 	}
 	
 	@Test
 	@DisplayName("Download artifact - process not started")
 	@WithUserDetails(TestUtil.CONNECTOR_USER)
 	public void downloadArtifact_fail_not_started() throws Exception {
+		Dataset dataset = Dataset.Builder.newInstance()
+				.hasPolicy(Collections.singleton(CatalogMockObjectUtil.OFFER))
+				.build();
+		datasetRepository.save(dataset);
 		
 		Permission permission = Permission.Builder.newInstance()
     			.action(Action.USE)
@@ -239,7 +287,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 				.providerPid(createNewId())
 				.agreementId(agreement.getId())
 				.state(TransferState.REQUESTED)
-				.datasetId(datasetId)
+				.datasetId(dataset.getId())
 				.build();
 		transferProcessRepository.save(transferProcessStarted);
     	
@@ -249,17 +297,16 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 		mockMvc.perform(get("/artifacts/" + transactionId)
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().isPreconditionFailed());
-		
-		transferProcessRepository.deleteById(transferProcessStarted.getId());
-		agreementRepository.delete(agreement);
-		policyEnforcementRepository.deleteById(policyEnforcement.getId());
 	}
 	
 	@Test
 	@DisplayName("Download artifact - enforcmenet failed")
 	@WithUserDetails(TestUtil.CONNECTOR_USER)
 	public void downloadArtifact_fail_enforcement_failed() throws Exception {
-		
+		Dataset dataset = Dataset.Builder.newInstance()
+				.hasPolicy(Collections.singleton(CatalogMockObjectUtil.OFFER))
+				.build();
+		datasetRepository.save(dataset);
 		Permission permission = Permission.Builder.newInstance()
     			.action(Action.USE)
     			.constraint(Arrays.asList(Constraint.Builder.newInstance()
@@ -288,7 +335,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 				.providerPid(createNewId())
 				.agreementId(agreement.getId())
 				.state(TransferState.REQUESTED)
-				.datasetId(datasetId)
+				.datasetId(dataset.getId())
 				.build();
 		transferProcessRepository.save(transferProcessStarted);
     	
@@ -298,9 +345,5 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 		mockMvc.perform(get("/artifacts/" + transactionId)
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().isPreconditionFailed());
-		
-		transferProcessRepository.deleteById(transferProcessStarted.getId());
-		agreementRepository.delete(agreement);
-		policyEnforcementRepository.deleteById(policyEnforcement.getId());
 	}
 }

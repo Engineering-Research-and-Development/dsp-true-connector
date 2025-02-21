@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -16,6 +17,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.TransferProcess;
@@ -53,6 +55,14 @@ public class ContractNegotiationFinalizeIntegrationTest extends BaseIntegrationT
 	@Autowired
 	private TransferProcessRepository transferProcessRepository;
 	
+	@AfterEach
+	public void cleanup() {
+		contractNegotiationRepository.deleteAll();
+		agreementRepository.deleteAll();
+		offerRepository.deleteAll();
+		transferProcessRepository.deleteAll();
+	}
+	
     @Test
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void handleFinalizeEventTest() throws Exception {
@@ -68,7 +78,7 @@ public class ContractNegotiationFinalizeIntegrationTest extends BaseIntegrationT
     	
     	Offer offer = Offer.Builder.newInstance()
     			.permission(Arrays.asList(permission))
-    			.originalId(offerID)
+    			.originalId(CatalogMockObjectUtil.OFFER.getId())
     			.target("test_dataset")
     			.assigner("assigner")
     			.build();
@@ -111,7 +121,7 @@ public class ContractNegotiationFinalizeIntegrationTest extends BaseIntegrationT
     	JsonNode contractNegotiation = getContractNegotiationOverAPI();
 		ContractNegotiation contractNegotiationFinalized = NegotiationSerializer.deserializePlain(contractNegotiation.toPrettyString(), ContractNegotiation.class);
 		assertEquals(ContractNegotiationState.FINALIZED, contractNegotiationFinalized.getState());
-		offerCheck(contractNegotiationFinalized);
+		offerCheck(contractNegotiationFinalized, CatalogMockObjectUtil.OFFER.getId());
 		agreementCheck(contractNegotiationFinalized);
     	
     	// must wait for event that creates initial transfer process is completed
@@ -125,11 +135,6 @@ public class ContractNegotiationFinalizeIntegrationTest extends BaseIntegrationT
 		assertNotNull(transferProcess.getRole());
 		assertNotNull(transferProcess.getDatasetId());
 		assertEquals(IConstants.TEMPORARY_PROVIDER_PID, transferProcess.getProviderPid());
-		
-		agreementRepository.delete(agreement);
-		offerRepository.delete(offer);
-		contractNegotiationRepository.deleteById(contractNegotiationVerified.getId());
-		transferProcessRepository.deleteById(transferProcess.getId());
     }
     
     @Test

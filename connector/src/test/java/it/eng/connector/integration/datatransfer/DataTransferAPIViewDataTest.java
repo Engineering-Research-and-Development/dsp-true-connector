@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.bson.Document;
 import org.bson.types.ObjectId;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -71,6 +72,13 @@ public class DataTransferAPIViewDataTest extends BaseIntegrationTest{
 	private static final String CONTENT_TYPE_FIELD = "_contentType";
 	private static final String DATASET_ID_METADATA = "datasetId";
 	private static final String FILE_NAME = "hello.txt";
+	
+	@AfterEach
+	public void cleanup() {
+		transferProcessRepository.deleteAll();
+		agreementRepository.deleteAll();
+		policyEnforcementRepository.deleteAll();
+	}
 
 	@Test
 	@DisplayName("View data - success")
@@ -159,15 +167,10 @@ public class DataTransferAPIViewDataTest extends BaseIntegrationTest{
 		
 		assertEquals(policyEnforcement.getCount() + 1, enforcementFromDb.getCount());
 		
-		// cleanup
-		transferProcessRepository.deleteById(transferProcessFromDb.getId());
-		agreementRepository.deleteById(agreement.getId());
-		policyEnforcementRepository.deleteById(policyEnforcement.getId());
 		ObjectId objectId = new ObjectId(transferProcessFromDb.getDataId());
 		gridFSBucket.delete(objectId);
-		
     }
-	
+
 	@Test
 	@DisplayName("View data - fail policy expired")
     @WithUserDetails(TestUtil.API_USER)
@@ -224,11 +227,6 @@ public class DataTransferAPIViewDataTest extends BaseIntegrationTest{
 		assertNotNull(apiResp);
 		assertFalse(apiResp.isSuccess());
 		assertNull(apiResp.getData());
-		
-		// cleanup
-		transferProcessRepository.deleteById(transferProcessStarted.getId());
-		agreementRepository.deleteById(agreement.getId());
-		policyEnforcementRepository.deleteById(policyEnforcement.getId());
     }
 
 }

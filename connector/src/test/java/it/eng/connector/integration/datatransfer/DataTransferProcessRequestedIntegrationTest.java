@@ -8,7 +8,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.Arrays;
+import java.util.Collections;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +19,14 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 
+import it.eng.catalog.model.Catalog;
+import it.eng.catalog.model.Dataset;
+import it.eng.catalog.model.Distribution;
+import it.eng.catalog.model.Reference;
+import it.eng.catalog.repository.CatalogRepository;
+import it.eng.catalog.repository.DatasetRepository;
+import it.eng.catalog.repository.DistributionRepository;
+import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.DataTransferFormat;
@@ -47,8 +58,47 @@ public class DataTransferProcessRequestedIntegrationTest extends BaseIntegration
 	private ContractNegotiationRepository contractNegotiationRepository;
 	@Autowired
 	private TransferProcessRepository transferProcessRepository;
-	// from initial_data
-	private String datasetId = "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5";
+	
+	@Autowired
+	private CatalogRepository catalogRepository;
+	@Autowired
+	private DatasetRepository datasetRepository;
+	@Autowired
+	private DistributionRepository distributionRepository;
+	
+	private Catalog catalog;
+	private Dataset dataset;
+	private Distribution distribution;
+	
+	@BeforeEach
+	public void populateCatalog() {
+		distribution = Distribution.Builder.newInstance()
+				.format(Reference.Builder.newInstance().id(DataTransferFormat.HTTP_PULL.format()).build())
+				.accessService(Collections.singleton(CatalogMockObjectUtil.DATA_SERVICE))
+				.build();
+		dataset = Dataset.Builder.newInstance()
+				.hasPolicy(Collections.singleton(CatalogMockObjectUtil.OFFER))
+				.distribution(Collections.singleton(distribution))
+				.build();
+		catalog = Catalog.Builder.newInstance()
+				.dataset(Collections.singleton(dataset))
+				.build();
+		
+		distributionRepository.save(distribution);
+		datasetRepository.save(dataset);
+		catalogRepository.save(catalog);
+	}
+	
+	@AfterEach
+	public void cleanup() {
+		distributionRepository.deleteAll();
+		datasetRepository.deleteAll();
+		catalogRepository.deleteAll();
+		
+		agreementRepository.deleteAll();
+		contractNegotiationRepository.deleteAll();
+		transferProcessRepository.deleteAll();
+	}
 	
 	@Test
     @WithUserDetails(TestUtil.CONNECTOR_USER)
@@ -87,7 +137,7 @@ public class DataTransferProcessRequestedIntegrationTest extends BaseIntegration
     			.format(DataTransferFormat.HTTP_PULL.format())
     			.agreementId(agreement.getId())
     			.state(TransferState.INITIALIZED)
-    			.datasetId(datasetId)
+    			.datasetId(dataset.getId())
     			.build();
     	transferProcessRepository.save(transferProcessInitialized);
     	
@@ -133,7 +183,7 @@ public class DataTransferProcessRequestedIntegrationTest extends BaseIntegration
     			.format(DataTransferFormat.HTTP_PULL.format())
     			.agreementId(createNewId())
     			.state(TransferState.REQUESTED)
-    			.datasetId(datasetId)
+    			.datasetId(dataset.getId())
     			.build();
     	transferProcessRepository.save(transferProcessRequested);
     	
@@ -197,7 +247,7 @@ public class DataTransferProcessRequestedIntegrationTest extends BaseIntegration
 		    			.format(DataTransferFormat.HTTP_PULL.format())
 		    			.agreementId(agreement.getId())
 		    			.state(TransferState.INITIALIZED)
-		    			.datasetId(datasetId)
+		    			.datasetId(dataset.getId())
 		    			.build();
 		    	transferProcessRepository.save(transferProcessInitialized);
 		    	
@@ -243,7 +293,7 @@ public class DataTransferProcessRequestedIntegrationTest extends BaseIntegration
     			.format(DataTransferFormat.HTTP_PULL.format())
     			.agreementId(createNewId())
     			.state(TransferState.INITIALIZED)
-    			.datasetId(datasetId)
+    			.datasetId(dataset.getId())
     			.build();
     	transferProcessRepository.save(transferProcessRequested);
     	
