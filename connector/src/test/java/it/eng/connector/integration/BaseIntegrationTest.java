@@ -50,6 +50,9 @@ import it.eng.tools.serializer.InstantSerializer;
 @EnableWireMock
 public class BaseIntegrationTest {
 	
+	protected static final String FS_FILES = "fs.files";
+	protected static final String FS_CHUNKS = "fs.chunks";
+	
    @Autowired
    protected MockMvc mockMvc;
    protected JsonMapper jsonMapper;

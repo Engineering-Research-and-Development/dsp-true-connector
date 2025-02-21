@@ -87,7 +87,7 @@ public class DataTransferAPIDownloadDataTest extends BaseIntegrationTest{
     @WithUserDetails(TestUtil.API_USER)
 	public void downloadData_success() throws Exception {
 		int startingTransferProcessCollectionSize = transferProcessRepository.findAll().size();
-		long startingFilesCollectionSize = mongoTemplate.getCollection("fs.files").countDocuments();
+		long startingFilesCollectionSize = mongoTemplate.getCollection(FS_FILES).countDocuments();
 		
 		Agreement agreement = Agreement.Builder.newInstance()
 				.id(createNewId())
@@ -203,7 +203,7 @@ public class DataTransferAPIDownloadDataTest extends BaseIntegrationTest{
 		assertEquals(FILE_NAME, gridFsResource.getFilename());
 		assertEquals(fileContent, gridFsResource.getContentAsString(StandardCharsets.UTF_8));
 		// 1 from initial data + 1 from test
-		assertEquals(startingFilesCollectionSize + 1, mongoTemplate.getCollection("fs.files").countDocuments());
+		assertEquals(startingFilesCollectionSize + 1, mongoTemplate.getCollection(FS_FILES).countDocuments());
 		
 		// cleanup
 		transferProcessRepository.deleteById(transferProcessFromDb.getId());
@@ -219,7 +219,7 @@ public class DataTransferAPIDownloadDataTest extends BaseIntegrationTest{
     @WithUserDetails(TestUtil.API_USER)
 	public void downloadData_fail() throws Exception {
 		int startingTransferProcessCollectionSize = transferProcessRepository.findAll().size();
-		long startingFilesCollectionSize = mongoTemplate.getCollection("fs.files").countDocuments();
+		long startingFilesCollectionSize = mongoTemplate.getCollection(FS_FILES).countDocuments();
 		
 		Agreement agreement = Agreement.Builder.newInstance()
 				.id(createNewId())
@@ -303,7 +303,7 @@ public class DataTransferAPIDownloadDataTest extends BaseIntegrationTest{
 		
 		// check if the file is inserted in the database
 		// 1 from initial data + 0 from test
-		assertEquals(startingFilesCollectionSize, mongoTemplate.getCollection("fs.files").countDocuments());
+		assertEquals(startingFilesCollectionSize, mongoTemplate.getCollection(FS_FILES).countDocuments());
 		
 		// cleanup
 		transferProcessRepository.deleteById(transferProcessFromDb.getId());

@@ -61,7 +61,6 @@ import it.eng.tools.response.GenericApiResponse;
 
 public class DatasetIntegrationTest extends BaseIntegrationTest {
 	
-
 	@Autowired
 	private CatalogRepository catalogRepository;
 	
@@ -77,7 +76,6 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 	@InjectWireMock 
 	private WireMockServer wiremock;
 	
-	private static final String FS_FILES = "fs.files";
 	private static final String CONTENT_TYPE_FIELD = "_contentType";
 	private static final String DATASET_ID_METADATA = "datasetId";
 	
@@ -87,6 +85,7 @@ public class DatasetIntegrationTest extends BaseIntegrationTest {
 		artifactRepository.deleteAll();
 		datasetRepository.deleteAll();
 		mongoTemplate.getCollection(FS_FILES).drop();
+		mongoTemplate.getCollection(FS_CHUNKS).drop();
 	}
 	
 	@Test

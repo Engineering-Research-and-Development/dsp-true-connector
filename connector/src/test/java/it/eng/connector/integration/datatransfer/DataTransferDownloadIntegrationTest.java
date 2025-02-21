@@ -80,6 +80,8 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 	public void cleanup() {
 		datasetRepository.deleteAll();
 		artifactRepository.deleteAll();
+		mongoTemplate.getCollection(FS_FILES).drop();
+		mongoTemplate.getCollection(FS_CHUNKS).drop();
 	}
 	
 	@Test
