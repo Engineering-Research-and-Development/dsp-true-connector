@@ -554,11 +554,11 @@ class DataTransferAPIServiceTest {
 	public void viewData_fail_canNotAccessData() {
 		mockHttpServletResponse = new MockHttpServletResponse();
 		when(transferProcessRepository.findById(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId()))
-		.thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED));
+			.thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED));
 		when(usageControlProperties.usageControlEnabled()).thenReturn(true);
 		GenericApiResponse<String> internalResponse = GenericApiResponse.success("successfull response", ATTACHMENT_FILENAME);
 		when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
-		.thenReturn(TransferSerializer.serializePlain(internalResponse));
+			.thenReturn(TransferSerializer.serializePlain(internalResponse));
 		ObjectId objectId = new ObjectId(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getDataId());
 		when(mongoTemplate.getDb()).thenReturn(mongoDatabase);
 		when(gridFSBucket.find(any(Bson.class))).thenReturn(gridFSFindIterable);
@@ -566,12 +566,13 @@ class DataTransferAPIServiceTest {
 		when(gridFSFile.getObjectId()).thenReturn(objectId);
 		Document doc = new Document();
 		doc.append("_contentType", "application/json");
+		when(gridFSFile.getMetadata()).thenReturn(doc);
 		when(gridFSBucket.openDownloadStream(objectId)).thenReturn(gridFSDownloadStream);
-		
+
 		try (MockedStatic<GridFSBuckets> buckets = Mockito.mockStatic(GridFSBuckets.class);
 				MockedStatic<IOUtils> utils = Mockito.mockStatic(IOUtils.class)) {
 				buckets.when(() -> GridFSBuckets.create(mongoTemplate.getDb()))
-		          .thenReturn(gridFSBucket);
+		          	.thenReturn(gridFSBucket);
 				utils.when(() -> IOUtils.copyLarge(any(), any())).thenThrow(IOException.class);
 
 				assertThrows(DataTransferAPIException.class,
