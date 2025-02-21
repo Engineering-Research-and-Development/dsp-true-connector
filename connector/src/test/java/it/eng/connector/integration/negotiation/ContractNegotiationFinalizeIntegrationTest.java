@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -53,6 +54,14 @@ public class ContractNegotiationFinalizeIntegrationTest extends BaseIntegrationT
 	private OfferRepository offerRepository;
 	@Autowired
 	private TransferProcessRepository transferProcessRepository;
+	
+	@AfterEach
+	public void cleanup() {
+		contractNegotiationRepository.deleteAll();
+		agreementRepository.deleteAll();
+		offerRepository.deleteAll();
+		transferProcessRepository.deleteAll();
+	}
 	
     @Test
     @WithUserDetails(TestUtil.CONNECTOR_USER)
@@ -126,11 +135,6 @@ public class ContractNegotiationFinalizeIntegrationTest extends BaseIntegrationT
 		assertNotNull(transferProcess.getRole());
 		assertNotNull(transferProcess.getDatasetId());
 		assertEquals(IConstants.TEMPORARY_PROVIDER_PID, transferProcess.getProviderPid());
-		
-		agreementRepository.delete(agreement);
-		offerRepository.delete(offer);
-		contractNegotiationRepository.deleteById(contractNegotiationVerified.getId());
-		transferProcessRepository.deleteById(transferProcess.getId());
     }
     
     @Test

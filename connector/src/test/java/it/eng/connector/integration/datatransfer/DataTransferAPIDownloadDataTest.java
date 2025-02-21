@@ -205,10 +205,7 @@ public class DataTransferAPIDownloadDataTest extends BaseIntegrationTest{
 		// 1 from initial data + 1 from test
 		assertEquals(startingFilesCollectionSize + 1, mongoTemplate.getCollection(FS_FILES).countDocuments());
 		
-		// cleanup
-		transferProcessRepository.deleteById(transferProcessFromDb.getId());
-		agreementRepository.deleteById(agreement.getId());
-		policyEnforcementRepository.deleteById(policyEnforcement.getId());
+		cleanup();
 		ObjectId objectId = new ObjectId(transferProcessFromDb.getDataId());
 		gridFSBucket.delete(objectId);
 		
@@ -305,10 +302,12 @@ public class DataTransferAPIDownloadDataTest extends BaseIntegrationTest{
 		// 1 from initial data + 0 from test
 		assertEquals(startingFilesCollectionSize, mongoTemplate.getCollection(FS_FILES).countDocuments());
 		
-		// cleanup
-		transferProcessRepository.deleteById(transferProcessFromDb.getId());
-		agreementRepository.deleteById(agreement.getId());
-		policyEnforcementRepository.deleteById(policyEnforcement.getId());
-		
+		cleanup();
     }
+	
+	private void cleanup() {
+		transferProcessRepository.deleteAll();
+		agreementRepository.deleteAll();
+		policyEnforcementRepository.deleteAll();
+	}
 }

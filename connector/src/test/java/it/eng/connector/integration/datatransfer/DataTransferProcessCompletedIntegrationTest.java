@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,11 @@ public class DataTransferProcessCompletedIntegrationTest extends BaseIntegration
 	
 	@Autowired
 	private TransferProcessRepository transferProcessRepository;
+	
+	@AfterEach
+	public void cleanup() {
+		transferProcessRepository.deleteAll();
+	}
 
 	// Provider
 	@Test
@@ -70,8 +76,6 @@ public class DataTransferProcessCompletedIntegrationTest extends BaseIntegration
     	String response = transferProcessStartedAction.andReturn().getResponse().getContentAsString();
     	TransferProcess transferProcessStarted2 = TransferSerializer.deserializeProtocol(response, TransferProcess.class);
     	assertNotNull(transferProcessStarted2);
-
-    	transferProcessRepository.deleteById(transferProcessStarted.getId());
 	}
 	
 	@Test
@@ -142,8 +146,6 @@ public class DataTransferProcessCompletedIntegrationTest extends BaseIntegration
     	String response = result.andReturn().getResponse().getContentAsString();
     	TransferError transferError = TransferSerializer.deserializeProtocol(response, TransferError.class);
     	assertNotNull(transferError);
-    	
-    	transferProcessRepository.delete(transferProcessRequested);
 	}
 	
 	// Consumer
@@ -183,8 +185,6 @@ public class DataTransferProcessCompletedIntegrationTest extends BaseIntegration
     	String response = transferProcessStartedAction.andReturn().getResponse().getContentAsString();
     	TransferProcess transferProcessStarted2 = TransferSerializer.deserializeProtocol(response, TransferProcess.class);
     	assertNotNull(transferProcessStarted2);
-    	
-    	transferProcessRepository.deleteById(transferProcessStarted.getId());
 	}
 	
 	@Test
@@ -255,7 +255,5 @@ public class DataTransferProcessCompletedIntegrationTest extends BaseIntegration
     	String response = result.andReturn().getResponse().getContentAsString();
     	TransferError transferError = TransferSerializer.deserializeProtocol(response, TransferError.class);
     	assertNotNull(transferError);
-    	
-    	transferProcessRepository.delete(transferProcessRequested);
 	}
 }

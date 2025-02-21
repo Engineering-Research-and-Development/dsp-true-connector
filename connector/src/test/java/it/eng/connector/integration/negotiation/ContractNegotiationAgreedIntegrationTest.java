@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.Arrays;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -46,6 +47,13 @@ public class ContractNegotiationAgreedIntegrationTest extends BaseIntegrationTes
 	private AgreementRepository agreementRepository;
 	@Autowired
 	private OfferRepository offerRepository;
+	
+	@AfterEach
+	public void cleanup() {
+		contractNegotiationRepository.deleteAll();
+		agreementRepository.deleteAll();
+		offerRepository.deleteAll();
+	}
 	
 	@Test
 	@WithUserDetails(TestUtil.CONNECTOR_USER)
@@ -106,10 +114,6 @@ public class ContractNegotiationAgreedIntegrationTest extends BaseIntegrationTes
 		assertEquals(ContractNegotiationState.AGREED, contractNegotiationAgreed.getState());
 		offerCheck(contractNegotiationAgreed, CatalogMockObjectUtil.OFFER.getId());
 		agreementCheck(contractNegotiationAgreed);
-		
-		agreementRepository.delete(agreement);
-		offerRepository.delete(offer);
-		contractNegotiationRepository.deleteById(contractNegotiationRequested.getId());
 	}
 	
 	@Test
@@ -154,8 +158,6 @@ public class ContractNegotiationAgreedIntegrationTest extends BaseIntegrationTes
 						.content(NegotiationSerializer.serializeProtocol(agreementMessage))
 						.contentType(MediaType.APPLICATION_JSON));
 		result.andExpect(status().isBadRequest());
-
-		contractNegotiationRepository.deleteById(contractNegotiationRequested.getId());
 	}
 	
 }

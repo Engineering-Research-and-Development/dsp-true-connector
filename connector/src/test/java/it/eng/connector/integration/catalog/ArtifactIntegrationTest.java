@@ -114,7 +114,6 @@ public class ArtifactIntegrationTest extends BaseIntegrationTest {
 		assertNotNull(apiRespFail.getMessage());
 		
 		// cleanup
-		artifactRepository.deleteById(artifactFile.getId());
-		artifactRepository.deleteById(artifactExternal.getId());
+		artifactRepository.deleteAll();
 	}
 }

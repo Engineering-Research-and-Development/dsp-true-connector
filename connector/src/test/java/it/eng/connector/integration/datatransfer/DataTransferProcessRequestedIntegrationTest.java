@@ -94,6 +94,10 @@ public class DataTransferProcessRequestedIntegrationTest extends BaseIntegration
 		distributionRepository.deleteAll();
 		datasetRepository.deleteAll();
 		catalogRepository.deleteAll();
+		
+		agreementRepository.deleteAll();
+		contractNegotiationRepository.deleteAll();
+		transferProcessRepository.deleteAll();
 	}
 	
 	@Test

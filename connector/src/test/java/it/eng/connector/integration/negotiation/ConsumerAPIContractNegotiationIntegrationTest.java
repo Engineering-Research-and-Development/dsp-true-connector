@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,6 +47,11 @@ public class ConsumerAPIContractNegotiationIntegrationTest extends BaseIntegrati
 	
 	@Autowired
 	private ContractNegotiationRepository contractNegotiationRepository;
+	
+	@AfterEach
+	public void cleanup() {
+		contractNegotiationRepository.deleteAll();
+	}
 
 	// start negotiation
 	@Test
@@ -164,8 +170,6 @@ public class ConsumerAPIContractNegotiationIntegrationTest extends BaseIntegrati
 		GenericApiResponse<ContractNegotiation> genericApiResponse = jsonMapper.readValue(json, javaType);
 		assertNotNull(genericApiResponse);
 		assertTrue(genericApiResponse.isSuccess());
-		
-		contractNegotiationRepository.delete(contractNegotiation);
 	}
 	
 	@Test
@@ -216,7 +220,6 @@ public class ConsumerAPIContractNegotiationIntegrationTest extends BaseIntegrati
 			
 		// state NOT changed
 		assertEquals(ContractNegotiationState.AGREED, contractNegotiationRepository.findById(contractNegotiation.getId()).get().getState());
-		contractNegotiationRepository.delete(contractNegotiation);
 	}
 	
 	// terminate contract negotiation
@@ -257,7 +260,6 @@ public class ConsumerAPIContractNegotiationIntegrationTest extends BaseIntegrati
 		
 		// state TERMIANTED
 		assertEquals(ContractNegotiationState.TERMINATED, contractNegotiationRepository.findById(contractNegotiation.getId()).get().getState());
-		contractNegotiationRepository.delete(contractNegotiation);
 	}
 	
 	// terminate contract negotiation
@@ -310,6 +312,5 @@ public class ConsumerAPIContractNegotiationIntegrationTest extends BaseIntegrati
 			
 		// state NOT changed
 		assertEquals(ContractNegotiationState.AGREED, contractNegotiationRepository.findById(contractNegotiation.getId()).get().getState());
-		contractNegotiationRepository.delete(contractNegotiation);
 	}
 }

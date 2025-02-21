@@ -80,6 +80,9 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 	public void cleanup() {
 		datasetRepository.deleteAll();
 		artifactRepository.deleteAll();
+		transferProcessRepository.deleteAll();
+		agreementRepository.deleteAll();
+		policyEnforcementRepository.deleteAll();
 		mongoTemplate.getCollection(FS_FILES).drop();
 		mongoTemplate.getCollection(FS_CHUNKS).drop();
 	}
@@ -163,10 +166,6 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 				.andReturn();
 		String artifactResponse = resultArtifact.getResponse().getContentAsString();
 		assertTrue(artifactResponse.contains(fileContent));
-		
-		transferProcessRepository.deleteById(transferProcessStarted.getId());
-		agreementRepository.delete(agreement);
-		policyEnforcementRepository.deleteById(policyEnforcement.getId());
 	}
 	
 	@Test
@@ -250,12 +249,6 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 				.andReturn();
 		String response = resultArtifact.getResponse().getContentAsString();
 		assertTrue(StringUtils.equals(fileContent, response));
-		
-		artifactRepository.deleteById(artifact.getId());
-		datasetRepository.deleteById(dataset.getId());
-		transferProcessRepository.deleteById(transferProcessStarted.getId());
-		agreementRepository.deleteById(agreement.getId());
-		policyEnforcementRepository.deleteById(policyEnforcement.getId());
 	}
 	
 	@Test
@@ -304,10 +297,6 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 		mockMvc.perform(get("/artifacts/" + transactionId)
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().isPreconditionFailed());
-		
-		transferProcessRepository.deleteById(transferProcessStarted.getId());
-		agreementRepository.delete(agreement);
-		policyEnforcementRepository.deleteById(policyEnforcement.getId());
 	}
 	
 	@Test
@@ -356,9 +345,5 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 		mockMvc.perform(get("/artifacts/" + transactionId)
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().isPreconditionFailed());
-		
-		transferProcessRepository.deleteById(transferProcessStarted.getId());
-		agreementRepository.delete(agreement);
-		policyEnforcementRepository.deleteById(policyEnforcement.getId());
 	}
 }

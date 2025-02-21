@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,6 +53,11 @@ public class DataTransferApiTest extends BaseIntegrationTest {
 	
 	@InjectWireMock 
 	private WireMockServer wiremock;
+	
+	@AfterEach
+	public void cleanup() {
+		transferProcessRepository.deleteAll();
+	}
 	
 	@Test
 	@DisplayName("TransferProcess API - get")
@@ -105,10 +111,6 @@ public class DataTransferApiTest extends BaseIntegrationTest {
 				TransferProcess.class);
 		assertNotNull(transferProcessFromDB);
 		assertEquals(transferProcessRequested.getId(), transferProcessFromDB.getId());
-		
-		// cleanup
-		transferProcessRepository.delete(transferProcessRequested);
-		transferProcessRepository.delete(transferProcessStarted);
 	}
 	
 	@Test
@@ -165,9 +167,6 @@ public class DataTransferApiTest extends BaseIntegrationTest {
     	assertEquals(transferProcessInitialized.getConsumerPid(), transferProcessFromDb.getConsumerPid());
     	assertEquals(genericApiResponse.getData().getProviderPid(), transferProcessFromDb.getProviderPid());
     	assertEquals(TransferState.REQUESTED, transferProcessFromDb.getState());
-
-    	// cleanup
-    	transferProcessRepository.deleteById(transferProcessInitialized.getId());
     }
 	
 	@Test
@@ -225,9 +224,6 @@ public class DataTransferApiTest extends BaseIntegrationTest {
     	assertEquals(transferProcessInitialized.getProviderPid(), transferProcessFromDb.getProviderPid());
     	assertEquals(transferProcessInitialized.getConsumerPid(), transferProcessFromDb.getConsumerPid());
     	assertEquals(TransferState.INITIALIZED, transferProcessFromDb.getState());
-    	
-    	// cleanup
-    	transferProcessRepository.deleteById(transferProcessInitialized.getId());
 	}
 	
 	

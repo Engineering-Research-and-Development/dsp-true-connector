@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.io.UnsupportedEncodingException;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -39,6 +40,11 @@ public class DataTransferProcessTerminatedIntegrationTest extends BaseIntegratio
 	
 	@Autowired
 	private TransferProcessRepository transferProcessRepository;
+	
+	@AfterEach
+	public void cleanup() {
+		transferProcessRepository.deleteAll();
+	}
 
 	@DisplayName("Terminate transfer process - provider")
 	@ParameterizedTest
@@ -71,8 +77,6 @@ public class DataTransferProcessTerminatedIntegrationTest extends BaseIntegratio
 		// check TransferProcess status for providerPid
 		TransferProcess transferProcessTerminated = getTransferProcessForProviderPid(transferProcessRequested.getProviderPid());
 		assertEquals(transferProcessTerminated.getState(), TransferState.TERMINATED);
-		
-		transferProcessRepository.deleteById(transferProcessRequested.getId());
 	}
 	
 	@DisplayName("Terminate transfer process - consumer")
@@ -106,8 +110,6 @@ public class DataTransferProcessTerminatedIntegrationTest extends BaseIntegratio
 		// check TransferProcess status for providerPid
 		TransferProcess transferProcessTerminated = getTransferProcessForProviderPid(transferProcessRequested.getProviderPid());
 		assertEquals(transferProcessTerminated.getState(), TransferState.TERMINATED);
-		
-		transferProcessRepository.deleteById(transferProcessRequested.getId());
 	}
 	
 	@Test
