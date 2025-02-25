@@ -48,6 +48,10 @@ public class ApplicationPropertiesConfiguration {
 	@PostConstruct
 	public void init() {
 		log.info("init() is running");
+		
+		// uncomment this line and comment all other if we go with env properties
+//		service.copyApplicationPropertiesToEnvironment(environment);
+		
 		//ApplicationPropertiesService service = new ApplicationPropertiesService(repository);
 
 		PropertySource propertySource = ((AbstractEnvironment) environment)

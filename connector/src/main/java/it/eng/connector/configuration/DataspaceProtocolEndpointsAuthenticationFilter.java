@@ -39,7 +39,7 @@ public class DataspaceProtocolEndpointsAuthenticationFilter extends OncePerReque
 				Boolean.valueOf(applicationPropertiesService.get(PROTOCOL_AUTH_ENABLED)) : 
 					Boolean.TRUE;
 		log.debug("Protocol endpoint authorization enabled - {}", authEnabled);
-		if(!isProtocolEndpoint(request.getRequestURI()) || authEnabled) {
+		if(authEnabled) {
 			log.debug("Protocol endpoints authorization ENABLED - continue with authorization");
 		} else {
 			log.info("Protocol endpoints authorization DISABLED - creating dummy authorization token");
@@ -58,7 +58,9 @@ public class DataspaceProtocolEndpointsAuthenticationFilter extends OncePerReque
 		filterChain.doFilter(request, response);
 	}
 
-	private boolean isProtocolEndpoint(String uri) {
-		return !uri.contains("/api") && StringUtils.containsAny(uri, "catalog", "negotiations", "transfers", "connector");
+	@Override
+	protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+		String uri = request.getRequestURI();
+		return uri.contains("/api");// && StringUtils.containsAny(uri, "catalog", "negotiations", "transfers", "connector");
 	}
 }
