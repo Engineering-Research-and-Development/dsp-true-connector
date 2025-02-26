@@ -99,10 +99,10 @@ public class ContractNegotiation extends AbstractNegotiationObject {
         }
         
         /**
-         * It is sent in a request and is stored on the responder side for the next request
+         * It is sent in a request and is stored on the responder side for the next request.
          * E.g. Consumer sends request to provider-> Provider stores callbackAddress for future request and responses with 200 ()
          * @param callbackAddress
-         * @return
+         * @return Builder object
          */
         public Builder callbackAddress(String callbackAddress) {
         	message.callbackAddress = callbackAddress;
@@ -169,7 +169,7 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     }
     
     /**
-     * Create new ContractNegotiation from initial, with new state
+     * Create new ContractNegotiation from initial, with new state.
      * @param newState new ContractNegotiationState
      * @return new instance of ContractNegotiation
      */

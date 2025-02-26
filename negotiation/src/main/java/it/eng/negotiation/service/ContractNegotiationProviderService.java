@@ -56,7 +56,7 @@ public class ContractNegotiationProviderService extends BaseProtocolService {
     }
 
     /**
-     * Method to get contract negotiation by provider pid, without callback address
+     * Method to get contract negotiation by provider pid, without callback address.
      *
      * @param providerPid - provider pid
      * @return ContractNegotiation - contract negotiation from DB

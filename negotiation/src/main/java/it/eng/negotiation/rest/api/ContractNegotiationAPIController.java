@@ -35,11 +35,14 @@ public class ContractNegotiationAPIController {
 	}
     
     /**
-     * Returns only one Contract Negotiation by it's ID or a collection by their state.
+     * Returns only one Contract Negotiation by it's ID or a collection by their state.<br>
      * If none are present then all Contract Negotiations will be returned.
      * @param contractNegotiationId
      * @param state
-     * @return
+     * @param role
+     * @param consumerPid
+     * @param providerPid
+     * @return ResponseEntity
      */
     @GetMapping(path = {"", "/{contractNegotiationId}"})
     public ResponseEntity<GenericApiResponse<Collection<JsonNode>>> getContractNegotiations(@PathVariable(required = false) String contractNegotiationId,
@@ -52,7 +55,11 @@ public class ContractNegotiationAPIController {
     			.body(GenericApiResponse.success(contractNegotiations, "Fetching contract negotiations"));
     } 
     
-    //consumer starts contract negotiation
+    /**
+     * Consumer starts contract negotiation.
+     * @param startNegotiationRequest
+     * @return ResponseEntity
+     */
 	@PostMapping
     public ResponseEntity<GenericApiResponse<JsonNode>> startNegotiation(@RequestBody JsonNode startNegotiationRequest) {
     	String targetConnector = startNegotiationRequest.get("Forward-To").asText();
@@ -63,6 +70,11 @@ public class ContractNegotiationAPIController {
     			.body(GenericApiResponse.success(response, "Contract negotiation initiated"));
     }
 	
+	/**
+	 * Accepts contract negotiation.
+	 * @param contractNegotiationId
+	 * @return ResponseEntity
+	 */
 	@PutMapping(path = "/{contractNegotiationId}/accept")
     public ResponseEntity<GenericApiResponse<JsonNode>> acceptContractNegotiation(@PathVariable String contractNegotiationId) {
         log.info("Handling contract negotiation accepted by consumer");
@@ -72,6 +84,11 @@ public class ContractNegotiationAPIController {
         				"Contract negotiation approved"));
     }
     
+	/**
+	 * Terminate contract negotiation.
+	 * @param contractNegotiationId
+	 * @return ResponseEntity
+	 */
 	@PutMapping(path = "/{contractNegotiationId}/terminate")
     public ResponseEntity<GenericApiResponse<JsonNode>> terminateContractNegotiation(@PathVariable String contractNegotiationId) {
         log.info("Handling contract negotiation approved");
@@ -82,6 +99,11 @@ public class ContractNegotiationAPIController {
         				"Contract negotiation terminated"));
     }
     
+	/**
+	 * Verify contract negotiation.
+	 * @param contractNegotiationId
+	 * @return ResponseEntity
+	 */
 	@PutMapping(path = "/{contractNegotiationId}/verify")
     public ResponseEntity<GenericApiResponse<Void>> verifyContractNegotiation(@PathVariable String contractNegotiationId) {
     	log.info("Manual handling for verification message");
@@ -92,6 +114,11 @@ public class ContractNegotiationAPIController {
     }
     
     /********* PROVIDER ***********/
+	/**
+	 * Provider sends offer.
+	 * @param contractOfferRequest
+	 * @return ResponseEntity
+	 */
 	@PostMapping(path = "/offers")
     public ResponseEntity<GenericApiResponse<JsonNode>> sendContractOffer(@RequestBody JsonNode contractOfferRequest) {
     	String targetConnector = contractOfferRequest.get("Forward-To").asText();
@@ -113,6 +140,11 @@ public class ContractNegotiationAPIController {
     			.body(GenericApiResponse.success(null, "Contract agreement sent"));
     }
 	
+	/**
+	 * Provider approve contract negotiation.
+	 * @param contractNegotiationId
+	 * @return ResponseEntity
+	 */
 	@PutMapping(path = "/{contractNegotiationId}/approve")
     public ResponseEntity<GenericApiResponse<JsonNode>> approveContractNegotiation(@PathVariable String contractNegotiationId) {
         log.info("Handling contract negotiation approved");
@@ -122,6 +154,11 @@ public class ContractNegotiationAPIController {
         				"Contract negotiation approved"));
     }
     
+	/**
+	 * Provider finalize contract negotiation.
+	 * @param contractNegotiationId
+	 * @return ResponseEntity
+	 */
 	@PutMapping(path = "/{contractNegotiationId}/finalize")
     public ResponseEntity<GenericApiResponse<Void>> finalizeNegotiation(@PathVariable String contractNegotiationId) {
     	apiService.finalizeNegotiation(contractNegotiationId);
