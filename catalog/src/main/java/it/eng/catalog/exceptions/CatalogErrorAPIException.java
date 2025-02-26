@@ -3,7 +3,7 @@ package it.eng.catalog.exceptions;
 import java.io.Serial;
 
 /**
- * Translates to Http.400 Bad request
+ * Translates to Http.400 Bad request.
  */
 public class CatalogErrorAPIException extends RuntimeException {
 

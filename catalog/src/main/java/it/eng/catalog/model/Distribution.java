@@ -191,7 +191,7 @@ public class Distribution implements Serializable {
     }
     
     /**
-     * Create new updated instance with new values from passed Distribution parameter<br>
+     * Create new updated instance with new values from passed Distribution parameter.<br>
      * If fields are not present in updatedDistribution, existing values will remain
      * @param updatedDistribution
      * @return new updated distribution instance

@@ -195,7 +195,7 @@ public class ToolsSerializer {
 	 * Enforce validation for mandatory fields
 	 * @param <T> Type of class to deserialize
 	 * @param jsonNode JsonNode to deserialize
-	 * @param clazz Clas to deserialzie
+	 * @param clazz Class to deserialzie
 	 * @return Java object
 	 */
 	public static <T> T deserializeProtocol(JsonNode jsonNode, Class<T> clazz) {
