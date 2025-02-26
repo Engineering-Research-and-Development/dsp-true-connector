@@ -22,7 +22,7 @@ import it.eng.tools.service.ApplicationPropertiesService;
 import lombok.extern.java.Log;
 
 /**
- * Controller for managing application properties; get and update
+ * Controller for managing application properties; get and update.
  */
 @RestController
 @RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, 
@@ -33,9 +33,8 @@ public class ApplicationPropertiesAPIController {
 	private final ApplicationPropertiesService propertiesService;
 
 	/**
-	 * Constructor
+	 * Constructor.
 	 * @param service ApplicationPropertiesService
-	 * @param applicationEventPublisher ApplicationEventPublisher
 	 */
 	public ApplicationPropertiesAPIController(ApplicationPropertiesService service) {
 		super();
@@ -43,7 +42,7 @@ public class ApplicationPropertiesAPIController {
 	}
 
 	/**
-	 * GET properties by prefix
+	 * GET all properties or by prefix.
 	 * @param key_prefix prefix to filter
 	 * @return List of properties
 	 */
@@ -60,9 +59,9 @@ public class ApplicationPropertiesAPIController {
 	}
 
 	/**
-	 * Update property
-	 * @param property updated property for persisting
-	 * @return Response
+	 * Update properties.
+	 * @param properties for updating
+	 * @return GenericApiResponse
 	 */
 	@PutMapping(path = "/")
 	public ResponseEntity<GenericApiResponse<JsonNode>> modifyProperty(@RequestBody List<ApplicationProperty> properties) {

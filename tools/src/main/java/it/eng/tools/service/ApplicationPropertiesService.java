@@ -44,9 +44,11 @@ public class ApplicationPropertiesService {
 	}
 
 	/**
-	 * Constructor
+	 * Constructor.
 	 * @param repository ApplicationPropertiesRepository
 	 * @param env Environment
+	 * @param applicationEventPublisher ApplicationEventPublisher
+	 * @param authenticationFacade AuthenticationFacade
 	 */
 	public ApplicationPropertiesService(ApplicationPropertiesRepository repository, Environment env, 
 			ApplicationEventPublisher applicationEventPublisher, AuthenticationFacade authenticationFacade) {
@@ -57,7 +59,7 @@ public class ApplicationPropertiesService {
 	}
 
 	/**
-	 * Get all properties by jey_prefix
+	 * Get all properties by jey_prefix.
 	 * @param key_prefix filter
 	 * @return List of ApplicationProperty
 	 */
@@ -79,7 +81,7 @@ public class ApplicationPropertiesService {
 	}
 
 	/**
-	 * Get ApplicationProperty by key
+	 * Get ApplicationProperty by key.
 	 * @param key identifier
 	 * @return ApplicationProperty
 	 */
@@ -113,7 +115,7 @@ public class ApplicationPropertiesService {
 	}
 
 	/**
-	 * Update application property
+	 * Update application property.
 	 * @param property new ApplicationProperty value
 	 * @param oldOne old ApplicationProperty
 	 * @return updated ApplicationProperty
@@ -244,7 +246,7 @@ public class ApplicationPropertiesService {
 	}*/
 
 	/**
-	 * addPropertyOnEnv
+	 * addPropertyOnEnv.
 	 * @param key property key
 	 * @param value property value
 	 * @param environment environment for updating
@@ -270,7 +272,7 @@ public class ApplicationPropertiesService {
 	}
 
 	/**
-	 * Get property from env
+	 * Get property from env.
 	 * @param key identifier
 	 * @return property
 	 */
