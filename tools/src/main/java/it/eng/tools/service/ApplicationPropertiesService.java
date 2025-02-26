@@ -16,6 +16,8 @@ import org.springframework.core.env.PropertySource;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import it.eng.tools.configuration.AuthenticationFacade;
+import it.eng.tools.event.applicationproperties.ApplicationPropertyChangeEvent;
 import it.eng.tools.exception.ApplicationPropertyErrorException;
 import it.eng.tools.exception.ApplicationPropertyNotFoundAPIException;
 import it.eng.tools.model.ApplicationProperty;
@@ -35,6 +37,7 @@ public class ApplicationPropertiesService {
 
 	private final ApplicationPropertiesRepository repository;
 	private final ApplicationEventPublisher applicationEventPublisher;
+	private final AuthenticationFacade authenticationFacade;
 
 	private Sort sortByIdAsc() {
 		return Sort.by("id");
@@ -46,10 +49,11 @@ public class ApplicationPropertiesService {
 	 * @param env Environment
 	 */
 	public ApplicationPropertiesService(ApplicationPropertiesRepository repository, Environment env, 
-			ApplicationEventPublisher applicationEventPublisher) {
+			ApplicationEventPublisher applicationEventPublisher, AuthenticationFacade authenticationFacade) {
 		this.repository = repository;
 		this.env = env;
 		this.applicationEventPublisher = applicationEventPublisher;
+		this.authenticationFacade = authenticationFacade;
 	}
 
 	/**
@@ -125,6 +129,22 @@ public class ApplicationPropertiesService {
 		//ApplicationProperty storedApplicationProperty = repository.save(updatedApplicationProperty);
 
 		return addPropertyOnMongo(updatedApplicationProperty);
+	}
+	
+	public List<ApplicationProperty> updateProperties(List<ApplicationProperty> updatedProeprties) {
+		updatedProeprties.stream().forEach(updatedProperty -> {
+			Optional<ApplicationProperty> oldOneOpt = getPropertyByKey(updatedProperty.getKey());
+			ApplicationProperty oldOne = oldOneOpt.get();
+			if(!updatedProperty.equals(oldOne)) {
+				updateProperty(updatedProperty, oldOne);
+				addPropertyOnEnv(updatedProperty.getKey(), updatedProperty.getValue(), env);
+				log.debug("Property '{}' changed!", updatedProperty.getKey());
+				applicationEventPublisher.publishEvent(new ApplicationPropertyChangeEvent(oldOne, updatedProperty, 
+						authenticationFacade.getAuthentication()));
+			}
+		});
+		return getProperties(null);
+		
 	}
 
 	private ApplicationProperty.Builder returnBaseApplicationPropertyForUpdate(String key) {

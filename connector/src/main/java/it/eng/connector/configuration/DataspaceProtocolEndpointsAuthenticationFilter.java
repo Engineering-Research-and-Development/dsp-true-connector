@@ -35,9 +35,8 @@ public class DataspaceProtocolEndpointsAuthenticationFilter extends OncePerReque
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
 			throws ServletException, IOException {
 		
-		boolean authEnabled = StringUtils.isNotBlank(applicationPropertiesService.get(PROTOCOL_AUTH_ENABLED)) ? 
-				Boolean.valueOf(applicationPropertiesService.get(PROTOCOL_AUTH_ENABLED)) : 
-					Boolean.TRUE;
+		String authProeprty = applicationPropertiesService.get(PROTOCOL_AUTH_ENABLED);
+		boolean authEnabled = StringUtils.isNotBlank(authProeprty) ? Boolean.valueOf(authProeprty) : Boolean.TRUE;
 		log.debug("Protocol endpoint authorization enabled - {}", authEnabled);
 		if(authEnabled) {
 			log.debug("Protocol endpoints authorization ENABLED - continue with authorization");

@@ -1,13 +1,11 @@
 package it.eng.tools.rest.api;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,10 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import it.eng.tools.exception.ApplicationPropertyNotChangedAPIException;
-import it.eng.tools.exception.ApplicationPropertyNotFoundAPIException;
+import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.ApplicationProperty;
-import it.eng.tools.property.ApplicationPropertyKeys;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.serializer.ToolsSerializer;
 import it.eng.tools.service.ApplicationPropertiesService;
@@ -29,7 +25,8 @@ import lombok.extern.java.Log;
  * Controller for managing application properties; get and update
  */
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/api/v1/properties")
+@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, 
+	path = ApiEndpoints.PROPERTIES_V1)
 @Log
 public class ApplicationPropertiesAPIController {
 
@@ -50,41 +47,16 @@ public class ApplicationPropertiesAPIController {
 	 * @param key_prefix prefix to filter
 	 * @return List of properties
 	 */
-	@Deprecated()
 	@GetMapping(path = "/")
 	public ResponseEntity<GenericApiResponse<JsonNode>> getProperties(@RequestParam(required = false) String key_prefix) {
 		log.info("getProperties()");
 		if(key_prefix != null && !key_prefix.isBlank()) log.info(" with key_prefix " + key_prefix);
 		List<ApplicationProperty> properties = propertiesService.getProperties(key_prefix);
-
+		String responseText = StringUtils.isBlank(key_prefix) ? "All Application properties" : "Application properties with prefix";
 		GenericApiResponse<JsonNode> genericApiResponse = 
-				GenericApiResponse.success(ToolsSerializer.serializePlainJsonNode(properties), "Application properties with prefix");
+				GenericApiResponse.success(ToolsSerializer.serializePlainJsonNode(properties), responseText);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
 				.body(genericApiResponse);
-	}
-
-	/**
-	 * Get property by key
-	 * @param key property key/id
-	 * @return property
-	 */
-	@GetMapping(path = "/{key}")
-	public ResponseEntity<GenericApiResponse<JsonNode>> getPropertyByKey(@PathVariable(required = false) String key, 
-			@RequestParam(required = false) String startsWith) {
-		log.info("Fetching property with key " + key);
-		JsonNode jsonNode = null;
-		if(StringUtils.isNotBlank(key)) {
-			ApplicationProperty property = propertiesService.getPropertyByKey(key)
-					.orElseThrow(() -> new ApplicationPropertyNotFoundAPIException("Property with key " + key + " not found"));
-			jsonNode = ToolsSerializer.serializePlainJsonNode(property);
-		}
-		if(StringUtils.isNotBlank(startsWith)) {
-			List<ApplicationProperty> propertyList = propertiesService.getProperties(startsWith);
-			jsonNode = ToolsSerializer.serializePlainJsonNode(propertyList);	
-		}
-
-		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-				.body(GenericApiResponse.success(jsonNode, "Application property for key"));
 	}
 
 	/**
@@ -93,36 +65,12 @@ public class ApplicationPropertiesAPIController {
 	 * @return Response
 	 */
 	@PutMapping(path = "/")
-	public ResponseEntity<GenericApiResponse<JsonNode>> modifyProperty(@RequestBody ApplicationProperty property) {
-		log.info("modifyProperty(...) ");
-		log.info("property = " + property);
+	public ResponseEntity<GenericApiResponse<JsonNode>> modifyProperty(@RequestBody List<ApplicationProperty> properties) {
+		log.info("modifyProperties(...) ");
 
-		ApplicationProperty storedProperty = null;
-
-		Optional<ApplicationProperty> oldOneOpt = propertiesService.getPropertyByKey(property.getKey());
-
-		ApplicationProperty oldOne = oldOneOpt.get();
-		if(!property.equals(oldOne)) {
-			storedProperty = propertiesService.updateProperty(property, oldOne);
-			log.info("Property changed!");
-		} else {
-			throw new ApplicationPropertyNotChangedAPIException("Application property not updated becouse it has not changed.");
-		}
-
+		List<ApplicationProperty> allPropertiesAfterUpdate = propertiesService.updateProperties(properties);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-				.body(GenericApiResponse.success(ToolsSerializer.serializePlainJsonNode(storedProperty), "Application property updated"));
+				// return all properties after update
+				.body(GenericApiResponse.success(ToolsSerializer.serializePlainJsonNode(allPropertiesAfterUpdate), "Application property updated"));
 	}
-	
-	/**
-	 * Returns all groups of properties, e.g. daps, protocol.auth, ...
-	 * @return property groups
-	 */
-	@GetMapping(path = "/keys")
-	public ResponseEntity<GenericApiResponse<JsonNode>> getPropertyKeys() {
-		List<String> propertyKeys = ApplicationPropertyKeys.getAllTypes();
-		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-				.body(GenericApiResponse.success(ToolsSerializer.serializePlainJsonNode(propertyKeys), 
-						"Application property keys/groups"));
-	}
-
 }
