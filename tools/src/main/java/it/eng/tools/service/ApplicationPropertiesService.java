@@ -1,6 +1,7 @@
 package it.eng.tools.service;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -15,17 +16,19 @@ import org.springframework.core.env.PropertySource;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import it.eng.tools.configuration.AuthenticationFacade;
+import it.eng.tools.event.applicationproperties.ApplicationPropertyChangeEvent;
 import it.eng.tools.exception.ApplicationPropertyErrorException;
 import it.eng.tools.exception.ApplicationPropertyNotFoundAPIException;
 import it.eng.tools.model.ApplicationProperty;
 import it.eng.tools.repository.ApplicationPropertiesRepository;
-import lombok.extern.java.Log;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * The PropertiesService class provides methods to interact with properties, including saving, retrieving, and deleting properties.
  */
 @Service
-@Log
+@Slf4j
 public class ApplicationPropertiesService {
 
 	private static final String STORED_APPLICATION_PROPERTIES = "storedApplicationProperties";
@@ -34,6 +37,7 @@ public class ApplicationPropertiesService {
 
 	private final ApplicationPropertiesRepository repository;
 	private final ApplicationEventPublisher applicationEventPublisher;
+	private final AuthenticationFacade authenticationFacade;
 
 	private Sort sortByIdAsc() {
 		return Sort.by("id");
@@ -45,10 +49,11 @@ public class ApplicationPropertiesService {
 	 * @param env Environment
 	 */
 	public ApplicationPropertiesService(ApplicationPropertiesRepository repository, Environment env, 
-			ApplicationEventPublisher applicationEventPublisher) {
+			ApplicationEventPublisher applicationEventPublisher, AuthenticationFacade authenticationFacade) {
 		this.repository = repository;
 		this.env = env;
 		this.applicationEventPublisher = applicationEventPublisher;
+		this.authenticationFacade = authenticationFacade;
 	}
 
 	/**
@@ -61,7 +66,7 @@ public class ApplicationPropertiesService {
 		List<ApplicationProperty> allProperties = null;
 
 		if(!StringUtils.isBlank(key_prefix)) {
-			allProperties = repository.findByKeyStartingWith(key_prefix, sortByIdAsc());
+			allProperties = repository.findByKeyStartsWith(key_prefix, sortByIdAsc());
 		} else {
 			allProperties = repository.findAll(sortByIdAsc());
 		}
@@ -81,8 +86,9 @@ public class ApplicationPropertiesService {
 	public Optional<ApplicationProperty> getPropertyByKey(String key) {
 		Optional<ApplicationProperty> propertyByMongo = repository.findById(key);
 		if(propertyByMongo.isEmpty()) {
-			log.warning(key + " not found in the db, try in application.properties");
-			//Try to keep value from applicatio.properties
+			log.warn(key + " not found in the db, try in application.properties");
+			//Try to keep value from application.properties
+			// TODO - Should we copy properties from env/property files to Mongo?
 			String propertyValueByApplicationProperty = env.getProperty(key);
 
 			if(propertyValueByApplicationProperty != null) {
@@ -123,6 +129,22 @@ public class ApplicationPropertiesService {
 		//ApplicationProperty storedApplicationProperty = repository.save(updatedApplicationProperty);
 
 		return addPropertyOnMongo(updatedApplicationProperty);
+	}
+	
+	public List<ApplicationProperty> updateProperties(List<ApplicationProperty> updatedProeprties) {
+		updatedProeprties.stream().forEach(updatedProperty -> {
+			Optional<ApplicationProperty> oldOneOpt = getPropertyByKey(updatedProperty.getKey());
+			ApplicationProperty oldOne = oldOneOpt.get();
+			if(!updatedProperty.equals(oldOne)) {
+				updateProperty(updatedProperty, oldOne);
+				addPropertyOnEnv(updatedProperty.getKey(), updatedProperty.getValue(), env);
+				log.debug("Property '{}' changed!", updatedProperty.getKey());
+				applicationEventPublisher.publishEvent(new ApplicationPropertyChangeEvent(oldOne, updatedProperty, 
+						authenticationFacade.getAuthentication()));
+			}
+		});
+		return getProperties(null);
+		
 	}
 
 	private ApplicationProperty.Builder returnBaseApplicationPropertyForUpdate(String key) {
@@ -254,6 +276,20 @@ public class ApplicationPropertiesService {
 	 */
 	public String get(String key) {
 		return env.getProperty(key);
+	}
+	
+	// called from ApplicationPropertiesConfiguration.init() - if we decide to go with env properties
+	public void copyApplicationPropertiesToEnvironment(Environment environment) {
+		try {
+			List<ApplicationProperty> allApplicationPropertiesOnMongo = getProperties(null);
+
+			for (Iterator<ApplicationProperty> iterator = allApplicationPropertiesOnMongo.iterator(); iterator.hasNext();) {
+				ApplicationProperty applicationProperty = (ApplicationProperty) iterator.next();
+				addPropertyOnEnv(applicationProperty.getKey(), applicationProperty.getValue(), environment);
+			}
+		} catch (ApplicationPropertyErrorException e) {
+			log.warn("Any property found in MongoDB!");
+		}
 	}
 
 }

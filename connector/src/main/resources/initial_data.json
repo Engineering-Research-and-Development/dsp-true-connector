@@ -260,7 +260,14 @@
             "issued": "2024-06-24T16:26:00.000Z",
             "modified": "2024-06-24T16:26:00.000Z",
             "version": 0
-        }
+		}, {
+		    "_id": "application.protocol.authentication.enabled",
+		    "value": "true",
+		    "mandatory": false,
+		    "issued": "2024-06-24T16:26:00.000Z",
+		    "modified": "2024-06-24T16:26:00.000Z",
+		    "version": 0
+		}
     ],
     "contract_negotiations": [],
     "agreements": [],

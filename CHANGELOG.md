@@ -1,6 +1,23 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 26-02-2025
+
+### Added
+
+ - ApplicationPropertyChangedEvent and listener
+
+### Changed
+
+ - Moved daps properties from property file and using only from Mongo
+ - Moved protocol.authentication.enabled from property file and using it from Mongo
+ - Update property expects List of properties
+ - Postman collection updated
+  
+### Removed
+
+ - ApplicationProperties endpoint for single property
+ 
 ## [0.1.1] - 21-02-2025
 
 ### Changed

@@ -53,4 +53,9 @@ public interface ApiEndpoints {
 	 * Connector module - v1 API endpoint for user management
 	 */
 	public static final String USERS_V1 = "/api/v1/users";
+	
+	/**
+	 * Tools module - v1 API end point for application properties
+	 */
+	public static final String PROPERTIES_V1 = "/api/v1/properties";
 }

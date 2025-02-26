@@ -28,6 +28,6 @@ public interface ApplicationPropertiesRepository extends MongoRepository<Applica
      * @param sort Sort
      * @return List of application properties
      */
-    List<ApplicationProperty> findByKeyStartingWith(String key_prefix, Sort sort);
+    List<ApplicationProperty> findByKeyStartsWith(String key_prefix, Sort sort);
     
 }
