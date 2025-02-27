@@ -23,11 +23,10 @@ public class RestArtifactController {
 	}
 
 	/**
-	 * 
+	 * Fetch artifact for transactionId.
+	 * @param response HttpServlerTesponse that will be updated with data
 	 * @param authorization
 	 * @param transactionId Base64.urlEncoded(consumerPid|providerPid) from TransferProcess message
-	 * @param jsonBody
-	 * @return
 	 */
     @GetMapping(path = "/{transactionId}")
     public void getArtifact(HttpServletResponse response,

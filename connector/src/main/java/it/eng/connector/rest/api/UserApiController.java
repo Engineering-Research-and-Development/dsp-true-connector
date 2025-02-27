@@ -33,6 +33,12 @@ public class UserApiController {
 		this.userService = userService;
 	}
 	
+	/**
+	 * Find user.<br>
+	 * By email or all 
+	 * @param email
+	 * @return GenericApiResponse
+	 */
 	@GetMapping(path = { "", "/{email}" })
 	public ResponseEntity<GenericApiResponse<Collection<JsonNode>>> getUsers(
 			@PathVariable(required = false) String email) {
@@ -42,6 +48,11 @@ public class UserApiController {
 				.body(GenericApiResponse.success(response, "Fetching users"));
 	}
 	
+	/**
+	 * Create new user.
+	 * @param userDTO
+	 * @return GenericApiResponse
+	 */
 	@PostMapping
 	public ResponseEntity<GenericApiResponse<JsonNode>> createUser(@RequestBody UserDTO userDTO) {
 		JsonNode newUser = userService.createUser(userDTO);
@@ -50,11 +61,11 @@ public class UserApiController {
 	}
 	
 	/**
-	 * Update first name, last name and role 
+	 * Update first name, last name and role.
 	 * @param id
 	 * @param userDTO
 	 * @param principal
-	 * @return
+	 * @return GenericApiResponse
 	 */
 	@PutMapping(path = "/{id}/update")
 	public ResponseEntity<GenericApiResponse<JsonNode>> updateUser(@PathVariable String id, @RequestBody UserDTO userDTO, Principal principal) {
@@ -63,11 +74,17 @@ public class UserApiController {
 				.body(GenericApiResponse.success(updatedUser, "User updated"));
 	}
 	
+	/**
+	 * Update password for privided user.
+	 * @param id
+	 * @param userDTO
+	 * @param principal
+	 * @return GenericApiResponse
+	 */
 	@PutMapping(path = "/{id}/password")
 	public ResponseEntity<GenericApiResponse<JsonNode>> updatePassword(@PathVariable String id, @RequestBody UserDTO userDTO, Principal principal) {
 		JsonNode updatedUser = userService.updatePassword(id, principal.getName(), userDTO);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
 				.body(GenericApiResponse.success(updatedUser, "Password updated"));
 	}
-
 }

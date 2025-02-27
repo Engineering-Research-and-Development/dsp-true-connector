@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 27-02-2025
+
+### Changed
+ 
+ - Updated javadoc to pass checkstyle
+
 ## [0.1.1] - 26-02-2025
 
 ### Added

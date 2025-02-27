@@ -57,7 +57,7 @@ public class TransferProcess extends AbstractTransferMessage {
 	private TransferState state;
 	
 	/**
-	 *  used to store agreement so we can enforce it
+	 *  Used to store agreement so we can enforce it.
 	 */
 	@JsonIgnore
 	private String agreementId;
@@ -67,7 +67,7 @@ public class TransferProcess extends AbstractTransferMessage {
 	private String datasetId;
 	
 	/**
-	 * determins which role the connector is for that contract negotiation (consumer or provider)
+	 * Determins which role the connector is for that contract negotiation (consumer or provider).
 	 */
     @JsonIgnore
     private String role;
@@ -76,13 +76,13 @@ public class TransferProcess extends AbstractTransferMessage {
     private DataAddress dataAddress;
     
     /**
-     * flag to check if the data is downloaded on consumer side
+     * Flag to check if the data is downloaded on consumer side.
      */
     @JsonIgnore
     private boolean isDownloaded;
     
-    /*
-     * Id of the downloaded and stored data on consumer side
+    /**
+     * Id of the downloaded and stored data on consumer side.
      */
     @JsonIgnore
     private String dataId;

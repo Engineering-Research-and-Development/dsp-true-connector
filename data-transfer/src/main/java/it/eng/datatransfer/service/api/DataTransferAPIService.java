@@ -91,6 +91,14 @@ public class DataTransferAPIService {
 		this.publisher = publisher;
 	}
 
+	/**
+	 * Find dataTransfer based on criteria.<br> 
+	 * Find by transferProcessId, filter by state, filter by role or find all
+	 * @param transferProcessId
+	 * @param state
+	 * @param role
+	 * @return List of JsonNode representations for data transfers
+	 */
 	public Collection<JsonNode> findDataTransfers(String transferProcessId, String state, String role) {
 		  if(StringUtils.isNotBlank(transferProcessId)) {
 		   return transferProcessRepository.findById(transferProcessId)
@@ -111,6 +119,12 @@ public class DataTransferAPIService {
 
 	/********* CONSUMER ***********/
 	
+	/**
+	 * Request transfer service method.<br>
+	 * Check if state transition is OK; sends TransferRequestMessage to provider and based on response update state to REQUESTED.
+	 * @param dataTransferRequest
+	 * @return JsonNode representation of DataTransfer (should be requested if all OK)
+	 */
 	public JsonNode requestTransfer(DataTransferRequest dataTransferRequest) {
 		TransferProcess transferProcessInitialized = findTransferProcessById(dataTransferRequest.getTransferProcessId());
 		
@@ -179,13 +193,13 @@ public class DataTransferAPIService {
 	}
 
 	/**
-	 * Sends TransferStartMessage and updates state for 
-	 * Transfer Process upon successful response to STARTED
+	 * Sends TransferStartMessage.
+	 * Updates state for Transfer Process upon successful response to STARTED
 	 * @param transferProcessId
-	 * @return
+	 * @return JsonNode representation of DataTransfer
 	 * @throws UnsupportedEncodingException 
 	 */
-	public JsonNode startTransfer(String transferProcessId) throws UnsupportedEncodingException {
+	public JsonNode startTransfer(String transferProcessId) throws UnsupportedEncodingException  {
 		TransferProcess transferProcess = findTransferProcessById(transferProcessId);
 		
 		if (StringUtils.equals(IConstants.ROLE_CONSUMER, transferProcess.getRole()) && TransferState.REQUESTED.equals(transferProcess.getState())) {
@@ -194,7 +208,6 @@ public class DataTransferAPIService {
 		}
 		
 		stateTransitionCheck(TransferState.STARTED, transferProcess.getState());
-		
 		
 	   	log.info("Sending TransferStartMessage to {}", transferProcess.getCallbackAddress());
 	   	String address = null;
@@ -264,10 +277,10 @@ public class DataTransferAPIService {
 	}
 	
 	/**
-	 * Sends TransferCompletionMessage and updates state for 
-	 * Transfer Process upon successful response to COMPLETED
+	 * Sends TransferCompletionMessage.<br>
+	 * Updates state for Transfer Process upon successful response to COMPLETED
 	 * @param transferProcessId
-	 * @return
+	 * @return JsonNode representation of DataTransfer
 	 */
 	public JsonNode completeTransfer(String transferProcessId) {
 		TransferProcess transferProcess = findTransferProcessById(transferProcessId);
@@ -305,10 +318,10 @@ public class DataTransferAPIService {
 	}
 	
 	/**
-	 * Sends TransferSuspensionMessage and updates state for 
-	 * Transfer Process upon successful response to COMPLETED
+	 * Sends TransferSuspensionMessage.<br>
+	 * Updates state for Transfer Process upon successful response to COMPLETED
 	 * @param transferProcessId
-	 * @return
+	 * @return JsonNode representation of DataTransfer
 	 */
 	public JsonNode suspendTransfer(String transferProcessId) {
 		TransferProcess transferProcess = findTransferProcessById(transferProcessId);
@@ -349,10 +362,10 @@ public class DataTransferAPIService {
 	}
 	
 	/**
-	 * Sends TransferTerminationMessage and updates state for 
-	 * Transfer Process upon successful response to TERMINATED
+	 * Sends TransferTerminationMessage.<br>
+	 * Updates state for Transfer Process upon successful response to TERMINATED
 	 * @param transferProcessId
-	 * @return
+	 * @return JsonNode representation of DataTransfer
 	 */
 	public JsonNode terminateTransfer(String transferProcessId) {
 		TransferProcess transferProcess = findTransferProcessById(transferProcessId);
@@ -392,6 +405,12 @@ public class DataTransferAPIService {
 		}
 	}
 	
+	/**
+	 * Download data.<br>
+	 * Checks if TransferProcess state is STARTED; enforce policy (validate agreement); download data from provider;
+	 * store artifact in local Mongo; update Transfer Process downloaded to true
+	 * @param transferProcessId
+	 */
 	public void downloadData(String transferProcessId) {
 		TransferProcess transferProcess = findTransferProcessById(transferProcessId);
 		
@@ -453,6 +472,12 @@ public class DataTransferAPIService {
 		
 	}
 
+	/**
+	 * View locally stored artifact.<br>
+	 * Only for TransferProcess.downloaded == true; enforce policy; read data from Mongo; set data into HttpServletResponse
+	 * @param transferProcessId
+	 * @param response
+	 */
 	public void viewData(String transferProcessId, HttpServletResponse response) {
 		TransferProcess transferProcess = findTransferProcessById(transferProcessId);
 		
