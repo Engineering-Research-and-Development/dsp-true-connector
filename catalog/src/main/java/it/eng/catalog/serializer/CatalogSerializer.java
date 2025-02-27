@@ -100,7 +100,7 @@ public class CatalogSerializer {
     }
 
     /**
-     * Serialize java object to json
+     * Serialize java object to json.
      *
      * @param toSerialize
      * @return Json string - plain
@@ -115,7 +115,8 @@ public class CatalogSerializer {
     }
 
     /**
-     * Convert object to jsonNode, without annotations. Used in tests
+     * Convert object to jsonNode, without annotations.<br>
+     * Used in tests
      *
      * @param toSerialize
      * @return JsonNode
@@ -125,7 +126,7 @@ public class CatalogSerializer {
     }
 
     /**
-     * Converts json string (plain) to java object
+     * Converts json string (plain) to java object.
      *
      * @param <T>             Type of class
      * @param jsonStringPlain json string
@@ -151,10 +152,10 @@ public class CatalogSerializer {
     }
     
     /**
-     * Converts json string (plain) to java object
+     * Converts json string (plain) to java object.
      *
      * @param <T>             Type of class
-     * @param jsonStringPlain json string
+     * @param jsonNode jsonNode
      * @param clazz
      * @return Java object converted from json
      */
@@ -190,7 +191,7 @@ public class CatalogSerializer {
 	}
 
     /**
-     * Serialize java object to json compliant with Dataspace protocol (contains prefixes for json fields)
+     * Serialize java object to json compliant with Dataspace protocol (contains prefixes for json fields).
      *
      * @param toSerialize java object to serialize
      * @return Json string - with Dataspace prefixes
@@ -205,23 +206,25 @@ public class CatalogSerializer {
     }
 
     /**
-     * Convert object to JsonNode with prefixes. Used in tests
+     * Convert object to JsonNode with prefixes. <br>
+     * Used in tests
      *
      * @param toSerialize
-     * @return
+     * @return JsonNode
      */
     public static JsonNode serializeProtocolJsonNode(Object toSerialize) {
         return jsonMapper.convertValue(toSerialize, JsonNode.class);
     }
 
     /**
-     * Convert Dataspace json (with prefixes) to java object, performs validation for @context and @type before converting to java
+     * Convert Dataspace json (with prefixes) to java object.<br>
+     * Performs validation for @context and @type before converting to java
      * Enforce validation for mandatory fields
      *
-     * @param <T>
-     * @param jsonNode
-     * @param clazz
-     * @return
+     * @param <T> Type of class to deserialize
+     * @param jsonNode JsonNode to deserialize
+     * @param clazz Class to deserialzie
+     * @return Java object
      */
     public static <T> T deserializeProtocol(JsonNode jsonNode, Class<T> clazz) {
         validateProtocol(jsonNode, clazz);
@@ -256,11 +259,11 @@ public class CatalogSerializer {
     }
 
     /**
-     * Checks for @context and @type if present and if values are correct
+     * Checks for @context and @type if present and if values are correct.
      *
-     * @param <T>
-     * @param jsonNode
-     * @param clazz
+     * @param <T> typed class
+     * @param jsonNode JsonNode
+     * @param clazz Class to check
      * @throws jakarta.validationException
      */
     private static <T> void validateProtocol(JsonNode jsonNode, Class<T> clazz) {

@@ -1,3 +1,11 @@
+# Testcontainers
+
+## Prerequisite
+
+We need Docker installed on our machine to run the MongoDB container.
+
+## Usage - MongoDB container
+
 This is a starting reference for adding test containers to the project (probably needed when we add DAPS to integration tests).
 
 First add these dependencies to the connector module, since the integration tests are there:
@@ -6,76 +14,81 @@ First add these dependencies to the connector module, since the integration test
 <dependency>
     <groupId>org.junit.jupiter</groupId>
     <artifactId>junit-jupiter</artifactId>
-    <version>5.8.1</version>
+     <version>1.20.5</version>
     <scope>test</scope>
 </dependency>
 <dependency>
     <groupId>org.testcontainers</groupId>
     <artifactId>testcontainers</artifactId>
-    <version>1.19.7</version>
+     <version>1.20.5</version>
     <scope>test</scope>
 </dependency>
 <dependency>
     <groupId>org.testcontainers</groupId>
     <artifactId>junit-jupiter</artifactId>
-    <version>1.19.7</version>
+     <version>1.20.5</version>
     <scope>test</scope>
 </dependency>
 ```
 
-This is an example for mongoDB. There are probably some imports which are not needed.
+This is an example for mongoDB. There are probably some imports which are not needed. We can create abstract class and put common code related with testcontainers there:
+
+*NOTE*: make sure to match docker image version of Mongo with the one used in [docker-compose.yml](../ci/docker/docker-compose.yml) file
 
 ```
-package it.eng.catalog;
+package it.eng.connector.integration;
 
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import org.junit.Before;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.testcontainers.containers.MongoDBContainer;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
+@Testcontainers
 @SpringBootTest
+public abstract class TestContainersBase {
+
+	static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:7.0.12").withExposedPorts(27017);
+	
+	 static {
+         mongoDBContainer.start();
+     }
+
+	@DynamicPropertySource
+	static void containersProperties(DynamicPropertyRegistry registry) {
+		registry.add("spring.data.mongodb.host", mongoDBContainer::getHost);
+		registry.add("spring.data.mongodb.port", mongoDBContainer::getFirstMappedPort);
+	}
+}
+
+```
+
+
+Then, when creating integration test, we should extend this abstract class and start with writing test cases, like:
+
+```
 @AutoConfigureMockMvc
-class CatalogIntegrationTest {
+public class AppTestContainerTest extends TestContainersBase {
 
     @Autowired
-    private MockMvc mockMvc;
+    protected MockMvc mockMvc;
+	
+	@Test
+	@WithUserDetails(TestUtil.ADMIN_USER)
+	public void getProperies() throws Exception {
+		
+		ResultActions result =
+				mockMvc.perform(
+						get(ApiEndpoints.PROPERTIES_V1 + "/")
+						.contentType(MediaType.APPLICATION_JSON_VALUE)
+						.accept(MediaType.APPLICATION_JSON_VALUE));
 
-    @Container
-    static MongoDBContainer mongoDBContainer  = new MongoDBContainer ("mongo:7.0.7").withExposedPorts(27017);
+		result.andExpect(status().isOk())
+			.andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.data.mongodb.host", mongoDBContainer::getHost);
-        registry.add("spring.data.mongodb.port", mongoDBContainer::getFirstMappedPort);
-    }
-
-    @BeforeAll
-    static void beforeAll() {
-    	mongoDBContainer.start();
-    }
-
-    @AfterAll
-    static void afterAll() {
-    	mongoDBContainer.stop();
-    }
-
-
+		String json = result.andReturn().getResponse().getContentAsString();
+		assertNotNull(json);
+	}
 }
 ```
 

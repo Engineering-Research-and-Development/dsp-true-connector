@@ -261,10 +261,10 @@ public class Catalog extends AbstractCatalogObject {
     }
     
     /**
-     * Create new updated instance with new values from passed Catalog parameter<br>
+     * Create new updated instance with new values from passed Catalog parameter.<br>
      * If fields are not present in updatedCatalogData, existing values will remain
      * @param updatedCatalogData
-     * @return
+     * @return New catalog instance with updated values
      */
     public Catalog updateInstance(Catalog updatedCatalogData) {
 			return Catalog.Builder.newInstance()

@@ -96,11 +96,11 @@ public class ContractNegotiationAPIService {
 	}
 
 	/**
-	 * Start negotiation as consumer<br>
+	 * Start negotiation as consumer.<br>
 	 * Contract request message will be created and sent to connector behind forwardTo URL
 	 * @param forwardTo - target connector URL
 	 * @param offerNode - offer
-	 * @return
+	 * @return ContractNegotiation as JsonNode
 	 */
 	public JsonNode startNegotiation(String forwardTo, JsonNode offerNode) {
 		Offer offer = NegotiationSerializer.deserializePlain(offerNode.toPrettyString(), Offer.class);
@@ -164,10 +164,10 @@ public class ContractNegotiationAPIService {
 	}
 
 	/**
-	 * Provider sends offer to consumer
+	 * Provider sends offer to consumer.
 	 * @param forwardTo
 	 * @param offerNode
-	 * @return
+	 * @return ContractNegotiation as JsonNode
 	 */
 	public JsonNode sendContractOffer(String forwardTo, JsonNode offerNode) {
 		Offer offer = NegotiationSerializer.deserializePlain(offerNode.toPrettyString(), Offer.class);
@@ -259,6 +259,10 @@ public class ContractNegotiationAPIService {
 		}
 	}
 
+	/**
+	 * Finalize negotiation.
+	 * @param contractNegotiationId
+	 */
 	public void finalizeNegotiation(String contractNegotiationId) {
 		ContractNegotiation contractNegotiation = findContractNegotiationById(contractNegotiationId);
 
@@ -295,10 +299,10 @@ public class ContractNegotiationAPIService {
 	}
 
 	/**
-	 * Consumer sends ContractNegotiationEventMessage.ACCEPTED and updates state for 
-	 * Contract Negotiation upon successful response to ACCEPTED
+	 * Consumer sends ContractNegotiationEventMessage with state ACCEPTED.<br>
+	 * Updates state Contract Negotiation upon successful response to ACCEPTED
 	 * @param contractNegotiationId
-	 * @return
+	 * @return ContractNegotiation
 	 */
 	public ContractNegotiation handleContractNegotiationAccepted(String contractNegotiationId) {
 		ContractNegotiation contractNegotiation = findContractNegotiationById(contractNegotiationId);
@@ -329,9 +333,9 @@ public class ContractNegotiationAPIService {
 	}
 	
 	/**
-	 * Negotiate status to AGREED after successful response from connector
+	 * Negotiate status to AGREED after successful response from connector.
 	 * @param contractNegotiationId
-	 * @return
+	 * @return ContractNegotiation
 	 */
 	public ContractNegotiation approveContractNegotiation(String contractNegotiationId) {
 		ContractNegotiation contractNegotiation = findContractNegotiationById(contractNegotiationId);
@@ -374,6 +378,11 @@ public class ContractNegotiationAPIService {
 		}
 	}
 	
+	/**
+	 * Verify negotiation.<br>
+	 * If all ok state is transitioned to VERIFIED
+	 * @param contractNegotiationId
+	 */
 	public void verifyNegotiation(String contractNegotiationId) {
 		ContractNegotiation contractNegotiation =  findContractNegotiationById(contractNegotiationId);
 		
@@ -409,6 +418,12 @@ public class ContractNegotiationAPIService {
 		}
 	}
 	
+	/**
+	 * Terminate contract negotiation.
+	 * Transition state to TERMINATED
+	 * @param contractNegotiationId
+	 * @return ContractNegotiation
+	 */
 	public ContractNegotiation handleContractNegotiationTerminated(String contractNegotiationId) {
 		ContractNegotiation contractNegotiation = findContractNegotiationById(contractNegotiationId);
 		// for now just log it; maybe we can publish event?
@@ -455,6 +470,10 @@ public class ContractNegotiationAPIService {
 		}
 	}
 	
+	/**
+	 * Validate if agreement is valid.
+	 * @param agreementId
+	 */
 	public void validateAgreement(String agreementId) {
 		log.info("Validating agreement " + agreementId);
 		contractNegotiationRepository.findByAgreement(agreementId)

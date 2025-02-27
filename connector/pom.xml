@@ -25,7 +25,7 @@
 		</dependency>
 		<dependency>
 			<groupId>it.eng.datatransfer</groupId>
-			<artifactId>data-transfer</artifactId>
+			<artifactId>datatransfer</artifactId>
 			<version>${revision}</version>
 		</dependency>
 		<dependency>
@@ -134,7 +134,7 @@
 		
 		<dependency>
 			<groupId>it.eng.datatransfer</groupId>
-			<artifactId>data-transfer</artifactId>
+			<artifactId>datatransfer</artifactId>
 			<classifier>tests</classifier>
 			<type>test-jar</type>
 			<version>${revision}</version>

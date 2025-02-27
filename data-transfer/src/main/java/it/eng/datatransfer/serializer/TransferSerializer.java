@@ -90,7 +90,7 @@ public class TransferSerializer {
 	}
 	
 	/**
-	 * Serialize java object to json
+	 * Serialize java object to json.
 	 * @param toSerialize
 	 * @return Json string - plain
 	 */
@@ -104,7 +104,7 @@ public class TransferSerializer {
 	}
 	
 	/**
-	 * Convert object to jsonNode, without annotations. Used in tests
+	 * Convert object to jsonNode, without annotations.<br>Used in tests
 	 * @param toSerialize
 	 * @return JsonNode
 	 */
@@ -113,7 +113,7 @@ public class TransferSerializer {
 	}
 	
 	/**
-	 * Converts json string (plain) to java object
+	 * Converts json string (plain) to java object.
 	 * @param <T> Type of class
 	 * @param jsonStringPlain json string
 	 * @param clazz
@@ -137,6 +137,13 @@ public class TransferSerializer {
 		return null;
 	}
 	
+	/**
+	 * Deserialize plain String to Java.
+	 * @param <T> Type of class
+	 * @param jsonStringPlain json string
+	 * @param typeRef
+	 * @return Java object converted from json
+	 */
 	public static <T> T deserializePlain(String jsonStringPlain, TypeReference<T> typeRef) {
 		try {
 			T obj = jsonMapperPlain.readValue(jsonStringPlain, typeRef);
@@ -157,10 +164,9 @@ public class TransferSerializer {
 	
 	
 	/**
-     * Converts json string (plain) to java object
-     *
+     * Converts json string (plain) to java object.
      * @param <T>             Type of class
-     * @param jsonStringPlain json string
+     * @param jsonNode jsonNode
      * @param clazz
      * @return Java object converted from json
      */
@@ -178,7 +184,7 @@ public class TransferSerializer {
 		}
 	
 	/**
-	 * Serialize java object to json compliant with Dataspace protocol (contains prefixes for json fields)
+	 * Serialize java object to json compliant with Dataspace protocol (contains prefixes for json fields).
 	 * @param toSerialize java object to serialize
 	 * @return Json string - with Dataspace prefixes
 	 */
@@ -194,7 +200,7 @@ public class TransferSerializer {
 	/**
 	 * Convert object to JsonNode with prefixes. Used in tests
 	 * @param toSerialize
-	 * @return
+	 * @return JsonNode
 	 */
 	public static JsonNode serializeProtocolJsonNode(Object toSerialize) {
 		return jsonMapper.convertValue(toSerialize, JsonNode.class);
@@ -205,12 +211,13 @@ public class TransferSerializer {
 	}
 	
 	/**
-	 * Convert Dataspace json (with prefixes) to java object, performs validation for @context and @type before converting to java
+	 * Convert Dataspace json (with prefixes) to java object.
+	 * Performs validation for @context and @type before converting to java
 	 * Enforce validation for mandatory fields
-	 * @param <T>
-	 * @param jsonNode
-	 * @param clazz
-	 * @return
+	 * @param <T> Type of class to deserialize
+	 * @param jsonNode JsonNode to deserialize
+	 * @param clazz Class to deserialzie
+	 * @return Java object
 	 */
 	public static <T> T deserializeProtocol(JsonNode jsonNode, Class<T> clazz) {
 		validateProtocol(jsonNode, clazz);
@@ -226,6 +233,15 @@ public class TransferSerializer {
 					.collect(Collectors.joining(",")));
 		}
 	
+	/**
+	 * Convert Dataspace json (with prefixes) to java object.
+	 * Performs validation for @context and @type before converting to java
+	 * Enforce validation for mandatory fields
+	 * @param <T> Type of class to deserialize
+	 * @param jsonNodeString String
+	 * @param clazz Class to deserialzie
+	 * @return Java object
+	 */
 	public static <T> T deserializeProtocol(String jsonNodeString, Class<T> clazz) {
 		try {
 	        T obj = jsonMapper.readValue(jsonNodeString, clazz);
@@ -245,11 +261,10 @@ public class TransferSerializer {
 		}
 	
 	/**
-	 * Checks for @context and @type if present and if values are correct
-	 * @param <T>
-	 * @param jsonNode
-	 * @param clazz
-	 * @throws jakarta.validationException 
+	 * Checks for @context and @type if present and if values are correct.
+	 * @param <T> Type of class to deserialize
+	 * @param jsonNode JsonNode to deserialize
+	 * @param clazz Class to deserialzie
 	 */
 	private static <T> void validateProtocol(JsonNode jsonNode, Class<T> clazz) {
 		try { 

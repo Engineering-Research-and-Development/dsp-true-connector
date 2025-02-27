@@ -28,10 +28,10 @@ public class PolicyEnforcementService {
 	}
 	
 	/**
-	 * Check if PolicyEnforcement for agreement exists
+	 * Check if PolicyEnforcement for agreement exists.
 	 * Must be sure that policy can be enforced after data is returned
 	 * @param agreementId
-	 * @return
+	 * @return boolean value if policy enforcement exists or not
 	 */
 	public boolean policyEnforcementExists(String agreementId) {
 		return repository.findByAgreementId(agreementId).isPresent();
@@ -61,6 +61,10 @@ public class PolicyEnforcementService {
 		return valid;
 	}
 
+	/**
+	 * Crete policy enforcement object in DB.
+	 * @param agreementId
+	 */
 	public void createPolicyEnforcement(String agreementId) {
 		PolicyEnforcement pe = new PolicyEnforcement();
 		pe.setAgreementId(agreementId);
