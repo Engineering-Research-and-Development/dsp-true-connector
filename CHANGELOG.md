@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 
  - Updated build sequence, enforce checkstyle on build, fails if checkstyle is not OK 
  - Updated javadoc to pass checkstyle
+ - Bumped version of embedded mongodb to 7.0.12 (same as Dockerized)
 
 ## [0.1.1] - 26-02-2025
 
