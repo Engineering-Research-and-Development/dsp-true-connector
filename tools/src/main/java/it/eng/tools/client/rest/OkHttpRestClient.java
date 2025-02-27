@@ -47,11 +47,11 @@ public class OkHttpRestClient {
 	}
 	
 	/**
-	 * Sends protocol request
+	 * Sends protocol request.
 	 * @param targetAddress
 	 * @param jsonNode
 	 * @param authorization
-	 * @return
+	 * @return GenericApiResponse
 	 */
 	public GenericApiResponse<String> sendRequestProtocol(String targetAddress, JsonNode jsonNode, String authorization) {
 		// send response to targetAddress
@@ -87,10 +87,10 @@ public class OkHttpRestClient {
 	}
 	
 	/**
-	 * Sends GET request
+	 * Sends GET request.
 	 * @param targetAddress
 	 * @param authorization
-	 * @return
+	 * @return GenericApiResponse
 	 */
 	public GenericApiResponse<String> sendGETRequest(String targetAddress, String authorization) {
 		Request.Builder requestBuilder = new Request.Builder()
@@ -118,10 +118,10 @@ public class OkHttpRestClient {
 	}
 	
 	/**
-	 * Sends GET request to download data
+	 * Sends GET request to download data.
 	 * @param targetAddress
 	 * @param authorization 
-	 * @return
+	 * @return GenericApiResponse
 	 */
 	public GenericApiResponse<ExternalData> downloadData(String targetAddress, String authorization) {
 		Request.Builder requestBuilder = new Request.Builder()

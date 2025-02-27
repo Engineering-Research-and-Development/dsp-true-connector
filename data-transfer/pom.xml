@@ -8,7 +8,7 @@
 		<version>${revision}</version>
 	</parent>
 	<groupId>it.eng.datatransfer</groupId>
-	<artifactId>data-transfer</artifactId>
+	<artifactId>datatransfer</artifactId>
 	<name>Data Transfer</name>
 
 	<dependencies>

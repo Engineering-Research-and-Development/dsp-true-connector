@@ -56,7 +56,7 @@ public class CatalogService {
     /********* API ***********/
     
     /**
-	 * Public method for fetching the catalog for further API processing purposes
+	 * Public method for fetching the catalog for further API processing purposes.<br>
 	 * It throws ResourceNotFoundAPIException instead of CatalogErrorException used in protocol requests
 	 * 
 	 * @return Catalog
@@ -80,6 +80,7 @@ public class CatalogService {
      * Saves the given catalog.
      *
      * @param catalog The catalog to be saved.
+     * @return Saved Catalog object
      */
     public Catalog saveCatalog(Catalog catalog) {
         // TODO handle the situation when we insert catalog for the first time, and the object like dataSets, distributions, etc. should be stored into separate documents
@@ -171,7 +172,6 @@ public class CatalogService {
      * This method adds the new dataService reference to the catalog's dataService list and saves the updated catalog.
      *
      * @param dataService The new data service reference to be added to the catalog.
-     * @param dataService
      */
     public void updateCatalogDataServiceAfterSave(DataService dataService) {
         Catalog c = getCatalogForApi();
@@ -220,7 +220,7 @@ public class CatalogService {
 
 
     /**
-     * Used by the protocol business logic to check if such offer exists
+     * Used by the protocol business logic to check if such offer exists.
      * because of that reason it throws CatalogErrorException instead of ResourceNotFoundAPIException
      * 
      * @param offer

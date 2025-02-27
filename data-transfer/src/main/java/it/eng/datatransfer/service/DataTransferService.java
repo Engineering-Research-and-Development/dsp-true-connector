@@ -52,7 +52,7 @@ public class DataTransferService {
 	}
 
 	/**
-	 * If TransferProcess for given consumerPid and providerPid exists and state is STARTED<br>
+	 * If TransferProcess for given consumerPid and providerPid exists and state is STARTED.<br>
 	 * Note: those 2 Pid's are not to be mixed with Contract Negotiation ones. They are unique
 	 * @param consumerPid 
 	 * @param providerPid
@@ -65,7 +65,7 @@ public class DataTransferService {
 	}
 
 	/**
-	 * Find transferProcess for given providerPid
+	 * Find transferProcess for given providerPid.
 	 * @param providerPid providerPid to search by
 	 * @return TransferProcess
 	 */
@@ -75,7 +75,7 @@ public class DataTransferService {
 	}
 
 	/**
-	 * Initiate data transfer
+	 * Initiate data transfer.
 	 * @param transferRequestMessage message
 	 * @return TransferProcess with status REQUESTED
 	 */
@@ -144,7 +144,7 @@ public class DataTransferService {
 	
 
 	/**
-	 * Transfer from REQUESTED or SUSPENDED to STARTED state
+	 * Transfer from REQUESTED or SUSPENDED to STARTED state.
 	 * @param transferStartMessage TransferStartMessage
 	 * @param consumerPid consumerPid in case of consumer callback usage
 	 * @param providerPid providerPid in case of provider usage
@@ -192,7 +192,7 @@ public class DataTransferService {
 	}
 	
 	/**
-	 * Finds transfer process, check if status is correct, publish event and update state to COMPLETED
+	 * Finds transfer process, check if status is correct, publish event and update state to COMPLETED.
 	 * @param transferCompletionMessage
 	 * @param consumerPid consumerPid in case of consumer callback usage
 	 * @param providerPid providerPid in case of provider usage
@@ -218,12 +218,11 @@ public class DataTransferService {
 	}
 
 	/**
-	 * Transition data transfer to SUSPENDED state
+	 * Transition data transfer to SUSPENDED state.
 	 * @param transferSuspensionMessage message
 	 * @param consumerPid consumerPid in case of consumer callback usage
 	 * @param providerPid providerPid in case of provider usage
 	 * @return TransferProcess with status SUSPENDED
-	 *  
 	 */
 	public TransferProcess suspendDataTransfer(TransferSuspensionMessage transferSuspensionMessage, String consumerPid,
 			String providerPid) {
@@ -245,7 +244,7 @@ public class DataTransferService {
 	}
 	
 	/**
-	 * Transition data transfer to TERMINATED state
+	 * Transition data transfer to TERMINATED state.
 	 * @param transferTerminationMessage message
 	 * @param consumerPid consumerPid in case of consumer callback usage
 	 * @param providerPid providerPid in case of provider usage
@@ -271,6 +270,12 @@ public class DataTransferService {
 		return transferProcessTerminated;
 	}
 	
+	/**
+	 * Find TransferProcess by consumerPid and providerPid.
+	 * @param consumerPid
+	 * @param providerPid
+	 * @return TransferProcess if found, otherwise throws TransferProcessNotFoundException
+	 */
 	public TransferProcess findTransferProcess(String consumerPid, String providerPid) {
 		TransferProcess transferProcessRequested = transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid)
 			.orElseThrow(() -> new TransferProcessNotFoundException("Transfer process for consumerPid " + consumerPid

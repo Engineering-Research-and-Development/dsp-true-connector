@@ -58,7 +58,7 @@ public class DatasetAPIController {
 	}
 
 	/**
-     * Used for fetching all dct:formats for a Dataset </br>
+     * Used for fetching all dct:formats for a Dataset.<br>
      * Generally used for creating Transfer Processes with INITIALIZED state
      * 
      * @param id id of Dataset
@@ -74,7 +74,7 @@ public class DatasetAPIController {
     }
     
     /**
-     * Used for fetching the artifact from a Dataset
+     * Used for fetching the artifact from a Dataset.
      * 
      * @param id id of Dataset
      * @return Artifact

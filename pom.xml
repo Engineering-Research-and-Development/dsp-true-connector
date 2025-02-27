@@ -90,16 +90,8 @@
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-checkstyle-plugin</artifactId>
 					<version>3.3.0</version>
-<!-- 					<dependencies> -->
-<!-- 						<dependency> -->
-<!-- 							<groupId>com.puppycrawl.tools</groupId> -->
-<!-- 							<artifactId>checkstyle</artifactId> -->
-<!-- 							<version>${checkstyle.version}</version> -->
-<!-- 						</dependency> -->
-<!-- 					</dependencies> -->
 					<configuration>
 						<configLocation>scripts/ci/checkstyle.xml</configLocation>
-						<encoding>UTF-8</encoding>
 						<consoleOutput>true</consoleOutput>
 						<failOnViolation>true</failOnViolation>
 					</configuration>
@@ -163,9 +155,18 @@
 					</execution>
 				</executions>
 			</plugin>
-				<plugin>
+			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-checkstyle-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>checkstyle</id>
+						<phase>validate</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 				<plugin>
 				<groupId>org.springframework.boot</groupId>

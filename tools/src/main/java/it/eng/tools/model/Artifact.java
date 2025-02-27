@@ -40,7 +40,7 @@ public class Artifact implements Serializable{
 	private ArtifactType artifactType;
     private String filename;
     /**
-     * The value depends on artifact type as following:
+     * The value depends on artifact type as following.
      * file - fileId in database
      * external - URL of the data
      */

@@ -89,7 +89,7 @@ public class ToolsSerializer {
 	}
 
 	/**
-	 * Serialize java object to json
+	 * Serialize java object to json.
 	 * @param toSerialize
 	 * @return Json string - plain
 	 */
@@ -112,7 +112,7 @@ public class ToolsSerializer {
 	}
 
 	/**
-	 * Converts json string (plain) to java object
+	 * Converts json string (plain) to java object.
 	 * @param <T> Type of class
 	 * @param jsonStringPlain json string
 	 * @param clazz
@@ -136,6 +136,13 @@ public class ToolsSerializer {
 		return null;
 	}
 	
+	/**
+	 * Deserializer plain json string to Java class.
+	 * @param <T> Type of class to deserialize
+	 * @param jsonStringPlain plain json string
+	 * @param typeRef TypeReference
+	 * @return Java object
+	 */
 	public static <T> T deserializePlain(String jsonStringPlain, TypeReference<T> typeRef) {
 		try {
 			T obj = jsonMapperPlain.readValue(jsonStringPlain, typeRef);
@@ -155,7 +162,7 @@ public class ToolsSerializer {
 	}
 
 	/**
-	 * Serialize java object to json compliant with Dataspace protocol (contains prefixes for json fields)
+	 * Serialize java object to json compliant with Dataspace protocol (contains prefixes for json fields).
 	 * @param toSerialize java object to serialize
 	 * @return Json string - with Dataspace prefixes
 	 */
@@ -171,7 +178,7 @@ public class ToolsSerializer {
 	/**
 	 * Convert object to JsonNode with prefixes. Used in tests
 	 * @param toSerialize
-	 * @return
+	 * @return JsonNode serialized object
 	 */
 	public static JsonNode serializeProtocolJsonNode(Object toSerialize) {
 		return jsonMapper.convertValue(toSerialize, JsonNode.class);
@@ -183,12 +190,13 @@ public class ToolsSerializer {
 	}
 
 	/**
-	 * Convert Dataspace json (with prefixes) to java object, performs validation for @context and @type before converting to java
+	 * Convert Dataspace json (with prefixes) to java object.
+	 * Performs validation for @context and @type before converting to java
 	 * Enforce validation for mandatory fields
-	 * @param <T>
-	 * @param jsonNode
-	 * @param clazz
-	 * @return
+	 * @param <T> Type of class to deserialize
+	 * @param jsonNode JsonNode to deserialize
+	 * @param clazz Class to deserialzie
+	 * @return Java object
 	 */
 	public static <T> T deserializeProtocol(JsonNode jsonNode, Class<T> clazz) {
 		T obj = jsonMapper.convertValue(jsonNode, clazz);

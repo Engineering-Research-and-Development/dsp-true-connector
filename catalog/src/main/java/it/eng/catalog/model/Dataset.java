@@ -229,7 +229,7 @@ public class Dataset extends AbstractCatalogObject {
     }
     
     /**
-     * Create new updated instance with new values from passed Dataset parameter<br>
+     * Create new updated instance with new values from passed Dataset parameter.<br>
      * If fields are not present in updatedDataset, existing values will remain
      * @param updatedDataset
      * @return new updated dataset instance

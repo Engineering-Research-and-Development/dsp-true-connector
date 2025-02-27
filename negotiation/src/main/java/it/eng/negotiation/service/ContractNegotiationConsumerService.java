@@ -46,7 +46,7 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
 		this.policyEnforcementService = policyEnforcementService;
 	}
 
-	/**
+	/*
      * {
      * "@context": "https://w3id.org/dspace/v0.8/context.json",
      * "@type": "dspace:ContractNegotiation",
@@ -58,7 +58,11 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
      * @param contractOfferMessage
      * @return
      */
-
+	/**
+	 * Process contract offer.
+	 * @param contractOfferMessage
+	 * @return ContractNegotiation as JsonNode
+	 */
     public JsonNode processContractOffer(ContractOfferMessage contractOfferMessage) {
     	checkIfContractNegotiationExists(contractOfferMessage.getConsumerPid(), contractOfferMessage.getProviderPid());
     	
@@ -142,7 +146,6 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
      *
      * @param contractNegotiationEventMessage
      */
-
     public void handleFinalizeEvent(ContractNegotiationEventMessage contractNegotiationEventMessage) {
     	if (!contractNegotiationEventMessage.getEventType().equals(ContractNegotiationEventType.FINALIZED)) {
 			throw new ContractNegotiationInvalidEventTypeException(
@@ -174,7 +177,6 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
      *
      * @param consumerPid
      * @param contractNegotiationTerminationMessage
-     * @return
      */
     public void handleTerminationRequest(String consumerPid, ContractNegotiationTerminationMessage contractNegotiationTerminationMessage) {
     	ContractNegotiation contractNegotiation = contractNegotiationRepository.findByConsumerPid(consumerPid)
