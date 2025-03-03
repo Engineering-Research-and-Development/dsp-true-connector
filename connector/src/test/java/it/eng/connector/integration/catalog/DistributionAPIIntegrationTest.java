@@ -230,7 +230,6 @@ public class DistributionAPIIntegrationTest extends BaseIntegrationTest {
     /**
      * Tests validation when attempting to create a distribution with invalid data.
      * Verifies that the controller correctly handles the validation error.
-     * NOTE test is disabled due to serializer actually making a new Distribution with null fields, the serialization should fail in that case.
      */
     @Test
     @DisplayName("Create distribution - invalid data")
