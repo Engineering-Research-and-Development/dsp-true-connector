@@ -33,7 +33,7 @@ import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.serializer.ToolsSerializer;
 
-public class ArtifactIntegrationTest extends BaseIntegrationTest {
+public class ArtifactAPIIntegrationTest extends BaseIntegrationTest {
 	
 	@Autowired
 	private ArtifactRepository artifactRepository;
