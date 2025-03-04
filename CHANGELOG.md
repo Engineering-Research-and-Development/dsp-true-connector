@@ -1,6 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 03-03-2025
+
+### Added
+
+ - Added integration tests for distribution and dataservice API
+ - Added multiple junit tests for Tools module
+
 ## [0.1.1] - 27-02-2025
 
 ### Changed

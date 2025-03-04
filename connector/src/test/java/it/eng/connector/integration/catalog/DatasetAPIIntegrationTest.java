@@ -59,7 +59,7 @@ import it.eng.tools.model.ArtifactType;
 import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.response.GenericApiResponse;
 
-public class DatasetIntegrationTest extends BaseIntegrationTest {
+public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 	
 	@Autowired
 	private CatalogRepository catalogRepository;
