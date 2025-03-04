@@ -7,6 +7,8 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,7 +42,7 @@ public class GenericDeserializeTest {
 		TypeReference<GenericApiResponse<List<String>>> typeRef = new TypeReference<GenericApiResponse<List<String>>>() {};
 	    try {
 	        GenericApiResponse<List<String>> apiResp =  objectMapper.readValue(response, typeRef);
-	        apiResp.getData();
+	        assertNotNull(apiResp.getData()); // Use the getter method
 	    } catch (JsonProcessingException e) {
 	        // pass the original exception along as cause, preserving info.
 	        throw new RuntimeException("Could not parse json", e);
@@ -75,7 +77,7 @@ public class GenericDeserializeTest {
 	
 		  try {
 		        GenericApiResponse<List<String>> apiResp =  objectMapper.readValue(response, javaType);
-		        apiResp.getData();
+		        assertNotNull(apiResp.getData()); // Use the getter method
 		    } catch (JsonProcessingException e) {
 		        // pass the original exception along as cause, preserving info.
 		        throw new RuntimeException("Could not parse json", e);
