@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 10-03-2025
+
+### Changed
+
+ - separated execution of integration tests (use mvn clean verify for [building](https://maven.apache.org/guides/introduction/introduction-to-the-lifecycle.html) and testing)
+
 ## [0.1.1] - 03-03-2025
 
 ### Added

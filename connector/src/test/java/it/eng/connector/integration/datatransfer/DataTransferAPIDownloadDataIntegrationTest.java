@@ -63,7 +63,7 @@ import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import okhttp3.Credentials;
 
-public class DataTransferAPIDownloadDataTest extends BaseIntegrationTest{
+public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationTest{
 	
 	private static final String FILE_NAME = "hello.txt";
 

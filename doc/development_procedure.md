@@ -21,7 +21,7 @@ This dashboard is used to keep track of backlog, current set of tasks that will 
  
 ## Definition of ready (DoR)
 
-Task can be considered *READY* when following criteria's are fulfilled:
+Task can be considered *READY* when following criteria are fulfilled:
  
  - Task breakdown should be present, with clear guideline what needs to be done
  - Estimation is present (preferably for each step); be sure not to estimate more than max 16 hours
@@ -30,11 +30,11 @@ Task can be considered *READY* when following criteria's are fulfilled:
 
 ## Definition of done (DoD)
 
-Task can be considered *DONE* when following criteria's are fulfilled:
+Task can be considered *DONE* when following criteria are fulfilled:
  
  - Code is implemented and pushed to the GitHub repository (feature branch)
  - New feature or bug fix needs to be covered with junit/integration/GitHub Action tests
- - All tests are pass
+ - All tests are passing (for testing and building please use the [mvn clean verify](https://maven.apache.org/guides/introduction/introduction-to-the-lifecycle.html) command!)
  - Documentation is updated
  - Changelog is updated (if applicable)
  - Pull request review is done (resolved all conversation comments from PR) -> code is squash merged to develop branch (one commit to develop branch)

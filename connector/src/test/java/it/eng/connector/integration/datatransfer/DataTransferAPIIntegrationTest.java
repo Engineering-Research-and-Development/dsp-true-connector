@@ -46,7 +46,7 @@ import it.eng.tools.response.GenericApiResponse;
 /**
  * Data Transfer API endpoints integration test
  */
-public class DataTransferApiTest extends BaseIntegrationTest {
+public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 	
 	@Autowired
 	private TransferProcessRepository transferProcessRepository;

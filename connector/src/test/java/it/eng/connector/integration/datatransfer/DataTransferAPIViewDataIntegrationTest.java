@@ -52,7 +52,7 @@ import it.eng.negotiation.repository.PolicyEnforcementRepository;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
 
-public class DataTransferAPIViewDataTest extends BaseIntegrationTest{
+public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest{
 	
 	@InjectWireMock 
 	private WireMockServer wiremock;
