@@ -9,10 +9,10 @@ import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.util.CredentialUtils;
 import okhttp3.Call;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -35,6 +36,8 @@ public class OkHttpRestClientTest {
 	@Mock
 	private OkHttpClient okHttpClient;
 	@Mock
+	private CredentialUtils credentialUtils;
+	@Mock
 	private RequestBody formBody;
 	@Mock
 	private Request request;
@@ -45,8 +48,12 @@ public class OkHttpRestClientTest {
 	@Mock
 	private ResponseBody responseBody;
 	
-	@InjectMocks
 	private OkHttpRestClient okHttpRestClient;
+	
+	@BeforeEach
+	public void setup() {
+		okHttpRestClient = new OkHttpRestClient(okHttpClient, credentialUtils, "123", false);
+	}
 	
 	@Test
 	@DisplayName("Send protocol request - success")

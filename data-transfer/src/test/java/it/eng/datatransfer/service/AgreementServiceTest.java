@@ -20,6 +20,7 @@ import it.eng.datatransfer.exceptions.AgreementNotFoundException;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.util.DataTranferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.property.ConnectorProperties;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
@@ -37,6 +38,8 @@ class AgreementServiceTest {
 	private GenericApiResponse<String> apiResponse;
 	@Mock
 	private CredentialUtils credentialUtils;
+	@Mock
+	private ConnectorProperties connectorProperties;
 	
 	@InjectMocks
 	private AgreementService service;
@@ -48,6 +51,7 @@ class AgreementServiceTest {
 		when(transferProcessRepository.findByConsumerPidAndProviderPid(DataTranferMockObjectUtil.CONSUMER_PID, DataTranferMockObjectUtil.PROVIDER_PID))
 			.thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
 		when(credentialUtils.getAPICredentials()).thenReturn("credentials");
+		when(connectorProperties.getConnectorURL()).thenReturn("http://test.localhost:8080");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), isNull(), any(String.class)))
 			.thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(true);
@@ -63,6 +67,7 @@ class AgreementServiceTest {
 		when(transferProcessRepository.findByConsumerPidAndProviderPid(DataTranferMockObjectUtil.CONSUMER_PID, DataTranferMockObjectUtil.PROVIDER_PID))
 			.thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
 		when(credentialUtils.getAPICredentials()).thenReturn("credentials");
+		when(connectorProperties.getConnectorURL()).thenReturn("http://test.localhost:8080");
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), isNull(), any(String.class)))
 			.thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(false);
