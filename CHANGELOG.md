@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 13-03-2025
+
+### Changed
+
+- switched from embedded mongodb to dockerized mongodb with test containers for integration tests
+
 ## [0.1.1] - 10-03-2025
 
 ### Changed

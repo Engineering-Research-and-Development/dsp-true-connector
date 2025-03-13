@@ -34,7 +34,7 @@ Task can be considered *DONE* when following criteria are fulfilled:
  
  - Code is implemented and pushed to the GitHub repository (feature branch)
  - New feature or bug fix needs to be covered with junit/integration/GitHub Action tests
- - All tests are passing (for testing and building please use the [mvn clean verify](https://maven.apache.org/guides/introduction/introduction-to-the-lifecycle.html) command!)
+ - All tests are passing (for testing and building please use the [mvn clean verify](https://maven.apache.org/guides/introduction/introduction-to-the-lifecycle.html) command as the Integration Tests are run in the verify phase; You need docker running as test containers are used for integration tests)
  - Documentation is updated
  - Changelog is updated (if applicable)
  - Pull request review is done (resolved all conversation comments from PR) -> code is squash merged to develop branch (one commit to develop branch)

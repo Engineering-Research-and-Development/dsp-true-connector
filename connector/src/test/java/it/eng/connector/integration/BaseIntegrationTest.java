@@ -1,27 +1,5 @@
 package it.eng.connector.integration;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import java.io.UnsupportedEncodingException;
-import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultActions;
-import org.wiremock.spring.EnableWireMock;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -31,7 +9,6 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-
 import it.eng.connector.util.TestUtil;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.serializer.NegotiationSerializer;
@@ -40,6 +17,31 @@ import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.serializer.InstantDeserializer;
 import it.eng.tools.serializer.InstantSerializer;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+import org.testcontainers.containers.MongoDBContainer;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.wiremock.spring.EnableWireMock;
+
+import java.io.UnsupportedEncodingException;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(
 		  webEnvironment = WebEnvironment.DEFINED_PORT,
@@ -48,10 +50,12 @@ import it.eng.tools.serializer.InstantSerializer;
 		  })
 @AutoConfigureMockMvc
 @EnableWireMock
+@Testcontainers
 public class BaseIntegrationTest {
 	
 	protected static final String FS_FILES = "fs.files";
 	protected static final String FS_CHUNKS = "fs.chunks";
+	protected static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:7.0.12").withExposedPorts(27017);
 	
    @Autowired
    protected MockMvc mockMvc;
@@ -59,6 +63,16 @@ public class BaseIntegrationTest {
    
    protected String createNewId() {
 		return "urn:uuid:" + UUID.randomUUID().toString();
+	}
+
+	static {
+		mongoDBContainer.start();
+	}
+
+	@DynamicPropertySource
+	static void containersProperties(DynamicPropertyRegistry registry) {
+		registry.add("spring.data.mongodb.host", mongoDBContainer::getHost);
+		registry.add("spring.data.mongodb.port", mongoDBContainer::getFirstMappedPort);
 	}
    
 	@BeforeEach

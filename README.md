@@ -7,17 +7,19 @@ Implementation of the new [Dataspace protocol](https://docs.internationaldataspa
  - IDE : Eclipse STS, IntelliJ, VS Code
  - Resources: 16Gb RAM, 5Gb of disk space, 8 thread Processor
  - Languages/Frameworks: Java 17, Maven 3.9.4 (compatible with java 17), SpringBoot 3.1.2 (Spring framework 6)
- - Database: MongoDB, Flapdoodle (embedded mongodb for testing)
+ - Database: MongoDB 7.0.12
  - Libraries: lombok, fasterxml.jackson, okhttp3, com.auth0:java-jwt, org.apache.commons:commons-lang3, org.apache.sshd:sshd-core, org.apache.sshd:sshd-sftp
-  - Testing: Junit, Mockito; integration tests - MockMvc
+  - Testing: Junit, Mockito; integration tests - MockMvc, Test Containers, Docker
   - Debugging tools: IDE debug
   - FE Technologies: Angular 17
   - Other technologies/Protocols used: Dataspace Protocol, HTTPS, sftp, DCAT-AP
-  - Useful Tools: Postman, Docker, Robo 3T (or any other MongoDb visualization tool)
+  - Useful Tools: Postman, Robo 3T (or any other MongoDb visualization tool)
   - [Repository source code and versioning](https://github.com/Engineering-Research-and-Development/dsp-true-connector)
   - [Task Management and Monitoring](https://github.com/users/Engineering-Research-and-Development/projects/2)
   - [CI/CD](https://github.com/Engineering-Research-and-Development/dsp-true-connector/actions)
   - Deploy management: Not yet, planned to be dockerized and maybe some cloud solution
+
+Please refer to the [development procedure](doc/development_procedure.md) for more details.
 	
 ## Project structure
 
