@@ -9,15 +9,11 @@ import java.util.List;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.X509ExtendedTrustManager;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * Custom X509TrustManager that adds OCSP validation to certificate verification.
  */
-//@Component
 @Slf4j
 public class OcspX509TrustManager extends X509ExtendedTrustManager {
 
@@ -32,7 +28,6 @@ public class OcspX509TrustManager extends X509ExtendedTrustManager {
      * @param ocspValidator The OCSP validator
      * @param ocspProperties The OCSP properties
      */
-//    @Autowired
     public OcspX509TrustManager(X509ExtendedTrustManager delegate, 
                                CachedOcspValidator ocspValidator,
                                OcspProperties ocspProperties) {

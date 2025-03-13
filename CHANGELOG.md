@@ -1,13 +1,14 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [0.1.1] - 13-03-2025
+## [0.1.1] - 14-03-2025
 
 ### Added
 
  - OCSP logic for validating TLS certificate
- - New properties for ocsp logic
+ - OCSP documentation and how to
  - TLS properties for connector; default connector setup is http
+ - New conenctor-a, connector-b and truststore files
 
 ## [0.1.1] - 03-03-2025
 

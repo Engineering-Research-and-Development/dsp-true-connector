@@ -1,0 +1,18 @@
+{
+  "CN": "CertifiedAuthority CA",
+  "key": {
+    "algo": "ecdsa",
+    "size": 521
+  },
+  "names": [
+  {
+    "C": "IT",
+    "L": "Lecce",
+    "O": "Engineering Ingegneria Informatica SpA",
+    "OU": "R&D"
+  }
+ ],
+ "expiry": "87660h",
+ "usages": ["cert sign"],
+ "ca_constraint": {"is_ca": true}
+}
