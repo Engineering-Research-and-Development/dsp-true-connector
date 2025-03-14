@@ -24,6 +24,7 @@ import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
 import it.eng.tools.model.IConstants;
+import it.eng.tools.property.ConnectorProperties;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -32,14 +33,17 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ContractNegotiationProviderService extends BaseProtocolService {
 	
+	private final ConnectorProperties connectorProperties;
+	
 	protected final CredentialUtils credentialUtils;
 
-	public ContractNegotiationProviderService(ContractNegotiationPublisher publisher,
+	public ContractNegotiationProviderService(ContractNegotiationPublisher publisher, ConnectorProperties connectorProperties,
 			ContractNegotiationRepository contractNegotiationRepository, OkHttpRestClient okHttpRestClient,
 			ContractNegotiationProperties properties, OfferRepository offerRepository,
 			CredentialUtils credentialUtils) {
 		super(publisher, contractNegotiationRepository, okHttpRestClient, properties, offerRepository);
 		this.credentialUtils = credentialUtils;
+		this.connectorProperties = connectorProperties;
 	}
 
 	/**
@@ -89,7 +93,8 @@ public class ContractNegotiationProviderService extends BaseProtocolService {
         
         checkIfContractNegotiationExists(contractRequestMessage.getConsumerPid(), contractRequestMessage.getProviderPid());
 
-		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + properties.serverPort() + ApiEndpoints.CATALOG_OFFERS_V1 + "/validate", 
+		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(connectorProperties.getConnectorURL()
+					+ ApiEndpoints.CATALOG_OFFERS_V1 + "/validate", 
 				NegotiationSerializer.serializePlainJsonNode(contractRequestMessage.getOffer()), 
 				credentialUtils.getAPICredentials());
         

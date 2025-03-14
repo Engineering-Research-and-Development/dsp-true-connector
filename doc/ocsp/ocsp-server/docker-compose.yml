@@ -1,0 +1,19 @@
+version: '3.1'
+services:
+  ocsp-server:
+    build: .
+    container_name: ocsp-server
+    ports:
+      - "8888:8888"
+#    networks:
+#      - ocsp
+    volumes:
+      - ../CertificateAuthority:/CertificateAuthority
+    command: /bin/bash
+    stdin_open: true 
+    tty: true
+
+#networks:
+#  ocsp:
+#   external: true
+#   name: testbed_local

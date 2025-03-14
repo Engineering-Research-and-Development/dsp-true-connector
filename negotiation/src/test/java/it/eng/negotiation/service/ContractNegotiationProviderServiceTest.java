@@ -40,6 +40,7 @@ import it.eng.negotiation.repository.OfferRepository;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
 import it.eng.tools.model.IConstants;
+import it.eng.tools.property.ConnectorProperties;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
 
@@ -60,6 +61,9 @@ public class ContractNegotiationProviderServiceTest {
 	private GenericApiResponse<String> apiResponse;
     @Mock
     private CredentialUtils credentialUtils;
+    @Mock
+    private ConnectorProperties connectorProperties;
+    
     @InjectMocks
     private ContractNegotiationProviderService service;
     
@@ -73,6 +77,7 @@ public class ContractNegotiationProviderServiceTest {
     public void startContractNegotiation_automaticON() throws InterruptedException {
     	when(properties.isAutomaticNegotiation()).thenReturn(true);
     	when(credentialUtils.getAPICredentials()).thenReturn("credentials");
+    	when(connectorProperties.getConnectorURL()).thenReturn("http://test.connector.url");
         when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.ofNullable(null));
     	when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
     	when(apiResponse.isSuccess()).thenReturn(true);
@@ -99,6 +104,7 @@ public class ContractNegotiationProviderServiceTest {
     public void startContractNegotiation_automatic_OFF() throws InterruptedException {
         when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.ofNullable(null));
         when(credentialUtils.getAPICredentials()).thenReturn("credentials");
+        when(connectorProperties.getConnectorURL()).thenReturn("http://test.connector.url");
     	when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
     	when(apiResponse.isSuccess()).thenReturn(true);
     	when(offerRepository.save(any(Offer.class))).thenReturn(NegotiationMockObjectUtil.OFFER_WITH_ORIGINAL_ID);
@@ -147,6 +153,7 @@ public class ContractNegotiationProviderServiceTest {
     public void startContractNegotiation_offerNotValid() throws InterruptedException {
         when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.ofNullable(null));
         when(credentialUtils.getAPICredentials()).thenReturn("credentials");
+		when(connectorProperties.getConnectorURL()).thenReturn("http://test.connector.url");
     	when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
     	when(apiResponse.isSuccess()).thenReturn(false);
     	
