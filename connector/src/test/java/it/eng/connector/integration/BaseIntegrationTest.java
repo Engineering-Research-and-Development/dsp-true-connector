@@ -55,6 +55,7 @@ public class BaseIntegrationTest {
 	
 	protected static final String FS_FILES = "fs.files";
 	protected static final String FS_CHUNKS = "fs.chunks";
+	// starts a mongodb container; the container is shared among all tests; docker must be running
 	protected static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:7.0.12").withExposedPorts(27017);
 	
    @Autowired
