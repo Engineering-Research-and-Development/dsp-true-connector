@@ -25,15 +25,17 @@ import okhttp3.Response;
 public class OkHttpRestClient {
 	
 	private String serverPort;
+	private boolean sslEnabled;
 	private OkHttpClient okHttpClient;
 	private CredentialUtils credentialUtils;
 	
 //	@Qualifier("okHttpClient") 
 	public OkHttpRestClient(OkHttpClient okHttpClient, CredentialUtils credentialUtils, 
-			@Value("${server.port}")String serverPort) {
+			@Value("${server.port}") String serverPort, @Value("${server.ssl.enabled}") boolean sslEnabled) {
 		this.okHttpClient = okHttpClient;
 		this.credentialUtils = credentialUtils;
 		this.serverPort = serverPort;
+		this.sslEnabled = sslEnabled;
 	}
 	
 	public Response executeCall(Request request) {
@@ -150,7 +152,15 @@ public class OkHttpRestClient {
 	}
 	
 	public String sendInternalRequest(String contextAddress, HttpMethod method, JsonNode jsonBody) {
-		String targetAddress = "http://localhost:" + serverPort + contextAddress;
+		
+		 String connectorAddress;
+			if (sslEnabled) {
+				connectorAddress = "https://localhost:";
+			} else {
+				connectorAddress = "http://localhost:";
+			}
+		
+		String targetAddress = connectorAddress + serverPort + contextAddress;
 		Request.Builder requestBuilder = new Request.Builder()
 				.url(targetAddress);
 		requestBuilder.addHeader(HttpHeaders.AUTHORIZATION, credentialUtils.getAPICredentials());

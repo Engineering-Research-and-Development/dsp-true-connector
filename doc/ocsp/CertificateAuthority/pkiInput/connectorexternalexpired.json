@@ -1,0 +1,20 @@
+{
+  "CN": "Connector External Expired",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+  {
+    "C": "IT",
+    "L": "Lecce",
+    "O": "Engineering Ingegneria Informatica SpA",
+    "OU": "R&D"
+  }
+  ],
+  "hosts": [
+    "localhost",
+    "connectorexternalexpired",
+    "127.0.0.1"
+  ]
+}
