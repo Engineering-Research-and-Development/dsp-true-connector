@@ -12,22 +12,23 @@ First add these dependencies to the connector module, since the integration test
 
 ```
 <dependency>
-    <groupId>org.junit.jupiter</groupId>
-    <artifactId>junit-jupiter</artifactId>
-     <version>1.20.5</version>
-    <scope>test</scope>
-</dependency>
-<dependency>
     <groupId>org.testcontainers</groupId>
     <artifactId>testcontainers</artifactId>
-     <version>1.20.5</version>
+    <version>1.20.5</version>
     <scope>test</scope>
 </dependency>
 <dependency>
     <groupId>org.testcontainers</groupId>
     <artifactId>junit-jupiter</artifactId>
-     <version>1.20.5</version>
+    <version>1.20.5</version>
     <scope>test</scope>
+</dependency>
+<dependency>
+<dependency>
+	<groupId>org.testcontainers</groupId>
+	<artifactId>mongodb</artifactId>
+	<version>1.20.5</version>
+	<scope>test</scope>
 </dependency>
 ```
 

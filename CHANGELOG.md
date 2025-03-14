@@ -3,12 +3,18 @@ All notable changes to this project will be documented in this file.
 
 ## [0.1.1] - 14-03-2025
 
+### Changed
+
+- switched from embedded mongodb to dockerized mongodb with test containers for integration tests
+
+## [0.1.1] - 14-03-2025
+
 ### Added
 
- - OCSP logic for validating TLS certificate
- - OCSP documentation and how to
- - TLS properties for connector; default connector setup is http
- - New connector-a, connector-b and truststore files
+- OCSP logic for validating TLS certificate
+- OCSP documentation and how to
+- TLS properties for connector; default connector setup is http
+- New connector-a, connector-b and truststore files
 
 ## [0.1.1] - 10-03-2025
 
