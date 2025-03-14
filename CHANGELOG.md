@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
  - OCSP logic for validating TLS certificate
  - OCSP documentation and how to
  - TLS properties for connector; default connector setup is http
- - New conenctor-a, connector-b and truststore files
+ - New connector-a, connector-b and truststore files
 
 ## [0.1.1] - 10-03-2025
 
