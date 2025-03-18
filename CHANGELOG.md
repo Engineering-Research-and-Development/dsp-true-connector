@@ -1,6 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [project.version.placeholder] - [timestamp]
+
+### Added
+
+ - New GitHub Action script to trigger develop merge and increase version number
+ - New maven plugin to update CHANGELOG.md and replace pattern with build version and timestamp
+
 ## [0.1.1] - 14-03-2025
 
 ### Changed

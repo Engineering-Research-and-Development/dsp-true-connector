@@ -1,0 +1,43 @@
+name: Build Develop and increase version
+
+on:
+  pull_request:
+    branches:
+      - develop
+    types: [closed]
+
+jobs:
+  increment-version:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Increment version in pom.xml
+        run: |
+          current_version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          new_version=$(echo $current_version | awk -F. -v OFS=. '{$NF++;print}')
+          mvn versions:set-property -Dproperty=revision -DnewVersion=$new_version-SNAPSHOT
+
+      - name: Setup Git credentials
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email noreply@github.com
+
+      - name: Build
+        shell: bash -l {0}
+        run: |
+          mvn --version
+          mvn -B clean verify --file pom.xml
+          git add pom.xml
+          git commit -m "Release $new_version"
+          git push

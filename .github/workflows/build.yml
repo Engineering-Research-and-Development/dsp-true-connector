@@ -2,11 +2,10 @@ name: Feature or hotfix build
 
 on:
   push:
-    branches: [ "feature/*", "hotfix/*", "develop", "main"]
+    branches: [ "feature/*", "hotfix/*"]
   
 jobs:
   build-and-push-image:
-    if: "!contains(github.event.head_commit.message, '[maven-release-plugin]')"
     runs-on: ubuntu-latest
     
     permissions:
