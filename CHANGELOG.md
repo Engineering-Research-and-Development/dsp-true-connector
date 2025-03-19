@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
  - New GitHub Action script to trigger develop merge and increase version number
+ - New GitHub Action script for doing release (set release version, create tag, set next develop version, create dev PR)
  - New maven plugin to update CHANGELOG.md and replace pattern with build version and timestamp
 
 ## [0.1.1] - 14-03-2025
