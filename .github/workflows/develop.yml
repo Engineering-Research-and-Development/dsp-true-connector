@@ -11,6 +11,12 @@ jobs:
     if: github.event.pull_request.merged == true && github.event.pull_request.head.ref != 'main'
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write
+      packages: write
+      attestations: write
+      id-token: write
+      
     env:
       GITHUB_USERNAME: ${{ github.actor }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -32,11 +38,6 @@ jobs:
           new_version=$(echo $current_version | awk -F. -v OFS=. '{$NF++;print}')
           mvn versions:set-property -Dproperty=revision -DnewVersion=$new_version-SNAPSHOT
 
-      - name: Setup Git credentials
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email noreply@github.com
-
       - name: Build
         shell: bash -l {0}
         run: |
@@ -49,7 +50,7 @@ jobs:
   build-develop-after-release:
     if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'main'
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -68,14 +69,9 @@ jobs:
           mvn -B clean verify --file pom.xml
           
   build-docker-image:
+    needs: increment-version-and-build
     runs-on: ubuntu-latest
     
-    permissions:
-      contents: read
-      packages: write
-      attestations: write
-      id-token: write
-
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: engineering-research-and-development/dsp-true-connector
