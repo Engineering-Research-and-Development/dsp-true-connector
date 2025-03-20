@@ -10,7 +10,7 @@
 	<description>Dataspace protocol implementation of the TRUE Connector</description>
 
 	<properties>
-		<revision>0.1.0-SNAPSHOT</revision>
+		<revision>0.1.2-SNAPSHOT</revision>
 		<java.version>17</java.version>
 		<build.sourceEncoding>UTF-8</build.sourceEncoding>
 		<maven.compiler.release>${java.version}</maven.compiler.release>
@@ -149,6 +149,8 @@
 		</pluginManagement>
 
 		<plugins>
+		<!-- 
+		Commented out until more elegant solution is found for automatic update of CHANGELOG.md			
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-antrun-plugin</artifactId>
@@ -170,6 +172,7 @@
 					</execution>
 				</executions>
 			</plugin>
+		-->
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>flatten-maven-plugin</artifactId>
