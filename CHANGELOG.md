@@ -1,6 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.2-SNAPSHOT] - 20-03-2025
+
+### Added
+
+ - New GitHub Action script to trigger develop merge and increase version number
+ - New GitHub Action script for doing release (set release version, create tag, set next develop version, create dev PR)
+
 ## [0.1.1] - 14-03-2025
 
 ### Changed

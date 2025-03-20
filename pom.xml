@@ -10,12 +10,14 @@
 	<description>Dataspace protocol implementation of the TRUE Connector</description>
 
 	<properties>
-		<revision>0.1.0-SNAPSHOT</revision>
+		<revision>0.1.2-SNAPSHOT</revision>
 		<java.version>17</java.version>
 		<build.sourceEncoding>UTF-8</build.sourceEncoding>
 		<maven.compiler.release>${java.version}</maven.compiler.release>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<jacoco.version>0.8.10</jacoco.version>
+		<timestamp>${maven.build.timestamp}</timestamp>
+		<maven.build.timestamp.format>dd-MM-yyyy</maven.build.timestamp.format>
 	</properties>
 
 	<modules>
@@ -50,11 +52,6 @@
 			<dependency>
 				<groupId>it.eng</groupId>
 				<artifactId>tools</artifactId>
-				<version>${revision}</version>
-			</dependency>
-			<dependency>
-				<groupId>it.eng</groupId>
-				<artifactId>statemachine</artifactId>
 				<version>${revision}</version>
 			</dependency>
 		</dependencies>
@@ -152,6 +149,30 @@
 		</pluginManagement>
 
 		<plugins>
+		<!-- 
+		Commented out until more elegant solution is found for automatic update of CHANGELOG.md			
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<version>3.1.0</version>
+				<executions>
+					<execution>
+						<id>update-changelog</id>
+						<phase>validate</phase>
+						<inherited>false</inherited>
+						<configuration>
+							<target>
+								<replaceregexp file="CHANGELOG.md" match="project.version.placeholder" replace="${project.version}" byline="true"/>
+								<replaceregexp file="CHANGELOG.md" match="timestamp" replace="${timestamp}" byline="true"/>
+							</target>
+						</configuration>
+						<goals>
+							<goal>run</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		-->
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>flatten-maven-plugin</artifactId>
