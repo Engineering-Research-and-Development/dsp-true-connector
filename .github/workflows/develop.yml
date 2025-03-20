@@ -11,6 +11,10 @@ jobs:
     if: github.event.pull_request.merged == true && github.event.pull_request.head.ref != 'main'
     runs-on: ubuntu-latest
 
+    env:
+      GITHUB_USERNAME: ${{ github.actor }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -39,7 +43,7 @@ jobs:
           mvn --version
           mvn -B clean verify --file pom.xml
           git add pom.xml
-          git commit -m "Release $new_version"
+          git commit -m "New development version $new_version"
           git push
 
   build-develop-after-release:
