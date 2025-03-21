@@ -42,6 +42,11 @@ jobs:
       run: |
         mvn versions:set-property -Dproperty=revision -DnewVersion=${{ github.event.inputs.releaseVersion }}
 
+    - name: Setup Git credentials
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email noreply@github.com
+                    
     - name: Build DSP TRUEConnector and upload release to GitHub
       shell: bash -l {0}
       run: |
