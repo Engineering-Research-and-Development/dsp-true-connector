@@ -27,6 +27,8 @@ public class OkHttpRestClientTest {
 	
 	private static final String BASIC_AUTH = "basicAuth";
 	private static final String TARGET_ADDRESS = "http://test.endpoint/123";
+	private static final String ATTACHMENT_FILENAME = "attachment;filename=";
+
 	@Mock
 	private OkHttpClient okHttpClient;
 	@Mock
@@ -213,7 +215,7 @@ public class OkHttpRestClientTest {
 
 			assertNotNull(apiResponse);
 			assertTrue(apiResponse.isSuccess());
-			assertEquals(TARGET_ADDRESS.substring(TARGET_ADDRESS.lastIndexOf("/") + 1), apiResponse.getData().getContentDisposition());
+			assertEquals(ATTACHMENT_FILENAME + TARGET_ADDRESS.substring(TARGET_ADDRESS.lastIndexOf("/") + 1), apiResponse.getData().getContentDisposition());
 			assertEquals(bodyBytes, apiResponse.getData().getData());
 			assertEquals(MediaType.get("text/plain"), apiResponse.getData().getContentType());
 		}
