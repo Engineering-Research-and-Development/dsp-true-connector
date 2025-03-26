@@ -30,9 +30,7 @@ public class OkHttpRestClient {
 	private final CredentialUtils credentialUtils;
 	private static final String ATTACHMENT_FILENAME = "attachment;filename=";
 
-
-	//	@Qualifier("okHttpClient")
-	public OkHttpRestClient(OkHttpClient okHttpClient, CredentialUtils credentialUtils, 
+	public OkHttpRestClient(OkHttpClient okHttpClient, CredentialUtils credentialUtils,
 			@Value("${server.port}") String serverPort, @Value("${server.ssl.enabled}") boolean sslEnabled) {
 		this.okHttpClient = okHttpClient;
 		this.credentialUtils = credentialUtils;
@@ -59,8 +57,7 @@ public class OkHttpRestClient {
 	 */
 	public GenericApiResponse<String> sendRequestProtocol(String targetAddress, JsonNode jsonNode, String authorization) {
 		// send response to targetAddress
-		Request.Builder requestBuilder = new Request.Builder()
-				.url(targetAddress);
+		Request.Builder requestBuilder = new Request.Builder().url(targetAddress);
         RequestBody body;
         if(jsonNode != null) {
             body = RequestBody.create(jsonNode.toPrettyString(), MediaType.parse("application/json"));
@@ -100,8 +97,7 @@ public class OkHttpRestClient {
 	 * @return GenericApiResponse
 	 */
 	public GenericApiResponse<String> sendGETRequest(String targetAddress, String authorization) {
-		Request.Builder requestBuilder = new Request.Builder()
-				.url(targetAddress);
+		Request.Builder requestBuilder = new Request.Builder().url(targetAddress);
 		if(StringUtils.isNotBlank(authorization)) {
 			requestBuilder.addHeader(HttpHeaders.AUTHORIZATION, authorization);
 		}
@@ -148,10 +144,8 @@ public class OkHttpRestClient {
 				ExternalData externalData = new ExternalData();
                 if (response.body() != null) {
                     externalData.setData(response.body().bytes());
-                }
-                if (response.body() != null) {
-                    externalData.setContentType(response.body().contentType());
-                }
+					externalData.setContentType(response.body().contentType());
+				}
 
 				String contentDisposition = response.header(HttpHeaders.CONTENT_DISPOSITION);
 				if (contentDisposition == null) {
