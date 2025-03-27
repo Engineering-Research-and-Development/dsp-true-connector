@@ -48,47 +48,47 @@ public class OkHttpRestClient {
 		return null;
 	}
 	
-	/**
-	 * Sends protocol request.
-	 * @param targetAddress protocol address
-	 * @param jsonNode request body
-	 * @param authorization full authorization header e.g. Bearer token
-	 * @return GenericApiResponse
-	 */
-	public GenericApiResponse<String> sendRequestProtocol(String targetAddress, JsonNode jsonNode, String authorization) {
-		// send response to targetAddress
-		Request.Builder requestBuilder = new Request.Builder().url(targetAddress);
-        RequestBody body;
-        if(jsonNode != null) {
-            body = RequestBody.create(jsonNode.toPrettyString(), MediaType.parse("application/json"));
-        } else {
-            body = RequestBody.create("", MediaType.parse("application/json"));
-        }
-        requestBuilder.post(body);
-        if(StringUtils.isNotBlank(authorization)) {
-			requestBuilder.addHeader(HttpHeaders.AUTHORIZATION, authorization);
-		}
-		Request request = requestBuilder.build();
-        log.info("Sending request using address: {}", targetAddress);
-		try (Response response = okHttpClient.newCall(request).execute()) {
-			int code = response.code();
-			log.info("Status {}", code);
-			//why is this not JSONNode
-            String resp = null;
-            if (response.body() != null) {
-                resp = response.body().string();
-            }
-            log.info("Response received: {}", resp);
-			if(response.isSuccessful()) { // code in 200..299
-				return GenericApiResponse.success(resp, "Response received from " + targetAddress);
-			} else {
-				return GenericApiResponse.error(resp, "Error while making request");
+		/**
+		 * Sends protocol request.
+		 * @param targetAddress protocol address
+		 * @param jsonNode request body
+		 * @param authorization full authorization header e.g. Bearer token
+		 * @return GenericApiResponse
+		 */
+		public GenericApiResponse<String> sendRequestProtocol(String targetAddress, JsonNode jsonNode, String authorization) {
+			// send response to targetAddress
+					Request.Builder requestBuilder = new Request.Builder().url(targetAddress);
+					RequestBody body;
+					if(jsonNode != null) {
+						body = RequestBody.create(jsonNode.toPrettyString(), MediaType.parse("application/json"));
+					} else {
+						body = RequestBody.create("", MediaType.parse("application/json"));
+					}
+					requestBuilder.post(body);
+					if(StringUtils.isNotBlank(authorization)) {
+						requestBuilder.addHeader(HttpHeaders.AUTHORIZATION, authorization);
+					}
+			Request request = requestBuilder.build();
+			log.info("Sending request using address: {}", targetAddress);
+			try (Response response = okHttpClient.newCall(request).execute()) {
+				int code = response.code();
+				log.info("Status {}", code);
+				//why is this not JSONNode
+				String resp = null;
+				if (response.body() != null) {
+					resp = response.body().string();
+				}
+				log.info("Response received: {}", resp);
+				if(response.isSuccessful()) { // code in 200..299
+					return GenericApiResponse.success(resp, "Response received from " + targetAddress);
+				} else {
+					return GenericApiResponse.error(resp, "Error while making request");
+				}
+			} catch (IOException e) {
+				log.error(e.getLocalizedMessage());
+				return GenericApiResponse.error(e.getLocalizedMessage());
 			}
-        } catch (IOException e) {
-			log.error(e.getLocalizedMessage());
-			return GenericApiResponse.error(e.getLocalizedMessage());
 		}
-	}
 	
 	/**
 	 * Sends GET request.
