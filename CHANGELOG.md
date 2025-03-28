@@ -1,6 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+
+## [0.1.3-SNAPSHOT] - 28-03-2025
+
+### Changed
+
+ - fixed issue when Content-Disposition header is not present in the response
+
 ## [0.1.2-SNAPSHOT] - 20-03-2025
 
 ### Added
