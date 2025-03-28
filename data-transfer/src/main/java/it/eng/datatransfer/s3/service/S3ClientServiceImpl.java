@@ -4,6 +4,8 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
+import it.eng.datatransfer.properties.S3Properties;
+import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 
 import lombok.extern.slf4j.Slf4j;
@@ -100,10 +102,11 @@ public class S3ClientServiceImpl implements S3ClientService {
     }
 
     @Override
-    public void uploadFile(String bucketName, String objectKey, byte[] data, String contentType) {
+    public void uploadFile(String bucketName, String objectKey, byte[] data, String contentType, String fileName) {
         try {
             Map<String, String> metadata = new HashMap<>();
-            metadata.put("Content-Type", contentType);
+            metadata.put(HttpHeaders.CONTENT_TYPE, contentType);
+            metadata.put("filename", fileName);
 
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                     .bucket(bucketName)

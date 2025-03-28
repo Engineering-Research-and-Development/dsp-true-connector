@@ -32,12 +32,13 @@ public interface S3ClientService {
     /**
      * Uploads a file to the specified bucket with the specified object key.
      *
-     * @param bucketName the name of the bucket to upload to
-     * @param objectKey the key of the object to upload
-     * @param data the data to upload
+     * @param bucketName  the name of the bucket to upload to
+     * @param objectKey   the key of the object to upload
+     * @param data        the data to upload
      * @param contentType the content type of the data
+     * @param fileName    the name of the file
      */
-    void uploadFile(String bucketName, String objectKey, byte[] data, String contentType);
+    void uploadFile(String bucketName, String objectKey, byte[] data, String contentType, String fileName);
     
     /**
      * Downloads a file from the specified bucket with the specified object key.
