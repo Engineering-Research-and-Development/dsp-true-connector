@@ -1,14 +1,14 @@
 package it.eng.tools.client.rest;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 
+import com.google.common.net.HttpHeaders;
+import it.eng.tools.model.ExternalData;
+import okhttp3.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,18 +21,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
-import okhttp3.Call;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
-import okhttp3.ResponseBody;
 
 @ExtendWith(MockitoExtension.class)
 public class OkHttpRestClientTest {
 	
 	private static final String BASIC_AUTH = "basicAuth";
-	private static final String TARGET_ADDRESS = "http://test.endpoint";
+	private static final String TARGET_ADDRESS = "http://test.endpoint/123";
+	private static final String ATTACHMENT_FILENAME = "attachment;filename=";
+
 	@Mock
 	private OkHttpClient okHttpClient;
 	@Mock
@@ -147,4 +143,81 @@ public class OkHttpRestClientTest {
 		assertNotNull(apiResponse);
 		assertFalse(apiResponse.isSuccess());
 	}
+
+	@Test
+	@DisplayName("Download data - success")
+	public void downloadData_success() throws IOException {
+		when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
+		when(call.execute()).thenReturn(response);
+
+		byte[] bodyBytes = "This is answer from test".getBytes();
+		when(response.code()).thenReturn(200);
+		when(response.body()).thenReturn(responseBody);
+		when(responseBody.bytes()).thenReturn(bodyBytes);
+		when(response.body().contentType()).thenReturn(MediaType.get("text/plain"));
+		when(response.isSuccessful()).thenReturn(true);
+
+		GenericApiResponse<ExternalData> apiResponse = okHttpRestClient.downloadData(TARGET_ADDRESS, BASIC_AUTH);
+
+		assertNotNull(apiResponse);
+		assertTrue(apiResponse.isSuccess());
+		assertEquals(bodyBytes, apiResponse.getData().getData());
+		assertEquals(MediaType.get("text/plain"), apiResponse.getData().getContentType());
+	}
+
+	@Test
+	@DisplayName("Download data - error")
+	public void downloadData_error() throws IOException {
+		when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
+		when(call.execute()).thenReturn(response);
+
+		when(response.code()).thenReturn(400);
+		when(response.isSuccessful()).thenReturn(false);
+
+		GenericApiResponse<ExternalData> apiResponse = okHttpRestClient.downloadData(TARGET_ADDRESS, BASIC_AUTH);
+
+		assertNotNull(apiResponse);
+		assertFalse(apiResponse.isSuccess());
+	}
+
+	@Test
+	@DisplayName("Download data - null response body")
+	public void downloadData_nullResponseBody() throws IOException {
+		when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
+		when(call.execute()).thenReturn(response);
+
+		when(response.code()).thenReturn(200);
+		when(response.body()).thenReturn(null);
+		when(response.isSuccessful()).thenReturn(true);
+
+		GenericApiResponse<ExternalData> apiResponse = okHttpRestClient.downloadData(TARGET_ADDRESS, BASIC_AUTH);
+
+		assertNotNull(apiResponse);
+		assertTrue(apiResponse.isSuccess());
+		assertNull(apiResponse.getData().getData());
+	}
+
+	@Test
+	@DisplayName("Download data - null content disposition")
+	public void downloadData_nullContentDisposition() throws IOException {
+		when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
+		when(call.execute()).thenReturn(response);
+
+		byte[] bodyBytes = "This is answer from test".getBytes();
+		when(response.code()).thenReturn(200);
+		when(response.body()).thenReturn(responseBody);
+		when(responseBody.bytes()).thenReturn(bodyBytes);
+		when(response.body().contentType()).thenReturn(MediaType.get("text/plain"));
+		when(response.isSuccessful()).thenReturn(true);
+		when(response.header(HttpHeaders.CONTENT_DISPOSITION)).thenReturn(null);
+
+		GenericApiResponse<ExternalData> apiResponse = okHttpRestClient.downloadData(TARGET_ADDRESS, BASIC_AUTH);
+
+		assertNotNull(apiResponse);
+		assertTrue(apiResponse.isSuccess());
+		assertEquals(ATTACHMENT_FILENAME + TARGET_ADDRESS.substring(TARGET_ADDRESS.lastIndexOf("/") + 1), apiResponse.getData().getContentDisposition());
+		assertEquals(bodyBytes, apiResponse.getData().getData());
+		assertEquals(MediaType.get("text/plain"), apiResponse.getData().getContentType());
+	}
+
 }

@@ -1,7 +1,7 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [0.1.5-SNAPSHOT] - 01.04.2025.
+## [0.1.4-SNAPSHOT] - 01.04.2025.
 
 ### Added
  - New policy related classes in Negotiation module (domain, evaluators, service classes; PIP, PDP, PEP, PAP)
@@ -17,6 +17,12 @@ application.usagecontrol.constraint.purpose=demo
 ### Changed
 
  - Rewired policy evaluation to newly added logic
+
+## [0.1.3-SNAPSHOT] - 28-03-2025
+
+### Changed
+
+ - fixed issue when Content-Disposition header is not present in the response
 
 ## [0.1.2-SNAPSHOT] - 20-03-2025
 
