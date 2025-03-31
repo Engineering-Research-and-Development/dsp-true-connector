@@ -57,7 +57,7 @@ public class TemporalPolicyEvaluator implements PolicyEvaluator {
 		
 		switch (operator) {
 		case LT, LTEQ:
-			if (dateTime != null && accessTime.isBefore(dateTime)) {
+			if (dateTime != null && accessTime.isAfter(dateTime)) {
 				return PolicyDecision.Builder.newInstance()
 						.allowed(false)
 						.message("Access time is after the allowed time")
@@ -67,7 +67,7 @@ public class TemporalPolicyEvaluator implements PolicyEvaluator {
 			}
 			break;
 		case GT, GTEQ:
-			if (dateTime != null && !accessTime.isAfter(dateTime)) {
+			if (dateTime != null && accessTime.isBefore(dateTime)) {
 				return PolicyDecision.Builder.newInstance()
 						.allowed(false)
 						.message("Access time is before the allowed time")

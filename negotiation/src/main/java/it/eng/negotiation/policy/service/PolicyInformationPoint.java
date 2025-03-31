@@ -7,6 +7,7 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 
 import it.eng.negotiation.model.Agreement;
+import it.eng.negotiation.policy.model.PolicyConstants;
 import it.eng.negotiation.repository.PolicyEnforcementRepository;
 import lombok.extern.slf4j.Slf4j;
 
@@ -19,16 +20,21 @@ import lombok.extern.slf4j.Slf4j;
 public class PolicyInformationPoint {
 	
 	private final PolicyEnforcementRepository policyEnforcementRepository;
+	private final LocationService locationService;
+	private final PurposeService purposeService;
 	
-	public PolicyInformationPoint(PolicyEnforcementRepository policyEnforcementRepository) {
+	public PolicyInformationPoint(PolicyEnforcementRepository policyEnforcementRepository,
+			LocationService locationService, PurposeService purposeService) {
 		this.policyEnforcementRepository = policyEnforcementRepository;
+		this.locationService = locationService;
+		this.purposeService = purposeService;
 	}
 
 	public String getLocation() {
 		// In a real implementation, we would get the location from a location service
 		// For now, we'll just return a default location
 		log.debug("Getting location");
-		return "EU";
+		return locationService.getConnectorLocation();
 	}
 
 	public LocalDateTime getAccessTime() {
@@ -39,7 +45,7 @@ public class PolicyInformationPoint {
 	public String getAccessPurpose() {
 		// In a real implementation, we would get the purpose from a purpose service
         log.debug("Getting purpose");
-		return "dsp";
+		return purposeService.getPurpose();
     }
 	
 	public Map<String, Object> getAllAttributes(Agreement agreement) {
@@ -51,13 +57,13 @@ public class PolicyInformationPoint {
         attributes.put("assigner", agreement.getAssigner());
         
         // Add access time
-        attributes.put("accessTime", getAccessTime());
+        attributes.put(PolicyConstants.ACCESS_TIME, getAccessTime());
         // Add location
-        attributes.put("location", getLocation());
+        attributes.put(PolicyConstants.LOCATION, getLocation());
         // Add purpose
-        attributes.put("purpose", getAccessPurpose());
+        attributes.put(PolicyConstants.PURPOSE, getAccessPurpose());
         
-		attributes.put("currentCount",
+		attributes.put(PolicyConstants.CURRENT_COUNT,
 				policyEnforcementRepository.findByAgreementId(agreement.getId()).map(pe -> pe.getCount()).orElse(Integer.MAX_VALUE));
         
         return attributes;

@@ -55,6 +55,24 @@ public class NegotiationMockObjectUtil {
 			.rightOperand("2024-02-29T00:00:01+01:00")
 			.build();
 	
+	public static final Constraint CONSTRAINT_DATEIME_INVALID = Constraint.Builder.newInstance()
+			.leftOperand(LeftOperand.DATE_TIME)
+			.operator(Operator.LT)
+			.rightOperand("2024-02-29T00:00:01+01:00")
+			.build();
+	
+	public static final Constraint CONSTRAINT_PURPOSE = Constraint.Builder.newInstance()
+			.leftOperand(LeftOperand.PURPOSE)
+			.operator(Operator.EQ)
+			.rightOperand("demo")
+			.build();
+	
+	public static final Constraint CONSTRAINT_SPATIAL = Constraint.Builder.newInstance()
+			.leftOperand(LeftOperand.SPATIAL)
+			.operator(Operator.EQ)
+			.rightOperand("EU")
+			.build();
+	
 	public static final Constraint CONSTRAINT_COUNT_5 = Constraint.Builder.newInstance()
 			.leftOperand(LeftOperand.COUNT)
 			.operator(Operator.LTEQ)

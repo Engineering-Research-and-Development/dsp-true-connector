@@ -19,6 +19,7 @@ import java.util.List;
 
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,7 +64,7 @@ import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import okhttp3.Credentials;
 
-public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationTest{
+public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationTest {
 	
 	private static final String FILE_NAME = "hello.txt";
 
@@ -89,23 +90,12 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 		int startingTransferProcessCollectionSize = transferProcessRepository.findAll().size();
 		long startingFilesCollectionSize = mongoTemplate.getCollection(FS_FILES).countDocuments();
 		
-		Agreement agreement = Agreement.Builder.newInstance()
-				.id(createNewId())
-				.assignee(NegotiationMockObjectUtil.ASSIGNEE)
-				.assigner(NegotiationMockObjectUtil.ASSIGNER)
-				.target(NegotiationMockObjectUtil.TARGET)
-				.timestamp(Instant.now().toString())
-				.permission(Arrays.asList(Permission.Builder.newInstance()
-						.action(Action.USE)
-						.constraint(Arrays.asList(Constraint.Builder.newInstance()
-								.leftOperand(LeftOperand.COUNT)
-								.operator(Operator.LTEQ)
-								.rightOperand("5")
-								.build()))
-						.build()))
-				.build();
-		
-		agreementRepository.save(agreement);
+		Constraint constraintCount = Constraint.Builder.newInstance()
+			.leftOperand(LeftOperand.COUNT)
+			.operator(Operator.LTEQ)
+			.rightOperand("5")
+			.build();
+		Agreement agreement = insertAgreement(constraintCount);
 		
 		PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
 		
@@ -151,7 +141,6 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 		// mock provider success response Download
 		String fileContent = "Hello, World!";
 		
-		
 		WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.get("/artifacts/" + transactionId)
 				.withBasicAuth(mockUser, mockPassword)
 				.willReturn(
@@ -176,7 +165,6 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 		assertNotNull(apiResp);
 		assertTrue(apiResp.isSuccess());
 		assertNull(apiResp.getData());
-		
 		
 		// check if the TransferProcess is inserted in the database
 		TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessStarted.getId()).get();
@@ -210,6 +198,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 		gridFSBucket.delete(objectId);
 		
     }
+
 	
 	@Test
 	@DisplayName("Download data - fail")
@@ -218,23 +207,12 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 		int startingTransferProcessCollectionSize = transferProcessRepository.findAll().size();
 		long startingFilesCollectionSize = mongoTemplate.getCollection(FS_FILES).countDocuments();
 		
-		Agreement agreement = Agreement.Builder.newInstance()
-				.id(createNewId())
-				.assignee(NegotiationMockObjectUtil.ASSIGNEE)
-				.assigner(NegotiationMockObjectUtil.ASSIGNER)
-				.target(NegotiationMockObjectUtil.TARGET)
-				.timestamp(Instant.now().toString())
-				.permission(Arrays.asList(Permission.Builder.newInstance()
-						.action(Action.USE)
-						.constraint(Arrays.asList(Constraint.Builder.newInstance()
-								.leftOperand(LeftOperand.COUNT)
-								.operator(Operator.LTEQ)
-								.rightOperand("5")
-								.build()))
-						.build()))
+		Constraint constraintCount = Constraint.Builder.newInstance()
+				.leftOperand(LeftOperand.COUNT)
+				.operator(Operator.LTEQ)
+				.rightOperand("5")
 				.build();
-		
-		agreementRepository.save(agreement);
+		Agreement agreement = insertAgreement(constraintCount);
 		
 		PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
 		
@@ -305,6 +283,192 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 		cleanup();
     }
 	
+	@Test
+	@DisplayName("Download data - purpose policy - allowed")
+    @WithUserDetails(TestUtil.API_USER)
+	public void downloadData_PurposePolicy_allowed() throws Exception {
+		int startingTransferProcessCollectionSize = transferProcessRepository.findAll().size();
+		long startingFilesCollectionSize = mongoTemplate.getCollection(FS_FILES).countDocuments();
+
+		Constraint constraintPurpose = Constraint.Builder.newInstance()
+				.leftOperand(LeftOperand.PURPOSE)
+				.operator(Operator.EQ)
+				// purpose must match with value from property file - demo
+				.rightOperand("demo")
+				.build();
+		Agreement agreement = insertAgreement(constraintPurpose);
+
+		String consumerPid = createNewId();
+		String providerPid = createNewId();
+
+		String transactionId = Base64.getEncoder()
+				.encodeToString((consumerPid + "|" + providerPid).getBytes(Charset.forName("UTF-8")));
+
+		// mock provider success response Download
+		String fileContent = "Hello, World!";
+		
+		String mockUser = "mockUser";
+		String mockPassword = "mockPassword";
+		
+		EndpointProperty authType = EndpointProperty.Builder.newInstance()
+				.name(IConstants.AUTH_TYPE)
+				.value(IConstants.AUTH_BASIC)
+				.build();
+		
+		EndpointProperty authorization = EndpointProperty.Builder.newInstance()
+				.name(IConstants.AUTHORIZATION)
+				.value(Credentials.basic(mockUser, mockPassword).replaceFirst(IConstants.AUTH_BASIC + " ", ""))
+				.build();
+		
+		List<EndpointProperty> properties = List.of(authType, authorization);
+		
+		DataAddress dataAddress = DataAddress.Builder.newInstance()
+				.endpoint(wiremock.baseUrl() + "/artifacts/" + transactionId)
+				.endpointType(DataTranferMockObjectUtil.ENDPOINT_TYPE)
+				.endpointProperties(properties)
+				.build();
+		
+		TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
+				.consumerPid(consumerPid)
+				.providerPid(providerPid)
+				.agreementId(agreement.getId())
+				.callbackAddress(wiremock.baseUrl())
+				.dataAddress(dataAddress)
+				.state(TransferState.STARTED)
+				.build();
+		transferProcessRepository.save(transferProcessStarted);
+		
+		WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.get("/artifacts/" + transactionId)
+				.withBasicAuth(mockUser, mockPassword)
+				.willReturn(
+	                aResponse().withHeader(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN_VALUE)
+	                .withHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + FILE_NAME)
+	                .withBody(fileContent.getBytes())));
+		
+		// send request
+    	final ResultActions result =
+    			mockMvc.perform(
+    					get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/download")
+    					.contentType(MediaType.APPLICATION_JSON));
+
+    	result.andExpect(status().isOk())
+			.andExpect(content().contentType(MediaType.APPLICATION_JSON));
+    	
+		assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
+		assertEquals(startingFilesCollectionSize + 1, mongoTemplate.getCollection(FS_FILES).countDocuments());
+		
+	   	TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {};
+		
+		String json = result.andReturn().getResponse().getContentAsString();
+		GenericApiResponse<String> apiResp =  CatalogSerializer.deserializePlain(json, typeRef);
+    	
+		assertNotNull(apiResp);
+		assertTrue(apiResp.isSuccess());
+		assertNull(apiResp.getData());
+	}
+	
+	@Test
+	@DisplayName("Download data - location policy - allowed")
+    @WithUserDetails(TestUtil.API_USER)
+	public void downloadData_LocationPolicy_allowed() throws Exception {
+		int startingTransferProcessCollectionSize = transferProcessRepository.findAll().size();
+		long startingFilesCollectionSize = mongoTemplate.getCollection(FS_FILES).countDocuments();
+
+		Constraint constraintPurpose = Constraint.Builder.newInstance()
+				.leftOperand(LeftOperand.SPATIAL)
+				.operator(Operator.EQ)
+				// purpose must match with value from property file - EU
+				.rightOperand("EU")
+				.build();
+		Agreement agreement = insertAgreement(constraintPurpose);
+
+		String consumerPid = createNewId();
+		String providerPid = createNewId();
+
+		String transactionId = Base64.getEncoder()
+				.encodeToString((consumerPid + "|" + providerPid).getBytes(Charset.forName("UTF-8")));
+
+		// mock provider success response Download
+		String fileContent = "Hello, World!";
+		
+		String mockUser = "mockUser";
+		String mockPassword = "mockPassword";
+		
+		EndpointProperty authType = EndpointProperty.Builder.newInstance()
+				.name(IConstants.AUTH_TYPE)
+				.value(IConstants.AUTH_BASIC)
+				.build();
+		
+		EndpointProperty authorization = EndpointProperty.Builder.newInstance()
+				.name(IConstants.AUTHORIZATION)
+				.value(Credentials.basic(mockUser, mockPassword).replaceFirst(IConstants.AUTH_BASIC + " ", ""))
+				.build();
+		
+		List<EndpointProperty> properties = List.of(authType, authorization);
+		
+		DataAddress dataAddress = DataAddress.Builder.newInstance()
+				.endpoint(wiremock.baseUrl() + "/artifacts/" + transactionId)
+				.endpointType(DataTranferMockObjectUtil.ENDPOINT_TYPE)
+				.endpointProperties(properties)
+				.build();
+		
+		TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
+				.consumerPid(consumerPid)
+				.providerPid(providerPid)
+				.agreementId(agreement.getId())
+				.callbackAddress(wiremock.baseUrl())
+				.dataAddress(dataAddress)
+				.state(TransferState.STARTED)
+				.build();
+		transferProcessRepository.save(transferProcessStarted);
+		
+		WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.get("/artifacts/" + transactionId)
+				.withBasicAuth(mockUser, mockPassword)
+				.willReturn(
+	                aResponse().withHeader(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN_VALUE)
+	                .withHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + FILE_NAME)
+	                .withBody(fileContent.getBytes())));
+		
+		// send request
+    	final ResultActions result =
+    			mockMvc.perform(
+    					get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/download")
+    					.contentType(MediaType.APPLICATION_JSON));
+
+    	result.andExpect(status().isOk())
+			.andExpect(content().contentType(MediaType.APPLICATION_JSON));
+    	
+		assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
+		assertEquals(startingFilesCollectionSize + 1, mongoTemplate.getCollection(FS_FILES).countDocuments());
+		
+	   	TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {};
+		
+		String json = result.andReturn().getResponse().getContentAsString();
+		GenericApiResponse<String> apiResp =  CatalogSerializer.deserializePlain(json, typeRef);
+    	
+		assertNotNull(apiResp);
+		assertTrue(apiResp.isSuccess());
+		assertNull(apiResp.getData());
+	}
+	
+	private Agreement insertAgreement(Constraint constraint) {
+		Agreement agreement = Agreement.Builder.newInstance()
+				.id(createNewId())
+				.assignee(NegotiationMockObjectUtil.ASSIGNEE)
+				.assigner(NegotiationMockObjectUtil.ASSIGNER)
+				.target(NegotiationMockObjectUtil.TARGET)
+				.timestamp(Instant.now().toString())
+				.permission(Arrays.asList(Permission.Builder.newInstance()
+						.action(Action.USE)
+						.constraint(Arrays.asList(constraint))
+						.build()))
+				.build();
+		
+		agreementRepository.save(agreement);
+		return agreement;
+	}
+	
+	@AfterEach
 	private void cleanup() {
 		transferProcessRepository.deleteAll();
 		agreementRepository.deleteAll();

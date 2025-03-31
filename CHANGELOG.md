@@ -1,6 +1,23 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.1.5-SNAPSHOT] - 01.04.2025.
+
+### Added
+ - New policy related classes in Negotiation module (domain, evaluators, service classes; PIP, PDP, PEP, PAP)
+ - New Location and Purpose service
+ - Added 2 new constraints: SPATIAL and PURPOSE (for now simple evaluation from property file; should be changed with claims)
+ - 2 new properties for location and purpose
+
+```
+application.usagecontrol.constraint.location=EU
+application.usagecontrol.constraint.purpose=demo
+```
+
+### Changed
+
+ - Rewired policy evaluation to newly added logic
+
 ## [0.1.2-SNAPSHOT] - 20-03-2025
 
 ### Added

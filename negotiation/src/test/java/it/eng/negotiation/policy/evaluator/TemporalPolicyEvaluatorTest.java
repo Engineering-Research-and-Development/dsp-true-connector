@@ -66,17 +66,17 @@ class TemporalPolicyEvaluatorTest {
     }
 
     @Test
-    void testEvaluate_DateTimeAfterAccessTime_allow() {
+    void testEvaluate_DateTimeBeforeAccessTime_allow() {
         // Create a valid policy with a start time
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime dateTime = now.minusHours(1);
+        LocalDateTime constraintDateTime = now.minusHours(1);
         
         Policy policy = Policy.Builder.newInstance()
                 .id("policy-123")
                 .type(PolicyType.TEMPORAL)
                 .description("Temporal policy")
                 .enabled(true)
-                .attribute(PolicyConstants.DATE_TIME, dateTime)
+                .attribute(PolicyConstants.DATE_TIME, constraintDateTime)
                 .attribute(PolicyConstants.OPERATOR, Operator.GTEQ)
                 .build();
         
@@ -100,7 +100,7 @@ class TemporalPolicyEvaluatorTest {
     }
     
     @Test
-    void testEvaluate_NoAccessTimeProvided_allow() {
+    void testEvaluate_noAccessTimeProvided_allow() {
         // Create a valid policy with a dateTime and GTEQ operator
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime constraintDateTime = now.minusHours(1);
@@ -134,10 +134,10 @@ class TemporalPolicyEvaluatorTest {
     }
     
     @Test
-    void testEvaluate_DateTimeBeforeAccessTime_deny() {
+    void testEvaluate_dateTimeAfterAccessTime_deny() {
         // Create a valid policy with a start time
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime constraintDateTime = now.plusHours(1);
+        LocalDateTime constraintDateTime = now.plusHours(1); // Start time in the future
         
         Policy policy = Policy.Builder.newInstance()
                 .id("policy-123")
@@ -172,14 +172,14 @@ class TemporalPolicyEvaluatorTest {
     void testEvaluate_DateTimeBeforeAccessTime() {
         // Create a valid policy with an end time
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime dateTime = now.minusHours(1);
+        LocalDateTime constraintDateTime = now.plusHours(1); // constraint should be in the future
         
         Policy policy = Policy.Builder.newInstance()
                 .id("policy-123")
                 .type(PolicyType.TEMPORAL)
                 .description("Temporal policy")
                 .enabled(true)
-                .attribute(PolicyConstants.DATE_TIME, dateTime)
+                .attribute(PolicyConstants.DATE_TIME, constraintDateTime)
                 .attribute(PolicyConstants.OPERATOR, Operator.LTEQ)
                 .build();
         
@@ -203,17 +203,17 @@ class TemporalPolicyEvaluatorTest {
     }
     
     @Test
-    void testEvaluate_DateTimeAfterAccessTime_deny() {
+    void testEvaluate_dateTimeBeforeAccessTime_deny() {
         // Create a valid policy with an end time
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime dateTime = now.plusHours(1);
+        LocalDateTime constraintDateTime = now.minusHours(1); // constraint should be in the past
         
         Policy policy = Policy.Builder.newInstance()
                 .id("policy-123")
                 .type(PolicyType.TEMPORAL)
                 .description("Temporal policy")
                 .enabled(true)
-                .attribute(PolicyConstants.DATE_TIME, dateTime)
+                .attribute(PolicyConstants.DATE_TIME, constraintDateTime)
                 .attribute(PolicyConstants.OPERATOR, Operator.LTEQ)
                 .build();
         

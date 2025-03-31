@@ -23,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.NegotiationMockObjectUtil;
 import it.eng.negotiation.model.PolicyEnforcement;
+import it.eng.negotiation.policy.model.PolicyConstants;
 import it.eng.negotiation.repository.PolicyEnforcementRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,7 +31,11 @@ class PolicyInformationPointTest {
 	
 	@Mock
 	private PolicyEnforcementRepository policyEnforcementRepository;
-
+	@Mock
+	private LocationService locationService;
+	@Mock
+	private PurposeService purposeService;
+	
 	@InjectMocks
 	private PolicyInformationPoint policyInformationPoint;
 
@@ -51,6 +56,7 @@ class PolicyInformationPointTest {
 
 	@Test
 	public void getUserLocation() {
+		when(locationService.getConnectorLocation()).thenReturn("EU");
 		String location = policyInformationPoint.getLocation();
 		assertEquals("EU", location);
 	}
@@ -66,6 +72,7 @@ class PolicyInformationPointTest {
 
 	@Test
 	public void getAccessPurpose() {
+		when(purposeService.getPurpose()).thenReturn("dsp");
 		String purpose = policyInformationPoint.getAccessPurpose();
 		assertEquals("dsp", purpose);
 	}
@@ -76,16 +83,18 @@ class PolicyInformationPointTest {
 		policyEnforcement.setAgreementId(agreement.getId());
 		policyEnforcement.setCount(3);
 		when(policyEnforcementRepository.findByAgreementId(any())).thenReturn(Optional.of(policyEnforcement));
+		when(locationService.getConnectorLocation()).thenReturn("EU");
+		when(purposeService.getPurpose()).thenReturn("dsp");
+		
 		Map<String, Object> attributes = policyInformationPoint.getAllAttributes(agreement);
 
 		// Verify that all expected attributes are present
 		assertEquals(agreement.getId(), attributes.get("agreementId"));
 		assertEquals(agreement.getAssignee(), attributes.get("assignee"));
 		assertEquals(agreement.getAssigner(), attributes.get("assigner"));
-		assertNotNull(attributes.get("accessTime"));
-		assertEquals("EU", attributes.get("location"));
-		// update when purposeService is implemented
-		assertEquals("dsp", attributes.get("purpose"));
+		assertNotNull(attributes.get(PolicyConstants.ACCESS_TIME));
+		assertEquals("EU", attributes.get(PolicyConstants.LOCATION));
+		assertEquals("dsp", attributes.get(PolicyConstants.PURPOSE));
 	}
 
 }
