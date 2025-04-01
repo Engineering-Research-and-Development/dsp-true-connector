@@ -13,10 +13,15 @@ All notable changes to this project will be documented in this file.
 application.usagecontrol.constraint.location=EU
 application.usagecontrol.constraint.purpose=demo
 ```
+ - Added audit fields on ContractNegotiation and TransferProcess
 
 ### Changed
 
  - Rewired policy evaluation to newly added logic
+ 
+### Removed
+
+ - Old validators for count and dateTime
 
 ## [0.1.3-SNAPSHOT] - 28-03-2025
 

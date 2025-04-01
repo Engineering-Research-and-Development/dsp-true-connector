@@ -64,7 +64,7 @@ public class PolicyEnforcementPoint {
         PolicyRequest request = requestBuilder.build();
 		
         // Evaluate policy
-        PolicyDecision decision = policyDecisionPoint.evaluate(request);
+        PolicyDecision decision = policyDecisionPoint.evaluate(request, agreement);
         
         // Enforce decision
         if (!decision.isAllowed()) {

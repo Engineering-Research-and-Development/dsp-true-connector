@@ -10,7 +10,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Arrays;
@@ -105,7 +104,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 		String providerPid = createNewId();
 				
 		String transactionId = Base64.getEncoder().encodeToString((consumerPid + "|" + providerPid)
-				.getBytes(Charset.forName("UTF-8")));
+				.getBytes(StandardCharsets.UTF_8));
 		
 		String mockUser = "mockUser";
 		String mockPassword = "mockPassword";
@@ -222,7 +221,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 		String providerPid = createNewId();
 				
 		String transactionId = Base64.getEncoder().encodeToString((consumerPid + "|" + providerPid)
-				.getBytes(Charset.forName("UTF-8")));
+				.getBytes(StandardCharsets.UTF_8));
 		
 		DataAddress dataAddress = DataAddress.Builder.newInstance()
 				.endpoint(wiremock.baseUrl() + "/artifacts/" + transactionId)
@@ -302,7 +301,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 		String providerPid = createNewId();
 
 		String transactionId = Base64.getEncoder()
-				.encodeToString((consumerPid + "|" + providerPid).getBytes(Charset.forName("UTF-8")));
+				.encodeToString((consumerPid + "|" + providerPid).getBytes(StandardCharsets.UTF_8));
 
 		// mock provider success response Download
 		String fileContent = "Hello, World!";
@@ -386,7 +385,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 		String providerPid = createNewId();
 
 		String transactionId = Base64.getEncoder()
-				.encodeToString((consumerPid + "|" + providerPid).getBytes(Charset.forName("UTF-8")));
+				.encodeToString((consumerPid + "|" + providerPid).getBytes(StandardCharsets.UTF_8));
 
 		// mock provider success response Download
 		String fileContent = "Hello, World!";

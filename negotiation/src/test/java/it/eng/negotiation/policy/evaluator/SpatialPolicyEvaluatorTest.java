@@ -13,11 +13,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import it.eng.negotiation.model.Action;
+import it.eng.negotiation.model.LeftOperand;
 import it.eng.negotiation.model.Operator;
 import it.eng.negotiation.policy.model.Policy;
 import it.eng.negotiation.policy.model.PolicyDecision;
 import it.eng.negotiation.policy.model.PolicyRequest;
-import it.eng.negotiation.policy.model.PolicyType;
 
 public class SpatialPolicyEvaluatorTest {
 
@@ -30,7 +30,7 @@ public class SpatialPolicyEvaluatorTest {
 
 	    @Test
 	    void testGetPolicyType() {
-	        assertEquals(PolicyType.SPATIAL, evaluator.getPolicyType());
+	        assertEquals(LeftOperand.SPATIAL, evaluator.getPolicyType());
 	    }
 
 	    @Test
@@ -38,7 +38,7 @@ public class SpatialPolicyEvaluatorTest {
 	        // Create a policy that is not valid
 	        Policy policy = Policy.Builder.newInstance()
 	                .id("policy-123")
-	                .type(PolicyType.SPATIAL)
+	                .type(LeftOperand.SPATIAL)
 	                .description("Spatial policy")
 	                .enabled(true)
 	                .validFrom(LocalDateTime.now().plusDays(1)) // Not valid yet
@@ -60,7 +60,7 @@ public class SpatialPolicyEvaluatorTest {
 	        assertFalse(decision.isAllowed());
 	        assertEquals("Policy is not valid at the current time", decision.getMessage());
 	        assertEquals("policy-123", decision.getPolicyId());
-	        assertEquals(PolicyType.SPATIAL, decision.getPolicyType());
+	        assertEquals(LeftOperand.SPATIAL, decision.getPolicyType());
 	    }
 
 	    @Test
@@ -68,7 +68,7 @@ public class SpatialPolicyEvaluatorTest {
 	        // Create a valid policy
 	        Policy policy = Policy.Builder.newInstance()
 	                .id("policy-123")
-	                .type(PolicyType.SPATIAL)
+	                .type(LeftOperand.SPATIAL)
 	                .description("Spatial policy")
 	                .enabled(true)
 	                .build();
@@ -89,7 +89,7 @@ public class SpatialPolicyEvaluatorTest {
 	        assertFalse(decision.isAllowed());
 	        assertEquals("Location is missing", decision.getMessage());
 	        assertEquals("policy-123", decision.getPolicyId());
-	        assertEquals(PolicyType.SPATIAL, decision.getPolicyType());
+	        assertEquals(LeftOperand.SPATIAL, decision.getPolicyType());
 	    }
 
 	    @Test
@@ -97,7 +97,7 @@ public class SpatialPolicyEvaluatorTest {
 	        // Create a valid policy with an allowed locations list
 	        Policy policy = Policy.Builder.newInstance()
 	                .id("policy-123")
-	                .type(PolicyType.SPATIAL)
+	                .type(LeftOperand.SPATIAL)
 	                .description("Spatial policy")
 	                .enabled(true)
 	                .attribute("allowedLocations", Arrays.asList("EU", "US"))
@@ -121,7 +121,7 @@ public class SpatialPolicyEvaluatorTest {
 	        assertFalse(decision.isAllowed());
 	        assertEquals("Location is not in the allowed locations list", decision.getMessage());
 	        assertEquals("policy-123", decision.getPolicyId());
-	        assertEquals(PolicyType.SPATIAL, decision.getPolicyType());
+	        assertEquals(LeftOperand.SPATIAL, decision.getPolicyType());
 	    }
 
 	    @Test
@@ -129,7 +129,7 @@ public class SpatialPolicyEvaluatorTest {
 	        // Create a valid policy with a denied locations list
 	        Policy policy = Policy.Builder.newInstance()
 	                .id("policy-123")
-	                .type(PolicyType.SPATIAL)
+	                .type(LeftOperand.SPATIAL)
 	                .description("Spatial policy")
 	                .enabled(true)
 	                .attribute("deniedLocations", Arrays.asList("Asia", "Africa"))
@@ -153,7 +153,7 @@ public class SpatialPolicyEvaluatorTest {
 	        assertFalse(decision.isAllowed());
 	        assertEquals("Location is in the denied locations list", decision.getMessage());
 	        assertEquals("policy-123", decision.getPolicyId());
-	        assertEquals(PolicyType.SPATIAL, decision.getPolicyType());
+	        assertEquals(LeftOperand.SPATIAL, decision.getPolicyType());
 	    }
 
 	    @Test
@@ -161,7 +161,7 @@ public class SpatialPolicyEvaluatorTest {
 	        // Create a valid policy with an allowed locations list
 	        Policy policy = Policy.Builder.newInstance()
 	                .id("policy-123")
-	                .type(PolicyType.SPATIAL)
+	                .type(LeftOperand.SPATIAL)
 	                .description("Spatial policy")
 	                .enabled(true)
 	                .attribute("allowedLocations", Arrays.asList("EU", "US"))
@@ -185,7 +185,7 @@ public class SpatialPolicyEvaluatorTest {
 	        assertTrue(decision.isAllowed());
 	        assertEquals("Spatial policy passed", decision.getMessage());
 	        assertEquals("policy-123", decision.getPolicyId());
-	        assertEquals(PolicyType.SPATIAL, decision.getPolicyType());
+	        assertEquals(LeftOperand.SPATIAL, decision.getPolicyType());
 	    }
 	    
 	    @Test
@@ -193,7 +193,7 @@ public class SpatialPolicyEvaluatorTest {
 	        // Create a valid policy with an allowed locations list
 	        Policy policy = Policy.Builder.newInstance()
 	                .id("policy-123")
-	                .type(PolicyType.SPATIAL)
+	                .type(LeftOperand.SPATIAL)
 	                .description("Spatial policy")
 	                .enabled(true)
 	                .attribute("allowedLocations", Arrays.asList("EU"))
@@ -217,7 +217,7 @@ public class SpatialPolicyEvaluatorTest {
 	        assertTrue(decision.isAllowed());
 	        assertEquals("Spatial policy passed", decision.getMessage());
 	        assertEquals("policy-123", decision.getPolicyId());
-	        assertEquals(PolicyType.SPATIAL, decision.getPolicyType());
+	        assertEquals(LeftOperand.SPATIAL, decision.getPolicyType());
 	    }
 
 	    @Test
@@ -225,7 +225,7 @@ public class SpatialPolicyEvaluatorTest {
 	        // Create a valid policy with an empty allowed locations list
 	        Policy policy = Policy.Builder.newInstance()
 	                .id("policy-123")
-	                .type(PolicyType.SPATIAL)
+	                .type(LeftOperand.SPATIAL)
 	                .description("Spatial policy")
 	                .enabled(true)
 	                .attribute("allowedLocations", Collections.emptyList())
@@ -249,7 +249,7 @@ public class SpatialPolicyEvaluatorTest {
 	        assertTrue(decision.isAllowed());
 	        assertEquals("Spatial policy passed", decision.getMessage());
 	        assertEquals("policy-123", decision.getPolicyId());
-	        assertEquals(PolicyType.SPATIAL, decision.getPolicyType());
+	        assertEquals(LeftOperand.SPATIAL, decision.getPolicyType());
 	    }
 
 	    @Test
@@ -257,7 +257,7 @@ public class SpatialPolicyEvaluatorTest {
 	        // Create a valid policy with no allowed or denied locations lists
 	        Policy policy = Policy.Builder.newInstance()
 	                .id("policy-123")
-	                .type(PolicyType.SPATIAL)
+	                .type(LeftOperand.SPATIAL)
 	                .description("Spatial policy")
 	                .enabled(true)
 	                .attribute("operator", Operator.IS_ANY_OF)
@@ -280,6 +280,6 @@ public class SpatialPolicyEvaluatorTest {
 	        assertTrue(decision.isAllowed());
 	        assertEquals("Spatial policy passed", decision.getMessage());
 	        assertEquals("policy-123", decision.getPolicyId());
-	        assertEquals(PolicyType.SPATIAL, decision.getPolicyType());
+	        assertEquals(LeftOperand.SPATIAL, decision.getPolicyType());
 	    }
 }

@@ -13,12 +13,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import it.eng.negotiation.model.Action;
+import it.eng.negotiation.model.LeftOperand;
 import it.eng.negotiation.model.Operator;
 import it.eng.negotiation.policy.model.Policy;
 import it.eng.negotiation.policy.model.PolicyConstants;
 import it.eng.negotiation.policy.model.PolicyDecision;
 import it.eng.negotiation.policy.model.PolicyRequest;
-import it.eng.negotiation.policy.model.PolicyType;
 
 public class PurposePolicyEvaluatorTest {
 
@@ -31,7 +31,7 @@ public class PurposePolicyEvaluatorTest {
 
     @Test
     void testGetPolicyType() {
-        assertEquals(PolicyType.PURPOSE, evaluator.getPolicyType());
+        assertEquals(LeftOperand.PURPOSE, evaluator.getPolicyType());
     }
 
     @Test
@@ -39,7 +39,7 @@ public class PurposePolicyEvaluatorTest {
         // Create a policy that is not valid
         Policy policy = Policy.Builder.newInstance()
                 .id("policy-123")
-                .type(PolicyType.PURPOSE)
+                .type(LeftOperand.PURPOSE)
                 .description("Purpose policy")
                 .enabled(true)
                 .validFrom(LocalDateTime.now().plusDays(1)) // Not valid yet
@@ -61,7 +61,7 @@ public class PurposePolicyEvaluatorTest {
         assertFalse(decision.isAllowed());
         assertEquals("Policy is not valid at the current time", decision.getMessage());
         assertEquals("policy-123", decision.getPolicyId());
-        assertEquals(PolicyType.PURPOSE, decision.getPolicyType());
+        assertEquals(LeftOperand.PURPOSE, decision.getPolicyType());
     }
 
     @Test
@@ -69,7 +69,7 @@ public class PurposePolicyEvaluatorTest {
         // Create a valid policy
         Policy policy = Policy.Builder.newInstance()
                 .id("policy-123")
-                .type(PolicyType.PURPOSE)
+                .type(LeftOperand.PURPOSE)
                 .description("Purpose policy")
                 .enabled(true)
                 .build();
@@ -90,7 +90,7 @@ public class PurposePolicyEvaluatorTest {
         assertFalse(decision.isAllowed());
         assertEquals("Purpose is missing", decision.getMessage());
         assertEquals("policy-123", decision.getPolicyId());
-        assertEquals(PolicyType.PURPOSE, decision.getPolicyType());
+        assertEquals(LeftOperand.PURPOSE, decision.getPolicyType());
     }
 
     @Test
@@ -98,7 +98,7 @@ public class PurposePolicyEvaluatorTest {
         // Create a valid policy with an allowed purposes list
         Policy policy = Policy.Builder.newInstance()
                 .id("policy-123")
-                .type(PolicyType.PURPOSE)
+                .type(LeftOperand.PURPOSE)
                 .description("Purpose policy")
                 .enabled(true)
                 .attribute(PolicyConstants.ALLOWED_PURPOSES, Arrays.asList("research", "education"))
@@ -122,7 +122,7 @@ public class PurposePolicyEvaluatorTest {
         assertFalse(decision.isAllowed());
         assertEquals("Purpose is not in the allowed purposes list", decision.getMessage());
         assertEquals("policy-123", decision.getPolicyId());
-        assertEquals(PolicyType.PURPOSE, decision.getPolicyType());
+        assertEquals(LeftOperand.PURPOSE, decision.getPolicyType());
     }
     
     @Test
@@ -130,7 +130,7 @@ public class PurposePolicyEvaluatorTest {
         // Create a valid policy with an allowed purposes list
         Policy policy = Policy.Builder.newInstance()
                 .id("policy-123")
-                .type(PolicyType.PURPOSE)
+                .type(LeftOperand.PURPOSE)
                 .description("Purpose policy")
                 .enabled(true)
                 .attribute(PolicyConstants.ALLOWED_PURPOSES, Arrays.asList("research"))
@@ -154,7 +154,7 @@ public class PurposePolicyEvaluatorTest {
         assertTrue(decision.isAllowed());
         assertEquals("Purpose policy passed", decision.getMessage());
         assertEquals("policy-123", decision.getPolicyId());
-        assertEquals(PolicyType.PURPOSE, decision.getPolicyType());
+        assertEquals(LeftOperand.PURPOSE, decision.getPolicyType());
     }
 
     @Test
@@ -162,7 +162,7 @@ public class PurposePolicyEvaluatorTest {
         // Create a valid policy with a denied purposes list
         Policy policy = Policy.Builder.newInstance()
                 .id("policy-123")
-                .type(PolicyType.PURPOSE)
+                .type(LeftOperand.PURPOSE)
                 .description("Purpose policy")
                 .enabled(true)
                 .attribute(PolicyConstants.DENIED_PURPOSES, Arrays.asList("commercial", "marketing"))
@@ -186,7 +186,7 @@ public class PurposePolicyEvaluatorTest {
         assertFalse(decision.isAllowed());
         assertEquals("Purpose is in the denied purposes list", decision.getMessage());
         assertEquals("policy-123", decision.getPolicyId());
-        assertEquals(PolicyType.PURPOSE, decision.getPolicyType());
+        assertEquals(LeftOperand.PURPOSE, decision.getPolicyType());
     }
 
     @Test
@@ -194,7 +194,7 @@ public class PurposePolicyEvaluatorTest {
         // Create a valid policy with an allowed purposes list
         Policy policy = Policy.Builder.newInstance()
                 .id("policy-123")
-                .type(PolicyType.PURPOSE)
+                .type(LeftOperand.PURPOSE)
                 .description("Purpose policy")
                 .enabled(true)
                 .attribute(PolicyConstants.ALLOWED_PURPOSES, Arrays.asList("research", "education"))
@@ -218,7 +218,7 @@ public class PurposePolicyEvaluatorTest {
         assertTrue(decision.isAllowed());
         assertEquals("Purpose policy passed", decision.getMessage());
         assertEquals("policy-123", decision.getPolicyId());
-        assertEquals(PolicyType.PURPOSE, decision.getPolicyType());
+        assertEquals(LeftOperand.PURPOSE, decision.getPolicyType());
     }
 
     @Test
@@ -226,7 +226,7 @@ public class PurposePolicyEvaluatorTest {
         // Create a valid policy with an empty allowed purposes list
         Policy policy = Policy.Builder.newInstance()
                 .id("policy-123")
-                .type(PolicyType.PURPOSE)
+                .type(LeftOperand.PURPOSE)
                 .description("Purpose policy")
                 .enabled(true)
                 .attribute(PolicyConstants.ALLOWED_PURPOSES, Collections.emptyList())
@@ -250,7 +250,7 @@ public class PurposePolicyEvaluatorTest {
         assertTrue(decision.isAllowed());
         assertEquals("Purpose policy passed", decision.getMessage());
         assertEquals("policy-123", decision.getPolicyId());
-        assertEquals(PolicyType.PURPOSE, decision.getPolicyType());
+        assertEquals(LeftOperand.PURPOSE, decision.getPolicyType());
     }
 
     @Test
@@ -258,7 +258,7 @@ public class PurposePolicyEvaluatorTest {
         // Create a valid policy with no allowed or denied purposes lists
         Policy policy = Policy.Builder.newInstance()
                 .id("policy-123")
-                .type(PolicyType.PURPOSE)
+                .type(LeftOperand.PURPOSE)
                 .description("Purpose policy")
                 .enabled(true)
                 .attribute(PolicyConstants.OPERATOR, Operator.EQ)
@@ -281,6 +281,6 @@ public class PurposePolicyEvaluatorTest {
         assertTrue(decision.isAllowed());
         assertEquals("Purpose policy passed", decision.getMessage());
         assertEquals("policy-123", decision.getPolicyId());
-        assertEquals(PolicyType.PURPOSE, decision.getPolicyType());
+        assertEquals(LeftOperand.PURPOSE, decision.getPolicyType());
     }
 }

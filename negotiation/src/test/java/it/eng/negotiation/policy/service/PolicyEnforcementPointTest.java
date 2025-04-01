@@ -17,9 +17,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import it.eng.negotiation.model.Agreement;
+import it.eng.negotiation.model.LeftOperand;
 import it.eng.negotiation.model.NegotiationMockObjectUtil;
 import it.eng.negotiation.policy.model.PolicyDecision;
-import it.eng.negotiation.policy.model.PolicyType;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,7 +46,7 @@ class PolicyEnforcementPointTest {
 		policyEnforcementPoint.enforcePolicy(agreement, "use");
 		
 		// Verify that the policy decision is allowed when usage control is disabled
-		verify(policyDecisionPoint, never()).evaluate(any());
+		verify(policyDecisionPoint, never()).evaluate(any(), any(Agreement.class));
 		verify(policyInformationPoint, never()).getAllAttributes(any());
 	}
 
@@ -56,11 +56,11 @@ class PolicyEnforcementPointTest {
 		Agreement agreement = NegotiationMockObjectUtil.AGREEMENT;
 		when(usageControlProperties.usageControlEnabled()).thenReturn(true);
 		when(policyInformationPoint.getAllAttributes(any())).thenReturn(Map.of("key", "value"));
-		when(policyDecisionPoint.evaluate(any()))
+		when(policyDecisionPoint.evaluate(any(), any(Agreement.class)))
 				.thenReturn(PolicyDecision.Builder.newInstance()
 						.message("Test case - allowed")
 						.policyId("test-policy-id")
-						.policyType(PolicyType.COUNT)
+						.policyType(LeftOperand.COUNT)
 						.allowed(true)
 						.build());
 		
@@ -69,7 +69,7 @@ class PolicyEnforcementPointTest {
 		assertNotNull(policyDecision);
 		assertTrue(policyDecision.isAllowed());
 		
-		verify(policyDecisionPoint).evaluate(any());
+		verify(policyDecisionPoint).evaluate(any(), any(Agreement.class));
 		verify(policyInformationPoint).getAllAttributes(any());
 	}
 	
@@ -78,11 +78,11 @@ class PolicyEnforcementPointTest {
 		Agreement agreement = NegotiationMockObjectUtil.AGREEMENT;
 		when(usageControlProperties.usageControlEnabled()).thenReturn(true);
 		when(policyInformationPoint.getAllAttributes(any())).thenReturn(Map.of("key", "value"));
-		when(policyDecisionPoint.evaluate(any()))
+		when(policyDecisionPoint.evaluate(any(), any(Agreement.class)))
 				.thenReturn(PolicyDecision.Builder.newInstance()
 						.message("Test case - denied")
 						.policyId("test-policy-id")
-						.policyType(PolicyType.COUNT)
+						.policyType(LeftOperand.COUNT)
 						.allowed(false)
 						.build());
 		
@@ -91,7 +91,7 @@ class PolicyEnforcementPointTest {
 		assertNotNull(policyDecision);
 		assertFalse(policyDecision.isAllowed());
 		
-		verify(policyDecisionPoint).evaluate(any());
+		verify(policyDecisionPoint).evaluate(any(), any(Agreement.class));
 		verify(policyInformationPoint).getAllAttributes(any());
 	}
 	

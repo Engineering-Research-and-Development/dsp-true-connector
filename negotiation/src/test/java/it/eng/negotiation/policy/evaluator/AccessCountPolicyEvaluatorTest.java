@@ -1,6 +1,9 @@
 package it.eng.negotiation.policy.evaluator;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDateTime;
 
@@ -8,12 +11,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import it.eng.negotiation.model.Action;
+import it.eng.negotiation.model.LeftOperand;
 import it.eng.negotiation.model.Operator;
 import it.eng.negotiation.policy.model.Policy;
 import it.eng.negotiation.policy.model.PolicyConstants;
 import it.eng.negotiation.policy.model.PolicyDecision;
 import it.eng.negotiation.policy.model.PolicyRequest;
-import it.eng.negotiation.policy.model.PolicyType;
 
 class AccessCountPolicyEvaluatorTest {
 
@@ -26,7 +29,7 @@ class AccessCountPolicyEvaluatorTest {
 
 	@Test
 	void testGetPolicyType() {
-		assertEquals(PolicyType.COUNT, evaluator.getPolicyType());
+		assertEquals(LeftOperand.COUNT, evaluator.getPolicyType());
 	}
 
 	@Test
@@ -34,7 +37,7 @@ class AccessCountPolicyEvaluatorTest {
 		  // Create a policy that is not valid
         Policy policy = Policy.Builder.newInstance()
                 .id("policy-123")
-                .type(PolicyType.COUNT)
+                .type(LeftOperand.COUNT)
                 .description("Access count policy")
                 .enabled(true)
                 .validFrom(LocalDateTime.now().plusDays(1)) // Not valid yet
@@ -56,14 +59,14 @@ class AccessCountPolicyEvaluatorTest {
         assertFalse(decision.isAllowed());
         assertEquals("Policy is not valid at the current time", decision.getMessage());
         assertEquals("policy-123", decision.getPolicyId());
-        assertEquals(PolicyType.COUNT, decision.getPolicyType());
+        assertEquals(LeftOperand.COUNT, decision.getPolicyType());
 	}
 	
 	@Test
 	public void evaluteAccessCountAllowed_LT() {
 		  Policy policy = Policy.Builder.newInstance()
 	                .id("policy-123")
-	                .type(PolicyType.COUNT)
+	                .type(LeftOperand.COUNT)
 	                .description("Access count policy")
 	                .enabled(true)
 	                .validFrom(LocalDateTime.now().minusDays(1))
@@ -88,14 +91,14 @@ class AccessCountPolicyEvaluatorTest {
 	        assertTrue(decision.isAllowed());
 	        assertEquals("Access count policy passed", decision.getMessage());
 	        assertEquals("policy-123", decision.getPolicyId());
-	        assertEquals(PolicyType.COUNT, decision.getPolicyType());
+	        assertEquals(LeftOperand.COUNT, decision.getPolicyType());
 	}
 	
 	@Test
 	public void evaluteAccessCountExceeded_LT() {
 		  Policy policy = Policy.Builder.newInstance()
 	                .id("policy-123")
-	                .type(PolicyType.COUNT)
+	                .type(LeftOperand.COUNT)
 	                .description("Access count policy")
 	                .enabled(true)
 	                .validFrom(LocalDateTime.now().minusDays(1))
@@ -120,14 +123,14 @@ class AccessCountPolicyEvaluatorTest {
 	        assertFalse(decision.isAllowed());
 	        assertEquals("Access count exceeded", decision.getMessage());
 	        assertEquals("policy-123", decision.getPolicyId());
-	        assertEquals(PolicyType.COUNT, decision.getPolicyType());
+	        assertEquals(LeftOperand.COUNT, decision.getPolicyType());
 	}
 
 	@Test
 	public void evaluteAccessCountAllowed_LTEQ() {
 		  Policy policy = Policy.Builder.newInstance()
 	                .id("policy-123")
-	                .type(PolicyType.COUNT)
+	                .type(LeftOperand.COUNT)
 	                .description("Access count policy")
 	                .enabled(true)
 	                .validFrom(LocalDateTime.now().minusDays(1))
@@ -152,14 +155,14 @@ class AccessCountPolicyEvaluatorTest {
 	        assertTrue(decision.isAllowed());
 	        assertEquals("Access count policy passed", decision.getMessage());
 	        assertEquals("policy-123", decision.getPolicyId());
-	        assertEquals(PolicyType.COUNT, decision.getPolicyType());
+	        assertEquals(LeftOperand.COUNT, decision.getPolicyType());
 	}
 	
 	@Test
 	public void evaluteAccessCountExceeded_LTEQ() {
 		  Policy policy = Policy.Builder.newInstance()
 	                .id("policy-123")
-	                .type(PolicyType.COUNT)
+	                .type(LeftOperand.COUNT)
 	                .description("Access count policy")
 	                .enabled(true)
 	                .validFrom(LocalDateTime.now().minusDays(1))
@@ -184,6 +187,6 @@ class AccessCountPolicyEvaluatorTest {
 	        assertFalse(decision.isAllowed());
 	        assertEquals("Access count exceeded", decision.getMessage());
 	        assertEquals("policy-123", decision.getPolicyId());
-	        assertEquals(PolicyType.COUNT, decision.getPolicyType());
+	        assertEquals(LeftOperand.COUNT, decision.getPolicyType());
 	}
 }

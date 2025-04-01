@@ -4,12 +4,12 @@ import java.util.List;
 
 import org.springframework.stereotype.Component;
 
+import it.eng.negotiation.model.LeftOperand;
 import it.eng.negotiation.model.Operator;
 import it.eng.negotiation.policy.model.Policy;
 import it.eng.negotiation.policy.model.PolicyConstants;
 import it.eng.negotiation.policy.model.PolicyDecision;
 import it.eng.negotiation.policy.model.PolicyRequest;
-import it.eng.negotiation.policy.model.PolicyType;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -21,8 +21,8 @@ import lombok.extern.slf4j.Slf4j;
 public class SpatialPolicyEvaluator implements PolicyEvaluator {
 
 	@Override
-	public PolicyType getPolicyType() {
-		return PolicyType.SPATIAL;
+	public LeftOperand getPolicyType() {
+		return LeftOperand.SPATIAL;
 	}
 
 	  @Override

@@ -119,6 +119,11 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
     			.role(contractNegotiation.getRole())
     			.offer(contractNegotiation.getOffer())
     			.agreement(contractAgreementMessage.getAgreement())
+    			.created(contractNegotiation.getCreated())
+    			.createdBy(contractNegotiation.getCreatedBy())
+    			.modified(contractNegotiation.getModified())
+    			.lastModifiedBy(contractNegotiation.getLastModifiedBy())
+    			.version(contractNegotiation.getVersion())
     			.build();
     	log.info("CONSUMER - updating negotiation with state AGREED");
     	contractNegotiationRepository.save(contractNegotiationAgreed);

@@ -37,6 +37,7 @@ public class PolicyInformationPoint {
 		return locationService.getConnectorLocation();
 	}
 
+	// TODO check if ZonedDateTime (or something like that) is needed here
 	public LocalDateTime getAccessTime() {
 		// Simply return the current time
 		return LocalDateTime.now();

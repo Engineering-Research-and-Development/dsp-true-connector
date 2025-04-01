@@ -2,6 +2,8 @@ package it.eng.negotiation.policy.model;
 
 import java.util.Objects;
 
+import it.eng.negotiation.model.LeftOperand;
+
 /**
  * Represents a decision made by a policy evaluator.
  * Contains information about whether access is allowed or denied,
@@ -12,9 +14,9 @@ public class PolicyDecision {
 	private final boolean allowed;
     private final String message;
     private final String policyId;
-    private final PolicyType policyType;
+    private final LeftOperand policyType;
 
-    private PolicyDecision(boolean allowed, String message, String policyId, PolicyType policyType) {
+    private PolicyDecision(boolean allowed, String message, String policyId, LeftOperand policyType) {
         this.allowed = allowed;
         this.message = message;
         this.policyId = policyId;
@@ -53,7 +55,7 @@ public class PolicyDecision {
      *
      * @return the policy type
      */
-    public PolicyType getPolicyType() {
+    public LeftOperand getPolicyType() {
         return policyType;
     }
 
@@ -90,7 +92,7 @@ public class PolicyDecision {
         private boolean allowed;
         private String message;
         private String policyId;
-        private PolicyType policyType;
+        private LeftOperand policyType;
 
         private Builder() {
         }
@@ -143,7 +145,7 @@ public class PolicyDecision {
          * @param policyType the policy type
          * @return this builder
          */
-        public Builder policyType(PolicyType policyType) {
+        public Builder policyType(LeftOperand policyType) {
             this.policyType = policyType;
             return this;
         }

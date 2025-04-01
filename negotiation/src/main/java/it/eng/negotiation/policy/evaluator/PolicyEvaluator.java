@@ -1,9 +1,9 @@
 package it.eng.negotiation.policy.evaluator;
 
+import it.eng.negotiation.model.LeftOperand;
 import it.eng.negotiation.policy.model.Policy;
 import it.eng.negotiation.policy.model.PolicyDecision;
 import it.eng.negotiation.policy.model.PolicyRequest;
-import it.eng.negotiation.policy.model.PolicyType;
 
 /**
  * Interface for policy evaluators.
@@ -15,7 +15,7 @@ public interface PolicyEvaluator {
      *
      * @return the policy type
      */
-    PolicyType getPolicyType();
+    LeftOperand getPolicyType();
 
     /**
      * Evaluates a policy against a request and returns a decision.

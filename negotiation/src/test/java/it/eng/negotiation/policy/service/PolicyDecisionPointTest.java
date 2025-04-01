@@ -4,20 +4,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import it.eng.negotiation.model.Action;
@@ -35,14 +31,10 @@ import it.eng.negotiation.policy.evaluator.TemporalPolicyEvaluator;
 import it.eng.negotiation.policy.model.PolicyConstants;
 import it.eng.negotiation.policy.model.PolicyDecision;
 import it.eng.negotiation.policy.model.PolicyRequest;
-import it.eng.negotiation.repository.AgreementRepository;
 
 @ExtendWith(MockitoExtension.class)
 class PolicyDecisionPointTest {
 
-	@Mock
-	private AgreementRepository agreementRepository;
-	
 	private PolicyDecisionPoint policyDecisionPoint;
 	
 	@BeforeEach
@@ -52,7 +44,7 @@ class PolicyDecisionPointTest {
 				new PurposePolicyEvaluator(), 
 				new SpatialPolicyEvaluator(), 
 				new TemporalPolicyEvaluator());
-		policyDecisionPoint = new PolicyDecisionPoint(agreementRepository, evaluators);
+		policyDecisionPoint = new PolicyDecisionPoint(evaluators);
 	}
 	
 	@Test
@@ -63,7 +55,7 @@ class PolicyDecisionPointTest {
 				.action(Action.READ)
 				.build();
 
-		PolicyDecision policyDecision = policyDecisionPoint.evaluate(request);
+		PolicyDecision policyDecision = policyDecisionPoint.evaluate(request, null);
 		
 		assertNotNull(policyDecision);
 		assertFalse(policyDecision.isAllowed());
@@ -71,28 +63,7 @@ class PolicyDecisionPointTest {
 	}
 	
 	@Test
-	public void evaluateAgreementNotFound() {
-		PolicyRequest request = PolicyRequest.Builder.newInstance()
-				.agreementId("agreementId")
-				.resourceId("resourceId")
-				.userId("userId")
-				.action(Action.READ).build();
-
-		when(agreementRepository.findById(anyString())).thenReturn(Optional.empty());
-
-		PolicyDecision policyDecision = policyDecisionPoint.evaluate(request);
-
-		assertNotNull(policyDecision);
-		assertFalse(policyDecision.isAllowed());
-		assertEquals("Agreement not found", policyDecision.getMessage());
-	}
-	
-	@Test
 	void evaluateSuccess_count() {
-		Agreement agreement = NegotiationMockObjectUtil.AGREEMENT;
-		
-		when(agreementRepository.findById(anyString())).thenReturn(Optional.of(agreement));
-		
 		PolicyRequest request = PolicyRequest.Builder.newInstance()
 				.agreementId("agreementId")
 				.resourceId("resourceId")
@@ -101,7 +72,7 @@ class PolicyDecisionPointTest {
 				.attribute(PolicyConstants.CURRENT_COUNT, 3)
 				.build();
 		
-		PolicyDecision policyDecision = policyDecisionPoint.evaluate(request);
+		PolicyDecision policyDecision = policyDecisionPoint.evaluate(request, NegotiationMockObjectUtil.AGREEMENT);
 		
 		assertNotNull(policyDecision);
 		assertTrue(policyDecision.isAllowed());
@@ -109,10 +80,6 @@ class PolicyDecisionPointTest {
 	
 	@Test
 	void evaluateSuccess_count_denied() {
-		Agreement agreement = NegotiationMockObjectUtil.AGREEMENT;
-		
-		when(agreementRepository.findById(anyString())).thenReturn(Optional.of(agreement));
-		
 		PolicyRequest request = PolicyRequest.Builder.newInstance()
 				.agreementId("agreementId")
 				.resourceId("resourceId")
@@ -121,7 +88,7 @@ class PolicyDecisionPointTest {
 				.attribute(PolicyConstants.CURRENT_COUNT, 6)
 				.build();
 		
-		PolicyDecision policyDecision = policyDecisionPoint.evaluate(request);
+		PolicyDecision policyDecision = policyDecisionPoint.evaluate(request, NegotiationMockObjectUtil.AGREEMENT);
 		
 		assertNotNull(policyDecision);
 		assertFalse(policyDecision.isAllowed());
@@ -139,8 +106,6 @@ class PolicyDecisionPointTest {
 				.permission(Arrays.asList(NegotiationMockObjectUtil.PERMISSION))
 				.build();
 
-		when(agreementRepository.findById(anyString())).thenReturn(Optional.of(agreement));
-
 		PolicyRequest request = PolicyRequest.Builder.newInstance()
 				.agreementId(agreement.getId())
 				.resourceId(agreement.getTarget())
@@ -149,7 +114,7 @@ class PolicyDecisionPointTest {
 				// accessTime is now
 				.build();
 
-		PolicyDecision policyDecision = policyDecisionPoint.evaluate(request);
+		PolicyDecision policyDecision = policyDecisionPoint.evaluate(request, agreement);
 
 		assertNotNull(policyDecision);
 		assertTrue(policyDecision.isAllowed());
@@ -178,8 +143,6 @@ class PolicyDecisionPointTest {
 				.permission(Arrays.asList(permission))
 				.build();
 
-		when(agreementRepository.findById(anyString())).thenReturn(Optional.of(agreement));
-
 		PolicyRequest request = PolicyRequest.Builder.newInstance()
 				.agreementId(agreement.getId())
 				.resourceId(agreement.getTarget())
@@ -187,7 +150,7 @@ class PolicyDecisionPointTest {
 				.action(Action.READ)
 				.build();
 
-		PolicyDecision policyDecision = policyDecisionPoint.evaluate(request);
+		PolicyDecision policyDecision = policyDecisionPoint.evaluate(request, agreement);
 
 		assertNotNull(policyDecision);
 		assertFalse(policyDecision.isAllowed());
@@ -215,8 +178,6 @@ class PolicyDecisionPointTest {
 				.timestamp(ZonedDateTime.now().minusDays(2).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
 				.permission(Arrays.asList(permission)).build();
 
-		when(agreementRepository.findById(anyString())).thenReturn(Optional.of(agreement));
-
 		PolicyRequest request = PolicyRequest.Builder.newInstance()
 				.agreementId(agreement.getId())
 				.resourceId(agreement.getTarget())
@@ -224,7 +185,7 @@ class PolicyDecisionPointTest {
 				.attribute(PolicyConstants.PURPOSE, "dsp_test")
 				.build();
 
-		PolicyDecision policyDecision = policyDecisionPoint.evaluate(request);
+		PolicyDecision policyDecision = policyDecisionPoint.evaluate(request, agreement);
 
 		assertNotNull(policyDecision);
 		assertTrue(policyDecision.isAllowed());
@@ -252,8 +213,6 @@ class PolicyDecisionPointTest {
                 .timestamp(ZonedDateTime.now().minusDays(2).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
                 .permission(Arrays.asList(permission)).build();
 
-        when(agreementRepository.findById(anyString())).thenReturn(Optional.of(agreement));
-
         PolicyRequest request = PolicyRequest.Builder.newInstance()
                 .agreementId(agreement.getId())
                 .resourceId(agreement.getTarget())
@@ -261,7 +220,7 @@ class PolicyDecisionPointTest {
                 .attribute(PolicyConstants.PURPOSE, "dsp_test")
                 .build();
 
-        PolicyDecision policyDecision = policyDecisionPoint.evaluate(request);
+        PolicyDecision policyDecision = policyDecisionPoint.evaluate(request, agreement);
 
         assertNotNull(policyDecision);
         assertFalse(policyDecision.isAllowed());
@@ -291,8 +250,6 @@ class PolicyDecisionPointTest {
                 .timestamp(ZonedDateTime.now().minusDays(2).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
                 .permission(Arrays.asList(permission)).build();
 
-        when(agreementRepository.findById(anyString())).thenReturn(Optional.of(agreement));
-
         PolicyRequest request = PolicyRequest.Builder.newInstance()
                 .agreementId(agreement.getId())
                 .resourceId(agreement.getTarget())
@@ -300,7 +257,7 @@ class PolicyDecisionPointTest {
                 .attribute(PolicyConstants.LOCATION, "spatial_test")
                 .build();
 
-        PolicyDecision policyDecision = policyDecisionPoint.evaluate(request);
+        PolicyDecision policyDecision = policyDecisionPoint.evaluate(request, agreement);
 
         assertNotNull(policyDecision);
         assertTrue(policyDecision.isAllowed());
@@ -328,8 +285,6 @@ class PolicyDecisionPointTest {
                 .timestamp(ZonedDateTime.now().minusDays(2).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
                 .permission(Arrays.asList(permission)).build();
 
-        when(agreementRepository.findById(anyString())).thenReturn(Optional.of(agreement));
-
         PolicyRequest request = PolicyRequest.Builder.newInstance()
                 .agreementId(agreement.getId())
                 .resourceId(agreement.getTarget())
@@ -337,7 +292,7 @@ class PolicyDecisionPointTest {
                 .attribute(PolicyConstants.LOCATION, "spatial_test")
                 .build();
 
-        PolicyDecision policyDecision = policyDecisionPoint.evaluate(request);
+        PolicyDecision policyDecision = policyDecisionPoint.evaluate(request, agreement);
         
         assertNotNull(policyDecision);
         assertFalse(policyDecision.isAllowed());

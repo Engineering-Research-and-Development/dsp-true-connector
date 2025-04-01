@@ -3,8 +3,8 @@ package it.eng.negotiation.policy.service;
 import java.util.List;
 import java.util.Optional;
 
+import it.eng.negotiation.model.LeftOperand;
 import it.eng.negotiation.policy.model.Policy;
-import it.eng.negotiation.policy.model.PolicyType;
 
 /**
  * Policy Administration Point (PAP) component.
@@ -61,7 +61,7 @@ public class PolicyAdministrationPoint {
 	 * @param type the policy type
 	 * @return the list of policies
 	 */
-	List<Policy> getPoliciesByType(PolicyType type) {
+	List<Policy> getPoliciesByType(LeftOperand type) {
 		// Implementation for retrieving policies by type
 		return List.of();
 	}

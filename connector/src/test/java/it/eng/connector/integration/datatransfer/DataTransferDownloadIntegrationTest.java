@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
@@ -157,7 +157,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 		transferProcessRepository.save(transferProcessStarted);
     	
 		String transactionId = Base64.getEncoder().encodeToString((transferProcessStarted.getConsumerPid() + "|" + transferProcessStarted.getProviderPid())
-				.getBytes(Charset.forName("UTF-8")));
+				.getBytes(StandardCharsets.UTF_8));
 		
 		MvcResult resultArtifact = mockMvc.perform(get("/artifacts/" + transactionId)
 				.contentType(MediaType.APPLICATION_JSON))
@@ -228,7 +228,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 		transferProcessRepository.save(transferProcessStarted);
     	
 		String transactionId = Base64.getEncoder().encodeToString((transferProcessStarted.getConsumerPid() + "|" + transferProcessStarted.getProviderPid())
-				.getBytes(Charset.forName("UTF-8")));
+				.getBytes(StandardCharsets.UTF_8));
 		
 		// mock provider success response Download
 		String fileContent = "Hello, World!";
@@ -292,7 +292,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 		transferProcessRepository.save(transferProcessStarted);
     	
 		String transactionId = Base64.getEncoder().encodeToString((transferProcessStarted.getConsumerPid() + "|" + transferProcessStarted.getProviderPid())
-				.getBytes(Charset.forName("UTF-8")));
+				.getBytes(StandardCharsets.UTF_8));
 		
 		mockMvc.perform(get("/artifacts/" + transactionId)
 				.contentType(MediaType.APPLICATION_JSON))
@@ -340,7 +340,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 		transferProcessRepository.save(transferProcessStarted);
     	
 		String transactionId = Base64.getEncoder().encodeToString((transferProcessStarted.getConsumerPid() + "|" + transferProcessStarted.getProviderPid())
-				.getBytes(Charset.forName("UTF-8")));
+				.getBytes(StandardCharsets.UTF_8));
 		
 		mockMvc.perform(get("/artifacts/" + transactionId)
 				.contentType(MediaType.APPLICATION_JSON))

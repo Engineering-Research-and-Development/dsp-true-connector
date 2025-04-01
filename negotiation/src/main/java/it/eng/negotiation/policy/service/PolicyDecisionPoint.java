@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -22,8 +21,6 @@ import it.eng.negotiation.policy.model.Policy;
 import it.eng.negotiation.policy.model.PolicyConstants;
 import it.eng.negotiation.policy.model.PolicyDecision;
 import it.eng.negotiation.policy.model.PolicyRequest;
-import it.eng.negotiation.policy.model.PolicyType;
-import it.eng.negotiation.repository.AgreementRepository;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -34,11 +31,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class PolicyDecisionPoint {
 	
-	private final AgreementRepository agreementRepository;
-	private final Map<PolicyType, PolicyEvaluator> evaluators;
+	private final Map<LeftOperand, PolicyEvaluator> evaluators;
 	
-	public PolicyDecisionPoint(AgreementRepository agreementRepository, List<PolicyEvaluator> evaluators) {
-		this.agreementRepository = agreementRepository;
+	public PolicyDecisionPoint(List<PolicyEvaluator> evaluators) {
 		this.evaluators = evaluators.stream()
                 .collect(Collectors.toMap(PolicyEvaluator::getPolicyType, Function.identity()));
 	}
@@ -47,9 +42,10 @@ public class PolicyDecisionPoint {
      * Evaluates a policy request and returns a decision.
      *
      * @param request the policy request
+     * @param agreement the agreement to be evaluated
      * @return the policy decision
      */
-	public PolicyDecision evaluate(PolicyRequest request) {
+	public PolicyDecision evaluate(PolicyRequest request, Agreement agreement) {
 		String agreementId = request.getAgreementId();
 		String resourceId = request.getResourceId();
 		String userId = request.getUserId();
@@ -67,19 +63,8 @@ public class PolicyDecisionPoint {
             return decision;
         }
         
-        Agreement agreement;
-        Optional<Agreement> agreementOpt = agreementRepository.findById(agreementId);
-        if (agreementOpt.isPresent()) {
-           agreement = agreementOpt.get();
-        } else {
-            return PolicyDecision.Builder.newInstance()
-                    .allowed(false)
-                    .message("Agreement not found")
-                    .build();
-        }
-        
         // Get the policies from the agreement
-        // convert all constaints to policies
+        // convert all constraints to policies
         List<Policy> policies = convertConstraintsToPolicies(agreement);
         if (policies == null || policies.isEmpty()) {
             PolicyDecision decision = PolicyDecision.Builder.newInstance()
@@ -97,7 +82,7 @@ public class PolicyDecisionPoint {
                 continue;
             }
 
-            PolicyType policyType = policy.getType();
+            LeftOperand policyType = policy.getType();
             PolicyEvaluator evaluator = evaluators.get(policyType);
             if (evaluator == null) {
                 log.warn("No evaluator found for policy type {}", policyType);
@@ -135,7 +120,7 @@ public class PolicyDecisionPoint {
 		return Policy.Builder.newInstance()
 	        .id(UUID.randomUUID().toString())
 	        .agreementId(agreementId)
-	        .type(policyFromLeftOperand(c.getLeftOperand()))
+	        .type(c.getLeftOperand())
 	        .attributes(getPolicyAttributesFromConstraint(c))
 	        .enabled(true)
 	        .build();
@@ -165,22 +150,4 @@ public class PolicyDecisionPoint {
 		return attributes;
 	}
 
-	private PolicyType policyFromLeftOperand(LeftOperand leftOperand) {
-		if (leftOperand == null) {
-			return null;
-		}
-		if (leftOperand.equals(LeftOperand.COUNT)) {
-			return PolicyType.COUNT;
-		}
-		if (leftOperand.equals(LeftOperand.DATE_TIME)) {
-			return PolicyType.TEMPORAL;
-		}
-		if (leftOperand.equals(LeftOperand.PURPOSE)) {
-			return PolicyType.PURPOSE;
-		}
-		if (leftOperand.equals(LeftOperand.SPATIAL)) {
-			return PolicyType.SPATIAL;
-		}
-		return null;
-	}
 }

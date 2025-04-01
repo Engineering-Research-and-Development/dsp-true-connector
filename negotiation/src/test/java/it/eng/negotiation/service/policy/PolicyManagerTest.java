@@ -21,7 +21,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import it.eng.negotiation.exception.PolicyEnforcementException;
 import it.eng.negotiation.model.PolicyEnforcement;
 import it.eng.negotiation.repository.PolicyEnforcementRepository;
-import it.eng.negotiation.service.policy.PolicyManager;
 
 @ExtendWith(MockitoExtension.class)
 class PolicyManagerTest {

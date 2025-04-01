@@ -8,21 +8,17 @@ import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.policy.model.PolicyDecision;
 import it.eng.negotiation.policy.service.PolicyEnforcementPoint;
 import it.eng.negotiation.repository.AgreementRepository;
-import it.eng.negotiation.service.policy.PolicyEnforcementService;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
 public class AgreementAPIService {
 	
-	private final PolicyEnforcementService policyEnforcementService;
 	private final PolicyEnforcementPoint policyEnforcementPoint;
 	private final AgreementRepository agreementRepository;
 	
-	public AgreementAPIService(AgreementRepository agreementRepository, PolicyEnforcementPoint policyEnforcementPoint, 
-			PolicyEnforcementService policyEnforcementService) {
+	public AgreementAPIService(AgreementRepository agreementRepository, PolicyEnforcementPoint policyEnforcementPoint) {
 		super();
-		this.policyEnforcementService = policyEnforcementService;
 		this.policyEnforcementPoint = policyEnforcementPoint;
 		this.agreementRepository = agreementRepository;
 	}
