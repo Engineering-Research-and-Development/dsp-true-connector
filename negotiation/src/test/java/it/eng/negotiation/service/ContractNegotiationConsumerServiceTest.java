@@ -30,11 +30,11 @@ import it.eng.negotiation.model.ContractNegotiationEventType;
 import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.NegotiationMockObjectUtil;
 import it.eng.negotiation.model.Offer;
+import it.eng.negotiation.policy.service.PolicyAdministrationPoint;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
-import it.eng.negotiation.service.policy.PolicyEnforcementService;
 import it.eng.tools.event.datatransfer.InitializeTransferProcess;
 
 @ExtendWith(MockitoExtension.class)
@@ -51,7 +51,7 @@ public class ContractNegotiationConsumerServiceTest {
 	@Mock
 	private OfferRepository offerRepository;
 	@Mock
-	private PolicyEnforcementService policyEnforcementService;
+	private PolicyAdministrationPoint policyAdministrationPoint;
 	
 	@Captor
 	private ArgumentCaptor<ContractNegotiation> argCaptorContractNegotiation;
@@ -152,7 +152,7 @@ when(contractNegotiationRepository.findByProviderPidAndConsumerPid(NegotiationMo
 		verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
 		//verify that status is updated to FINALIZED
 		assertEquals(ContractNegotiationState.FINALIZED, argCaptorContractNegotiation.getValue().getState());
-		verify(policyEnforcementService).createPolicyEnforcement(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getAgreement().getId());
+		verify(policyAdministrationPoint).createPolicyEnforcement(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getAgreement().getId());
 		verify(publisher).publishEvent(any(InitializeTransferProcess.class));
 	}
 	
@@ -162,7 +162,6 @@ when(contractNegotiationRepository.findByProviderPidAndConsumerPid(NegotiationMo
 	
 		assertThrows(ContractNegotiationInvalidEventTypeException.class,
 				() -> service.handleFinalizeEvent(NegotiationMockObjectUtil.getEventMessage(ContractNegotiationEventType.ACCEPTED)));
-	
 	}
 	
 	@Test

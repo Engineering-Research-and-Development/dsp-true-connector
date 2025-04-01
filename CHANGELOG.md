@@ -21,7 +21,7 @@ application.usagecontrol.constraint.purpose=demo
  
 ### Removed
 
- - Old validators for count and dateTime
+ - Old services and validators for count and dateTime
 
 ## [0.1.3-SNAPSHOT] - 28-03-2025
 

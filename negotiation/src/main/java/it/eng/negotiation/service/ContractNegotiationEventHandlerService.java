@@ -17,13 +17,13 @@ import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
 import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.model.Reason;
+import it.eng.negotiation.policy.service.PolicyAdministrationPoint;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.rest.protocol.ContractNegotiationCallback;
 import it.eng.negotiation.serializer.NegotiationSerializer;
-import it.eng.negotiation.service.policy.PolicyManager;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
@@ -39,17 +39,17 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
 	
 	private final AgreementRepository agreementRepository;
 	protected final CredentialUtils credentialUtils;
-	private final PolicyManager policyManager;
+	private final PolicyAdministrationPoint policyAdministrationPoint;
 	
 	public ContractNegotiationEventHandlerService(ContractNegotiationPublisher publisher,
 			ContractNegotiationRepository contractNegotiationRepository, OkHttpRestClient okHttpRestClient,
 			ContractNegotiationProperties properties, OfferRepository offerRepository,
 			AgreementRepository agreementRepository, CredentialUtils credentialUtils,
-			PolicyManager policyManager) {
+			PolicyAdministrationPoint policyAdministrationPoint) {
 		super(publisher, contractNegotiationRepository, okHttpRestClient, properties, offerRepository);
 		this.agreementRepository = agreementRepository;
 		this.credentialUtils = credentialUtils;
-		this.policyManager = policyManager;
+		this.policyAdministrationPoint = policyAdministrationPoint;
 	}
 
 	@Deprecated
@@ -171,6 +171,6 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
 
 	public void artifactConsumedEvent(ArtifactConsumedEvent artifactConsumedEvent) {
 		log.info("Increasing access count for artifactId {}", artifactConsumedEvent.getAgreementId());
-		policyManager.updateAccessCount(artifactConsumedEvent.getAgreementId());
+		policyAdministrationPoint.updateAccessCount(artifactConsumedEvent.getAgreementId());
 	}
 }

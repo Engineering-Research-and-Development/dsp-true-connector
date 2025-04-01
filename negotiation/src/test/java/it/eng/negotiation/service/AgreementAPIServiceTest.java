@@ -16,9 +16,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import it.eng.negotiation.exception.PolicyEnforcementException;
 import it.eng.negotiation.model.NegotiationMockObjectUtil;
 import it.eng.negotiation.policy.model.PolicyDecision;
+import it.eng.negotiation.policy.service.PolicyAdministrationPoint;
 import it.eng.negotiation.policy.service.PolicyEnforcementPoint;
 import it.eng.negotiation.repository.AgreementRepository;
-import it.eng.negotiation.service.policy.PolicyEnforcementService;
 
 @ExtendWith(MockitoExtension.class)
 class AgreementAPIServiceTest {
@@ -26,7 +26,7 @@ class AgreementAPIServiceTest {
 	@Mock
 	private AgreementRepository agreementRepository;
 	@Mock
-	private PolicyEnforcementService policyEnforcementService;
+	private PolicyAdministrationPoint policyAdministrationPoint;
 	@Mock
 	private PolicyEnforcementPoint policyEnforcementPoint;
 	
