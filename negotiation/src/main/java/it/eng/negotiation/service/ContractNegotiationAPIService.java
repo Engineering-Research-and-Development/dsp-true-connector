@@ -142,6 +142,11 @@ public class ContractNegotiationAPIService {
 		    			.state(contractNegotiation.getState())
 		    			.role(IConstants.ROLE_CONSUMER)
 		    			.offer(savedOffer)
+		    			.created(contractNegotiation.getCreated())
+		    			.createdBy(contractNegotiation.getCreatedBy())
+		    			.modified(contractNegotiation.getModified())
+		    			.lastModifiedBy(contractNegotiation.getLastModifiedBy())
+		    			.version(contractNegotiation.getVersion())
 						.build();
 				contractNegotiationRepository.save(contractNegotiationWithOffer);
 				log.info("Contract negotiation {} saved", contractNegotiationWithOffer.getId());
@@ -213,6 +218,11 @@ public class ContractNegotiationAPIService {
 						.role(IConstants.ROLE_PROVIDER)
 						.offer(offer)
 						.state(contractNegotiation.getState())
+		    			.created(contractNegotiation.getCreated())
+		    			.createdBy(contractNegotiation.getCreatedBy())
+		    			.modified(contractNegotiation.getModified())
+		    			.lastModifiedBy(contractNegotiation.getLastModifiedBy())
+		    			.version(contractNegotiation.getVersion())
 						.build();
 				// provider saves contract negotiation
 				contractNegotiationRepository.save(contractNegtiationUpdate);
@@ -368,6 +378,11 @@ public class ContractNegotiationAPIService {
 	    			.role(contractNegotiation.getRole())
 	    			.offer(contractNegotiation.getOffer())
 	    			.agreement(agreementMessage.getAgreement())
+	    			.created(contractNegotiation.getCreated())
+	    			.createdBy(contractNegotiation.getCreatedBy())
+	    			.modified(contractNegotiation.getModified())
+	    			.lastModifiedBy(contractNegotiation.getLastModifiedBy())
+	    			.version(contractNegotiation.getVersion())
 					.build();
 					
 			contractNegotiationRepository.save(contractNegtiationAgreed);

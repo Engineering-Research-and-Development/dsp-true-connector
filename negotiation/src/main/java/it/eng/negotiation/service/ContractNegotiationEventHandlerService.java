@@ -81,6 +81,11 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
 						.providerPid(contractNegotiation.getProviderPid())
 						.state(ContractNegotiationState.AGREED)
 						.callbackAddress(contractNegotiation.getCallbackAddress())
+		    			.created(contractNegotiation.getCreated())
+		    			.createdBy(contractNegotiation.getCreatedBy())
+		    			.modified(contractNegotiation.getModified())
+		    			.lastModifiedBy(contractNegotiation.getLastModifiedBy())
+		    			.version(contractNegotiation.getVersion())
 						.build();
 				contractNegotiationRepository.save(contractNegtiationUpdate);
 				log.info("Saving agreement..." + agreementMessage.getAgreement().getId());
