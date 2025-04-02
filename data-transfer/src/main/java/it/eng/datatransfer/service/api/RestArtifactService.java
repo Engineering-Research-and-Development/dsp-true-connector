@@ -1,7 +1,7 @@
 package it.eng.datatransfer.service.api;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 import org.apache.tomcat.util.codec.binary.Base64;
 import org.apache.tomcat.util.http.fileupload.IOUtils;
@@ -133,7 +133,7 @@ public class RestArtifactService {
 	}
 	
 	private TransferProcess getTransferProcessForTransactionId(String transactionId) {
-		String[] tokens = new String(Base64.decodeBase64URLSafe(transactionId), Charset.forName("UTF-8")).split("\\|");
+		String[] tokens = new String(Base64.decodeBase64URLSafe(transactionId), StandardCharsets.UTF_8).split("\\|");
 		if (tokens.length != 2) {
 			log.error("Wrong transaction id");
 			throw new DownloadException("Wrong transaction id", HttpStatus.BAD_REQUEST);

@@ -5,21 +5,21 @@ import org.springframework.stereotype.Service;
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
 import it.eng.negotiation.exception.PolicyEnforcementException;
 import it.eng.negotiation.model.Agreement;
+import it.eng.negotiation.policy.model.PolicyDecision;
+import it.eng.negotiation.policy.service.PolicyEnforcementPoint;
 import it.eng.negotiation.repository.AgreementRepository;
-import it.eng.negotiation.service.policy.PolicyEnforcementService;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
 public class AgreementAPIService {
 	
-	private final PolicyEnforcementService policyEnforcementService;
+	private final PolicyEnforcementPoint policyEnforcementPoint;
 	private final AgreementRepository agreementRepository;
 	
-	public AgreementAPIService(AgreementRepository agreementRepository,
-			PolicyEnforcementService policyEnforcementService) {
+	public AgreementAPIService(AgreementRepository agreementRepository, PolicyEnforcementPoint policyEnforcementPoint) {
 		super();
-		this.policyEnforcementService = policyEnforcementService;
+		this.policyEnforcementPoint = policyEnforcementPoint;
 		this.agreementRepository = agreementRepository;
 	}
 
@@ -29,8 +29,11 @@ public class AgreementAPIService {
 		// TODO add additional checks like contract dates
 		//		LocalDateTime agreementStartDate = LocalDateTime.parse(agreement.getTimestamp(), FORMATTER);
 		//		agreementStartDate.isBefore(LocalDateTime.now());
-		boolean agreementValid = policyEnforcementService.isAgreementValid(agreement);
-		if(agreementValid) {
+		
+		PolicyDecision policyDecision = policyEnforcementPoint.enforcePolicy(agreement, "enforceAgreement");
+		
+//		boolean agreementValid = policyEnforcementService.isAgreementValid(agreement);
+		if(policyDecision.isAllowed()) {
 			log.info("Agreement is valid");
 		} else {
 			log.info("Agreement is invalid");

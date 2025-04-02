@@ -19,12 +19,12 @@ import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
 import it.eng.negotiation.model.ContractOfferMessage;
 import it.eng.negotiation.model.Offer;
+import it.eng.negotiation.policy.service.PolicyAdministrationPoint;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.serializer.NegotiationSerializer;
-import it.eng.negotiation.service.policy.PolicyEnforcementService;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.datatransfer.InitializeTransferProcess;
 import it.eng.tools.model.IConstants;
@@ -35,15 +35,15 @@ import lombok.extern.slf4j.Slf4j;
 public class ContractNegotiationConsumerService extends BaseProtocolService {
 
 	private final AgreementRepository agreementRepository;
-	private final PolicyEnforcementService policyEnforcementService;
+	private final PolicyAdministrationPoint policyAdministrationPoint;
 	
 	public ContractNegotiationConsumerService(ContractNegotiationPublisher publisher,
 			ContractNegotiationRepository contractNegotiationRepository, OkHttpRestClient okHttpRestClient,
 			ContractNegotiationProperties properties, OfferRepository offerRepository,
-			AgreementRepository agreementRepository, PolicyEnforcementService policyEnforcementService) {
+			AgreementRepository agreementRepository, PolicyAdministrationPoint policyAdministrationPoint) {
 		super(publisher, contractNegotiationRepository, okHttpRestClient, properties, offerRepository);
 		this.agreementRepository = agreementRepository;
-		this.policyEnforcementService = policyEnforcementService;
+		this.policyAdministrationPoint = policyAdministrationPoint;
 	}
 
 	/*
@@ -119,6 +119,11 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
     			.role(contractNegotiation.getRole())
     			.offer(contractNegotiation.getOffer())
     			.agreement(contractAgreementMessage.getAgreement())
+    			.created(contractNegotiation.getCreated())
+    			.createdBy(contractNegotiation.getCreatedBy())
+    			.modified(contractNegotiation.getModified())
+    			.lastModifiedBy(contractNegotiation.getLastModifiedBy())
+    			.version(contractNegotiation.getVersion())
     			.build();
     	log.info("CONSUMER - updating negotiation with state AGREED");
     	contractNegotiationRepository.save(contractNegotiationAgreed);
@@ -163,7 +168,7 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
 		contractNegotiationRepository.save(contractNegotiationUpdated);
 		
 		log.debug("Creating polcyEnforcement for agreementId {}", contractNegotiation.getAgreement().getId());
-		policyEnforcementService.createPolicyEnforcement(contractNegotiation.getAgreement().getId());
+		policyAdministrationPoint.createPolicyEnforcement(contractNegotiation.getAgreement().getId());
 		publisher.publishEvent(new InitializeTransferProcess(
 				contractNegotiationUpdated.getCallbackAddress(),
 				contractNegotiationUpdated.getAgreement().getId(),

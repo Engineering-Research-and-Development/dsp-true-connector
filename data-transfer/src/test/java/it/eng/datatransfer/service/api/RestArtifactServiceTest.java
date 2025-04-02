@@ -6,7 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 import org.apache.tomcat.util.codec.binary.Base64;
 import org.apache.tomcat.util.http.fileupload.IOUtils;
@@ -85,12 +85,13 @@ public class RestArtifactServiceTest {
 	
 	private static final String CONSUMER_PID = "urn:uuid:CONSUMER_PID_TRANSFER";
 	private static final String PROVIDER_PID = "urn:uuid:PROVIDER_PID_TRANSFER";
-	private static final String TRANSACTION_ID = Base64.encodeBase64URLSafeString((CONSUMER_PID + "|" + PROVIDER_PID).getBytes(Charset.forName("UTF-8")));
+	private static final String TRANSACTION_ID = Base64.encodeBase64URLSafeString((CONSUMER_PID + "|" + PROVIDER_PID)
+			.getBytes(StandardCharsets.UTF_8));
 	
 	@Test
 	@DisplayName("Get artifact - decode transactionId fail")
 	public void getArtifact_decodeTransactionIdFail() {
-		String badTransactionId = Base64.encodeBase64URLSafeString((CONSUMER_PID + PROVIDER_PID).getBytes(Charset.forName("UTF-8")));
+		String badTransactionId = Base64.encodeBase64URLSafeString((CONSUMER_PID + PROVIDER_PID).getBytes(StandardCharsets.UTF_8));
 		
 		assertThrows(DownloadException.class, () -> restArtifactService.getArtifact(badTransactionId, mockHttpServletResponse));
 	}
