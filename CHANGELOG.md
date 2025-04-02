@@ -1,7 +1,7 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [0.1.4-SNAPSHOT] - 01.04.2025.
+## [0.1.4-SNAPSHOT] - 02.04.2025.
 
 ### Added
  - New policy related classes in Negotiation module (domain, evaluators, service classes; PIP, PDP, PEP, PAP)
