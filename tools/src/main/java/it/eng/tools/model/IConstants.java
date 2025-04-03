@@ -19,6 +19,7 @@ public interface IConstants {
 	public static final String AUTH_BASIC = "Basic";
 	public static final String TEMPORARY_CONSUMER_PID = "temporary_consumer_pid";
 	public static final String TEMPORARY_PROVIDER_PID = "temporary_provider_pid";
-	
-	
+
+
+    String ATTACHMENT_FILENAME = "attachment;filename=";
 }

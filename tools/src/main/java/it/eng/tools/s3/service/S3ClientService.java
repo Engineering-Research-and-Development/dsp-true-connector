@@ -1,4 +1,7 @@
-package it.eng.datatransfer.s3.service;
+package it.eng.tools.s3.service;
+
+import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 import java.time.Duration;
 
@@ -44,10 +47,10 @@ public interface S3ClientService {
      * Downloads a file from the specified bucket with the specified object key.
      *
      * @param bucketName the name of the bucket to download from
-     * @param objectKey the key of the object to download
+     * @param objectKey  the key of the object to download
      * @return the downloaded data
      */
-    byte[] downloadFile(String bucketName, String objectKey);
+    ResponseBytes<GetObjectResponse> downloadFile(String bucketName, String objectKey);
     
     /**
      * Deletes a file from the specified bucket with the specified object key.

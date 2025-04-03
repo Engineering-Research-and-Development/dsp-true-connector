@@ -1,11 +1,8 @@
-package it.eng.datatransfer.s3.service;
+package it.eng.tools.s3.service;
 
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
 
-import it.eng.datatransfer.properties.S3Properties;
-import org.springframework.http.HttpHeaders;
+import it.eng.tools.s3.properties.S3Properties;
 import org.springframework.stereotype.Service;
 
 import lombok.extern.slf4j.Slf4j;
@@ -102,17 +99,13 @@ public class S3ClientServiceImpl implements S3ClientService {
     }
 
     @Override
-    public void uploadFile(String bucketName, String objectKey, byte[] data, String contentType, String fileName) {
+    public void uploadFile(String bucketName, String objectKey, byte[] data, String contentType, String contentDisposition) {
         try {
-            Map<String, String> metadata = new HashMap<>();
-            metadata.put(HttpHeaders.CONTENT_TYPE, contentType);
-            metadata.put("filename", fileName);
-
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                     .bucket(bucketName)
                     .key(objectKey)
                     .contentType(contentType)
-                    .metadata(metadata)
+                    .contentDisposition(contentDisposition)
                     .build();
 
             s3Client.putObject(putObjectRequest, RequestBody.fromBytes(data));
@@ -124,7 +117,7 @@ public class S3ClientServiceImpl implements S3ClientService {
     }
 
     @Override
-    public byte[] downloadFile(String bucketName, String objectKey) {
+    public ResponseBytes<GetObjectResponse> downloadFile(String bucketName, String objectKey) {
         try {
             GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                     .bucket(bucketName)
@@ -133,7 +126,7 @@ public class S3ClientServiceImpl implements S3ClientService {
 
             ResponseBytes<GetObjectResponse> objectBytes = s3Client.getObjectAsBytes(getObjectRequest);
             log.info("File {} downloaded successfully from bucket {}", objectKey, bucketName);
-            return objectBytes.asByteArray();
+            return objectBytes;
         } catch (NoSuchKeyException e) {
             log.error("File {} not found in bucket {}", objectKey, bucketName);
             throw new RuntimeException("File not found: " + e.getMessage(), e);

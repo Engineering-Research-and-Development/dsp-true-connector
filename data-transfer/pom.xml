@@ -65,13 +65,6 @@
 			<version>2.2.3</version>
 		</dependency>
 
-		<!-- AWS S3 SDK -->
-		<dependency>
-			<groupId>software.amazon.awssdk</groupId>
-			<artifactId>s3</artifactId>
-			<version>2.20.56</version>
-		</dependency>
-
 		<!-- TEST -->
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>

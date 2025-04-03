@@ -1,13 +1,12 @@
 package it.eng.datatransfer.service.api;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import it.eng.datatransfer.properties.S3Properties;
-import it.eng.datatransfer.s3.service.S3ClientService;
+import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.S3ClientService;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tomcat.util.codec.binary.Base64;
 import org.springframework.context.ApplicationEventPublisher;
@@ -48,12 +47,12 @@ import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 @Service
 @Slf4j
 public class DataTransferAPIService {
-
-	private static final String ATTACHMENT_FILENAME = "attachment;filename=";
 
 	private final TransferProcessRepository transferProcessRepository;
 	private final OkHttpRestClient okHttpRestClient;
@@ -440,18 +439,22 @@ public class DataTransferAPIService {
 		log.info("Downloaded transfer process id - {} data!", transferProcessId);
 
 		log.info("Storing transfer process id - {} data...", transferProcessId);
-		String bucketName = s3Properties.getBucketName();
-		String objectKey = transferProcessId;
-		String contentType = response.getData().getContentType().toString();
 
 		// Create bucket if it doesn't exist
-		if (!s3ClientService.bucketExists(bucketName)) {
-			s3ClientService.createBucket(bucketName);
+		if (!s3ClientService.bucketExists(s3Properties.getBucketName())) {
+			s3ClientService.createBucket(s3Properties.getBucketName());
 		}
 
+
 		// Upload file to S3
-		s3ClientService.uploadFile(bucketName, objectKey, response.getData().getData(), contentType, );
-		log.info("Stored transfer process id - {} data!", transferProcessId);
+        try {
+            s3ClientService.uploadFile(s3Properties.getBucketName(), transferProcessId, response.getData().getData(),
+                    response.getData().getContentType().toString(), response.getData().getContentDisposition());
+        } catch (Exception e) {
+			log.error("File storing aborted, {}", e.getMessage());
+            throw new DataTransferAPIException("File storing aborted, " + e.getMessage());
+        }
+        log.info("Stored transfer process id - {} data!", transferProcessId);
 
 		TransferProcess transferProcessWithData = TransferProcess.Builder.newInstance()
 				.id(transferProcess.getId())
@@ -461,7 +464,7 @@ public class DataTransferAPIService {
 				.callbackAddress(transferProcess.getCallbackAddress())
 	   			.dataAddress(transferProcess.getDataAddress())
 	   			.isDownloaded(true)
-				.dataId(objectKey) // Store object key instead of MongoDB ObjectId
+				.dataId(transferProcessId)
 				.format(transferProcess.getFormat())
 				.state(transferProcess.getState())
 				.role(transferProcess.getRole())
@@ -491,30 +494,27 @@ public class DataTransferAPIService {
 
 		policyCheck(transferProcess);
 
-		String bucketName = s3Properties.getBucketName();
-		String objectKey = transferProcess.getDataId();
-
 		// Check if file exists in S3
-		if (!s3ClientService.fileExists(bucketName, objectKey)) {
+		if (!s3ClientService.fileExists(s3Properties.getBucketName(), transferProcessId)) {
 			log.error("Data not found in S3");
 			throw new DataTransferAPIException("Data not found in S3");
 		}
 
 		try {
 			// Download file from S3
-			byte[] data = s3ClientService.downloadFile(bucketName, objectKey);
+			ResponseBytes<GetObjectResponse> s3Response = s3ClientService.downloadFile(s3Properties.getBucketName(), transferProcessId);
 
 			// Set response headers
 			response.setStatus(HttpStatus.OK.value());
-			response.setContentType("application/octet-stream"); // Set appropriate content type
-			response.setHeader(HttpHeaders.CONTENT_DISPOSITION, ATTACHMENT_FILENAME + objectKey);
+			response.setContentType(s3Response.response().contentType());
+			response.setHeader(HttpHeaders.CONTENT_DISPOSITION, s3Response.response().contentDisposition());
 
 			// Write data to response
-			response.getOutputStream().write(data);
+			response.getOutputStream().write(s3Response.asByteArray());
 			response.flushBuffer();
 
 			publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId()));
-		} catch (IOException e) {
+		} catch (Exception e) {
 			log.error("Error while accessing data", e);
 			throw new DataTransferAPIException("Error while accessing data" + e.getLocalizedMessage());
 		}

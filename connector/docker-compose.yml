@@ -4,11 +4,22 @@ services:
     image: mongo:7.0.12
     ports:
       - "27017:27017"
-    
     volumes:
       - mongodb-data:/data/db
       - mongodb-configdb:/data/configdb
+      
+  minio:
+    image: docker.io/bitnami/minio:2022
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - minio_data:/data
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
 
 volumes:
   mongodb-data:
   mongodb-configdb:
+  minio_data:

@@ -1,7 +1,8 @@
-package it.eng.datatransfer.s3.configuration;
+package it.eng.tools.s3.configuration;
 
 import java.net.URI;
 
+import it.eng.tools.s3.properties.S3Properties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -9,7 +10,6 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.S3Configuration.Builder;
 
 @Configuration
 public class S3Configuration {
@@ -26,12 +26,6 @@ public class S3Configuration {
         String accessKey = s3Properties.getAccessKey();
         String secretKey = s3Properties.getSecretKey();
         String region = s3Properties.getRegion();
-        
-        // Default values for tests if properties are null
-        if (endpoint == null) endpoint = "http://localhost:9000";
-        if (accessKey == null) accessKey = "minioadmin";
-        if (secretKey == null) secretKey = "minioadmin";
-        if (region == null) region = "us-east-1";
         
         return S3Client.builder()
             .endpointOverride(URI.create(endpoint))
