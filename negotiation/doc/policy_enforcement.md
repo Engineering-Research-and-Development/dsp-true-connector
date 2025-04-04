@@ -30,14 +30,14 @@ Logic for providing additional information needed for policy evaluation
  - update access count 
  - does policyEnforcement exists by agreementId
  
-## Supported policies
+## Supported policies (constraints)
 
 | Policy | Left Operand | Operators | Right Operand | Example |
 | :---- | :---- | :---- | :---- | :---- |
 | [Number of usages](../src/main/java/it/eng/negotiation/policy/evaluator/AccessCountPolicyEvaluator.java) | COUNT | LT,  LTEQ | Number (as String) | 5 |
 | [Date time](../src/main/java/it/eng/negotiation/policy/evaluator/TemporalPolicyEvaluator.java) | DATE_TIME | LT, GT | Date time in UTC (as String) | 2024-10-01T06:00:00Z |
-| [Purpose](../src/main/java/it/eng/negotiation/policy/evaluator/PurposePolicyEvaluator.java) | DATE_TIME | IS_ANY_OF, EQ | Purpose (as String) | demo (default value for property) |
-| [Spatial](../src/main/java/it/eng/negotiation/policy/evaluator/SpatialPolicyEvaluator.java) | DATE_TIME | IS_ANY_OF, EQ | Location (as String) | EU (current value in property) |
+| [Purpose](../src/main/java/it/eng/negotiation/policy/evaluator/PurposePolicyEvaluator.java) | PURPOSE | IS_ANY_OF, EQ | Purpose (as String) | demo (default value for property) |
+| [Spatial](../src/main/java/it/eng/negotiation/policy/evaluator/SpatialPolicyEvaluator.java) | SPATIAL | IS_ANY_OF, EQ | Location (as String) | EU (current value in property) |
 
 
 
