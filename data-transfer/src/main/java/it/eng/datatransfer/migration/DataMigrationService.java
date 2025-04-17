@@ -1,23 +1,28 @@
 package it.eng.datatransfer.migration;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
 import it.eng.tools.model.IConstants;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.gridfs.GridFsResource;
 import org.springframework.data.mongodb.gridfs.GridFsTemplate;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 
 import com.mongodb.client.gridfs.GridFSBucket;
@@ -63,7 +68,7 @@ public class DataMigrationService {
      * Migrates data from MongoDB GridFS to S3 when the application starts.
      * This method is triggered by the ApplicationReadyEvent.
      */
-    @EventListener(ApplicationReadyEvent.class)
+//    @EventListener(ApplicationReadyEvent.class)
     public void migrateDataOnStartup() {
         log.info("Starting data migration from MongoDB GridFS to S3...");
         
@@ -237,6 +242,36 @@ public class DataMigrationService {
         } catch (Exception e) {
             log.error("Error during data migration", e);
             return "Error during data migration: " + e.getMessage();
+        }
+    }
+
+    /**
+     * Loads mock data into S3 when the application is ready.
+     * This method is triggered by the ApplicationReadyEvent.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    public void loadMockData() {
+        log.info("Uploading mock data to S3...");
+
+        try {
+            // Create S3 bucket if it doesn't exist
+            String bucketName = s3Properties.getBucketName();
+            if (!s3ClientService.bucketExists(bucketName)) {
+                s3ClientService.createBucket(bucketName);
+                log.info("Created S3 bucket: {}", bucketName);
+            }
+
+            File file = new ClassPathResource("ENG-employee.json").getFile();
+            // from initial_data.json Artifacts.value
+            String fileKey = "urn:uuid:fdc45798-empl-json-8baf-vc3gh22qh3j8";
+            String contentDisposition = ContentDisposition.attachment()
+                    .filename(file.getName())
+                    .build()
+                    .toString();
+
+            s3ClientService.uploadFile(bucketName, fileKey, FileUtils.readFileToByteArray(file), MediaType.APPLICATION_JSON_VALUE, contentDisposition);
+        } catch (Exception e) {
+            log.error("Error while loading mock data to S3", e);
         }
     }
 }

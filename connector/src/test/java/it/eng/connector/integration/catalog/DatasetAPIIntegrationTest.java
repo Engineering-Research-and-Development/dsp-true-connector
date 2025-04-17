@@ -16,6 +16,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import it.eng.tools.model.IConstants;
+import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.S3ClientService;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
@@ -58,6 +61,8 @@ import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
 import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.response.GenericApiResponse;
+import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 	
@@ -71,14 +76,20 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 	private DatasetRepository datasetRepository;
 	
 	@Autowired
+	private S3ClientService s3ClientService;
+
+	@Autowired
+	private S3Properties s3Properties;
+
+	@Autowired
 	private MongoTemplate mongoTemplate;
-	
-	@InjectWireMock 
+
+	@InjectWireMock
 	private WireMockServer wiremock;
-	
+
 	private static final String CONTENT_TYPE_FIELD = "_contentType";
 	private static final String DATASET_ID_METADATA = "datasetId";
-	
+
 	@AfterEach
 	private void cleanup() {
 		catalogRepository.deleteAll();
@@ -323,17 +334,12 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 		assertEquals(ArtifactType.FILE, artifactFromDb.getArtifactType());
 		assertEquals(initialArtifactSize + 1, artifactRepository.findAll().size());
 		
-		// check if the file is inserted in the database
-		GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
-		ObjectId fileIdentifier = new ObjectId(artifactFromDb.getValue());
-		Bson query = Filters.eq("_id", fileIdentifier);
-		GridFSFile fileInDb = gridFSBucket.find(query).first();
-		GridFSDownloadStream gridFSDownloadStream = gridFSBucket.openDownloadStream(fileInDb.getObjectId());
-		GridFsResource gridFsResource = new GridFsResource(fileInDb, gridFSDownloadStream);
+		// check if the file is inserted in S3
+		ResponseBytes<GetObjectResponse> s3Response = s3ClientService.downloadFile(s3Properties.getBucketName(), artifactFromDb.getValue());
 		
-		assertEquals(filePart.getContentType(), gridFsResource.getContentType());
-		assertEquals(filePart.getOriginalFilename(), gridFsResource.getFilename());
-		assertEquals(fileContent, gridFsResource.getContentAsString(StandardCharsets.UTF_8));
+		assertEquals(filePart.getContentType(), s3Response.response().contentType());
+		assertEquals(filePart.getOriginalFilename(), s3Response.response().contentDisposition().lastIndexOf(IConstants.ATTACHMENT_FILENAME));
+		assertEquals(fileContent, s3Response.asUtf8String());
 		// 1 from initial data + 1 from test
 		assertEquals(initialFileSize + 1, mongoTemplate.getCollection(FS_FILES).countDocuments());
 		

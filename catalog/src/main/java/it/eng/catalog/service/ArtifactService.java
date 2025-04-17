@@ -1,23 +1,18 @@
 package it.eng.catalog.service;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
+import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.util.ToolsUtil;
 import org.apache.commons.lang3.StringUtils;
-import org.bson.Document;
-import org.bson.types.ObjectId;
-import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.http.ContentDisposition;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.mongodb.client.gridfs.GridFSBucket;
-import com.mongodb.client.gridfs.GridFSBuckets;
-import com.mongodb.client.gridfs.model.GridFSUploadOptions;
-
 import it.eng.catalog.exceptions.CatalogErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
-import it.eng.catalog.model.Dataset;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
 import it.eng.tools.repository.ArtifactRepository;
@@ -27,18 +22,16 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ArtifactService {
 
-	// taken from GridFsResource.CONTENT_TYPE_FIELD
-	private static final String CONTENT_TYPE_FIELD = "_contentType";
-	private static final String DATASET_ID_METADATA = "datasetId";
-	
-	private final MongoTemplate mongoTemplate;
 	private final ArtifactRepository artifactRepository;
+	private final S3ClientService s3ClientService;
+	private final S3Properties s3Properties;
 	
-	public ArtifactService(MongoTemplate mongoTemplate, ArtifactRepository artifactRepository) {
+	public ArtifactService(ArtifactRepository artifactRepository, S3ClientService s3ClientService, S3Properties s3Properties) {
 		super();
-		this.mongoTemplate = mongoTemplate;
 		this.artifactRepository = artifactRepository;
-	}
+        this.s3ClientService = s3ClientService;
+        this.s3Properties = s3Properties;
+    }
 
 	public List<Artifact> getArtifacts(String artifactId) {
 		if(StringUtils.isNotBlank(artifactId)) {
@@ -52,13 +45,13 @@ public class ArtifactService {
 		return artifactRepository.findAll();
 	}
 
-	public Artifact uploadArtifact(Dataset dataset, MultipartFile file, String externalURL, String authorization) {
+	public Artifact uploadArtifact(MultipartFile file, String externalURL, String authorization) {
 		Artifact artifact = null;
 		if (file != null) {
-			ObjectId fileId = storeFile(file, dataset);
+			String fileId = storeFile(file);
 			artifact = Artifact.Builder.newInstance()
 					.artifactType(ArtifactType.FILE)
-					.value(fileId.toHexString())
+					.value(fileId)
 					.contentType(file.getContentType())
 					.filename(file.getOriginalFilename())
 					.build();
@@ -85,11 +78,9 @@ public class ArtifactService {
 		}
 		case FILE: {
 			try {
-				GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
-				ObjectId objectId = new ObjectId(artifact.getValue());
-				gridFSBucket.delete(objectId);
+				s3ClientService.deleteFile(s3Properties.getBucketName(), artifact.getValue());
 			} catch (Exception e) {
-				log.warn("!!!!!  Artifact {}, had no data to delete proceeding with artifact removal  !!!!!");
+				log.warn("Error while deleting file from S3: {}", e.getMessage());
 			}
 			break;
 		}
@@ -99,21 +90,28 @@ public class ArtifactService {
 		artifactRepository.delete(artifact);
 	}
 
-	private ObjectId storeFile(MultipartFile file, Dataset dataset) {
+	private String storeFile(MultipartFile file) {
+		// Create bucket if it doesn't exist
+		if (!s3ClientService.bucketExists(s3Properties.getBucketName())) {
+			s3ClientService.createBucket(s3Properties.getBucketName());
+		}
+
+		ContentDisposition contentDisposition = ContentDisposition.attachment()
+				.filename(file.getOriginalFilename())
+				.build();
+
+		String fileId = ToolsUtil.generateUniqueId();
+
+		// Upload file to S3
 		try {
-			GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
-			Document doc = new Document();
-			//TODO check what happens if file.getContentType() is null
-			doc.append(CONTENT_TYPE_FIELD, file.getContentType());
-			doc.append(DATASET_ID_METADATA, dataset.getId());
-			GridFSUploadOptions options = new GridFSUploadOptions()
-			        .chunkSizeBytes(1048576) // 1MB chunk size
-			        .metadata(doc);
-			return gridFSBucket.uploadFromStream(file.getOriginalFilename(), file.getInputStream(), options);
+			s3ClientService.uploadFile(s3Properties.getBucketName(), fileId, file.getBytes(),
+					file.getContentType(), contentDisposition.toString());
+		} catch (Exception e) {
+			log.error("File storing aborted", e);
+			throw new CatalogErrorAPIException("File storing aborted, " + e.getLocalizedMessage());
 		}
-		catch (IOException e) {
-			log.error("Error while uploading file", e);
-			throw new CatalogErrorAPIException("Failed to store file. " + e.getLocalizedMessage());
-		}
+		log.info("Stored file {} under id {}", file.getOriginalFilename() ,fileId);
+
+		return fileId;
 	}
 }

@@ -148,7 +148,7 @@ public class DatasetServiceTest {
     @DisplayName("Save dataset - success")
     public void saveDataset_success() {
         when(repository.save(any(Dataset.class))).thenReturn(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT);
-        when(artifactService.uploadArtifact(CatalogMockObjectUtil.DATASET, null, CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), null))
+        when(artifactService.uploadArtifact(null, CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), null))
         .thenReturn(CatalogMockObjectUtil.ARTIFACT_EXTERNAL);
 
         Dataset result = datasetService.saveDataset(CatalogMockObjectUtil.DATASET, null, CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), null);
@@ -166,7 +166,7 @@ public class DatasetServiceTest {
     @Test
     @DisplayName("Save dataset - fail - no artifact")
     public void saveDataset_fail() {
-    	when(artifactService.uploadArtifact(CatalogMockObjectUtil.DATASET, null, null, null))
+    	when(artifactService.uploadArtifact(null, null, null))
         .thenThrow(CatalogErrorAPIException.class);
     	assertThrows(InternalServerErrorAPIException.class, () -> datasetService.saveDataset(CatalogMockObjectUtil.DATASET, null, null, null));
     }
@@ -176,7 +176,7 @@ public class DatasetServiceTest {
 	public void updateDataset_success() {
 	    when(repository.findById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId())).thenReturn(Optional.of(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT));
 	    when(repository.save(any(Dataset.class))).thenReturn(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT);
-	    when(artifactService.uploadArtifact(any(Dataset.class), isNull(), anyString(), isNull()))
+	    when(artifactService.uploadArtifact(isNull(), anyString(), isNull()))
 	    .thenReturn(CatalogMockObjectUtil.ARTIFACT_EXTERNAL);
 	
 	    Dataset result = datasetService.updateDataset(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(),

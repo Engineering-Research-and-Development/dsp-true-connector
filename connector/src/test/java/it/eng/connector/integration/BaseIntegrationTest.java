@@ -27,6 +27,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.testcontainers.containers.MinIOContainer;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.wiremock.spring.EnableWireMock;
@@ -55,10 +56,15 @@ public class BaseIntegrationTest {
 	
 	protected static final String FS_FILES = "fs.files";
 	protected static final String FS_CHUNKS = "fs.chunks";
-	// starts a mongodb container; the container is shared among all tests; docker must be running
-	protected static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:7.0.12").withExposedPorts(27017);
-	
-   @Autowired
+	// starts a mongodb and minio container; the containers are shared among all tests; docker must be running
+	protected static final MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:7.0.12").withExposedPorts(27017);
+	protected static final MinIOContainer minIOContainer = new MinIOContainer("minio/minio:latest")
+			.withUserName("minioadmin")
+			.withPassword("minioadmin")
+			.withExposedPorts(9001);
+
+
+	@Autowired
    protected MockMvc mockMvc;
    protected JsonMapper jsonMapper;
    
@@ -68,6 +74,7 @@ public class BaseIntegrationTest {
 
 	static {
 		mongoDBContainer.start();
+		minIOContainer.start();
 	}
 
 	@DynamicPropertySource

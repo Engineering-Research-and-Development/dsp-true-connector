@@ -1,26 +1,19 @@
 package it.eng.datatransfer.service.api;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
+import it.eng.datatransfer.exceptions.DataTransferAPIException;
+import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.S3ClientService;
 import org.apache.tomcat.util.codec.binary.Base64;
-import org.apache.tomcat.util.http.fileupload.IOUtils;
-import org.bson.conversions.Bson;
-import org.bson.types.ObjectId;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.gridfs.GridFsResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.mongodb.client.gridfs.GridFSBucket;
-import com.mongodb.client.gridfs.GridFSBuckets;
-import com.mongodb.client.gridfs.GridFSDownloadStream;
-import com.mongodb.client.gridfs.model.GridFSFile;
-import com.mongodb.client.model.Filters;
 
 import it.eng.datatransfer.exceptions.DownloadException;
 import it.eng.datatransfer.model.TransferProcess;
@@ -34,24 +27,30 @@ import it.eng.tools.model.ExternalData;
 import it.eng.tools.response.GenericApiResponse;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 @Service
 @Slf4j
 public class RestArtifactService {
 
 	private final DataTransferService dataTransferService;
-	private final MongoTemplate mongoTemplate;
-	private final OkHttpRestClient okHttpRestClient;
+    private final OkHttpRestClient okHttpRestClient;
 	private final ApplicationEventPublisher publisher;
-	private GridFsResource gridFsResource;
-	
-	public RestArtifactService(DataTransferService dataTransferService, MongoTemplate mongoTemplate,
-			OkHttpRestClient okHttpRestClient, ApplicationEventPublisher publisher) {
+	private final S3ClientService s3ClientService;
+	private final S3Properties s3Properties;
+
+	public RestArtifactService(DataTransferService dataTransferService,
+							   OkHttpRestClient okHttpRestClient,
+							   ApplicationEventPublisher publisher,
+							   S3ClientService s3ClientService,
+							   S3Properties s3Properties) {
 		super();
 		this.dataTransferService = dataTransferService;
-		this.mongoTemplate = mongoTemplate;
-		this.okHttpRestClient = okHttpRestClient;
+        this.okHttpRestClient = okHttpRestClient;
 		this.publisher = publisher;
+		this.s3ClientService = s3ClientService;
+		this.s3Properties = s3Properties;
 	}
 
 	public void getArtifact(String transactionId, HttpServletResponse response) {
@@ -86,23 +85,23 @@ public class RestArtifactService {
 	}
 
 	private void getFile(String fileId, HttpServletResponse response) {
-	 	GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
-	 	ObjectId fileIdentifier = new ObjectId(fileId);
-	 	Bson query = Filters.eq("_id", fileIdentifier);
-	 	GridFSFile file = gridFSBucket.find(query).first();
-        if (file != null) {
-            GridFSDownloadStream gridFSDownloadStream = gridFSBucket.openDownloadStream(file.getObjectId());
-            gridFsResource = new GridFsResource(file, gridFSDownloadStream);
-        } else {
-	        log.error("File not found in database");
-			throw new DownloadException("Data not found", HttpStatus.NOT_FOUND);
-        }
-		
+		// Check if file exists in S3
+		if (!s3ClientService.fileExists(s3Properties.getBucketName(), fileId)) {
+			log.error("Data not found in S3");
+			throw new DataTransferAPIException("Data not found in S3");
+		}
+
 		try {
+			// Download file from S3
+			ResponseBytes<GetObjectResponse> s3Response = s3ClientService.downloadFile(s3Properties.getBucketName(), fileId);
+
+			// Set response headers
 			response.setStatus(HttpStatus.OK.value());
-			response.setContentType(gridFsResource.getContentType());
-			response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + gridFsResource.getFilename());
-			IOUtils.copyLarge(gridFsResource.getInputStream(), response.getOutputStream());
+			response.setContentType(s3Response.response().contentType());
+			response.setHeader(HttpHeaders.CONTENT_DISPOSITION, s3Response.response().contentDisposition());
+
+			// Write data to response
+			response.getOutputStream().write(s3Response.asByteArray());
 			response.flushBuffer();
 		} catch (IOException e) {
 			log.error("Error while sending file", e);
@@ -133,7 +132,7 @@ public class RestArtifactService {
 	}
 	
 	private TransferProcess getTransferProcessForTransactionId(String transactionId) {
-		String[] tokens = new String(Base64.decodeBase64URLSafe(transactionId), Charset.forName("UTF-8")).split("\\|");
+		String[] tokens = new String(Base64.decodeBase64URLSafe(transactionId), StandardCharsets.UTF_8).split("\\|");
 		if (tokens.length != 2) {
 			log.error("Wrong transaction id");
 			throw new DownloadException("Wrong transaction id", HttpStatus.BAD_REQUEST);
