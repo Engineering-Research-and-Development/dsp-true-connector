@@ -8,6 +8,10 @@ All notable changes to this project will be documented in this file.
 
 - Created and Modifed date fields set to Instant.now on creation
 
+### Changed
+
+- Removed PDF and JSON as distributions and using HTTP Data PULL
+
 ## [0.1.5-SNAPSHOT] - 23.04.2025.
 
 ### Changed
