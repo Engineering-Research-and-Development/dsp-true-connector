@@ -91,6 +91,18 @@ public class NegotiationMockObjectUtil {
 			.constraint(Arrays.asList(NegotiationMockObjectUtil.CONSTRAINT_COUNT_5))
 			.build();
 	
+	public static final Permission PERMISSION_SPATIAL = Permission.Builder.newInstance()
+			.action(Action.USE)
+			.target(NegotiationMockObjectUtil.TARGET)
+			.constraint(Arrays.asList(NegotiationMockObjectUtil.CONSTRAINT_SPATIAL))
+			.build();
+	
+	public static final Permission PERMISSION_PURPOSE = Permission.Builder.newInstance()
+			.action(Action.USE)
+			.target(NegotiationMockObjectUtil.TARGET)
+			.constraint(Arrays.asList(NegotiationMockObjectUtil.CONSTRAINT_PURPOSE))
+			.build();
+	
 	public static final Offer OFFER = Offer.Builder.newInstance()
 			.target(NegotiationMockObjectUtil.TARGET)
 			.assignee(NegotiationMockObjectUtil.ASSIGNEE)
