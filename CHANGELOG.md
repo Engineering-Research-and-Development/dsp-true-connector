@@ -1,40 +1,60 @@
 # Changelog
+
 All notable changes to this project will be documented in this file.
+
+## [0.1.6-SNAPSHOT] - 24.04.2025.
+
+### Added
+
+- Created and Modifed date fields set to Instant.now on creation
+
+### Changed
+
+- Removed PDF and JSON as distributions and using HTTP Data PULL
+
+## [0.1.5-SNAPSHOT] - 23.04.2025.
+
+### Changed
+
+- Updated documentation, fixed typos and added missing information
 
 ## [0.1.4-SNAPSHOT] - 02.04.2025.
 
 ### Added
- - New policy related classes in Negotiation module (domain, evaluators, service classes; PIP, PDP, PEP, PAP)
- - New Location and Purpose service
- - Added 2 new constraints: SPATIAL and PURPOSE (for now simple evaluation from property file; should be changed with claims)
- - 2 new properties for location and purpose
+
+- New policy related classes in Negotiation module (domain, evaluators, service classes; PIP, PDP, PEP, PAP)
+- New Location and Purpose service
+- Added 2 new constraints: SPATIAL and PURPOSE (for now simple evaluation from property file; should be changed with
+  claims)
+- 2 new properties for location and purpose
 
 ```
 application.usagecontrol.constraint.location=EU
 application.usagecontrol.constraint.purpose=demo
 ```
- - Added audit fields on ContractNegotiation and TransferProcess
+
+- Added audit fields on ContractNegotiation and TransferProcess
 
 ### Changed
 
- - Rewired policy evaluation to newly added logic
- 
+- Rewired policy evaluation to newly added logic
+
 ### Removed
 
- - Old services and validators for count and dateTime
+- Old services and validators for count and dateTime
 
 ## [0.1.3-SNAPSHOT] - 28-03-2025
 
 ### Changed
 
- - fixed issue when Content-Disposition header is not present in the response
+- fixed issue when Content-Disposition header is not present in the response
 
 ## [0.1.2-SNAPSHOT] - 20-03-2025
 
 ### Added
 
- - New GitHub Action script to trigger develop merge and increase version number
- - New GitHub Action script for doing release (set release version, create tag, set next develop version, create dev PR)
+- New GitHub Action script to trigger develop merge and increase version number
+- New GitHub Action script for doing release (set release version, create tag, set next develop version, create dev PR)
 
 ## [0.1.1] - 14-03-2025
 
@@ -55,456 +75,461 @@ application.usagecontrol.constraint.purpose=demo
 
 ### Changed
 
- - separated execution of integration tests (use mvn clean verify for [building](https://maven.apache.org/guides/introduction/introduction-to-the-lifecycle.html) and testing)
+- separated execution of integration tests (use mvn clean verify
+  for [building](https://maven.apache.org/guides/introduction/introduction-to-the-lifecycle.html) and testing)
 
 ## [0.1.1] - 03-03-2025
 
 ### Added
 
- - Added integration tests for distribution and dataservice API
- - Added multiple junit tests for Tools module
+- Added integration tests for distribution and dataservice API
+- Added multiple junit tests for Tools module
 
 ## [0.1.1] - 27-02-2025
 
 ### Changed
 
- - Updated build sequence, enforce checkstyle on build, fails if checkstyle is not OK 
- - Updated javadoc to pass checkstyle
- - Bumped version of embedded mongodb to 7.0.12 (same as Dockerized)
+- Updated build sequence, enforce checkstyle on build, fails if checkstyle is not OK
+- Updated javadoc to pass checkstyle
+- Bumped version of embedded mongodb to 7.0.12 (same as Dockerized)
 
 ## [0.1.1] - 26-02-2025
 
 ### Added
 
- - ApplicationPropertyChangedEvent and listener
+- ApplicationPropertyChangedEvent and listener
 
 ### Changed
 
- - Moved daps properties from property file and using only from Mongo
- - Moved protocol.authentication.enabled from property file and using it from Mongo
- - Update property expects List of properties
- - Postman collection updated
-  
+- Moved daps properties from property file and using only from Mongo
+- Moved protocol.authentication.enabled from property file and using it from Mongo
+- Update property expects List of properties
+- Postman collection updated
+
 ### Removed
 
- - ApplicationProperties endpoint for single property
- 
+- ApplicationProperties endpoint for single property
+
 ## [0.1.1] - 21-02-2025
 
 ### Changed
 
- - Removed catalog data from test scope initial_data.json
- - All IT inserts data before using it/verify logic and does cleanup after test
- - Force buffer flush for get external data and transfer file
+- Removed catalog data from test scope initial_data.json
+- All IT inserts data before using it/verify logic and does cleanup after test
+- Force buffer flush for get external data and transfer file
 
 ## [0.1.1] - 19-02-2025
 
 ### Added
 
- - Added authorization for external artifact
+- Added authorization for external artifact
 
 ## [0.1.1] - 10-02-2025
 
 ### Added
 
- - Added download and view endpoints to Data Transfer API
+- Added download and view endpoints to Data Transfer API
 
 ## [0.1.1] - 28-01-2025
 
 ### Changed
 
- - Deleting the dataset now deletes also the artifact
+- Deleting the dataset now deletes also the artifact
 
 ## [0.1.1] - 27-01-2025
 
 ### Changed
 
- - Artifact logic is directly tied to dataset (you can't insert a dataset without an artifact)
-
+- Artifact logic is directly tied to dataset (you can't insert a dataset without an artifact)
 
 ## [0.1.1] - 15-01-2025
 
 ### Added
 
- - Added delete artifact
+- Added delete artifact
 
 ## [0.1.1] - 09-01-2025
 
 ### Changed
 
- - Rename serializers to match module they belong to (Tools/Catalog/Negotiation/TransferSerializer)
- - ToolsSerializer does not use JacksonAnnotationIntrospector
- - Moved InstantSerializer and InstantDeserializer to tools module
- - Serializer must have following ordering for modules - .addModules(new JavaTimeModule(), instantConverterModule)
- 
+- Rename serializers to match module they belong to (Tools/Catalog/Negotiation/TransferSerializer)
+- ToolsSerializer does not use JacksonAnnotationIntrospector
+- Moved InstantSerializer and InstantDeserializer to tools module
+- Serializer must have following ordering for modules - .addModules(new JavaTimeModule(), instantConverterModule)
+
 ## [0.1.1] - 08-01-2025
 
 ### Added
 
- - Spring profile for reading initial data
- 
+- Spring profile for reading initial data
+
 ### Changed
 
- - Refactor integration tests, split into separate classes
- - Excluded *.json files from target jar archive
+- Refactor integration tests, split into separate classes
+- Excluded *.json files from target jar archive
 
 ## [0.1.1] - 31-12-2024
 
 ### Added
 
- - Added external data download
+- Added external data download
 
 ### Changed
 
- - Now using artifact object for storing file and external metadata and using it on data download
- 
+- Now using artifact object for storing file and external metadata and using it on data download
+
 ## [0.1.1] - 27-12-2024
 
 ### Added
 
- - New password strength validation properties
- - Logic for reading password validation properties and configuring validator
- - Tools Serializer - deserializePlain(String jsonStringPlain, TypeReference<T> typeRef)
+- New password strength validation properties
+- Logic for reading password validation properties and configuring validator
+- Tools Serializer - deserializePlain(String jsonStringPlain, TypeReference<T> typeRef)
 
 ## [0.1.1] - 20-12-2024
 
 ### Added
- 
- - User CRUD endpoints and logic (create user, find, update user and update password)
- - Tools module - ExceptionApiAdvice handler
- - org.passay:passay:1.6.6 and password strength check library
- - GHA API user test cases
+
+- User CRUD endpoints and logic (create user, find, update user and update password)
+- Tools module - ExceptionApiAdvice handler
+- org.passay:passay:1.6.6 and password strength check library
+- GHA API user test cases
 
 ## [0.1.1] - 28-11-2024
 
 ### Added
 
- - Added API Data Transfer GHA tests
+- Added API Data Transfer GHA tests
 
 ### Changed
 
- - Added role check on Data Transfer start message protocol and API endpoints to prevent consumer from sending start message after request message instead of provider
- 
+- Added role check on Data Transfer start message protocol and API endpoints to prevent consumer from sending start
+  message after request message instead of provider
+
 ### Removed
 
- - Removed protocol Data Transfer GHA tests
- 
+- Removed protocol Data Transfer GHA tests
+
 ## [0.1.1] - 27-11-2024
 
 ### Changed
 
- - Moved integration tests into packages
- - ContractNegotiationAPIException accepts ContractNegotiationErrorMessage as parameter
- - ContractNegotiationAPIService when error happens, create ContractNegotiationErrorMessage
- - Dependency changed from de.flapdoodle.embed.mongo.spring30x to de.flapdoodle.embed.mongo.spring3x
- - DataTransferAPIException accepts TransferError as parameter
- - DataTransferApiService when error happens, create TransferError (requestTransfer)
- - TransferProcess and ContractNegotiation sets correct id when deserialized from plain string
+- Moved integration tests into packages
+- ContractNegotiationAPIException accepts ContractNegotiationErrorMessage as parameter
+- ContractNegotiationAPIService when error happens, create ContractNegotiationErrorMessage
+- Dependency changed from de.flapdoodle.embed.mongo.spring30x to de.flapdoodle.embed.mongo.spring3x
+- DataTransferAPIException accepts TransferError as parameter
+- DataTransferApiService when error happens, create TransferError (requestTransfer)
+- TransferProcess and ContractNegotiation sets correct id when deserialized from plain string
 
 ### Added
 
- - Wiremock to simulate provider in integration requests
- - DataTransferApi tests
+- Wiremock to simulate provider in integration requests
+- DataTransferApi tests
 
 ## [0.1.1] - 22-11-2024
 
 ### Changed
 
- - ContractNegotiation.callbackAddress on consumer side value set to provider address
- - Terminate negotiation API request - based on role, it sends to provider protocol address or consumer callback address
+- ContractNegotiation.callbackAddress on consumer side value set to provider address
+- Terminate negotiation API request - based on role, it sends to provider protocol address or consumer callback address
 
 ### Added
 
- - Provider handleTermination request
+- Provider handleTermination request
 
 ## [0.1.1] - 21-11-2024
 
 ### Added
 
- - Added role filter to GET Transport Process API endpoint
+- Added role filter to GET Transport Process API endpoint
 
 ### Changed
 
- - Initiate transfer process API endpoint now uses initialized transfer processes
- - Download now uses data from DB (not the hardcoded John Doe)
+- Initiate transfer process API endpoint now uses initialized transfer processes
+- Download now uses data from DB (not the hardcoded John Doe)
 
 ## [0.1.1] - 19-11-2024
 
 ### Changed
 
- - Changed proxy requests to be POST instead GET (because of mandatory body)
- - GenericApiResponse.timestamp LocalDateTime to ZonedDateTime
- - Updated postman collection
- 
+- Changed proxy requests to be POST instead GET (because of mandatory body)
+- GenericApiResponse.timestamp LocalDateTime to ZonedDateTime
+- Updated postman collection
+
 ## [0.1.1] - 12-11-2024
 
 ### Added
 
- - API proxy endpoints to fetch remote catalog and dct:format for dataset
- 
+- API proxy endpoints to fetch remote catalog and dct:format for dataset
+
 ### Changed
 
- - Updated postman collection 
- 
+- Updated postman collection
+
 ## [0.1.1] - 07-11-2024
 
 ### Added
 
- - TransferRequest initiate - protocol endpoint check if provided dct:format is supported by negotiated dataset
- - OkHttpClient.sendInternalRequest
- 
+- TransferRequest initiate - protocol endpoint check if provided dct:format is supported by negotiated dataset
+- OkHttpClient.sendInternalRequest
+
 ### Changed
 
- - DataTransferFormat.HttpData-PULL (was before HTTP_PULL)
- - GenericApiResponse.timestamp added @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS")
- - Serializers added InstantSerializer, InstantDeserializer and JavaTimeModule
- 
+- DataTransferFormat.HttpData-PULL (was before HTTP_PULL)
+- GenericApiResponse.timestamp added @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS")
+- Serializers added InstantSerializer, InstantDeserializer and JavaTimeModule
+
 ## [0.1.1] - 07-11-2024
 
 ### Added
 
- - New property *application.usagecontrol.enabled=true*
- - Logic for optional usageControl; feature can be turned on or off by setting the property
+- New property *application.usagecontrol.enabled=true*
+- Logic for optional usageControl; feature can be turned on or off by setting the property
 
 ## [0.1.1] - 06-11-2024
 
 ### Changed
 
- - Initiate transfer process protocol endpoint now uses initialized transfer processes
+- Initiate transfer process protocol endpoint now uses initialized transfer processes
 
 ## [0.1.1] - 28-10-2024
 
 ### Added
 
- - Added new INITIALIZE state for Transfer Processes
- - Added logic for creating Transfer Process in INITIALIZE state
- - Added API endpoints to get fileId and dct:format
+- Added new INITIALIZE state for Transfer Processes
+- Added logic for creating Transfer Process in INITIALIZE state
+- Added API endpoints to get fileId and dct:format
 
 ## [0.1.1] - 24-10-2024
 
 ### Added
 
- - Offer validation - check if offer.target == dataset.id
- 
+- Offer validation - check if offer.target == dataset.id
+
 ## [0.1.1] - 23-10-2024
 
 ### Added
 
- - Upload and list artifacts that will be shared as dataset
- - When verifying agreement additional check (policyEnforcement for agreement exists) added
- - New CatalogErrorAPIException that translates to HTTP 400 response
- 
+- Upload and list artifacts that will be shared as dataset
+- When verifying agreement additional check (policyEnforcement for agreement exists) added
+- New CatalogErrorAPIException that translates to HTTP 400 response
+
 ## [0.1.1] - 20-10-2024
 
 ### Added
 
- - Added logic for DataTransfer API
- 
+- Added logic for DataTransfer API
+
 ### Changed
- 
- - DataTransfer now checks that the Agreement exists and that it's linked to a FINALIZED Contract Negotiation
+
+- DataTransfer now checks that the Agreement exists and that it's linked to a FINALIZED Contract Negotiation
 
 ## [0.1.1] - 09-10-2024
 
 ### Added
 
- - Initial logic for policy enforcement (count and dateTime as left operands)
- - PolicyEnforcement model, repo and service classes that holds count for agreement
- - PolicyManager - class that gets access count and update counter when artifact will be accessed
- - AgreementAPI - enforceAgreement logic
- - Event when accessing resource, used to increase count for agreementId
- 
+- Initial logic for policy enforcement (count and dateTime as left operands)
+- PolicyEnforcement model, repo and service classes that holds count for agreement
+- PolicyManager - class that gets access count and update counter when artifact will be accessed
+- AgreementAPI - enforceAgreement logic
+- Event when accessing resource, used to increase count for agreementId
+
 ### Changed
- 
- - Operator TERM_LTEQ to LTEQ
- 
+
+- Operator TERM_LTEQ to LTEQ
+
 ## [0.1.1] - 04-10-2024
 
 ### Added
 
- - New mandatory property application.protocol.authentication.enabled=true
- - DataspaceProtocolEndpointsExceptionHandler - returns valid protocol error based on resource accessed
- - ProtocolEndpointsAuthenticationFilter - filter that creates dummy authorization if security for protocol endpoints is disabled
- - DataspaceProtocolEndpointsAuthenticationEntryPoint - custom authentication class to handle Spring Security errors in protocol way
+- New mandatory property application.protocol.authentication.enabled=true
+- DataspaceProtocolEndpointsExceptionHandler - returns valid protocol error based on resource accessed
+- ProtocolEndpointsAuthenticationFilter - filter that creates dummy authorization if security for protocol endpoints is
+  disabled
+- DataspaceProtocolEndpointsAuthenticationEntryPoint - custom authentication class to handle Spring Security errors in
+  protocol way
 
 ## [0.1.0] - 13-09-2024
 
 ### Added
- 
- - Setup project structure (multimodule maven project:tools, catalog, negotiation, dataTransfer)
- - Catalog protocol and API logic implementation (controller, service, model; junit and integration tests)
- - Negotiation protocol and API logic implementation (controller, service, model; junit and integration tests) - Agreement enforcement is currently checking only if agreement is present, it does not check for constraints
- - Data Transfer protocol logic implementation (controller, service, model; junit and integration tests) - REST pull implementation without authorization, with hardcoded value/artifact
- - Postman collection for testing endpoints	
- - Configured GitHub actions to run tests
- 
+
+- Setup project structure (multimodule maven project:tools, catalog, negotiation, dataTransfer)
+- Catalog protocol and API logic implementation (controller, service, model; junit and integration tests)
+- Negotiation protocol and API logic implementation (controller, service, model; junit and integration tests) -
+  Agreement enforcement is currently checking only if agreement is present, it does not check for constraints
+- Data Transfer protocol logic implementation (controller, service, model; junit and integration tests) - REST pull
+  implementation without authorization, with hardcoded value/artifact
+- Postman collection for testing endpoints
+- Configured GitHub actions to run tests
+
 ## [0.0.1] - 12-09-2024
 
 ### Added
 
- - GHA test for API endpoints
- - Distribution - format as reference
- 
+- GHA test for API endpoints
+- Distribution - format as reference
+
 ### Changed
 
- - DataService is connector
- - Plain serializers returns '@id'
- - Postman collection updated
- - generated identifiers have 'urn:uuid' as prefix (catalog, negotiation and dataTransfer)
- 
+- DataService is connector
+- Plain serializers returns '@id'
+- Postman collection updated
+- generated identifiers have 'urn:uuid' as prefix (catalog, negotiation and dataTransfer)
+
 ### Removed
- 
-  - removed servesDataset from DataService as per protocol (https://docs.internationaldataspaces.org/ids-knowledgebase/v/dataspace-protocol/catalog/catalog.protocol#id-1.1.3-data-service)
+
+- removed servesDataset from DataService as per
+  protocol (https://docs.internationaldataspaces.org/ids-knowledgebase/v/dataspace-protocol/catalog/catalog.protocol#id-1.1.3-data-service)
 
 ## [0.0.1] - 27-08-2024
 
 ### Added
 
- - Added role (consumer or provider) to Contract Negotiation
- - Added Agreement reference to to Contract Negotiation
- 
+- Added role (consumer or provider) to Contract Negotiation
+- Added Agreement reference to to Contract Negotiation
+
 ### Removed
 
- - Removed consumerPid and providerPid from Offer and Agreement
- 
+- Removed consumerPid and providerPid from Offer and Agreement
+
 ## [0.0.1] - xx-08-2024
 
-### Added 
+### Added
 
- - Junit tests to cover Catalog module classes java->String->java2 java.equals(java2) 
+- Junit tests to cover Catalog module classes java->String->java2 java.equals(java2)
 
 ### Changed
 
- - Plain Serializer - JacksonAnnotationIntrospector to skip JsonProperty annotation
- - Model classes implements Serializable
- - Enum classes JsonCreator - create enum from String (plain and protocol string)
- - Builder creates 'id' in "urn:uuid" + UUID.randomUUID() format if 'id' not present
- - Collections reverted to Set
+- Plain Serializer - JacksonAnnotationIntrospector to skip JsonProperty annotation
+- Model classes implements Serializable
+- Enum classes JsonCreator - create enum from String (plain and protocol string)
+- Builder creates 'id' in "urn:uuid" + UUID.randomUUID() format if 'id' not present
+- Collections reverted to Set
 
 ## [0.0.1] - 07-08-2024
 
 ### Added
 
- - TransferTerminationMessage message provider and consumer callback logic (plus junit and integration tests)
- - DataTransferConsumerCallbackTest - integration test class for consumer callback logic
- - DataTransferApiTest - integration test for API logic
- 
+- TransferTerminationMessage message provider and consumer callback logic (plus junit and integration tests)
+- DataTransferConsumerCallbackTest - integration test class for consumer callback logic
+- DataTransferApiTest - integration test for API logic
+
 ### Changed
 
- - Agreement service (filter download url) in data transfer module sends request to check if agreement is valid
- 
+- Agreement service (filter download url) in data transfer module sends request to check if agreement is valid
+
 ## [0.0.1] - 06-08-2024
 
 ### Added
 
- - TransferSuspensionMessage message provider and consumer callback logic (plus junit and integration tests)
- - Added TransferProcessChangeEvent and listener to log transition change
- - DataTransferEventListener - placeholder logic for manipulating data transfers (start/stop/suspend)
- - DataTransferFormat enum
- 
+- TransferSuspensionMessage message provider and consumer callback logic (plus junit and integration tests)
+- Added TransferProcessChangeEvent and listener to log transition change
+- DataTransferEventListener - placeholder logic for manipulating data transfers (start/stop/suspend)
+- DataTransferFormat enum
+
 ### Changed
 
- - Updated GitHub action to include suspend message in transfer artifact
- - SFTP server starting on event published (TransferStartMessage from TransferRequestMessage.foramt=example:SFTP
- 
+- Updated GitHub action to include suspend message in transfer artifact
+- SFTP server starting on event published (TransferStartMessage from TransferRequestMessage.foramt=example:SFTP
+
 ## [0.0.1] - 02-08-2024
 
 ### Added
- 
- - New catalog API exceptions
- 
+
+- New catalog API exceptions
+
 ### Changed
 
- - Catalog API exceptions now wrapped in GenericApiResponse
- 
+- Catalog API exceptions now wrapped in GenericApiResponse
+
 ### Removed
 
- - Status code from GenericApiResponse
+- Status code from GenericApiResponse
 
 ## [0.0.1] - 30-07-2024
 
 ### Added
- 
- - TransferCompletionMessage message provider and consumer callback logic (plus junit and integration tests)
- - GitHub action to test request transfer, start, download artifact and send completion message
- 
+
+- TransferCompletionMessage message provider and consumer callback logic (plus junit and integration tests)
+- GitHub action to test request transfer, start, download artifact and send completion message
+
 ### Changed
 
- - ROLE_CONNECTOR to fix authorization for protocol endpoints using jwt
+- ROLE_CONNECTOR to fix authorization for protocol endpoints using jwt
 
 ## [0.0.1] - 2024-07-24
- 
+
 ### Added
 
- - Added CORS configuration
- 
+- Added CORS configuration
+
 ### Changed
 
- - Moved some common service logic to BaseService
- - Renamed APIs to be REST compliant
- 
+- Moved some common service logic to BaseService
+- Renamed APIs to be REST compliant
+
 ### Removed
 
- - Removed transformers from Negotiation module
-
+- Removed transformers from Negotiation module
 
 ## [0.0.1] - 2024-07-22
 
 ### Added
 
- - TransferStartMessage logic for provider and consumer callback (controller and service layer)
- - DataTransfer API controller, service, junit and integration tests (get TransferProcess, by state and all)
- - Negotiation module - API endpoint for agreement check (valid or not)
- - AbstractTransferMessage implements Serializable
- 
+- TransferStartMessage logic for provider and consumer callback (controller and service layer)
+- DataTransfer API controller, service, junit and integration tests (get TransferProcess, by state and all)
+- Negotiation module - API endpoint for agreement check (valid or not)
+- AbstractTransferMessage implements Serializable
+
 ## Updated
 
- - Code coverage (junit and integration)
- - TransferRequestMessage - call to negotiation for agreement validity check before proceeding
- - Negotiation module - renamed ModelUtil to MockObjectUtil (aligned with other modules)
- - postman collection
- 
+- Code coverage (junit and integration)
+- TransferRequestMessage - call to negotiation for agreement validity check before proceeding
+- Negotiation module - renamed ModelUtil to MockObjectUtil (aligned with other modules)
+- postman collection
+
 ## [0.0.1] - 2024-07-12
 
 ### Added
 
- - provider endpoint and logic for initiating data transfer
- - junit and integration tests
- - GHA for data transfer request
+- provider endpoint and logic for initiating data transfer
+- junit and integration tests
+- GHA for data transfer request
 
 ### Changed
- 
- - updated Postman collection for /transfers/request
-   
+
+- updated Postman collection for /transfers/request
+
 ## [0.0.1] - 2024-07-10
 
 ### Added
 
- - dockerized the application
- - added integration tests to GHA
- 
+- dockerized the application
+- added integration tests to GHA
+
 ### Changed
 
- - certificate private key password now used from application.properties
- 
+- certificate private key password now used from application.properties
+
 ## [0.0.1] - 2024-07-09
 
-### Added 
+### Added
 
- - Added API endpoints for accepting and declining negotiation from provider side
- - Added API endpoint for finding contract negotiations by state or all
+- Added API endpoints for accepting and declining negotiation from provider side
+- Added API endpoint for finding contract negotiations by state or all
 
 ### Changed
 
- - Reviewed negotiation flow
- - Updated postman collection
+- Reviewed negotiation flow
+- Updated postman collection
 
 ## [0.0.1] - 2024-06-28
 
 ### Changed
 
- - updated verified and finalized states in negotiation module
- - separated consumer and provider callback addresses in negotiation module
+- updated verified and finalized states in negotiation module
+- separated consumer and provider callback addresses in negotiation module
 
 ## [0.0.1] - 2024-06-25
 
@@ -518,21 +543,21 @@ application.usagecontrol.constraint.purpose=demo
 
 - Postman collection and enviroment (with new API)
 - initial_data.json (adding application_properties)
-- 
+-
 
 ## [0.0.1] - 2024-06-25
 
 ### Added
 
- - DataTransfer Consumer callback controller and junit tests
+- DataTransfer Consumer callback controller and junit tests
 
 ## [0.0.1] - 2024-06-21
 
 ### Added
 
- - dataTransfer module, POC for REST pull artifact
- - duplicate TransferProcess and ContractNegotiation with new status
- - DataService, update method
- - DataTransfer exception advice
- 
+- dataTransfer module, POC for REST pull artifact
+- duplicate TransferProcess and ContractNegotiation with new status
+- DataService, update method
+- DataTransfer exception advice
+
 ### Removed
