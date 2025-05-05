@@ -11,12 +11,14 @@ import it.eng.tools.model.DSpaceConstants;
 
 public enum LeftOperand {
 
+	// Uncomment ones that are supported by the underlying logic
+	COUNT(DSpaceConstants.ODRL + "count"),
+	DATE_TIME(DSpaceConstants.ODRL + "dateTime");
+/*
 	ABSOLUTE_POSITION(DSpaceConstants.ODRL + "absolutePosition"),
 	ABSOLUTE_SIZE(DSpaceConstants.ODRL + "absoluteSize"),
 	ABSOLUTE_SPATIAL_POSITION(DSpaceConstants.ODRL + "absoluteSpatialPosition"),
 	ABSOLUTE_TEMPORAL_POSITION(DSpaceConstants.ODRL + "absoluteTemporalPosition"),
-    COUNT(DSpaceConstants.ODRL + "count"),
-    DATE_TIME(DSpaceConstants.ODRL + "dateTime"),
     DELAY_PERIOD(DSpaceConstants.ODRL + "delayPeriod"),
     DELIVERY_CHANNEL(DSpaceConstants.ODRL + "deliveryChannel"),
     DEVICE(DSpaceConstants.ODRL + "device"),
@@ -45,7 +47,7 @@ public enum LeftOperand {
     UNIT_OF_COUNT(DSpaceConstants.ODRL + "unitOfCount"),
     VERSION(DSpaceConstants.ODRL + "version"),
 	VIRTUAL_LOCATION(DSpaceConstants.ODRL + "virtualLocation");
-	
+	*/
 	private final String operand;
 
 	private static final Map<String,LeftOperand> BY_LABEL;

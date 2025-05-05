@@ -12,7 +12,8 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import it.eng.datatransfer.serializer.Serializer;
+import it.eng.datatransfer.serializer.TransferSerializer;
+import it.eng.datatransfer.util.DataTranferMockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 
@@ -27,28 +28,28 @@ public class TransferProcessTest {
 	@Test
 	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() {
-		String result = Serializer.serializePlain(transferProcess);
+		String result = TransferSerializer.serializePlain(transferProcess);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
 		assertTrue(result.contains(DSpaceConstants.ID));
 		assertTrue(result.contains(DSpaceConstants.CONSUMER_PID));
 		assertTrue(result.contains(DSpaceConstants.PROVIDER_PID));
 		
-		TransferProcess javaObj = Serializer.deserializePlain(result, TransferProcess.class);
+		TransferProcess javaObj = TransferSerializer.deserializePlain(result, TransferProcess.class);
 		validateJavaObject(javaObj);
 	}
 	
 	@Test
 	@DisplayName("Verify valid protocol object serialization")
 	public void testPlain_protocol() {
-		JsonNode result = Serializer.serializeProtocolJsonNode(transferProcess);
+		JsonNode result = TransferSerializer.serializeProtocolJsonNode(transferProcess);
 		assertNull(result.get(DSpaceConstants.ID));
 		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
 		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
 		assertNotNull(result.get(DSpaceConstants.DSPACE_CONSUMER_PID).asText());
 		assertNotNull(result.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText());
 		
-		TransferProcess javaObj = Serializer.deserializeProtocol(result, TransferProcess.class);
+		TransferProcess javaObj = TransferSerializer.deserializeProtocol(result, TransferProcess.class);
 		validateJavaObject(javaObj);
 	}
 	
@@ -63,8 +64,8 @@ public class TransferProcessTest {
 	@Test
 	@DisplayName("Missing @context and @type")
 	public void missingContextAndType() {
-		JsonNode result = Serializer.serializePlainJsonNode(transferProcess);
-		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, TransferProcess.class));
+		JsonNode result = TransferSerializer.serializePlainJsonNode(transferProcess);
+		assertThrows(ValidationException.class, () -> TransferSerializer.deserializeProtocol(result, TransferProcess.class));
 	}
 	
 	@Test
@@ -103,6 +104,14 @@ public class TransferProcessTest {
 		assertTrue(ModelUtil.TRANSFER_PROCESS_SUSPENDED.getState().canTransitTo(TransferState.TERMINATED));
 		assertFalse(ModelUtil.TRANSFER_PROCESS_SUSPENDED.getState().canTransitTo(TransferState.REQUESTED));
 		assertFalse(ModelUtil.TRANSFER_PROCESS_SUSPENDED.getState().canTransitTo(TransferState.COMPLETED));
+	}
+	
+	@Test
+	@DisplayName("Check if id is the same after serialization")
+	public void checkId() {
+		String sss = TransferSerializer.serializePlain(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER);
+		TransferProcess tp = TransferSerializer.deserializePlain(sss, TransferProcess.class);
+		assertEquals(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId(), tp.getId());
 	}
 
 	private void validateJavaObject(TransferProcess javaObj) {

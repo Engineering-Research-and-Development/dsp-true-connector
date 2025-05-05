@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.negotiation.model.ContractNegotiation;
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.negotiation.service.ContractNegotiationAPIService;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.DSpaceConstants;
@@ -24,7 +24,8 @@ import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = ApiEndpoints.NEGOTIATION_V1)
+@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, 
+	path = ApiEndpoints.NEGOTIATION_V1)
 @Slf4j
 public class ContractNegotiationAPIController {
 	
@@ -35,21 +36,31 @@ public class ContractNegotiationAPIController {
 	}
     
     /**
-     * Returns only one Contract Negotiation by it's ID or a collection by their state.
+     * Returns only one Contract Negotiation by it's ID or a collection by their state.<br>
      * If none are present then all Contract Negotiations will be returned.
      * @param contractNegotiationId
      * @param state
-     * @return
+     * @param role
+     * @param consumerPid
+     * @param providerPid
+     * @return ResponseEntity
      */
     @GetMapping(path = {"", "/{contractNegotiationId}"})
     public ResponseEntity<GenericApiResponse<Collection<JsonNode>>> getContractNegotiations(@PathVariable(required = false) String contractNegotiationId,
-    		@RequestParam(required = false) String state, @RequestParam(required = false) String role){
-    	Collection<JsonNode> contractNegotiations = apiService.findContractNegotiations(contractNegotiationId, state, role);
+    		@RequestParam(required = false) String state, 
+    		@RequestParam(required = false) String role,
+    		@RequestParam(required = false) String consumerPid,
+    		@RequestParam(required = false) String providerPid){
+    	Collection<JsonNode> contractNegotiations = apiService.findContractNegotiations(contractNegotiationId, state, role, consumerPid, providerPid);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
     			.body(GenericApiResponse.success(contractNegotiations, "Fetching contract negotiations"));
     } 
-
-    //consumer starts contract negotiation
+    
+    /**
+     * Consumer starts contract negotiation.
+     * @param startNegotiationRequest
+     * @return ResponseEntity
+     */
 	@PostMapping
     public ResponseEntity<GenericApiResponse<JsonNode>> startNegotiation(@RequestBody JsonNode startNegotiationRequest) {
     	String targetConnector = startNegotiationRequest.get("Forward-To").asText();
@@ -60,27 +71,42 @@ public class ContractNegotiationAPIController {
     			.body(GenericApiResponse.success(response, "Contract negotiation initiated"));
     }
 	
+	/**
+	 * Accepts contract negotiation.
+	 * @param contractNegotiationId
+	 * @return ResponseEntity
+	 */
 	@PutMapping(path = "/{contractNegotiationId}/accept")
     public ResponseEntity<GenericApiResponse<JsonNode>> acceptContractNegotiation(@PathVariable String contractNegotiationId) {
         log.info("Handling contract negotiation accepted by consumer");
         ContractNegotiation contractNegotiationApproved = apiService.handleContractNegotiationAccepted(contractNegotiationId);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-        		.body(GenericApiResponse.success(Serializer.serializeProtocolJsonNode(contractNegotiationApproved),
+        		.body(GenericApiResponse.success(NegotiationSerializer.serializeProtocolJsonNode(contractNegotiationApproved),
         				"Contract negotiation approved"));
     }
     
+	/**
+	 * Terminate contract negotiation.
+	 * @param contractNegotiationId
+	 * @return ResponseEntity
+	 */
 	@PutMapping(path = "/{contractNegotiationId}/terminate")
     public ResponseEntity<GenericApiResponse<JsonNode>> terminateContractNegotiation(@PathVariable String contractNegotiationId) {
         log.info("Handling contract negotiation approved");
         ContractNegotiation contractNegotiationTerminated = apiService.handleContractNegotiationTerminated(contractNegotiationId);
         
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-        		.body(GenericApiResponse.success(Serializer.serializeProtocolJsonNode(contractNegotiationTerminated),
+        		.body(GenericApiResponse.success(NegotiationSerializer.serializeProtocolJsonNode(contractNegotiationTerminated),
         				"Contract negotiation terminated"));
     }
     
+	/**
+	 * Verify contract negotiation.
+	 * @param contractNegotiationId
+	 * @return ResponseEntity
+	 */
 	@PutMapping(path = "/{contractNegotiationId}/verify")
-    public ResponseEntity<GenericApiResponse<JsonNode>> verifyContractNegotiation(@PathVariable String contractNegotiationId) {
+    public ResponseEntity<GenericApiResponse<Void>> verifyContractNegotiation(@PathVariable String contractNegotiationId) {
     	log.info("Manual handling for verification message");
     	
         apiService.verifyNegotiation(contractNegotiationId);
@@ -89,6 +115,11 @@ public class ContractNegotiationAPIController {
     }
     
     /********* PROVIDER ***********/
+	/**
+	 * Provider sends offer.
+	 * @param contractOfferRequest
+	 * @return ResponseEntity
+	 */
 	@PostMapping(path = "/offers")
     public ResponseEntity<GenericApiResponse<JsonNode>> sendContractOffer(@RequestBody JsonNode contractOfferRequest) {
     	String targetConnector = contractOfferRequest.get("Forward-To").asText();
@@ -101,7 +132,7 @@ public class ContractNegotiationAPIController {
     
 	@Deprecated
 	@PostMapping(path = "/agreements")
-    public ResponseEntity<GenericApiResponse<JsonNode>> sendAgreement(@RequestBody JsonNode contractAgreementRequest) {
+    public ResponseEntity<GenericApiResponse<Void>> sendAgreement(@RequestBody JsonNode contractAgreementRequest) {
     	JsonNode agreementNode = contractAgreementRequest.get(DSpaceConstants.AGREEMENT);
     	String consumerPid = contractAgreementRequest.get(DSpaceConstants.CONSUMER_PID).asText();
         String providerPid = contractAgreementRequest.get(DSpaceConstants.PROVIDER_PID).asText();
@@ -110,17 +141,27 @@ public class ContractNegotiationAPIController {
     			.body(GenericApiResponse.success(null, "Contract agreement sent"));
     }
 	
+	/**
+	 * Provider approve contract negotiation.
+	 * @param contractNegotiationId
+	 * @return ResponseEntity
+	 */
 	@PutMapping(path = "/{contractNegotiationId}/approve")
     public ResponseEntity<GenericApiResponse<JsonNode>> approveContractNegotiation(@PathVariable String contractNegotiationId) {
         log.info("Handling contract negotiation approved");
         ContractNegotiation contractNegotiationApproved = apiService.approveContractNegotiation(contractNegotiationId);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-        		.body(GenericApiResponse.success(Serializer.serializeProtocolJsonNode(contractNegotiationApproved),
+        		.body(GenericApiResponse.success(NegotiationSerializer.serializeProtocolJsonNode(contractNegotiationApproved),
         				"Contract negotiation approved"));
     }
     
+	/**
+	 * Provider finalize contract negotiation.
+	 * @param contractNegotiationId
+	 * @return ResponseEntity
+	 */
 	@PutMapping(path = "/{contractNegotiationId}/finalize")
-    public ResponseEntity<GenericApiResponse<JsonNode>> finalizeNegotiation(@PathVariable String contractNegotiationId) {
+    public ResponseEntity<GenericApiResponse<Void>> finalizeNegotiation(@PathVariable String contractNegotiationId) {
     	apiService.finalizeNegotiation(contractNegotiationId);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
     			.body(GenericApiResponse.success(null, "Contract negotiation finalized"));

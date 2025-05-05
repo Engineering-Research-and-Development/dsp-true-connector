@@ -25,7 +25,7 @@ public enum Operator {
     IS_NONE_OF(DSpaceConstants.ODRL + Operators.IS_NONE_OF),
     IS_PART_OF(DSpaceConstants.ODRL + Operators.IS_PART_OF),
     LT(DSpaceConstants.ODRL + Operators.LT),
-    TERM_LTEQ(DSpaceConstants.ODRL + Operators.TERM_LTEQ),
+    LTEQ(DSpaceConstants.ODRL + Operators.LTEQ),
     NEQ(DSpaceConstants.ODRL + Operators.NEQ);
 	
 	private final String operator;

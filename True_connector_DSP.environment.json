@@ -1,5 +1,5 @@
 {
-	"id": "389265dd-0ab5-4563-af93-805988b95306",
+	"id": "a8b9046a-d0e6-4522-b4dd-44c74da9016d",
 	"name": "True_connector_DSP",
 	"values": [
 		{
@@ -69,6 +69,12 @@
 			"enabled": true
 		},
 		{
+			"key": "CONSUMER_SERVER_API_TRANSFERS",
+			"value": "{{CONSUMER}}/api/v1/transfers",
+			"type": "default",
+			"enabled": true
+		},
+		{
 			"key": "PROVIDER_SERVER_PROTOCOL_CATALOG",
 			"value": "{{PROVIDER}}/catalog",
 			"type": "default",
@@ -121,9 +127,15 @@
 			"value": "{{PROVIDER}}/api/v1/distributions",
 			"type": "default",
 			"enabled": true
+		},
+		{
+			"key": "PROVIDER_SERVER_API_ARTIFACTS",
+			"value": "{{PROVIDER}}/api/v1/artifacts",
+			"type": "default",
+			"enabled": true
 		}
 	],
 	"_postman_variable_scope": "environment",
-	"_postman_exported_at": "2024-09-12T09:19:08.294Z",
-	"_postman_exported_using": "Postman/11.12.0"
+	"_postman_exported_at": "2024-12-23T09:53:33.179Z",
+	"_postman_exported_using": "Postman/11.23.2"
 }

@@ -23,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
+import it.eng.tools.model.Artifact;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -74,6 +75,11 @@ public class Dataset extends AbstractCatalogObject {
     @JsonProperty(DSpaceConstants.DCAT_DISTRIBUTION)
     @DBRef
     private Set<Distribution> distribution;
+    
+    @JsonIgnore
+    @DBRef
+    private Artifact artifact;
+    
     @JsonIgnore
     @CreatedBy
     private String createdBy;
@@ -176,6 +182,12 @@ public class Dataset extends AbstractCatalogObject {
             return this;
         }
 
+        @JsonProperty("artifact")
+        public Builder artifact(Artifact artifact) {
+            dataset.artifact = artifact;
+            return this;
+        }
+        
         @JsonProperty("createdBy")
         public Builder createdBy(String createdBy) {
             dataset.createdBy = createdBy;
@@ -217,7 +229,7 @@ public class Dataset extends AbstractCatalogObject {
     }
     
     /**
-     * Create new updated instance with new values from passed Dataset parameter<br>
+     * Create new updated instance with new values from passed Dataset parameter.<br>
      * If fields are not present in updatedDataset, existing values will remain
      * @param updatedDataset
      * @return new updated dataset instance
@@ -237,6 +249,7 @@ public class Dataset extends AbstractCatalogObject {
          .title(updatedDataset.getTitle() != null ? updatedDataset.getTitle() : this.title)
          .distribution(updatedDataset.getDistribution() != null ? updatedDataset.getDistribution() : this.distribution)
          .hasPolicy(updatedDataset.getHasPolicy() != null ? updatedDataset.getHasPolicy() : this.hasPolicy)
+         .artifact(updatedDataset.getArtifact() != null ? updatedDataset.getArtifact() : this.artifact)
          .build();
   }
 }

@@ -209,7 +209,7 @@ public class DataService implements Serializable {
     }
     
     /**
-     * Create new updated instance with new values from passed DataService parameter<br>
+     * Create new updated instance with new values from passed DataService parameter.<br>
      * If fields are not present in updatedDataService, existing values will remain
      * @param updatedDataService
      * @return new updated dataService instance

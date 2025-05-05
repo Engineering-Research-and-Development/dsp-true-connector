@@ -2,11 +2,10 @@ name: Feature or hotfix build
 
 on:
   push:
-    branches: [ "feature/*", "hotfix/*", "develop", "main"]
+    branches: [ "feature/*", "hotfix/*"]
   
 jobs:
   build-and-push-image:
-    if: "!contains(github.event.head_commit.message, '[maven-release-plugin]')"
     runs-on: ubuntu-latest
     
     permissions:
@@ -31,7 +30,7 @@ jobs:
           cache: maven
           
       - name: Build with Maven
-        run: mvn -B package --file pom.xml      
+        run: mvn -B clean verify --file pom.xml
     
       - name: Log in to the Container registry
         uses: docker/login-action@v3
@@ -57,7 +56,7 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:test
           labels: ${{ steps.meta.outputs.labels }}
       
-  negotiation-tests:
+  negotiation-api-tests:
     needs: build-and-push-image
     runs-on: ubuntu-latest
     
@@ -65,7 +64,7 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v4
         
-      - name: Run docker container for negotiation-tests
+      - name: Run docker container for negotiation-api-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
         
       - name: Wait for container starting
@@ -76,16 +75,16 @@ jobs:
 
       - uses: matt-ball/newman-action@v2.0.0
         with:
-          collection: ./ci/docker/test-cases/negotiation-tests/negotiation-tests.json
+          collection: ./ci/docker/test-cases/negotiation-api-tests/negotiation-api-tests.json
           
-      - name: Dump docker negotiation-tests
+      - name: Dump docker negotiation-api-tests
         if: failure()
         uses: jwalton/gh-docker-logs@v2
 
-      - name: Stop docker container negotiation-tests
+      - name: Stop docker container negotiation-api-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
-        
-  datatransfer-tests:
+
+  datatransfer-api-tests:
     needs: build-and-push-image
     runs-on: ubuntu-latest
     
@@ -93,7 +92,7 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v4
         
-      - name: Run docker container for datatransfer-tests
+      - name: Run docker container for datatransfer-api-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
         
       - name: Wait for container starting
@@ -104,15 +103,15 @@ jobs:
 
       - uses: matt-ball/newman-action@v2.0.0
         with:
-          collection: ./ci/docker/test-cases/datatransfer-tests/datatransfer-tests.json
+          collection: ./ci/docker/test-cases/datatransfer-api-tests/datatransfer-api-tests.json
           
-      - name: Dump docker datatransfer-tests
+      - name: Dump docker datatransfer-api-tests
         if: failure()
         uses: jwalton/gh-docker-logs@v2
 
-      - name: Stop docker container datatransfer-tests
+      - name: Stop docker container datatransfer-api-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
-
+        
   api-endpoints-tests:
     needs: build-and-push-image
     runs-on: ubuntu-latest
@@ -139,6 +138,34 @@ jobs:
         uses: jwalton/gh-docker-logs@v2
 
       - name: Stop docker container api-endpoints-tests
+        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
+        
+  dataset-api-tests:
+    needs: build-and-push-image
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+        
+      - name: Run docker container for dataset-api-tests
+        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
+        
+      - name: Wait for container starting
+        run: sleep 30
+
+      - name: Check if the container is up and running
+        run: docker ps -a
+
+      - uses: matt-ball/newman-action@v2.0.0
+        with:
+          collection: ./ci/docker/test-cases/dataset-api-tests/dataset-api-tests.json
+          
+      - name: Dump docker dataset-api-tests
+        if: failure()
+        uses: jwalton/gh-docker-logs@v2
+
+      - name: Stop docker container dataset-api-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
 
 

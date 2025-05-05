@@ -21,8 +21,8 @@ public abstract class AbstractCatalogObject implements Serializable {
      */
 
     /**
-     * Return Dataspace protocol @type
-     * @return
+     * Returns dspace protocol type.
+     * @return type
      */
     @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
     public abstract String getType();

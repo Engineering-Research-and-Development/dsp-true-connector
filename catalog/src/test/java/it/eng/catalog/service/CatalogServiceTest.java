@@ -10,9 +10,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,12 +28,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import it.eng.catalog.exceptions.CatalogErrorException;
+import it.eng.catalog.model.Action;
 import it.eng.catalog.model.Catalog;
+import it.eng.catalog.model.Constraint;
 import it.eng.catalog.model.DataService;
+import it.eng.catalog.model.LeftOperand;
 import it.eng.catalog.model.Offer;
+import it.eng.catalog.model.Operator;
+import it.eng.catalog.model.Permission;
 import it.eng.catalog.repository.CatalogRepository;
-import it.eng.catalog.serializer.Serializer;
-import it.eng.catalog.util.MockObjectUtil;
+import it.eng.catalog.serializer.CatalogSerializer;
+import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
 
@@ -54,16 +62,16 @@ public class CatalogServiceTest {
     @Test
     @DisplayName("Save catalog successfully")
     void saveCatalog_success() {
-        when(repository.save(any(Catalog.class))).thenReturn(MockObjectUtil.CATALOG);
-        Catalog savedCatalog = service.saveCatalog(MockObjectUtil.CATALOG);
+        when(repository.save(any(Catalog.class))).thenReturn(CatalogMockObjectUtil.CATALOG);
+        Catalog savedCatalog = service.saveCatalog(CatalogMockObjectUtil.CATALOG);
         assertNotNull(savedCatalog);
-        verify(repository).save(MockObjectUtil.CATALOG);
+        verify(repository).save(CatalogMockObjectUtil.CATALOG);
     }
 
     @Test
     @DisplayName("Get catalog successfully")
     void getCatalog_success() {
-        when(repository.findAll()).thenReturn(Collections.singletonList(MockObjectUtil.CATALOG));
+        when(repository.findAll()).thenReturn(Collections.singletonList(CatalogMockObjectUtil.CATALOG));
         Catalog retrievedCatalog = service.getCatalog();
         assertNotNull(retrievedCatalog);
         verify(repository).findAll();
@@ -79,31 +87,31 @@ public class CatalogServiceTest {
     @Test
     @DisplayName("Get catalog by ID successfully")
     void getCatalogById_success() {
-        when(repository.findById(anyString())).thenReturn(Optional.of(MockObjectUtil.CATALOG));
-        Catalog retrievedCatalog = service.getCatalogById(MockObjectUtil.CATALOG.getId());
+        when(repository.findById(anyString())).thenReturn(Optional.of(CatalogMockObjectUtil.CATALOG));
+        Catalog retrievedCatalog = service.getCatalogById(CatalogMockObjectUtil.CATALOG.getId());
         assertNotNull(retrievedCatalog);
-        verify(repository).findById(MockObjectUtil.CATALOG.getId());
+        verify(repository).findById(CatalogMockObjectUtil.CATALOG.getId());
     }
 
     @Test
     @DisplayName("Delete catalog successfully")
     void deleteCatalog_success() {
-        when(repository.findById(anyString())).thenReturn(Optional.of(MockObjectUtil.CATALOG));
-        service.deleteCatalog(MockObjectUtil.CATALOG.getId());
-        verify(repository).deleteById(MockObjectUtil.CATALOG.getId());
+        when(repository.findById(anyString())).thenReturn(Optional.of(CatalogMockObjectUtil.CATALOG));
+        service.deleteCatalog(CatalogMockObjectUtil.CATALOG.getId());
+        verify(repository).deleteById(CatalogMockObjectUtil.CATALOG.getId());
     }
 
     @Test
     @DisplayName("Update catalog successfully")
     void updateCatalog_success() {
-        when(repository.findById(anyString())).thenReturn(Optional.of(MockObjectUtil.CATALOG));
-        when(repository.save(any(Catalog.class))).thenReturn(MockObjectUtil.CATALOG);
+        when(repository.findById(anyString())).thenReturn(Optional.of(CatalogMockObjectUtil.CATALOG));
+        when(repository.save(any(Catalog.class))).thenReturn(CatalogMockObjectUtil.CATALOG);
 
-        Catalog updatedCatalogData = MockObjectUtil.CATALOG_FOR_UPDATE;
+        Catalog updatedCatalogData = CatalogMockObjectUtil.CATALOG_FOR_UPDATE;
         
-        Catalog updatedCatalog = service.updateCatalog(MockObjectUtil.CATALOG.getId(), updatedCatalogData);
+        Catalog updatedCatalog = service.updateCatalog(CatalogMockObjectUtil.CATALOG.getId(), updatedCatalogData);
         assertNotNull(updatedCatalog);
-        verify(repository).findById(MockObjectUtil.CATALOG.getId());
+        verify(repository).findById(CatalogMockObjectUtil.CATALOG.getId());
         verify(repository).save(argCaptorCatalog.capture());
         assertTrue(argCaptorCatalog.getValue().getDescription().stream().filter(d -> d.getValue().contains("update")).findFirst().isPresent());
         assertTrue(argCaptorCatalog.getValue().getDistribution().stream().filter(d -> d.getTitle().contains("update")).findFirst().isPresent());
@@ -123,9 +131,9 @@ public class CatalogServiceTest {
     @DisplayName("Update catalog data service after delete successfully")
     void updateCatalogDataServiceAfterDelete_success() {
     	
-        DataService dataService = MockObjectUtil.DATA_SERVICE;
-        when(repository.findAll()).thenReturn(Collections.singletonList(MockObjectUtil.CATALOG));
-        when(repository.save(any(Catalog.class))).thenReturn(MockObjectUtil.CATALOG);
+        DataService dataService = CatalogMockObjectUtil.DATA_SERVICE;
+        when(repository.findAll()).thenReturn(Collections.singletonList(CatalogMockObjectUtil.CATALOG));
+        when(repository.save(any(Catalog.class))).thenReturn(CatalogMockObjectUtil.CATALOG);
 
         service.updateCatalogDataServiceAfterDelete(dataService);
 
@@ -134,9 +142,9 @@ public class CatalogServiceTest {
     
     @Test
     public void providedOfferExists() {
-    	when(repository.findAll()).thenReturn(new ArrayList<>(MockObjectUtil.CATALOGS));
-    	ContractNegotationOfferRequestEvent offerRequest = new ContractNegotationOfferRequestEvent(MockObjectUtil.CONSUMER_PID,
-    			MockObjectUtil.PROVIDER_PID, Serializer.serializeProtocolJsonNode(MockObjectUtil.OFFER_WITH_TARGET));
+    	when(repository.findAll()).thenReturn(new ArrayList<>(CatalogMockObjectUtil.CATALOGS));
+    	ContractNegotationOfferRequestEvent offerRequest = new ContractNegotationOfferRequestEvent(CatalogMockObjectUtil.CONSUMER_PID,
+    			CatalogMockObjectUtil.PROVIDER_PID, CatalogSerializer.serializeProtocolJsonNode(CatalogMockObjectUtil.OFFER_WITH_TARGET));
     	service.validateOffer(offerRequest);
     	
     	verify(publisher).publishEvent(argCaptorContractNegotiationOfferResponse.capture());
@@ -147,16 +155,68 @@ public class CatalogServiceTest {
     public void providedOfferNotFound() {
 	  Offer differentOffer = Offer.Builder.newInstance()
 	    		.id("urn:offer_id")
-	            .target(MockObjectUtil.TARGET)
-	            .permission(Set.of(MockObjectUtil.PERMISSION_ANONYMIZE))
+	            .target(CatalogMockObjectUtil.TARGET)
+	            .permission(Set.of(CatalogMockObjectUtil.PERMISSION_ANONYMIZE))
 	            .build();
 	
-    	when(repository.findAll()).thenReturn(new ArrayList<>(MockObjectUtil.CATALOGS));
-    	ContractNegotationOfferRequestEvent offerRequest = new ContractNegotationOfferRequestEvent(MockObjectUtil.CONSUMER_PID,
-    			MockObjectUtil.PROVIDER_PID, Serializer.serializeProtocolJsonNode(differentOffer));
+    	when(repository.findAll()).thenReturn(new ArrayList<>(CatalogMockObjectUtil.CATALOGS));
+    	ContractNegotationOfferRequestEvent offerRequest = new ContractNegotationOfferRequestEvent(CatalogMockObjectUtil.CONSUMER_PID,
+    			CatalogMockObjectUtil.PROVIDER_PID, CatalogSerializer.serializeProtocolJsonNode(differentOffer));
     	service.validateOffer(offerRequest);
     	
     	verify(publisher).publishEvent(argCaptorContractNegotiationOfferResponse.capture());
     	assertFalse(argCaptorContractNegotiationOfferResponse.getValue().isOfferAccepted());
+    }
+    
+    @Test
+    @DisplayName("Offer valid")
+    public void valiadateOffer( ) {
+    	when(repository.findAll()).thenReturn(new ArrayList<>(CatalogMockObjectUtil.CATALOGS));
+    	
+    	boolean offerValid = service.validateOffer(CatalogMockObjectUtil.OFFER_WITH_TARGET);
+    
+    	assertTrue(offerValid);
+    }
+    
+    @Test
+    @DisplayName("Offer invalid - target not equal to datasetId")
+    public void valiadateOffer_dataset( ) {
+        Offer offer = Offer.Builder.newInstance()
+        		.id("urn:offer_id")
+                .target("invalid_dataset_id")
+                .permission(Arrays.asList(CatalogMockObjectUtil.PERMISSION).stream().collect(Collectors.toCollection(HashSet::new)))
+                .build();
+        
+    	when(repository.findAll()).thenReturn(new ArrayList<>(CatalogMockObjectUtil.CATALOGS));
+    	
+    	boolean offerValid = service.validateOffer(offer);
+    
+    	assertFalse(offerValid);
+    }
+    
+    @Test
+    @DisplayName("Offer invalid - offer not equal")
+    public void valiadateOffer_offer( ) {
+    	
+    	Constraint constraintDatetime = Constraint.Builder.newInstance()
+                .leftOperand(LeftOperand.DATE_TIME)
+                .operator(Operator.GTEQ)
+                .rightOperand("5")
+                .build();
+    	Permission permission = Permission.Builder.newInstance()
+                .action(Action.USE)
+                .constraint(Arrays.asList(constraintDatetime).stream().collect(Collectors.toCollection(HashSet::new)))
+                .build();
+        Offer offer = Offer.Builder.newInstance()
+        		.id("urn:offer_id")
+                .target(CatalogMockObjectUtil.DATASET_ID)
+                .permission(Arrays.asList(permission).stream().collect(Collectors.toCollection(HashSet::new)))
+                .build();
+        
+    	when(repository.findAll()).thenReturn(new ArrayList<>(CatalogMockObjectUtil.CATALOGS));
+    	
+    	boolean offerValid = service.validateOffer(offer);
+    
+    	assertFalse(offerValid);
     }
 }

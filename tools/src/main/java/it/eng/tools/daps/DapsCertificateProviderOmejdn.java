@@ -126,10 +126,10 @@ public class DapsCertificateProviderOmejdn {
 	}
 
 	/**
-	 * Encode a byte array to an hex string
+	 * Encode a byte array to an hex string.
 	 * 
 	 * @param byteArray
-	 * @return
+	 * @return encode hex string
 	 */
 	private String encodeHexString(byte[] byteArray) {
 		StringBuffer hexStringBuffer = new StringBuffer();
@@ -143,7 +143,7 @@ public class DapsCertificateProviderOmejdn {
 	 * Convert byte array to hex without any dependencies to libraries.
 	 * 
 	 * @param num
-	 * @return
+	 * @return Hexa string representation of bytes
 	 */
 	private String byteToHex(byte num) {
 		char[] hexDigits = new char[2];
@@ -153,7 +153,7 @@ public class DapsCertificateProviderOmejdn {
 	}
 
 	/***
-	 * Beautyfies Hex strings and will generate a result later used to create the
+	 * Beautyfies Hex strings and will generate a result later used to create the.
 	 * client id (XX:YY:ZZ)
 	 * 
 	 * @param hexString HexString to be beautified
@@ -170,10 +170,10 @@ public class DapsCertificateProviderOmejdn {
 	}
 
 	/***
-	 * Split string ever len chars and return string array
+	 * Split string ever len chars and return string array.
 	 * @param src
 	 * @param len
-	 * @return
+	 * @return array of strings splitted
 	 */
 	private String[] split(String src, int len) {
 		String[] result = new String[(int)Math.ceil((double)src.length()/(double)len)];

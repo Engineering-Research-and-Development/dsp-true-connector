@@ -17,5 +17,7 @@ public interface TransferProcessRepository extends MongoRepository<TransferProce
     
     Optional<TransferProcess> findByAgreementId(String agreementId);
     
-    Collection<TransferProcess> findByState(String state);
+	Collection<TransferProcess> findByStateAndRole(String state, String role);
+
+	Collection<TransferProcess> findByRole(String role);
 }

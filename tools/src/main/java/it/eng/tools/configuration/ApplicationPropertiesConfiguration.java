@@ -18,7 +18,7 @@ import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * ApplicationPropertiesConfiguration; update environment with properties; read all properties from property file and store into Mongo and env
+ * ApplicationPropertiesConfiguration.
  */
 //@Component
 @Slf4j
@@ -30,7 +30,7 @@ public class ApplicationPropertiesConfiguration {
 
 
 	/**
-	 * Constructor 
+	 * Constructor .
 	 * @param environment Environment
 	 * @param service ApplicationPropertiesService
 	 * @param repository ApplicationPropertiesRepository
@@ -43,11 +43,15 @@ public class ApplicationPropertiesConfiguration {
 	}
 
 	/**
-	 * Initialize method - read from application.properties, insert into Mongo and update env
+	 * Initialize method - read from application.properties, insert into Mongo and update env.
 	 */
 	@PostConstruct
 	public void init() {
 		log.info("init() is running");
+		
+		// uncomment this line and comment all other if we go with env properties
+//		service.copyApplicationPropertiesToEnvironment(environment);
+		
 		//ApplicationPropertiesService service = new ApplicationPropertiesService(repository);
 
 		PropertySource propertySource = ((AbstractEnvironment) environment)

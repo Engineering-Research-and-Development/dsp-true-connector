@@ -1,16 +1,19 @@
 package it.eng.datatransfer.service;
 
-import java.util.UUID;
+import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+
 import it.eng.datatransfer.event.TransferProcessChangeEvent;
-import it.eng.datatransfer.exceptions.AgreementNotFoundException;
-import it.eng.datatransfer.exceptions.TransferProcessExistsException;
+import it.eng.datatransfer.exceptions.TransferProcessInternalException;
+import it.eng.datatransfer.exceptions.TransferProcessInvalidFormatException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.exceptions.TransferProcessNotFoundException;
-import it.eng.datatransfer.serializer.Serializer;
 import it.eng.datatransfer.model.TransferCompletionMessage;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferRequestMessage;
@@ -18,13 +21,13 @@ import it.eng.datatransfer.model.TransferStartMessage;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.model.TransferSuspensionMessage;
 import it.eng.datatransfer.model.TransferTerminationMessage;
-import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
+import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
-import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -36,25 +39,20 @@ public class DataTransferService {
 	private final ApplicationEventPublisher publisher;
 	
 	private final OkHttpRestClient okHttpRestClient;
-	private final CredentialUtils credentialUtils;
-	private final DataTransferProperties properties;
 	
 	public DataTransferService(TransferProcessRepository transferProcessRepository, 
 			TransferRequestMessageRepository transferRequestMessageRepository,
-			ApplicationEventPublisher publisher, 
-			OkHttpRestClient okHttpRestClient,
-			CredentialUtils credentialUtils, DataTransferProperties properties) {
+			ApplicationEventPublisher publisher,
+			OkHttpRestClient okHttpRestClient) {
 		super();
 		this.transferProcessRepository = transferProcessRepository;
 		this.transferRequestMessageRepository = transferRequestMessageRepository;
 		this.publisher = publisher;
 		this.okHttpRestClient = okHttpRestClient;
-		this.credentialUtils = credentialUtils;
-		this.properties = properties;
 	}
 
 	/**
-	 * If TransferProcess for given consumerPid and providerPid exists and state is STARTED<br>
+	 * If TransferProcess for given consumerPid and providerPid exists and state is STARTED.<br>
 	 * Note: those 2 Pid's are not to be mixed with Contract Negotiation ones. They are unique
 	 * @param consumerPid 
 	 * @param providerPid
@@ -67,7 +65,7 @@ public class DataTransferService {
 	}
 
 	/**
-	 * Find transferProcess for given providerPid
+	 * Find transferProcess for given providerPid.
 	 * @param providerPid providerPid to search by
 	 * @return TransferProcess
 	 */
@@ -77,46 +75,78 @@ public class DataTransferService {
 	}
 
 	/**
-	 * Initiate data transfer
+	 * Initiate data transfer.
 	 * @param transferRequestMessage message
 	 * @return TransferProcess with status REQUESTED
 	 */
 	public TransferProcess initiateDataTransfer(TransferRequestMessage transferRequestMessage) {
-		transferProcessRepository.findByAgreementId(transferRequestMessage.getAgreementId())
-			.ifPresent(tp -> {
-				throw new TransferProcessExistsException("For agreementId " + tp.getAgreementId() + 
-					" there is already transfer process created.", tp.getConsumerPid());
-				});
-		// check if agreement exists
-//		/{agreementId}/valid
-		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + 
-				properties.serverPort() + ApiEndpoints.NEGOTIATION_AGREEMENTS_V1 + "/"+  transferRequestMessage.getAgreementId() + "/valid", 
-				null, 
-				credentialUtils.getAPICredentials());
-		if (!response.isSuccess()) {
-			throw new AgreementNotFoundException("Agreement with id " + transferRequestMessage.getAgreementId()+ " not found",
-					transferRequestMessage.getConsumerPid(), "urn:uuid:" + UUID.randomUUID());
-		}
+		TransferProcess transferProcessInitialized = transferProcessRepository.findByAgreementId(transferRequestMessage.getAgreementId())
+				.orElseThrow(() -> new TransferProcessNotFoundException("No agreement with id " + transferRequestMessage.getAgreementId() + 
+					" exists or Contract Negotiation not finalized"));
 		
-		// TODO save also transferRequestMessage once we implement provider push data - will need information where to push
+		stateTransitionCheck(transferProcessInitialized, TransferState.REQUESTED);
+		
+		// check if TransferRequestMessage.format is supported by dataset.[distribution]
+		checkSupportedFormats(transferProcessInitialized, transferRequestMessage.getFormat());
+		
 		transferRequestMessageRepository.save(transferRequestMessage);
 		
 		TransferProcess transferProcessRequested = TransferProcess.Builder.newInstance()
+				.id(transferProcessInitialized.getId())
 				.agreementId(transferRequestMessage.getAgreementId())
 				.callbackAddress(transferRequestMessage.getCallbackAddress())
 				.consumerPid(transferRequestMessage.getConsumerPid())
+				.providerPid(transferProcessInitialized.getProviderPid())
+				.format(transferRequestMessage.getFormat())
+				.dataAddress(transferRequestMessage.getDataAddress())
 				.state(TransferState.REQUESTED)
+				.role(IConstants.ROLE_PROVIDER)
+				.datasetId(transferProcessInitialized.getDatasetId())
+				.created(transferProcessInitialized.getCreated())
+				.createdBy(transferProcessInitialized.getCreatedBy())
+				.modified(transferProcessInitialized.getModified())
+				.lastModifiedBy(transferProcessInitialized.getLastModifiedBy())
+				.version(transferProcessInitialized.getVersion())
 				.build();
 		transferProcessRepository.save(transferProcessRequested);
 		log.info("Requested TransferProcess created");
 		if(log.isDebugEnabled()) {
-			log.debug("message: " + Serializer.serializePlain(transferProcessRequested));
+			log.debug("message: " + TransferSerializer.serializePlain(transferProcessRequested));
 		}
 		return transferProcessRequested;
 	}
 
+	private void checkSupportedFormats(TransferProcess transferProcess, String format) {
+		String response = okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" 
+				+  transferProcess.getDatasetId() + "/formats", 
+				HttpMethod.GET,
+				null);
+
+		if(StringUtils.isBlank(response)) {
+			throw new TransferProcessInternalException("Internal error", 
+					transferProcess.getConsumerPid(), transferProcess.getProviderPid());
+		}
+		
+		TypeReference<GenericApiResponse<List<String>>> typeRef = new TypeReference<GenericApiResponse<List<String>>>() {}; 
+        GenericApiResponse<List<String>> apiResp = TransferSerializer.deserializePlain(response, typeRef);
+        boolean formatValid = apiResp.getData().stream().anyMatch(f -> f.equals(format));
+        if(formatValid) {
+        	log.debug("Found supported format");
+        } else {
+        	log.info("{} not found as one of supported distribution formats");
+        	throw new TransferProcessInvalidFormatException("dct:format '" + format + "' not supported", 
+        			transferProcess.getConsumerPid(), transferProcess.getProviderPid());
+        }
+//	    } catch (JsonProcessingException e) {
+//	    	log.error(e.getLocalizedMessage(), e);
+//	        throw new TransferProcessInternalException("Internal error", transferProcess.getConsumerPid(), transferProcess.getProviderPid());
+//	    }
+	}
+	
+	
+
 	/**
-	 * Transfer from REQUESTED or SUSPENDED to STARTED state
+	 * Transfer from REQUESTED or SUSPENDED to STARTED state.
 	 * @param transferStartMessage TransferStartMessage
 	 * @param consumerPid consumerPid in case of consumer callback usage
 	 * @param providerPid providerPid in case of provider usage
@@ -128,9 +158,33 @@ public class DataTransferService {
 		log.debug("Starting data transfer for consumerPid {} and providerPid {}", consumerPidFinal, providerPidFinal);
 
 		TransferProcess transferProcessRequested = findTransferProcess(consumerPidFinal, providerPidFinal);
+		
+		if (IConstants.ROLE_PROVIDER.equals(transferProcessRequested.getRole()) && TransferState.REQUESTED.equals(transferProcessRequested.getState())) {
+			// Only consumer can transit from REQUESTED to STARTED state
+			throw new TransferProcessInvalidStateException("State transition aborted, consumer can not transit from " + TransferState.REQUESTED.name()
+					+ " to " + TransferState.STARTED.name(),
+					transferProcessRequested.getConsumerPid(), transferProcessRequested.getProviderPid());
+		} 
+		
 		stateTransitionCheck(transferProcessRequested, TransferState.STARTED);
-
-		TransferProcess transferProcessStarted = transferProcessRequested.copyWithNewTransferState(TransferState.STARTED);
+		
+		TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
+				.id(transferProcessRequested.getId())
+				.agreementId(transferProcessRequested.getAgreementId())
+				.consumerPid(transferProcessRequested.getConsumerPid())
+				.providerPid(transferProcessRequested.getProviderPid())
+				.callbackAddress(transferProcessRequested.getCallbackAddress())
+	   			.dataAddress(transferStartMessage.getDataAddress())
+				.format(transferProcessRequested.getFormat())
+				.state(TransferState.STARTED)
+				.role(transferProcessRequested.getRole())
+				.datasetId(transferProcessRequested.getDatasetId())
+				.created(transferProcessRequested.getCreated())
+				.createdBy(transferProcessRequested.getCreatedBy())
+				.modified(transferProcessRequested.getModified())
+				.lastModifiedBy(transferProcessRequested.getLastModifiedBy())
+				.version(transferProcessRequested.getVersion())
+				.build();
 		transferProcessRepository.save(transferProcessStarted);
 		publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()
 				.oldTransferProcess(transferProcessRequested)
@@ -142,7 +196,7 @@ public class DataTransferService {
 	}
 	
 	/**
-	 * Finds transfer process, check if status is correct, publish event and update state to COMPLETED
+	 * Finds transfer process, check if status is correct, publish event and update state to COMPLETED.
 	 * @param transferCompletionMessage
 	 * @param consumerPid consumerPid in case of consumer callback usage
 	 * @param providerPid providerPid in case of provider usage
@@ -168,12 +222,11 @@ public class DataTransferService {
 	}
 
 	/**
-	 * Transition data transfer to SUSPENDED state
+	 * Transition data transfer to SUSPENDED state.
 	 * @param transferSuspensionMessage message
 	 * @param consumerPid consumerPid in case of consumer callback usage
 	 * @param providerPid providerPid in case of provider usage
 	 * @return TransferProcess with status SUSPENDED
-	 *  
 	 */
 	public TransferProcess suspendDataTransfer(TransferSuspensionMessage transferSuspensionMessage, String consumerPid,
 			String providerPid) {
@@ -195,7 +248,7 @@ public class DataTransferService {
 	}
 	
 	/**
-	 * Transition data transfer to TERMINATED state
+	 * Transition data transfer to TERMINATED state.
 	 * @param transferTerminationMessage message
 	 * @param consumerPid consumerPid in case of consumer callback usage
 	 * @param providerPid providerPid in case of provider usage
@@ -221,10 +274,16 @@ public class DataTransferService {
 		return transferProcessTerminated;
 	}
 	
-	private TransferProcess findTransferProcess(String consumerPid, String providerPidFinal) {
-		TransferProcess transferProcessRequested = transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPidFinal)
+	/**
+	 * Find TransferProcess by consumerPid and providerPid.
+	 * @param consumerPid
+	 * @param providerPid
+	 * @return TransferProcess if found, otherwise throws TransferProcessNotFoundException
+	 */
+	public TransferProcess findTransferProcess(String consumerPid, String providerPid) {
+		TransferProcess transferProcessRequested = transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid)
 			.orElseThrow(() -> new TransferProcessNotFoundException("Transfer process for consumerPid " + consumerPid
-			 + " and providerPid " + consumerPid + " not found"));
+			 + " and providerPid " + providerPid + " not found"));
 		return transferProcessRequested;
 	}
 	

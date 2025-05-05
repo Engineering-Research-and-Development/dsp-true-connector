@@ -11,15 +11,23 @@ import it.eng.tools.model.DSpaceConstants;
 
 public enum LeftOperand {
 
+	// Uncomment ones that are supported by the underlying logic
+	COUNT(DSpaceConstants.ODRL + "count"),
+	DATE_TIME(DSpaceConstants.ODRL + "dateTime"),
+	SPATIAL(DSpaceConstants.ODRL + "spatial"),
+	PURPOSE(DSpaceConstants.ODRL + "purpose");
+/*
+ * https://www.w3.org/TR/odrl-vocab/#constraintLeftOperandCommon
 	ABSOLUTE_POSITION(DSpaceConstants.ODRL + "absolutePosition"),
 	ABSOLUTE_SIZE(DSpaceConstants.ODRL + "absoluteSize"),
 	ABSOLUTE_SPATIAL_POSITION(DSpaceConstants.ODRL + "absoluteSpatialPosition"),
 	ABSOLUTE_TEMPORAL_POSITION(DSpaceConstants.ODRL + "absoluteTemporalPosition"),
-    COUNT(DSpaceConstants.ODRL + "count"),
-    DATE_TIME(DSpaceConstants.ODRL + "dateTime"),
     DELAY_PERIOD(DSpaceConstants.ODRL + "delayPeriod"),
     DELIVERY_CHANNEL(DSpaceConstants.ODRL + "deliveryChannel"),
     DEVICE(DSpaceConstants.ODRL + "device"),
+    
+	//Only the eq, lt, lteq operators SHOULD be used. See also Metered Time.
+	//Example: elpasedTime eq P60M indicates a total elapsed time of 60 Minutes.
     ELAPSED_TIME(DSpaceConstants.ODRL + "elapsedTime"),
     EVENT(DSpaceConstants.ODRL + "event"),
     FILE_FOMRAT(DSpaceConstants.ODRL + "fileFormat"),
@@ -30,14 +38,12 @@ public enum LeftOperand {
     PAY_AMOUNT(DSpaceConstants.ODRL + "payAmount"),
     PERCENTAGE(DSpaceConstants.ODRL + "percentage"),
     PRODUCT(DSpaceConstants.ODRL + "product"),
-    PURPOSE(DSpaceConstants.ODRL + "purpose"),
     RECIPIENT(DSpaceConstants.ODRL + "recipient"),
     RELATIVE_POSITION(DSpaceConstants.ODRL + "relativePosition"),
     RELATIVE_SIZE(DSpaceConstants.ODRL + "relativeSize"),
     RELATIVE_SPATIAL_POSITION(DSpaceConstants.ODRL + "relativeSpatialPosition"),
     RELATIVE_TEMPORAL_POSITION(DSpaceConstants.ODRL + "relativeTemporalPosition"),
     RESOLUTION(DSpaceConstants.ODRL + "resolution"),
-    SPATIAL(DSpaceConstants.ODRL + "spatial"),
     SPATIAL_COORDINATES(DSpaceConstants.ODRL + "spatialCoordinates"),
     SYSTEM(DSpaceConstants.ODRL + "system"),
     SYSTEM_DEVICE(DSpaceConstants.ODRL + "systemDevice"),
@@ -45,6 +51,7 @@ public enum LeftOperand {
     UNIT_OF_COUNT(DSpaceConstants.ODRL + "unitOfCount"),
     VERSION(DSpaceConstants.ODRL + "version"),
 	VIRTUAL_LOCATION(DSpaceConstants.ODRL + "virtualLocation");
+	*/
 	
 	private final String operand;
 

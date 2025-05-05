@@ -12,9 +12,15 @@ import it.eng.negotiation.model.ContractNegotiation;
 public interface ContractNegotiationRepository extends MongoRepository<ContractNegotiation, String> {
 
 	Optional<ContractNegotiation> findByProviderPid(String providerPid);
+	
+	Optional<ContractNegotiation> findByConsumerPid(String consumerPid);
 
 	Optional<ContractNegotiation> findByProviderPidAndConsumerPid(String providerPid, String consumerPid);
 
-	Collection<ContractNegotiation> findByState(String state);
+	Optional<ContractNegotiation> findByAgreement(String agreement);
+
+	Collection<ContractNegotiation> findByStateAndRole(String state, String role);
+	
+	Collection<ContractNegotiation> findByRole(String role);
 
 }

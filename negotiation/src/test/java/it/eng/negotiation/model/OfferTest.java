@@ -11,7 +11,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 import jakarta.validation.ValidationException;
 
 public class OfferTest {
@@ -19,8 +19,8 @@ public class OfferTest {
 	@Test
 	public void validOffer() {
 		Offer offer = Offer.Builder.newInstance()
-				.target(MockObjectUtil.TARGET)
-				.assigner(MockObjectUtil.ASSIGNER)
+				.target(NegotiationMockObjectUtil.TARGET)
+				.assigner(NegotiationMockObjectUtil.ASSIGNER)
 				.build();
 		assertNotNull(offer, "Offer should be created with mandatory fields");
 		assertNotNull(offer.getId());
@@ -30,7 +30,7 @@ public class OfferTest {
 	public void invalidOffer() {
 		assertThrows(ValidationException.class, 
 				() -> Offer.Builder.newInstance()
-					.assignee(MockObjectUtil.ASSIGNEE)
+					.assignee(NegotiationMockObjectUtil.ASSIGNEE)
 					.build());
 	}	
 	
@@ -39,13 +39,13 @@ public class OfferTest {
 		String id = UUID.randomUUID().toString();
 		Offer offer = Offer.Builder.newInstance()
 				.id(id)
-				.assigner(MockObjectUtil.ASSIGNER)
-				.target(MockObjectUtil.TARGET)
+				.assigner(NegotiationMockObjectUtil.ASSIGNER)
+				.target(NegotiationMockObjectUtil.TARGET)
 				.build();
 		Offer offerB = Offer.Builder.newInstance()
 				.id(id)
-				.assigner(MockObjectUtil.ASSIGNER)
-				.target(MockObjectUtil.TARGET)
+				.assigner(NegotiationMockObjectUtil.ASSIGNER)
+				.target(NegotiationMockObjectUtil.TARGET)
 				.build();
 		assertTrue(offer.equals(offerB));
 	}
@@ -53,39 +53,39 @@ public class OfferTest {
 	@Test
 	public void equalsFalse() {
 		Offer offer = Offer.Builder.newInstance()
-				.target(MockObjectUtil.TARGET)
-				.assigner(MockObjectUtil.ASSIGNER)
+				.target(NegotiationMockObjectUtil.TARGET)
+				.assigner(NegotiationMockObjectUtil.ASSIGNER)
 				.build();
 		Offer offerB = Offer.Builder.newInstance()
 				.target("SomeDifferentTarget")
-				.assigner(MockObjectUtil.ASSIGNER)
+				.assigner(NegotiationMockObjectUtil.ASSIGNER)
 				.build();
 		assertFalse(offer.equals(offerB));
 	}
 	
 	@Test
 	public void equalsTest() {
-		Offer offer = MockObjectUtil.OFFER;
-		String ss = Serializer.serializePlain(offer);
-		Offer offer2 = Serializer.deserializePlain(ss, Offer.class);
+		Offer offer = NegotiationMockObjectUtil.OFFER;
+		String ss = NegotiationSerializer.serializePlain(offer);
+		Offer offer2 = NegotiationSerializer.deserializePlain(ss, Offer.class);
 		assertThat(offer).usingRecursiveComparison().isEqualTo(offer2);
 	}
 	
 	@Test
 	@DisplayName("Plain serialize/deserialize")
 	public void equalsTestPlain() {
-		Offer offer = MockObjectUtil.OFFER;
-		String ss = Serializer.serializePlain(offer);
-		Offer obj = Serializer.deserializePlain(ss, Offer.class);
+		Offer offer = NegotiationMockObjectUtil.OFFER;
+		String ss = NegotiationSerializer.serializePlain(offer);
+		Offer obj = NegotiationSerializer.deserializePlain(ss, Offer.class);
 		assertThat(offer).usingRecursiveComparison().isEqualTo(obj);
 	}
 	
 	@Test
 	@DisplayName("Protocol serialize/deserialize")
 	public void equalsTestProtocol() {
-		Offer offer = MockObjectUtil.OFFER;
-		String ss = Serializer.serializeProtocol(offer);
-		Offer obj = Serializer.deserializeProtocol(ss, Offer.class);
+		Offer offer = NegotiationMockObjectUtil.OFFER;
+		String ss = NegotiationSerializer.serializeProtocol(offer);
+		Offer obj = NegotiationSerializer.deserializeProtocol(ss, Offer.class);
 		assertThat(offer).usingRecursiveComparison().isEqualTo(obj);
 	}
 	

@@ -14,6 +14,12 @@ import it.eng.tools.model.DSpaceConstants.DataTransferStates;
 
 public enum TransferState {
 	
+	INITIALIZED(DSpaceConstants.DSPACE + DataTransferStates.INITIALIZED) {
+		@Override
+		public List<TransferState> nextState() {
+			return Arrays.asList(REQUESTED);
+		}
+	},
 	REQUESTED(DSpaceConstants.DSPACE + DataTransferStates.REQUESTED) {
 		@Override
 		public List<TransferState> nextState() {
@@ -62,7 +68,7 @@ public enum TransferState {
         ENUM_MAP = Collections.unmodifiableMap(map);
     }
 	
-	public static TransferState fromContractNegotiationState(String state) {
+	public static TransferState fromTransferStateState(String state) {
 		return ENUM_MAP.get(state.toLowerCase());
 	}
 	

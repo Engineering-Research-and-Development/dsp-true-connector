@@ -1,11 +1,18 @@
 package it.eng.negotiation.model;
 
+import java.time.Instant;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -40,6 +47,7 @@ import lombok.NoArgsConstructor;
 @JsonDeserialize(builder = ContractNegotiation.Builder.class)
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic = true)
 @Document(collection = "contract_negotiations")
+//@EntityListeners(AuditingEntityListener.class)
 public class ContractNegotiation extends AbstractNegotiationObject {
 
     @JsonIgnore
@@ -54,6 +62,7 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     // determins which role the connector is for that contract negotiation (consumer or provider)
     @JsonIgnore
     private String role;
+    
     @JsonIgnore
     @DBRef
     private Offer offer;
@@ -69,7 +78,26 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     @NotNull
     @JsonProperty(DSpaceConstants.DSPACE_STATE)
     private ContractNegotiationState state;
+    
+    @JsonIgnore
+    @CreatedBy
+    private String createdBy;
+    @JsonIgnore
+    @CreatedDate
+    private Instant created;
 
+    @JsonIgnore
+    @LastModifiedBy
+    private String lastModifiedBy;
+    @JsonIgnore
+    @LastModifiedDate
+    private Instant modified;
+    
+    @JsonIgnore
+    @Version
+    @Field("version")
+    private Long version;
+    
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Builder {
@@ -85,6 +113,7 @@ public class ContractNegotiation extends AbstractNegotiationObject {
             return new ContractNegotiation.Builder();
         }
         
+        @JsonProperty(DSpaceConstants.ID)
         public Builder id(String id) {
         	message.id = id;
         	return this;
@@ -97,10 +126,10 @@ public class ContractNegotiation extends AbstractNegotiationObject {
         }
         
         /**
-         * It is sent in a request and is stored on the responder side for the next request
+         * It is sent in a request and is stored on the responder side for the next request.
          * E.g. Consumer sends request to provider-> Provider stores callbackAddress for future request and responses with 200 ()
          * @param callbackAddress
-         * @return
+         * @return Builder object
          */
         public Builder callbackAddress(String callbackAddress) {
         	message.callbackAddress = callbackAddress;
@@ -138,6 +167,35 @@ public class ContractNegotiation extends AbstractNegotiationObject {
             message.consumerPid = consumerPid;
             return this;
         }
+        
+        // Auditable fields
+        @JsonProperty("version")
+        public Builder version(Long version) {
+            message.version = version;
+            return this;
+        }
+        
+        @JsonProperty("createdBy")
+        public Builder createdBy(String createdBy) {
+        	message.createdBy = createdBy;
+            return this;
+        }
+        @JsonProperty("created")
+        public Builder created(Instant created) {
+        	message.created = created;
+            return this;
+        }
+
+        @JsonProperty("modified")
+        public Builder modified(Instant modified) {
+        	message.modified = modified;
+            return this;
+        }
+        @JsonProperty("lastModifiedBy")
+        public Builder lastModifiedBy(String lastModifiedBy) {
+        	message.lastModifiedBy = lastModifiedBy;
+            return this;
+        }
 
         public ContractNegotiation build() {
             if (message.id == null) {
@@ -157,6 +215,7 @@ public class ContractNegotiation extends AbstractNegotiationObject {
                             .map(v -> v.getPropertyPath() + " " + v.getMessage())
                             .collect(Collectors.joining(", ")));
         }
+
     }
 
     @Override
@@ -166,7 +225,7 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     }
     
     /**
-     * Create new ContractNegotiation from initial, with new state
+     * Create new ContractNegotiation from initial, with new state.
      * @param newState new ContractNegotiationState
      * @return new instance of ContractNegotiation
      */
@@ -180,10 +239,12 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     			.assigner(this.assigner)
     			.role(this.role)
     			.agreement(this.agreement)
-    			// not yet auditable fields
-//    			.createdBy(this.createdBy)
-//				.lastModifiedBy(this.lastModifiedBy)
-//				.version(this.version)
+    			// auditable fields
+    			.createdBy(this.createdBy)
+    			.created(created)
+				.lastModifiedBy(this.lastModifiedBy)
+				.modified(modified)
+				.version(this.version)
     			.state(newState)
     			.build();
     }

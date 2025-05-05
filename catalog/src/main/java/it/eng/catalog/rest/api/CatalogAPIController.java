@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.catalog.model.Catalog;
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.service.CatalogService;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
@@ -39,7 +39,7 @@ public class CatalogAPIController {
         Catalog catalog = catalogService.getCatalogForApi();
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(catalog), "Fetched catalog"));
+                .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(catalog), "Fetched catalog"));
     }
 
     @GetMapping(path = "/{id}")
@@ -49,23 +49,23 @@ public class CatalogAPIController {
         Catalog catalog = catalogService.getCatalogById(id);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(catalog), "Fetched catalog"));
+                .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(catalog), "Fetched catalog"));
     }
 
     @PostMapping
     public ResponseEntity<GenericApiResponse<JsonNode>> createCatalog(@RequestBody String catalog) {
-        Catalog c = Serializer.deserializePlain(catalog, Catalog.class);
+        Catalog c = CatalogSerializer.deserializePlain(catalog, Catalog.class);
 
         log.info("Saving new catalog");
 
         Catalog storedCatalog = catalogService.saveCatalog(c);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(storedCatalog), "Catalog saved"));
+                .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(storedCatalog), "Catalog saved"));
     }
 
     @DeleteMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<Object>> deleteCatalog(@PathVariable String id) {
+    public ResponseEntity<GenericApiResponse<Void>> deleteCatalog(@PathVariable String id) {
         log.info("Deleting catalog with id: " + id);
 
         catalogService.deleteCatalog(id);
@@ -75,13 +75,13 @@ public class CatalogAPIController {
 
     @PutMapping(path = "/{id}")
     public ResponseEntity<GenericApiResponse<JsonNode>> updateCatalog(@PathVariable String id, @RequestBody String catalog) {
-        Catalog c = Serializer.deserializePlain(catalog, Catalog.class);
+        Catalog c = CatalogSerializer.deserializePlain(catalog, Catalog.class);
 
         log.info("Updating catalog with id: " + id);
         
         Catalog updatedCatalog = catalogService.updateCatalog(id, c);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(Serializer.serializePlainJsonNode(updatedCatalog), "Catalog updated"));
+                .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(updatedCatalog), "Catalog updated"));
     }
 }

@@ -28,12 +28,14 @@ import it.eng.negotiation.model.ContractAgreementVerificationMessage;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationEventType;
 import it.eng.negotiation.model.ContractNegotiationState;
-import it.eng.negotiation.model.MockObjectUtil;
+import it.eng.negotiation.model.NegotiationMockObjectUtil;
 import it.eng.negotiation.model.Offer;
+import it.eng.negotiation.policy.service.PolicyAdministrationPoint;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
+import it.eng.tools.event.datatransfer.InitializeTransferProcess;
 
 @ExtendWith(MockitoExtension.class)
 public class ContractNegotiationConsumerServiceTest {
@@ -48,6 +50,8 @@ public class ContractNegotiationConsumerServiceTest {
 	private AgreementRepository agreementRepository ;
 	@Mock
 	private OfferRepository offerRepository;
+	@Mock
+	private PolicyAdministrationPoint policyAdministrationPoint;
 	
 	@Captor
 	private ArgumentCaptor<ContractNegotiation> argCaptorContractNegotiation;
@@ -58,7 +62,7 @@ public class ContractNegotiationConsumerServiceTest {
 	@Test
 	@DisplayName("Process contract offer success")
 	public void processContractOffer_success() {
-		service.processContractOffer(MockObjectUtil.CONTRACT_OFFER_MESSAGE);
+		service.processContractOffer(NegotiationMockObjectUtil.CONTRACT_OFFER_MESSAGE);
 		verify(offerRepository).save(any(Offer.class));
 		verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
 		assertEquals(ContractNegotiationState.OFFERED, argCaptorContractNegotiation.getValue().getState());
@@ -69,16 +73,16 @@ public class ContractNegotiationConsumerServiceTest {
 	@DisplayName("Process agreement message - automatic negotiation - ON success")
 	public void handleAgreement_success() {
 		when(properties.isAutomaticNegotiation()).thenReturn(true);
-when(contractNegotiationRepository.findByProviderPidAndConsumerPid(MockObjectUtil.PROVIDER_PID, MockObjectUtil.CONSUMER_PID)).thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+when(contractNegotiationRepository.findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID)).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 		
-		service.handleAgreement(MockObjectUtil.CONTRACT_AGREEMENT_MESSAGE);
+		service.handleAgreement(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE);
 		
-		verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(MockObjectUtil.PROVIDER_PID, MockObjectUtil.CONSUMER_PID);
+		verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID);
 		verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
 		verify(agreementRepository).save(any(Agreement.class));
 		//verify that status is updated to AGREED
 		assertEquals(ContractNegotiationState.AGREED, argCaptorContractNegotiation.getValue().getState());
-		assertEquals(MockObjectUtil.CONTRACT_AGREEMENT_MESSAGE.getAgreement().getId(), argCaptorContractNegotiation.getValue().getAgreement().getId());
+		assertEquals(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE.getAgreement().getId(), argCaptorContractNegotiation.getValue().getAgreement().getId());
 		
 		verify(publisher).publishEvent(any(ContractAgreementVerificationMessage.class));
 	}
@@ -87,16 +91,16 @@ when(contractNegotiationRepository.findByProviderPidAndConsumerPid(MockObjectUti
 	@DisplayName("Process agreement message - automatic negotiation OFF - success")
 	public void handleAgreement_off_success() {
 		when(properties.isAutomaticNegotiation()).thenReturn(false);
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(MockObjectUtil.PROVIDER_PID, MockObjectUtil.CONSUMER_PID)).thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID)).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 		
-		service.handleAgreement(MockObjectUtil.CONTRACT_AGREEMENT_MESSAGE);
+		service.handleAgreement(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE);
 		
-		verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(MockObjectUtil.PROVIDER_PID, MockObjectUtil.CONSUMER_PID);
+		verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID);
 		verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
 		verify(agreementRepository).save(any(Agreement.class));
 		//verify that status is updated to AGREED
 		assertEquals(ContractNegotiationState.AGREED, argCaptorContractNegotiation.getValue().getState());
-		assertEquals(MockObjectUtil.CONTRACT_AGREEMENT_MESSAGE.getAgreement().getId(), argCaptorContractNegotiation.getValue().getAgreement().getId());
+		assertEquals(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE.getAgreement().getId(), argCaptorContractNegotiation.getValue().getAgreement().getId());
 
 		verify(publisher, times(0)).publishEvent(any(ContractAgreementVerificationMessage.class));
 	}
@@ -104,11 +108,11 @@ when(contractNegotiationRepository.findByProviderPidAndConsumerPid(MockObjectUti
 	@Test
 	@DisplayName("Process agreement message - automatic negotiation OFF - negotiation not found")
 	public void handleAgreement_off_negotiationNotFound() {
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(MockObjectUtil.PROVIDER_PID, MockObjectUtil.CONSUMER_PID)).thenReturn(Optional.ofNullable(null));
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID)).thenReturn(Optional.ofNullable(null));
 
-		assertThrows(ContractNegotiationNotFoundException.class, () -> service.handleAgreement( MockObjectUtil.CONTRACT_AGREEMENT_MESSAGE));
+		assertThrows(ContractNegotiationNotFoundException.class, () -> service.handleAgreement( NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE));
 		
-		verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(MockObjectUtil.PROVIDER_PID, MockObjectUtil.CONSUMER_PID);
+		verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID);
 		verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
 		verify(agreementRepository, times(0)).save(any(Agreement.class));
 	}
@@ -117,11 +121,11 @@ when(contractNegotiationRepository.findByProviderPidAndConsumerPid(MockObjectUti
 	@DisplayName("Process agreement message - automatic negotiation OFF - wrong negotiation state")
 	public void handleAgreement_off_wrongNegotiationState() {
 		
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(MockObjectUtil.PROVIDER_PID, MockObjectUtil.CONSUMER_PID)).thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_OFFERED));
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID)).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_OFFERED));
 
-		assertThrows(ContractNegotiationInvalidStateException.class, () -> service.handleAgreement( MockObjectUtil.CONTRACT_AGREEMENT_MESSAGE));
+		assertThrows(ContractNegotiationInvalidStateException.class, () -> service.handleAgreement( NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE));
 		
-		verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(MockObjectUtil.PROVIDER_PID, MockObjectUtil.CONSUMER_PID);
+		verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID);
 		verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
 		verify(agreementRepository, times(0)).save(any(Agreement.class));
 	}
@@ -129,12 +133,12 @@ when(contractNegotiationRepository.findByProviderPidAndConsumerPid(MockObjectUti
 	@Test
 	@DisplayName("Process agreement message - automatic negotiation OFF - offer not found")
 	public void handleAgreement_off_offerNotFound() {
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(MockObjectUtil.PROVIDER_PID, MockObjectUtil.CONSUMER_PID))
-			.thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED_NO_OFFER));
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID))
+			.thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED_NO_OFFER));
 
-		assertThrows(OfferNotFoundException.class, () -> service.handleAgreement( MockObjectUtil.CONTRACT_AGREEMENT_MESSAGE));
+		assertThrows(OfferNotFoundException.class, () -> service.handleAgreement( NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE));
 		
-		verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(MockObjectUtil.PROVIDER_PID, MockObjectUtil.CONSUMER_PID);
+		verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID);
 		verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
 		verify(agreementRepository, times(0)).save(any(Agreement.class));
 	}
@@ -142,14 +146,14 @@ when(contractNegotiationRepository.findByProviderPidAndConsumerPid(MockObjectUti
 	@Test
 	@DisplayName("Process FINALIZED event message - response success")
 	public void handleFinalizeEvent_success() {
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED));
-		service.handleFinalizeEvent(MockObjectUtil.getEventMessage(ContractNegotiationEventType.FINALIZED));
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED));
+		service.handleFinalizeEvent(NegotiationMockObjectUtil.getEventMessage(ContractNegotiationEventType.FINALIZED));
 	
 		verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
-
 		//verify that status is updated to FINALIZED
 		assertEquals(ContractNegotiationState.FINALIZED, argCaptorContractNegotiation.getValue().getState());
-	
+		verify(policyAdministrationPoint).createPolicyEnforcement(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getAgreement().getId());
+		verify(publisher).publishEvent(any(InitializeTransferProcess.class));
 	}
 	
 	@Test
@@ -157,8 +161,7 @@ when(contractNegotiationRepository.findByProviderPidAndConsumerPid(MockObjectUti
 	public void handleFinalizeEvent_wrongEventType() {
 	
 		assertThrows(ContractNegotiationInvalidEventTypeException.class,
-				() -> service.handleFinalizeEvent(MockObjectUtil.getEventMessage(ContractNegotiationEventType.ACCEPTED)));
-	
+				() -> service.handleFinalizeEvent(NegotiationMockObjectUtil.getEventMessage(ContractNegotiationEventType.ACCEPTED)));
 	}
 	
 	@Test
@@ -167,25 +170,25 @@ when(contractNegotiationRepository.findByProviderPidAndConsumerPid(MockObjectUti
 		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.empty());
 		
 		assertThrows(ContractNegotiationNotFoundException.class,
-				() -> service.handleFinalizeEvent(MockObjectUtil.getEventMessage(ContractNegotiationEventType.FINALIZED)));
+				() -> service.handleFinalizeEvent(NegotiationMockObjectUtil.getEventMessage(ContractNegotiationEventType.FINALIZED)));
 	}
 	
 	@Test
 	@DisplayName("Process FINALIZED event message - invalid state")
 	public void handleFinalizeEvent_invalidState() {
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_AGREED));
+		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_AGREED));
 		
 		assertThrows(ContractNegotiationInvalidStateException.class,
-				() -> service.handleFinalizeEvent(MockObjectUtil.getEventMessage(ContractNegotiationEventType.FINALIZED)));
+				() -> service.handleFinalizeEvent(NegotiationMockObjectUtil.getEventMessage(ContractNegotiationEventType.FINALIZED)));
 	}
 	
 	@Test
 	@DisplayName("Process termination message success")
-	public void handleTerminationResponse_success() {
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class)))
-			.thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
+	public void handleTerminationRequest_success() {
+		when(contractNegotiationRepository.findByConsumerPid(any(String.class)))
+			.thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
 
-		service.handleTerminationResponse(MockObjectUtil.CONSUMER_PID, MockObjectUtil.TERMINATION_MESSAGE);
+		service.handleTerminationRequest(NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.TERMINATION_MESSAGE);
 		
 		verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
 		assertEquals(ContractNegotiationState.TERMINATED, argCaptorContractNegotiation.getValue().getState());
@@ -193,23 +196,21 @@ when(contractNegotiationRepository.findByProviderPidAndConsumerPid(MockObjectUti
 	
 	@Test
 	@DisplayName("Process termination message failed - negotiation not found")
-	public void handleTerminationResponse_fail() {
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class)))
+	public void handleTerminationRequest_fail() {
+		when(contractNegotiationRepository.findByConsumerPid(any(String.class)))
 			.thenReturn(Optional.empty());
 
 		assertThrows(ContractNegotiationNotFoundException.class, 
-				() -> service.handleTerminationResponse(MockObjectUtil.CONSUMER_PID, MockObjectUtil.TERMINATION_MESSAGE));
+				() -> service.handleTerminationRequest(NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.TERMINATION_MESSAGE));
 	}
 	
 	@Test
 	@DisplayName("Process termination message failed - already terminated")
-	public void handleTerminationResponse_fail_alreadyTerminated() {
-		when(contractNegotiationRepository.findByProviderPidAndConsumerPid(any(String.class), any(String.class)))
-			.thenReturn(Optional.of(MockObjectUtil.CONTRACT_NEGOTIATION_TERMINATED));
+	public void handleTerminationRequest_fail_alreadyTerminated() {
+		when(contractNegotiationRepository.findByConsumerPid(any(String.class)))
+			.thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_TERMINATED));
 
 		assertThrows(ContractNegotiationInvalidStateException.class, 
-				() -> service.handleTerminationResponse(MockObjectUtil.CONSUMER_PID, MockObjectUtil.TERMINATION_MESSAGE));
+				() -> service.handleTerminationRequest(NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.TERMINATION_MESSAGE));
 	}
-	
-	
 }

@@ -7,13 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 
 public class ConstraintTest {
 
 	@Test
 	public void equalsTrue() {
-		assertTrue(MockObjectUtil.CONSTRAINT.equals(MockObjectUtil.CONSTRAINT));
+		assertTrue(NegotiationMockObjectUtil.CONSTRAINT.equals(NegotiationMockObjectUtil.CONSTRAINT));
 	}
 	
 	@Test
@@ -35,18 +35,18 @@ public class ConstraintTest {
 	@Test
 	@DisplayName("Plain serialize/deserialize")
 	public void equalsTestPlain() {
-		Constraint constraint = MockObjectUtil.CONSTRAINT;
-		String ss = Serializer.serializePlain(constraint);
-		Constraint obj = Serializer.deserializePlain(ss, Constraint.class);
+		Constraint constraint = NegotiationMockObjectUtil.CONSTRAINT;
+		String ss = NegotiationSerializer.serializePlain(constraint);
+		Constraint obj = NegotiationSerializer.deserializePlain(ss, Constraint.class);
 		assertThat(constraint).usingRecursiveComparison().isEqualTo(obj);
 	}
 	
 	@Test
 	@DisplayName("Protocol serialize/deserialize")
 	public void equalsTestProtocol() {
-		Constraint constraint = MockObjectUtil.CONSTRAINT;
-		String ss = Serializer.serializeProtocol(constraint);
-		Constraint obj = Serializer.deserializeProtocol(ss, Constraint.class);
+		Constraint constraint = NegotiationMockObjectUtil.CONSTRAINT;
+		String ss = NegotiationSerializer.serializeProtocol(constraint);
+		Constraint obj = NegotiationSerializer.deserializeProtocol(ss, Constraint.class);
 		assertThat(constraint).usingRecursiveComparison().isEqualTo(obj);
 	}
 }

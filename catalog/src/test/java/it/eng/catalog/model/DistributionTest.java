@@ -7,13 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import it.eng.catalog.util.MockObjectUtil;
+import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 
@@ -22,7 +22,7 @@ public class DistributionTest {
 	@Test
 	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() {
-		String result = Serializer.serializePlain(MockObjectUtil.DISTRIBUTION);
+		String result = CatalogSerializer.serializePlain(CatalogMockObjectUtil.DISTRIBUTION);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
 		assertTrue(result.contains(DSpaceConstants.TITLE));
@@ -32,14 +32,14 @@ public class DistributionTest {
 		assertTrue(result.contains(DSpaceConstants.MODIFIED));
 		assertTrue(result.contains(DSpaceConstants.ACCESS_SERVICE));
 		
-		Distribution javaObj = Serializer.deserializePlain(result, Distribution.class);
+		Distribution javaObj = CatalogSerializer.deserializePlain(result, Distribution.class);
 		validateDistribution(javaObj);
 	}
 
 	@Test
 	@DisplayName("Verify valid protocol object serialization")
 	public void testProtocol() {
-		JsonNode result = Serializer.serializeProtocolJsonNode(MockObjectUtil.DISTRIBUTION);
+		JsonNode result = CatalogSerializer.serializeProtocolJsonNode(CatalogMockObjectUtil.DISTRIBUTION);
 		assertNull(result.get(DSpaceConstants.CONTEXT), "Not root element to have context");
 		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
 		assertNotNull(result.get(DSpaceConstants.DCT_TITLE).asText());
@@ -49,15 +49,15 @@ public class DistributionTest {
 		assertNotNull(result.get(DSpaceConstants.DCT_FORMAT));
 		assertNotNull(result.get(DSpaceConstants.DCAT_ACCESS_SERVICE).asText());
 		
-		Distribution javaObj = Serializer.deserializeProtocol(result, Distribution.class);
+		Distribution javaObj = CatalogSerializer.deserializeProtocol(result, Distribution.class);
 		validateDistribution(javaObj);
 	}
 
 	@Test
 	@DisplayName("Missing @context and @type")
 	public void missingContextAndType() {
-		JsonNode result = Serializer.serializePlainJsonNode(MockObjectUtil.DISTRIBUTION);
-		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, Distribution.class));
+		JsonNode result = CatalogSerializer.serializePlainJsonNode(CatalogMockObjectUtil.DISTRIBUTION);
+		assertThrows(ValidationException.class, () -> CatalogSerializer.deserializeProtocol(result, Distribution.class));
 	}
 	
 	@Test
@@ -71,18 +71,18 @@ public class DistributionTest {
 	@Test
 	@DisplayName("Plain serialize/deserialize")
 	public void equalsTestPlain() {
-		Distribution distribution = MockObjectUtil.DISTRIBUTION;
-		String ss = Serializer.serializePlain(distribution);
-		Distribution distribution2 = Serializer.deserializePlain(ss, Distribution.class);
+		Distribution distribution = CatalogMockObjectUtil.DISTRIBUTION;
+		String ss = CatalogSerializer.serializePlain(distribution);
+		Distribution distribution2 = CatalogSerializer.deserializePlain(ss, Distribution.class);
 		assertThat(distribution).usingRecursiveComparison().isEqualTo(distribution2);
 	}
 	
 	@Test
 	@DisplayName("Protocol serialize/deserialize")
 	public void equalsTestProtocol() {
-		Distribution distribution = MockObjectUtil.DISTRIBUTION;
-		String ss = Serializer.serializeProtocol(distribution);
-		Distribution distribution2 = Serializer.deserializeProtocol(ss, Distribution.class);
+		Distribution distribution = CatalogMockObjectUtil.DISTRIBUTION;
+		String ss = CatalogSerializer.serializeProtocol(distribution);
+		Distribution distribution2 = CatalogSerializer.deserializeProtocol(ss, Distribution.class);
 		assertThat(distribution).usingRecursiveComparison().isEqualTo(distribution2);
 	}
 	

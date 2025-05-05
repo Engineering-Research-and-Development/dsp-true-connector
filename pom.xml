@@ -1,6 +1,6 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>it.eng</groupId>
 	<artifactId>trueconnector</artifactId>
@@ -10,14 +10,16 @@
 	<description>Dataspace protocol implementation of the TRUE Connector</description>
 
 	<properties>
-		<revision>0.1.0-SNAPSHOT</revision>
+		<revision>0.1.7-SNAPSHOT</revision>
 		<java.version>17</java.version>
 		<build.sourceEncoding>UTF-8</build.sourceEncoding>
 		<maven.compiler.release>${java.version}</maven.compiler.release>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<jacoco.version>0.8.10</jacoco.version>
+		<timestamp>${maven.build.timestamp}</timestamp>
+		<maven.build.timestamp.format>dd-MM-yyyy</maven.build.timestamp.format>
 	</properties>
-	
+
 	<modules>
 		<module>connector</module>
 		<module>catalog</module>
@@ -52,11 +54,6 @@
 				<artifactId>tools</artifactId>
 				<version>${revision}</version>
 			</dependency>
-			<dependency>
-				<groupId>it.eng</groupId>
-				<artifactId>statemachine</artifactId>
-				<version>${revision}</version>
-			</dependency>
 		</dependencies>
 	</dependencyManagement>
 
@@ -74,29 +71,45 @@
 					</configuration>
 				</plugin>
 				<plugin>
-		          <groupId>org.apache.maven.plugins</groupId>
-		          <artifactId>maven-surefire-plugin</artifactId>
-		          <version>3.2.2</version>
-		        </plugin>
-				 <plugin>
-		          <groupId>org.apache.maven.plugins</groupId>
-		          <artifactId>maven-jar-plugin</artifactId>
-		          <version>3.3.0</version>
-		        </plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-surefire-plugin</artifactId>
+					<version>3.5.2</version>
+					<configuration>
+						<excludes>
+							<exclude>**/*IntegrationTest.java</exclude>
+						</excludes>
+						<shutdown>kill</shutdown>
+					</configuration>
+					<executions>
+						<execution>
+							<id>integration-test</id>
+							<goals>
+								<goal>test</goal>
+							</goals>
+							<phase>integration-test</phase>
+							<configuration>
+								<excludes>
+									<exclude>none</exclude>
+								</excludes>
+								<includes>
+									<include>**/*IntegrationTest.java</include>
+								</includes>
+								<shutdown>kill</shutdown>
+							</configuration>
+						</execution>
+					</executions>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-jar-plugin</artifactId>
+					<version>3.3.0</version>
+				</plugin>
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-checkstyle-plugin</artifactId>
 					<version>3.3.0</version>
-<!-- 					<dependencies> -->
-<!-- 						<dependency> -->
-<!-- 							<groupId>com.puppycrawl.tools</groupId> -->
-<!-- 							<artifactId>checkstyle</artifactId> -->
-<!-- 							<version>${checkstyle.version}</version> -->
-<!-- 						</dependency> -->
-<!-- 					</dependencies> -->
 					<configuration>
 						<configLocation>scripts/ci/checkstyle.xml</configLocation>
-						<encoding>UTF-8</encoding>
 						<consoleOutput>true</consoleOutput>
 						<failOnViolation>true</failOnViolation>
 					</configuration>
@@ -136,6 +149,30 @@
 		</pluginManagement>
 
 		<plugins>
+		<!-- 
+		Commented out until more elegant solution is found for automatic update of CHANGELOG.md			
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<version>3.1.0</version>
+				<executions>
+					<execution>
+						<id>update-changelog</id>
+						<phase>validate</phase>
+						<inherited>false</inherited>
+						<configuration>
+							<target>
+								<replaceregexp file="CHANGELOG.md" match="project.version.placeholder" replace="${project.version}" byline="true"/>
+								<replaceregexp file="CHANGELOG.md" match="timestamp" replace="${timestamp}" byline="true"/>
+							</target>
+						</configuration>
+						<goals>
+							<goal>run</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		-->
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>flatten-maven-plugin</artifactId>
@@ -160,11 +197,20 @@
 					</execution>
 				</executions>
 			</plugin>
-				<plugin>
+			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-checkstyle-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>checkstyle</id>
+						<phase>validate</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
-				<plugin>
+			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
@@ -180,6 +226,13 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>1.18.36</version>
+						</path>
+					</annotationProcessorPaths>
 					<source>${maven.compiler.release}</source>
 					<target>${maven.compiler.release}</target>
 					<encoding>${project.build.sourceEncoding}</encoding>
@@ -190,10 +243,10 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 			</plugin>
 			<plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-failsafe-plugin</artifactId>
-        <version>3.2.5</version>
-      </plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-failsafe-plugin</artifactId>
+				<version>3.2.5</version>
+			</plugin>
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>

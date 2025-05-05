@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.negotiation.exception.ContractNegotiationInvalidEventTypeException;
+import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
 import it.eng.negotiation.exception.OfferNotFoundException;
 import it.eng.negotiation.listener.ContractNegotiationPublisher;
 import it.eng.negotiation.model.ContractAgreementMessage;
@@ -18,12 +19,14 @@ import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
 import it.eng.negotiation.model.ContractOfferMessage;
 import it.eng.negotiation.model.Offer;
+import it.eng.negotiation.policy.service.PolicyAdministrationPoint;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.event.datatransfer.InitializeTransferProcess;
 import it.eng.tools.model.IConstants;
 import lombok.extern.slf4j.Slf4j;
 
@@ -32,16 +35,18 @@ import lombok.extern.slf4j.Slf4j;
 public class ContractNegotiationConsumerService extends BaseProtocolService {
 
 	private final AgreementRepository agreementRepository;
+	private final PolicyAdministrationPoint policyAdministrationPoint;
 	
 	public ContractNegotiationConsumerService(ContractNegotiationPublisher publisher,
 			ContractNegotiationRepository contractNegotiationRepository, OkHttpRestClient okHttpRestClient,
 			ContractNegotiationProperties properties, OfferRepository offerRepository,
-			AgreementRepository agreementRepository) {
+			AgreementRepository agreementRepository, PolicyAdministrationPoint policyAdministrationPoint) {
 		super(publisher, contractNegotiationRepository, okHttpRestClient, properties, offerRepository);
 		this.agreementRepository = agreementRepository;
+		this.policyAdministrationPoint = policyAdministrationPoint;
 	}
 
-	/**
+	/*
      * {
      * "@context": "https://w3id.org/dspace/v0.8/context.json",
      * "@type": "dspace:ContractNegotiation",
@@ -53,7 +58,11 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
      * @param contractOfferMessage
      * @return
      */
-
+	/**
+	 * Process contract offer.
+	 * @param contractOfferMessage
+	 * @return ContractNegotiation as JsonNode
+	 */
     public JsonNode processContractOffer(ContractOfferMessage contractOfferMessage) {
     	checkIfContractNegotiationExists(contractOfferMessage.getConsumerPid(), contractOfferMessage.getProviderPid());
     	
@@ -69,7 +78,7 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
                 .callbackAddress(contractOfferMessage.getCallbackAddress())
                 .build();
         contractNegotiationRepository.save(contractNegotiation);
-        return Serializer.serializeProtocolJsonNode(contractNegotiation);
+        return NegotiationSerializer.serializeProtocolJsonNode(contractNegotiation);
     }
     
     private void processContractOffer(Offer offer) {
@@ -110,6 +119,11 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
     			.role(contractNegotiation.getRole())
     			.offer(contractNegotiation.getOffer())
     			.agreement(contractAgreementMessage.getAgreement())
+    			.created(contractNegotiation.getCreated())
+    			.createdBy(contractNegotiation.getCreatedBy())
+    			.modified(contractNegotiation.getModified())
+    			.lastModifiedBy(contractNegotiation.getLastModifiedBy())
+    			.version(contractNegotiation.getVersion())
     			.build();
     	log.info("CONSUMER - updating negotiation with state AGREED");
     	contractNegotiationRepository.save(contractNegotiationAgreed);
@@ -137,7 +151,6 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
      *
      * @param contractNegotiationEventMessage
      */
-
     public void handleFinalizeEvent(ContractNegotiationEventMessage contractNegotiationEventMessage) {
     	if (!contractNegotiationEventMessage.getEventType().equals(ContractNegotiationEventType.FINALIZED)) {
 			throw new ContractNegotiationInvalidEventTypeException(
@@ -153,43 +166,36 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
 		ContractNegotiation contractNegotiationUpdated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.FINALIZED);
 		log.info("CONSUMER - saving updated contract negotiation");
 		contractNegotiationRepository.save(contractNegotiationUpdated);
+		
+		log.debug("Creating polcyEnforcement for agreementId {}", contractNegotiation.getAgreement().getId());
+		policyAdministrationPoint.createPolicyEnforcement(contractNegotiation.getAgreement().getId());
+		publisher.publishEvent(new InitializeTransferProcess(
+				contractNegotiationUpdated.getCallbackAddress(),
+				contractNegotiationUpdated.getAgreement().getId(),
+				contractNegotiationUpdated.getAgreement().getTarget(),
+				contractNegotiationUpdated.getRole()
+				));
     }
-
 
     /**
      * The response body is not specified and clients are not required to process it.
      *
      * @param consumerPid
      * @param contractNegotiationTerminationMessage
-     * @return
      */
-
-    public void handleTerminationResponse(String consumerPid, ContractNegotiationTerminationMessage contractNegotiationTerminationMessage) {
-    	ContractNegotiation contractNegotiation = findContractNegotiationByPids(contractNegotiationTerminationMessage.getConsumerPid(), contractNegotiationTerminationMessage.getProviderPid());
-
+    public void handleTerminationRequest(String consumerPid, ContractNegotiationTerminationMessage contractNegotiationTerminationMessage) {
+    	ContractNegotiation contractNegotiation = contractNegotiationRepository.findByConsumerPid(consumerPid)
+				.orElseThrow(() -> new ContractNegotiationNotFoundException(
+						"Contract negotiation with providerPid " + contractNegotiationTerminationMessage.getProviderPid() + 
+						" and consumerPid " + consumerPid + " not found", consumerPid, contractNegotiationTerminationMessage.getProviderPid()));
+    	
     	stateTransitionCheck(ContractNegotiationState.TERMINATED, contractNegotiation);
 
     	ContractNegotiation contractNegotiationTerminated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.TERMINATED);
     	contractNegotiationRepository.save(contractNegotiationTerminated);
     	log.info("Contract Negotiation with id {} set to TERMINATED state", contractNegotiation.getId());
-    }
-    
-//    private Offer validateAgreementAgainstOffer(ContractAgreementMessage contractAgreementMessage) {
-//    	return 
-//    	repository.findByProviderPidAndConsumerPid(contractAgreementMessage.getProviderPid(), contractAgreementMessage.getConsumerPid())
-//    		.map(cn -> cn.getOffer())
-//    	.orElseThrow(() -> new OfferNotFoundException(
-//				"Offer with following values from Agreement not found: providerPid " + contractAgreementMessage.getProviderPid() + 
-//				" and consumerPid " + contractAgreementMessage.getConsumerPid() + "and target " + contractAgreementMessage.getAgreement().getTarget()));
-
     	
-//		return offerRepository
-//				.findByConsumerPidAndProviderPidAndTarget(contractAgreementMessage.getConsumerPid(),
-//						contractAgreementMessage.getProviderPid(),
-//						contractAgreementMessage.getAgreement().getTarget())
-//				.orElseThrow(() -> new OfferNotFoundException(
-//						"Offer with following values from Agreement not found: providerPid " + contractAgreementMessage.getProviderPid() + 
-//						" and consumerPid " + contractAgreementMessage.getConsumerPid() + "and target " + contractAgreementMessage.getAgreement().getTarget()));
-//	}
+    	publisher.publishEvent(contractNegotiationTerminationMessage);
+    }
 
 }

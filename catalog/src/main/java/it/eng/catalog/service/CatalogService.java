@@ -15,7 +15,7 @@ import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.Distribution;
 import it.eng.catalog.model.Offer;
 import it.eng.catalog.repository.CatalogRepository;
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
 import lombok.extern.slf4j.Slf4j;
@@ -56,7 +56,7 @@ public class CatalogService {
     /********* API ***********/
     
     /**
-	 * Public method for fetching the catalog for further API processing purposes
+	 * Public method for fetching the catalog for further API processing purposes.<br>
 	 * It throws ResourceNotFoundAPIException instead of CatalogErrorException used in protocol requests
 	 * 
 	 * @return Catalog
@@ -80,6 +80,7 @@ public class CatalogService {
      * Saves the given catalog.
      *
      * @param catalog The catalog to be saved.
+     * @return Saved Catalog object
      */
     public Catalog saveCatalog(Catalog catalog) {
         // TODO handle the situation when we insert catalog for the first time, and the object like dataSets, distributions, etc. should be stored into separate documents
@@ -134,10 +135,10 @@ public class CatalogService {
 	@Deprecated
     public void validateOffer(ContractNegotationOfferRequestEvent offerRequest) {
         log.info("Comparing if offer is valid or not");
-        Offer offer = Serializer.deserializeProtocol(offerRequest.getOffer(), Offer.class);
+        Offer offer = CatalogSerializer.deserializeProtocol(offerRequest.getOffer(), Offer.class);
         boolean valid = validateOffer(offer);
         ContractNegotiationOfferResponseEvent contractNegotiationOfferResponse = new ContractNegotiationOfferResponseEvent(offerRequest.getConsumerPid(),
-                offerRequest.getProviderPid(), valid, Serializer.serializeProtocolJsonNode(offer));
+                offerRequest.getProviderPid(), valid, CatalogSerializer.serializeProtocolJsonNode(offer));
         publisher.publishEvent(contractNegotiationOfferResponse);
     }
 
@@ -171,7 +172,6 @@ public class CatalogService {
      * This method adds the new dataService reference to the catalog's dataService list and saves the updated catalog.
      *
      * @param dataService The new data service reference to be added to the catalog.
-     * @param dataService
      */
     public void updateCatalogDataServiceAfterSave(DataService dataService) {
         Catalog c = getCatalogForApi();
@@ -220,32 +220,37 @@ public class CatalogService {
 
 
     /**
-     * Used by the protocol business logic to check if such offer exists
+     * Used by the protocol business logic to check if such offer exists.
      * because of that reason it throws CatalogErrorException instead of ResourceNotFoundAPIException
      * 
      * @param offer
      * @return boolean
      */
-	public boolean validateOffer(Offer offer) {
-		boolean valid = false;
+    public boolean validateOffer(Offer offer) {
+    	boolean valid = false;
 		Catalog catalog = getCatalog();
-
-		Offer existingOffer = catalog.getDataset().stream()
-				.flatMap(dataset -> dataset.getHasPolicy().stream())
-				.filter(of -> of.getId().equals(offer.getId()))
-				.findFirst()
+		Dataset dataset = catalog.getDataset().stream()
+				.filter(ds -> ds.getId().equals(offer.getTarget())).findFirst()
 				.orElse(null);
-
-		log.debug("Offer with id '{}' {}", offer.getId(), existingOffer != null ? " found." : "not found.");
-
-		if (existingOffer == null) {
-			log.warn("Offer with id {} not found in catalog", offer.getId());
-			valid = false;
+		if (dataset == null) {
+			log.warn("Offer.target '{}' does not match with any dataset from catalog", offer.getTarget());
 		} else {
-//	    		 check if offers are equals
-			if (offer.equals(existingOffer)) {
-				log.debug("Existing and prvided offers are same");
-				valid = true;
+
+			Offer existingOffer = dataset.getHasPolicy().stream()
+					.filter(of -> of.getId().equals(offer.getId()))
+					.findFirst()
+					.orElse(null);
+
+			log.debug("Offer with id '{}' {}", offer.getId(), existingOffer != null ? " found." : "not found.");
+
+			if (existingOffer == null) {
+				log.warn("Offer with id {} not found in catalog", offer.getId());
+			} else {
+				// check if offers are equals
+				if (offer.equals(existingOffer)) {
+					log.debug("Existing and provided offers are same");
+					valid = true;
+				}
 			}
 		}
 		log.info("Offer evaluated as {}", valid ? "valid" : "invalid");

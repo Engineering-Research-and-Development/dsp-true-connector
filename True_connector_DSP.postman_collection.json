@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "3c6078d6-1d67-4061-b8be-9040970a6714",
+		"_postman_id": "7cced753-6eb9-44e9-97c5-ec4da7255fac",
 		"name": "True_connector_DSP",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "36278855"
@@ -87,43 +87,6 @@
 											"key": "key_prefix",
 											"value": "{{KEY_PREFIX}}"
 										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Get Application Property By Key",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Check if status code is 200\", function () {\r",
-											"    pm.response.to.have.status(200);\r",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"url": {
-									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/application.daps.dapsJWKSUrl",
-									"host": [
-										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
-									],
-									"path": [
-										"application.daps.dapsJWKSUrl"
 									]
 								}
 							},
@@ -502,13 +465,28 @@
 									}
 								],
 								"body": {
-									"mode": "raw",
-									"raw": "{\r\n    \"keyword\": [\r\n        \"keyword1\",\r\n        \"keyword2\",\r\n        \"keyword3\"\r\n    ],\r\n    \"theme\": [\r\n        \"dark theme\",\r\n        \"light theme\"\r\n    ],\r\n    \"conformsTo\": \"conformsToSomethingNew\",\r\n    \"creator\": \"Engineering Informatica S.p.A.\",\r\n    \"description\": [\r\n        {\r\n            \"value\": \"Some text for multi language Dataset\",\r\n            \"language\": \"en\"\r\n        }\r\n    ],\r\n    \"identifier\": \"Unique identifier for testing Dataset\",\r\n    \"title\": \"Title for test Dataset new created\",\r\n    \"hasPolicy\": [\r\n        {\r\n            \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n            \"permission\": [\r\n                {\r\n                    \"action\": \"USE\",\r\n                    \"constraint\": [\r\n                        {\r\n                            \"leftOperand\": \"COUNT\",\r\n                            \"operator\": \"EQ\",\r\n                            \"rightOperand\": \"5\"\r\n                        }\r\n                    ]\r\n                }\r\n            ]\r\n        }\r\n    ],\r\n    \"distribution\": [\r\n        {\r\n            \"id\": \"1dc45797-4444-4932-8baf-ab7fd66ql4d5\",\r\n            \"title\": \"Flash lightning distribution\",\r\n            \"issued\": \"2024-04-23T16:26:00Z\",\r\n            \"modified\": \"2024-04-23T16:26:00Z\",\r\n            \"type\": \"dspace:Distribution\"\r\n        }\r\n    ]\r\n}",
-									"options": {
-										"raw": {
-											"language": "json"
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "dataset",
+											"value": "{\n    \"@id\": \"dataset_uuid_test\",\n    \"artifact\": null,\n    \"conformsTo\": \"conformsToSomething\",\n    \"createdBy\": null,\n    \"creator\": \"Chuck_Norris\",\n    \"description\": [{\n            \"value\": \"For test\",\n            \"language\": \"en\"\n        }\n    ],\n    \"distribution\": [{\n            \"@id\": \"urn:uuid:128a7504-989f-4f5e-8e19-694e0bdacbd7\",\n            \"accessService\": [{\n                    \"@id\": \"e84adca0-eb09-47b0-975c-f182aac8377f\",\n                    \"conformsTo\": \"conformsToSomething\",\n                    \"createdBy\": null,\n                    \"creator\": \"Chuck_Norris\",\n                    \"description\": [{\n                            \"value\": \"For test\",\n                            \"language\": \"en\"\n                        }\n                    ],\n                    \"endpointDescription\": \"endpoint description\",\n                    \"endpointURL\": \"http://dataservice.com\",\n                    \"identifier\": \"Unique_identifier_for_tests\",\n                    \"issued\": \"2024-04-23T18:26:00+02:00\",\n                    \"keyword\": [\"DataService keyword1\", \"DataService keyword2\"],\n                    \"lastModifiedBy\": null,\n                    \"modified\": \"2024-04-23T18:26:00+02:00\",\n                    \"theme\": [\"DataService theme1\", \"DataService theme2\"],\n                    \"title\": \"Title_for_test\",\n                    \"type\": \"dcat:DataService\",\n                    \"version\": null\n                }\n            ],\n            \"createdBy\": null,\n            \"description\": [{\n                    \"value\": \"For test\",\n                    \"language\": \"en\"\n                }\n            ],\n            \"format\": {\n                \"@id\": \"HTTP:PULL\"\n            },\n            \"hasPolicy\": [{\n                    \"@id\": \"urn:offer_id\",\n                    \"assignee\": null,\n                    \"assigner\": null,\n                    \"permission\": [{\n                            \"assigner\": null,\n                            \"assignee\": null,\n                            \"target\": null,\n                            \"action\": \"USE\",\n                            \"constraint\": [{\n                                    \"leftOperand\": \"COUNT\",\n                                    \"operator\": \"EQ\",\n                                    \"rightOperand\": \"5\"\n                                }\n                            ]\n                        }\n                    ],\n                    \"target\": null\n                }\n            ],\n            \"issued\": \"2024-04-23T18:26:00+02:00\",\n            \"lastModifiedBy\": null,\n            \"modified\": \"2024-04-23T18:26:00+02:00\",\n            \"title\": \"Title_for_test\",\n            \"type\": \"dspace:Distribution\",\n            \"version\": null\n        }\n    ],\n    \"hasPolicy\": [{\n            \"@id\": \"urn:offer_id\",\n            \"assignee\": null,\n            \"assigner\": null,\n            \"permission\": [{\n                    \"assigner\": null,\n                    \"assignee\": null,\n                    \"target\": null,\n                    \"action\": \"USE\",\n                    \"constraint\": [{\n                            \"leftOperand\": \"COUNT\",\n                            \"operator\": \"EQ\",\n                            \"rightOperand\": \"5\"\n                        }\n                    ]\n                }\n            ],\n            \"target\": null\n        }\n    ],\n    \"identifier\": \"Unique_identifier_for_tests\",\n    \"issued\": \"2024-04-23T18:26:00+02:00\",\n    \"keyword\": [\"keyword1\", \"keyword2\"],\n    \"lastModifiedBy\": null,\n    \"modified\": \"2024-04-23T18:26:00+02:00\",\n    \"theme\": [\"aqua\", \"white\", \"blue\"],\n    \"title\": \"Title_for_test\",\n    \"type\": \"dcat:Dataset\",\n    \"version\": null\n}\n",
+											"description": "Dataset to insert",
+											"type": "text"
+										},
+										{
+											"key": "file",
+											"description": "File for upload",
+											"type": "file",
+											"src": [],
+											"disabled": true
+										},
+										{
+											"key": "url",
+											"value": "https://example.com/dsptc",
+											"description": "URL for external download",
+											"type": "text"
 										}
-									}
+									]
 								},
 								"url": {
 									"raw": "{{CONSUMER_SERVER_API_DATASET}}",
@@ -523,15 +501,35 @@
 							"name": "Update Dataset",
 							"request": {
 								"method": "PUT",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\r\n    \"keyword\": [\r\n        \"keyword1\",\r\n        \"keyword2\",\r\n        \"keyword3\"\r\n    ],\r\n    \"theme\": [\r\n        \"dark theme\",\r\n        \"light theme\"\r\n    ],\r\n    \"conformsTo\": \"conformsToSomethingEdit\",\r\n    \"creator\": \"Engineering Informatica S.p.A.\",\r\n    \"description\": [\r\n        {\r\n            \"value\": \"Some text for multi language Dataset\",\r\n            \"language\": \"en\"\r\n        }\r\n    ],\r\n    \"identifier\": \"Unique identifier for testing Dataset\",\r\n    \"title\": \"Title for test Dataset\",\r\n    \"hasPolicy\": [\r\n        {\r\n            \"id\": \"fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n            \"permission\": [\r\n                {\r\n                    \"action\": \"USE\",\r\n                    \"constraint\": [\r\n                        {\r\n                            \"leftOperand\": \"COUNT\",\r\n                            \"operator\": \"EQ\",\r\n                            \"rightOperand\": \"5\"\r\n                        }\r\n                    ]\r\n                }\r\n            ]\r\n        }\r\n    ],\r\n    \"distribution\": [\r\n        {\r\n            \"id\": \"1dc45797-4444-4932-8baf-ab7fd66ql4d5\",\r\n            \"title\": \"Flash lightning distribution\",\r\n            \"issued\": \"2024-04-23T16:26:00Z\",\r\n            \"modified\": \"2024-04-23T16:26:00Z\",\r\n            \"accessService\": [\r\n                {\r\n                    \"id\": \"1dc45797-4444-4955-8baf-ab7fd66ac4d5\",\r\n                    \"keyword\": [\r\n                        \"keyword1\",\r\n                        \"keyword2\",\r\n                        \"keyword3\"\r\n                    ],\r\n                    \"theme\": [\r\n                        \"dark theme\",\r\n                        \"light theme\"\r\n                    ],\r\n                    \"conformsTo\": \"conformsToSomething\",\r\n                    \"creator\": \"Engineering Informatica S.p.A.\",\r\n                    \"description\": [\r\n                        {\r\n                            \"value\": \"Some text for multi language\",\r\n                            \"language\": \"en\"\r\n                        }\r\n                    ],\r\n                    \"identifier\": \"Unique identifier for testing Data Service\",\r\n                    \"issued\": \"2024-04-23T16:26:00Z\",\r\n                    \"modified\": \"2024-04-23T16:26:00Z\",\r\n                    \"title\": \"Title for testing Data Service\",\r\n                    \"endpointDescription\": \"endpoint description\",\r\n                    \"endpointURL\": \"https://provider-a.com/connector\",\r\n                    \"createdBy\": \"admin@mail.com\",\r\n                    \"lastModifiedBy\": \"admin@mail.com\",\r\n                    \"version\": 0,\r\n                    \"type\": \"dcat:DataService\"\r\n                }\r\n            ],\r\n            \"type\": \"dspace:Distribution\"\r\n        }\r\n    ]\r\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
 									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "dataset",
+											"value": "{\n    \"@id\": \"dataset_uuid_test\",\n    \"artifact\": null,\n    \"conformsTo\": \"conformsToSomething\",\n    \"createdBy\": null,\n    \"creator\": \"Chuck_Norris\",\n    \"description\": [{\n            \"value\": \"For test\",\n            \"language\": \"en\"\n        }\n    ],\n    \"distribution\": [{\n            \"@id\": \"urn:uuid:128a7504-989f-4f5e-8e19-694e0bdacbd7\",\n            \"accessService\": [{\n                    \"@id\": \"e84adca0-eb09-47b0-975c-f182aac8377f\",\n                    \"conformsTo\": \"conformsToSomething\",\n                    \"createdBy\": null,\n                    \"creator\": \"Chuck_Norris\",\n                    \"description\": [{\n                            \"value\": \"For test\",\n                            \"language\": \"en\"\n                        }\n                    ],\n                    \"endpointDescription\": \"endpoint description\",\n                    \"endpointURL\": \"http://dataservice.com\",\n                    \"identifier\": \"Unique_identifier_for_tests\",\n                    \"issued\": \"2024-04-23T18:26:00+02:00\",\n                    \"keyword\": [\"DataService keyword1\", \"DataService keyword2\"],\n                    \"lastModifiedBy\": null,\n                    \"modified\": \"2024-04-23T18:26:00+02:00\",\n                    \"theme\": [\"DataService theme1\", \"DataService theme2\"],\n                    \"title\": \"Title_for_test\",\n                    \"type\": \"dcat:DataService\",\n                    \"version\": null\n                }\n            ],\n            \"createdBy\": null,\n            \"description\": [{\n                    \"value\": \"For test\",\n                    \"language\": \"en\"\n                }\n            ],\n            \"format\": {\n                \"@id\": \"HTTP:PULL\"\n            },\n            \"hasPolicy\": [{\n                    \"@id\": \"urn:offer_id\",\n                    \"assignee\": null,\n                    \"assigner\": null,\n                    \"permission\": [{\n                            \"assigner\": null,\n                            \"assignee\": null,\n                            \"target\": null,\n                            \"action\": \"USE\",\n                            \"constraint\": [{\n                                    \"leftOperand\": \"COUNT\",\n                                    \"operator\": \"EQ\",\n                                    \"rightOperand\": \"5\"\n                                }\n                            ]\n                        }\n                    ],\n                    \"target\": null\n                }\n            ],\n            \"issued\": \"2024-04-23T18:26:00+02:00\",\n            \"lastModifiedBy\": null,\n            \"modified\": \"2024-04-23T18:26:00+02:00\",\n            \"title\": \"Title_for_test\",\n            \"type\": \"dspace:Distribution\",\n            \"version\": null\n        }\n    ],\n    \"hasPolicy\": [{\n            \"@id\": \"urn:offer_id\",\n            \"assignee\": null,\n            \"assigner\": null,\n            \"permission\": [{\n                    \"assigner\": null,\n                    \"assignee\": null,\n                    \"target\": null,\n                    \"action\": \"USE\",\n                    \"constraint\": [{\n                            \"leftOperand\": \"COUNT\",\n                            \"operator\": \"EQ\",\n                            \"rightOperand\": \"5\"\n                        }\n                    ]\n                }\n            ],\n            \"target\": null\n        }\n    ],\n    \"identifier\": \"Unique_identifier_for_tests\",\n    \"issued\": \"2024-04-23T18:26:00+02:00\",\n    \"keyword\": [\"keyword1\", \"keyword2\"],\n    \"lastModifiedBy\": null,\n    \"modified\": \"2024-04-23T18:26:00+02:00\",\n    \"theme\": [\"aqua\", \"white\", \"blue\"],\n    \"title\": \"Title_for_test\",\n    \"type\": \"dcat:Dataset\",\n    \"version\": null\n}\n",
+											"description": "Dataset to insert",
+											"type": "text"
+										},
+										{
+											"key": "file",
+											"description": "File for upload",
+											"type": "file",
+											"src": [],
+											"disabled": true
+										},
+										{
+											"key": "url",
+											"value": "https://example.com/dsptc",
+											"description": "URL for external download",
+											"type": "text"
+										}
+									]
 								},
 								"url": {
 									"raw": "{{CONSUMER_SERVER_API_DATASET}}/{$ID}",
@@ -608,7 +606,7 @@
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER_SERVER_PROTOCOL_NEGOTIATION}}/request\",\r\n    \"offer\": {\r\n        \"@id\": \"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"urn:uuid:TARGET\",\r\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"EQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+									"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER}}\",\r\n    \"offer\": {\r\n        \"@id\": \"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5\",\r\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"LTEQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -637,7 +635,7 @@
 											"\r",
 											"pm.test(\"Retrieve contract negotiation id\", function () {\r",
 											"    var jsonData = pm.response.json();\r",
-											"    pm.collectionVariables.set(\"provider_contractNegotiationId\", jsonData[\"data\"][0][\"@id\"])\r",
+											"    pm.collectionVariables.set(\"provider_contractNegotiationId\", jsonData[\"data\"][jsonData.data.length-1][\"@id\"])\r",
 											"});"
 										],
 										"type": "text/javascript",
@@ -655,62 +653,15 @@
 									}
 								],
 								"url": {
-									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}",
-									"host": [
-										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "[C/P] Send offer",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Check if status code is 200\", function () {\r",
-											"    pm.response.to.have.status(200);\r",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									},
-									{
-										"key": "Authorization",
-										"value": "Basic YWRtaW5AbWFpbC5jb206cGFzc3dvcmQ="
-									},
-									{
-										"key": "Cookie",
-										"value": "JSESSIONID=1B172A0D2187794C8FA816EF096C69B8"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"Forward-To\": \"{{CONSUMER_SERVER_PROTOCOL_NEGOTIATION}}/offers\",\n    \"offer\": {\n        \"@id\": \"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\n        \"target\": \"target\",\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\n        \"permission\": [\n            {\n                \"action\": \"USE\",\n                \"constraint\": [\n                    {\n                        \"leftOperand\": \"COUNT\",\n                        \"operator\": \"EQ\",\n                        \"rightOperand\": \"5\"\n                    }\n                ]\n            }\n        ]\n    }\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/offers",
+									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}?role=provider",
 									"host": [
 										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
 									],
-									"path": [
-										"offers"
+									"query": [
+										{
+											"key": "role",
+											"value": "provider"
+										}
 									]
 								}
 							},
@@ -885,6 +836,51 @@
 							"response": []
 						},
 						{
+							"name": "[C] Get agreement id",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Retrieve agreement id\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"agreementId\", jsonData[\"data\"][jsonData.data.length-1][\"agreement\"][\"@id\"])\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}?role=consumer",
+									"host": [
+										"{{CONSUMER_SERVER_API_NEGOTIATION}}"
+									],
+									"query": [
+										{
+											"key": "role",
+											"value": "consumer"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "Check if agreement is valid",
 							"request": {
 								"method": "POST",
@@ -1012,6 +1008,550 @@
 									],
 									"path": [
 										"{$ID}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "DataTransfer",
+					"item": [
+						{
+							"name": "[C] Find Initialized Transfer Process",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"consumer_transferProcessId\", jsonData[\"data\"][jsonData.data.length-1][\"@id\"])\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_TRANSFERS}}?state=INITIALIZED&role=consumer",
+									"host": [
+										"{{CONSUMER_SERVER_API_TRANSFERS}}"
+									],
+									"query": [
+										{
+											"key": "state",
+											"value": "INITIALIZED"
+										},
+										{
+											"key": "role",
+											"value": "consumer"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[C] Request transfer",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"consumer_transferProcessId\", jsonData[\"data\"][\"@id\"])\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"transferProcessId\": \"{{consumer_transferProcessId}}\",\r\n    \"format\": \"HttpData-PULL\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_TRANSFERS}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_TRANSFERS}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Find Transfer Process",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"provider_transferProcessId\", jsonData[\"data\"][jsonData.data.length-1][\"@id\"])\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}?role=provider",
+									"host": [
+										"{{PROVIDER_SERVER_API_TRANSFERS}}"
+									],
+									"query": [
+										{
+											"key": "role",
+											"value": "provider"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Start transfer",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Retrieve data address endpoint\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"dataAddress_endpoint\", jsonData[\"data\"][\"dataAddress\"][\"endpoint\"])\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}/{{provider_transferProcessId}}/start",
+									"host": [
+										"{{PROVIDER_SERVER_API_TRANSFERS}}"
+									],
+									"path": [
+										"{{provider_transferProcessId}}",
+										"start"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[C] Download data",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
+									"host": [
+										"{{CONSUMER_SERVER_API_TRANSFERS}}"
+									],
+									"path": [
+										"{{consumer_transferProcessId}}",
+										"download"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[C] View data",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view",
+									"host": [
+										"{{CONSUMER_SERVER_API_TRANSFERS}}"
+									],
+									"path": [
+										"{{consumer_transferProcessId}}",
+										"view"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[C] Complete transfer",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_TRANSFERS}}/{{consumer_transferProcessId}}/complete",
+									"host": [
+										"{{CONSUMER_SERVER_API_TRANSFERS}}"
+									],
+									"path": [
+										"{{consumer_transferProcessId}}",
+										"complete"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Suspend transfer",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}/{{provider_transferProcessId}}/suspend",
+									"host": [
+										"{{PROVIDER_SERVER_API_TRANSFERS}}"
+									],
+									"path": [
+										"{{provider_transferProcessId}}",
+										"suspend"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Terminate transfer",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}/{{provider_transferProcessId}}/terminate",
+									"host": [
+										"{{PROVIDER_SERVER_API_TRANSFERS}}"
+									],
+									"path": [
+										"{{provider_transferProcessId}}",
+										"terminate"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Proxy",
+					"item": [
+						{
+							"name": "Dataset formats",
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "admin@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"Forward-To\" : \"http://localhost:8090\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER}}/api/v1/proxy/datasets/urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5/formats",
+									"host": [
+										"{{CONSUMER}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"proxy",
+										"datasets",
+										"urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+										"formats"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get remote catalog",
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "admin@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"Forward-To\" : \"http://localhost:8090\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER}}/api/v1/proxy/catalogs",
+									"host": [
+										"{{CONSUMER}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"proxy",
+										"catalogs"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Artifact",
+					"item": [
+						{
+							"name": "List all artifacts",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_ARTIFACTS}}",
+									"host": [
+										"{{PROVIDER_SERVER_API_ARTIFACTS}}"
 									]
 								}
 							},
@@ -1827,6 +2367,44 @@
 					""
 				]
 			}
+		}
+	],
+	"variable": [
+		{
+			"key": "consumer_contractNegotiationId",
+			"value": ""
+		},
+		{
+			"key": "consumerPid",
+			"value": ""
+		},
+		{
+			"key": "providerPid",
+			"value": ""
+		},
+		{
+			"key": "provider_contractNegotiationId",
+			"value": ""
+		},
+		{
+			"key": "provider_transferProcessId",
+			"value": ""
+		},
+		{
+			"key": "consumer_transferProcessId",
+			"value": ""
+		},
+		{
+			"key": "agreementId",
+			"value": ""
+		},
+		{
+			"key": "transactionId",
+			"value": ""
+		},
+		{
+			"key": "dataAddress_endpoint",
+			"value": ""
 		}
 	]
 }

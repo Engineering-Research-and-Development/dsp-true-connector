@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.time.Instant;
 import java.util.Arrays;
 
 import org.junit.jupiter.api.DisplayName;
@@ -11,16 +12,17 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 import jakarta.validation.ValidationException;
 
 public class AgreementTest {
 
 	Agreement agreement = Agreement.Builder.newInstance()
-			.id(MockObjectUtil.generateUUID())
-			.assignee(MockObjectUtil.ASSIGNEE)
-			.assigner(MockObjectUtil.ASSIGNER)
-			.target(MockObjectUtil.TARGET)
+			.id(NegotiationMockObjectUtil.generateUUID())
+			.assignee(NegotiationMockObjectUtil.ASSIGNEE)
+			.assigner(NegotiationMockObjectUtil.ASSIGNER)
+			.target(NegotiationMockObjectUtil.TARGET)
+			.timestamp(Instant.now().toString())
 			.permission(Arrays.asList(Permission.Builder.newInstance()
 					.action(Action.USE)
 					.constraint(Arrays.asList(Constraint.Builder.newInstance()
@@ -42,7 +44,7 @@ public class AgreementTest {
 	public void invalidAgreement() {
 	assertThrows(ValidationException.class, () -> {
 		Agreement.Builder.newInstance()
-				.id(MockObjectUtil.generateUUID())
+				.id(NegotiationMockObjectUtil.generateUUID())
 				.build();
 		});
 	}
@@ -50,23 +52,23 @@ public class AgreementTest {
 	@Test
 	@DisplayName("Missing @context and @type")
 	public void missingContextAndType() {
-		JsonNode result = Serializer.serializePlainJsonNode(agreement);
-		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, Agreement.class));
+		JsonNode result = NegotiationSerializer.serializePlainJsonNode(agreement);
+		assertThrows(ValidationException.class, () -> NegotiationSerializer.deserializeProtocol(result, Agreement.class));
 	}
 	
 	@Test
 	@DisplayName("Plain serialize/deserialize")
 	public void equalsTestPlain() {
-		String ss = Serializer.serializePlain(agreement);
-		Agreement obj = Serializer.deserializePlain(ss, Agreement.class);
+		String ss = NegotiationSerializer.serializePlain(agreement);
+		Agreement obj = NegotiationSerializer.deserializePlain(ss, Agreement.class);
 		assertThat(agreement).usingRecursiveComparison().isEqualTo(obj);
 	}
 	
 	@Test
 	@DisplayName("Protocol serialize/deserialize")
 	public void equalsTestProtocol() {
-		String ss = Serializer.serializeProtocol(agreement);
-		Agreement obj = Serializer.deserializeProtocol(ss, Agreement.class);
+		String ss = NegotiationSerializer.serializeProtocol(agreement);
+		Agreement obj = NegotiationSerializer.deserializeProtocol(ss, Agreement.class);
 		assertThat(agreement).usingRecursiveComparison().isEqualTo(obj);
 	}
 	

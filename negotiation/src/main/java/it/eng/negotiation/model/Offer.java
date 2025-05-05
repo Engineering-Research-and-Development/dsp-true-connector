@@ -77,7 +77,7 @@ public class Offer {
 	private List<Permission> permission;
 	
 	/**
-	 * The original ID as in the provider's Catalog
+	 * The original ID as in the provider's Catalog.
 	 */
 	@JsonIgnore
 	private String originalId;

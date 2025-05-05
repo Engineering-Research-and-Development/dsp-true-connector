@@ -1,0 +1,868 @@
+{
+	"info": {
+		"_postman_id": "aeb12869-f11c-4b91-995c-2dd9e59bb3f1",
+		"name": "Negotiation tests",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "21815221",
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-aeb12869-f11c-4b91-995c-2dd9e59bb3f1?action=share&source=collection_link&creator=21815221"
+	},
+	"item": [
+		{
+			"name": "Negotiation",
+			"item": [
+				{
+					"name": "[C] Start negotiation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.collectionVariables.set(\"consumer_contractNegotiationId\", jsonData[\"data\"][\"@id\"])\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Retrieve consumer pid\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.collectionVariables.set(\"consumerPid\", jsonData[\"data\"][\"consumerPid\"])\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Retrieve provider pid\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.collectionVariables.set(\"providerPid\", jsonData[\"data\"][\"providerPid\"])\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER_PROTOCOL_ENDPOINT}}\",\r\n    \"offer\": {\r\n        \"@id\": \"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"{{datasetId}}\",\r\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"LTEQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{CONSUMER_API_ENDPOINT}}",
+							"host": [
+								"{{CONSUMER_API_ENDPOINT}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[P] Find Contract Negotiation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.collectionVariables.set(\"provider_contractNegotiationId\", jsonData[\"data\"][jsonData.data.length-1][\"@id\"])\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{PROVIDER_API_ENDPOINT}}?role=provider",
+							"host": [
+								"{{PROVIDER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "provider"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[C] Requested check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Your test name\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    // find out how to get the id from the start negotiation request body\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"REQUESTED\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"consumer\");\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{CONSUMER_API_ENDPOINT}}?role=consumer",
+							"host": [
+								"{{CONSUMER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "consumer"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[P] Requested check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Check if offer and role are present\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    // find out how to get the id from the start negotiation request body\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"REQUESTED\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"provider\");\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{PROVIDER_API_ENDPOINT}}?role=provider",
+							"host": [
+								"{{PROVIDER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "provider"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[P] Approve negotiation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Status AGREED\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData[\"data\"][\"dspace:state\"]).to.eql(\"dspace:AGREED\");\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Basic YWRtaW5AbWFpbC5jb206cGFzc3dvcmQ="
+							},
+							{
+								"key": "Cookie",
+								"value": "JSESSIONID=1B172A0D2187794C8FA816EF096C69B8"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{PROVIDER_API_ENDPOINT}}/{{provider_contractNegotiationId}}/approve",
+							"host": [
+								"{{PROVIDER_API_ENDPOINT}}"
+							],
+							"path": [
+								"{{provider_contractNegotiationId}}",
+								"approve"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[C] Agreed check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Your test name\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    // find out how to get the id from the start negotiation request body\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"consumer\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"AGREED\");\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{CONSUMER_API_ENDPOINT}}?role=consumer",
+							"host": [
+								"{{CONSUMER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "consumer"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[P] Agreed check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Check if offer and role are present\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    // find out how to get the id from the start negotiation request body\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"provider\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"AGREED\");\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{PROVIDER_API_ENDPOINT}}?role=provider",
+							"host": [
+								"{{PROVIDER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "provider"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[C] Verify negotiation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{CONSUMER_API_ENDPOINT}}/{{consumer_contractNegotiationId}}/verify",
+							"host": [
+								"{{CONSUMER_API_ENDPOINT}}"
+							],
+							"path": [
+								"{{consumer_contractNegotiationId}}",
+								"verify"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[C] Verify check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Your test name\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    // find out how to get the id from the start negotiation request body\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"consumer\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"VERIFIED\");\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{CONSUMER_API_ENDPOINT}}?role=consumer",
+							"host": [
+								"{{CONSUMER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "consumer"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[P] Verify check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Check if offer and role are present\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    // find out how to get the id from the start negotiation request body\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"provider\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"VERIFIED\");\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{PROVIDER_API_ENDPOINT}}?role=provider",
+							"host": [
+								"{{PROVIDER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "provider"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[P] Finalize negotiation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{PROVIDER_API_ENDPOINT}}/{{provider_contractNegotiationId}}/finalize",
+							"host": [
+								"{{PROVIDER_API_ENDPOINT}}"
+							],
+							"path": [
+								"{{provider_contractNegotiationId}}",
+								"finalize"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[C] Finalize check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Your test name\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    // find out how to get the id from the start negotiation request body\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"consumer\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"FINALIZED\");\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{CONSUMER_API_ENDPOINT}}?role=consumer",
+							"host": [
+								"{{CONSUMER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "consumer"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[P] Finalize check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Check if offer and role are present\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    // find out how to get the id from the start negotiation request body\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"provider\");\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
+									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"FINALIZED\");\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{PROVIDER_API_ENDPOINT}}?role=provider",
+							"host": [
+								"{{PROVIDER_API_ENDPOINT}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "provider"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[C] Check if transfer process is initialized",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Check if transfer process is initialized\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    var transferProcess = jsonData[\"data\"][jsonData.data.length - 1];\r",
+									"    pm.expect(transferProcess[\"state\"]).to.eql(\"INITIALIZED\");\r",
+									"    pm.expect(transferProcess[\"role\"]).to.eql(\"consumer\");\r",
+									"    pm.expect(transferProcess[\"agreementId\"]).to.not.eql(null);\r",
+									"    pm.expect(transferProcess[\"callbackAddress\"]).to.not.eql(null);\r",
+									"    pm.expect(transferProcess[\"datasetId\"]).to.not.eql(null);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{CONSUMER_SERVER_API_TRANSFERS}}?role=consumer",
+							"host": [
+								"{{CONSUMER_SERVER_API_TRANSFERS}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "consumer"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[P] Check if transfer process is initialized",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Check if transfer process is initialized\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    var transferProcess = jsonData[\"data\"][jsonData.data.length - 1];\r",
+									"    pm.expect(transferProcess[\"state\"]).to.eql(\"INITIALIZED\");\r",
+									"    pm.expect(transferProcess[\"role\"]).to.eql(\"provider\");\r",
+									"    pm.expect(transferProcess[\"agreementId\"]).to.not.eql(null);\r",
+									"    pm.expect(transferProcess[\"callbackAddress\"]).to.not.eql(null);\r",
+									"    pm.expect(transferProcess[\"datasetId\"]).to.not.eql(null);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}?role=provider",
+							"host": [
+								"{{PROVIDER_SERVER_API_TRANSFERS}}"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "provider"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "basic",
+		"basic": [
+			{
+				"key": "password",
+				"value": "password",
+				"type": "string"
+			},
+			{
+				"key": "username",
+				"value": "admin@mail.com",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "CONSUMER_API_ENDPOINT",
+			"value": "http://localhost:8080/api/v1/negotiations",
+			"type": "string"
+		},
+		{
+			"key": "PROVIDER_API_ENDPOINT",
+			"value": "http://localhost:8090/api/v1/negotiations",
+			"type": "string"
+		},
+		{
+			"key": "CONSUMER_PROTOCOL_ENDPOINT",
+			"value": "http://172.17.0.1:8080/negotiations",
+			"type": "string"
+		},
+		{
+			"key": "PROVIDER_PROTOCOL_ENDPOINT",
+			"value": "http://172.17.0.1:8090/",
+			"type": "string"
+		},
+		{
+			"key": "datasetId",
+			"value": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+			"type": "string"
+		},
+		{
+			"key": "CONSUMER_SERVER_API_TRANSFERS",
+			"value": "http://localhost:8080/api/v1/transfers",
+			"type": "default"
+		},
+		{
+			"key": "PROVIDER_SERVER_API_TRANSFERS",
+			"value": "http://localhost:8090/api/v1/transfers",
+			"type": "default"
+		}
+	]
+}

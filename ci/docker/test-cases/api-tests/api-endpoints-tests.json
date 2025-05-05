@@ -1,12 +1,142 @@
 {
 	"info": {
-		"_postman_id": "65ff3ae3-2f08-4594-a08c-215c8ca3aa65",
+		"_postman_id": "2d4f98e5-a459-40c0-8a36-746c44c6db29",
 		"name": "API tests",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "21815221",
-		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-65ff3ae3-2f08-4594-a08c-215c8ca3aa65?action=share&source=collection_link&creator=21815221"
+		"_exporter_id": "36278855"
 	},
 	"item": [
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Get all users",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"pm.test(\"Check if response contains admin@mail.com\", function () {\r",
+									"    pm.expect(pm.response.text()).to.include(\"admin@mail.com\");\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{CONSUMER_SERVER_API_USERS}}",
+							"host": [
+								"{{CONSUMER_SERVER_API_USERS}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get user by email",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"pm.test(\"Check if response contains admin@mail.com\", function () {\r",
+									"    pm.expect(pm.response.text()).to.include(\"admin@mail.com\");\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{CONSUMER_SERVER_API_USERS}}/admin@mail.com",
+							"host": [
+								"{{CONSUMER_SERVER_API_USERS}}"
+							],
+							"path": [
+								"admin@mail.com"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create user",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"pm.test(\"Response body contains New user created\", function () {\r",
+									"    pm.expect(pm.response.text()).to.include(\"New user created\");\r",
+									"    pm.expect(pm.response.text()).to.include(\"user_gha@mail.com\");\r",
+									"    pm.expect(pm.response.text()).to.include(\"GHA Test user\");\r",
+									"    pm.expect(pm.response.text()).to.include(\"DSP-TRUEConnector\");\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"firstName\" : \"GHA Test user\",\r\n  \"lastName\" : \"DSP-TRUEConnector\",\r\n  \"email\" : \"user_gha@mail.com\",\r\n  \"password\" : \"GhaPassword123!\",\r\n  \"role\" : \"ROLE_ADMIN\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{CONSUMER_SERVER_API_USERS}}",
+							"host": [
+								"{{CONSUMER_SERVER_API_USERS}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
 		{
 			"name": "Get all catalogs",
 			"event": [
@@ -388,6 +518,88 @@
 				}
 			},
 			"response": []
+		},
+		{
+			"name": "Get proxy catalog",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"Forward-To\" : \"{{PROVIDER_PROTOCOL}}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{CONSUMER_SERVER_API_PROXY}}/catalogs",
+					"host": [
+						"{{CONSUMER_SERVER_API_PROXY}}"
+					],
+					"path": [
+						"catalogs"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Dataset formats",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"Forward-To\" : \"{{PROVIDER_PROTOCOL}}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{CONSUMER_SERVER_API_PROXY}}/datasets/{{datasetId}}/formats",
+					"host": [
+						"{{CONSUMER_SERVER_API_PROXY}}"
+					],
+					"path": [
+						"datasets",
+						"{{datasetId}}",
+						"formats"
+					]
+				}
+			},
+			"response": []
 		}
 	],
 	"auth": {
@@ -451,6 +663,21 @@
 		{
 			"key": "CONSUMER_SERVER_API_DISTRIBUTION",
 			"value": "{{CONSUMER}}/api/v1/distributions",
+			"type": "string"
+		},
+		{
+			"key": "CONSUMER_SERVER_API_PROXY",
+			"value": "{{CONSUMER}}/api/v1/proxy",
+			"type": "string"
+		},
+		{
+			"key": "CONSUMER_SERVER_API_USERS",
+			"value": "{{CONSUMER}}/api/v1/users",
+			"type": "string"
+		},
+		{
+			"key": "PROVIDER_PROTOCOL",
+			"value": "http://172.17.0.1:8090",
 			"type": "string"
 		},
 		{

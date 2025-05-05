@@ -1,25 +1,54 @@
 package it.eng.datatransfer.rest.data;
 
-import java.nio.charset.Charset;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 
-import org.apache.tomcat.util.codec.binary.Base64;
+import java.io.IOException;
+
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 
+import it.eng.datatransfer.exceptions.DownloadException;
+import it.eng.datatransfer.rest.api.RestArtifactController;
+import it.eng.datatransfer.service.api.RestArtifactService;
+import jakarta.servlet.http.HttpServletResponse;
+
+@ExtendWith(MockitoExtension.class)
 public class RestArtifactControllerTest {
+	
+	@Mock
+	private RestArtifactService restArtifactService;
+	
+	@Mock
+	private HttpServletResponse response;
 
-	public static final String CONSUMER_PID = "urn:uuid:CONSUMER_PID_TRANSFER";
-	public static final String PROVIDER_PID = "urn:uuid:PROVIDER_PID_TRANSFER";
+	@InjectMocks
+	private RestArtifactController restArtifactController;
+	
+	private static final String TRANSACTION_ID = "transactionId";
 	
 	@Test
-	public void decodeString() {
-		String encoded = Base64.encodeBase64URLSafeString((CONSUMER_PID + "|" + PROVIDER_PID).getBytes(Charset.forName("UTF-8")));
-		String url = "/artifact/" + encoded + "/1";
-		System.out.println(url);
-		//["" , artifact, encoded, 1]
-		String[] urlTokens = url.split("/");
+	@DisplayName("Get artifact file - success")
+	public void getArtifactFile_success() throws IllegalStateException, IOException  {
+		doNothing().when(restArtifactService).getArtifact(TRANSACTION_ID, response);
+
 		
-		String[] tokens = new String(Base64.decodeBase64URLSafe(urlTokens[2]), Charset.forName("UTF-8")).split("\\|");
-		System.out.println(tokens[0]);
-		System.out.println(tokens[1]);
+		assertDoesNotThrow(() -> restArtifactController.getArtifact(response, null, TRANSACTION_ID));
+		
+	}
+	
+	@Test
+	@DisplayName("Get artifact file - fail")
+	public void getArtifactFile_fail() throws IllegalStateException, IOException {
+		doThrow(new DownloadException("message", HttpStatus.BAD_REQUEST)).when(restArtifactService).getArtifact(TRANSACTION_ID, response);
+		
+		assertThrows(DownloadException.class, () -> restArtifactController.getArtifact(response, null, TRANSACTION_ID));
 	}
 }

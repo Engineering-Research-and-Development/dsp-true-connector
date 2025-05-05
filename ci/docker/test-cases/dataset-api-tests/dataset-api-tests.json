@@ -1,0 +1,1139 @@
+{
+	"info": {
+		"_postman_id": "7152f291-5aca-404b-a348-2b1821927542",
+		"name": "Dataset API tests",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "21815221",
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-7152f291-5aca-404b-a348-2b1821927542?action=share&source=collection_link&creator=21815221"
+	},
+	"item": [
+		{
+			"name": "List all artifacts",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if 1 artifact is present\", function () {\r",
+							"    pm.expect(pm.response.json().data).to.have.length(1);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{PROVIDER_API_ARTIFACTS}}",
+					"host": [
+						"{{PROVIDER_API_ARTIFACTS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List all datasets",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if 1 dataset is present\", function () {\r",
+							"    pm.expect(pm.response.json().data).to.have.length(1);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{PROVIDER_API_DATASETS}}",
+					"host": [
+						"{{PROVIDER_API_DATASETS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Add Dataset with File",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Retrieve dataset with file id\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.collectionVariables.set(\"datasetWithFileId\", jsonData[\"data\"][\"@id\"])\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "dataset",
+							"value": "{\n    \"@id\": \"dataset_uuid_test\",\n    \"artifact\": null,\n    \"conformsTo\": \"conformsToSomething\",\n    \"createdBy\": null,\n    \"creator\": \"Chuck_Norris\",\n    \"description\": [{\n            \"value\": \"For test\",\n            \"language\": \"en\"\n        }\n    ],\n    \"distribution\": [{\n            \"@id\": \"urn:uuid:128a7504-989f-4f5e-8e19-694e0bdacbd7\",\n            \"accessService\": [{\n                    \"@id\": \"e84adca0-eb09-47b0-975c-f182aac8377f\",\n                    \"conformsTo\": \"conformsToSomething\",\n                    \"createdBy\": null,\n                    \"creator\": \"Chuck_Norris\",\n                    \"description\": [{\n                            \"value\": \"For test\",\n                            \"language\": \"en\"\n                        }\n                    ],\n                    \"endpointDescription\": \"endpoint description\",\n                    \"endpointURL\": \"http://dataservice.com\",\n                    \"identifier\": \"Unique_identifier_for_tests\",\n                    \"issued\": \"2024-04-23T18:26:00+02:00\",\n                    \"keyword\": [\"DataService keyword1\", \"DataService keyword2\"],\n                    \"lastModifiedBy\": null,\n                    \"modified\": \"2024-04-23T18:26:00+02:00\",\n                    \"theme\": [\"DataService theme1\", \"DataService theme2\"],\n                    \"title\": \"Title_for_test\",\n                    \"type\": \"dcat:DataService\",\n                    \"version\": null\n                }\n            ],\n            \"createdBy\": null,\n            \"description\": [{\n                    \"value\": \"For test\",\n                    \"language\": \"en\"\n                }\n            ],\n            \"format\": {\n                \"@id\": \"HTTP:PULL\"\n            },\n            \"hasPolicy\": [{\n                    \"@id\": \"urn:offer_id\",\n                    \"assignee\": null,\n                    \"assigner\": null,\n                    \"permission\": [{\n                            \"assigner\": null,\n                            \"assignee\": null,\n                            \"target\": null,\n                            \"action\": \"USE\",\n                            \"constraint\": [{\n                                    \"leftOperand\": \"COUNT\",\n                                    \"operator\": \"EQ\",\n                                    \"rightOperand\": \"5\"\n                                }\n                            ]\n                        }\n                    ],\n                    \"target\": null\n                }\n            ],\n            \"issued\": \"2024-04-23T18:26:00+02:00\",\n            \"lastModifiedBy\": null,\n            \"modified\": \"2024-04-23T18:26:00+02:00\",\n            \"title\": \"Title_for_test\",\n            \"type\": \"dspace:Distribution\",\n            \"version\": null\n        }\n    ],\n    \"hasPolicy\": [{\n            \"@id\": \"urn:offer_id\",\n            \"assignee\": null,\n            \"assigner\": null,\n            \"permission\": [{\n                    \"assigner\": null,\n                    \"assignee\": null,\n                    \"target\": null,\n                    \"action\": \"USE\",\n                    \"constraint\": [{\n                            \"leftOperand\": \"COUNT\",\n                            \"operator\": \"EQ\",\n                            \"rightOperand\": \"5\"\n                        }\n                    ]\n                }\n            ],\n            \"target\": null\n        }\n    ],\n    \"identifier\": \"Unique_identifier_for_tests\",\n    \"issued\": \"2024-04-23T18:26:00+02:00\",\n    \"keyword\": [\"keyword1\", \"keyword2\"],\n    \"lastModifiedBy\": null,\n    \"modified\": \"2024-04-23T18:26:00+02:00\",\n    \"theme\": [\"aqua\", \"white\", \"blue\"],\n    \"title\": \"Title_for_test\",\n    \"type\": \"dcat:Dataset\",\n    \"version\": null\n}\n",
+							"description": "Dataset to insert",
+							"type": "text"
+						},
+						{
+							"key": "file",
+							"description": "File for upload",
+							"type": "file",
+							"src": "./ci/docker/connector_b_resources/ENG-employee.json"
+						},
+						{
+							"key": "url",
+							"value": "https://example.com/dsptc",
+							"description": "URL for external download",
+							"type": "text",
+							"disabled": true
+						}
+					]
+				},
+				"url": {
+					"raw": "{{PROVIDER_API_DATASETS}}",
+					"host": [
+						"{{PROVIDER_API_DATASETS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List all artifacts",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if 2 artifact is present\", function () {\r",
+							"    pm.expect(pm.response.json().data).to.have.length(2);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{PROVIDER_API_ARTIFACTS}}",
+					"host": [
+						"{{PROVIDER_API_ARTIFACTS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List all datasets",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if 2 dataset is present\", function () {\r",
+							"    pm.expect(pm.response.json().data).to.have.length(2);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{PROVIDER_API_DATASETS}}",
+					"host": [
+						"{{PROVIDER_API_DATASETS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update Dataset with External URL",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "dataset",
+							"value": "{\n    \"@id\": \"dataset_uuid_test\",\n    \"artifact\": null,\n    \"conformsTo\": \"conformsToSomething\",\n    \"createdBy\": null,\n    \"creator\": \"Chuck_Norris\",\n    \"description\": [{\n            \"value\": \"For test\",\n            \"language\": \"en\"\n        }\n    ],\n    \"distribution\": [{\n            \"@id\": \"urn:uuid:128a7504-989f-4f5e-8e19-694e0bdacbd7\",\n            \"accessService\": [{\n                    \"@id\": \"e84adca0-eb09-47b0-975c-f182aac8377f\",\n                    \"conformsTo\": \"conformsToSomething\",\n                    \"createdBy\": null,\n                    \"creator\": \"Chuck_Norris\",\n                    \"description\": [{\n                            \"value\": \"For test\",\n                            \"language\": \"en\"\n                        }\n                    ],\n                    \"endpointDescription\": \"endpoint description\",\n                    \"endpointURL\": \"http://dataservice.com\",\n                    \"identifier\": \"Unique_identifier_for_tests\",\n                    \"issued\": \"2024-04-23T18:26:00+02:00\",\n                    \"keyword\": [\"DataService keyword1\", \"DataService keyword2\"],\n                    \"lastModifiedBy\": null,\n                    \"modified\": \"2024-04-23T18:26:00+02:00\",\n                    \"theme\": [\"DataService theme1\", \"DataService theme2\"],\n                    \"title\": \"Title_for_test\",\n                    \"type\": \"dcat:DataService\",\n                    \"version\": null\n                }\n            ],\n            \"createdBy\": null,\n            \"description\": [{\n                    \"value\": \"For test\",\n                    \"language\": \"en\"\n                }\n            ],\n            \"format\": {\n                \"@id\": \"HTTP:PULL\"\n            },\n            \"hasPolicy\": [{\n                    \"@id\": \"urn:offer_id\",\n                    \"assignee\": null,\n                    \"assigner\": null,\n                    \"permission\": [{\n                            \"assigner\": null,\n                            \"assignee\": null,\n                            \"target\": null,\n                            \"action\": \"USE\",\n                            \"constraint\": [{\n                                    \"leftOperand\": \"COUNT\",\n                                    \"operator\": \"EQ\",\n                                    \"rightOperand\": \"5\"\n                                }\n                            ]\n                        }\n                    ],\n                    \"target\": null\n                }\n            ],\n            \"issued\": \"2024-04-23T18:26:00+02:00\",\n            \"lastModifiedBy\": null,\n            \"modified\": \"2024-04-23T18:26:00+02:00\",\n            \"title\": \"Title_for_test\",\n            \"type\": \"dspace:Distribution\",\n            \"version\": null\n        }\n    ],\n    \"hasPolicy\": [{\n            \"@id\": \"urn:offer_id\",\n            \"assignee\": null,\n            \"assigner\": null,\n            \"permission\": [{\n                    \"assigner\": null,\n                    \"assignee\": null,\n                    \"target\": null,\n                    \"action\": \"USE\",\n                    \"constraint\": [{\n                            \"leftOperand\": \"COUNT\",\n                            \"operator\": \"EQ\",\n                            \"rightOperand\": \"5\"\n                        }\n                    ]\n                }\n            ],\n            \"target\": null\n        }\n    ],\n    \"identifier\": \"Unique_identifier_for_tests\",\n    \"issued\": \"2024-04-23T18:26:00+02:00\",\n    \"keyword\": [\"keyword1\", \"keyword2\"],\n    \"lastModifiedBy\": null,\n    \"modified\": \"2024-04-23T18:26:00+02:00\",\n    \"theme\": [\"aqua\", \"white\", \"blue\"],\n    \"title\": \"Title_for_test\",\n    \"type\": \"dcat:Dataset\",\n    \"version\": null\n}\n",
+							"description": "Dataset to insert",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "file",
+							"description": "File for upload",
+							"type": "file",
+							"src": [],
+							"disabled": true
+						},
+						{
+							"key": "url",
+							"value": "https://example.com/dsptc",
+							"description": "URL for external download",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{PROVIDER_API_DATASETS}}/{{datasetId}}",
+					"host": [
+						"{{PROVIDER_API_DATASETS}}"
+					],
+					"path": [
+						"{{datasetId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List all artifacts",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if 2 artifact is present\", function () {\r",
+							"    pm.expect(pm.response.json().data).to.have.length(2);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{PROVIDER_API_ARTIFACTS}}",
+					"host": [
+						"{{PROVIDER_API_ARTIFACTS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List all datasets",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if 2 dataset is present\", function () {\r",
+							"    pm.expect(pm.response.json().data).to.have.length(2);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{PROVIDER_API_DATASETS}}",
+					"host": [
+						"{{PROVIDER_API_DATASETS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update Dataset with File",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "dataset",
+							"value": "{\n    \"@id\": \"dataset_uuid_test\",\n    \"artifact\": null,\n    \"conformsTo\": \"conformsToSomething\",\n    \"createdBy\": null,\n    \"creator\": \"Chuck_Norris\",\n    \"description\": [{\n            \"value\": \"For test\",\n            \"language\": \"en\"\n        }\n    ],\n    \"distribution\": [{\n            \"@id\": \"urn:uuid:128a7504-989f-4f5e-8e19-694e0bdacbd7\",\n            \"accessService\": [{\n                    \"@id\": \"e84adca0-eb09-47b0-975c-f182aac8377f\",\n                    \"conformsTo\": \"conformsToSomething\",\n                    \"createdBy\": null,\n                    \"creator\": \"Chuck_Norris\",\n                    \"description\": [{\n                            \"value\": \"For test\",\n                            \"language\": \"en\"\n                        }\n                    ],\n                    \"endpointDescription\": \"endpoint description\",\n                    \"endpointURL\": \"http://dataservice.com\",\n                    \"identifier\": \"Unique_identifier_for_tests\",\n                    \"issued\": \"2024-04-23T18:26:00+02:00\",\n                    \"keyword\": [\"DataService keyword1\", \"DataService keyword2\"],\n                    \"lastModifiedBy\": null,\n                    \"modified\": \"2024-04-23T18:26:00+02:00\",\n                    \"theme\": [\"DataService theme1\", \"DataService theme2\"],\n                    \"title\": \"Title_for_test\",\n                    \"type\": \"dcat:DataService\",\n                    \"version\": null\n                }\n            ],\n            \"createdBy\": null,\n            \"description\": [{\n                    \"value\": \"For test\",\n                    \"language\": \"en\"\n                }\n            ],\n            \"format\": {\n                \"@id\": \"HTTP:PULL\"\n            },\n            \"hasPolicy\": [{\n                    \"@id\": \"urn:offer_id\",\n                    \"assignee\": null,\n                    \"assigner\": null,\n                    \"permission\": [{\n                            \"assigner\": null,\n                            \"assignee\": null,\n                            \"target\": null,\n                            \"action\": \"USE\",\n                            \"constraint\": [{\n                                    \"leftOperand\": \"COUNT\",\n                                    \"operator\": \"EQ\",\n                                    \"rightOperand\": \"5\"\n                                }\n                            ]\n                        }\n                    ],\n                    \"target\": null\n                }\n            ],\n            \"issued\": \"2024-04-23T18:26:00+02:00\",\n            \"lastModifiedBy\": null,\n            \"modified\": \"2024-04-23T18:26:00+02:00\",\n            \"title\": \"Title_for_test\",\n            \"type\": \"dspace:Distribution\",\n            \"version\": null\n        }\n    ],\n    \"hasPolicy\": [{\n            \"@id\": \"urn:offer_id\",\n            \"assignee\": null,\n            \"assigner\": null,\n            \"permission\": [{\n                    \"assigner\": null,\n                    \"assignee\": null,\n                    \"target\": null,\n                    \"action\": \"USE\",\n                    \"constraint\": [{\n                            \"leftOperand\": \"COUNT\",\n                            \"operator\": \"EQ\",\n                            \"rightOperand\": \"5\"\n                        }\n                    ]\n                }\n            ],\n            \"target\": null\n        }\n    ],\n    \"identifier\": \"Unique_identifier_for_tests\",\n    \"issued\": \"2024-04-23T18:26:00+02:00\",\n    \"keyword\": [\"keyword1\", \"keyword2\"],\n    \"lastModifiedBy\": null,\n    \"modified\": \"2024-04-23T18:26:00+02:00\",\n    \"theme\": [\"aqua\", \"white\", \"blue\"],\n    \"title\": \"Title_for_test\",\n    \"type\": \"dcat:Dataset\",\n    \"version\": null\n}\n",
+							"description": "Dataset to insert",
+							"type": "text"
+						},
+						{
+							"key": "file",
+							"description": "File for upload",
+							"type": "file",
+							"src": "./ci/docker/connector_b_resources/ENG-employee.json"
+						},
+						{
+							"key": "url",
+							"value": "https://example.com/dsptc",
+							"description": "URL for external download",
+							"type": "text",
+							"disabled": true
+						}
+					]
+				},
+				"url": {
+					"raw": "{{PROVIDER_API_DATASETS}}/{{datasetId}}",
+					"host": [
+						"{{PROVIDER_API_DATASETS}}"
+					],
+					"path": [
+						"{{datasetId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List all artifacts",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if 2 artifact is present\", function () {\r",
+							"    pm.expect(pm.response.json().data).to.have.length(2);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{PROVIDER_API_ARTIFACTS}}",
+					"host": [
+						"{{PROVIDER_API_ARTIFACTS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List all datasets",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if 2 dataset is present\", function () {\r",
+							"    pm.expect(pm.response.json().data).to.have.length(2);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{PROVIDER_API_DATASETS}}",
+					"host": [
+						"{{PROVIDER_API_DATASETS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update Dataset without Artifact",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "dataset",
+							"value": "{\n    \"@id\": \"dataset_uuid_test\",\n    \"artifact\": null,\n    \"conformsTo\": \"conformsToSomething\",\n    \"createdBy\": null,\n    \"creator\": \"Chuck_Norris\",\n    \"description\": [{\n            \"value\": \"For test\",\n            \"language\": \"en\"\n        }\n    ],\n    \"distribution\": [{\n            \"@id\": \"urn:uuid:128a7504-989f-4f5e-8e19-694e0bdacbd7\",\n            \"accessService\": [{\n                    \"@id\": \"e84adca0-eb09-47b0-975c-f182aac8377f\",\n                    \"conformsTo\": \"conformsToSomething\",\n                    \"createdBy\": null,\n                    \"creator\": \"Chuck_Norris\",\n                    \"description\": [{\n                            \"value\": \"For test\",\n                            \"language\": \"en\"\n                        }\n                    ],\n                    \"endpointDescription\": \"endpoint description\",\n                    \"endpointURL\": \"http://dataservice.com\",\n                    \"identifier\": \"Unique_identifier_for_tests\",\n                    \"issued\": \"2024-04-23T18:26:00+02:00\",\n                    \"keyword\": [\"DataService keyword1\", \"DataService keyword2\"],\n                    \"lastModifiedBy\": null,\n                    \"modified\": \"2024-04-23T18:26:00+02:00\",\n                    \"theme\": [\"DataService theme1\", \"DataService theme2\"],\n                    \"title\": \"Title_for_test\",\n                    \"type\": \"dcat:DataService\",\n                    \"version\": null\n                }\n            ],\n            \"createdBy\": null,\n            \"description\": [{\n                    \"value\": \"For test\",\n                    \"language\": \"en\"\n                }\n            ],\n            \"format\": {\n                \"@id\": \"HTTP:PULL\"\n            },\n            \"hasPolicy\": [{\n                    \"@id\": \"urn:offer_id\",\n                    \"assignee\": null,\n                    \"assigner\": null,\n                    \"permission\": [{\n                            \"assigner\": null,\n                            \"assignee\": null,\n                            \"target\": null,\n                            \"action\": \"USE\",\n                            \"constraint\": [{\n                                    \"leftOperand\": \"COUNT\",\n                                    \"operator\": \"EQ\",\n                                    \"rightOperand\": \"5\"\n                                }\n                            ]\n                        }\n                    ],\n                    \"target\": null\n                }\n            ],\n            \"issued\": \"2024-04-23T18:26:00+02:00\",\n            \"lastModifiedBy\": null,\n            \"modified\": \"2024-04-23T18:26:00+02:00\",\n            \"title\": \"Title_for_test\",\n            \"type\": \"dspace:Distribution\",\n            \"version\": null\n        }\n    ],\n    \"hasPolicy\": [{\n            \"@id\": \"urn:offer_id\",\n            \"assignee\": null,\n            \"assigner\": null,\n            \"permission\": [{\n                    \"assigner\": null,\n                    \"assignee\": null,\n                    \"target\": null,\n                    \"action\": \"USE\",\n                    \"constraint\": [{\n                            \"leftOperand\": \"COUNT\",\n                            \"operator\": \"EQ\",\n                            \"rightOperand\": \"5\"\n                        }\n                    ]\n                }\n            ],\n            \"target\": null\n        }\n    ],\n    \"identifier\": \"Unique_identifier_for_tests\",\n    \"issued\": \"2024-04-23T18:26:00+02:00\",\n    \"keyword\": [\"keyword1\", \"keyword2\"],\n    \"lastModifiedBy\": null,\n    \"modified\": \"2024-04-23T18:26:00+02:00\",\n    \"theme\": [\"aqua\", \"white\", \"blue\"],\n    \"title\": \"Title_for_test\",\n    \"type\": \"dcat:Dataset\",\n    \"version\": null\n}\n",
+							"description": "Dataset to insert",
+							"type": "text"
+						},
+						{
+							"key": "file",
+							"description": "File for upload",
+							"type": "file",
+							"src": [],
+							"disabled": true
+						},
+						{
+							"key": "url",
+							"value": "https://example.com/dsptc",
+							"description": "URL for external download",
+							"type": "text",
+							"disabled": true
+						}
+					]
+				},
+				"url": {
+					"raw": "{{PROVIDER_API_DATASETS}}/{{datasetId}}",
+					"host": [
+						"{{PROVIDER_API_DATASETS}}"
+					],
+					"path": [
+						"{{datasetId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List all artifacts",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if 2 artifact is present\", function () {\r",
+							"    pm.expect(pm.response.json().data).to.have.length(2);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{PROVIDER_API_ARTIFACTS}}",
+					"host": [
+						"{{PROVIDER_API_ARTIFACTS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List all datasets",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if 2 dataset is present\", function () {\r",
+							"    pm.expect(pm.response.json().data).to.have.length(2);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{PROVIDER_API_DATASETS}}",
+					"host": [
+						"{{PROVIDER_API_DATASETS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Add Dataset without Artifact",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 500\", function () {\r",
+							"    pm.response.to.have.status(500);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "dataset",
+							"value": "{\n    \"@id\": \"dataset_uuid_test\",\n    \"artifact\": null,\n    \"conformsTo\": \"conformsToSomething\",\n    \"createdBy\": null,\n    \"creator\": \"Chuck_Norris\",\n    \"description\": [{\n            \"value\": \"For test\",\n            \"language\": \"en\"\n        }\n    ],\n    \"distribution\": [{\n            \"@id\": \"urn:uuid:128a7504-989f-4f5e-8e19-694e0bdacbd7\",\n            \"accessService\": [{\n                    \"@id\": \"e84adca0-eb09-47b0-975c-f182aac8377f\",\n                    \"conformsTo\": \"conformsToSomething\",\n                    \"createdBy\": null,\n                    \"creator\": \"Chuck_Norris\",\n                    \"description\": [{\n                            \"value\": \"For test\",\n                            \"language\": \"en\"\n                        }\n                    ],\n                    \"endpointDescription\": \"endpoint description\",\n                    \"endpointURL\": \"http://dataservice.com\",\n                    \"identifier\": \"Unique_identifier_for_tests\",\n                    \"issued\": \"2024-04-23T18:26:00+02:00\",\n                    \"keyword\": [\"DataService keyword1\", \"DataService keyword2\"],\n                    \"lastModifiedBy\": null,\n                    \"modified\": \"2024-04-23T18:26:00+02:00\",\n                    \"theme\": [\"DataService theme1\", \"DataService theme2\"],\n                    \"title\": \"Title_for_test\",\n                    \"type\": \"dcat:DataService\",\n                    \"version\": null\n                }\n            ],\n            \"createdBy\": null,\n            \"description\": [{\n                    \"value\": \"For test\",\n                    \"language\": \"en\"\n                }\n            ],\n            \"format\": {\n                \"@id\": \"HTTP:PULL\"\n            },\n            \"hasPolicy\": [{\n                    \"@id\": \"urn:offer_id\",\n                    \"assignee\": null,\n                    \"assigner\": null,\n                    \"permission\": [{\n                            \"assigner\": null,\n                            \"assignee\": null,\n                            \"target\": null,\n                            \"action\": \"USE\",\n                            \"constraint\": [{\n                                    \"leftOperand\": \"COUNT\",\n                                    \"operator\": \"EQ\",\n                                    \"rightOperand\": \"5\"\n                                }\n                            ]\n                        }\n                    ],\n                    \"target\": null\n                }\n            ],\n            \"issued\": \"2024-04-23T18:26:00+02:00\",\n            \"lastModifiedBy\": null,\n            \"modified\": \"2024-04-23T18:26:00+02:00\",\n            \"title\": \"Title_for_test\",\n            \"type\": \"dspace:Distribution\",\n            \"version\": null\n        }\n    ],\n    \"hasPolicy\": [{\n            \"@id\": \"urn:offer_id\",\n            \"assignee\": null,\n            \"assigner\": null,\n            \"permission\": [{\n                    \"assigner\": null,\n                    \"assignee\": null,\n                    \"target\": null,\n                    \"action\": \"USE\",\n                    \"constraint\": [{\n                            \"leftOperand\": \"COUNT\",\n                            \"operator\": \"EQ\",\n                            \"rightOperand\": \"5\"\n                        }\n                    ]\n                }\n            ],\n            \"target\": null\n        }\n    ],\n    \"identifier\": \"Unique_identifier_for_tests\",\n    \"issued\": \"2024-04-23T18:26:00+02:00\",\n    \"keyword\": [\"keyword1\", \"keyword2\"],\n    \"lastModifiedBy\": null,\n    \"modified\": \"2024-04-23T18:26:00+02:00\",\n    \"theme\": [\"aqua\", \"white\", \"blue\"],\n    \"title\": \"Title_for_test\",\n    \"type\": \"dcat:Dataset\",\n    \"version\": null\n}\n",
+							"description": "Dataset to insert",
+							"type": "text"
+						},
+						{
+							"key": "file",
+							"description": "File for upload",
+							"type": "file",
+							"src": "./ci/docker/connector_b_resources/ENG-employee.json",
+							"disabled": true
+						},
+						{
+							"key": "url",
+							"value": "https://example.com/dsptc",
+							"description": "URL for external download",
+							"type": "text",
+							"disabled": true
+						}
+					]
+				},
+				"url": {
+					"raw": "{{PROVIDER_API_DATASETS}}",
+					"host": [
+						"{{PROVIDER_API_DATASETS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List all artifacts",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if 2 artifact is present\", function () {\r",
+							"    pm.expect(pm.response.json().data).to.have.length(2);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{PROVIDER_API_ARTIFACTS}}",
+					"host": [
+						"{{PROVIDER_API_ARTIFACTS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List all datasets",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if 2 dataset is present\", function () {\r",
+							"    pm.expect(pm.response.json().data).to.have.length(2);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{PROVIDER_API_DATASETS}}",
+					"host": [
+						"{{PROVIDER_API_DATASETS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Dataset with File",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{PROVIDER_API_DATASETS}}/{{datasetWithFileId}}",
+					"host": [
+						"{{PROVIDER_API_DATASETS}}"
+					],
+					"path": [
+						"{{datasetWithFileId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List all artifacts",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if 1 artifact is present\", function () {\r",
+							"    pm.expect(pm.response.json().data).to.have.length(1);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{PROVIDER_API_ARTIFACTS}}",
+					"host": [
+						"{{PROVIDER_API_ARTIFACTS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List all datasets",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if 1 dataset is present\", function () {\r",
+							"    pm.expect(pm.response.json().data).to.have.length(1);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{PROVIDER_API_DATASETS}}",
+					"host": [
+						"{{PROVIDER_API_DATASETS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Add Dataset with External",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Retrieve dataset with file id\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.collectionVariables.set(\"datasetWithExternalId\", jsonData[\"data\"][\"@id\"])\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "dataset",
+							"value": "{\n    \"@id\": \"dataset_uuid_test\",\n    \"artifact\": null,\n    \"conformsTo\": \"conformsToSomething\",\n    \"createdBy\": null,\n    \"creator\": \"Chuck_Norris\",\n    \"description\": [{\n            \"value\": \"For test\",\n            \"language\": \"en\"\n        }\n    ],\n    \"distribution\": [{\n            \"@id\": \"urn:uuid:128a7504-989f-4f5e-8e19-694e0bdacbd7\",\n            \"accessService\": [{\n                    \"@id\": \"e84adca0-eb09-47b0-975c-f182aac8377f\",\n                    \"conformsTo\": \"conformsToSomething\",\n                    \"createdBy\": null,\n                    \"creator\": \"Chuck_Norris\",\n                    \"description\": [{\n                            \"value\": \"For test\",\n                            \"language\": \"en\"\n                        }\n                    ],\n                    \"endpointDescription\": \"endpoint description\",\n                    \"endpointURL\": \"http://dataservice.com\",\n                    \"identifier\": \"Unique_identifier_for_tests\",\n                    \"issued\": \"2024-04-23T18:26:00+02:00\",\n                    \"keyword\": [\"DataService keyword1\", \"DataService keyword2\"],\n                    \"lastModifiedBy\": null,\n                    \"modified\": \"2024-04-23T18:26:00+02:00\",\n                    \"theme\": [\"DataService theme1\", \"DataService theme2\"],\n                    \"title\": \"Title_for_test\",\n                    \"type\": \"dcat:DataService\",\n                    \"version\": null\n                }\n            ],\n            \"createdBy\": null,\n            \"description\": [{\n                    \"value\": \"For test\",\n                    \"language\": \"en\"\n                }\n            ],\n            \"format\": {\n                \"@id\": \"HTTP:PULL\"\n            },\n            \"hasPolicy\": [{\n                    \"@id\": \"urn:offer_id\",\n                    \"assignee\": null,\n                    \"assigner\": null,\n                    \"permission\": [{\n                            \"assigner\": null,\n                            \"assignee\": null,\n                            \"target\": null,\n                            \"action\": \"USE\",\n                            \"constraint\": [{\n                                    \"leftOperand\": \"COUNT\",\n                                    \"operator\": \"EQ\",\n                                    \"rightOperand\": \"5\"\n                                }\n                            ]\n                        }\n                    ],\n                    \"target\": null\n                }\n            ],\n            \"issued\": \"2024-04-23T18:26:00+02:00\",\n            \"lastModifiedBy\": null,\n            \"modified\": \"2024-04-23T18:26:00+02:00\",\n            \"title\": \"Title_for_test\",\n            \"type\": \"dspace:Distribution\",\n            \"version\": null\n        }\n    ],\n    \"hasPolicy\": [{\n            \"@id\": \"urn:offer_id\",\n            \"assignee\": null,\n            \"assigner\": null,\n            \"permission\": [{\n                    \"assigner\": null,\n                    \"assignee\": null,\n                    \"target\": null,\n                    \"action\": \"USE\",\n                    \"constraint\": [{\n                            \"leftOperand\": \"COUNT\",\n                            \"operator\": \"EQ\",\n                            \"rightOperand\": \"5\"\n                        }\n                    ]\n                }\n            ],\n            \"target\": null\n        }\n    ],\n    \"identifier\": \"Unique_identifier_for_tests\",\n    \"issued\": \"2024-04-23T18:26:00+02:00\",\n    \"keyword\": [\"keyword1\", \"keyword2\"],\n    \"lastModifiedBy\": null,\n    \"modified\": \"2024-04-23T18:26:00+02:00\",\n    \"theme\": [\"aqua\", \"white\", \"blue\"],\n    \"title\": \"Title_for_test\",\n    \"type\": \"dcat:Dataset\",\n    \"version\": null\n}\n",
+							"description": "Dataset to insert",
+							"type": "text"
+						},
+						{
+							"key": "file",
+							"description": "File for upload",
+							"type": "file",
+							"src": "./ci/docker/connector_b_resources/ENG-employee.json"
+						},
+						{
+							"key": "url",
+							"value": "https://example.com/dsptc",
+							"description": "URL for external download",
+							"type": "text",
+							"disabled": true
+						}
+					]
+				},
+				"url": {
+					"raw": "{{PROVIDER_API_DATASETS}}",
+					"host": [
+						"{{PROVIDER_API_DATASETS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List all artifacts",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if 2 artifact is present\", function () {\r",
+							"    pm.expect(pm.response.json().data).to.have.length(2);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{PROVIDER_API_ARTIFACTS}}",
+					"host": [
+						"{{PROVIDER_API_ARTIFACTS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List all datasets",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if 2 dataset is present\", function () {\r",
+							"    pm.expect(pm.response.json().data).to.have.length(2);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{PROVIDER_API_DATASETS}}",
+					"host": [
+						"{{PROVIDER_API_DATASETS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Dataset with External",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{PROVIDER_API_DATASETS}}/{{datasetWithExternalId}}",
+					"host": [
+						"{{PROVIDER_API_DATASETS}}"
+					],
+					"path": [
+						"{{datasetWithExternalId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List all artifacts",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if 1 artifact is present\", function () {\r",
+							"    pm.expect(pm.response.json().data).to.have.length(1);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{PROVIDER_API_ARTIFACTS}}",
+					"host": [
+						"{{PROVIDER_API_ARTIFACTS}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List all datasets",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Check if 1 dataset is present\", function () {\r",
+							"    pm.expect(pm.response.json().data).to.have.length(1);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{PROVIDER_API_DATASETS}}",
+					"host": [
+						"{{PROVIDER_API_DATASETS}}"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "basic",
+		"basic": [
+			{
+				"key": "password",
+				"value": "password",
+				"type": "string"
+			},
+			{
+				"key": "username",
+				"value": "admin@mail.com",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "datasetId",
+			"value": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+			"type": "string"
+		},
+		{
+			"key": "PROVIDER_API_ARTIFACTS",
+			"value": "http://localhost:8090/api/v1/artifacts",
+			"type": "string"
+		},
+		{
+			"key": "PROVIDER_API_DATASETS",
+			"value": "http://localhost:8090/api/v1/datasets",
+			"type": "string"
+		}
+	]
+}

@@ -7,7 +7,7 @@ public interface DSpaceConstants {
 	}
 	
 	public static enum DataTransferStates {
-		REQUESTED, STARTED, COMPLETED, SUSPENDED, TERMINATED
+		INITIALIZED, REQUESTED, STARTED, COMPLETED, SUSPENDED, TERMINATED
 	}
 	
 	public static enum ContractNegotiationEvent {
@@ -15,7 +15,7 @@ public interface DSpaceConstants {
 	}
 	
 	public static enum Operators {
-		EQ, GT, GTEQ, HAS_PARENT, IS_A, IS_ALL_OF, IS_ANY_OF, IS_NONE_OF, IS_PART_OF, LT, TERM_LTEQ, NEQ;
+		EQ, GT, GTEQ, HAS_PARENT, IS_A, IS_ALL_OF, IS_ANY_OF, IS_NONE_OF, IS_PART_OF, LT, LTEQ, NEQ;
 	}
 
 	public static final String DSPACE = "dspace:";

@@ -13,6 +13,8 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Data
 @Builder
 @AllArgsConstructor
@@ -28,11 +30,14 @@ public class User implements UserDetails {
 	private String firstName;
 	private String lastName;
 	private String email;
+	@JsonIgnore
 	private String password;
 	private boolean enabled;
-
+	private boolean expired;
+	private boolean locked;
 
 	private Role role;
+
 
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -40,6 +45,7 @@ public class User implements UserDetails {
 	}
 
 	@Override
+	@JsonIgnore
 	public String getPassword() {
 		return password;
 	}
@@ -51,14 +57,12 @@ public class User implements UserDetails {
 
 	@Override
 	public boolean isAccountNonExpired() {
-		// TODO Auto-generated method stub
-		return true;
+		return !expired;
 	}
 
 	@Override
 	public boolean isAccountNonLocked() {
-		// TODO Auto-generated method stub
-		return true;
+		return !locked;
 	}
 
 	@Override

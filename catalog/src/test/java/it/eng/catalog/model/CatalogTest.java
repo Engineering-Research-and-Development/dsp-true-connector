@@ -1,8 +1,8 @@
 package it.eng.catalog.model;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import it.eng.catalog.serializer.Serializer;
-import it.eng.catalog.util.MockObjectUtil;
+import it.eng.catalog.serializer.CatalogSerializer;
+import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 import org.junit.jupiter.api.DisplayName;
@@ -16,7 +16,7 @@ public class CatalogTest {
 	@Test
 	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() {
-		String result = Serializer.serializePlain(MockObjectUtil.CATALOG);
+		String result = CatalogSerializer.serializePlain(CatalogMockObjectUtil.CATALOG);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
 		
@@ -33,7 +33,7 @@ public class CatalogTest {
 		
 		assertTrue(result.contains(DSpaceConstants.DISTRIBUTION));
 		
-		Catalog javaObj = Serializer.deserializePlain(result, Catalog.class);
+		Catalog javaObj = CatalogSerializer.deserializePlain(result, Catalog.class);
 		
 		Dataset dataset = javaObj.getDataset().iterator().next();
 		validateDataset(dataset);
@@ -42,7 +42,7 @@ public class CatalogTest {
 	@Test
 	@DisplayName("Verify valid protocol object serialization")
 	public void testProtocol() {
-		JsonNode result = Serializer.serializeProtocolJsonNode(MockObjectUtil.CATALOG);
+		JsonNode result = CatalogSerializer.serializeProtocolJsonNode(CatalogMockObjectUtil.CATALOG);
 		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
 		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
 		assertNotNull(result.get(DSpaceConstants.DCAT_KEYWORD).asText());
@@ -56,15 +56,15 @@ public class CatalogTest {
 		assertNotNull(result.get(DSpaceConstants.DCT_MODIFIED).asText());
 		assertNotNull(result.get(DSpaceConstants.DCAT_DISTRIBUTION).asText());
 		
-		Catalog javaObj = Serializer.deserializeProtocol(result, Catalog.class);
+		Catalog javaObj = CatalogSerializer.deserializeProtocol(result, Catalog.class);
 		validateDataset(javaObj.getDataset().iterator().next());
 	}
 	
 	@Test
 	@DisplayName("Missing @context and @type")
 	public void missingContextAndType() {
-		JsonNode result = Serializer.serializePlainJsonNode(MockObjectUtil.CATALOG);
-		assertThrows(ValidationException.class, () -> Serializer.deserializeProtocol(result, Catalog.class));
+		JsonNode result = CatalogSerializer.serializePlainJsonNode(CatalogMockObjectUtil.CATALOG);
+		assertThrows(ValidationException.class, () -> CatalogSerializer.deserializeProtocol(result, Catalog.class));
 	}
 	
 	@Test
@@ -76,11 +76,11 @@ public class CatalogTest {
 	
 	@Test
 	public void findOffer() {
-		boolean offerExists = MockObjectUtil.CATALOG.getDataset().stream()
+		boolean offerExists = CatalogMockObjectUtil.CATALOG.getDataset().stream()
 				.flatMap(dataset -> dataset.getHasPolicy().stream()).anyMatch(of -> of.getId().equals("urn:offer_id"));
 		assertTrue(offerExists);
 
-		offerExists = MockObjectUtil.CATALOG.getDataset().stream()
+		offerExists = CatalogMockObjectUtil.CATALOG.getDataset().stream()
 				.flatMap(dataset -> dataset.getHasPolicy().stream()).anyMatch(of -> of.getId().equals("urn:offer_id_not_found"));
 		assertFalse(offerExists);
 	}
@@ -88,18 +88,18 @@ public class CatalogTest {
 	@Test
 	@DisplayName("Plain serialize/deserialize")
 	public void equalsTestPlain() {
-		Catalog catalog = MockObjectUtil.CATALOG;
-		String ss = Serializer.serializePlain(catalog);
-		Catalog catalog2 = Serializer.deserializePlain(ss, Catalog.class);
+		Catalog catalog = CatalogMockObjectUtil.CATALOG;
+		String ss = CatalogSerializer.serializePlain(catalog);
+		Catalog catalog2 = CatalogSerializer.deserializePlain(ss, Catalog.class);
 		assertThat(catalog).usingRecursiveComparison().isEqualTo(catalog2);
 	}
 	
 	@Test
 	@DisplayName("Protocol serialize/deserialize")
 	public void equalsTestProtocol() {
-		Catalog catalog = MockObjectUtil.CATALOG;
-		String ss = Serializer.serializeProtocol(catalog);
-		Catalog catalog2 = Serializer.deserializeProtocol(ss, Catalog.class);
+		Catalog catalog = CatalogMockObjectUtil.CATALOG;
+		String ss = CatalogSerializer.serializeProtocol(catalog);
+		Catalog catalog2 = CatalogSerializer.deserializeProtocol(ss, Catalog.class);
 		assertThat(catalog).usingRecursiveComparison().isEqualTo(catalog2);
 	}
 	

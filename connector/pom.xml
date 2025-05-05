@@ -25,7 +25,7 @@
 		</dependency>
 		<dependency>
 			<groupId>it.eng.datatransfer</groupId>
-			<artifactId>data-transfer</artifactId>
+			<artifactId>datatransfer</artifactId>
 			<version>${revision}</version>
 		</dependency>
 		<dependency>
@@ -83,6 +83,11 @@
 			<artifactId>json</artifactId>
 			<version>20230618</version>
 		</dependency>
+		<dependency>
+	      	<groupId>org.passay</groupId>
+	      	<artifactId>passay</artifactId>
+	      	<version>1.6.6</version>
+	  	</dependency>
 		<!-- TEST -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -96,11 +101,33 @@
 		</dependency>
 
 		<dependency>
-			<groupId>de.flapdoodle.embed</groupId>
-			<artifactId>de.flapdoodle.embed.mongo.spring30x</artifactId>
-			<version>4.11.0</version>
+		    <groupId>org.wiremock.integrations</groupId>
+		    <artifactId>wiremock-spring-boot</artifactId>
+		    <version>3.2.0</version>
+		    <scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>testcontainers</artifactId>
+			<version>1.20.5</version>
 			<scope>test</scope>
 		</dependency>
+
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<version>1.20.5</version>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>mongodb</artifactId>
+			<version>1.20.5</version>
+			<scope>test</scope>
+		</dependency>
+
 
 		<dependency>
 			<groupId>it.eng.catalog</groupId>
@@ -114,6 +141,15 @@
 		<dependency>
 			<groupId>it.eng.negotiation</groupId>
 			<artifactId>negotiation</artifactId>
+			<classifier>tests</classifier>
+			<type>test-jar</type>
+			<version>${revision}</version>
+			<scope>test</scope>
+		</dependency>
+		
+		<dependency>
+			<groupId>it.eng.datatransfer</groupId>
+			<artifactId>datatransfer</artifactId>
 			<classifier>tests</classifier>
 			<type>test-jar</type>
 			<version>${revision}</version>
@@ -166,6 +202,7 @@
 						<exclude>**/*.jks</exclude>
 						<exclude>**/*.sql</exclude>
 						<exclude>*.properties</exclude>
+						<exclude>*.json</exclude>
 					</excludes>
 					<archive>
 						<manifest>

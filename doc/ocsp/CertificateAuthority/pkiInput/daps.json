@@ -1,0 +1,20 @@
+{
+  "CN": "DAPS",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+  {
+    "C": "IT",
+    "L": "Lecce",
+    "O": "Engineering Ingegneria Informatica SpA",
+    "OU": "R&D"
+  }
+  ],
+  "hosts": [
+    "localhost",
+    "omejdn",
+    "127.0.0.1"
+  ]
+}

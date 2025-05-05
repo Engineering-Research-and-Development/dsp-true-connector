@@ -1,0 +1,78 @@
+{
+    "users": [{
+            "_class": "it.eng.connector.model.User",
+            "_id": "59d54e6d-a3f3-4a03-a093-d276e3068eef",
+            "firstName": "Admin",
+            "lastName": "Role",
+            "email": "admin@mail.com",
+            "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
+            "enabled": true,
+            "expired": false,
+            "locked": false,
+            "role": "ROLE_ADMIN"
+        }, {
+            "_class": "it.eng.connector.model.User",
+            "_id": "cab7b27b-f810-457d-b900-368994f6a640",
+            "firstName": "Connector",
+            "lastName": "Role",
+            "email": "connector@mail.com",
+            "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
+            "enabled": "true",
+            "expired": false,
+            "locked": false,
+            "role": "ROLE_CONNECTOR"
+        }
+    ],
+    "application_properties": [{
+            "_id": "application.daps.dapsJWKSUrl",
+            "value": "https://daps.aisec.fraunhofer.de/.well-known/jwks.json",
+            "mandatory": false,
+            "issued": "2024-06-24T16:26:00.000Z",
+            "modified": "2024-06-24T16:26:00.000Z",
+            "version": 0
+        }, {
+            "_id": "application.daps.dapsUrl",
+            "value": "https://daps.aisec.fraunhofer.de/v2/token",
+            "mandatory": false,
+            "issued": "2024-06-24T16:26:00.000Z",
+            "modified": "2024-06-24T16:26:00.000Z",
+            "version": 0
+        }, {
+            "_id": "application.daps.enabledDapsInteraction",
+            "value": "false",
+            "mandatory": false,
+            "issued": "2024-06-24T16:26:00.000Z",
+            "modified": "2024-06-24T16:26:00.000Z",
+            "version": 0
+        }, {
+            "_id": "application.daps.extendedTokenValidation",
+            "value": "false",
+            "mandatory": false,
+            "issued": "2024-06-24T16:26:00.000Z",
+            "modified": "2024-06-24T16:26:00.000Z",
+            "version": 0
+        }, {
+            "_id": "application.daps.fetchTokenOnStartup",
+            "value": "false",
+            "mandatory": false,
+            "issued": "2024-06-24T16:26:00.000Z",
+            "modified": "2024-06-24T16:26:00.000Z",
+            "version": 0
+        }, {
+            "_id": "application.daps.tokenCaching",
+            "value": "false",
+            "mandatory": false,
+            "issued": "2024-06-24T16:26:00.000Z",
+            "modified": "2024-06-24T16:26:00.000Z",
+            "version": 0
+        }, {
+	        "_id": "application.protocol.authentication.enabled",
+	        "value": "true",
+	        "mandatory": false,
+	        "issued": "2024-06-24T16:26:00.000Z",
+	        "modified": "2024-06-24T16:26:00.000Z",
+	        "version": 0
+	    }
+		
+    ]
+}

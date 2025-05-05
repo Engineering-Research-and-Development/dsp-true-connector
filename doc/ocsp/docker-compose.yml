@@ -1,0 +1,28 @@
+version: '3.1'
+services:
+  ocsp-server:
+    build:
+      context: ocsp-server
+      dockerfile: Dockerfile
+    container_name: ocsp-server
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./CertificateAuthority:/CertificateAuthority
+    command: /bin/bash
+    stdin_open: true 
+    tty: true
+
+  ocsp-server-ca:
+    build:
+      context: ocsp-server-ca
+      dockerfile: Dockerfile
+    container_name: ocsp-server-ca
+    ports:
+      - "8887:8887"
+    volumes:
+      - ./CertificateAuthority:/CertificateAuthority
+    command: /bin/bash
+    stdin_open: true 
+    tty: true
+

@@ -2,10 +2,12 @@ package it.eng.negotiation.rest.protocol;
 
 public class ContractNegotiationCallback {
 
+	private static final String NEGOTIATION_REQUEST = "/negotiations/request";
 	private static final String OFFERS = "/negotiations/offers";
 	private static final String CONSUMER_OFFERS = ":callback:/negotiations/:consumerPid:/offers";
 	private static final String CONSUMER_AGREEMENT = ":callback:/negotiations/:consumerPid:/agreement";
 	private static final String CONSUMER_EVENTS = ":callback:/negotiations/:consumerPid:/events";
+	private static final String PROVIDER_TERMINATION = "/negotiations/:providerPid:/termination";
 	private static final String CONSUMER_TERMINATION = ":callback:/negotiations/:consumerPid:/termination";
 	
 	/*
@@ -18,7 +20,10 @@ public class ContractNegotiationCallback {
 		return OFFERS;
 	}
 
-	public static String getConsumerOffersCallback(String callback, String consumerPid) {
+	public static String getNegotiationRequestURL(String protocolAddress) {
+		return getValidCallback(protocolAddress) + NEGOTIATION_REQUEST;
+	}
+ 	public static String getConsumerOffersCallback(String callback, String consumerPid) {
 		return CONSUMER_OFFERS.replace(":callback:", getValidCallback(callback)).replace(":consumerPid:", consumerPid);
 	}
 	
@@ -37,6 +42,10 @@ public class ContractNegotiationCallback {
 	/*
 	 * Provider
 	 */
+	public static String getContractTerminationProvider(String protocolAddress, String providerPid) {
+		return getValidCallback(protocolAddress) + PROVIDER_TERMINATION.replace(":providerPid:", providerPid);
+	}
+	
 	public static String getProviderAgreementVerificationCallback(String callback, String providerPid) {
 		return PROVIDER_AGREEMENT_VERIFICATION.replace(":callback:", getValidCallback(callback)).replace(":providerPid:", providerPid);
 	}

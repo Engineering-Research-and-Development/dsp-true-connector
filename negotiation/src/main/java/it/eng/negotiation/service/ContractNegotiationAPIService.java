@@ -15,10 +15,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
+import it.eng.negotiation.listener.ContractNegotiationPublisher;
 import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.ContractAgreementMessage;
 import it.eng.negotiation.model.ContractAgreementVerificationMessage;
 import it.eng.negotiation.model.ContractNegotiation;
+import it.eng.negotiation.model.ContractNegotiationErrorMessage;
 import it.eng.negotiation.model.ContractNegotiationEventMessage;
 import it.eng.negotiation.model.ContractNegotiationEventType;
 import it.eng.negotiation.model.ContractNegotiationState;
@@ -27,13 +29,15 @@ import it.eng.negotiation.model.ContractOfferMessage;
 import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.model.Reason;
+import it.eng.negotiation.policy.service.PolicyAdministrationPoint;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.rest.protocol.ContractNegotiationCallback;
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.event.datatransfer.InitializeTransferProcess;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
@@ -51,41 +55,68 @@ public class ContractNegotiationAPIService {
 	private final OfferRepository offerRepository;
 	private final AgreementRepository agreementRepository;
 	private final CredentialUtils credentialUtils;
-	ObjectMapper mapper = new ObjectMapper();
+	private final ObjectMapper mapper = new ObjectMapper();
+	private final PolicyAdministrationPoint policyAdministrationPoint;
+	private final ContractNegotiationPublisher publisher;
 
 	public ContractNegotiationAPIService(OkHttpRestClient okHttpRestClient, ContractNegotiationRepository contractNegotiationRepository,
 			ContractNegotiationProperties properties, OfferRepository offerRepository, AgreementRepository agreementRepository,
-			CredentialUtils credentialUtils) {
+			CredentialUtils credentialUtils, PolicyAdministrationPoint policyAdministrationPoint, ContractNegotiationPublisher publisher) {
 		this.okHttpRestClient = okHttpRestClient;
 		this.contractNegotiationRepository = contractNegotiationRepository;
 		this.properties = properties;
 		this.offerRepository = offerRepository;
 		this.agreementRepository = agreementRepository;
 		this.credentialUtils = credentialUtils;
+		this.policyAdministrationPoint = policyAdministrationPoint;
+		this.publisher = publisher;
+	}
+
+	public Collection<JsonNode> findContractNegotiations(String contractNegotiationId, String state, String role, String consumerPid, String providerPid) {
+		if (StringUtils.isNotBlank(contractNegotiationId)) {
+			return contractNegotiationRepository.findById(contractNegotiationId)
+					.stream()
+					.map(cn -> NegotiationSerializer.serializePlainJsonNode(cn))
+					.collect(Collectors.toList());
+		} else if (StringUtils.isNotBlank(state)) {
+			return contractNegotiationRepository.findByStateAndRole(state, role)
+					.stream()
+					.map(cn -> NegotiationSerializer.serializePlainJsonNode(cn))
+					.collect(Collectors.toList());
+		} else if(StringUtils.isNotBlank(consumerPid) && StringUtils.isNotBlank(providerPid)) {
+			return contractNegotiationRepository.findByProviderPidAndConsumerPid(providerPid, consumerPid)
+					.stream()
+					.map(cn -> NegotiationSerializer.serializePlainJsonNode(cn))
+					.collect(Collectors.toList());
+		}
+		return contractNegotiationRepository.findByRole(role)
+				.stream()
+				.map(cn -> NegotiationSerializer.serializePlainJsonNode(cn))
+				.collect(Collectors.toList());
 	}
 
 	/**
-	 * Start negotiation as consumer<br>
+	 * Start negotiation as consumer.<br>
 	 * Contract request message will be created and sent to connector behind forwardTo URL
 	 * @param forwardTo - target connector URL
 	 * @param offerNode - offer
-	 * @return
+	 * @return ContractNegotiation as JsonNode
 	 */
 	public JsonNode startNegotiation(String forwardTo, JsonNode offerNode) {
-		Offer offer = Serializer.deserializePlain(offerNode.toPrettyString(), Offer.class);
+		Offer offer = NegotiationSerializer.deserializePlain(offerNode.toPrettyString(), Offer.class);
 		ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
 				.callbackAddress(properties.consumerCallbackAddress())
 				.consumerPid("urn:uuid:" + UUID.randomUUID())
 				.offer(offer)
 				.build();
-		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(forwardTo, 
-				Serializer.serializeProtocolJsonNode(contractRequestMessage), credentialUtils.getConnectorCredentials());
+		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(ContractNegotiationCallback.getNegotiationRequestURL(forwardTo), 
+				NegotiationSerializer.serializeProtocolJsonNode(contractRequestMessage), credentialUtils.getConnectorCredentials());
 		log.info("Response received {}", response);
 		ContractNegotiation contractNegotiationWithOffer = null;
 		if (response.isSuccess()) {
 			try {
 				JsonNode jsonNode = mapper.readTree(response.getData());
-				ContractNegotiation contractNegotiation = Serializer.deserializeProtocol(jsonNode, ContractNegotiation.class);
+				ContractNegotiation contractNegotiation = NegotiationSerializer.deserializeProtocol(jsonNode, ContractNegotiation.class);
 				
 				Offer offerToBeInserted = Offer.Builder.newInstance()
 						.assignee(offer.getAssignee())
@@ -97,16 +128,25 @@ public class ContractNegotiationAPIService {
 				
 				Offer savedOffer = offerRepository.save(offerToBeInserted);
 				log.info("Offer {} saved", savedOffer.getId());
-				
+				String callbackAddress = contractNegotiation.getCallbackAddress();
+				if(StringUtils.isBlank(callbackAddress)) {
+					log.debug("Response ContractNegotiation.callbackAddress is null, setting it to forwardTo");
+					callbackAddress = forwardTo;
+				}
 				contractNegotiationWithOffer = ContractNegotiation.Builder.newInstance()
 						.id(contractNegotiation.getId())
 		    			.consumerPid(contractNegotiation.getConsumerPid())
 		    			.providerPid(contractNegotiation.getProviderPid())
-		    			.callbackAddress(contractNegotiation.getCallbackAddress())
+		    			.callbackAddress(callbackAddress)
 		    			.assigner(offer.getAssigner())
 		    			.state(contractNegotiation.getState())
 		    			.role(IConstants.ROLE_CONSUMER)
 		    			.offer(savedOffer)
+		    			.created(contractNegotiation.getCreated())
+		    			.createdBy(contractNegotiation.getCreatedBy())
+		    			.modified(contractNegotiation.getModified())
+		    			.lastModifiedBy(contractNegotiation.getLastModifiedBy())
+		    			.version(contractNegotiation.getVersion())
 						.build();
 				contractNegotiationRepository.save(contractNegotiationWithOffer);
 				log.info("Contract negotiation {} saved", contractNegotiationWithOffer.getId());
@@ -116,19 +156,26 @@ public class ContractNegotiationAPIService {
 			}
 		} else {
 			log.info("Error response received!");
-			throw new ContractNegotiationAPIException(response.getMessage());
+			JsonNode jsonNode;
+			try {
+				jsonNode = mapper.readTree(response.getData());
+				ContractNegotiationErrorMessage contractNegotiationErrorMessage = NegotiationSerializer.deserializeProtocol(jsonNode, ContractNegotiationErrorMessage.class);
+				throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, "Error making request");
+			} catch (JsonProcessingException e) {
+				throw new ContractNegotiationAPIException("Error occured");
+			}
 		}
-		return Serializer.serializePlainJsonNode(contractNegotiationWithOffer);
+		return NegotiationSerializer.serializePlainJsonNode(contractNegotiationWithOffer);
 	}
 
 	/**
-	 * Provider sends offer to consumer
+	 * Provider sends offer to consumer.
 	 * @param forwardTo
 	 * @param offerNode
-	 * @return
+	 * @return ContractNegotiation as JsonNode
 	 */
 	public JsonNode sendContractOffer(String forwardTo, JsonNode offerNode) {
-		Offer offer = Serializer.deserializePlain(offerNode.toPrettyString(), Offer.class);
+		Offer offer = NegotiationSerializer.deserializePlain(offerNode.toPrettyString(), Offer.class);
 		ContractOfferMessage offerMessage = ContractOfferMessage.Builder.newInstance()
 				.providerPid("urn:uuid:" + UUID.randomUUID())
 				.callbackAddress(properties.providerCallbackAddress())
@@ -137,11 +184,11 @@ public class ContractNegotiationAPIService {
 		
 		// this offer check
 //		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol("http://localhost:" + properties.serverPort() + "/api/offer/validateOffer", 
-//				Serializer.serializePlainJsonNode(offer), 
+//				NegotiationSerializer.serializePlainJsonNode(offer), 
 //				credentialUtils.getAPICredentials());
 
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(forwardTo, 
-				Serializer.serializeProtocolJsonNode(offerMessage), credentialUtils.getConnectorCredentials());
+				NegotiationSerializer.serializeProtocolJsonNode(offerMessage), credentialUtils.getConnectorCredentials());
 		
 		/*
 		 * Response from Consumer
@@ -159,7 +206,7 @@ public class ContractNegotiationAPIService {
 			if(response.isSuccess()) {
 				log.info("ContractNegotiation received {}", response);
 				jsonNode = mapper.readTree(response.getData());
-				ContractNegotiation contractNegotiation = Serializer.deserializeProtocol(jsonNode, ContractNegotiation.class);
+				ContractNegotiation contractNegotiation = NegotiationSerializer.deserializeProtocol(jsonNode, ContractNegotiation.class);
 				ContractNegotiation contractNegtiationUpdate = ContractNegotiation.Builder.newInstance()
 						.id(contractNegotiation.getId())
 						.consumerPid(contractNegotiation.getConsumerPid())
@@ -171,6 +218,11 @@ public class ContractNegotiationAPIService {
 						.role(IConstants.ROLE_PROVIDER)
 						.offer(offer)
 						.state(contractNegotiation.getState())
+		    			.created(contractNegotiation.getCreated())
+		    			.createdBy(contractNegotiation.getCreatedBy())
+		    			.modified(contractNegotiation.getModified())
+		    			.lastModifiedBy(contractNegotiation.getLastModifiedBy())
+		    			.version(contractNegotiation.getVersion())
 						.build();
 				// provider saves contract negotiation
 				contractNegotiationRepository.save(contractNegtiationUpdate);
@@ -191,7 +243,7 @@ public class ContractNegotiationAPIService {
 		
 		stateTransitionCheck(ContractNegotiationState.AGREED, contractNegotiation.getState());
 		
-		Agreement agreement = Serializer.deserializePlain(agreementNode.toPrettyString(), Agreement.class);
+		Agreement agreement = NegotiationSerializer.deserializePlain(agreementNode.toPrettyString(), Agreement.class);
 		ContractAgreementMessage agreementMessage = ContractAgreementMessage.Builder.newInstance()
 				.consumerPid(consumerPid)
 				.providerPid(providerPid)
@@ -202,7 +254,7 @@ public class ContractNegotiationAPIService {
     	log.info("Sending agreement as provider to {}", contractNegotiation.getCallbackAddress());
 		GenericApiResponse<String> response = okHttpRestClient
 				.sendRequestProtocol(ContractNegotiationCallback.getContractAgreementCallback(contractNegotiation.getCallbackAddress(), consumerPid),
-				Serializer.serializeProtocolJsonNode(agreementMessage),
+				NegotiationSerializer.serializeProtocolJsonNode(agreementMessage),
 				credentialUtils.getConnectorCredentials());
 		log.info("Response received {}", response);
 		if (response.isSuccess()) {
@@ -217,6 +269,10 @@ public class ContractNegotiationAPIService {
 		}
 	}
 
+	/**
+	 * Finalize negotiation.
+	 * @param contractNegotiationId
+	 */
 	public void finalizeNegotiation(String contractNegotiationId) {
 		ContractNegotiation contractNegotiation = findContractNegotiationById(contractNegotiationId);
 
@@ -233,51 +289,30 @@ public class ContractNegotiationAPIService {
 		
 		log.info("Sending ContractNegotiationEventMessage.FINALIZED to {}", callbackAddress);
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(callbackAddress,
-				Serializer.serializeProtocolJsonNode(contractNegotiationEventMessage), credentialUtils.getConnectorCredentials());
+				NegotiationSerializer.serializeProtocolJsonNode(contractNegotiationEventMessage), credentialUtils.getConnectorCredentials());
 		
 		if (response.isSuccess()) {
 			ContractNegotiation contractNegotiationFinalized = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.FINALIZED);
 			contractNegotiationRepository.save(contractNegotiationFinalized);
+			// TODO remove this line once api/getArtifact is implemented on consumer side 
+			policyAdministrationPoint.createPolicyEnforcement(contractNegotiation.getAgreement().getId());
+			publisher.publishEvent(new InitializeTransferProcess(
+					contractNegotiationFinalized.getCallbackAddress(),
+					contractNegotiationFinalized.getAgreement().getId(),
+					contractNegotiationFinalized.getAgreement().getTarget(),
+					contractNegotiationFinalized.getRole()
+					));
 		} else {
 			log.error("Error response received!");
 			throw new ContractNegotiationAPIException(response.getMessage());
 		}
 	}
 
-	public Collection<JsonNode> findContractNegotiations(String contractNegotiationId, String state, String role) {
-		if (StringUtils.isNotBlank(contractNegotiationId)) {
-			return contractNegotiationRepository.findById(contractNegotiationId)
-					.stream()
-					.filter(cn -> getContractNegotiation(cn, role))
-					.map(cn -> Serializer.serializePlainJsonNode(cn))
-					.collect(Collectors.toList());
-		} else if (StringUtils.isNotBlank(state)) {
-			return contractNegotiationRepository.findByState(state)
-					.stream()
-					.filter(cn -> getContractNegotiation(cn, role))
-					.map(cn -> Serializer.serializePlainJsonNode(cn))
-					.collect(Collectors.toList());
-		}
-		return contractNegotiationRepository.findAll()
-				.stream()
-				.filter(cn -> getContractNegotiation(cn, role))
-				.map(cn -> Serializer.serializePlainJsonNode(cn))
-				.collect(Collectors.toList());
-	}
-
-	private boolean getContractNegotiation(ContractNegotiation cn, String role) {
-		if(role == null) {
-			return true;
-		} else {
-			return role.equalsIgnoreCase(cn.getRole());//.equals(role);
-		}
-	}
-
 	/**
-	 * Consumer sends ContractNegotiationEventMessage.ACCEPTED and updates state for 
-	 * Contract Negotiation upon successful response to ACCEPTED
+	 * Consumer sends ContractNegotiationEventMessage with state ACCEPTED.<br>
+	 * Updates state Contract Negotiation upon successful response to ACCEPTED
 	 * @param contractNegotiationId
-	 * @return
+	 * @return ContractNegotiation
 	 */
 	public ContractNegotiation handleContractNegotiationAccepted(String contractNegotiationId) {
 		ContractNegotiation contractNegotiation = findContractNegotiationById(contractNegotiationId);
@@ -293,7 +328,7 @@ public class ContractNegotiationAPIService {
 	   	log.info("Sending ContractNegotiationEventMessage.ACCEPTED as consumer to {}", contractNegotiation.getCallbackAddress());
 		GenericApiResponse<String> response = okHttpRestClient
 				.sendRequestProtocol(ContractNegotiationCallback.getContractEventsCallback(contractNegotiation.getCallbackAddress(), contractNegotiation.getProviderPid()),
-				Serializer.serializeProtocolJsonNode(eventMessageAccepted),
+				NegotiationSerializer.serializeProtocolJsonNode(eventMessageAccepted),
 				credentialUtils.getConnectorCredentials());
 		log.info("Response received {}", response);
 		if (response.isSuccess()) {
@@ -308,9 +343,9 @@ public class ContractNegotiationAPIService {
 	}
 	
 	/**
-	 * Negotiate status to AGREED after successful response from connector
+	 * Negotiate status to AGREED after successful response from connector.
 	 * @param contractNegotiationId
-	 * @return
+	 * @return ContractNegotiation
 	 */
 	public ContractNegotiation approveContractNegotiation(String contractNegotiationId) {
 		ContractNegotiation contractNegotiation = findContractNegotiationById(contractNegotiationId);
@@ -326,7 +361,7 @@ public class ContractNegotiationAPIService {
 		// TODO this one will fail because provider does not have consumer callbackAddress for sending agreement
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
 				ContractNegotiationCallback.getContractAgreementCallback(contractNegotiation.getCallbackAddress(), contractNegotiation.getConsumerPid()), 
-				Serializer.serializeProtocolJsonNode(agreementMessage),
+				NegotiationSerializer.serializeProtocolJsonNode(agreementMessage),
 				credentialUtils.getConnectorCredentials());
 		if(response.isSuccess()) {
 			log.info("Updating status for negotiation {} to agreed", contractNegotiation.getId());
@@ -343,6 +378,11 @@ public class ContractNegotiationAPIService {
 	    			.role(contractNegotiation.getRole())
 	    			.offer(contractNegotiation.getOffer())
 	    			.agreement(agreementMessage.getAgreement())
+	    			.created(contractNegotiation.getCreated())
+	    			.createdBy(contractNegotiation.getCreatedBy())
+	    			.modified(contractNegotiation.getModified())
+	    			.lastModifiedBy(contractNegotiation.getLastModifiedBy())
+	    			.version(contractNegotiation.getVersion())
 					.build();
 					
 			contractNegotiationRepository.save(contractNegtiationAgreed);
@@ -353,6 +393,11 @@ public class ContractNegotiationAPIService {
 		}
 	}
 	
+	/**
+	 * Verify negotiation.<br>
+	 * If all ok state is transitioned to VERIFIED
+	 * @param contractNegotiationId
+	 */
 	public void verifyNegotiation(String contractNegotiationId) {
 		ContractNegotiation contractNegotiation =  findContractNegotiationById(contractNegotiationId);
 		
@@ -368,7 +413,7 @@ public class ContractNegotiationAPIService {
 		String callbackAddress = ContractNegotiationCallback.getProviderAgreementVerificationCallback(contractNegotiation.getCallbackAddress(), contractNegotiation.getProviderPid());
 		log.info("Sending verification message to provider to {}", callbackAddress);
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(callbackAddress, 
-				Serializer.serializeProtocolJsonNode(verificationMessage),
+				NegotiationSerializer.serializeProtocolJsonNode(verificationMessage),
 				credentialUtils.getConnectorCredentials());
 		
 		if(response.isSuccess()) {
@@ -377,24 +422,50 @@ public class ContractNegotiationAPIService {
 			contractNegotiationRepository.save(contractNegtiationVerified);
 		} else {
 			log.error("Response status not 200 - provider did not process Verification message correct");
-			throw new ContractNegotiationAPIException("provider did not process Verification message correct");
+			JsonNode jsonNode;
+			try {
+				jsonNode = mapper.readTree(response.getData());
+				ContractNegotiationErrorMessage contractNegotiationErrorMessage = NegotiationSerializer.deserializeProtocol(jsonNode, ContractNegotiationErrorMessage.class);
+				throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, "Provider did not process Verification message correct");
+			} catch (JsonProcessingException e) {
+				throw new ContractNegotiationAPIException("Provider did not process Verification message correct");
+			}
 		}
 	}
 	
+	/**
+	 * Terminate contract negotiation.
+	 * Transition state to TERMINATED
+	 * @param contractNegotiationId
+	 * @return ContractNegotiation
+	 */
 	public ContractNegotiation handleContractNegotiationTerminated(String contractNegotiationId) {
 		ContractNegotiation contractNegotiation = findContractNegotiationById(contractNegotiationId);
 		// for now just log it; maybe we can publish event?
 		log.info("Contract negotiation with consumerPid {} and providerPid {} declined", contractNegotiation.getConsumerPid(), contractNegotiation.getProviderPid());
+		String reason = null;
+		String address = null;
+		if(IConstants.ROLE_PROVIDER.equals(contractNegotiation.getRole())) {
+			log.info("Terminating negotiation by provider");
+			reason = "Contract negotiation terminated by provider";
+			// send request to consumer callback address
+			address = ContractNegotiationCallback.getContractTerminationCallback(contractNegotiation.getCallbackAddress(), contractNegotiation.getConsumerPid());
+		} else {
+			log.info("Terminating negotiation by consumer");
+			reason = "Contract negotiation terminated by consumer";
+			// send request to protocol address
+			address = ContractNegotiationCallback.getContractTerminationProvider(contractNegotiation.getCallbackAddress(), 
+					contractNegotiation.getProviderPid());
+		}
 		ContractNegotiationTerminationMessage negotiationTerminatedEventMessage = ContractNegotiationTerminationMessage.Builder.newInstance()
-			.consumerPid(contractNegotiation.getConsumerPid())
-			.providerPid(contractNegotiation.getProviderPid())
-			.code(contractNegotiationId)
-			.reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("Contract negotiation terminated by provider").build()))
-			.build();
-			
+				.consumerPid(contractNegotiation.getConsumerPid())
+				.providerPid(contractNegotiation.getProviderPid())
+				.code(contractNegotiationId)
+				.reason(Arrays.asList(Reason.Builder.newInstance().language("en").value(reason).build()))
+				.build();
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
-				ContractNegotiationCallback.getContractTerminationCallback(contractNegotiation.getCallbackAddress(), contractNegotiation.getConsumerPid()), 
-				Serializer.serializeProtocolJsonNode(negotiationTerminatedEventMessage),
+				address, 
+				NegotiationSerializer.serializeProtocolJsonNode(negotiationTerminatedEventMessage),
 				credentialUtils.getConnectorCredentials());
 		if(response.isSuccess()) {
 			log.info("Updating status for negotiation {} to terminated", contractNegotiation.getId());
@@ -402,17 +473,40 @@ public class ContractNegotiationAPIService {
 			contractNegotiationRepository.save(contractNegtiationTerminated);
 			return contractNegtiationTerminated;
 		} else {
-			log.error("Response status not 200 - consumer did not process ContractNegotiationTerminationMessage correct");
-			throw new ContractNegotiationAPIException("consumer did not process ContractNegotiationTerminationMessage correct");
+			log.error("Response status not 200 - " + contractNegotiation.getRole() + " did not process ContractNegotiationTerminationMessage correct");
+			JsonNode jsonNode;
+			try {
+				jsonNode = mapper.readTree(response.getData());
+				ContractNegotiationErrorMessage contractNegotiationErrorMessage = NegotiationSerializer.deserializeProtocol(jsonNode, ContractNegotiationErrorMessage.class);
+				throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, contractNegotiation.getRole() + " did not process Verification message correct");
+			} catch (JsonProcessingException e) {
+				throw new ContractNegotiationAPIException(contractNegotiation.getRole() + " did not process Verification message correct");
+			}
 		}
 	}
 	
+	/**
+	 * Validate if agreement is valid.
+	 * @param agreementId
+	 */
 	public void validateAgreement(String agreementId) {
-		agreementRepository.findById(agreementId)
-				.orElseThrow(() -> new ContractNegotiationAPIException("Agreement with Id " + agreementId + " not found."));
-		// TODO add additional checks like contract dates
+		log.info("Validating agreement " + agreementId);
+		contractNegotiationRepository.findByAgreement(agreementId)
+		.ifPresentOrElse((cn) -> {
+			if (!cn.getState().equals(ContractNegotiationState.FINALIZED)) {
+				throw new ContractNegotiationAPIException("Contract negotiation with Agreement Id " + agreementId + " is not finalized.");
+			}},
+				() -> {
+					throw new ContractNegotiationAPIException("Contract negotiation with Agreement Id " + agreementId + " not found.");
+					});
+		// TODO add additional checks like contract dates or else
 		//		LocalDateTime agreementStartDate = LocalDateTime.parse(agreement.getTimestamp(), FORMATTER);
 		//		agreementStartDate.isBefore(LocalDateTime.now());
+		if(!policyAdministrationPoint.policyEnforcementExists(agreementId)) {
+			log.warn("Policy enforcement not created, cannot enforoce properly");
+			throw new ContractNegotiationAPIException("Policy enforcement not found for agreement with Id " 
+					 + agreementId + " not found.");
+		}
 	}
 	
 	private Agreement agreementFromOffer(Offer offer, String assigner) {

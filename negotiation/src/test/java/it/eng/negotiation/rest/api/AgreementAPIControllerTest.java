@@ -16,35 +16,34 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
-import it.eng.negotiation.model.MockObjectUtil;
-import it.eng.negotiation.service.ContractNegotiationAPIService;
+import it.eng.negotiation.model.NegotiationMockObjectUtil;
+import it.eng.negotiation.service.AgreementAPIService;
 import it.eng.tools.response.GenericApiResponse;
 
 @ExtendWith(MockitoExtension.class)
 class AgreementAPIControllerTest {
 
 	@Mock
-	private ContractNegotiationAPIService contractNegotiationAPIService;
+	private AgreementAPIService agreementAPIService;
 	
 	@InjectMocks
 	private AgreementAPIController controller;
 	
 	@Test
-	@DisplayName("Validate agreement")
-	void testValidateAgreement() {
-		doNothing().when(contractNegotiationAPIService).validateAgreement(any(String.class));
-		ResponseEntity<GenericApiResponse<String>> response = controller.validateAgreement(MockObjectUtil.AGREEMENT.getId());
+	@DisplayName("Enforce agreement")
+	void enforceAgreement() {
+		doNothing().when(agreementAPIService).enforceAgreement(NegotiationMockObjectUtil.AGREEMENT.getId());
+		ResponseEntity<GenericApiResponse<String>> response = controller.enforceAgreement(NegotiationMockObjectUtil.AGREEMENT.getId());
 		assertNotNull(response);
 		assertTrue(response.getBody().isSuccess());
 	}
 	
 	@Test
-	@DisplayName("Validate agreement - not valid")
-	void testValidateAgreement_serviceError() {
+	@DisplayName("Enforce agreement - not valid")
+	void enforceAgreement_serviceError() {
 		doThrow(new ContractNegotiationAPIException("Something not correct - tests"))
-		.when(contractNegotiationAPIService).validateAgreement(any(String.class));
+		.when(agreementAPIService).enforceAgreement(any(String.class));
 		assertThrows(ContractNegotiationAPIException.class, 
-				() -> controller.validateAgreement(MockObjectUtil.AGREEMENT.getId()));
+				() -> controller.enforceAgreement(NegotiationMockObjectUtil.AGREEMENT.getId()));
 	}
-
 }

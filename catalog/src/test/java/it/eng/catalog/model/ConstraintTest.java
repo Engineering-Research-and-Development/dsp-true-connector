@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import it.eng.catalog.serializer.Serializer;
+import it.eng.catalog.serializer.CatalogSerializer;
 
 public class ConstraintTest {
 
@@ -36,16 +36,16 @@ public class ConstraintTest {
 	@Test
 	@DisplayName("Plain serialize/deserialize")
 	public void equalsTestPlain() {
-		String ss = Serializer.serializePlain(constraintA);
-		Constraint constraintA2 = Serializer.deserializePlain(ss, Constraint.class);
+		String ss = CatalogSerializer.serializePlain(constraintA);
+		Constraint constraintA2 = CatalogSerializer.deserializePlain(ss, Constraint.class);
 		assertThat(constraintA).usingRecursiveComparison().isEqualTo(constraintA2);
 	}
 	
 	@Test
 	@DisplayName("Protocol serialize/deserialize")
 	public void equalsTestProtocol() {
-		String ss = Serializer.serializeProtocol(constraintA);
-		Constraint constraintA2 = Serializer.deserializeProtocol(ss, Constraint.class);
+		String ss = CatalogSerializer.serializeProtocol(constraintA);
+		Constraint constraintA2 = CatalogSerializer.deserializeProtocol(ss, Constraint.class);
 		assertThat(constraintA).usingRecursiveComparison().isEqualTo(constraintA2);
 	}
 }

@@ -1,0 +1,19 @@
+version: '3.1'
+services:
+  ocsp-server-ca:
+    build: .
+    container_name: ocsp-server-ca
+    ports:
+      - "8887:8887"
+#    networks:
+#      - ocsp-ca
+    volumes:
+      - ../CertificateAuthority:/CertificateAuthority
+    command: /bin/bash
+    stdin_open: true 
+    tty: true
+
+#networks:
+#  ocsp-ca:
+#   external: true
+#   name: testbed_local

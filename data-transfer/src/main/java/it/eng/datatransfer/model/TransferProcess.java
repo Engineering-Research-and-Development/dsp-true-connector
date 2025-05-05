@@ -1,11 +1,14 @@
 package it.eng.datatransfer.model;
 
+import java.time.Instant;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
@@ -56,23 +59,59 @@ public class TransferProcess extends AbstractTransferMessage {
 	@JsonProperty(DSpaceConstants.DSPACE_STATE)
 	private TransferState state;
 	
-	// used to store agreement so we can enforce it
+	/**
+	 *  Used to store agreement so we can enforce it.
+	 */
 	@JsonIgnore
 	private String agreementId;
 	@JsonIgnore
 	private String callbackAddress;
+	@JsonIgnore
+	private String datasetId;
 	
+	/**
+	 * Determins which role the connector is for that contract negotiation (consumer or provider).
+	 */
+    @JsonIgnore
+    private String role;
+    
+    @JsonIgnore
+    private DataAddress dataAddress;
+    
+    /**
+     * Flag to check if the data is downloaded on consumer side.
+     */
+    @JsonIgnore
+    private boolean isDownloaded;
+    
+    /**
+     * Id of the downloaded and stored data on consumer side.
+     */
+    @JsonIgnore
+    private String dataId;
+    
+    @JsonIgnore
+	private String format;
+	
+    @JsonIgnore
+    @CreatedDate
+    private Instant created;
     @JsonIgnore
     @CreatedBy
     private String createdBy;
+
+    @JsonIgnore
+    @LastModifiedDate
+    private Instant modified;
     @JsonIgnore
     @LastModifiedBy
     private String lastModifiedBy;
+    
     @JsonIgnore
     @Version
     @Field("version")
     private Long version;
-	
+    
 	@JsonPOJOBuilder(withPrefix = "")
 	@JsonIgnoreProperties(ignoreUnknown = true)
 	public static class Builder {
@@ -87,6 +126,7 @@ public class TransferProcess extends AbstractTransferMessage {
 			return new Builder();
 		}
 		
+		@JsonProperty(DSpaceConstants.ID)
 		public Builder id(String id) {
         	message.id = id;
         	return this;
@@ -98,35 +138,42 @@ public class TransferProcess extends AbstractTransferMessage {
 			return this;
 		}
 
-		@JsonProperty((DSpaceConstants.DSPACE_PROVIDER_PID))
+		@JsonProperty(DSpaceConstants.DSPACE_PROVIDER_PID)
 		public Builder providerPid(String providerPid) {
 			message.providerPid = providerPid;
 			return this;
 		}
 		
-		@JsonProperty((DSpaceConstants.DSPACE_STATE))
+		@JsonProperty(DSpaceConstants.DSPACE_STATE)
 		public Builder state(TransferState state) {
 			message.state = state;
 			return this;
 		}
-
-		@JsonProperty("createdBy")
-		public Builder createdBy(String createdBy) {
-			message.createdBy = createdBy;
-			return this;
-		}
-
-		@JsonProperty("lastModifiedBy")
-		public Builder lastModifiedBy(String lastModifiedBy) {
-			message.lastModifiedBy = lastModifiedBy;
-			return this;
-		}
-
-		@JsonProperty("version")
-		public Builder version(Long version) {
-			message.version = version;
-			return this;
-		}
+		
+		public Builder role(String role) {
+        	message.role = role;
+        	return this;
+        }
+		
+		public Builder dataAddress(DataAddress dataAddress) {
+        	message.dataAddress = dataAddress;
+        	return this;
+        }
+		
+		public Builder isDownloaded(boolean isDownloaded) {
+        	message.isDownloaded = isDownloaded;
+        	return this;
+        }
+		
+		public Builder dataId(String dataId) {
+        	message.dataId = dataId;
+        	return this;
+        }
+		
+		public Builder format(String format) {
+        	message.format = format;
+        	return this;
+        }
 		
 		@JsonProperty(DSpaceConstants.AGREEMENT_ID)
 		public Builder agreementId(String agreementId) {
@@ -139,14 +186,52 @@ public class TransferProcess extends AbstractTransferMessage {
 			message.callbackAddress = callbackAddress;
 			return this;
 		}
+		
+		@JsonProperty("datasetId")
+		public Builder datasetId(String datasetId) {
+			message.datasetId = datasetId;
+			return this;
+		}
+		
+		 // Auditable fields
+        @JsonProperty("version")
+        public Builder version(Long version) {
+            message.version = version;
+            return this;
+        }
+        
+        @JsonProperty("createdBy")
+        public Builder createdBy(String createdBy) {
+        	message.createdBy = createdBy;
+            return this;
+        }
+        @JsonProperty("created")
+        public Builder created(Instant created) {
+        	message.created = created;
+            return this;
+        }
+
+        @JsonProperty("modified")
+        public Builder modified(Instant modified) {
+        	message.modified = modified;
+            return this;
+        }
+        @JsonProperty("lastModifiedBy")
+        public Builder lastModifiedBy(String lastModifiedBy) {
+        	message.lastModifiedBy = lastModifiedBy;
+            return this;
+        }
 
 		public TransferProcess build() {
 			if (message.id == null) {
-	               message.id = message.createNewPid();
-	        }
+				message.id = message.createNewPid();
+			}
+			if (message.consumerPid == null) {
+				message.consumerPid = message.createNewPid();
+			}
 			if (message.providerPid == null) {
-                message.providerPid = message.createNewPid();
-            }
+				message.providerPid = message.createNewPid();
+			}
 			Set<ConstraintViolation<TransferProcess>> violations 
 				= Validation.buildDefaultValidatorFactory().getValidator().validate(message);
 			if(violations.isEmpty()) {
@@ -178,10 +263,18 @@ public class TransferProcess extends AbstractTransferMessage {
 				.consumerPid(this.consumerPid)
 				.providerPid(this.providerPid)
 				.callbackAddress(this.callbackAddress)
+				.dataAddress(this.dataAddress)
+				.isDownloaded(this.isDownloaded)
+				.dataId(this.dataId)
+				.format(this.format)
 				.state(newTransferState)
-				// no need to modify audit fields???
-				.createdBy(this.createdBy)
+				.role(this.role)
+				.datasetId(this.datasetId)
+				// auditable fields
+    			.createdBy(this.createdBy)
+    			.created(created)
 				.lastModifiedBy(this.lastModifiedBy)
+				.modified(modified)
 				.version(this.version)
 				.build();
 	}

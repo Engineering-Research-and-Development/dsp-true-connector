@@ -18,6 +18,11 @@ public class CatalogAPIExceptionAdvice extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, GenericApiResponse.error(ex.getLocalizedMessage()), new HttpHeaders(), HttpStatus.NOT_FOUND, request);
     }
     
+    @ExceptionHandler(value = {CatalogErrorAPIException.class})
+    protected ResponseEntity<Object> handleCatalogErrorAPIException(CatalogErrorAPIException ex, WebRequest request) {
+        return handleExceptionInternal(ex, GenericApiResponse.error(ex.getLocalizedMessage()), new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
+    }
+    
     @ExceptionHandler(value = {InternalServerErrorAPIException.class})
     protected ResponseEntity<Object> handleInternalServerErrorAPIException(InternalServerErrorAPIException ex, WebRequest request) {
         return handleExceptionInternal(ex, GenericApiResponse.error(ex.getLocalizedMessage()), new HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR, request);

@@ -17,14 +17,16 @@ import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
 import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.model.Reason;
+import it.eng.negotiation.policy.service.PolicyAdministrationPoint;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.rest.protocol.ContractNegotiationCallback;
-import it.eng.negotiation.serializer.Serializer;
+import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
+import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -37,14 +39,17 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
 	
 	private final AgreementRepository agreementRepository;
 	protected final CredentialUtils credentialUtils;
+	private final PolicyAdministrationPoint policyAdministrationPoint;
 	
 	public ContractNegotiationEventHandlerService(ContractNegotiationPublisher publisher,
 			ContractNegotiationRepository contractNegotiationRepository, OkHttpRestClient okHttpRestClient,
 			ContractNegotiationProperties properties, OfferRepository offerRepository,
-			AgreementRepository agreementRepository, CredentialUtils credentialUtils) {
+			AgreementRepository agreementRepository, CredentialUtils credentialUtils,
+			PolicyAdministrationPoint policyAdministrationPoint) {
 		super(publisher, contractNegotiationRepository, okHttpRestClient, properties, offerRepository);
 		this.agreementRepository = agreementRepository;
 		this.credentialUtils = credentialUtils;
+		this.policyAdministrationPoint = policyAdministrationPoint;
 	}
 
 	@Deprecated
@@ -60,12 +65,12 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
 					.consumerPid(contractNegotiation.getConsumerPid())
 					.providerPid(contractNegotiation.getProviderPid())
 					.callbackAddress(properties.providerCallbackAddress())
-					.agreement(agreementFromOffer(Serializer.deserializePlain(offerResponse.getOffer().toPrettyString(), Offer.class), contractNegotiation.getAssigner()))
+					.agreement(agreementFromOffer(NegotiationSerializer.deserializePlain(offerResponse.getOffer().toPrettyString(), Offer.class), contractNegotiation.getAssigner()))
 					.build();
 			
 			GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
 					ContractNegotiationCallback.getContractAgreementCallback(contractNegotiation.getCallbackAddress(), contractNegotiation.getConsumerPid()), 
-					Serializer.serializeProtocolJsonNode(agreementMessage),
+					NegotiationSerializer.serializeProtocolJsonNode(agreementMessage),
 					credentialUtils.getConnectorCredentials());
 			if(response.isSuccess()) {
 				log.info("Updating status for negotiation {} to agreed", contractNegotiation.getId());
@@ -76,6 +81,11 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
 						.providerPid(contractNegotiation.getProviderPid())
 						.state(ContractNegotiationState.AGREED)
 						.callbackAddress(contractNegotiation.getCallbackAddress())
+		    			.created(contractNegotiation.getCreated())
+		    			.createdBy(contractNegotiation.getCreatedBy())
+		    			.modified(contractNegotiation.getModified())
+		    			.lastModifiedBy(contractNegotiation.getLastModifiedBy())
+		    			.version(contractNegotiation.getVersion())
 						.build();
 				contractNegotiationRepository.save(contractNegtiationUpdate);
 				log.info("Saving agreement..." + agreementMessage.getAgreement().getId());
@@ -100,7 +110,7 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
 			
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
 				ContractNegotiationCallback.getContractTerminationCallback(contractNegotiation.getCallbackAddress(), contractNegotiation.getConsumerPid()), 
-				Serializer.serializeProtocolJsonNode(negotiationTerminatedEventMessage),
+				NegotiationSerializer.serializeProtocolJsonNode(negotiationTerminatedEventMessage),
 				credentialUtils.getConnectorCredentials());
 		if(response.isSuccess()) {
 			log.info("Updating status for negotiation {} to terminated", contractNegotiation.getId());
@@ -140,7 +150,7 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
 		String callbackAddress = ContractNegotiationCallback.getProviderAgreementVerificationCallback(contractNegotiation.getCallbackAddress(), providerPid);
 		log.info("Sending verification message to provider to {}", callbackAddress);
 		GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(callbackAddress, 
-				Serializer.serializeProtocolJsonNode(verificationMessage),
+				NegotiationSerializer.serializeProtocolJsonNode(verificationMessage),
 				credentialUtils.getConnectorCredentials());
 		
 		if(response.isSuccess()) {
@@ -159,4 +169,8 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
 		}
 	}
 
+	public void artifactConsumedEvent(ArtifactConsumedEvent artifactConsumedEvent) {
+		log.info("Increasing access count for artifactId {}", artifactConsumedEvent.getAgreementId());
+		policyAdministrationPoint.updateAccessCount(artifactConsumedEvent.getAgreementId());
+	}
 }
