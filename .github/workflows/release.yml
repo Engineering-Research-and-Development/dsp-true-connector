@@ -96,7 +96,7 @@ jobs:
     - name: Create A Pull Request
       uses: thomaseizinger/create-pull-request@1.3.0
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        github_token: ${{ env.GITHUB_TOKEN }}
         head: main
         base: develop
         title: Released master into develop
