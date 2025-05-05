@@ -94,9 +94,8 @@ jobs:
         git push
 
     - name: Create A Pull Request
-      uses: thomaseizinger/create-pull-request@1.3.0
+      uses: thomaseizinger/create-pull-request@1.4.0
       with:
-        github_token: ${{ env.GITHUB_TOKEN }}
         head: main
         base: develop
         title: Released master into develop
