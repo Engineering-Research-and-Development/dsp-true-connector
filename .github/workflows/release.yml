@@ -19,12 +19,13 @@ jobs:
       packages: write
       attestations: write
       id-token: write
+      pull-requests: write
 
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: engineering-research-and-development/dsp-true-connector
       GITHUB_USERNAME: ${{ github.actor }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
     - name: Checkout repository
@@ -66,7 +67,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        password: ${{ env.TOKEN }}
      
     - name: Extract metadata (tags, labels) for Docker
       id: meta
@@ -94,9 +95,9 @@ jobs:
         git push
 
     - name: Create A Pull Request
-      uses: thomaseizinger/create-pull-request@1.3.0
+      uses: thomaseizinger/create-pull-request@1.4.0
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        github_token: ${{ env.TOKEN }}
         head: main
         base: develop
         title: Released master into develop
