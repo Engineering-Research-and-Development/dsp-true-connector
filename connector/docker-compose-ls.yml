@@ -1,6 +1,6 @@
 services:
-  localstack:
-    container_name: localstack-main
+  localstack_consumer:
+    container_name: localstack_consumer
     image: localstack/localstack
     ports:
       - "127.0.0.1:4566:4566"            # LocalStack Gateway
@@ -10,5 +10,19 @@ services:
       - DEBUG=${DEBUG:-0}
       - SERVICES=s3,iam,sts
     volumes:
-      - ./localstack_data:/var/lib/localstack
+      - ./localstack_data_consumer:/var/lib/localstack
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      
+  localstack_provider:
+    container_name: localstack_provider
+    image: localstack/localstack
+    ports:
+      - "127.0.0.1:4666:4566"            # LocalStack Gateway
+      - "127.0.0.1:4610-4659:4510-4559"  # external services port range
+    environment:
+      # LocalStack configuration: https://docs.localstack.cloud/references/configuration/
+      - DEBUG=${DEBUG:-0}
+      - SERVICES=s3,iam,sts
+    volumes:
+      - ./localstack_data_provider:/var/lib/localstack
       - "/var/run/docker.sock:/var/run/docker.sock"

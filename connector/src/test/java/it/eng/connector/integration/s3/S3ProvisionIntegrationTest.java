@@ -32,7 +32,6 @@ public class S3ProvisionIntegrationTest extends BaseIntegrationTest {
                 .bucketName("test-bucket-name")
                 .endpointOverride("http://localhost:4566")
                 .build();
-        ;
 
         CompletableFuture<S3ProvisionResponse> bucketProvisionResponse =
                 s3BucketProvision.createS3ucketWithPermissions(s3BucketDefinition);
