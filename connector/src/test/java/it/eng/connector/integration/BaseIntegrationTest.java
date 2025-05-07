@@ -18,6 +18,7 @@ import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.serializer.InstantDeserializer;
 import it.eng.tools.serializer.InstantSerializer;
 import org.junit.jupiter.api.BeforeEach;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -29,6 +30,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.testcontainers.containers.MinIOContainer;
 import org.testcontainers.containers.MongoDBContainer;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.wiremock.spring.EnableWireMock;
 
@@ -45,118 +47,120 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(
-		  webEnvironment = WebEnvironment.DEFINED_PORT,
-		  properties = {
-		    "server.port=8090"
-		  })
+        webEnvironment = WebEnvironment.DEFINED_PORT,
+        properties = {
+                "server.port=8090"
+        })
 @AutoConfigureMockMvc
 @EnableWireMock
 @Testcontainers
 public class BaseIntegrationTest {
-	
-	protected static final String FS_FILES = "fs.files";
-	protected static final String FS_CHUNKS = "fs.chunks";
-	// starts a mongodb and minio container; the containers are shared among all tests; docker must be running
-	protected static final MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:7.0.12").withExposedPorts(27017);
-	protected static final MinIOContainer minIOContainer = new MinIOContainer("minio/minio:latest")
-			.withUserName("minioadmin")
-			.withPassword("minioadmin")
-			.withExposedPorts(9001);
+
+    protected static final String FS_FILES = "fs.files";
+    protected static final String FS_CHUNKS = "fs.chunks";
+    // starts a mongodb and minio container; the containers are shared among all tests; docker must be running
+    protected static final MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:7.0.12").withExposedPorts(27017);
+    protected static final MinIOContainer minIOContainer = new MinIOContainer("minio/minio:latest")
+//            .withUserName("minioadmin")
+//            .withPassword("minioadmin")
+            .withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger(BaseIntegrationTest.class)));
+//            .withExposedPorts(9000);
 
 
-	@Autowired
-   protected MockMvc mockMvc;
-   protected JsonMapper jsonMapper;
-   
-   protected String createNewId() {
-		return "urn:uuid:" + UUID.randomUUID().toString();
-	}
+    @Autowired
+    protected MockMvc mockMvc;
+    protected JsonMapper jsonMapper;
 
-	static {
-		mongoDBContainer.start();
-		minIOContainer.start();
-	}
+    protected String createNewId() {
+        return "urn:uuid:" + UUID.randomUUID().toString();
+    }
 
-	@DynamicPropertySource
-	static void containersProperties(DynamicPropertyRegistry registry) {
-		registry.add("spring.data.mongodb.host", mongoDBContainer::getHost);
-		registry.add("spring.data.mongodb.port", mongoDBContainer::getFirstMappedPort);
-	}
-   
-	@BeforeEach
-	public void setup() {
-		SimpleModule instantConverterModule = new SimpleModule();
-		instantConverterModule.addSerializer(Instant.class, new InstantSerializer());
-		instantConverterModule.addDeserializer(Instant.class, new InstantDeserializer());
-		jsonMapper = JsonMapper.builder()
-       		.addModule(new JavaTimeModule())
-       		.configure(MapperFeature.USE_ANNOTATIONS, false)
-       		.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-       		.addModule(instantConverterModule)
-               .build();
-	}
-	
-	protected JsonNode getContractNegotiationOverAPI()
-			throws Exception, JsonProcessingException, JsonMappingException, UnsupportedEncodingException {
-		final ResultActions result =
-				mockMvc.perform(
-						get(ApiEndpoints.NEGOTIATION_V1)
-						.param("role", IConstants.ROLE_CONSUMER)
-						.with(user(TestUtil.CONNECTOR_USER).password("password").roles("ADMIN"))
-						.contentType(MediaType.APPLICATION_JSON));
-		
-		result.andExpect(status().isOk())
-		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
-		
-		JsonNode jsonNode = jsonMapper.readTree(result.andReturn().getResponse().getContentAsString());
-		
+    static {
+        mongoDBContainer.start();
+        minIOContainer.start();
+    }
+
+    @DynamicPropertySource
+    static void containersProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.data.mongodb.host", mongoDBContainer::getHost);
+        registry.add("spring.data.mongodb.port", mongoDBContainer::getFirstMappedPort);
+    }
+
+    @BeforeEach
+    public void setup() {
+        SimpleModule instantConverterModule = new SimpleModule();
+        instantConverterModule.addSerializer(Instant.class, new InstantSerializer());
+        instantConverterModule.addDeserializer(Instant.class, new InstantDeserializer());
+        jsonMapper = JsonMapper.builder()
+                .addModule(new JavaTimeModule())
+                .configure(MapperFeature.USE_ANNOTATIONS, false)
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                .addModule(instantConverterModule)
+                .build();
+    }
+
+    protected JsonNode getContractNegotiationOverAPI()
+            throws Exception, JsonProcessingException, JsonMappingException, UnsupportedEncodingException {
+        final ResultActions result =
+                mockMvc.perform(
+                        get(ApiEndpoints.NEGOTIATION_V1)
+                                .param("role", IConstants.ROLE_CONSUMER)
+                                .with(user(TestUtil.CONNECTOR_USER).password("password").roles("ADMIN"))
+                                .contentType(MediaType.APPLICATION_JSON));
+
+        result.andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
+        JsonNode jsonNode = jsonMapper.readTree(result.andReturn().getResponse().getContentAsString());
+
 //		String json = result.andReturn().getResponse().getContentAsString();
 ////		GenericApiResponse<List<ContractNegotiation>>
 //		TypeReference<GenericApiResponse<List<ContractNegotiation>>> typeRef = new TypeReference<GenericApiResponse<List<ContractNegotiation>>>() {};
 //		GenericApiResponse<List<ContractNegotiation>> apiResp =  Serializer.deserializePlain(json, typeRef);
 
-		return jsonNode.findValues("data").get(0).get(jsonNode.findValues("data").get(0).size()-1);
-	}
-	
-	protected JsonNode getContractNegotiationOverAPI(String contractNegotiationId)
-			throws Exception, JsonProcessingException, JsonMappingException, UnsupportedEncodingException {
-		final ResultActions result =
-				mockMvc.perform(
-						get(ApiEndpoints.NEGOTIATION_V1 + "/" + contractNegotiationId)
-						.with(user(TestUtil.CONNECTOR_USER).password("password").roles("ADMIN"))
-						.contentType(MediaType.APPLICATION_JSON));
-		
-		result.andExpect(status().isOk())
-			.andExpect(content().contentType(MediaType.APPLICATION_JSON));
-		
-		return jsonMapper.readTree(result.andReturn().getResponse().getContentAsString());
-	}
+        return jsonNode.findValues("data").get(0).get(jsonNode.findValues("data").get(0).size() - 1);
+    }
 
-	protected ContractNegotiation getContractNegotiationOverAPI(String consumerPid, String providerPid)
-			throws Exception, JsonProcessingException, JsonMappingException, UnsupportedEncodingException {
-		final ResultActions result =
-				mockMvc.perform(
-						get(ApiEndpoints.NEGOTIATION_V1)
-						.with(user(TestUtil.CONNECTOR_USER).password("password").roles("ADMIN"))
-						.param("consumerPid", consumerPid)
-						.param("providerPid", providerPid)
-						.contentType(MediaType.APPLICATION_JSON));
-		
-		result.andExpect(status().isOk())
-			.andExpect(content().contentType(MediaType.APPLICATION_JSON));
-		String json = result.andReturn().getResponse().getContentAsString();
+    protected JsonNode getContractNegotiationOverAPI(String contractNegotiationId)
+            throws Exception, JsonProcessingException, JsonMappingException, UnsupportedEncodingException {
+        final ResultActions result =
+                mockMvc.perform(
+                        get(ApiEndpoints.NEGOTIATION_V1 + "/" + contractNegotiationId)
+                                .with(user(TestUtil.CONNECTOR_USER).password("password").roles("ADMIN"))
+                                .contentType(MediaType.APPLICATION_JSON));
+
+        result.andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
+        return jsonMapper.readTree(result.andReturn().getResponse().getContentAsString());
+    }
+
+    protected ContractNegotiation getContractNegotiationOverAPI(String consumerPid, String providerPid)
+            throws Exception, JsonProcessingException, JsonMappingException, UnsupportedEncodingException {
+        final ResultActions result =
+                mockMvc.perform(
+                        get(ApiEndpoints.NEGOTIATION_V1)
+                                .with(user(TestUtil.CONNECTOR_USER).password("password").roles("ADMIN"))
+                                .param("consumerPid", consumerPid)
+                                .param("providerPid", providerPid)
+                                .contentType(MediaType.APPLICATION_JSON));
+
+        result.andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+        String json = result.andReturn().getResponse().getContentAsString();
 //		GenericApiResponse<List<ContractNegotiation>>
-		TypeReference<GenericApiResponse<List<ContractNegotiation>>> typeRef = new TypeReference<GenericApiResponse<List<ContractNegotiation>>>() {};
-		GenericApiResponse<List<ContractNegotiation>> apiResp =  NegotiationSerializer.deserializePlain(json, typeRef);
-		// should be exactly one in list
-		return apiResp.getData().get(0);
-	}
-	
-	protected void offerCheck(ContractNegotiation contractNegotiation, String offerId) {
-		assertEquals(offerId, contractNegotiation.getOffer().getOriginalId());
-	}
-	
-	protected void agreementCheck(ContractNegotiation contractNegotiation) {
-		assertNotNull(contractNegotiation.getAgreement());
-	}
+        TypeReference<GenericApiResponse<List<ContractNegotiation>>> typeRef = new TypeReference<GenericApiResponse<List<ContractNegotiation>>>() {
+        };
+        GenericApiResponse<List<ContractNegotiation>> apiResp = NegotiationSerializer.deserializePlain(json, typeRef);
+        // should be exactly one in list
+        return apiResp.getData().get(0);
+    }
+
+    protected void offerCheck(ContractNegotiation contractNegotiation, String offerId) {
+        assertEquals(offerId, contractNegotiation.getOffer().getOriginalId());
+    }
+
+    protected void agreementCheck(ContractNegotiation contractNegotiation) {
+        assertNotNull(contractNegotiation.getAgreement());
+    }
 }
