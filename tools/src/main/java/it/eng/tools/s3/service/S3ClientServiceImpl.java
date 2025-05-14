@@ -1,6 +1,7 @@
 package it.eng.tools.s3.service;
 
 import java.time.Duration;
+import java.util.List;
 
 import it.eng.tools.s3.properties.S3Properties;
 import org.springframework.stereotype.Service;
@@ -11,16 +12,7 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
-import software.amazon.awssdk.services.s3.model.DeleteBucketRequest;
-import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
-import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
-import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
-import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
-import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
@@ -197,6 +189,22 @@ public class S3ClientServiceImpl implements S3ClientService {
         } catch (Exception e) {
             log.error("Error generating pre-signed URL for file {} in bucket {}: {}", objectKey, bucketName, e.getMessage());
             throw new RuntimeException("Error generating pre-signed URL: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public List<String> listFiles(String bucketName) {
+        try {
+            ListObjectsV2Request request = ListObjectsV2Request.builder()
+                    .bucket(bucketName)
+                    .build();
+            ListObjectsV2Response response = s3Client.listObjectsV2(request);
+            return response.contents().stream()
+                    .map(s3Object -> s3Object.key())
+                    .toList();
+        } catch (Exception e) {
+            log.error("Error listing files in bucket {}: {}", bucketName, e.getMessage());
+            throw new RuntimeException("Error listing files: " + e.getMessage(), e);
         }
     }
 }

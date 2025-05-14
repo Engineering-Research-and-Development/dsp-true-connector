@@ -7,11 +7,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.nio.charset.Charset;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.Collections;
-import java.util.Set;
+import java.util.*;
 
+import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.util.ToolsUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.bson.Document;
 import org.bson.types.ObjectId;
@@ -20,6 +20,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
@@ -72,6 +73,10 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 	private AgreementRepository agreementRepository;
 	@Autowired
 	private PolicyEnforcementRepository policyEnforcementRepository;
+	@Autowired
+	private S3ClientService s3ClientService;
+	@Autowired
+	private S3Properties s3Properties;
 	
 	@Autowired
 	private MongoTemplate mongoTemplate;
@@ -83,8 +88,15 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 		transferProcessRepository.deleteAll();
 		agreementRepository.deleteAll();
 		policyEnforcementRepository.deleteAll();
-		mongoTemplate.getCollection(FS_FILES).drop();
-		mongoTemplate.getCollection(FS_CHUNKS).drop();
+		if (!s3ClientService.bucketExists(s3Properties.getBucketName())) {
+			List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
+			if (files != null) {
+				for (String file : files) {
+					s3ClientService.deleteFile(s3Properties.getBucketName(), file);
+				}
+			}
+			s3ClientService.deleteBucket(s3Properties.getBucketName());
+		}
 	}
 	
 	@Test
@@ -101,21 +113,28 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 				MediaType.TEXT_PLAIN_VALUE, 
 				fileContent.getBytes()
 				);
-		
-		GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
-		Document doc = new Document();
-		//TODO check what happens if file.getContentType() is null
-		doc.append(CONTENT_TYPE_FIELD, file.getContentType());
-		doc.append(DATASET_ID_METADATA, datasetId);
-		GridFSUploadOptions options = new GridFSUploadOptions()
-				.chunkSizeBytes(1048576) // 1MB chunk size
-				.metadata(doc);
-		ObjectId fileId = gridFSBucket.uploadFromStream(file.getOriginalFilename(), file.getInputStream(), options);
-		
+
+		// insert the file in S3
+		if (!s3ClientService.bucketExists(s3Properties.getBucketName())) {
+			s3ClientService.createBucket(s3Properties.getBucketName());
+		}
+
+		ContentDisposition contentDisposition = ContentDisposition.attachment()
+				.filename(file.getOriginalFilename())
+				.build();
+
+		String fileId = ToolsUtil.generateUniqueId();
+		try {
+			s3ClientService.uploadFile(s3Properties.getBucketName(), fileId, file.getBytes(),
+					file.getContentType(), contentDisposition.toString());
+		} catch (Exception e) {
+			throw new Exception("File storing aborted, " + e.getLocalizedMessage());
+		}
+
 		Artifact artifact = Artifact.Builder.newInstance()
 				.artifactType(ArtifactType.FILE)
 				.filename(file.getOriginalFilename())
-				.value(fileId.toHexString())
+				.value(fileId)
 				.build();
 		artifactRepository.save(artifact);
 		Dataset dataset = Dataset.Builder.newInstance()
@@ -124,7 +143,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 				.artifact(artifact)
 				.build();
 		datasetRepository.save(dataset);
-		
+
 		Permission permission = Permission.Builder.newInstance()
     			.action(Action.USE)
     			.constraint(Arrays.asList(Constraint.Builder.newInstance()
@@ -133,7 +152,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
     					.rightOperand("5")
     					.build()))
     			.build();
-		
+
 		// Agreement valid
 		Agreement agreement = Agreement.Builder.newInstance()
     			.assignee("assignee")
@@ -142,10 +161,10 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
     			.permission(Arrays.asList(permission))
     			.build();
     	agreementRepository.save(agreement);
-    	
+
     	PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
     	policyEnforcementRepository.save(policyEnforcement);
-    	
+
 		// TransferProcess started
 		TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
 				.consumerPid(createNewId())
@@ -155,7 +174,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 				.datasetId(dataset.getId())
 				.build();
 		transferProcessRepository.save(transferProcessStarted);
-    	
+
 		String transactionId = Base64.getEncoder().encodeToString((transferProcessStarted.getConsumerPid() + "|" + transferProcessStarted.getProviderPid())
 				.getBytes(Charset.forName("UTF-8")));
 		

@@ -3,6 +3,7 @@ package it.eng.tools.s3.configuration;
 import java.net.URI;
 
 import it.eng.tools.s3.properties.S3Properties;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -12,6 +13,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 
 @Configuration
+@Slf4j
 public class S3Configuration {
     
     private final S3Properties s3Properties;
@@ -26,7 +28,7 @@ public class S3Configuration {
         String accessKey = s3Properties.getAccessKey();
         String secretKey = s3Properties.getSecretKey();
         String region = s3Properties.getRegion();
-        
+
         return S3Client.builder()
             .endpointOverride(URI.create(endpoint))
             .credentialsProvider(StaticCredentialsProvider.create(

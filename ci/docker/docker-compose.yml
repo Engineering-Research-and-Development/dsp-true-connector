@@ -15,8 +15,8 @@ services:
       - network-b
     container_name: connector-a
     ports:
-      - 0.0.0.0:8888:2222 #FTP
-      - 8080:8080
+      - "0.0.0.0:8888:2222" #FTP
+      - "8080:8080"
     depends_on:
       - mongodb-a
     environment:
@@ -47,6 +47,25 @@ services:
     volumes:
       - mongodb-data_a:/data/db
       - mongodb-configdb_a:/data/configdb
+
+  localstack-a:
+    container_name: localstack-a
+    image: localstack/localstack:4.3.0
+    networks:
+      - network-a
+    ports:
+      - "127.0.0.1:4566:4566"            # LocalStack Gateway
+      - "127.0.0.1:4510-4559:4510-4559"  # external services port range
+    environment:
+      # LocalStack configuration: https://docs.localstack.cloud/references/configuration/
+      - DEBUG=${DEBUG:-0}
+      - SERVICES=s3,iam,sts
+      - AWS_REGION=eu-central-1
+      - AWS_ACCESS_KEY_ID=accessKeyChangeIt
+      - AWS_SECRET_ACCESS_KEY=secretKeyChangeIt
+    volumes:
+      - localstack-data-a:/var/lib/localstack
+      - "/var/run/docker.sock:/var/run/docker.sock"
       
 ### instance b
 
@@ -65,8 +84,8 @@ services:
       - network-b
     container_name: connector-b
     ports:
-      - 0.0.0.0:8889:2222 #FTP
-      - 8090:8080
+      - "0.0.0.0:8889:2222" #FTP
+      - "8090:8080"
     depends_on:
       - mongodb-b
     environment:
@@ -97,6 +116,25 @@ services:
     volumes:
       - mongodb-data_b:/data/db
       - mongodb-configdb_b:/data/configdb
+
+  localstack-b:
+    container_name: localstack-b
+    image: localstack/localstack:4.3.0
+    networks:
+      - network-b
+    ports:
+      - "127.0.0.1:4566:4566"            # LocalStack Gateway
+      - "127.0.0.1:4510-4559:4510-4559"  # external services port range
+    environment:
+      # LocalStack configuration: https://docs.localstack.cloud/references/configuration/
+      - DEBUG=${DEBUG:-0}
+      - SERVICES=s3,iam,sts
+      - AWS_REGION=eu-central-1
+      - AWS_ACCESS_KEY_ID=accessKeyChangeIt
+      - AWS_SECRET_ACCESS_KEY=secretKeyChangeIt
+    volumes:
+      - localstack-data-b:/var/lib/localstack
+      - "/var/run/docker.sock:/var/run/docker.sock"
       
 networks:
   network-a: { }
@@ -106,6 +144,8 @@ volumes:
   tc_a_log: { }
   mongodb-data_a: { }
   mongodb-configdb_a: { }
+  localstack-data-a: { }
   tc_b_log: { }
   mongodb-data_b: { }
   mongodb-configdb_b: { }
+  localstack-data-b: { }

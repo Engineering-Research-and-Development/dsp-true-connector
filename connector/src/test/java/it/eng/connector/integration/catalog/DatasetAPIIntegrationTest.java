@@ -11,23 +11,20 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import it.eng.tools.model.IConstants;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
-import org.bson.Document;
-import org.bson.conversions.Bson;
+import it.eng.tools.util.ToolsUtil;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.gridfs.GridFsResource;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockMultipartFile;
@@ -41,12 +38,6 @@ import org.wiremock.spring.InjectWireMock;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.github.tomakehurst.wiremock.WireMockServer;
-import com.mongodb.client.gridfs.GridFSBucket;
-import com.mongodb.client.gridfs.GridFSBuckets;
-import com.mongodb.client.gridfs.GridFSDownloadStream;
-import com.mongodb.client.gridfs.model.GridFSFile;
-import com.mongodb.client.gridfs.model.GridFSUploadOptions;
-import com.mongodb.client.model.Filters;
 
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.Dataset;
@@ -87,16 +78,20 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 	@InjectWireMock
 	private WireMockServer wiremock;
 
-	private static final String CONTENT_TYPE_FIELD = "_contentType";
-	private static final String DATASET_ID_METADATA = "datasetId";
-
 	@AfterEach
-	private void cleanup() {
+	public void cleanup() {
 		catalogRepository.deleteAll();
 		artifactRepository.deleteAll();
 		datasetRepository.deleteAll();
-		mongoTemplate.getCollection(FS_FILES).drop();
-		mongoTemplate.getCollection(FS_CHUNKS).drop();
+		if (!s3ClientService.bucketExists(s3Properties.getBucketName())) {
+			List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
+			if (files != null) {
+				for (String file : files) {
+					s3ClientService.deleteFile(s3Properties.getBucketName(), file);
+				}
+			}
+			s3ClientService.deleteBucket(s3Properties.getBucketName());
+		}
 	}
 	
 	@Test
@@ -273,7 +268,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 	public void uploadArtifactFile() throws Exception {
 		int initialDatasetSize = datasetRepository.findAll().size();
 		int initialArtifactSize = artifactRepository.findAll().size();
-		long initialFileSize = mongoTemplate.getCollection(FS_FILES).countDocuments();
+		int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
 		
 		Dataset dataset = Dataset.Builder.newInstance()
 				.hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
@@ -335,13 +330,17 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 		assertEquals(initialArtifactSize + 1, artifactRepository.findAll().size());
 		
 		// check if the file is inserted in S3
+		int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
+
 		ResponseBytes<GetObjectResponse> s3Response = s3ClientService.downloadFile(s3Properties.getBucketName(), artifactFromDb.getValue());
-		
+
+		ContentDisposition contentDisposition = ContentDisposition.parse(s3Response.response().contentDisposition());
+
 		assertEquals(filePart.getContentType(), s3Response.response().contentType());
-		assertEquals(filePart.getOriginalFilename(), s3Response.response().contentDisposition().lastIndexOf(IConstants.ATTACHMENT_FILENAME));
+		assertEquals(filePart.getOriginalFilename(), contentDisposition.getFilename());
 		assertEquals(fileContent, s3Response.asUtf8String());
-		// 1 from initial data + 1 from test
-		assertEquals(initialFileSize + 1, mongoTemplate.getCollection(FS_FILES).countDocuments());
+		// + 1 from test
+		assertEquals(startingBucketFileCount + 1, endBucketFileCount);
 		
 	}
 
@@ -377,6 +376,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 	@DisplayName("Dataset API - update from external to file")
 	@WithUserDetails(TestUtil.API_USER)
 	public void updateArtifactExternalToFile() throws Exception {
+
 		Artifact artifactExternal = Artifact.Builder.newInstance()
 				.artifactType(ArtifactType.EXTERNAL)
 				.createdBy(CatalogMockObjectUtil.CREATOR)
@@ -393,10 +393,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 		
 		artifactRepository.save(artifactExternal);
 		datasetRepository.save(dataset);
-		
-		int initialDatasetSize = datasetRepository.findAll().size();
-		int initialArtifactSize = artifactRepository.findAll().size();
-		long initialFileSize = mongoTemplate.getCollection(FS_FILES).countDocuments();
 		
 		String fileContent = "Hello, World!";
 		
@@ -419,7 +415,11 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 		            return request;
 		        }
 		    });
-		    
+
+		int initialDatasetSize = datasetRepository.findAll().size();
+		int initialArtifactSize = artifactRepository.findAll().size();
+		int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
+
 		MvcResult result = mockMvc.perform(
 				builder.file(filePart))
 			.andExpect(status().isOk())
@@ -452,19 +452,19 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 		assertEquals(ArtifactType.FILE, artifactFromDb.getArtifactType());
 		assertEquals(initialArtifactSize, artifactRepository.findAll().size());
 		
-		// check if the file is inserted in the database
-		GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
-		ObjectId fileIdentifier = new ObjectId(artifactFromDb.getValue());
-		Bson query = Filters.eq("_id", fileIdentifier);
-		GridFSFile fileInDb = gridFSBucket.find(query).first();
-		GridFSDownloadStream gridFSDownloadStream = gridFSBucket.openDownloadStream(fileInDb.getObjectId());
-		GridFsResource gridFsResource = new GridFsResource(fileInDb, gridFSDownloadStream);
-		
-		assertEquals(filePart.getContentType(), gridFsResource.getContentType());
-		assertEquals(filePart.getOriginalFilename(), gridFsResource.getFilename());
-		assertEquals(fileContent, gridFsResource.getContentAsString(StandardCharsets.UTF_8));
-		assertEquals(initialFileSize + 1, mongoTemplate.getCollection(FS_FILES).countDocuments());
-		
+		// check if the file is inserted in S3
+		int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
+
+		ResponseBytes<GetObjectResponse> s3Response = s3ClientService.downloadFile(s3Properties.getBucketName(), artifactFromDb.getValue());
+
+		ContentDisposition contentDisposition = ContentDisposition.parse(s3Response.response().contentDisposition());
+
+		assertEquals(filePart.getContentType(), s3Response.response().contentType());
+		assertEquals(filePart.getOriginalFilename(), contentDisposition.getFilename());
+		assertEquals(fileContent, s3Response.asUtf8String());
+		// + 1 from test
+		assertEquals(startingBucketFileCount + 1, endBucketFileCount);
+
 	}
 	
 	@Test
@@ -486,15 +486,22 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 				fileContent.getBytes()
 				);
 		
-		GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
-		Document doc = new Document();
-		//TODO check what happens if file.getContentType() is null
-		doc.append(CONTENT_TYPE_FIELD, file.getContentType());
-		doc.append(DATASET_ID_METADATA, dataset.getId());
-		GridFSUploadOptions options = new GridFSUploadOptions()
-				.chunkSizeBytes(1048576) // 1MB chunk size
-				.metadata(doc);
-		ObjectId fileId = gridFSBucket.uploadFromStream(file.getOriginalFilename(), file.getInputStream(), options);
+		// insert the file in S3
+		if (!s3ClientService.bucketExists(s3Properties.getBucketName())) {
+			s3ClientService.createBucket(s3Properties.getBucketName());
+		}
+
+		ContentDisposition contentDisposition = ContentDisposition.attachment()
+				.filename(file.getOriginalFilename())
+				.build();
+
+		String fileId = ToolsUtil.generateUniqueId();
+		try {
+			s3ClientService.uploadFile(s3Properties.getBucketName(), fileId, file.getBytes(),
+					file.getContentType(), contentDisposition.toString());
+		} catch (Exception e) {
+			throw new Exception("File storing aborted, " + e.getLocalizedMessage());
+		}
 		
 		Artifact artifactFile = Artifact.Builder.newInstance()
 				.artifactType(ArtifactType.FILE)
@@ -504,7 +511,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 				.lastModifiedDate(CatalogMockObjectUtil.NOW)
 				.lastModifiedBy(CatalogMockObjectUtil.CREATOR)
 				.filename(file.getOriginalFilename())
-				.value(fileId.toHexString())
+				.value(fileId)
 				.build();
 		
 		Dataset datasetWithFile = Dataset.Builder.newInstance()
@@ -516,13 +523,13 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 		artifactRepository.save(artifactFile);
 		datasetRepository.save(datasetWithFile);
 		
-		int initialDatasetSize = datasetRepository.findAll().size();
-		int initialArtifactSize = artifactRepository.findAll().size();
-		long initialFileSize = mongoTemplate.getCollection(FS_FILES).countDocuments();
-		
 		MockPart urlPart = new MockPart("url", CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue().getBytes());
 		
 		TypeReference<GenericApiResponse<Dataset>> typeRef = new TypeReference<GenericApiResponse<Dataset>>() {};
+
+		int initialDatasetSize = datasetRepository.findAll().size();
+		int initialArtifactSize = artifactRepository.findAll().size();
+		int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
 		
 		MockMultipartHttpServletRequestBuilder builder =
 		            MockMvcRequestBuilders.multipart(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + datasetWithFile.getId());
@@ -565,8 +572,9 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 		assertEquals(ArtifactType.EXTERNAL, artifactFromDb.getArtifactType());
 		assertEquals(initialArtifactSize, artifactRepository.findAll().size());
 
-		// check if the file is inserted in the database and old one removed
-		assertEquals(initialFileSize - 1, mongoTemplate.getCollection(FS_FILES).countDocuments());
+		// check if the file is deleted from S3
+		int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
+		assertEquals(startingBucketFileCount - 1, endBucketFileCount);
 		
 	}
 	
@@ -576,7 +584,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 	public void deleteDatasetWithFile() throws Exception {
 		int initialDatasetSize = datasetRepository.findAll().size();
 		int initialArtifactSize = artifactRepository.findAll().size();
-		long initialFileSize = mongoTemplate.getCollection(FS_FILES).countDocuments();
+		int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
 		
 		Dataset dataset = Dataset.Builder.newInstance()
 				.hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
@@ -596,16 +604,23 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 				fileContent.getBytes()
 				);
 		
-		GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
-		Document doc = new Document();
-		//TODO check what happens if file.getContentType() is null
-		doc.append(CONTENT_TYPE_FIELD, file.getContentType());
-		doc.append(DATASET_ID_METADATA, dataset.getId());
-		GridFSUploadOptions options = new GridFSUploadOptions()
-				.chunkSizeBytes(1048576) // 1MB chunk size
-				.metadata(doc);
-		ObjectId fileId = gridFSBucket.uploadFromStream(file.getOriginalFilename(), file.getInputStream(), options);
-		
+		// insert the file in S3
+		if (!s3ClientService.bucketExists(s3Properties.getBucketName())) {
+			s3ClientService.createBucket(s3Properties.getBucketName());
+		}
+
+		ContentDisposition contentDisposition = ContentDisposition.attachment()
+				.filename(file.getOriginalFilename())
+				.build();
+
+		String fileId = ToolsUtil.generateUniqueId();
+		try {
+			s3ClientService.uploadFile(s3Properties.getBucketName(), fileId, file.getBytes(),
+					file.getContentType(), contentDisposition.toString());
+		} catch (Exception e) {
+			throw new Exception("File storing aborted, " + e.getLocalizedMessage());
+		}
+
 		Artifact artifactFile = Artifact.Builder.newInstance()
 				.artifactType(ArtifactType.FILE)
 				.contentType(file.getContentType())
@@ -614,7 +629,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 				.lastModifiedDate(CatalogMockObjectUtil.NOW)
 				.lastModifiedBy(CatalogMockObjectUtil.CREATOR)
 				.filename(file.getOriginalFilename())
-				.value(fileId.toHexString())
+				.value(fileId)
 				.build();
 		
 		Dataset datasetWithFile = Dataset.Builder.newInstance()
@@ -653,7 +668,8 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 		assertEquals(initialArtifactSize, artifactRepository.findAll().size());
 
 		// check if the file is deleted from the database
-		assertEquals(initialFileSize, mongoTemplate.getCollection(FS_FILES).countDocuments());
+		int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
+		assertEquals(startingBucketFileCount, endBucketFileCount);
 		
 	}
 	
@@ -720,7 +736,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 		
 		int initialDatasetSize = datasetRepository.findAll().size();
 		int initialArtifactSize = artifactRepository.findAll().size();
-		long initialFileSize = mongoTemplate.getCollection(FS_FILES).countDocuments();
+		int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
 		
 		TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {};
 		
@@ -742,7 +758,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 		// check that the count hasn't changed
 		assertEquals(initialDatasetSize, datasetRepository.findAll().size());
 		assertEquals(initialArtifactSize, artifactRepository.findAll().size());
-		assertEquals(initialFileSize, mongoTemplate.getCollection(FS_FILES).countDocuments());
+		assertEquals(startingBucketFileCount, s3ClientService.listFiles(s3Properties.getBucketName()).size());
 
 	}
 	

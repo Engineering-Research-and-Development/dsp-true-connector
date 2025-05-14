@@ -17,6 +17,8 @@ import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.serializer.InstantDeserializer;
 import it.eng.tools.serializer.InstantSerializer;
+import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,12 +32,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.testcontainers.containers.MinIOContainer;
 import org.testcontainers.containers.MongoDBContainer;
+import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.wiremock.spring.EnableWireMock;
 
 import java.io.UnsupportedEncodingException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -45,7 +49,9 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.testcontainers.containers.localstack.LocalStackContainer.Service.S3;
 
+@Slf4j
 @SpringBootTest(
         webEnvironment = WebEnvironment.DEFINED_PORT,
         properties = {
@@ -56,16 +62,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Testcontainers
 public class BaseIntegrationTest {
 
-    protected static final String FS_FILES = "fs.files";
-    protected static final String FS_CHUNKS = "fs.chunks";
-    // starts a mongodb and minio container; the containers are shared among all tests; docker must be running
-    protected static final MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:7.0.12").withExposedPorts(27017);
-    protected static final MinIOContainer minIOContainer = new MinIOContainer("minio/minio:latest")
-//            .withUserName("minioadmin")
-//            .withPassword("minioadmin")
-            .withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger(BaseIntegrationTest.class)));
-//            .withExposedPorts(9000);
-
+    // starts a mongodb and localstack container; the containers are shared among all tests; docker must be running
+    protected static final MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:7.0.12");
+    protected static final LocalStackContainer localstack = new LocalStackContainer("4.3.0")
+        .withServices(S3);
 
     @Autowired
     protected MockMvc mockMvc;
@@ -77,13 +77,15 @@ public class BaseIntegrationTest {
 
     static {
         mongoDBContainer.start();
-        minIOContainer.start();
+        localstack.start();
     }
 
     @DynamicPropertySource
     static void containersProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.data.mongodb.host", mongoDBContainer::getHost);
         registry.add("spring.data.mongodb.port", mongoDBContainer::getFirstMappedPort);
+        registry.add("s3.endpoint", () -> localstack.getEndpointOverride(S3).toString());
+
     }
 
     @BeforeEach

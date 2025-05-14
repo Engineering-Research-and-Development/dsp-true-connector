@@ -10,6 +10,6 @@ public class ToolsUtil {
      * @return A unique identifier string.
      */
     public static String generateUniqueId() {
-        return "urn:uuid" + UUID.randomUUID().toString();
+        return "urn:uuid:" + UUID.randomUUID().toString();
     }
 }

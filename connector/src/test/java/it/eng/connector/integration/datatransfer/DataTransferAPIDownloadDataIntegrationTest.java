@@ -17,13 +17,14 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 
-import org.bson.conversions.Bson;
-import org.bson.types.ObjectId;
+import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.S3ClientService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.gridfs.GridFsResource;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithUserDetails;
@@ -33,11 +34,6 @@ import org.wiremock.spring.InjectWireMock;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
-import com.mongodb.client.gridfs.GridFSBucket;
-import com.mongodb.client.gridfs.GridFSBuckets;
-import com.mongodb.client.gridfs.GridFSDownloadStream;
-import com.mongodb.client.gridfs.model.GridFSFile;
-import com.mongodb.client.model.Filters;
 
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.connector.integration.BaseIntegrationTest;
@@ -62,6 +58,8 @@ import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import okhttp3.Credentials;
+import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationTest{
 	
@@ -81,13 +79,35 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 	
 	@Autowired
 	private MongoTemplate mongoTemplate;
-	
+
+	@Autowired
+	private S3ClientService s3ClientService;
+
+	@Autowired
+	private S3Properties s3Properties;
+
+	@AfterEach
+	public void cleanup() {
+		transferProcessRepository.deleteAll();
+		agreementRepository.deleteAll();
+		policyEnforcementRepository.deleteAll();
+		if (!s3ClientService.bucketExists(s3Properties.getBucketName())) {
+			List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
+			if (files != null) {
+				for (String file : files) {
+					s3ClientService.deleteFile(s3Properties.getBucketName(), file);
+				}
+			}
+			s3ClientService.deleteBucket(s3Properties.getBucketName());
+		}
+	}
+
 	@Test
 	@DisplayName("Download data - success")
     @WithUserDetails(TestUtil.API_USER)
 	public void downloadData_success() throws Exception {
 		int startingTransferProcessCollectionSize = transferProcessRepository.findAll().size();
-		long startingFilesCollectionSize = mongoTemplate.getCollection(FS_FILES).countDocuments();
+		int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
 		
 		Agreement agreement = Agreement.Builder.newInstance()
 				.id(createNewId())
@@ -115,7 +135,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 		String providerPid = createNewId();
 				
 		String transactionId = Base64.getEncoder().encodeToString((consumerPid + "|" + providerPid)
-				.getBytes(Charset.forName("UTF-8")));
+				.getBytes(StandardCharsets.UTF_8));
 		
 		String mockUser = "mockUser";
 		String mockPassword = "mockPassword";
@@ -150,8 +170,8 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 		
 		// mock provider success response Download
 		String fileContent = "Hello, World!";
-		
-		
+
+
 		WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.get("/artifacts/" + transactionId)
 				.withBasicAuth(mockUser, mockPassword)
 				.willReturn(
@@ -176,8 +196,8 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 		assertNotNull(apiResp);
 		assertTrue(apiResp.isSuccess());
 		assertNull(apiResp.getData());
-		
-		
+
+
 		// check if the TransferProcess is inserted in the database
 		TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessStarted.getId()).get();
 
@@ -191,24 +211,19 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 		// +1 from test
 		assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
 		
-		// check if the file is inserted in the database
-		GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
-		ObjectId fileIdentifier = new ObjectId(transferProcessFromDb.getDataId());
-		Bson query = Filters.eq("_id", fileIdentifier);
-		GridFSFile fileInDb = gridFSBucket.find(query).first();
-		GridFSDownloadStream gridFSDownloadStream = gridFSBucket.openDownloadStream(fileInDb.getObjectId());
-		GridFsResource gridFsResource = new GridFsResource(fileInDb, gridFSDownloadStream);
-		
-		assertEquals(MediaType.TEXT_PLAIN_VALUE, gridFsResource.getContentType());
-		assertEquals(FILE_NAME, gridFsResource.getFilename());
-		assertEquals(fileContent, gridFsResource.getContentAsString(StandardCharsets.UTF_8));
-		// 1 from initial data + 1 from test
-		assertEquals(startingFilesCollectionSize + 1, mongoTemplate.getCollection(FS_FILES).countDocuments());
-		
-		cleanup();
-		ObjectId objectId = new ObjectId(transferProcessFromDb.getDataId());
-		gridFSBucket.delete(objectId);
-		
+		// check if the file is inserted in the storage
+		int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
+
+		ResponseBytes<GetObjectResponse> fileFromStorage = s3ClientService.downloadFile(s3Properties.getBucketName(), transferProcessStarted.getId());
+
+		ContentDisposition contentDisposition = ContentDisposition.parse(fileFromStorage.response().contentDisposition());
+
+		assertEquals(MediaType.TEXT_PLAIN_VALUE, fileFromStorage.response().contentType());
+		assertEquals(FILE_NAME, contentDisposition.getFilename());
+		assertEquals(fileContent, fileFromStorage.asUtf8String());
+		// + 1 from test
+		assertEquals(startingBucketFileCount + 1, endBucketFileCount);
+
     }
 	
 	@Test
@@ -216,7 +231,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
     @WithUserDetails(TestUtil.API_USER)
 	public void downloadData_fail() throws Exception {
 		int startingTransferProcessCollectionSize = transferProcessRepository.findAll().size();
-		long startingFilesCollectionSize = mongoTemplate.getCollection(FS_FILES).countDocuments();
+		int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
 		
 		Agreement agreement = Agreement.Builder.newInstance()
 				.id(createNewId())
@@ -300,14 +315,8 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 		
 		// check if the file is inserted in the database
 		// 1 from initial data + 0 from test
-		assertEquals(startingFilesCollectionSize, mongoTemplate.getCollection(FS_FILES).countDocuments());
+		int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
+		assertEquals(startingBucketFileCount, endBucketFileCount);
 		
-		cleanup();
     }
-	
-	private void cleanup() {
-		transferProcessRepository.deleteAll();
-		agreementRepository.deleteAll();
-		policyEnforcementRepository.deleteAll();
-	}
 }

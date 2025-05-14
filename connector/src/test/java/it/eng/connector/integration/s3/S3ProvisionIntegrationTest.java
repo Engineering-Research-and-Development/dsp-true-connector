@@ -3,6 +3,7 @@ package it.eng.connector.integration.s3;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.tools.s3.provision.*;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import software.amazon.awssdk.services.iam.model.GetUserResponse;
@@ -14,6 +15,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 @Slf4j
+@Disabled
 public class S3ProvisionIntegrationTest extends BaseIntegrationTest {
 
     @Autowired

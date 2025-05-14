@@ -4,6 +4,7 @@ import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 import java.time.Duration;
+import java.util.List;
 
 /**
  * Service interface for S3 client operations.
@@ -78,4 +79,12 @@ public interface S3ClientService {
      * @return the pre-signed URL
      */
     String generatePresignedUrl(String bucketName, String objectKey, Duration expiration);
+
+    /**
+     * Lists all files in the specified bucket.
+     *
+     * @param bucketName the name of the bucket to list files from
+     * @return a list of file names
+     */
+    List<String> listFiles(String bucketName);
 }
