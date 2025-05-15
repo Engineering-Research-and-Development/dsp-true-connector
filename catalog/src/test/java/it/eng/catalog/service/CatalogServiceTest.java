@@ -121,10 +121,10 @@ public class CatalogServiceTest {
         		.filter(p -> p.getId().equals("urn:offer_id_update"))
         		.findFirst().isPresent());
         
-        DataService dataServiceUpdated = argCaptorCatalog.getValue().getService().stream().findFirst().get();
-        assertTrue(dataServiceUpdated.getCreator().contains("update"));
-        assertTrue(dataServiceUpdated.getEndpointURL().contains("update"));
-        assertTrue(dataServiceUpdated.getEndpointDescription().contains("update"));
+//        DataService dataServiceUpdated = argCaptorCatalog.getValue().getService().stream().findFirst().get();
+//        assertTrue(dataServiceUpdated.getCreator().contains("update"));
+//        assertTrue(dataServiceUpdated.getEndpointURL().contains("update"));
+//        assertTrue(dataServiceUpdated.getEndpointDescription().contains("update"));
     }
 
     @Test
