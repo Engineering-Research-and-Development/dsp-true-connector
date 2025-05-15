@@ -1,6 +1,6 @@
 # TRUE Connector
 
-Implementation of the new [Dataspace protocol](https://docs.internationaldataspaces.org/ids-knowledgebase/v/dataspace-protocol/overview/readme) (current version 2024-1)
+Implementation of the ne [Dataspace protocol](https://docs.internationaldataspaces.org/ids-knowledgebase/v/dataspace-protocol/overview/readme) (current version 2024-1)
 
 ## Development requirements
 
