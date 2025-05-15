@@ -1,10 +1,10 @@
 package it.eng.connector.configuration;
 
-import java.io.File;
-import java.io.InputStream;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.bson.Document;
 import org.springframework.boot.CommandLineRunner;
@@ -15,13 +15,11 @@ import org.springframework.context.event.EventListener;
 import org.springframework.core.env.Environment;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.mongodb.core.MongoTemplate;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.MediaType;
+
+import java.io.File;
+import java.io.InputStream;
 
 /**
  * InitialDataLoader is responsible for loading initial data into MongoDB and uploading mock data to S3.
