@@ -1,9 +1,6 @@
 package it.eng.catalog.service;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
@@ -113,6 +110,7 @@ public class CatalogServiceTest {
         assertNotNull(updatedCatalog);
         verify(repository).findById(CatalogMockObjectUtil.CATALOG.getId());
         verify(repository).save(argCaptorCatalog.capture());
+        assertEquals(updatedCatalog.getConformsTo() ,argCaptorCatalog.getValue().getConformsTo());
         assertTrue(argCaptorCatalog.getValue().getDescription().stream().filter(d -> d.getValue().contains("update")).findFirst().isPresent());
         assertTrue(argCaptorCatalog.getValue().getDistribution().stream().filter(d -> d.getTitle().contains("update")).findFirst().isPresent());
 
