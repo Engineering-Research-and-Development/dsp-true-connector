@@ -30,7 +30,6 @@ import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.repository.DataServiceRepository;
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
-import it.eng.catalog.util.DataServiceUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.tools.controller.ApiEndpoints;
@@ -169,7 +168,7 @@ public class DataServiceAPIIntegrationTest extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.API_USER)
     public void createDataService_success() throws Exception {
         // Test creating a new data service
-        DataService newDataService = DataServiceUtil.DATA_SERVICE_UPDATE;
+        DataService newDataService = CatalogMockObjectUtil.DATA_SERVICE_FOR_UPDATE;
         String dataServiceJson = CatalogSerializer.serializePlain(newDataService);
         
         final ResultActions result = mockMvc.perform(
@@ -224,7 +223,7 @@ public class DataServiceAPIIntegrationTest extends BaseIntegrationTest {
     public void updateDataService_success() throws Exception {
         // Test updating an existing data service
         // Create a JSON representation of the updated data service
-        String dataServiceJson = CatalogSerializer.serializePlain(DataServiceUtil.DATA_SERVICE_UPDATE);
+        String dataServiceJson = CatalogSerializer.serializePlain(CatalogMockObjectUtil.DATA_SERVICE_FOR_UPDATE);
         
         final ResultActions result = mockMvc.perform(
                 put(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/" + dataService.getId())
@@ -243,7 +242,7 @@ public class DataServiceAPIIntegrationTest extends BaseIntegrationTest {
         assertNotNull(apiResponse.getData());
         // check id is the same
         assertTrue(apiResponse.getData().getId().equals(dataService.getId()));
-        assertTrue(apiResponse.getData().getTitle().contains(DataServiceUtil.DATA_SERVICE_UPDATE.getTitle()));
+        assertTrue(apiResponse.getData().getTitle().contains(CatalogMockObjectUtil.DATA_SERVICE_FOR_UPDATE.getTitle()));
     }
     
     /**
@@ -255,7 +254,7 @@ public class DataServiceAPIIntegrationTest extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.API_USER)
     public void updateDataService_notFound() throws Exception {
         // Test updating a non-existent data service
-        DataService updatedDataService = DataServiceUtil.DATA_SERVICE_UPDATE;
+        DataService updatedDataService = CatalogMockObjectUtil.DATA_SERVICE_FOR_UPDATE;
         String dataServiceJson = CatalogSerializer.serializePlain(updatedDataService);
         
         final ResultActions result = mockMvc.perform(

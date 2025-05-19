@@ -17,7 +17,6 @@ import org.junit.jupiter.api.Test;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.catalog.serializer.CatalogSerializer;
-import it.eng.catalog.util.DataServiceUtil;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
@@ -27,7 +26,7 @@ public class DataServiceTest {
 	@Test
 	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() {
-		String result = CatalogSerializer.serializePlain(DataServiceUtil.DATA_SERVICE);
+		String result = CatalogSerializer.serializePlain(CatalogMockObjectUtil.DATA_SERVICE);
 		assertFalse(result.contains(DSpaceConstants.CONTEXT));
 		assertFalse(result.contains(DSpaceConstants.TYPE));
 		
@@ -53,7 +52,7 @@ public class DataServiceTest {
 	@Test
 	@DisplayName("Verify valid protocol object serialization")
 	public void testProtocol() {
-		JsonNode result = CatalogSerializer.serializeProtocolJsonNode(DataServiceUtil.DATA_SERVICE);
+		JsonNode result = CatalogSerializer.serializeProtocolJsonNode(CatalogMockObjectUtil.DATA_SERVICE);
 		assertNull(result.get(DSpaceConstants.CONTEXT), "Not root element to have context");
 		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
 
@@ -79,7 +78,7 @@ public class DataServiceTest {
 	@Test
 	@DisplayName("Missing @context and @type")
 	public void missingContextAndType() {
-		JsonNode result = CatalogSerializer.serializePlainJsonNode(DataServiceUtil.DATA_SERVICE);
+		JsonNode result = CatalogSerializer.serializePlainJsonNode(CatalogMockObjectUtil.DATA_SERVICE);
 		assertThrows(ValidationException.class, () -> CatalogSerializer.deserializeProtocol(result, DataService.class));
 	}
 	

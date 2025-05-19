@@ -1,13 +1,8 @@
 package it.eng.catalog.util;
 
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.bson.types.ObjectId;
@@ -54,15 +49,45 @@ public class CatalogMockObjectUtil {
     public static final String TITLE = "Title_for_test";
     public static final String ENDPOINT_URL = "https://provider-a.com/connector";
     public static final String FILE_ID = "some_file";
-	public static final Instant NOW = Instant.now();
+    public static final Instant NOW = Instant.now();
 
 
     public static final Multilanguage MULTILANGUAGE =
             Multilanguage.Builder.newInstance().language("en").value("For test").build();
-    
+
     public static final Multilanguage MULTILANGUAGE_UPDATE =
             Multilanguage.Builder.newInstance().language("en").value("For test update").build();
 
+    public static final DataService DATA_SERVICE_FOR_UPDATE = DataService.Builder.newInstance()
+            .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
+            .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
+            .conformsTo(CONFORMSTO)
+            .creator(CREATOR + " update")
+            .description(Arrays.asList(MULTILANGUAGE_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
+            .identifier(IDENTIFIER)
+            .issued(ISSUED)
+            .modified(MODIFIED)
+            .title(TITLE + " update")
+            .endpointDescription("Description for test update")
+            .endpointURL(ENDPOINT_URL + " update")
+            .createdBy("admin@mail.com")
+            .lastModifiedBy("admin@mail.com")
+            .build();
+
+    public static final DataService DATA_SERVICE = DataService.Builder.newInstance()
+            .id(UUID.randomUUID().toString())
+            .keyword(Arrays.asList("DataService keyword1", "DataService keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
+            .theme(Arrays.asList("DataService theme1", "DataService theme2").stream().collect(Collectors.toCollection(HashSet::new)))
+            .conformsTo(CONFORMSTO)
+            .creator(CREATOR)
+            .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
+            .identifier(IDENTIFIER)
+            .issued(ISSUED)
+            .modified(MODIFIED)
+            .title(TITLE)
+            .endpointURL("http://dataservice.com")
+            .endpointDescription("endpoint description")
+            .build();
 
     public static final Constraint CONSTRAINT = Constraint.Builder.newInstance()
             .leftOperand(LeftOperand.COUNT)
@@ -136,7 +161,7 @@ public class CatalogMockObjectUtil {
             .modified(MODIFIED)
             .format(Reference.Builder.newInstance().id("HTTP:PULL").build())
             .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
-            .accessService(Arrays.asList(DataServiceUtil.DATA_SERVICE).stream().collect(Collectors.toCollection(HashSet::new)))
+            .accessService(Arrays.asList(DATA_SERVICE).stream().collect(Collectors.toCollection(HashSet::new)))
             .build();
 
     public static final Distribution DISTRIBUTION_FOR_UPDATE = Distribution.Builder.newInstance()
@@ -145,7 +170,7 @@ public class CatalogMockObjectUtil {
             .issued(ISSUED)
             .modified(MODIFIED)
             .hasPolicy(Arrays.asList(OFFER_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
-            .accessService(Arrays.asList(DataServiceUtil.DATA_SERVICE).stream().collect(Collectors.toCollection(HashSet::new)))
+            .accessService(Arrays.asList(DATA_SERVICE).stream().collect(Collectors.toCollection(HashSet::new)))
             .version(0L)
             .createdBy("admin@mail.com")
             .lastModifiedBy("admin@mail.com")
@@ -215,7 +240,7 @@ public class CatalogMockObjectUtil {
             .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
             .title(TITLE)
             .participantId("urn:example:DataProviderA")
-            .service(Arrays.asList(DataServiceUtil.DATA_SERVICE).stream().collect(Collectors.toCollection(HashSet::new)))
+            .service(Arrays.asList(DATA_SERVICE).stream().collect(Collectors.toCollection(HashSet::new)))
             .dataset(Arrays.asList(DATASET).stream().collect(Collectors.toCollection(HashSet::new)))
             .distribution(Arrays.asList(DISTRIBUTION).stream().collect(Collectors.toCollection(HashSet::new)))
             .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
@@ -232,7 +257,7 @@ public class CatalogMockObjectUtil {
             .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
             .title(TITLE)
             .participantId("urn:example:DataProviderA")
-            .service(Arrays.asList(DataServiceUtil.DATA_SERVICE_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
+            .service(Arrays.asList(DATA_SERVICE_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
             .dataset(Arrays.asList(DATASET_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
             .distribution(Arrays.asList(DISTRIBUTION_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
             .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
@@ -251,37 +276,6 @@ public class CatalogMockObjectUtil {
 
     public static final DatasetRequestMessage DATASET_REQUEST_MESSAGE = DatasetRequestMessage.Builder.newInstance()
             .dataset(CatalogSerializer.serializeProtocol(DATASET))
-            .build();
-
-    public static final DataService DATA_SERVICE = DataService.Builder.newInstance()
-            .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
-            .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
-            .conformsTo(CONFORMSTO)
-            .creator(CREATOR)
-            .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
-            .identifier(IDENTIFIER)
-            .issued(ISSUED)
-            .modified(MODIFIED)
-            .title(TITLE)
-            .endpointDescription("Description for test")
-            .endpointURL(ENDPOINT_URL)
-            .build();
-
-    public static final DataService DATA_SERVICE_FOR_UPDATE = DataService.Builder.newInstance()
-            .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
-            .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
-            .conformsTo(CONFORMSTO)
-            .creator(CREATOR + " update")
-            .description(Arrays.asList(MULTILANGUAGE_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
-            .identifier(IDENTIFIER)
-            .issued(ISSUED)
-            .modified(MODIFIED)
-            .title(TITLE + " update")
-            .endpointDescription("Description for test update")
-            .endpointURL(ENDPOINT_URL)
-            .version(0L)
-            .createdBy("admin@mail.com")
-            .lastModifiedBy("admin@mail.com")
             .build();
     
     public static final Collection<DataService> DATA_SERVICES = Arrays.asList(DATA_SERVICE);

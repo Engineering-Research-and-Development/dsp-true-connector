@@ -9,7 +9,6 @@ import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
-import it.eng.catalog.util.DataServiceUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.tools.controller.ApiEndpoints;
@@ -65,7 +64,7 @@ public class CatalogAPIIntegrationTest extends BaseIntegrationTest {
                 .issued(CatalogMockObjectUtil.ISSUED)
                 .modified(CatalogMockObjectUtil.MODIFIED)
                 .title(CatalogMockObjectUtil.TITLE)
-                .accessService(Collections.singleton(DataServiceUtil.DATA_SERVICE))
+                .accessService(Collections.singleton(CatalogMockObjectUtil.DATA_SERVICE))
                 .build();
 
         dataService = DataService.Builder.newInstance()
@@ -126,7 +125,7 @@ public class CatalogAPIIntegrationTest extends BaseIntegrationTest {
                 .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
                 .title(CatalogMockObjectUtil.TITLE)
                 .participantId("urn:example:DataProviderA")
-                .service(Arrays.asList(DataServiceUtil.DATA_SERVICE_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
+                .service(Arrays.asList(CatalogMockObjectUtil.DATA_SERVICE_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
                 .dataset(Arrays.asList(CatalogMockObjectUtil.DATASET).stream().collect(Collectors.toCollection(HashSet::new)))
                 .distribution(Arrays.asList(CatalogMockObjectUtil.DISTRIBUTION_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
                 .hasPolicy(Arrays.asList(CatalogMockObjectUtil.OFFER_WITH_TARGET).stream().collect(Collectors.toCollection(HashSet::new)))

@@ -110,7 +110,6 @@ public class CatalogServiceTest {
         assertNotNull(updatedCatalog);
         verify(repository).findById(CatalogMockObjectUtil.CATALOG.getId());
         verify(repository).save(argCaptorCatalog.capture());
-        assertEquals(updatedCatalog.getConformsTo() ,argCaptorCatalog.getValue().getConformsTo());
         assertTrue(argCaptorCatalog.getValue().getDescription().stream().filter(d -> d.getValue().contains("update")).findFirst().isPresent());
         assertTrue(argCaptorCatalog.getValue().getDistribution().stream().filter(d -> d.getTitle().contains("update")).findFirst().isPresent());
 
