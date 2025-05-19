@@ -113,18 +113,18 @@ public class CatalogServiceTest {
         assertNotNull(updatedCatalog);
         verify(repository).findById(CatalogMockObjectUtil.CATALOG.getId());
         verify(repository).save(argCaptorCatalog.capture());
-        assertTrue(argCaptorCatalog.getValue().getDescription().stream().filter(d -> d.getValue().contains("update")).findFirst().isPresent());
-        assertTrue(argCaptorCatalog.getValue().getDistribution().stream().filter(d -> d.getTitle().contains("update")).findFirst().isPresent());
-       
-        assertTrue(argCaptorCatalog.getValue().getDistribution().stream().findFirst().get().getHasPolicy()
-        		.stream()
-        		.filter(p -> p.getId().equals("urn:offer_id_update"))
-        		.findFirst().isPresent());
-        
         DataService dataServiceUpdated = argCaptorCatalog.getValue().getService().stream().findFirst().get();
         assertTrue(dataServiceUpdated.getCreator().contains("update"));
         assertTrue(dataServiceUpdated.getEndpointURL().contains("update"));
         assertTrue(dataServiceUpdated.getEndpointDescription().contains("update"));
+        assertTrue(argCaptorCatalog.getValue().getDescription().stream().filter(d -> d.getValue().contains("update")).findFirst().isPresent());
+        assertTrue(argCaptorCatalog.getValue().getDistribution().stream().filter(d -> d.getTitle().contains("update")).findFirst().isPresent());
+
+        assertTrue(argCaptorCatalog.getValue().getDistribution().stream().findFirst().get().getHasPolicy()
+        		.stream()
+        		.filter(p -> p.getId().equals("urn:offer_id_update"))
+        		.findFirst().isPresent());
+
     }
 
     @Test
