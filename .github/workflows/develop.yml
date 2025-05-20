@@ -96,7 +96,7 @@ jobs:
       - name: Set SNAPSHOT version in pom.xml
         run: |
          current_version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
-         new_snapshot_version = $current_version-SNAPSHOT
+         new_snapshot_version = $(current_version-SNAPSHOT)
          echo $new_snapshot_version
          mvn versions:set-property -Dproperty=revision -DnewVersion=$new_snapshot_version
 
