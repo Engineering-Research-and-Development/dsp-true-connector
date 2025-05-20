@@ -32,7 +32,6 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: maven
 
       - name: Increment version in pom.xml
         run: |
@@ -93,8 +92,7 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: maven
-          
+
       - name: Set SNAPSHOT version in pom.xml
         run: |
          current_version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
