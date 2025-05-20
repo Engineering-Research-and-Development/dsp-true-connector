@@ -67,7 +67,7 @@ jobs:
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
         
       - name: Wait for container starting
-        run: sleep 30
+        run: sleep 10
 
       - name: Check if the container is up and running
         run: docker ps -a
@@ -95,7 +95,7 @@ jobs:
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
         
       - name: Wait for container starting
-        run: sleep 30
+        run: sleep 10
 
       - name: Check if the container is up and running
         run: docker ps -a
@@ -123,7 +123,7 @@ jobs:
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
         
       - name: Wait for container starting
-        run: sleep 30
+        run: sleep 10
 
       - name: Check if the container is up and running
         run: docker ps -a
@@ -151,7 +151,7 @@ jobs:
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
         
       - name: Wait for container starting
-        run: sleep 30
+        run: sleep 10
 
       - name: Check if the container is up and running
         run: docker ps -a
