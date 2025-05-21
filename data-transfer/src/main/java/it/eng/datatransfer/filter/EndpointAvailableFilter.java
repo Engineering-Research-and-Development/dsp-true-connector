@@ -1,7 +1,7 @@
 package it.eng.datatransfer.filter;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 import org.apache.tomcat.util.codec.binary.Base64;
 import org.springframework.core.annotation.Order;
@@ -36,7 +36,7 @@ public class EndpointAvailableFilter extends OncePerRequestFilter {
 //		String artifactId = Stream.of(request.getRequestURI().split("/")).reduce((first,last)->last).get();
 		
 		String[] urlTokens = request.getRequestURI().split("/");
-		String[] tokens = new String(Base64.decodeBase64URLSafe(urlTokens[2]), Charset.forName("UTF-8")).split("\\|");
+		String[] tokens = new String(Base64.decodeBase64URLSafe(urlTokens[2]), StandardCharsets.UTF_8).split("\\|");
 		String consumerPid = tokens[0];
 		String providerPid = tokens[1];
 		boolean isAvailable = dataTransferService.isDataTransferStarted(consumerPid, providerPid) 

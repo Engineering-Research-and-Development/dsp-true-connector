@@ -102,7 +102,9 @@ public class DataTransferService {
 				.state(TransferState.REQUESTED)
 				.role(IConstants.ROLE_PROVIDER)
 				.datasetId(transferProcessInitialized.getDatasetId())
+				.created(transferProcessInitialized.getCreated())
 				.createdBy(transferProcessInitialized.getCreatedBy())
+				.modified(transferProcessInitialized.getModified())
 				.lastModifiedBy(transferProcessInitialized.getLastModifiedBy())
 				.version(transferProcessInitialized.getVersion())
 				.build();
@@ -177,7 +179,9 @@ public class DataTransferService {
 				.state(TransferState.STARTED)
 				.role(transferProcessRequested.getRole())
 				.datasetId(transferProcessRequested.getDatasetId())
+				.created(transferProcessRequested.getCreated())
 				.createdBy(transferProcessRequested.getCreatedBy())
+				.modified(transferProcessRequested.getModified())
 				.lastModifiedBy(transferProcessRequested.getLastModifiedBy())
 				.version(transferProcessRequested.getVersion())
 				.build();

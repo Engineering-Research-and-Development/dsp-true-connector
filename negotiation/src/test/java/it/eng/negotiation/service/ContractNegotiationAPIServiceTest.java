@@ -33,12 +33,12 @@ import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.NegotiationMockObjectUtil;
 import it.eng.negotiation.model.Offer;
+import it.eng.negotiation.policy.service.PolicyAdministrationPoint;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.serializer.NegotiationSerializer;
-import it.eng.negotiation.service.policy.PolicyEnforcementService;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.datatransfer.InitializeTransferProcess;
 import it.eng.tools.model.IConstants;
@@ -65,7 +65,7 @@ public class ContractNegotiationAPIServiceTest {
 	@Mock
     private CredentialUtils credentialUtils;
 	@Mock
-	private PolicyEnforcementService policyEnforcementService;
+	private PolicyAdministrationPoint policyAdministrationPoint;
 	
 	@Captor
 	private ArgumentCaptor<ContractNegotiation> argCaptorContractNegotiation;
@@ -509,7 +509,7 @@ public class ContractNegotiationAPIServiceTest {
 	@DisplayName("Validate agreement valid")
 	public void validateAgreement() {
 		when(contractNegotiationRepository.findByAgreement(NegotiationMockObjectUtil.AGREEMENT.getId())).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_FINALIZED));
-		when(policyEnforcementService.policyEnforcementExists(NegotiationMockObjectUtil.AGREEMENT.getId())).thenReturn(true);
+		when(policyAdministrationPoint.policyEnforcementExists(NegotiationMockObjectUtil.AGREEMENT.getId())).thenReturn(true);
 		assertDoesNotThrow(()-> service.validateAgreement(NegotiationMockObjectUtil.AGREEMENT.getId()));
 	}
 	

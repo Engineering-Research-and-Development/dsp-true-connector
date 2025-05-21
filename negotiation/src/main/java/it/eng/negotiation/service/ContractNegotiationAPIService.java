@@ -29,13 +29,13 @@ import it.eng.negotiation.model.ContractOfferMessage;
 import it.eng.negotiation.model.ContractRequestMessage;
 import it.eng.negotiation.model.Offer;
 import it.eng.negotiation.model.Reason;
+import it.eng.negotiation.policy.service.PolicyAdministrationPoint;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.rest.protocol.ContractNegotiationCallback;
 import it.eng.negotiation.serializer.NegotiationSerializer;
-import it.eng.negotiation.service.policy.PolicyEnforcementService;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.datatransfer.InitializeTransferProcess;
 import it.eng.tools.model.IConstants;
@@ -56,19 +56,19 @@ public class ContractNegotiationAPIService {
 	private final AgreementRepository agreementRepository;
 	private final CredentialUtils credentialUtils;
 	private final ObjectMapper mapper = new ObjectMapper();
-	private final PolicyEnforcementService policyEnforcementService;
+	private final PolicyAdministrationPoint policyAdministrationPoint;
 	private final ContractNegotiationPublisher publisher;
 
 	public ContractNegotiationAPIService(OkHttpRestClient okHttpRestClient, ContractNegotiationRepository contractNegotiationRepository,
 			ContractNegotiationProperties properties, OfferRepository offerRepository, AgreementRepository agreementRepository,
-			CredentialUtils credentialUtils, PolicyEnforcementService policyEnforcementService, ContractNegotiationPublisher publisher) {
+			CredentialUtils credentialUtils, PolicyAdministrationPoint policyAdministrationPoint, ContractNegotiationPublisher publisher) {
 		this.okHttpRestClient = okHttpRestClient;
 		this.contractNegotiationRepository = contractNegotiationRepository;
 		this.properties = properties;
 		this.offerRepository = offerRepository;
 		this.agreementRepository = agreementRepository;
 		this.credentialUtils = credentialUtils;
-		this.policyEnforcementService = policyEnforcementService;
+		this.policyAdministrationPoint = policyAdministrationPoint;
 		this.publisher = publisher;
 	}
 
@@ -142,6 +142,11 @@ public class ContractNegotiationAPIService {
 		    			.state(contractNegotiation.getState())
 		    			.role(IConstants.ROLE_CONSUMER)
 		    			.offer(savedOffer)
+		    			.created(contractNegotiation.getCreated())
+		    			.createdBy(contractNegotiation.getCreatedBy())
+		    			.modified(contractNegotiation.getModified())
+		    			.lastModifiedBy(contractNegotiation.getLastModifiedBy())
+		    			.version(contractNegotiation.getVersion())
 						.build();
 				contractNegotiationRepository.save(contractNegotiationWithOffer);
 				log.info("Contract negotiation {} saved", contractNegotiationWithOffer.getId());
@@ -213,6 +218,11 @@ public class ContractNegotiationAPIService {
 						.role(IConstants.ROLE_PROVIDER)
 						.offer(offer)
 						.state(contractNegotiation.getState())
+		    			.created(contractNegotiation.getCreated())
+		    			.createdBy(contractNegotiation.getCreatedBy())
+		    			.modified(contractNegotiation.getModified())
+		    			.lastModifiedBy(contractNegotiation.getLastModifiedBy())
+		    			.version(contractNegotiation.getVersion())
 						.build();
 				// provider saves contract negotiation
 				contractNegotiationRepository.save(contractNegtiationUpdate);
@@ -285,7 +295,7 @@ public class ContractNegotiationAPIService {
 			ContractNegotiation contractNegotiationFinalized = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.FINALIZED);
 			contractNegotiationRepository.save(contractNegotiationFinalized);
 			// TODO remove this line once api/getArtifact is implemented on consumer side 
-			policyEnforcementService.createPolicyEnforcement(contractNegotiation.getAgreement().getId());
+			policyAdministrationPoint.createPolicyEnforcement(contractNegotiation.getAgreement().getId());
 			publisher.publishEvent(new InitializeTransferProcess(
 					contractNegotiationFinalized.getCallbackAddress(),
 					contractNegotiationFinalized.getAgreement().getId(),
@@ -368,6 +378,11 @@ public class ContractNegotiationAPIService {
 	    			.role(contractNegotiation.getRole())
 	    			.offer(contractNegotiation.getOffer())
 	    			.agreement(agreementMessage.getAgreement())
+	    			.created(contractNegotiation.getCreated())
+	    			.createdBy(contractNegotiation.getCreatedBy())
+	    			.modified(contractNegotiation.getModified())
+	    			.lastModifiedBy(contractNegotiation.getLastModifiedBy())
+	    			.version(contractNegotiation.getVersion())
 					.build();
 					
 			contractNegotiationRepository.save(contractNegtiationAgreed);
@@ -487,7 +502,7 @@ public class ContractNegotiationAPIService {
 		// TODO add additional checks like contract dates or else
 		//		LocalDateTime agreementStartDate = LocalDateTime.parse(agreement.getTimestamp(), FORMATTER);
 		//		agreementStartDate.isBefore(LocalDateTime.now());
-		if(!policyEnforcementService.policyEnforcementExists(agreementId)) {
+		if(!policyAdministrationPoint.policyEnforcementExists(agreementId)) {
 			log.warn("Policy enforcement not created, cannot enforoce properly");
 			throw new ContractNegotiationAPIException("Policy enforcement not found for agreement with Id " 
 					 + agreementId + " not found.");

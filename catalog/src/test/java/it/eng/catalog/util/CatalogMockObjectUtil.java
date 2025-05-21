@@ -1,34 +1,18 @@
 package it.eng.catalog.util;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import it.eng.catalog.model.*;
+import it.eng.catalog.serializer.CatalogSerializer;
+import it.eng.tools.model.Artifact;
+import it.eng.tools.model.ArtifactType;
+import org.bson.types.ObjectId;
+import org.springframework.http.MediaType;
+
 import java.time.Instant;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
-
-import org.bson.types.ObjectId;
-import org.springframework.http.MediaType;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-
-import it.eng.catalog.model.Action;
-import it.eng.catalog.model.Catalog;
-import it.eng.catalog.model.CatalogError;
-import it.eng.catalog.model.CatalogRequestMessage;
-import it.eng.catalog.model.Constraint;
-import it.eng.catalog.model.DataService;
-import it.eng.catalog.model.Dataset;
-import it.eng.catalog.model.DatasetRequestMessage;
-import it.eng.catalog.model.Distribution;
-import it.eng.catalog.model.LeftOperand;
-import it.eng.catalog.model.Multilanguage;
-import it.eng.catalog.model.Offer;
-import it.eng.catalog.model.Operator;
-import it.eng.catalog.model.Permission;
-import it.eng.catalog.model.Reference;
-import it.eng.catalog.serializer.CatalogSerializer;
-import it.eng.tools.model.Artifact;
-import it.eng.tools.model.ArtifactType;
 
 public class CatalogMockObjectUtil {
 

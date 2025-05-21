@@ -55,6 +55,24 @@ public class NegotiationMockObjectUtil {
 			.rightOperand("2024-02-29T00:00:01+01:00")
 			.build();
 	
+	public static final Constraint CONSTRAINT_DATEIME_INVALID = Constraint.Builder.newInstance()
+			.leftOperand(LeftOperand.DATE_TIME)
+			.operator(Operator.LT)
+			.rightOperand("2024-02-29T00:00:01+01:00")
+			.build();
+	
+	public static final Constraint CONSTRAINT_PURPOSE = Constraint.Builder.newInstance()
+			.leftOperand(LeftOperand.PURPOSE)
+			.operator(Operator.EQ)
+			.rightOperand("demo")
+			.build();
+	
+	public static final Constraint CONSTRAINT_SPATIAL = Constraint.Builder.newInstance()
+			.leftOperand(LeftOperand.SPATIAL)
+			.operator(Operator.EQ)
+			.rightOperand("EU")
+			.build();
+	
 	public static final Constraint CONSTRAINT_COUNT_5 = Constraint.Builder.newInstance()
 			.leftOperand(LeftOperand.COUNT)
 			.operator(Operator.LTEQ)
@@ -71,6 +89,18 @@ public class NegotiationMockObjectUtil {
 			.action(Action.USE)
 			.target(NegotiationMockObjectUtil.TARGET)
 			.constraint(Arrays.asList(NegotiationMockObjectUtil.CONSTRAINT_COUNT_5))
+			.build();
+	
+	public static final Permission PERMISSION_SPATIAL = Permission.Builder.newInstance()
+			.action(Action.USE)
+			.target(NegotiationMockObjectUtil.TARGET)
+			.constraint(Arrays.asList(NegotiationMockObjectUtil.CONSTRAINT_SPATIAL))
+			.build();
+	
+	public static final Permission PERMISSION_PURPOSE = Permission.Builder.newInstance()
+			.action(Action.USE)
+			.target(NegotiationMockObjectUtil.TARGET)
+			.constraint(Arrays.asList(NegotiationMockObjectUtil.CONSTRAINT_PURPOSE))
 			.build();
 	
 	public static final Offer OFFER = Offer.Builder.newInstance()

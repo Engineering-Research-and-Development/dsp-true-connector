@@ -157,7 +157,9 @@ public class DataTransferAPIService {
 						.callbackAddress(transferProcessInitialized.getCallbackAddress())
 						.role(IConstants.ROLE_CONSUMER)
 						.state(transferProcessFromResponse.getState())
+						.created(transferProcessInitialized.getCreated())
 						.createdBy(transferProcessInitialized.getCreatedBy())
+						.modified(transferProcessInitialized.getModified())
 						.lastModifiedBy(transferProcessInitialized.getLastModifiedBy())
 						.version(transferProcessInitialized.getVersion())
 						// although not needed on consumer side it is added here to avoid duplicate id exception from mongodb
@@ -243,22 +245,24 @@ public class DataTransferAPIService {
 		log.info("Response received {}", response);
 		if (response.isSuccess()) {
 			TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
-			.id(transferProcess.getId())
-			.agreementId(transferProcess.getAgreementId())
-			.consumerPid(transferProcess.getConsumerPid())
-			.providerPid(transferProcess.getProviderPid())
-			.callbackAddress(transferProcess.getCallbackAddress())
-   			.dataAddress(transferStartMessage.getDataAddress())
-   			.isDownloaded(transferProcess.isDownloaded())
-   			.dataId(transferProcess.getDataId())
-			.format(transferProcess.getFormat())
-			.state(TransferState.STARTED)
-			.role(transferProcess.getRole())
-			.datasetId(transferProcess.getDatasetId())
-			.createdBy(transferProcess.getCreatedBy())
-			.lastModifiedBy(transferProcess.getLastModifiedBy())
-			.version(transferProcess.getVersion())
-			.build();
+				.id(transferProcess.getId())
+				.agreementId(transferProcess.getAgreementId())
+				.consumerPid(transferProcess.getConsumerPid())
+				.providerPid(transferProcess.getProviderPid())
+				.callbackAddress(transferProcess.getCallbackAddress())
+	   			.dataAddress(transferStartMessage.getDataAddress())
+	   			.isDownloaded(transferProcess.isDownloaded())
+	   			.dataId(transferProcess.getDataId())
+				.format(transferProcess.getFormat())
+				.state(TransferState.STARTED)
+				.role(transferProcess.getRole())
+				.datasetId(transferProcess.getDatasetId())
+				.created(transferProcess.getCreated())
+				.createdBy(transferProcess.getCreatedBy())
+				.modified(transferProcess.getModified())
+				.lastModifiedBy(transferProcess.getLastModifiedBy())
+				.version(transferProcess.getVersion())
+				.build();
 			transferProcessRepository.save(transferProcessStarted);
 			log.info("Transfer process {} saved", transferProcessStarted.getId());
 			return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
@@ -469,7 +473,9 @@ public class DataTransferAPIService {
 				.state(transferProcess.getState())
 				.role(transferProcess.getRole())
 				.datasetId(transferProcess.getDatasetId())
+				.created(transferProcess.getCreated())
 				.createdBy(transferProcess.getCreatedBy())
+				.modified(transferProcess.getModified())
 				.lastModifiedBy(transferProcess.getLastModifiedBy())
 				.version(transferProcess.getVersion())
 				.build();

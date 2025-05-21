@@ -198,6 +198,7 @@ public class DatasetService {
 				.issued(dataset.getIssued())
 				.keyword(dataset.getKeyword())
 				.lastModifiedBy(dataset.getLastModifiedBy())
+				.identifier(dataset.getIdentifier())
 				.modified(dataset.getModified())
 				.theme(dataset.getTheme())
 				.title(dataset.getTitle())

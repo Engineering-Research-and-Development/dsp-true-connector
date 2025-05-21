@@ -1,11 +1,14 @@
 package it.eng.datatransfer.model;
 
+import java.time.Instant;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
@@ -91,16 +94,24 @@ public class TransferProcess extends AbstractTransferMessage {
 	private String format;
 	
     @JsonIgnore
+    @CreatedDate
+    private Instant created;
+    @JsonIgnore
     @CreatedBy
     private String createdBy;
+
+    @JsonIgnore
+    @LastModifiedDate
+    private Instant modified;
     @JsonIgnore
     @LastModifiedBy
     private String lastModifiedBy;
+    
     @JsonIgnore
     @Version
     @Field("version")
     private Long version;
-	
+    
 	@JsonPOJOBuilder(withPrefix = "")
 	@JsonIgnoreProperties(ignoreUnknown = true)
 	public static class Builder {
@@ -164,24 +175,6 @@ public class TransferProcess extends AbstractTransferMessage {
         	return this;
         }
 		
-		@JsonProperty("createdBy")
-		public Builder createdBy(String createdBy) {
-			message.createdBy = createdBy;
-			return this;
-		}
-
-		@JsonProperty("lastModifiedBy")
-		public Builder lastModifiedBy(String lastModifiedBy) {
-			message.lastModifiedBy = lastModifiedBy;
-			return this;
-		}
-
-		@JsonProperty("version")
-		public Builder version(Long version) {
-			message.version = version;
-			return this;
-		}
-		
 		@JsonProperty(DSpaceConstants.AGREEMENT_ID)
 		public Builder agreementId(String agreementId) {
 			message.agreementId = agreementId;
@@ -199,6 +192,35 @@ public class TransferProcess extends AbstractTransferMessage {
 			message.datasetId = datasetId;
 			return this;
 		}
+		
+		 // Auditable fields
+        @JsonProperty("version")
+        public Builder version(Long version) {
+            message.version = version;
+            return this;
+        }
+        
+        @JsonProperty("createdBy")
+        public Builder createdBy(String createdBy) {
+        	message.createdBy = createdBy;
+            return this;
+        }
+        @JsonProperty("created")
+        public Builder created(Instant created) {
+        	message.created = created;
+            return this;
+        }
+
+        @JsonProperty("modified")
+        public Builder modified(Instant modified) {
+        	message.modified = modified;
+            return this;
+        }
+        @JsonProperty("lastModifiedBy")
+        public Builder lastModifiedBy(String lastModifiedBy) {
+        	message.lastModifiedBy = lastModifiedBy;
+            return this;
+        }
 
 		public TransferProcess build() {
 			if (message.id == null) {
@@ -248,9 +270,11 @@ public class TransferProcess extends AbstractTransferMessage {
 				.state(newTransferState)
 				.role(this.role)
 				.datasetId(this.datasetId)
-				// no need to modify audit fields???
-				.createdBy(this.createdBy)
+				// auditable fields
+    			.createdBy(this.createdBy)
+    			.created(created)
 				.lastModifiedBy(this.lastModifiedBy)
+				.modified(modified)
 				.version(this.version)
 				.build();
 	}
