@@ -2,6 +2,10 @@ services:
 ### minio (simulated S3 cloud storage)
   minio:
     image: minio/minio
+    networks:
+      - network-a
+      - network-b
+    container_name: minio
     ports:
       - "9000:9000"
       - "9001:9001"
