@@ -116,7 +116,7 @@ networks:
   network-b: { }
 
 volumes:
-  minio_data-data: { }
+  minio_data: { }
   tc_a_log: { }
   mongodb-data_a: { }
   mongodb-configdb_a: { }
