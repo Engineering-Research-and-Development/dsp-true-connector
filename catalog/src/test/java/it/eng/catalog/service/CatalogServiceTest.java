@@ -1,22 +1,12 @@
 package it.eng.catalog.service;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
-
+import it.eng.catalog.exceptions.CatalogErrorException;
+import it.eng.catalog.model.*;
+import it.eng.catalog.repository.CatalogRepository;
+import it.eng.catalog.serializer.CatalogSerializer;
+import it.eng.catalog.util.CatalogMockObjectUtil;
+import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
+import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,20 +17,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
-import it.eng.catalog.exceptions.CatalogErrorException;
-import it.eng.catalog.model.Action;
-import it.eng.catalog.model.Catalog;
-import it.eng.catalog.model.Constraint;
-import it.eng.catalog.model.DataService;
-import it.eng.catalog.model.LeftOperand;
-import it.eng.catalog.model.Offer;
-import it.eng.catalog.model.Operator;
-import it.eng.catalog.model.Permission;
-import it.eng.catalog.repository.CatalogRepository;
-import it.eng.catalog.serializer.CatalogSerializer;
-import it.eng.catalog.util.CatalogMockObjectUtil;
-import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
-import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class CatalogServiceTest {
