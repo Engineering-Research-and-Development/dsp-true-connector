@@ -1,24 +1,16 @@
 services:
-### localstack (simulated AWS services)
-  localstack:
-    container_name: localstack
-    image: localstack/localstack:4.3.0
-    networks:
-      - network-a
-      - network-b
+### minio (simulated S3 cloud storage)
+  minio:
+    image: minio/minio
     ports:
-      - "127.0.0.1:4566:4566"            # LocalStack Gateway
-      - "127.0.0.1:4510-4559:4510-4559"  # external services port range
-    environment:
-      # LocalStack configuration: https://docs.localstack.cloud/references/configuration/
-      - DEBUG=${DEBUG:-0}
-      - SERVICES=s3,iam,sts
-      - AWS_REGION=eu-central-1
-      - AWS_ACCESS_KEY_ID=accessKeyChangeIt
-      - AWS_SECRET_ACCESS_KEY=secretKeyChangeIt
+      - "9000:9000"
+      - "9001:9001"
     volumes:
-      - localstack-data:/var/lib/localstack
-      - "/var/run/docker.sock:/var/run/docker.sock"
+      - minio_data:/data
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    command: server /data --console-address ":9001"
 
 ### intstance a
   connector-a:
@@ -124,7 +116,7 @@ networks:
   network-b: { }
 
 volumes:
-  localstack-data: { }
+  minio_data-data: { }
   tc_a_log: { }
   mongodb-data_a: { }
   mongodb-configdb_a: { }

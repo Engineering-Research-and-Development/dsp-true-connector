@@ -28,8 +28,8 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.testcontainers.containers.MinIOContainer;
 import org.testcontainers.containers.MongoDBContainer;
-import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.wiremock.spring.EnableWireMock;
 
@@ -44,7 +44,6 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.testcontainers.containers.localstack.LocalStackContainer.Service.S3;
 
 @Slf4j
 @SpringBootTest(
@@ -57,10 +56,12 @@ import static org.testcontainers.containers.localstack.LocalStackContainer.Servi
 @Testcontainers
 public class BaseIntegrationTest {
 
-    // starts a mongodb and localstack container; the containers are shared among all tests; docker must be running
+    // starts a mongodb and s3 simulated cloud storage container; the containers are shared among all tests; docker must be running
     protected static final MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:7.0.12");
-    protected static final LocalStackContainer localstack = new LocalStackContainer("4.3.0")
-        .withServices(S3);
+//    protected static final LocalStackContainer cloudProvider = new LocalStackContainer("4.3.0")
+//        .withServices(S3);
+
+    protected static final MinIOContainer cloudProvider = new MinIOContainer("minio/minio");
 
     @Autowired
     protected MockMvc mockMvc;
@@ -72,14 +73,15 @@ public class BaseIntegrationTest {
 
     static {
         mongoDBContainer.start();
-        localstack.start();
+        cloudProvider.start();
     }
 
     @DynamicPropertySource
     static void containersProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.data.mongodb.host", mongoDBContainer::getHost);
         registry.add("spring.data.mongodb.port", mongoDBContainer::getFirstMappedPort);
-        registry.add("s3.endpoint", () -> localstack.getEndpointOverride(S3).toString());
+//        registry.add("s3.endpoint", () -> cloudProvider.getEndpointOverride(S3).toString());
+        registry.add("s3.endpoint", () -> cloudProvider.getS3URL());
 
     }
 
