@@ -80,6 +80,8 @@
 							<exclude>**/*IntegrationTest.java</exclude>
 						</excludes>
 						<shutdown>kill</shutdown>
+						<parallel>classes</parallel>
+						<useUnlimitedThreads>true</useUnlimitedThreads>
 					</configuration>
 					<executions>
 						<execution>

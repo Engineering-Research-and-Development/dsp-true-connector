@@ -1,30 +1,25 @@
 package it.eng.connector.integration.datatransfer;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import java.io.ByteArrayInputStream;
-import java.time.Instant;
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.github.tomakehurst.wiremock.WireMockServer;
+import it.eng.catalog.serializer.CatalogSerializer;
+import it.eng.connector.integration.BaseIntegrationTest;
+import it.eng.connector.util.TestUtil;
+import it.eng.datatransfer.model.TransferProcess;
+import it.eng.datatransfer.model.TransferState;
+import it.eng.datatransfer.repository.TransferProcessRepository;
+import it.eng.negotiation.model.*;
+import it.eng.negotiation.repository.AgreementRepository;
+import it.eng.negotiation.repository.PolicyEnforcementRepository;
+import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
-import it.eng.tools.util.ToolsUtil;
-import org.bson.Document;
-import org.bson.types.ObjectId;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -32,30 +27,16 @@ import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 import org.wiremock.spring.InjectWireMock;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.github.tomakehurst.wiremock.WireMockServer;
-import com.mongodb.client.gridfs.GridFSBucket;
-import com.mongodb.client.gridfs.GridFSBuckets;
-import com.mongodb.client.gridfs.model.GridFSUploadOptions;
+import java.time.Instant;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
-import it.eng.catalog.serializer.CatalogSerializer;
-import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
-import it.eng.datatransfer.model.TransferProcess;
-import it.eng.datatransfer.model.TransferState;
-import it.eng.datatransfer.repository.TransferProcessRepository;
-import it.eng.negotiation.model.Action;
-import it.eng.negotiation.model.Agreement;
-import it.eng.negotiation.model.Constraint;
-import it.eng.negotiation.model.LeftOperand;
-import it.eng.negotiation.model.NegotiationMockObjectUtil;
-import it.eng.negotiation.model.Operator;
-import it.eng.negotiation.model.Permission;
-import it.eng.negotiation.model.PolicyEnforcement;
-import it.eng.negotiation.repository.AgreementRepository;
-import it.eng.negotiation.repository.PolicyEnforcementRepository;
-import it.eng.tools.controller.ApiEndpoints;
-import it.eng.tools.response.GenericApiResponse;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest{
 	
@@ -95,34 +76,14 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest{
 		}
 	}
 
-	@Test
+	@ParameterizedTest
+	@MethodSource("getValidConstraints")
 	@DisplayName("View data - success")
     @WithUserDetails(TestUtil.API_USER)
-	public void viewData_success() throws Exception {
+	public void viewData_success(Constraint constraint) throws Exception {
 		String fileContent = "Hello, World!";
 
-
-		Agreement agreement = Agreement.Builder.newInstance()
-				.id(createNewId())
-				.assignee(NegotiationMockObjectUtil.ASSIGNEE)
-				.assigner(NegotiationMockObjectUtil.ASSIGNER)
-				.target(NegotiationMockObjectUtil.TARGET)
-				.timestamp(Instant.now().toString())
-				.permission(Arrays.asList(Permission.Builder.newInstance()
-						.action(Action.USE)
-						.constraint(Arrays.asList(Constraint.Builder.newInstance()
-								.leftOperand(LeftOperand.COUNT)
-								.operator(Operator.LTEQ)
-								.rightOperand("5")
-								.build()))
-						.build()))
-				.build();
-
-		agreementRepository.save(agreement);
-
-		PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
-
-		policyEnforcementRepository.save(policyEnforcement);
+		Agreement agreement = insertAgreement(constraint, 0);
 
 		String consumerPid = createNewId();
 		String providerPid = createNewId();
@@ -181,37 +142,18 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest{
 		// check if the PolicyEnforcement count is increased
 		// waiting for 1 second to give time to the publisher to increase the policy access count
 		TimeUnit.SECONDS.sleep(1);
-		PolicyEnforcement enforcementFromDb = policyEnforcementRepository.findById(policyEnforcement.getId()).get();
-		
-		assertEquals(policyEnforcement.getCount() + 1, enforcementFromDb.getCount());
+		PolicyEnforcement enforcementFromDb = policyEnforcementRepository.findByAgreementId(agreement.getId()).get();
+		// increase count from initial 0 to 1
+		assertEquals(1, enforcementFromDb.getCount());
 		
     }
 
-	@Test
-	@DisplayName("View data - fail policy expired")
-    @WithUserDetails(TestUtil.API_USER)
-	public void viewData_failPolicyExpired() throws Exception {
-		Agreement agreement = Agreement.Builder.newInstance()
-				.id(createNewId())
-				.assignee(NegotiationMockObjectUtil.ASSIGNEE)
-				.assigner(NegotiationMockObjectUtil.ASSIGNER)
-				.target(NegotiationMockObjectUtil.TARGET)
-				.timestamp(Instant.now().toString())
-				.permission(Arrays.asList(Permission.Builder.newInstance()
-						.action(Action.USE)
-						.constraint(Arrays.asList(Constraint.Builder.newInstance()
-								.leftOperand(LeftOperand.COUNT)
-								.operator(Operator.LTEQ)
-								.rightOperand("5")
-								.build()))
-						.build()))
-				.build();
-		
-		agreementRepository.save(agreement);
-		
-		PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 6);
-		
-		policyEnforcementRepository.save(policyEnforcement);
+	@ParameterizedTest
+	@MethodSource("getInvalidConstraints")
+	@DisplayName("View data - fail policy invalid")
+	@WithUserDetails(TestUtil.API_USER)
+	public void viewData_fail_policyInvalid(Constraint constraint) throws Exception {
+		Agreement agreement = insertAgreement(constraint, 6);
 		
 		String consumerPid = createNewId();
 		String providerPid = createNewId();
@@ -244,5 +186,48 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest{
 		assertFalse(apiResp.isSuccess());
 		assertNull(apiResp.getData());
     }
+
+	private static Stream<Constraint> getValidConstraints() {
+		return Stream.of(NegotiationMockObjectUtil.CONSTRAINT, NegotiationMockObjectUtil.CONSTRAINT_COUNT_5, NegotiationMockObjectUtil.CONSTRAINT_PURPOSE,
+				NegotiationMockObjectUtil.CONSTRAINT_SPATIAL);
+	}
+
+	private static Stream<Constraint> getInvalidConstraints() {
+		Constraint constraintPurpose = Constraint.Builder.newInstance()
+				.leftOperand(LeftOperand.PURPOSE)
+				.operator(Operator.EQ)
+				.rightOperand("test")
+				.build();
+
+		Constraint constraintSpatial = Constraint.Builder.newInstance()
+				.leftOperand(LeftOperand.SPATIAL)
+				.operator(Operator.EQ)
+				.rightOperand("USA")
+				.build();
+
+		return Stream.of(NegotiationMockObjectUtil.CONSTRAINT_DATEIME_INVALID, NegotiationMockObjectUtil.CONSTRAINT_COUNT_5,
+				constraintPurpose, constraintSpatial);
+	}
+
+	private Agreement insertAgreement(Constraint constraint, int currentCount) {
+		Agreement agreement = Agreement.Builder.newInstance()
+				.id(createNewId())
+				.assignee(NegotiationMockObjectUtil.ASSIGNEE)
+				.assigner(NegotiationMockObjectUtil.ASSIGNER)
+				.target(NegotiationMockObjectUtil.TARGET)
+				.timestamp(Instant.now().toString())
+				.permission(Arrays.asList(Permission.Builder.newInstance()
+						.action(Action.USE)
+						.constraint(Arrays.asList(constraint))
+						.build()))
+				.build();
+
+		agreementRepository.save(agreement);
+
+		PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), currentCount);
+		policyEnforcementRepository.save(policyEnforcement);
+
+		return agreement;
+	}
 
 }

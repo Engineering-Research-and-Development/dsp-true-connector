@@ -1,39 +1,7 @@
 package it.eng.connector.integration.datatransfer;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import java.nio.charset.Charset;
-import java.util.*;
-
-import it.eng.tools.s3.properties.S3Properties;
-import it.eng.tools.s3.service.S3ClientService;
-import it.eng.tools.util.ToolsUtil;
-import org.apache.commons.lang3.StringUtils;
-import org.bson.Document;
-import org.bson.types.ObjectId;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.http.ContentDisposition;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.test.context.support.WithUserDetails;
-import org.springframework.test.web.servlet.MvcResult;
-import org.wiremock.spring.InjectWireMock;
-
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
-import com.mongodb.client.gridfs.GridFSBucket;
-import com.mongodb.client.gridfs.GridFSBuckets;
-import com.mongodb.client.gridfs.model.GridFSUploadOptions;
-
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
@@ -42,24 +10,40 @@ import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.repository.TransferProcessRepository;
-import it.eng.negotiation.model.Action;
-import it.eng.negotiation.model.Agreement;
-import it.eng.negotiation.model.Constraint;
-import it.eng.negotiation.model.LeftOperand;
-import it.eng.negotiation.model.Operator;
-import it.eng.negotiation.model.Permission;
-import it.eng.negotiation.model.PolicyEnforcement;
+import it.eng.negotiation.model.*;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.PolicyEnforcementRepository;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
 import it.eng.tools.repository.ArtifactRepository;
+import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.util.ToolsUtil;
 import okhttp3.Credentials;
+import org.apache.commons.lang3.StringUtils;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.test.context.support.WithUserDetails;
+import org.springframework.test.web.servlet.MvcResult;
+import org.wiremock.spring.InjectWireMock;
+
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
-	private static final String CONTENT_TYPE_FIELD = "_contentType";
-	private static final String DATASET_ID_METADATA = "datasetId";
-	
+
 	@InjectWireMock 
 	private WireMockServer wiremock;
 	
@@ -77,9 +61,6 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 	private S3ClientService s3ClientService;
 	@Autowired
 	private S3Properties s3Properties;
-	
-	@Autowired
-	private MongoTemplate mongoTemplate;
 	
 	@AfterEach
 	public void cleanup() {
@@ -176,7 +157,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 		transferProcessRepository.save(transferProcessStarted);
 
 		String transactionId = Base64.getEncoder().encodeToString((transferProcessStarted.getConsumerPid() + "|" + transferProcessStarted.getProviderPid())
-				.getBytes(Charset.forName("UTF-8")));
+				.getBytes(StandardCharsets.UTF_8));
 		
 		MvcResult resultArtifact = mockMvc.perform(get("/artifacts/" + transactionId)
 				.contentType(MediaType.APPLICATION_JSON))
@@ -247,7 +228,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 		transferProcessRepository.save(transferProcessStarted);
     	
 		String transactionId = Base64.getEncoder().encodeToString((transferProcessStarted.getConsumerPid() + "|" + transferProcessStarted.getProviderPid())
-				.getBytes(Charset.forName("UTF-8")));
+				.getBytes(StandardCharsets.UTF_8));
 		
 		// mock provider success response Download
 		String fileContent = "Hello, World!";
@@ -311,7 +292,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 		transferProcessRepository.save(transferProcessStarted);
     	
 		String transactionId = Base64.getEncoder().encodeToString((transferProcessStarted.getConsumerPid() + "|" + transferProcessStarted.getProviderPid())
-				.getBytes(Charset.forName("UTF-8")));
+				.getBytes(StandardCharsets.UTF_8));
 		
 		mockMvc.perform(get("/artifacts/" + transactionId)
 				.contentType(MediaType.APPLICATION_JSON))
@@ -359,7 +340,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 		transferProcessRepository.save(transferProcessStarted);
     	
 		String transactionId = Base64.getEncoder().encodeToString((transferProcessStarted.getConsumerPid() + "|" + transferProcessStarted.getProviderPid())
-				.getBytes(Charset.forName("UTF-8")));
+				.getBytes(StandardCharsets.UTF_8));
 		
 		mockMvc.perform(get("/artifacts/" + transactionId)
 				.contentType(MediaType.APPLICATION_JSON))

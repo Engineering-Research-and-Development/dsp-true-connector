@@ -189,7 +189,7 @@
       "_id": "urn:uuid:fdc45798-a123-4955-8baf-vc3gh22qh3j8",
       "artifactType": "FILE",
       "filename": "ENG employee.json",
-      "value": "673c80eb4909383cb15db673",
+      "value": "urn:uuid:fdc45798-empl-json-8baf-vc3gh22qh3j8",
       "contentType": "application/json",
       "created": {
         "$date": "2024-12-10T16:04:59.358Z"
