@@ -1,8 +1,14 @@
 package it.eng.tools.s3.provision;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
 import it.eng.tools.s3.configuration.AwsClientProvider;
+import it.eng.tools.s3.provision.model.S3CopyBucketProvisionDTO;
+import it.eng.tools.s3.provision.model.S3CopyResourceDefinition;
+import it.eng.tools.s3.provision.model.S3ProvisionResponse;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import lombok.extern.slf4j.Slf4j;
@@ -10,25 +16,30 @@ import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.iam.IamAsyncClient;
 import software.amazon.awssdk.services.iam.model.*;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
-import software.amazon.awssdk.services.s3.model.CreateBucketConfiguration;
-import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.GetBucketPolicyRequest;
-import software.amazon.awssdk.services.s3.model.GetBucketPolicyResponse;
+import software.amazon.awssdk.services.s3.model.PutBucketPolicyRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.sts.StsAsyncClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 import static java.lang.String.format;
 
 
 @Service
 @Slf4j
-public class S3Provision {
+public class S3CopyBucketProvision {
 
-    private RetryPolicy retryPolicy = RetryPolicy.ofDefaults();
+    private final JsonMapper jsonMapper;
+
+    private static final String S3_ERROR_CODE_NO_SUCH_BUCKET_POLICY = "NoSuchBucketPolicy";
+
+    private final RetryPolicy<Object> retryPolicy = RetryPolicy.ofDefaults();
 
     // Do not modify this trust policy
     private static final String ASSUME_ROLE_TRUST = "{" +
@@ -58,12 +69,13 @@ public class S3Provision {
 
     private final AwsClientProvider awsClientProvider;
 
-    public S3Provision(AwsClientProvider awsClientProvider) {
+    public S3CopyBucketProvision(AwsClientProvider awsClientProvider) {
         this.awsClientProvider = awsClientProvider;
+        this.jsonMapper = new JsonMapper();
     }
 
-    public CompletableFuture<GetBucketPolicyResponse> copyProvision(S3CopyResourceDefinition resourceDefinition) {
-        var sourceClientRequest = S3ClientRequest.from("us-east-1", resourceDefinition.getEndpointOverride(), null);
+    public CompletableFuture<S3ProvisionResponse> copyProvision(S3CopyResourceDefinition resourceDefinition) {
+        var sourceClientRequest = S3ClientRequest.from("eu-central-1", resourceDefinition.getEndpointOverride(), null);
 
         var iamClient = awsClientProvider.iamAsyncClient(sourceClientRequest);
         var stsClient = awsClientProvider.stsAsyncClient(sourceClientRequest);
@@ -74,9 +86,9 @@ public class S3Provision {
         return iamClient.getUser()
                 .thenCompose(response -> createRole(iamClient, resourceDefinition, response))
                 .thenCompose(response -> putRolePolicy(iamClient, resourceDefinition, response))
-                .thenCompose(provisionSteps -> getBucketPolicy(s3Client, resourceDefinition, provisionSteps));
-//                .thenCompose(provisionSteps -> updateBucketPolicy(s3Client, resourceDefinition, provisionSteps));
-//				.thenCompose(role -> assumeRole(stsClient, resourceDefinition, role));
+                .thenCompose(provisionSteps -> getBucketPolicy(s3Client, resourceDefinition, provisionSteps))
+                .thenCompose(provisionSteps -> updateBucketPolicy(s3Client, resourceDefinition, provisionSteps))
+                .thenCompose(role -> assumeRole(stsClient, resourceDefinition, role));
 
     }
 
@@ -143,9 +155,9 @@ public class S3Provision {
                 .build();
     }
 
-    private CompletableFuture<PutRolePolicyResponse> putRolePolicy(IamAsyncClient iamClient,
-                                                                   S3CopyResourceDefinition resourceDefinition,
-                                                                   CreateRoleResponse createRoleResponse) {
+    private CompletableFuture<S3CopyBucketProvisionDTO> putRolePolicy(IamAsyncClient iamClient,
+                                                                      S3CopyResourceDefinition resourceDefinition,
+                                                                      CreateRoleResponse createRoleResponse) {
         var sourceBucket = "source-bucket-name";
         var sourceObject = "source-object-name";
         var destinationBucket = resourceDefinition.getDestinationBucketName();
@@ -163,8 +175,47 @@ public class S3Provision {
                 .build();
 
         return Failsafe.with(RetryPolicy.ofDefaults()).getStageAsync(() -> {
-            log.info(format("S3CopyProvisionPipeline: creating IAM role policy '%s'", putRolePolicyRequest.policyName()));
-            return iamClient.putRolePolicy(putRolePolicyRequest);
+            log.info("Creating IAM role policy '{}'", putRolePolicyRequest.policyName());
+            return iamClient.putRolePolicy(putRolePolicyRequest)
+                    .thenApply(response -> new S3CopyBucketProvisionDTO(role));
+        });
+    }
+
+    private CompletableFuture<S3CopyBucketProvisionDTO> updateBucketPolicy(S3AsyncClient s3Client,
+                                                                           S3CopyResourceDefinition resourceDefinition,
+                                                                           S3CopyBucketProvisionDTO provisionSteps) {
+        var statementSid = resourceDefinition.getBucketPolicyStatementSid();
+        var roleArn = provisionSteps.getRole().arn();
+        var destinationBucket = resourceDefinition.getDestinationBucketName();
+
+        var statement = bucketPolicyStatement(statementSid, roleArn, destinationBucket);
+
+        var typeReference = new TypeReference<HashMap<String, Object>>() {
+        };
+        JsonObject policyJson = null;
+        try {
+            policyJson = Json.createObjectBuilder(jsonMapper.readValue(provisionSteps.getBucketPolicy(), typeReference)).build();
+        } catch (JsonProcessingException e) {
+            log.error("Error parsing bucket policy JSON", e);
+            throw new RuntimeException(e);
+        }
+
+        var statements = Json.createArrayBuilder(policyJson.getJsonArray(STATEMENT_ATTRIBUTE))
+                .add(statement)
+                .build();
+        var updatedBucketPolicy = Json.createObjectBuilder(policyJson)
+                .add(STATEMENT_ATTRIBUTE, statements)
+                .build().toString();
+
+        var putBucketPolicyRequest = PutBucketPolicyRequest.builder()
+                .bucket(resourceDefinition.getDestinationBucketName())
+                .policy(updatedBucketPolicy)
+                .build();
+
+        return Failsafe.with(retryPolicy).getStageAsync(() -> {
+            log.info("Updating destination bucket policy");
+            return s3Client.putBucketPolicy(putBucketPolicyRequest)
+                    .thenApply(response -> provisionSteps);
         });
     }
 
@@ -227,91 +278,26 @@ public class S3Provision {
                 .build();
     }
 
-    //CompletableFuture<S3ProvisionResponse>
-    public CompletableFuture<GetUserResponse> provision(S3BucketDefinition bucketDefinition) {
-        S3ClientRequest rq = S3ClientRequest.from(bucketDefinition.getRegionId(), bucketDefinition.getEndpointOverride());
-        var s3AsyncClient = awsClientProvider.s3AsyncClient(rq);
-        var s3Client = awsClientProvider.s3Client(rq);
-        var iamClient = awsClientProvider.iamAsyncClient(rq);
-        var stsClient = awsClientProvider.stsAsyncClient(rq);
 
-        var request = CreateBucketRequest.builder()
-                .bucket(bucketDefinition.getBucketName())
-                .createBucketConfiguration(CreateBucketConfiguration.builder().build())
-                .build();
+    private CompletableFuture<S3ProvisionResponse> assumeRole(StsAsyncClient stsClient,
+                                                              S3CopyResourceDefinition resourceDefinition,
+                                                              S3CopyBucketProvisionDTO s3CopyBucketProvisionDTO) {
 
-//		return s3Client.createBucket(request);
-        //completableFuture not complete
-        return s3AsyncClient.createBucket(request)
-                .thenCompose(r -> getUser(iamClient));
-//				.thenCompose(response -> createRole(iamClient, bucketDefinition, response))
-//				.thenCompose(response -> createRolePolicy(iamClient, bucketDefinition, response))
-//				.thenCompose(role -> assumeRole(stsClient, role))
-//				.whenComplete((result, ex) -> {
-//					if (ex != null) {
-//						log.error("Error in provisioning pipeline", ex);
-//					} else {
-//						log.info("Provisioning pipeline completed successfully");
-//					}
-//				});
-    }
-
-    private CompletableFuture<GetUserResponse> getUser(IamAsyncClient iamAsyncClient) {
-        return Failsafe.with(RetryPolicy.ofDefaults()).getStageAsync(() -> {
-            log.info("S3ProvisionPipeline: get user");
-            return iamAsyncClient.getUser();
-        });
-    }
-
-    private CompletableFuture<Role> createRolePolicy(IamAsyncClient iamAsyncClient, S3BucketDefinition resourceDefinition, CreateRoleResponse response) {
-        Role role = response.role();
-        log.info("Creating role policy: {}", role);
-        PutRolePolicyRequest policyRequest = PutRolePolicyRequest.builder()
-                .policyName(resourceDefinition.getTransferProcessId())
-                .roleName(role.roleName())
-                .policyDocument(format(BUCKET_POLICY, resourceDefinition.getBucketName()))
-                .build();
-
-        return iamAsyncClient.putRolePolicy(policyRequest)
-                .thenApply(policyResponse -> role);
-    }
-
-    private CompletableFuture<CreateRoleResponse> createRole(IamAsyncClient iamClient, S3BucketDefinition resourceDefinition, GetUserResponse response) {
-        log.info("Create role for user");
-        String userArn = response.user().arn();
-        software.amazon.awssdk.services.iam.model.Tag tag = Tag.builder()
-                .key("dspTRUEConnector:process")
-                .value(resourceDefinition.getTransferProcessId())
-                .build();
-
-        int roleMaxSessionDuration = 10000;
-        CreateRoleRequest createRoleRequest = CreateRoleRequest.builder()
-                .roleName(resourceDefinition.getTransferProcessId()).description("EDC transfer process role")
-                .assumeRolePolicyDocument(format(ASSUME_ROLE_TRUST, userArn))
-                .maxSessionDuration(roleMaxSessionDuration)
-                .tags(tag)
-                .build();
-
-        return iamClient.createRole(createRoleRequest);
-    }
-
-    private CompletableFuture<S3ProvisionResponse> assumeRole(StsAsyncClient stsClient, Role role) {
         log.info("Assume role");
-        AssumeRoleRequest roleRequest = AssumeRoleRequest.builder()
+        var role = s3CopyBucketProvisionDTO.getRole();
+        var assumeRoleRequest = AssumeRoleRequest.builder()
                 .roleArn(role.arn())
-                .roleSessionName("transfer")
-                .externalId("123")
+                .roleSessionName(resourceIdentifier(resourceDefinition))
                 .build();
 
-        return stsClient.assumeRole(roleRequest)
+        return stsClient.assumeRole(assumeRoleRequest)
                 .thenApply(response -> new S3ProvisionResponse(role, response.credentials()));
     }
 
 
-    private CompletableFuture<GetBucketPolicyResponse> getBucketPolicy(S3AsyncClient s3Client,
-                                                                       S3CopyResourceDefinition resourceDefinition,
-                                                                       PutRolePolicyResponse provisionSteps) {
-        log.info("PutRolePolicyResponse {}", provisionSteps.toString());
+    private CompletableFuture<S3CopyBucketProvisionDTO> getBucketPolicy(S3AsyncClient s3Client,
+                                                                        S3CopyResourceDefinition resourceDefinition,
+                                                                        S3CopyBucketProvisionDTO s3CopyBucketProvisionDTO) {
 
         var getBucketPolicyRequest = GetBucketPolicyRequest.builder()
                 .bucket(resourceDefinition.getDestinationBucketName())
@@ -319,27 +305,32 @@ public class S3Provision {
 
         return Failsafe.with(retryPolicy).getStageAsync(() -> {
             log.info("S3ProvisionPipeline: get bucket policy");
-            return s3Client.getBucketPolicy(getBucketPolicyRequest);
+            return s3Client.getBucketPolicy(getBucketPolicyRequest)
+                    .handle((result, ex) -> {
+                        if (ex == null) {
+                            s3CopyBucketProvisionDTO.setBucketPolicy(result.policy());
+                            return s3CopyBucketProvisionDTO;
+                        } else {
+                            if (ex instanceof CompletionException &&
+                                    ex.getCause() instanceof S3Exception s3Exception &&
+                                    s3Exception.awsErrorDetails().errorCode().equals(S3_ERROR_CODE_NO_SUCH_BUCKET_POLICY)) {
+                                // accessing the bucket policy works, but no bucket policy is set
+                                s3CopyBucketProvisionDTO.setBucketPolicy(emptyBucketPolicy().toString());
+                                return s3CopyBucketProvisionDTO;
+                            }
+
+                            throw new CompletionException("Failed to get destination bucket policy", ex);
+                        }
+                    });
         });
-			/*
-					.handle((result, ex) -> {
-						if (ex == null) {
-							provisionSteps.setBucketPolicy(result.policy());
-							return provisionSteps;
-						} else {
-							if (ex instanceof CompletionException &&
-									ex.getCause() instanceof S3Exception s3Exception &&
-									s3Exception.awsErrorDetails().errorCode().equals(S3_ERROR_CODE_NO_SUCH_BUCKET_POLICY)) {
-								// accessing the bucket policy works, but no bucket policy is set
-								provisionSteps.setBucketPolicy(emptyBucketPolicy().toString());
-								return provisionSteps;
-							}
+    }
 
-							throw new CompletionException("Failed to get destination bucket policy", ex);
-						}
-					});
-
-			 */
+    public static JsonObject emptyBucketPolicy() {
+        return Json.createObjectBuilder()
+                .add(VERSION_ATTRIBUTE, VERSION)
+                .add(STATEMENT_ATTRIBUTE, Json.createArrayBuilder()
+                        .build())
+                .build();
     }
 
     public static final String BUCKET_POLICY_STATEMENT_SID_ATTRIBUTE = "Sid";

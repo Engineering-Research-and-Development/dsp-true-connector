@@ -106,7 +106,7 @@ public class AwsClientProvider {
                 .credentialsProvider(credentialsProvider)
                 .region(Region.AWS_GLOBAL);
 
-        handleEndpointOverride(builder, "http://localhost:4566");
+        handleEndpointOverride(builder, endpointOverride);
 
         return builder.build();
     }
@@ -125,7 +125,7 @@ public class AwsClientProvider {
                 .region(Region.of(region))
                 .crossRegionAccessEnabled(true);
 
-        handleBaseEndpointOverride(builder, "http://localhost:4566");
+        handleBaseEndpointOverride(builder, endpointOverride);
 
         return builder.build();
     }
@@ -147,7 +147,7 @@ public class AwsClientProvider {
         if (StringUtils.isNotBlank(endpointOverride)) {
             endpointOverrideUri = URI.create(endpointOverride);
         } else {
-            endpointOverrideUri = URI.create("http://localhost:9001");
+            endpointOverrideUri = URI.create("http://localhost:4566");
         }
 
         if (endpointOverrideUri != null) {

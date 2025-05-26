@@ -1,7 +1,6 @@
-package it.eng.tools.s3.provision;
+package it.eng.tools.s3.provision.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

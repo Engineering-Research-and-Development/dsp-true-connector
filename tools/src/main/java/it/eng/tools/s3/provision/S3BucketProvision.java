@@ -3,6 +3,8 @@ package it.eng.tools.s3.provision;
 import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
 import it.eng.tools.s3.configuration.AwsClientProvider;
+import it.eng.tools.s3.provision.model.S3BucketDefinition;
+import it.eng.tools.s3.provision.model.S3ProvisionResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.iam.IamAsyncClient;
@@ -45,7 +47,7 @@ public class S3BucketProvision {
             "    ]" +
             "}";
 
-    private final RetryPolicy retryPolicy;
+    private final RetryPolicy<Object> retryPolicy;
 
     private final AwsClientProvider awsClientProvider;
 
@@ -57,7 +59,7 @@ public class S3BucketProvision {
                 .build();
     }
 
-    public CompletableFuture<S3ProvisionResponse> createS3ucketWithPermissions(S3BucketDefinition resourceDefinition) {
+    public CompletableFuture<S3ProvisionResponse> createS3BucketWithPermissions(S3BucketDefinition resourceDefinition) {
 
         var rq = S3ClientRequest.from(resourceDefinition.getRegionId(), resourceDefinition.getEndpointOverride());
         var s3AsyncClient = awsClientProvider.s3AsyncClient(rq);

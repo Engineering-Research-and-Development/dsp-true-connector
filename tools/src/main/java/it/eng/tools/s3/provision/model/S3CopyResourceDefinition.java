@@ -1,4 +1,4 @@
-package it.eng.tools.s3.provision;
+package it.eng.tools.s3.provision.model;
 
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @Getter
 public class S3CopyResourceDefinition {
-
 
     private String transferProcessId;
 
@@ -39,26 +38,32 @@ public class S3CopyResourceDefinition {
             s3CopyResourceDefinition.endpointOverride = endpointOverride;
             return this;
         }
+
         public Builder destinationRegion(String destinationRegion) {
             s3CopyResourceDefinition.destinationRegion = destinationRegion;
             return this;
         }
+
         public Builder destinationBucketName(String destinationBucketName) {
             s3CopyResourceDefinition.destinationBucketName = destinationBucketName;
             return this;
         }
+
         public Builder destinationObjectName(String destinationObjectName) {
             s3CopyResourceDefinition.destinationObjectName = destinationObjectName;
             return this;
         }
+
         public Builder destinationKeyName(String destinationKeyName) {
             s3CopyResourceDefinition.destinationKeyName = destinationKeyName;
             return this;
         }
+
         public Builder bucketPolicyStatementSid(String bucketPolicyStatementSid) {
             s3CopyResourceDefinition.bucketPolicyStatementSid = bucketPolicyStatementSid;
             return this;
         }
+
         public S3CopyResourceDefinition build() {
             return s3CopyResourceDefinition;
         }

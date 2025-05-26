@@ -1,29 +1,19 @@
 package it.eng.tools.s3.service;
 
-import java.time.Duration;
-
 import it.eng.tools.s3.properties.S3Properties;
-import org.springframework.stereotype.Service;
-
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
-import software.amazon.awssdk.services.s3.model.DeleteBucketRequest;
-import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
-import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
-import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
-import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
-import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
+
+import java.time.Duration;
 
 /**
  * Implementation of the S3 client service.
@@ -38,7 +28,7 @@ public class S3ClientServiceImpl implements S3ClientService {
     /**
      * Constructor for S3ClientServiceImpl.
      *
-     * @param s3Client the S3 client
+     * @param s3Client     the S3 client
      * @param s3Properties the S3 properties
      */
     public S3ClientServiceImpl(S3Client s3Client, S3Properties s3Properties) {
@@ -177,7 +167,7 @@ public class S3ClientServiceImpl implements S3ClientService {
         try (S3Presigner presigner = S3Presigner.builder()
                 .endpointOverride(s3Client.serviceClientConfiguration().endpointOverride().get())
                 .credentialsProvider(StaticCredentialsProvider.create(
-                    AwsBasicCredentials.create(s3Properties.getAccessKey(), s3Properties.getSecretKey())))
+                        AwsBasicCredentials.create(s3Properties.getAccessKey(), s3Properties.getSecretKey())))
                 .region(s3Client.serviceClientConfiguration().region())
                 .build()) {
 
