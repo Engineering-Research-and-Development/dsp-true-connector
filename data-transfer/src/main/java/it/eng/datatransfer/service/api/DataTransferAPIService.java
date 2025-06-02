@@ -1,37 +1,11 @@
 package it.eng.datatransfer.service.api;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Collection;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import it.eng.tools.s3.properties.S3Properties;
-import it.eng.tools.s3.service.S3ClientService;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.tomcat.util.codec.binary.Base64;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
-import it.eng.datatransfer.model.DataAddress;
-import it.eng.datatransfer.model.DataTransferRequest;
-import it.eng.datatransfer.model.EndpointProperty;
-import it.eng.datatransfer.model.TransferCompletionMessage;
-import it.eng.datatransfer.model.TransferError;
-import it.eng.datatransfer.model.TransferProcess;
-import it.eng.datatransfer.model.TransferRequestMessage;
-import it.eng.datatransfer.model.TransferStartMessage;
-import it.eng.datatransfer.model.TransferState;
-import it.eng.datatransfer.model.TransferSuspensionMessage;
-import it.eng.datatransfer.model.TransferTerminationMessage;
+import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.rest.protocol.DataTransferCallback;
@@ -39,16 +13,23 @@ import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
-import it.eng.tools.model.ExternalData;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.serializer.ToolsSerializer;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import software.amazon.awssdk.core.ResponseBytes;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpMethod;
+import org.springframework.stereotype.Service;
+
+import java.time.Duration;
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -63,6 +44,7 @@ public class DataTransferAPIService {
 	private final ApplicationEventPublisher publisher;
 	private final S3ClientService s3ClientService;
 	private final S3Properties s3Properties;
+	private final DataTransferStrategyFactory dataTransferStrategyFactory;
 
 	public DataTransferAPIService(TransferProcessRepository transferProcessRepository,
                                   OkHttpRestClient okHttpRestClient,
@@ -71,7 +53,7 @@ public class DataTransferAPIService {
                                   UsageControlProperties usageControlProperties,
                                   ApplicationEventPublisher publisher,
                                   S3ClientService s3ClientService,
-                                  S3Properties s3Properties) {
+                                  S3Properties s3Properties, DataTransferStrategyFactory dataTransferStrategyFactory) {
 		super();
 		this.transferProcessRepository = transferProcessRepository;
 		this.okHttpRestClient = okHttpRestClient;
@@ -81,7 +63,7 @@ public class DataTransferAPIService {
 		this.publisher = publisher;
         this.s3ClientService = s3ClientService;
         this.s3Properties = s3Properties;
-        this.transferStrategyFactory = transferStrategyFactory;
+        this.dataTransferStrategyFactory = dataTransferStrategyFactory;
     }
 
 	/**
@@ -421,50 +403,9 @@ public class DataTransferAPIService {
 		log.info("Starting download transfer process id - {} data...", transferProcessId);
 
         // Get appropriate strategy and execute transfer
-        DataTransferStrategy strategy = transferStrategyFactory.getStrategy(transferProcess.getFormat());
+        DataTransferStrategy strategy = dataTransferStrategyFactory.getStrategy(transferProcess.getFormat());
 
         strategy.transfer(transferProcess);
-
-        // get authorization information from Data Address if present
-//        String authorization = null;
-//        if (transferProcess.getDataAddress().getEndpointProperties() != null) {
-//            List<EndpointProperty> properties = transferProcess.getDataAddress().getEndpointProperties();
-//            String authType = properties.stream().filter(prop -> StringUtils.equals(prop.getName(), IConstants.AUTH_TYPE))
-//                    .findFirst().map(EndpointProperty::getValue).orElse(null);
-//            String token = properties.stream()
-//                    .filter(prop -> StringUtils.equals(prop.getName(), IConstants.AUTHORIZATION)).findFirst()
-//                    .map(EndpointProperty::getValue).orElse(null);
-//
-//            authorization = authType + " " + token;
-//        }
-//
-//        GenericApiResponse<ExternalData> response = okHttpRestClient.downloadData(transferProcess.getDataAddress().getEndpoint(),
-//                authorization);
-//
-//        if (!response.isSuccess()) {
-//            log.error("Download aborted, {}", response.getMessage());
-//            throw new DataTransferAPIException("Download aborted, " + response.getMessage());
-//        }
-//
-//        log.info("Downloaded transfer process id - {} data!", transferProcessId);
-//
-//        log.info("Storing transfer process id - {} data...", transferProcessId);
-//
-//        // Create bucket if it doesn't exist
-//        if (!s3ClientService.bucketExists(s3Properties.getBucketName())) {
-//            s3ClientService.createBucket(s3Properties.getBucketName());
-//        }
-//
-//
-//        // Upload file to S3
-//        try {
-//            s3ClientService.uploadFile(s3Properties.getBucketName(), transferProcessId, response.getData().getData(),
-//                    response.getData().getContentType().toString(), response.getData().getContentDisposition());
-//        } catch (Exception e) {
-//            log.error("File storing aborted, {}", e.getMessage());
-//            throw new DataTransferAPIException("File storing aborted, " + e.getMessage());
-//        }
-//        log.info("Stored transfer process id - {} data!", transferProcessId);
 
 		TransferProcess transferProcessWithData = TransferProcess.Builder.newInstance()
 				.id(transferProcess.getId())
