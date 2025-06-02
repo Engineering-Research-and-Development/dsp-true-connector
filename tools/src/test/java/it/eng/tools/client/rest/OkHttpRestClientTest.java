@@ -4,7 +4,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 
 import com.google.common.net.HttpHeaders;
 import it.eng.tools.model.ExternalData;
@@ -151,9 +153,10 @@ public class OkHttpRestClientTest {
 		when(call.execute()).thenReturn(response);
 
 		byte[] bodyBytes = "This is answer from test".getBytes();
+		InputStream stream = new ByteArrayInputStream(bodyBytes);
 		when(response.code()).thenReturn(200);
 		when(response.body()).thenReturn(responseBody);
-		when(responseBody.bytes()).thenReturn(bodyBytes);
+		when(responseBody.byteStream()).thenReturn(stream);
 		when(response.body().contentType()).thenReturn(MediaType.get("text/plain"));
 		when(response.isSuccessful()).thenReturn(true);
 
@@ -161,7 +164,7 @@ public class OkHttpRestClientTest {
 
 		assertNotNull(apiResponse);
 		assertTrue(apiResponse.isSuccess());
-		assertEquals(bodyBytes, apiResponse.getData().getData());
+		assertEquals(new String(bodyBytes), new String(apiResponse.getData().getData()));
 		assertEquals(MediaType.get("text/plain"), apiResponse.getData().getContentType());
 	}
 
@@ -204,9 +207,10 @@ public class OkHttpRestClientTest {
 		when(call.execute()).thenReturn(response);
 
 		byte[] bodyBytes = "This is answer from test".getBytes();
+		InputStream stream = new ByteArrayInputStream(bodyBytes);
 		when(response.code()).thenReturn(200);
 		when(response.body()).thenReturn(responseBody);
-		when(responseBody.bytes()).thenReturn(bodyBytes);
+		when(responseBody.byteStream()).thenReturn(stream);
 		when(response.body().contentType()).thenReturn(MediaType.get("text/plain"));
 		when(response.isSuccessful()).thenReturn(true);
 		when(response.header(HttpHeaders.CONTENT_DISPOSITION)).thenReturn(null);
@@ -216,7 +220,7 @@ public class OkHttpRestClientTest {
 		assertNotNull(apiResponse);
 		assertTrue(apiResponse.isSuccess());
 		assertEquals(ATTACHMENT_FILENAME + TARGET_ADDRESS.substring(TARGET_ADDRESS.lastIndexOf("/") + 1), apiResponse.getData().getContentDisposition());
-		assertEquals(bodyBytes, apiResponse.getData().getData());
+		assertEquals(new String(bodyBytes), new String(apiResponse.getData().getData()));
 		assertEquals(MediaType.get("text/plain"), apiResponse.getData().getContentType());
 	}
 

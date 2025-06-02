@@ -107,12 +107,12 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest{
 				.filename(FILE_NAME)
 				.build();
 
-		try {
-			s3ClientService.uploadFile(s3Properties.getBucketName(), transferProcessStarted.getId(), fileContent.getBytes(),
-					MediaType.TEXT_PLAIN_VALUE, contentDisposition.toString());
-		} catch (Exception e) {
-			throw new Exception("File storing aborted, " + e.getLocalizedMessage());
-		}
+//		try {
+//			s3ClientService.uploadFile(s3Properties.getBucketName(), transferProcessStarted.getId(), fileContent.getBytes(),
+//					MediaType.TEXT_PLAIN_VALUE, contentDisposition.toString());
+//		} catch (Exception e) {
+//			throw new Exception("File storing aborted, " + e.getLocalizedMessage());
+//		}
 		// send request
 		final ResultActions result =
     			mockMvc.perform(

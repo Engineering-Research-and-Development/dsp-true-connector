@@ -1,42 +1,30 @@
 package it.eng.catalog.service;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.List;
-import java.util.Optional;
-
+import it.eng.catalog.exceptions.CatalogErrorAPIException;
+import it.eng.catalog.util.CatalogMockObjectUtil;
+import it.eng.tools.model.Artifact;
+import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
-import org.bson.types.ObjectId;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.gridfs.GridFSBucket;
-import com.mongodb.client.gridfs.GridFSBuckets;
-import com.mongodb.client.gridfs.model.GridFSUploadOptions;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
-import it.eng.catalog.exceptions.CatalogErrorAPIException;
-import it.eng.catalog.repository.DatasetRepository;
-import it.eng.catalog.util.CatalogMockObjectUtil;
-import it.eng.tools.model.Artifact;
-import it.eng.tools.repository.ArtifactRepository;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class ArtifactServiceTest {
@@ -48,20 +36,9 @@ public class ArtifactServiceTest {
 	@Mock
 	private InputStream inputStream;
 	@Mock
-	private GridFSBucket gridFSBucket;
-	@Mock
-	private MongoDatabase mongoDatabase;
-	@Mock
 	private MultipartFile file;
 	@Mock
-	private MongoTemplate mongoTemplate;
-	@Mock
-	private DatasetService datasetService;
-	@Mock
 	private ArtifactRepository artifactRepository;
-	@Mock
-	private DatasetRepository datasetRepository;
-
 	@InjectMocks
 	private ArtifactService artifactService;
 	
@@ -98,26 +75,29 @@ public class ArtifactServiceTest {
 	    when(s3ClientService.bucketExists(anyString())).thenReturn(false);
 	    when(s3Properties.getBucketName()).thenReturn("test-bucket");
 	    doNothing().when(s3ClientService).createBucket(anyString());
-	    doNothing().when(s3ClientService).uploadFile(anyString(), anyString(), any(), anyString(), anyString());
+		when(file.getInputStream()).thenReturn(inputStream);
+		when(s3ClientService.uploadFile(any(InputStream.class), anyString(), anyString(), anyString(), anyString()))
+				.thenReturn(CompletableFuture.completedFuture("etag"));
 		when(artifactRepository.save(any(Artifact.class))).thenReturn(CatalogMockObjectUtil.ARTIFACT_FILE);
 
-		Artifact artifact = artifactService.uploadArtifact(file, null, null);
-		
+		Artifact artifact = artifactService.uploadArtifact(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), file, null, null);
+
 	    assertEquals(CatalogMockObjectUtil.ARTIFACT_FILE, artifact);
 	    verify(s3ClientService).createBucket("test-bucket");
-	    verify(s3ClientService).uploadFile(eq("test-bucket"), anyString(), any(), eq(MediaType.APPLICATION_JSON_VALUE), anyString());
+		verify(s3ClientService).uploadFile(eq(inputStream), eq("test-bucket"), anyString(), eq(MediaType.APPLICATION_JSON_VALUE), anyString());
     }
 	
 	@Test
     @DisplayName("Upload file - fail")
     public void uploadFile_fail() throws IOException {
 		when(file.getContentType()).thenReturn(MediaType.APPLICATION_JSON_VALUE);
-	    when(s3ClientService.bucketExists(anyString())).thenReturn(false);
-		doThrow(RuntimeException.class).when(s3ClientService).uploadFile(anyString(), anyString(), any(),anyString(), anyString());
+		when(file.getInputStream()).thenReturn(inputStream);
+		when(s3ClientService.bucketExists(anyString())).thenReturn(false);
+		doThrow(RuntimeException.class).when(s3ClientService).uploadFile(any(InputStream.class), anyString(), anyString(), anyString(), anyString());
 	    when(s3Properties.getBucketName()).thenReturn("test-bucket");
 	    doNothing().when(s3ClientService).createBucket(anyString());
 
-		assertThrows(CatalogErrorAPIException.class, ()-> artifactService.uploadArtifact(file, null, null));
+		assertThrows(CatalogErrorAPIException.class, ()-> artifactService.uploadArtifact(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), file, null, null));
     }
 	
 	@Test
@@ -125,7 +105,7 @@ public class ArtifactServiceTest {
     public void uploadExternal_success() throws IOException {
 		when(artifactRepository.save(any(Artifact.class))).thenReturn(CatalogMockObjectUtil.ARTIFACT_EXTERNAL);
 
-		Artifact artifact = artifactService.uploadArtifact(null, CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), null);
+		Artifact artifact = artifactService.uploadArtifact(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), null, CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), null);
 		
 		assertEquals(artifact, CatalogMockObjectUtil.ARTIFACT_EXTERNAL);
 
@@ -134,7 +114,7 @@ public class ArtifactServiceTest {
 	@Test
     @DisplayName("Upload no data - fail")
     public void uploadNoData_fail() throws IOException {
-		assertThrows(CatalogErrorAPIException.class, ()-> artifactService.uploadArtifact(null, null, null));
+		assertThrows(CatalogErrorAPIException.class, ()-> artifactService.uploadArtifact(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), null, null, null));
     }
 	
 	@Test

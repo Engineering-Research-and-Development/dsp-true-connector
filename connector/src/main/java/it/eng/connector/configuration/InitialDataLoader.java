@@ -67,14 +67,37 @@ public class InitialDataLoader {
                 rootNode.fields().forEachRemaining(entry -> {
                     String collectionName = entry.getKey();
                     JsonNode documents = entry.getValue();
+                    int newDocuments = 0;
+                    int skippedDocuments = 0;
 
-                        documents.forEach(document -> {
-                            Document mongoDocument = Document.parse(document.toString());
-                            mongoTemplate.save(mongoDocument, collectionName);                        });
-                        log.info("Loaded " + documents.size() + " documents into the '" + collectionName + "' collection.");
+                    for (JsonNode document : documents) {
+                        Document mongoDocument = Document.parse(document.toString());
+                        Object documentId = mongoDocument.get("_id");
+
+                        if (documentId != null) {
+                            // Check if document already exists
+                            Document existingDocument = mongoTemplate.findById(documentId, Document.class, collectionName);
+                            if (existingDocument == null) {
+                                mongoTemplate.save(mongoDocument, collectionName);
+                                newDocuments++;
+                            } else {
+                                log.debug("Document with ID {} already exists in collection '{}', skipping...",
+                                        documentId, collectionName);
+                                skippedDocuments++;
+                            }
+                        } else {
+                            // If document has no ID, treat as new document
+                            mongoTemplate.save(mongoDocument, collectionName);
+                            newDocuments++;
+                        }
+                    }
+
+                    log.info("Collection '{}': {} new documents loaded, {} documents skipped (already exist).",
+                            collectionName, newDocuments, skippedDocuments);
                 });
+
             } catch (Exception e) {
-                log.error("Error loading initial data: " + e.getMessage());
+                log.error("Error loading initial data: {}", e.getMessage());
                 throw new RuntimeException("Failed to load initial data", e);
             }
         };
@@ -96,15 +119,17 @@ public class InitialDataLoader {
                 log.info("Created S3 bucket: {}", bucketName);
             }
 
-            File file = new ClassPathResource("ENG-employee.json").getFile();
-            // from initial_data.json Artifacts.value
-            String fileKey = "urn:uuid:fdc45798-empl-json-8baf-vc3gh22qh3j8";
-            String contentDisposition = ContentDisposition.attachment()
-                    .filename(file.getName())
-                    .build()
-                    .toString();
+            ClassPathResource file = new ClassPathResource("ENG-employee.json");
+            if (file.exists()) {
+                // from initial_data.json Artifacts.value
+                String fileKey = "urn:uuid:fdc45798-empl-json-8baf-vc3gh22qh3j8";
+                String contentDisposition = ContentDisposition.attachment()
+                        .filename(file.getFile().getName())
+                        .build()
+                        .toString();
 
-            s3ClientService.uploadFile(bucketName, fileKey, FileUtils.readFileToByteArray(file), MediaType.APPLICATION_JSON_VALUE, contentDisposition);
+                s3ClientService.uploadFile(FileUtils.openInputStream(file.getFile()), bucketName, fileKey, MediaType.APPLICATION_JSON_VALUE, contentDisposition);
+            }
         } catch (Exception e) {
             log.error("Error while loading mock data to S3", e);
         }

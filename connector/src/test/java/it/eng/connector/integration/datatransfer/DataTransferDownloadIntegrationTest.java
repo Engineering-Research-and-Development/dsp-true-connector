@@ -105,12 +105,12 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 				.build();
 
 		String fileId = ToolsUtil.generateUniqueId();
-		try {
-			s3ClientService.uploadFile(s3Properties.getBucketName(), fileId, file.getBytes(),
-					file.getContentType(), contentDisposition.toString());
-		} catch (Exception e) {
-			throw new Exception("File storing aborted, " + e.getLocalizedMessage());
-		}
+//		try {
+//			s3ClientService.uploadFile(s3Properties.getBucketName(), fileId, file.getBytes(),
+//					file.getContentType(), contentDisposition.toString());
+//		} catch (Exception e) {
+//			throw new Exception("File storing aborted, " + e.getLocalizedMessage());
+//		}
 
 		Artifact artifact = Artifact.Builder.newInstance()
 				.artifactType(ArtifactType.FILE)

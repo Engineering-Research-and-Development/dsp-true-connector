@@ -2,6 +2,7 @@ package it.eng.datatransfer.service.api;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 
 import java.nio.charset.StandardCharsets;
@@ -151,8 +152,7 @@ public class RestArtifactServiceTest {
 	        .build();
 	    when(s3Response.response()).thenReturn(objectResponse);
 	    when(s3Response.asByteArray()).thenReturn("test data".getBytes());
-	    when(s3ClientService.downloadFile(TEST_BUCKET, DataTranferMockObjectUtil.ARTIFACT_FILE.getValue()))
-	        .thenReturn(s3Response);
+	    doNothing().when(s3ClientService).downloadFile(TEST_BUCKET, DataTranferMockObjectUtil.ARTIFACT_FILE.getValue(), mockHttpServletResponse);
 
 			assertDoesNotThrow(() ->restArtifactService.getArtifact(TRANSACTION_ID, mockHttpServletResponse));		
 		}

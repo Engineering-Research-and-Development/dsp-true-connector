@@ -84,7 +84,7 @@ public class DatasetService {
         Dataset savedDataSet = null;
         try {
 //			TODO revert changes in case of failure
-        	Artifact artifact = artifactService.uploadArtifact(file, externalURL, authorization);
+        	Artifact artifact = artifactService.uploadArtifact(dataset.getId(), file, externalURL, authorization);
         	Dataset datasetWithArtifact = addArtifactToDataset(dataset, artifact);
         	savedDataSet = repository.save(datasetWithArtifact);
 		} catch (Exception e) {
@@ -123,12 +123,12 @@ public class DatasetService {
 				updatedDataset = existingDataset;
 			}
 			if (file != null || StringUtils.isNotBlank(externalURL)) {
-				Artifact newArtifact = artifactService.uploadArtifact(file, externalURL, authorization);
+				Artifact newArtifact = artifactService.uploadArtifact(existingDataset.getId(), file, externalURL, authorization);
 				updatedDataset = addArtifactToDataset(updatedDataset, newArtifact);
 				// remove old artifact
-				if (oldArtifact != null) {
-					artifactService.deleteOldArtifact(oldArtifact);
-				}
+//				if (oldArtifact != null) {
+//					artifactService.deleteOldArtifact(oldArtifact);
+//				}
 			}
 			storedDataset = repository.save(updatedDataset);
 		} catch (Exception e) {

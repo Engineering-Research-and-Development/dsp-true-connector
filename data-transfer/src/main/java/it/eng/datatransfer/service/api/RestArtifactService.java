@@ -93,15 +93,15 @@ public class RestArtifactService {
 
 		try {
 			// Download file from S3
-			ResponseBytes<GetObjectResponse> s3Response = s3ClientService.downloadFile(s3Properties.getBucketName(), fileId);
+//			ResponseBytes<GetObjectResponse> s3Response = s3ClientService.downloadFile(s3Properties.getBucketName(), fileId);
 
 			// Set response headers
-			response.setStatus(HttpStatus.OK.value());
-			response.setContentType(s3Response.response().contentType());
-			response.setHeader(HttpHeaders.CONTENT_DISPOSITION, s3Response.response().contentDisposition());
-
-			// Write data to response
-			response.getOutputStream().write(s3Response.asByteArray());
+//			response.setStatus(HttpStatus.OK.value());
+//			response.setContentType(s3Response.response().contentType());
+//			response.setHeader(HttpHeaders.CONTENT_DISPOSITION, s3Response.response().contentDisposition());
+//
+//			// Write data to response
+//			response.getOutputStream().write(s3Response.asByteArray());
 			response.flushBuffer();
 		} catch (IOException e) {
 			log.error("Error while sending file", e);

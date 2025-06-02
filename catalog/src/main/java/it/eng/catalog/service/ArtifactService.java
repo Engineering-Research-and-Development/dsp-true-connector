@@ -1,22 +1,21 @@
 package it.eng.catalog.service;
 
-import java.util.List;
-import java.util.Optional;
-
-import it.eng.tools.s3.properties.S3Properties;
-import it.eng.tools.s3.service.S3ClientService;
-import it.eng.tools.util.ToolsUtil;
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.http.ContentDisposition;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
 import it.eng.catalog.exceptions.CatalogErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
 import it.eng.tools.repository.ArtifactRepository;
+import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.util.ToolsUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.http.ContentDisposition;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -25,7 +24,7 @@ public class ArtifactService {
 	private final ArtifactRepository artifactRepository;
 	private final S3ClientService s3ClientService;
 	private final S3Properties s3Properties;
-	
+
 	public ArtifactService(ArtifactRepository artifactRepository, S3ClientService s3ClientService, S3Properties s3Properties) {
 		super();
 		this.artifactRepository = artifactRepository;
@@ -45,10 +44,10 @@ public class ArtifactService {
 		return artifactRepository.findAll();
 	}
 
-	public Artifact uploadArtifact(MultipartFile file, String externalURL, String authorization) {
+	public Artifact uploadArtifact(String fileId, MultipartFile file, String externalURL, String authorization) {
 		Artifact artifact = null;
 		if (file != null) {
-			String fileId = storeFile(file);
+			storeFile(fileId, file);
 			artifact = Artifact.Builder.newInstance()
 					.artifactType(ArtifactType.FILE)
 					.value(fileId)
@@ -90,22 +89,20 @@ public class ArtifactService {
 		artifactRepository.delete(artifact);
 	}
 
-	private String storeFile(MultipartFile file) {
-		// Create bucket if it doesn't exist
-		if (!s3ClientService.bucketExists(s3Properties.getBucketName())) {
-			s3ClientService.createBucket(s3Properties.getBucketName());
-		}
-
+	private String storeFile(String fileId, MultipartFile file) {
 		ContentDisposition contentDisposition = ContentDisposition.attachment()
 				.filename(file.getOriginalFilename())
 				.build();
 
-		String fileId = ToolsUtil.generateUniqueId();
-
 		// Upload file to S3
 		try {
-			s3ClientService.uploadFile(s3Properties.getBucketName(), fileId, file.getBytes(),
-					file.getContentType(), contentDisposition.toString());
+			s3ClientService.uploadFile(
+					file.getInputStream(),
+					s3Properties.getBucketName(),
+					fileId,
+					file.getContentType(),
+					contentDisposition.toString()
+			);
 		} catch (Exception e) {
 			log.error("File storing aborted", e);
 			throw new CatalogErrorAPIException("File storing aborted, " + e.getLocalizedMessage());

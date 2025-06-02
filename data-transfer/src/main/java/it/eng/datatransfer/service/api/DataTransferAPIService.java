@@ -1,18 +1,19 @@
 package it.eng.datatransfer.service.api;
 
-import java.nio.charset.StandardCharsets;
+import java.io.IOException;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import okhttp3.OkHttpClient;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.tomcat.util.codec.binary.Base64;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -39,22 +40,19 @@ import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
-import it.eng.tools.model.ExternalData;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.serializer.ToolsSerializer;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import software.amazon.awssdk.core.ResponseBytes;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 @Service
 @Slf4j
 public class DataTransferAPIService {
 
 	private final TransferProcessRepository transferProcessRepository;
+	private final OkHttpClient okHttpClient;
 	private final OkHttpRestClient okHttpRestClient;
 	private final CredentialUtils credentialUtils;
 	private final DataTransferProperties dataTransferProperties;
@@ -63,24 +61,27 @@ public class DataTransferAPIService {
 	private final ApplicationEventPublisher publisher;
 	private final S3ClientService s3ClientService;
 	private final S3Properties s3Properties;
+	private final DownloadService downloadService;
 
-	public DataTransferAPIService(TransferProcessRepository transferProcessRepository,
+	public DataTransferAPIService(TransferProcessRepository transferProcessRepository, OkHttpClient okHttpClient,
                                   OkHttpRestClient okHttpRestClient,
                                   CredentialUtils credentialUtils,
                                   DataTransferProperties dataTransferProperties,
                                   UsageControlProperties usageControlProperties,
                                   ApplicationEventPublisher publisher,
                                   S3ClientService s3ClientService,
-                                  S3Properties s3Properties) {
+                                  S3Properties s3Properties, DownloadService downloadService) {
 		super();
 		this.transferProcessRepository = transferProcessRepository;
-		this.okHttpRestClient = okHttpRestClient;
+        this.okHttpClient = okHttpClient;
+        this.okHttpRestClient = okHttpRestClient;
 		this.credentialUtils = credentialUtils;
 		this.dataTransferProperties = dataTransferProperties;
 		this.usageControlProperties = usageControlProperties;
 		this.publisher = publisher;
         this.s3ClientService = s3ClientService;
         this.s3Properties = s3Properties;
+        this.downloadService = downloadService;
     }
 
 	/**
@@ -213,14 +214,13 @@ public class DataTransferAPIService {
 	   	if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
 	   		address = DataTransferCallback.getConsumerDataTransferStart(transferProcess.getCallbackAddress(), transferProcess.getConsumerPid());
 	   		if (transferProcess.getDataAddress() == null) {
-	   			String transactionId = Base64.encodeBase64URLSafeString((transferProcess.getConsumerPid() + "|" + transferProcess.getProviderPid()).getBytes(StandardCharsets.UTF_8));
-	   			String artifactURL = DataTransferCallback.getValidCallback(dataTransferProperties.providerCallbackAddress()) + "/artifacts/" + transactionId;
-
-	   			EndpointProperty endpointProperty = EndpointProperty.Builder.newInstance()
+				// Generate a presigned URL for S3 with 7 days duration, which will be used as the endpoint for the data transfer
+				String artifactURL = s3ClientService.generatePresignedUrl(s3Properties.getBucketName(), transferProcess.getDatasetId(), Duration.ofDays(7L));
+				EndpointProperty endpointProperty = EndpointProperty.Builder.newInstance()
 	   					.name("https://w3id.org/edc/v0.0.1/ns/endpoint")
 	   					.value(artifactURL)
 	   					.build();
-	   			EndpointProperty endpointTypeProperty = EndpointProperty.Builder.newInstance()
+				EndpointProperty endpointTypeProperty = EndpointProperty.Builder.newInstance()
 	   					.name("https://w3id.org/edc/v0.0.1/ns/endpointType")
 	   					.value("https://w3id.org/idsa/v4.1/HTTP")
 	   					.build();
@@ -229,6 +229,7 @@ public class DataTransferAPIService {
 						.endpointProperties(List.of(endpointProperty, endpointTypeProperty))
 						.endpointType("https://w3id.org/idsa/v4.1/HTTP")
 						.build();
+
 			}
 		}
 
@@ -404,7 +405,7 @@ public class DataTransferAPIService {
 	/**
 	 * Download data.<br>
 	 * Checks if TransferProcess state is STARTED; enforce policy (validate agreement); download data from provider;
-	 * store artifact in local Mongo; update Transfer Process downloaded to true
+	 * store artifact in S3; update Transfer Process downloaded to true
 	 * @param transferProcessId transfer process id
 	 */
 	public void downloadData(String transferProcessId) {
@@ -432,35 +433,54 @@ public class DataTransferAPIService {
 			authorization = authType + " " + token;
 		}
 
-		GenericApiResponse<ExternalData> response = okHttpRestClient.downloadData(transferProcess.getDataAddress().getEndpoint(),
-				authorization);
+		// send http request to start data download
+//		Request.Builder requestBuilder = new Request.Builder()
+//				.url(transferProcess.getDataAddress().getEndpoint());
+//		if(StringUtils.isNotBlank(authorization)) {
+//			requestBuilder.addHeader(HttpHeaders.AUTHORIZATION, authorization);
+//		}
+//		Request request = requestBuilder.build();
+//		log.info("Sending request using address: {}", transferProcess.getDataAddress().getEndpoint());
+//		try (Response response = okHttpClient.newCall(request).execute()) {
+//			int code = response.code();
+//			log.info("Status {}", code);
+//			if (!response.isSuccessful()) {
+//				log.error("Download aborted, {}", response.message());
+//				throw new DataTransferAPIException("Download aborted, " + response.message());
+//			}
+//			if (response.isSuccessful()) { // code in 200..299
+//				// start uploading to s3
+//				try {
+//					s3ClientService.uploadFile(
+//							response.body().byteStream(),
+//							s3Properties.getBucketName(),
+//							transferProcessId,
+//							response.body().contentType().toString(),
+//							response.header(HttpHeaders.CONTENT_DISPOSITION)
+//					);
+//				} catch (Exception e) {
+//					log.error("File storing aborted, {}", e.getMessage());
+//					throw new DataTransferAPIException("File storing aborted, " + e.getMessage());
+//				}
+//
+//			}
+//		} catch (IOException e) {
+//			log.error(e.getLocalizedMessage());
+//        }
 
-		if (!response.isSuccess()) {
-			log.error("Download aborted, {}", response.getMessage());
-			throw new DataTransferAPIException("Download aborted, " + response.getMessage());
-		}
 
-		log.info("Downloaded transfer process id - {} data!", transferProcessId);
-
-		log.info("Storing transfer process id - {} data...", transferProcessId);
-
-		// Create bucket if it doesn't exist
-		if (!s3ClientService.bucketExists(s3Properties.getBucketName())) {
-			s3ClientService.createBucket(s3Properties.getBucketName());
-		}
-
-
-		// Upload file to S3
         try {
-            s3ClientService.uploadFile(s3Properties.getBucketName(), transferProcessId, response.getData().getData(),
-                    response.getData().getContentType().toString(), response.getData().getContentDisposition());
-        } catch (Exception e) {
-			log.error("File storing aborted, {}", e.getMessage());
-            throw new DataTransferAPIException("File storing aborted, " + e.getMessage());
-        }
-        log.info("Stored transfer process id - {} data!", transferProcessId);
+			CompletableFuture<String> stringCompletableFuture = downloadService.uploadLargeStream(
+					transferProcess.getDataAddress().getEndpoint(),
+					s3Properties.getBucketName(),
+					transferProcessId);
+			log.info("Stored transfer process id - {} data!", stringCompletableFuture.get());
+		} catch (Exception e) {
+			log.error("Download aborted, {}", e.getLocalizedMessage());
+			throw new DataTransferAPIException("Download aborted, " + e.getLocalizedMessage());
+		}
 
-		TransferProcess transferProcessWithData = TransferProcess.Builder.newInstance()
+        TransferProcess transferProcessWithData = TransferProcess.Builder.newInstance()
 				.id(transferProcess.getId())
 				.agreementId(transferProcess.getAgreementId())
 				.consumerPid(transferProcess.getConsumerPid())
@@ -486,11 +506,12 @@ public class DataTransferAPIService {
 
 	/**
 	 * View locally stored artifact.<br>
-	 * Only for TransferProcess.downloaded == true; enforce policy; read data from Mongo; set data into HttpServletResponse
+	 * Only for TransferProcess.downloaded == true; enforce policy; read data from S3
+	 *
 	 * @param transferProcessId transfer process id
-	 * @param response HttpServletResponse
+	 * @return String with presigned URL for the artifact in S3
 	 */
-	public void viewData(String transferProcessId, HttpServletResponse response) {
+	public String viewData(String transferProcessId) {
 		TransferProcess transferProcess = findTransferProcessById(transferProcessId);
 
 		if (!transferProcess.isDownloaded()) {
@@ -508,18 +529,10 @@ public class DataTransferAPIService {
 
 		try {
 			// Download file from S3
-			ResponseBytes<GetObjectResponse> s3Response = s3ClientService.downloadFile(s3Properties.getBucketName(), transferProcessId);
-
-			// Set response headers
-			response.setStatus(HttpStatus.OK.value());
-			response.setContentType(s3Response.response().contentType());
-			response.setHeader(HttpHeaders.CONTENT_DISPOSITION, s3Response.response().contentDisposition());
-
-			// Write data to response
-			response.getOutputStream().write(s3Response.asByteArray());
-			response.flushBuffer();
-
+//			s3ClientService.downloadFile(s3Properties.getBucketName(), transferProcessId, response);
+			String artifactURL = s3ClientService.generatePresignedUrl(s3Properties.getBucketName(), transferProcessId, Duration.ofDays(7L));
 			publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId()));
+			return artifactURL;
 		} catch (Exception e) {
 			log.error("Error while accessing data", e);
 			throw new DataTransferAPIException("Error while accessing data" + e.getLocalizedMessage());

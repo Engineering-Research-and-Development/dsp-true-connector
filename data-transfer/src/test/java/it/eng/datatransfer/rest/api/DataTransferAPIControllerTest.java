@@ -222,18 +222,18 @@ class DataTransferAPIControllerTest {
 	@Test
 	@DisplayName("View data - success")
 	public void viewData_success() throws IllegalStateException, IOException  {
-		doNothing().when(apiService).viewData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(), response);
+		doNothing().when(apiService).viewData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
 
 		
-		assertDoesNotThrow(() -> controller.viewData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(), response));
+		assertDoesNotThrow(() -> controller.viewData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 		
 	}
 	
 	@Test
 	@DisplayName("View data - fail")
 	public void viewData_fail() throws IllegalStateException, IOException {
-		doThrow(new DataTransferAPIException("message")).when(apiService).viewData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(), response);
+		doThrow(new DataTransferAPIException("message")).when(apiService).viewData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
 		
-		assertThrows(DataTransferAPIException.class, () -> controller.viewData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(), response));
+		assertThrows(DataTransferAPIException.class, () -> controller.viewData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 	}
 }

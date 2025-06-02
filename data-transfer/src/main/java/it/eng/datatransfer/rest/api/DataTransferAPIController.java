@@ -1,34 +1,23 @@
 package it.eng.datatransfer.rest.api;
 
-import java.io.UnsupportedEncodingException;
-import java.util.Collection;
-
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.fasterxml.jackson.databind.JsonNode;
-
 import it.eng.datatransfer.model.DataTransferRequest;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Collection;
 
 @RestController
 @RequestMapping(path = ApiEndpoints.TRANSFER_DATATRANSFER_V1)
 @Slf4j
 public class DataTransferAPIController {
 
-	private DataTransferAPIService apiService;
+	private final DataTransferAPIService apiService;
 
 	public DataTransferAPIController(DataTransferAPIService apiService) {
 		this.apiService = apiService;
@@ -38,8 +27,8 @@ public class DataTransferAPIController {
 	
 	/**
 	 * Consumer requests (initiates) data transfer.
-	 * @param dataTransferRequest
-	 * @return GenericApiResponse
+	 * @param dataTransferRequest specifying transfer process id and other parameters.
+	 * @return GenericApiResponse response with transfer process details.
 	 */
 	@PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<GenericApiResponse<JsonNode>> requestTransfer(@RequestBody DataTransferRequest dataTransferRequest) {
@@ -51,12 +40,12 @@ public class DataTransferAPIController {
 	
 	/**
 	 * Consumer download artifact.
-	 * @param transferProcessId
-	 * @return GenericApiResponse
+	 * @param transferProcessId transfer process id to download data for.
+	 * @return GenericApiResponse response with success message.
 	 */
 	@GetMapping(path = { "/{transferProcessId}/download" })
 	public ResponseEntity<GenericApiResponse<Void>> downloadData(
-			@PathVariable(required = true) String transferProcessId) {
+			@PathVariable String transferProcessId) {
 		log.info("Downloading transfer process id - {} data", transferProcessId);
 		apiService.downloadData(transferProcessId);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
@@ -66,25 +55,26 @@ public class DataTransferAPIController {
 	/**
 	 * Consumer view downloaded artifact.<br>
 	 * Before "viewing" artifact, policy will be enforced to check if agreement is still valid.
-	 * In response artifact will be sent, even that method is void.
-	 * @param transferProcessId
-	 * @param response
+	 *
+	 * @param transferProcessId transfer process id to view data for.
+	 * @return GenericApiResponse response with artifact URL
 	 */
 	@GetMapping(path = { "/{transferProcessId}/view" })
-	public void viewData(
-			@PathVariable(required = true) String transferProcessId,
-			HttpServletResponse response) {
+	public ResponseEntity<GenericApiResponse<String>> viewData (
+			@PathVariable String transferProcessId) {
 		log.info("Accessing transfer process id - {} data", transferProcessId);
-		apiService.viewData(transferProcessId, response);
+		String artifactURL = apiService.viewData(transferProcessId);
+		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+				.body(GenericApiResponse.success(artifactURL, "Data access URL successfully retrieved"));
 	}
 	
 	/********* CONSUMER & PROVIDER ***********/
 	
 	/**
 	 * Find by id if present, next by state and get all.
-	 * @param transferProcessId
-	 * @param state
-	 * @param role
+	 * @param transferProcessId transfer process id to filter by, if present.
+	 * @param state optional state to filter transfer processes by.
+	 * @param role optional role to filter transfer processes by (e.g., CONSUMER or PROVIDER).
 	 * @return GenericApiResponse
 	 */
 	@GetMapping(path = { "", "/{transferProcessId}" })
@@ -95,17 +85,16 @@ public class DataTransferAPIController {
 		log.info("Fetching transfer process id - {}, state {}", transferProcessId, state);
 		Collection<JsonNode> response = apiService.findDataTransfers(transferProcessId, state, role);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-				.body(GenericApiResponse.success(response, "Fetching transfer process"));
+				.body(GenericApiResponse.success(response, "Fetched transfer process"));
 	}
 	
 	/**
 	 * Start transfer process.
-	 * @param transferProcessId
-	 * @return GenericApiResponse
-	 * @throws UnsupportedEncodingException
+	 * @param transferProcessId transfer process id to start.
+	 * @return GenericApiResponse response with success message.
 	 */
 	@PutMapping(path = "/{transferProcessId}/start")
-    public ResponseEntity<GenericApiResponse<JsonNode>> startTransfer(@PathVariable String transferProcessId) throws UnsupportedEncodingException {
+    public ResponseEntity<GenericApiResponse<JsonNode>> startTransfer(@PathVariable String transferProcessId) {
 		log.info("Starting data transfer {}", transferProcessId);
     	JsonNode response = apiService.startTransfer(transferProcessId);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
@@ -114,12 +103,12 @@ public class DataTransferAPIController {
 	
 	/**
 	 * Complete transfer process.
-	 * @param transferProcessId
-	 * @return GenericApiResponse
+	 * @param transferProcessId transfer process id to complete.
+	 * @return GenericApiResponse response with success message.
 	 */
 	@PutMapping(path = "/{transferProcessId}/complete")
     public ResponseEntity<GenericApiResponse<JsonNode>> completeTransfer(@PathVariable String transferProcessId) {
-		log.info("Compliting data transfer {}", transferProcessId);
+		log.info("Completing data transfer {}", transferProcessId);
     	JsonNode response = apiService.completeTransfer(transferProcessId);
     	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
     			.body(GenericApiResponse.success(response, "Data transfer completed"));
@@ -127,8 +116,8 @@ public class DataTransferAPIController {
 	
 	/**
 	 * Suspend transfer process.
-	 * @param transferProcessId
-	 * @return GenericApiResponse
+	 * @param transferProcessId transfer process id to suspend.
+	 * @return GenericApiResponse response with success message.
 	 */
 	@PutMapping(path = "/{transferProcessId}/suspend")
     public ResponseEntity<GenericApiResponse<JsonNode>> suspendTransfer(@PathVariable String transferProcessId) {
@@ -140,8 +129,8 @@ public class DataTransferAPIController {
 	
 	/**
 	 * Terminate transfer process.
-	 * @param transferProcessId
-	 * @return GenericApiResponse
+	 * @param transferProcessId transfer process id to terminate.
+	 * @return GenericApiResponse response with success message.
 	 */
 	@PutMapping(path = "/{transferProcessId}/terminate")
     public ResponseEntity<GenericApiResponse<JsonNode>> terminateTransfer(@PathVariable String transferProcessId) {

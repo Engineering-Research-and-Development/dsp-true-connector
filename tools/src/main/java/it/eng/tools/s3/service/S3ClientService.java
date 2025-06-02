@@ -1,10 +1,13 @@
 package it.eng.tools.s3.service;
 
+import jakarta.servlet.http.HttpServletResponse;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
+import java.io.InputStream;
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Service interface for S3 client operations.
@@ -32,27 +35,32 @@ public interface S3ClientService {
      * @return true if the bucket exists, false otherwise
      */
     boolean bucketExists(String bucketName);
-    
+
     /**
      * Uploads a file to the specified bucket with the specified object key.
      *
+     * @param inputStream the input stream of the file to upload
      * @param bucketName  the name of the bucket to upload to
      * @param objectKey   the key of the object to upload
-     * @param data        the data to upload
-     * @param contentType the content type of the data
-     * @param fileName    the name of the file
+     * @param contentType the content type of the file
+     * @param contentDisposition the content disposition of the file
+     * @return a CompletableFuture that completes with the ETag of the uploaded object
      */
-    void uploadFile(String bucketName, String objectKey, byte[] data, String contentType, String fileName);
-    
+    CompletableFuture<String> uploadFile(InputStream inputStream,
+                                         String bucketName,
+                                         String objectKey,
+                                         String contentType,
+                                         String contentDisposition);
+
     /**
      * Downloads a file from the specified bucket with the specified object key.
      *
      * @param bucketName the name of the bucket to download from
      * @param objectKey  the key of the object to download
-     * @return the downloaded data
+     * @param response   the HttpServletResponse to write the downloaded data to
      */
-    ResponseBytes<GetObjectResponse> downloadFile(String bucketName, String objectKey);
-    
+    void downloadFile(String bucketName, String objectKey, HttpServletResponse response);
+
     /**
      * Deletes a file from the specified bucket with the specified object key.
      *
@@ -60,7 +68,7 @@ public interface S3ClientService {
      * @param objectKey the key of the object to delete
      */
     void deleteFile(String bucketName, String objectKey);
-    
+
     /**
      * Checks if a file with the specified object key exists in the specified bucket.
      *
@@ -69,7 +77,7 @@ public interface S3ClientService {
      * @return true if the file exists, false otherwise
      */
     boolean fileExists(String bucketName, String objectKey);
-    
+
     /**
      * Generates a pre-signed URL for the specified object in the specified bucket.
      *

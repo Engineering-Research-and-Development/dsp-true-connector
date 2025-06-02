@@ -2,10 +2,12 @@ package it.eng.tools.client.rest;
 
 import java.io.IOException;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -161,6 +163,30 @@ public class OkHttpRestClient {
 			return GenericApiResponse.error(e.getLocalizedMessage());
         }
 	}
+
+//	public void downloadExternalData(String targetAddress, String authorization, HttpServletResponse response) {
+//		Request.Builder requestBuilder = new Request.Builder()
+//				.url(targetAddress);
+//		if(StringUtils.isNotBlank(authorization)) {
+//			requestBuilder.addHeader(HttpHeaders.AUTHORIZATION, authorization);
+//		}
+//		Request request = requestBuilder.build();
+//		log.info("Sending request using address: {}", targetAddress);
+//		try (Response externalResponse = okHttpClient.newCall(request).execute()) {
+//			int code = externalResponse.code();
+//			log.info("Status {}", code);
+//			if(externalResponse.isSuccessful()) { // code in 200..299
+//				response.setStatus(externalResponse.code());
+//				response.setContentType(externalResponse.body().contentType().toString());
+//				response.setHeader(HttpHeaders.CONTENT_DISPOSITION, externalResponse.header(HttpHeaders.CONTENT_DISPOSITION));
+//				IOUtils.copyLarge(externalData.getData().getDataStream(), response.getOutputStream());
+//				response.flushBuffer();
+//				ExternalData externalData = new ExternalData();
+//		} catch (IOException e) {
+//			log.error(e.getLocalizedMessage());
+//			return GenericApiResponse.error(e.getLocalizedMessage());
+//		}
+//	}
 	
 	public String sendInternalRequest(String contextAddress, HttpMethod method, JsonNode jsonBody) {
 		
