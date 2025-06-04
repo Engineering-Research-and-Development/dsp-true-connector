@@ -62,6 +62,7 @@ public class S3ClientServiceImpl implements S3ClientService {
                         .build();
                 s3Client.createBucket(createBucketRequest);
                 log.info("Bucket {} created successfully", bucketName);
+
             } else {
                 log.info("Bucket {} already exists", bucketName);
             }
@@ -260,9 +261,9 @@ public class S3ClientServiceImpl implements S3ClientService {
     }
 
     @Override
-    public String generatePresignedUrl(String bucketName, String objectKey, Duration expiration) {
+    public String generateGetPresignedUrl(String bucketName, String objectKey, Duration expiration) {
         try (S3Presigner presigner = S3Presigner.builder()
-                .endpointOverride(URI.create(s3Properties.getEndpoint()))
+                .endpointOverride(URI.create(s3Properties.getExternalPresignedEndpoint()))
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(s3Properties.getAccessKey(), s3Properties.getSecretKey())))
                 .region(Region.of(s3Properties.getRegion()))

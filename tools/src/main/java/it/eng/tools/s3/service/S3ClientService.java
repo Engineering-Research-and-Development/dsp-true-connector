@@ -1,8 +1,6 @@
 package it.eng.tools.s3.service;
 
 import jakarta.servlet.http.HttpServletResponse;
-import software.amazon.awssdk.core.ResponseBytes;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 import java.io.InputStream;
 import java.time.Duration;
@@ -86,7 +84,7 @@ public interface S3ClientService {
      * @param expiration the expiration time of the URL
      * @return the pre-signed URL
      */
-    String generatePresignedUrl(String bucketName, String objectKey, Duration expiration);
+    String generateGetPresignedUrl(String bucketName, String objectKey, Duration expiration);
 
     /**
      * Lists all files in the specified bucket.

@@ -60,12 +60,12 @@ public class DataTransferAPIController {
 	 * @return GenericApiResponse response with artifact URL
 	 */
 	@GetMapping(path = { "/{transferProcessId}/view" })
-	public ResponseEntity<GenericApiResponse<String>> viewData (
+	public ResponseEntity<String> viewData (
 			@PathVariable String transferProcessId) {
 		log.info("Accessing transfer process id - {} data", transferProcessId);
 		String artifactURL = apiService.viewData(transferProcessId);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-				.body(GenericApiResponse.success(artifactURL, "Data access URL successfully retrieved"));
+				.body(artifactURL);
 	}
 	
 	/********* CONSUMER & PROVIDER ***********/
