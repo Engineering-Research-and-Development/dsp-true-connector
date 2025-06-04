@@ -521,7 +521,7 @@ class DataTransferAPIServiceTest {
                 testData);
 
 //        doNothing().when(s3ClientService).downloadFile(bucketName, objectKey, mockHttpServletResponse);
-        when(s3ClientService.generatePresignedUrl(bucketName, objectKey, Duration.ofDays(7L)))
+        when(s3ClientService.generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L)))
                 .thenReturn("http://example.com/presigned-url");
 //        when(s3ClientService.downloadFile(bucketName, objectKey, mockHttpServletResponse))
 //                .thenReturn(s3Response);
@@ -553,7 +553,7 @@ class DataTransferAPIServiceTest {
         when(s3Properties.getBucketName()).thenReturn(bucketName);
         when(s3ClientService.fileExists(bucketName, objectKey)).thenReturn(true);
 //        doThrow(new RuntimeException("Test error")).when(s3ClientService).downloadFile(bucketName, objectKey, mockHttpServletResponse);
-        doThrow(RuntimeException.class).when(s3ClientService).generatePresignedUrl(bucketName, objectKey, Duration.ofDays(7L));
+        doThrow(RuntimeException.class).when(s3ClientService).generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L));
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.viewData(objectKey));
     }
