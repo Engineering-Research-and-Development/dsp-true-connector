@@ -25,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 import org.wiremock.spring.InjectWireMock;
@@ -152,7 +153,6 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         // mock provider success response Download
         String fileContent = "Hello, World!";
 
-
         WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.get("/artifacts/" + transactionId)
                 .withBasicAuth(mockUser, mockPassword)
                 .willReturn(
@@ -196,7 +196,15 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         // check if the file is inserted in the storage
         int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
 
-        ResponseBytes<GetObjectResponse> fileFromStorage = s3ClientService.downloadFile(s3Properties.getBucketName(), transferProcessStarted.getId());
+        MockHttpServletResponse mockResponse = new MockHttpServletResponse();
+//        ResponseBytes<GetObjectResponse> fileFromStorage =
+        s3ClientService.downloadFile(s3Properties.getBucketName(), transferProcessStarted.getId(), mockResponse);
+
+        ResponseBytes<GetObjectResponse> fileFromStorage = ResponseBytes.fromByteArray(GetObjectResponse.builder()
+                        .contentType(mockResponse.getContentType())
+                        .contentDisposition(mockResponse.getHeader(HttpHeaders.CONTENT_DISPOSITION))
+                        .build(),
+                mockResponse.getContentAsByteArray());
 
         ContentDisposition contentDisposition = ContentDisposition.parse(fileFromStorage.response().contentDisposition());
 

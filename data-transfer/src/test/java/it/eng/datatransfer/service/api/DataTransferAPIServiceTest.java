@@ -12,6 +12,7 @@ import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.api.strategy.HttpPullTransferStrategy;
 import it.eng.datatransfer.util.DataTranferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.properties.S3Properties;
@@ -31,13 +32,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ContentDisposition;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Optional;
@@ -512,7 +513,6 @@ class DataTransferAPIServiceTest {
         when(s3Properties.getBucketName()).thenReturn(bucketName);
         when(s3ClientService.fileExists(bucketName, objectKey)).thenReturn(true);
 
-
         ResponseBytes<GetObjectResponse> s3Response = ResponseBytes.fromByteArray(
                 GetObjectResponse.builder()
                         .contentType(MediaType.TEXT_PLAIN_VALUE)
@@ -520,14 +520,20 @@ class DataTransferAPIServiceTest {
                         .build(),
                 testData);
 
-        when(s3ClientService.downloadFile(bucketName, objectKey)).thenReturn(s3Response);
+//        doNothing().when(s3ClientService).downloadFile(bucketName, objectKey, mockHttpServletResponse);
+        when(s3ClientService.generatePresignedUrl(bucketName, objectKey, Duration.ofDays(7L)))
+                .thenReturn("http://example.com/presigned-url");
+//        when(s3ClientService.downloadFile(bucketName, objectKey, mockHttpServletResponse))
+//                .thenReturn(s3Response);
 
-        assertDoesNotThrow(() -> apiService.viewData(objectKey, mockHttpServletResponse));
+        assertDoesNotThrow(() -> apiService.viewData(objectKey));
 
-        assertEquals(MediaType.TEXT_PLAIN_VALUE, mockHttpServletResponse.getContentType());
-        assertEquals(CONTENT_DISPOSITION, mockHttpServletResponse.getHeader(HttpHeaders.CONTENT_DISPOSITION));
-        assertEquals(testData.length, mockHttpServletResponse.getContentAsByteArray().length);
-        assertEquals(new String(testData), new String(mockHttpServletResponse.getContentAsByteArray()));
+        verify(applicationEventPublisher)
+                .publishEvent(any(ArtifactConsumedEvent.class));
+//        assertEquals(MediaType.TEXT_PLAIN_VALUE, mockHttpServletResponse.getContentType());
+//        assertEquals(CONTENT_DISPOSITION, mockHttpServletResponse.getHeader(HttpHeaders.CONTENT_DISPOSITION));
+//        assertEquals(testData.length, mockHttpServletResponse.getContentAsByteArray().length);
+//        assertEquals(new String(testData), new String(mockHttpServletResponse.getContentAsByteArray()));
     }
 
     @Test
@@ -546,10 +552,10 @@ class DataTransferAPIServiceTest {
 
         when(s3Properties.getBucketName()).thenReturn(bucketName);
         when(s3ClientService.fileExists(bucketName, objectKey)).thenReturn(true);
-        when(s3ClientService.downloadFile(bucketName, objectKey)).thenThrow(new RuntimeException("Failed to download"));
-
+//        doThrow(new RuntimeException("Test error")).when(s3ClientService).downloadFile(bucketName, objectKey, mockHttpServletResponse);
+        doThrow(RuntimeException.class).when(s3ClientService).generatePresignedUrl(bucketName, objectKey, Duration.ofDays(7L));
         assertThrows(DataTransferAPIException.class,
-                () -> apiService.viewData(objectKey, mockHttpServletResponse));
+                () -> apiService.viewData(objectKey));
     }
 
     @Test
@@ -570,7 +576,7 @@ class DataTransferAPIServiceTest {
         when(s3ClientService.fileExists(bucketName, objectKey)).thenReturn(false);
 
         assertThrows(DataTransferAPIException.class,
-                () -> apiService.viewData(objectKey, mockHttpServletResponse));
+                () -> apiService.viewData(objectKey));
     }
 
 
@@ -588,9 +594,7 @@ class DataTransferAPIServiceTest {
 
 
         assertThrows(DataTransferAPIException.class,
-                () -> apiService.viewData(
-                        DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId(),
-                        mockHttpServletResponse));
+                () -> apiService.viewData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId()));
 
     }
 
@@ -603,9 +607,7 @@ class DataTransferAPIServiceTest {
 
 
         assertThrows(DataTransferAPIException.class,
-                () -> apiService.viewData(
-                        DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(),
-                        mockHttpServletResponse));
+                () -> apiService.viewData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
     }
 
