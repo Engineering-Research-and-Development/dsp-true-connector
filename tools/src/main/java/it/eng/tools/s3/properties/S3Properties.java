@@ -34,4 +34,10 @@ public class S3Properties {
      * The S3 bucket name.
      */
     private String bucketName;
+
+    /**
+     * The S3 external presigned endpoint.
+     * This is used for generating presigned URLs for external access.
+     */
+    private String externalPresignedEndpoint;
 }

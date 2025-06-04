@@ -197,7 +197,7 @@ public class DataTransferAPIService {
 	   		address = DataTransferCallback.getConsumerDataTransferStart(transferProcess.getCallbackAddress(), transferProcess.getConsumerPid());
 	   		if (transferProcess.getDataAddress() == null) {
 				// Generate a presigned URL for S3 with 7 days duration, which will be used as the endpoint for the data transfer
-				String artifactURL = s3ClientService.generatePresignedUrl(s3Properties.getBucketName(), transferProcess.getDatasetId(), Duration.ofDays(7L));
+				String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), transferProcess.getDatasetId(), Duration.ofDays(7L));
 				EndpointProperty endpointProperty = EndpointProperty.Builder.newInstance()
 	   					.name("https://w3id.org/edc/v0.0.1/ns/endpoint")
 	   					.value(artifactURL)
@@ -457,7 +457,7 @@ public class DataTransferAPIService {
 		try {
 			// Download file from S3
 //			s3ClientService.downloadFile(s3Properties.getBucketName(), transferProcessId, response);
-			String artifactURL = s3ClientService.generatePresignedUrl(s3Properties.getBucketName(), transferProcessId, Duration.ofDays(7L));
+			String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), transferProcessId, Duration.ofDays(7L));
 			publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId()));
 			return artifactURL;
 		} catch (Exception e) {
