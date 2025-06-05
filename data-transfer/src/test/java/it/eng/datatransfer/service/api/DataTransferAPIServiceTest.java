@@ -79,6 +79,8 @@ class DataTransferAPIServiceTest {
     private DataTransferStrategyFactory transferStrategyFactory;
     @Mock
     private HttpPullTransferStrategy httpPullTransferStrategy;
+    @Mock
+    private ArtifactTransferService artifactTransferService;
 
     @Captor
     private ArgumentCaptor<TransferProcess> argCaptorTransferProcess;
@@ -172,6 +174,8 @@ class DataTransferAPIServiceTest {
         when(apiResponse.isSuccess()).thenReturn(true);
         when(transferProcessRepository.findById(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId()))
                 .thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+        when(artifactTransferService.findArtifact(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER))
+                .thenReturn(DataTranferMockObjectUtil.ARTIFACT_FILE);
 
         apiService.startTransfer(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId());
 
@@ -194,6 +198,8 @@ class DataTransferAPIServiceTest {
 
         when(transferProcessRepository.findById(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(input));
+        when(artifactTransferService.findArtifact(input))
+                .thenReturn(DataTranferMockObjectUtil.ARTIFACT_FILE);
 
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.startTransfer(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
@@ -210,6 +216,8 @@ class DataTransferAPIServiceTest {
         when(apiResponse.isSuccess()).thenReturn(false);
         when(transferProcessRepository.findById(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId()))
                 .thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+        when(artifactTransferService.findArtifact(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER))
+                .thenReturn(DataTranferMockObjectUtil.ARTIFACT_FILE);
 
         assertThrows(DataTransferAPIException.class, () -> apiService.startTransfer(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId()));
 

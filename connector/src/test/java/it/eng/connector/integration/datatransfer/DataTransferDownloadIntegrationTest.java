@@ -18,7 +18,6 @@ import it.eng.tools.model.ArtifactType;
 import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
-import it.eng.tools.util.ToolsUtil;
 import okhttp3.Credentials;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.AfterEach;
@@ -28,11 +27,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.MvcResult;
 import org.wiremock.spring.InjectWireMock;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
@@ -44,306 +44,302 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 
-	@InjectWireMock 
-	private WireMockServer wiremock;
-	
-	@Autowired
-	private ArtifactRepository artifactRepository;
-	@Autowired
-	private DatasetRepository datasetRepository;
-	@Autowired
-	private TransferProcessRepository transferProcessRepository;
-	@Autowired
-	private AgreementRepository agreementRepository;
-	@Autowired
-	private PolicyEnforcementRepository policyEnforcementRepository;
-	@Autowired
-	private S3ClientService s3ClientService;
-	@Autowired
-	private S3Properties s3Properties;
-	
-	@AfterEach
-	public void cleanup() {
-		datasetRepository.deleteAll();
-		artifactRepository.deleteAll();
-		transferProcessRepository.deleteAll();
-		agreementRepository.deleteAll();
-		policyEnforcementRepository.deleteAll();
-		if (!s3ClientService.bucketExists(s3Properties.getBucketName())) {
-			List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
-			if (files != null) {
-				for (String file : files) {
-					s3ClientService.deleteFile(s3Properties.getBucketName(), file);
-				}
-			}
-			s3ClientService.deleteBucket(s3Properties.getBucketName());
-		}
-	}
-	
-	@Test
-	@DisplayName("Download artifact file")
-	@WithUserDetails(TestUtil.CONNECTOR_USER)
-	public void downloadArtifactFile() throws Exception {
-		String fileContent = "Hello, World!";
-		String datasetId = createNewId();
-		
-		MockMultipartFile file 
-			= new MockMultipartFile(
-				"file", 
-				"hello.txt", 
-				MediaType.TEXT_PLAIN_VALUE, 
-				fileContent.getBytes()
-				);
+    @InjectWireMock
+    private WireMockServer wiremock;
 
-		// insert the file in S3
-		if (!s3ClientService.bucketExists(s3Properties.getBucketName())) {
-			s3ClientService.createBucket(s3Properties.getBucketName());
-		}
+    @Autowired
+    private ArtifactRepository artifactRepository;
+    @Autowired
+    private DatasetRepository datasetRepository;
+    @Autowired
+    private TransferProcessRepository transferProcessRepository;
+    @Autowired
+    private AgreementRepository agreementRepository;
+    @Autowired
+    private PolicyEnforcementRepository policyEnforcementRepository;
+    @Autowired
+    private S3ClientService s3ClientService;
+    @Autowired
+    private S3Properties s3Properties;
 
-		ContentDisposition contentDisposition = ContentDisposition.attachment()
-				.filename(file.getOriginalFilename())
-				.build();
+    private static final String FILE_NAME = "hello.txt";
 
-		String fileId = ToolsUtil.generateUniqueId();
-//		try {
-//			s3ClientService.uploadFile(s3Properties.getBucketName(), fileId, file.getBytes(),
-//					file.getContentType(), contentDisposition.toString());
-//		} catch (Exception e) {
-//			throw new Exception("File storing aborted, " + e.getLocalizedMessage());
-//		}
+    @AfterEach
+    public void cleanup() {
+        datasetRepository.deleteAll();
+        artifactRepository.deleteAll();
+        transferProcessRepository.deleteAll();
+        agreementRepository.deleteAll();
+        policyEnforcementRepository.deleteAll();
+        if (!s3ClientService.bucketExists(s3Properties.getBucketName())) {
+            List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
+            if (files != null) {
+                for (String file : files) {
+                    s3ClientService.deleteFile(s3Properties.getBucketName(), file);
+                }
+            }
+            s3ClientService.deleteBucket(s3Properties.getBucketName());
+        }
+    }
 
-		Artifact artifact = Artifact.Builder.newInstance()
-				.artifactType(ArtifactType.FILE)
-				.filename(file.getOriginalFilename())
-				.value(fileId)
-				.build();
-		artifactRepository.save(artifact);
-		Dataset dataset = Dataset.Builder.newInstance()
-				.id(datasetId)
-				.hasPolicy(Collections.singleton(CatalogMockObjectUtil.OFFER))
-				.artifact(artifact)
-				.build();
-		datasetRepository.save(dataset);
+    @Test
+    @DisplayName("Download artifact file")
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    public void downloadArtifactFile() throws Exception {
+        String fileContent = "Hello, World!";
+        String datasetId = createNewId();
 
-		Permission permission = Permission.Builder.newInstance()
-    			.action(Action.USE)
-    			.constraint(Arrays.asList(Constraint.Builder.newInstance()
-    					.leftOperand(LeftOperand.COUNT)
-    					.operator(Operator.LTEQ)
-    					.rightOperand("5")
-    					.build()))
-    			.build();
+        // insert the file in S3
+        if (!s3ClientService.bucketExists(s3Properties.getBucketName())) {
+            s3ClientService.createBucket(s3Properties.getBucketName());
+        }
 
-		// Agreement valid
-		Agreement agreement = Agreement.Builder.newInstance()
-    			.assignee("assignee")
-    			.assigner("assigner")
-    			.target("test_dataset")
-    			.permission(Arrays.asList(permission))
-    			.build();
-    	agreementRepository.save(agreement);
+        Artifact artifact = Artifact.Builder.newInstance()
+                .artifactType(ArtifactType.FILE)
+                .filename(FILE_NAME)
+                .value(datasetId)
+                .build();
+        artifactRepository.save(artifact);
 
-    	PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
-    	policyEnforcementRepository.save(policyEnforcement);
+        Dataset dataset = Dataset.Builder.newInstance()
+                .id(datasetId)
+                .hasPolicy(Collections.singleton(CatalogMockObjectUtil.OFFER))
+                .artifact(artifact)
+                .build();
+        datasetRepository.save(dataset);
 
-		// TransferProcess started
-		TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
-				.consumerPid(createNewId())
-				.providerPid(createNewId())
-				.agreementId(agreement.getId())
-				.state(TransferState.STARTED)
-				.datasetId(dataset.getId())
-				.build();
-		transferProcessRepository.save(transferProcessStarted);
+        Permission permission = Permission.Builder.newInstance()
+                .action(Action.USE)
+                .constraint(Arrays.asList(Constraint.Builder.newInstance()
+                        .leftOperand(LeftOperand.COUNT)
+                        .operator(Operator.LTEQ)
+                        .rightOperand("5")
+                        .build()))
+                .build();
 
-		String transactionId = Base64.getEncoder().encodeToString((transferProcessStarted.getConsumerPid() + "|" + transferProcessStarted.getProviderPid())
-				.getBytes(StandardCharsets.UTF_8));
-		
-		MvcResult resultArtifact = mockMvc.perform(get("/artifacts/" + transactionId)
-				.contentType(MediaType.APPLICATION_JSON))
-				.andExpect(status().isOk())
-				.andExpect(content().contentType(MediaType.TEXT_PLAIN_VALUE))
-				.andReturn();
-		String artifactResponse = resultArtifact.getResponse().getContentAsString();
-		assertTrue(artifactResponse.contains(fileContent));
-	}
-	
-	@Test
-	@DisplayName("Download artifact external")
-	@WithUserDetails(TestUtil.CONNECTOR_USER)
-	public void downloadArtifactExternal() throws Exception {
-		
-		String mockUser = "mockUser";
-		String mockPassword = "mockPassword";
-		String mockAddress = wiremock.baseUrl() + "/helloworld";
-		
-		Artifact artifact = Artifact.Builder.newInstance()
-				.artifactType(ArtifactType.EXTERNAL)
-				.createdBy(CatalogMockObjectUtil.CREATOR)
-				.created(CatalogMockObjectUtil.NOW)
-				.lastModifiedDate(CatalogMockObjectUtil.NOW)
-				.lastModifiedBy(CatalogMockObjectUtil.CREATOR)
-				.value(mockAddress)
-				.authorization(Credentials.basic(mockUser, mockPassword))
-				.build();
-		
-		artifactRepository.save(artifact);
-		
-		Dataset dataset = Dataset.Builder.newInstance()
-				.hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
-				.artifact(artifact)
-				.build();
-		
-		datasetRepository.save(dataset);
-		
-		Permission permission = Permission.Builder.newInstance()
-    			.action(Action.USE)
-    			.constraint(Arrays.asList(Constraint.Builder.newInstance()
-    					.leftOperand(LeftOperand.COUNT)
-    					.operator(Operator.LTEQ)
-    					.rightOperand("5")
-    					.build()))
-    			.build();
-		
-		// Agreement valid
-		Agreement agreement = Agreement.Builder.newInstance()
-    			.assignee("assignee")
-    			.assigner("assigner")
-    			.target("test_dataset")
-    			.permission(Arrays.asList(permission))
-    			.build();
-    	agreementRepository.save(agreement);
-    	
-    	PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
-    	policyEnforcementRepository.save(policyEnforcement);
-    	
-		// TransferProcess started
-		TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
-				.consumerPid(createNewId())
-				.providerPid(createNewId())
-				.agreementId(agreement.getId())
-				.state(TransferState.STARTED)
-				.datasetId(dataset.getId())
-				.build();
-		transferProcessRepository.save(transferProcessStarted);
-    	
-		String transactionId = Base64.getEncoder().encodeToString((transferProcessStarted.getConsumerPid() + "|" + transferProcessStarted.getProviderPid())
-				.getBytes(StandardCharsets.UTF_8));
-		
-		// mock provider success response Download
-		String fileContent = "Hello, World!";
-		String fileName = "helloworld.txt";
-		
-		
-		WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.get("/helloworld")
-				.withBasicAuth(mockUser, mockPassword)
-				.willReturn(
-	                aResponse().withHeader(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN_VALUE)
-	                .withHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + fileName)
-	                .withBody(fileContent.getBytes())));
-		
-		MvcResult resultArtifact = mockMvc.perform(get("/artifacts/" + transactionId)
-				.contentType(MediaType.APPLICATION_JSON))
-				.andExpect(status().isOk())
-				.andExpect(content().contentType(MediaType.TEXT_PLAIN))
-				.andReturn();
-		String response = resultArtifact.getResponse().getContentAsString();
-		assertTrue(StringUtils.equals(fileContent, response));
-	}
-	
-	@Test
-	@DisplayName("Download artifact - process not started")
-	@WithUserDetails(TestUtil.CONNECTOR_USER)
-	public void downloadArtifact_fail_not_started() throws Exception {
-		Dataset dataset = Dataset.Builder.newInstance()
-				.hasPolicy(Collections.singleton(CatalogMockObjectUtil.OFFER))
-				.build();
-		datasetRepository.save(dataset);
-		
-		Permission permission = Permission.Builder.newInstance()
-    			.action(Action.USE)
-    			.constraint(Arrays.asList(Constraint.Builder.newInstance()
-    					.leftOperand(LeftOperand.COUNT)
-    					.operator(Operator.LTEQ)
-    					.rightOperand("5")
-    					.build()))
-    			.build();
-		
-		// Agreement valid
-		Agreement agreement = Agreement.Builder.newInstance()
-    			.assignee("assignee")
-    			.assigner("assigner")
-    			.target("test_dataset")
-    			.permission(Arrays.asList(permission))
-    			.build();
-    	agreementRepository.save(agreement);
-    	
-    	PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
-    	policyEnforcementRepository.save(policyEnforcement);
-    	
-		// TransferProcess started
-		TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
-				.consumerPid(createNewId())
-				.providerPid(createNewId())
-				.agreementId(agreement.getId())
-				.state(TransferState.REQUESTED)
-				.datasetId(dataset.getId())
-				.build();
-		transferProcessRepository.save(transferProcessStarted);
-    	
-		String transactionId = Base64.getEncoder().encodeToString((transferProcessStarted.getConsumerPid() + "|" + transferProcessStarted.getProviderPid())
-				.getBytes(StandardCharsets.UTF_8));
-		
-		mockMvc.perform(get("/artifacts/" + transactionId)
-				.contentType(MediaType.APPLICATION_JSON))
-				.andExpect(status().isPreconditionFailed());
-	}
-	
-	@Test
-	@DisplayName("Download artifact - enforcmenet failed")
-	@WithUserDetails(TestUtil.CONNECTOR_USER)
-	public void downloadArtifact_fail_enforcement_failed() throws Exception {
-		Dataset dataset = Dataset.Builder.newInstance()
-				.hasPolicy(Collections.singleton(CatalogMockObjectUtil.OFFER))
-				.build();
-		datasetRepository.save(dataset);
-		Permission permission = Permission.Builder.newInstance()
-    			.action(Action.USE)
-    			.constraint(Arrays.asList(Constraint.Builder.newInstance()
-    					.leftOperand(LeftOperand.COUNT)
-    					.operator(Operator.LTEQ)
-    					.rightOperand("5")
-    					.build()))
-    			.build();
-		
-		// Agreement valid
-		Agreement agreement = Agreement.Builder.newInstance()
-    			.assignee("assignee")
-    			.assigner("assigner")
-    			.target("test_dataset")
-    			.permission(Arrays.asList(permission))
-    			.build();
-    	agreementRepository.save(agreement);
-    	
-    	// simulate policy enforcement already over
-    	PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 6);
-    	policyEnforcementRepository.save(policyEnforcement);
-    	
-		// TransferProcess started
-		TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
-				.consumerPid(createNewId())
-				.providerPid(createNewId())
-				.agreementId(agreement.getId())
-				.state(TransferState.REQUESTED)
-				.datasetId(dataset.getId())
-				.build();
-		transferProcessRepository.save(transferProcessStarted);
-    	
-		String transactionId = Base64.getEncoder().encodeToString((transferProcessStarted.getConsumerPid() + "|" + transferProcessStarted.getProviderPid())
-				.getBytes(StandardCharsets.UTF_8));
-		
-		mockMvc.perform(get("/artifacts/" + transactionId)
-				.contentType(MediaType.APPLICATION_JSON))
-				.andExpect(status().isPreconditionFailed());
-	}
+        // Agreement valid
+        Agreement agreement = Agreement.Builder.newInstance()
+                .assignee("assignee")
+                .assigner("assigner")
+                .target("test_dataset")
+                .permission(Arrays.asList(permission))
+                .build();
+        agreementRepository.save(agreement);
+
+        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
+        policyEnforcementRepository.save(policyEnforcement);
+
+        // TransferProcess started
+        TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .agreementId(agreement.getId())
+                .state(TransferState.STARTED)
+                .isDownloaded(true)
+                .datasetId(datasetId)
+                .build();
+        transferProcessRepository.save(transferProcessStarted);
+
+        ContentDisposition contentDisposition = ContentDisposition.attachment()
+                .filename(FILE_NAME)
+                .build();
+        try (InputStream inputStream = new ByteArrayInputStream(fileContent.getBytes())) {
+            s3ClientService.uploadFile(inputStream,
+                            s3Properties.getBucketName(),
+                            datasetId,
+                            MediaType.TEXT_PLAIN_VALUE,
+                            contentDisposition.toString())
+                    .get();
+        } catch (Exception e) {
+            throw new Exception("File storing aborted, " + e.getLocalizedMessage());
+        }
+
+        String transactionId = Base64.getEncoder().encodeToString((transferProcessStarted.getConsumerPid() + "|" + transferProcessStarted.getProviderPid())
+                .getBytes(StandardCharsets.UTF_8));
+
+        MvcResult resultArtifact = mockMvc.perform(get("/artifacts/" + transactionId)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andReturn();
+        String artifactResponse = resultArtifact.getResponse().getContentAsString();
+    }
+
+    @Test
+    @DisplayName("Download artifact external")
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    public void downloadArtifactExternal() throws Exception {
+
+        String mockUser = "mockUser";
+        String mockPassword = "mockPassword";
+        String mockAddress = wiremock.baseUrl() + "/helloworld";
+
+        Artifact artifact = Artifact.Builder.newInstance()
+                .artifactType(ArtifactType.EXTERNAL)
+                .createdBy(CatalogMockObjectUtil.CREATOR)
+                .created(CatalogMockObjectUtil.NOW)
+                .lastModifiedDate(CatalogMockObjectUtil.NOW)
+                .lastModifiedBy(CatalogMockObjectUtil.CREATOR)
+                .value(mockAddress)
+                .authorization(Credentials.basic(mockUser, mockPassword))
+                .build();
+
+        artifactRepository.save(artifact);
+
+        Dataset dataset = Dataset.Builder.newInstance()
+                .hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
+                .artifact(artifact)
+                .build();
+
+        datasetRepository.save(dataset);
+
+        Permission permission = Permission.Builder.newInstance()
+                .action(Action.USE)
+                .constraint(Arrays.asList(Constraint.Builder.newInstance()
+                        .leftOperand(LeftOperand.COUNT)
+                        .operator(Operator.LTEQ)
+                        .rightOperand("5")
+                        .build()))
+                .build();
+
+        // Agreement valid
+        Agreement agreement = Agreement.Builder.newInstance()
+                .assignee("assignee")
+                .assigner("assigner")
+                .target("test_dataset")
+                .permission(Arrays.asList(permission))
+                .build();
+        agreementRepository.save(agreement);
+
+        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
+        policyEnforcementRepository.save(policyEnforcement);
+
+        // TransferProcess started
+        TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .agreementId(agreement.getId())
+                .state(TransferState.STARTED)
+                .datasetId(dataset.getId())
+                .build();
+        transferProcessRepository.save(transferProcessStarted);
+
+        String transactionId = Base64.getEncoder().encodeToString((transferProcessStarted.getConsumerPid() + "|" + transferProcessStarted.getProviderPid())
+                .getBytes(StandardCharsets.UTF_8));
+
+        // mock provider success response Download
+        String fileContent = "Hello, World!";
+        String fileName = "helloworld.txt";
+
+
+        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.get("/helloworld")
+                .withBasicAuth(mockUser, mockPassword)
+                .willReturn(
+                        aResponse().withHeader(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN_VALUE)
+                                .withHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + fileName)
+                                .withBody(fileContent.getBytes())));
+
+        MvcResult resultArtifact = mockMvc.perform(get("/artifacts/" + transactionId)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.TEXT_PLAIN))
+                .andReturn();
+        String response = resultArtifact.getResponse().getContentAsString();
+        assertTrue(StringUtils.equals(fileContent, response));
+    }
+
+    @Test
+    @DisplayName("Download artifact - process not started")
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    public void downloadArtifact_fail_not_started() throws Exception {
+        Dataset dataset = Dataset.Builder.newInstance()
+                .hasPolicy(Collections.singleton(CatalogMockObjectUtil.OFFER))
+                .build();
+        datasetRepository.save(dataset);
+
+        Permission permission = Permission.Builder.newInstance()
+                .action(Action.USE)
+                .constraint(Arrays.asList(Constraint.Builder.newInstance()
+                        .leftOperand(LeftOperand.COUNT)
+                        .operator(Operator.LTEQ)
+                        .rightOperand("5")
+                        .build()))
+                .build();
+
+        // Agreement valid
+        Agreement agreement = Agreement.Builder.newInstance()
+                .assignee("assignee")
+                .assigner("assigner")
+                .target("test_dataset")
+                .permission(Arrays.asList(permission))
+                .build();
+        agreementRepository.save(agreement);
+
+        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
+        policyEnforcementRepository.save(policyEnforcement);
+
+        // TransferProcess started
+        TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .agreementId(agreement.getId())
+                .state(TransferState.REQUESTED)
+                .datasetId(dataset.getId())
+                .build();
+        transferProcessRepository.save(transferProcessStarted);
+
+        String transactionId = Base64.getEncoder().encodeToString((transferProcessStarted.getConsumerPid() + "|" + transferProcessStarted.getProviderPid())
+                .getBytes(StandardCharsets.UTF_8));
+
+        mockMvc.perform(get("/artifacts/" + transactionId)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isPreconditionFailed());
+    }
+
+    @Test
+    @DisplayName("Download artifact - enforcmenet failed")
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    public void downloadArtifact_fail_enforcement_failed() throws Exception {
+        Dataset dataset = Dataset.Builder.newInstance()
+                .hasPolicy(Collections.singleton(CatalogMockObjectUtil.OFFER))
+                .build();
+        datasetRepository.save(dataset);
+        Permission permission = Permission.Builder.newInstance()
+                .action(Action.USE)
+                .constraint(Arrays.asList(Constraint.Builder.newInstance()
+                        .leftOperand(LeftOperand.COUNT)
+                        .operator(Operator.LTEQ)
+                        .rightOperand("5")
+                        .build()))
+                .build();
+
+        // Agreement valid
+        Agreement agreement = Agreement.Builder.newInstance()
+                .assignee("assignee")
+                .assigner("assigner")
+                .target("test_dataset")
+                .permission(Arrays.asList(permission))
+                .build();
+        agreementRepository.save(agreement);
+
+        // simulate policy enforcement already over
+        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 6);
+        policyEnforcementRepository.save(policyEnforcement);
+
+        // TransferProcess started
+        TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .agreementId(agreement.getId())
+                .state(TransferState.REQUESTED)
+                .datasetId(dataset.getId())
+                .build();
+        transferProcessRepository.save(transferProcessStarted);
+
+        String transactionId = Base64.getEncoder().encodeToString((transferProcessStarted.getConsumerPid() + "|" + transferProcessStarted.getProviderPid())
+                .getBytes(StandardCharsets.UTF_8));
+
+        mockMvc.perform(get("/artifacts/" + transactionId)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isPreconditionFailed());
+    }
 }
