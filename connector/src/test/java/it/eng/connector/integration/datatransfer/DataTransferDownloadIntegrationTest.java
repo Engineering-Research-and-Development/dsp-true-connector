@@ -155,7 +155,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andReturn();
-        String artifactResponse = resultArtifact.getResponse().getContentAsString();
+        assertTrue(resultArtifact.getResponse().getContentAsString().contains(fileContent));
     }
 
     @Test
