@@ -22,18 +22,17 @@ import java.util.UUID;
 @Slf4j
 public class S3BucketService {
     private final S3Client s3Client;
-    //    private final S3Presigner s3Presigner;
     private final S3Properties s3Properties;
     private final BucketCredentialsRepository bucketCredentialsRepository;
 
     public S3BucketService(S3Client s3Client, S3Properties s3Properties, BucketCredentialsRepository bucketCredentialsRepository) {
         this.s3Client = s3Client;
-//        this.s3Presigner = s3Presigner;
         this.s3Properties = s3Properties;
         this.bucketCredentialsRepository = bucketCredentialsRepository;
     }
 
     public BucketCredentials createSecureBucket(String bucketName) {
+        validateBucketName(bucketName);
         // Generate temporary credentials
         String accessKey = "GetBucketUser-" + UUID.randomUUID().toString().substring(0, 8);
         String secretKey = UUID.randomUUID().toString();
@@ -66,8 +65,13 @@ public class S3BucketService {
 
             String existingPolicy = null;
             try {
-                existingPolicy = s3Client.getBucketPolicy(getPolicyRequest).policy();
+                String policy = s3Client.getBucketPolicy(getPolicyRequest).policy();
+                // Treat empty JSON object as no policy for MinIO compatibility
+                if (!policy.equals("{}")) {
+                    existingPolicy = policy;
+                }
             } catch (AwsServiceException e) {
+                // AWS throws exception when no policy exists
                 log.info("No existing policy found for bucket: {}", bucketName);
             }
 
@@ -136,6 +140,7 @@ public class S3BucketService {
     public String generatePresignedUrl(String bucketName, String objectKey,
                                        Duration expiration) {
 
+        validatePresignedUrlParams(objectKey, expiration);
         BucketCredentialsEntity credentials = bucketCredentialsRepository.findByBucketName(bucketName)
                 .orElseThrow(() -> new RuntimeException("No credentials found for bucket: " + bucketName));
 
@@ -210,6 +215,27 @@ public class S3BucketService {
         } catch (Exception e) {
             log.error("Failed to cleanup bucket: {}", bucketName, e);
             throw new RuntimeException("Failed to cleanup bucket", e);
+        }
+    }
+
+    private void validateBucketName(String bucketName) {
+        if (bucketName == null || bucketName.isEmpty()) {
+            throw new IllegalArgumentException("Bucket name cannot be empty");
+        }
+        if (!bucketName.matches("^[a-z0-9][a-z0-9.-]*[a-z0-9]$")) {
+            throw new IllegalArgumentException("Invalid bucket name format");
+        }
+    }
+
+    private void validatePresignedUrlParams(String objectKey, Duration expiration) {
+        if (objectKey == null || objectKey.isEmpty()) {
+            throw new IllegalArgumentException("Object key cannot be empty");
+        }
+        if (expiration == null) {
+            throw new NullPointerException("Expiration duration cannot be null");
+        }
+        if (expiration.compareTo(Duration.ofDays(7)) > 0) {
+            throw new IllegalArgumentException("Expiration duration cannot exceed 7 days");
         }
     }
 }

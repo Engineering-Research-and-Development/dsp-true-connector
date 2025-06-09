@@ -43,8 +43,8 @@ public class S3ClientServiceImpl implements S3ClientService {
     /**
      * Constructor for S3ClientServiceImpl.
      *
-     * @param s3Client the S3 client
-     * @param s3Properties the S3 properties
+     * @param s3Client      the S3 client
+     * @param s3Properties  the S3 properties
      * @param s3AsyncClient the S3 async client
      */
     public S3ClientServiceImpl(S3Client s3Client, S3Properties s3Properties, S3AsyncClient s3AsyncClient) {
@@ -55,6 +55,7 @@ public class S3ClientServiceImpl implements S3ClientService {
 
     @Override
     public void createBucket(String bucketName) {
+        validateBucketName(bucketName);
         try {
             if (!bucketExists(bucketName)) {
                 CreateBucketRequest createBucketRequest = CreateBucketRequest.builder()
@@ -74,6 +75,7 @@ public class S3ClientServiceImpl implements S3ClientService {
 
     @Override
     public void deleteBucket(String bucketName) {
+        validateBucketName(bucketName);
         try {
             if (bucketExists(bucketName)) {
                 DeleteBucketRequest deleteBucketRequest = DeleteBucketRequest.builder()
@@ -92,6 +94,7 @@ public class S3ClientServiceImpl implements S3ClientService {
 
     @Override
     public boolean bucketExists(String bucketName) {
+        validateBucketName(bucketName);
         try {
             HeadBucketRequest headBucketRequest = HeadBucketRequest.builder()
                     .bucket(bucketName)
@@ -195,6 +198,7 @@ public class S3ClientServiceImpl implements S3ClientService {
 
     @Override
     public void downloadFile(String bucketName, String objectKey, HttpServletResponse response) {
+        validateBucketName(bucketName);
         try {
             GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                     .bucket(bucketName)
@@ -226,6 +230,7 @@ public class S3ClientServiceImpl implements S3ClientService {
 
     @Override
     public void deleteFile(String bucketName, String objectKey) {
+        validateBucketName(bucketName);
         try {
             if (fileExists(bucketName, objectKey)) {
                 DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
@@ -245,6 +250,7 @@ public class S3ClientServiceImpl implements S3ClientService {
 
     @Override
     public boolean fileExists(String bucketName, String objectKey) {
+        validateBucketName(bucketName);
         try {
             HeadObjectRequest headObjectRequest = HeadObjectRequest.builder()
                     .bucket(bucketName)
@@ -262,6 +268,10 @@ public class S3ClientServiceImpl implements S3ClientService {
 
     @Override
     public String generateGetPresignedUrl(String bucketName, String objectKey, Duration expiration) {
+        validateBucketName(bucketName);
+        if (objectKey == null || objectKey.isEmpty()) {
+            throw new IllegalArgumentException("Object key cannot be null or empty");
+        }
         try (S3Presigner presigner = S3Presigner.builder()
                 .endpointOverride(URI.create(s3Properties.getExternalPresignedEndpoint()))
                 .credentialsProvider(StaticCredentialsProvider.create(
@@ -271,7 +281,6 @@ public class S3ClientServiceImpl implements S3ClientService {
                         .pathStyleAccessEnabled(true)
                         .build())
                 .build()) {
-
 
             // First, get the object's metadata
             HeadObjectRequest headObjectRequest = HeadObjectRequest.builder()
@@ -307,8 +316,10 @@ public class S3ClientServiceImpl implements S3ClientService {
             throw new RuntimeException("Error generating pre-signed URL: " + e.getMessage(), e);
         }
     }
+
     @Override
     public List<String> listFiles(String bucketName) {
+        validateBucketName(bucketName);
         try {
             ListObjectsV2Request request = ListObjectsV2Request.builder()
                     .bucket(bucketName)
@@ -336,5 +347,14 @@ public class S3ClientServiceImpl implements S3ClientService {
                         AsyncRequestBody.fromBytes(partData))
                 .join()
                 .eTag();
+    }
+
+    private void validateBucketName(String bucketName) {
+        if (bucketName == null || bucketName.isEmpty()) {
+            throw new IllegalArgumentException("Bucket name cannot be null or empty");
+        }
+        if (!bucketName.matches("^[a-z0-9][a-z0-9\\-]{1,61}[a-z0-9]$")) {
+            throw new IllegalArgumentException("Invalid bucket name format: " + bucketName);
+        }
     }
 }
