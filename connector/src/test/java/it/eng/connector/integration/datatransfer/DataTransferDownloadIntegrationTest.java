@@ -88,11 +88,6 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
         String fileContent = "Hello, World!";
         String datasetId = createNewId();
 
-        // insert the file in S3
-        if (!s3ClientService.bucketExists(s3Properties.getBucketName())) {
-            s3ClientService.createBucket(s3Properties.getBucketName());
-        }
-
         Artifact artifact = Artifact.Builder.newInstance()
                 .artifactType(ArtifactType.FILE)
                 .filename(FILE_NAME)

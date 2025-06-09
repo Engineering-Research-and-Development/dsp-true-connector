@@ -1,46 +1,7 @@
 package it.eng.connector.integration.catalog;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-
-import it.eng.tools.s3.properties.S3Properties;
-import it.eng.tools.s3.service.S3ClientService;
-import it.eng.tools.util.ToolsUtil;
-import org.bson.types.ObjectId;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.http.ContentDisposition;
-import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.mock.web.MockPart;
-import org.springframework.security.test.context.support.WithUserDetails;
-import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.wiremock.spring.InjectWireMock;
-
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.github.tomakehurst.wiremock.WireMockServer;
-
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.repository.CatalogRepository;
@@ -54,8 +15,38 @@ import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
 import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.util.ToolsUtil;
+import org.bson.types.ObjectId;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.mock.web.MockPart;
+import org.springframework.security.test.context.support.WithUserDetails;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.wiremock.spring.InjectWireMock;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 	
@@ -74,15 +65,10 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 	@Autowired
 	private S3Properties s3Properties;
 
-	@Autowired
-	private MongoTemplate mongoTemplate;
-
 	@InjectWireMock
 	private WireMockServer wiremock;
 
-	private MockHttpServletResponse mockHttpServletResponse;
-
-	@AfterEach
+	@BeforeEach
 	public void cleanup() {
 		catalogRepository.deleteAll();
 		artifactRepository.deleteAll();
@@ -331,20 +317,27 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 		assertEquals(filePart.getContentType(), artifactFromDb.getContentType());
 		assertEquals(ArtifactType.FILE, artifactFromDb.getArtifactType());
 		assertEquals(initialArtifactSize + 1, artifactRepository.findAll().size());
-		
+
 		// check if the file is inserted in S3
 		int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
 
-		ResponseBytes<GetObjectResponse> s3Response = s3ClientService.downloadFile(s3Properties.getBucketName(), artifactFromDb.getValue(), mockHttpServletResponse);
+        MockHttpServletResponse mockHttpServletResponse = new MockHttpServletResponse();
+		s3ClientService.downloadFile(s3Properties.getBucketName(), artifactFromDb.getValue(), mockHttpServletResponse);
 
-		ContentDisposition contentDisposition = ContentDisposition.parse(s3Response.response().contentDisposition());
+        ResponseBytes<GetObjectResponse> fileFromStorage = ResponseBytes.fromByteArray(GetObjectResponse.builder()
+                        .contentType(mockHttpServletResponse.getContentType())
+                        .contentDisposition(mockHttpServletResponse.getHeader(HttpHeaders.CONTENT_DISPOSITION))
+                        .build(),
+                mockHttpServletResponse.getContentAsByteArray());
 
-		assertEquals(filePart.getContentType(), s3Response.response().contentType());
-		assertEquals(filePart.getOriginalFilename(), contentDisposition.getFilename());
-		assertEquals(fileContent, s3Response.asUtf8String());
-		// + 1 from test
-		assertEquals(startingBucketFileCount + 1, endBucketFileCount);
-		
+        ContentDisposition contentDisposition = ContentDisposition.parse(fileFromStorage.response().contentDisposition());
+
+        assertEquals(filePart.getContentType(), fileFromStorage.response().contentType());
+        assertEquals(filePart.getOriginalFilename(), contentDisposition.getFilename());
+        assertEquals(fileContent, fileFromStorage.asUtf8String());
+        // + 1 from test
+        assertEquals(startingBucketFileCount + 1, endBucketFileCount);
+
 	}
 
 	@Test
@@ -458,16 +451,22 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 		// check if the file is inserted in S3
 		int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
 
-		ResponseBytes<GetObjectResponse> s3Response = s3ClientService.downloadFile(s3Properties.getBucketName(), artifactFromDb.getValue());
+        MockHttpServletResponse mockHttpServletResponse = new MockHttpServletResponse();
+		s3ClientService.downloadFile(s3Properties.getBucketName(), artifactFromDb.getValue(), mockHttpServletResponse);
 
-		ContentDisposition contentDisposition = ContentDisposition.parse(s3Response.response().contentDisposition());
+        ResponseBytes<GetObjectResponse> fileFromStorage = ResponseBytes.fromByteArray(GetObjectResponse.builder()
+                        .contentType(mockHttpServletResponse.getContentType())
+                        .contentDisposition(mockHttpServletResponse.getHeader(HttpHeaders.CONTENT_DISPOSITION))
+                        .build(),
+                mockHttpServletResponse.getContentAsByteArray());
 
-		assertEquals(filePart.getContentType(), s3Response.response().contentType());
-		assertEquals(filePart.getOriginalFilename(), contentDisposition.getFilename());
-		assertEquals(fileContent, s3Response.asUtf8String());
-		// + 1 from test
-		assertEquals(startingBucketFileCount + 1, endBucketFileCount);
+        ContentDisposition contentDisposition = ContentDisposition.parse(fileFromStorage.response().contentDisposition());
 
+        assertEquals(filePart.getContentType(), fileFromStorage.response().contentType());
+        assertEquals(filePart.getOriginalFilename(), contentDisposition.getFilename());
+        assertEquals(fileContent, fileFromStorage.asUtf8String());
+        // + 1 from test
+        assertEquals(startingBucketFileCount + 1, endBucketFileCount);
 	}
 	
 	@Test
@@ -489,18 +488,13 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 				fileContent.getBytes()
 				);
 		
-		// insert the file in S3
-		if (!s3ClientService.bucketExists(s3Properties.getBucketName())) {
-			s3ClientService.createBucket(s3Properties.getBucketName());
-		}
-
 		ContentDisposition contentDisposition = ContentDisposition.attachment()
 				.filename(file.getOriginalFilename())
 				.build();
 
 		String fileId = ToolsUtil.generateUniqueId();
 		try {
-			s3ClientService.uploadFile(s3Properties.getBucketName(), fileId, file.getBytes(),
+			s3ClientService.uploadFile(file.getInputStream(), s3Properties.getBucketName(), fileId,
 					file.getContentType(), contentDisposition.toString());
 		} catch (Exception e) {
 			throw new Exception("File storing aborted, " + e.getLocalizedMessage());
@@ -607,18 +601,13 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 				fileContent.getBytes()
 				);
 		
-		// insert the file in S3
-		if (!s3ClientService.bucketExists(s3Properties.getBucketName())) {
-			s3ClientService.createBucket(s3Properties.getBucketName());
-		}
-
 		ContentDisposition contentDisposition = ContentDisposition.attachment()
 				.filename(file.getOriginalFilename())
 				.build();
 
 		String fileId = ToolsUtil.generateUniqueId();
 		try {
-			s3ClientService.uploadFile(s3Properties.getBucketName(), fileId, file.getBytes(),
+			s3ClientService.uploadFile(file.getInputStream(), s3Properties.getBucketName(), fileId,
 					file.getContentType(), contentDisposition.toString());
 		} catch (Exception e) {
 			throw new Exception("File storing aborted, " + e.getLocalizedMessage());

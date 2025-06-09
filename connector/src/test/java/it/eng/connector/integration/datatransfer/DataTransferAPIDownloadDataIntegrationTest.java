@@ -2,7 +2,6 @@ package it.eng.connector.integration.datatransfer;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.github.tomakehurst.wiremock.WireMockServer;
-import com.github.tomakehurst.wiremock.client.WireMock;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.repository.CatalogRepository;
@@ -14,17 +13,16 @@ import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.repository.TransferProcessRepository;
-import it.eng.datatransfer.util.DataTranferMockObjectUtil;
 import it.eng.negotiation.model.*;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.PolicyEnforcementRepository;
 import it.eng.tools.controller.ApiEndpoints;
-import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
-import okhttp3.Credentials;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -37,13 +35,14 @@ import org.wiremock.spring.InjectWireMock;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -370,12 +369,6 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         result.andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
-        // + 1 from test
-        assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
-        // +2 from test; inserted Dataset with file and downloaded TransferProcess
-        int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
-        assertEquals(startingBucketFileCount + 2, endBucketFileCount);
-
         TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {
         };
 
@@ -385,6 +378,12 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         assertNotNull(apiResp);
         assertTrue(apiResp.isSuccess());
         assertNull(apiResp.getData());
+        // + 1 from test
+        assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
+        // +2 from test; inserted Dataset with file and downloaded TransferProcess
+        int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
+        assertEquals(startingBucketFileCount + 2, endBucketFileCount);
+
     }
 
     @Test
@@ -443,12 +442,6 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         result.andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
-        // + 1 from test
-        assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
-        // +2 from test; inserted Dataset with file and downloaded TransferProcess
-        int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
-        assertEquals(startingBucketFileCount + 2, endBucketFileCount);
-
         TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {
         };
 
@@ -458,6 +451,11 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         assertNotNull(apiResp);
         assertTrue(apiResp.isSuccess());
         assertNull(apiResp.getData());
+        // + 1 from test
+        assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
+        // +2 from test; inserted Dataset with file and downloaded TransferProcess
+        int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
+        assertEquals(startingBucketFileCount + 2, endBucketFileCount);
     }
 
     private Agreement insertAgreement(Constraint constraint) {
