@@ -71,14 +71,13 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
         transferProcessRepository.deleteAll();
         agreementRepository.deleteAll();
         policyEnforcementRepository.deleteAll();
-        if (!s3ClientService.bucketExists(s3Properties.getBucketName())) {
+        if (s3ClientService.bucketExists(s3Properties.getBucketName())) {
             List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
             if (files != null) {
                 for (String file : files) {
                     s3ClientService.deleteFile(s3Properties.getBucketName(), file);
                 }
             }
-            s3ClientService.deleteBucket(s3Properties.getBucketName());
         }
     }
 

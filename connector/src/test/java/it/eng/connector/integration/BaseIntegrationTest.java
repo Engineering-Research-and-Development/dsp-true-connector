@@ -73,6 +73,8 @@ public class BaseIntegrationTest {
 
     static {
         mongoDBContainer.start();
+        // used for checking S3 storage during test debugging; will be exposed on random localhost port which can be checked with `docker ps`or some docker GUI
+        cloudProvider.addExposedPort(9001);
         cloudProvider.start();
     }
 
@@ -82,6 +84,7 @@ public class BaseIntegrationTest {
         registry.add("spring.data.mongodb.port", mongoDBContainer::getFirstMappedPort);
 //        registry.add("s3.endpoint", () -> cloudProvider.getEndpointOverride(S3).toString());
         registry.add("s3.endpoint", () -> cloudProvider.getS3URL());
+        registry.add("s3.externalPresignedEndpoint", () -> cloudProvider.getS3URL());
 
     }
 

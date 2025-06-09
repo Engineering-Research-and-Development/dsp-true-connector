@@ -482,8 +482,6 @@ public class DataTransferAPIService {
         }
 
         try {
-            // Download file from S3
-//			s3ClientService.downloadFile(s3Properties.getBucketName(), transferProcessId, response);
             String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), transferProcessId, Duration.ofDays(7L));
             publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId()));
             return artifactURL;

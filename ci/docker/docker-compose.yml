@@ -36,6 +36,7 @@ services:
       - "8080:8080"
     depends_on:
       - mongodb-a
+      - minio
     environment:
       - "JDK_JAVA_OPTIONS=-Xmx1024m"
       - CALLBACK_ADDRESS=${CONNECTOR_A_CALLBACK_ADDRESS}
@@ -86,6 +87,7 @@ services:
       - "8090:8080"
     depends_on:
       - mongodb-b
+      - minio
     environment:
       - "JDK_JAVA_OPTIONS=-Xmx1024m"
       - CALLBACK_ADDRESS=${CONNECTOR_B_CALLBACK_ADDRESS}

@@ -66,8 +66,8 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
                     transferProcess.getId());
             log.info("Stored transfer process id - {} data!", stringCompletableFuture.get());
         } catch (Exception e) {
-            log.error("Download aborted, {}", e.getLocalizedMessage());
-            throw new DataTransferAPIException("Download aborted, " + e.getLocalizedMessage());
+            log.error("Download failed, {}", e.getLocalizedMessage());
+            throw new DataTransferAPIException("Download failed, " + e.getLocalizedMessage());
         }log.info("Stored transfer process id - {} data!", transferProcess.getId());
     }
 

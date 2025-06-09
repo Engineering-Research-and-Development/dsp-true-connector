@@ -3,7 +3,13 @@ package it.eng.connector.integration.datatransfer;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
+import it.eng.catalog.model.Catalog;
+import it.eng.catalog.model.Dataset;
+import it.eng.catalog.repository.CatalogRepository;
+import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.serializer.CatalogSerializer;
+import it.eng.catalog.service.DatasetService;
+import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.*;
@@ -18,14 +24,13 @@ import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import okhttp3.Credentials;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 import org.wiremock.spring.InjectWireMock;
@@ -33,10 +38,10 @@ import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static org.junit.jupiter.api.Assertions.*;
@@ -47,6 +52,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationTest {
 
     private static final String FILE_NAME = "hello.txt";
+    private String fileContent = "Hello, World!";
 
     @InjectWireMock
     private WireMockServer wiremock;
@@ -60,6 +66,14 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
     @Autowired
     private PolicyEnforcementRepository policyEnforcementRepository;
 
+    @Autowired
+    private CatalogRepository catalogRepository;
+
+    @Autowired
+    private DatasetRepository datasetRepository;
+
+    @Autowired
+    private DatasetService datasetService;
 
     @Autowired
     private S3ClientService s3ClientService;
@@ -67,19 +81,20 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
     @Autowired
     private S3Properties s3Properties;
 
-    @AfterEach
-    public void cleanup() {
+    @BeforeEach
+    public void cleanup() throws InterruptedException {
         transferProcessRepository.deleteAll();
         agreementRepository.deleteAll();
         policyEnforcementRepository.deleteAll();
-        if (!s3ClientService.bucketExists(s3Properties.getBucketName())) {
+        datasetRepository.deleteAll();
+        catalogRepository.deleteAll();
+        if (s3ClientService.bucketExists(s3Properties.getBucketName())) {
             List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
             if (files != null) {
                 for (String file : files) {
                     s3ClientService.deleteFile(s3Properties.getBucketName(), file);
                 }
             }
-            s3ClientService.deleteBucket(s3Properties.getBucketName());
         }
     }
 
@@ -89,6 +104,8 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
     public void downloadData_success() throws Exception {
         int startingTransferProcessCollectionSize = transferProcessRepository.findAll().size();
         int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
+
+        Dataset mockDataset = getMockDataset();
 
         Agreement agreement = Agreement.Builder.newInstance()
                 .id(createNewId())
@@ -115,28 +132,20 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         String consumerPid = createNewId();
         String providerPid = createNewId();
 
-        String transactionId = Base64.getEncoder().encodeToString((consumerPid + "|" + providerPid)
-                .getBytes(StandardCharsets.UTF_8));
+        String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), mockDataset.getId(), Duration.ofMinutes(10));
 
-        String mockUser = "mockUser";
-        String mockPassword = "mockPassword";
-
-        EndpointProperty authType = EndpointProperty.Builder.newInstance()
-                .name(IConstants.AUTH_TYPE)
-                .value(IConstants.AUTH_BASIC)
+        EndpointProperty endpointProperty = EndpointProperty.Builder.newInstance()
+                .name("https://w3id.org/edc/v0.0.1/ns/endpoint")
+                .value(artifactURL)
                 .build();
-
-        EndpointProperty authorization = EndpointProperty.Builder.newInstance()
-                .name(IConstants.AUTHORIZATION)
-                .value(Credentials.basic(mockUser, mockPassword).replaceFirst(IConstants.AUTH_BASIC + " ", ""))
+        EndpointProperty endpointTypeProperty = EndpointProperty.Builder.newInstance()
+                .name("https://w3id.org/edc/v0.0.1/ns/endpointType")
+                .value("https://w3id.org/idsa/v4.1/HTTP")
                 .build();
-
-        List<EndpointProperty> properties = List.of(authType, authorization);
-
         DataAddress dataAddress = DataAddress.Builder.newInstance()
-                .endpoint(wiremock.baseUrl() + "/artifacts/" + transactionId)
-                .endpointType(DataTranferMockObjectUtil.ENDPOINT_TYPE)
-                .endpointProperties(properties)
+                .endpoint(artifactURL)
+                .endpointProperties(List.of(endpointProperty, endpointTypeProperty))
+                .endpointType("https://w3id.org/idsa/v4.1/HTTP")
                 .build();
 
         TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
@@ -149,16 +158,6 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
                 .format(DataTransferFormat.HTTP_PULL.format())
                 .build();
         transferProcessRepository.save(transferProcessStarted);
-
-        // mock provider success response Download
-        String fileContent = "Hello, World!";
-
-        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.get("/artifacts/" + transactionId)
-                .withBasicAuth(mockUser, mockPassword)
-                .willReturn(
-                        aResponse().withHeader(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN_VALUE)
-                                .withHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + FILE_NAME)
-                                .withBody(fileContent.getBytes())));
 
         // send request
         final ResultActions result =
@@ -193,11 +192,8 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         // +1 from test
         assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
 
-        // check if the file is inserted in the storage
-        int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
 
         MockHttpServletResponse mockResponse = new MockHttpServletResponse();
-//        ResponseBytes<GetObjectResponse> fileFromStorage =
         s3ClientService.downloadFile(s3Properties.getBucketName(), transferProcessStarted.getId(), mockResponse);
 
         ResponseBytes<GetObjectResponse> fileFromStorage = ResponseBytes.fromByteArray(GetObjectResponse.builder()
@@ -211,9 +207,9 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         assertEquals(MediaType.TEXT_PLAIN_VALUE, fileFromStorage.response().contentType());
         assertEquals(FILE_NAME, contentDisposition.getFilename());
         assertEquals(fileContent, fileFromStorage.asUtf8String());
-        // + 1 from test
-        assertEquals(startingBucketFileCount + 1, endBucketFileCount);
-
+        // +2 from test; inserted Dataset with file and downloaded TransferProcess
+        int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
+        assertEquals(startingBucketFileCount + 2, endBucketFileCount);
     }
 
     @Test
@@ -222,6 +218,8 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
     public void downloadData_fail() throws Exception {
         int startingTransferProcessCollectionSize = transferProcessRepository.findAll().size();
         int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
+
+        Dataset mockDataset = getMockDataset();
 
         Agreement agreement = Agreement.Builder.newInstance()
                 .id(createNewId())
@@ -248,12 +246,22 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         String consumerPid = createNewId();
         String providerPid = createNewId();
 
-        String transactionId = Base64.getEncoder().encodeToString((consumerPid + "|" + providerPid)
-                .getBytes(StandardCharsets.UTF_8));
+        String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), mockDataset.getId(), Duration.ofSeconds(1));
 
+        Thread.sleep(2000); // wait for the presigned URL to expire
+
+        EndpointProperty endpointProperty = EndpointProperty.Builder.newInstance()
+                .name("https://w3id.org/edc/v0.0.1/ns/endpoint")
+                .value(artifactURL)
+                .build();
+        EndpointProperty endpointTypeProperty = EndpointProperty.Builder.newInstance()
+                .name("https://w3id.org/edc/v0.0.1/ns/endpointType")
+                .value("https://w3id.org/idsa/v4.1/HTTP")
+                .build();
         DataAddress dataAddress = DataAddress.Builder.newInstance()
-                .endpoint(wiremock.baseUrl() + "/artifacts/" + transactionId)
-                .endpointType(DataTranferMockObjectUtil.ENDPOINT_TYPE)
+                .endpoint(artifactURL)
+                .endpointProperties(List.of(endpointProperty, endpointTypeProperty))
+                .endpointType("https://w3id.org/idsa/v4.1/HTTP")
                 .build();
 
         TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
@@ -266,12 +274,6 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
                 .format(DataTransferFormat.HTTP_PULL.format())
                 .build();
         transferProcessRepository.save(transferProcessStarted);
-
-        // mock provider error response Download
-
-        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.get("/artifacts/" + transactionId)
-                .willReturn(
-                        aResponse().withStatus(400)));
 
         // send request
         final ResultActions result =
@@ -306,9 +308,9 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
 
         // check if the file is inserted in the database
-        // 1 from initial data + 0 from test
+        // 1 from initial data + 1 from test; dataset is added but not downloaded
         int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
-        assertEquals(startingBucketFileCount, endBucketFileCount);
+        assertEquals(startingBucketFileCount +1, endBucketFileCount);
 
     }
 
@@ -318,6 +320,8 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
     public void downloadData_PurposePolicy_allowed() throws Exception {
         int startingTransferProcessCollectionSize = transferProcessRepository.findAll().size();
         int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
+
+        Dataset mockDataset = getMockDataset();
 
         Constraint constraintPurpose = Constraint.Builder.newInstance()
                 .leftOperand(LeftOperand.PURPOSE)
@@ -330,31 +334,20 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         String consumerPid = createNewId();
         String providerPid = createNewId();
 
-        String transactionId = Base64.getEncoder()
-                .encodeToString((consumerPid + "|" + providerPid).getBytes(StandardCharsets.UTF_8));
+        String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), mockDataset.getId(), Duration.ofMinutes(10));
 
-        // mock provider success response Download
-        String fileContent = "Hello, World!";
-
-        String mockUser = "mockUser";
-        String mockPassword = "mockPassword";
-
-        EndpointProperty authType = EndpointProperty.Builder.newInstance()
-                .name(IConstants.AUTH_TYPE)
-                .value(IConstants.AUTH_BASIC)
+        EndpointProperty endpointProperty = EndpointProperty.Builder.newInstance()
+                .name("https://w3id.org/edc/v0.0.1/ns/endpoint")
+                .value(artifactURL)
                 .build();
-
-        EndpointProperty authorization = EndpointProperty.Builder.newInstance()
-                .name(IConstants.AUTHORIZATION)
-                .value(Credentials.basic(mockUser, mockPassword).replaceFirst(IConstants.AUTH_BASIC + " ", ""))
+        EndpointProperty endpointTypeProperty = EndpointProperty.Builder.newInstance()
+                .name("https://w3id.org/edc/v0.0.1/ns/endpointType")
+                .value("https://w3id.org/idsa/v4.1/HTTP")
                 .build();
-
-        List<EndpointProperty> properties = List.of(authType, authorization);
-
         DataAddress dataAddress = DataAddress.Builder.newInstance()
-                .endpoint(wiremock.baseUrl() + "/artifacts/" + transactionId)
-                .endpointType(DataTranferMockObjectUtil.ENDPOINT_TYPE)
-                .endpointProperties(properties)
+                .endpoint(artifactURL)
+                .endpointProperties(List.of(endpointProperty, endpointTypeProperty))
+                .endpointType("https://w3id.org/idsa/v4.1/HTTP")
                 .build();
 
         TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
@@ -368,13 +361,6 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
                 .build();
         transferProcessRepository.save(transferProcessStarted);
 
-        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.get("/artifacts/" + transactionId)
-                .withBasicAuth(mockUser, mockPassword)
-                .willReturn(
-                        aResponse().withHeader(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN_VALUE)
-                                .withHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + FILE_NAME)
-                                .withBody(fileContent.getBytes())));
-
         // send request
         final ResultActions result =
                 mockMvc.perform(
@@ -386,8 +372,9 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 
         // + 1 from test
         assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
+        // +2 from test; inserted Dataset with file and downloaded TransferProcess
         int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
-        assertEquals(startingBucketFileCount + 1, endBucketFileCount);
+        assertEquals(startingBucketFileCount + 2, endBucketFileCount);
 
         TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {
         };
@@ -407,6 +394,8 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         int startingTransferProcessCollectionSize = transferProcessRepository.findAll().size();
         int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
 
+        Dataset mockDataset = getMockDataset();
+
         Constraint constraintPurpose = Constraint.Builder.newInstance()
                 .leftOperand(LeftOperand.SPATIAL)
                 .operator(Operator.EQ)
@@ -418,31 +407,20 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         String consumerPid = createNewId();
         String providerPid = createNewId();
 
-        String transactionId = Base64.getEncoder()
-                .encodeToString((consumerPid + "|" + providerPid).getBytes(StandardCharsets.UTF_8));
+        String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), mockDataset.getId(), Duration.ofMinutes(10));
 
-        // mock provider success response Download
-        String fileContent = "Hello, World!";
-
-        String mockUser = "mockUser";
-        String mockPassword = "mockPassword";
-
-        EndpointProperty authType = EndpointProperty.Builder.newInstance()
-                .name(IConstants.AUTH_TYPE)
-                .value(IConstants.AUTH_BASIC)
+        EndpointProperty endpointProperty = EndpointProperty.Builder.newInstance()
+                .name("https://w3id.org/edc/v0.0.1/ns/endpoint")
+                .value(artifactURL)
                 .build();
-
-        EndpointProperty authorization = EndpointProperty.Builder.newInstance()
-                .name(IConstants.AUTHORIZATION)
-                .value(Credentials.basic(mockUser, mockPassword).replaceFirst(IConstants.AUTH_BASIC + " ", ""))
+        EndpointProperty endpointTypeProperty = EndpointProperty.Builder.newInstance()
+                .name("https://w3id.org/edc/v0.0.1/ns/endpointType")
+                .value("https://w3id.org/idsa/v4.1/HTTP")
                 .build();
-
-        List<EndpointProperty> properties = List.of(authType, authorization);
-
         DataAddress dataAddress = DataAddress.Builder.newInstance()
-                .endpoint(wiremock.baseUrl() + "/artifacts/" + transactionId)
-                .endpointType(DataTranferMockObjectUtil.ENDPOINT_TYPE)
-                .endpointProperties(properties)
+                .endpoint(artifactURL)
+                .endpointProperties(List.of(endpointProperty, endpointTypeProperty))
+                .endpointType("https://w3id.org/idsa/v4.1/HTTP")
                 .build();
 
         TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
@@ -456,13 +434,6 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
                 .build();
         transferProcessRepository.save(transferProcessStarted);
 
-        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.get("/artifacts/" + transactionId)
-                .withBasicAuth(mockUser, mockPassword)
-                .willReturn(
-                        aResponse().withHeader(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN_VALUE)
-                                .withHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + FILE_NAME)
-                                .withBody(fileContent.getBytes())));
-
         // send request
         final ResultActions result =
                 mockMvc.perform(
@@ -474,8 +445,9 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 
         // + 1 from test
         assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
+        // +2 from test; inserted Dataset with file and downloaded TransferProcess
         int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
-        assertEquals(startingBucketFileCount + 1, endBucketFileCount);
+        assertEquals(startingBucketFileCount + 2, endBucketFileCount);
 
         TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {
         };
@@ -503,5 +475,34 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 
         agreementRepository.save(agreement);
         return agreement;
+    }
+
+    private Dataset getMockDataset() {
+        Dataset mockDataset = Dataset.Builder.newInstance()
+                .id(CatalogMockObjectUtil.DATASET_ID)
+                .conformsTo(CatalogMockObjectUtil.CONFORMSTO)
+                .creator(CatalogMockObjectUtil.CREATOR)
+                .distribution(Arrays.asList(CatalogMockObjectUtil.DISTRIBUTION).stream().collect(Collectors.toCollection(HashSet::new)))
+                .description(Arrays.asList(CatalogMockObjectUtil.MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
+                .issued(CatalogMockObjectUtil.ISSUED)
+                .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
+                .identifier(CatalogMockObjectUtil.IDENTIFIER)
+                .modified(CatalogMockObjectUtil.MODIFIED)
+                .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
+                .title(CatalogMockObjectUtil.TITLE)
+                .hasPolicy(Arrays.asList(CatalogMockObjectUtil.OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
+                .build();
+
+        Catalog mockCatalog = Catalog.Builder.newInstance()
+                .id(createNewId())
+                .title(CatalogMockObjectUtil.TITLE)
+                .description(Arrays.asList(CatalogMockObjectUtil.MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
+                .dataset(Collections.emptySet())
+                .build();
+        catalogRepository.save(mockCatalog);
+
+        MockMultipartFile mockFile = new MockMultipartFile(FILE_NAME, FILE_NAME, MediaType.TEXT_PLAIN_VALUE, fileContent.getBytes());
+        datasetService.saveDataset(mockDataset, mockFile, null, null);
+        return mockDataset;
     }
 }

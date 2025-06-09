@@ -87,14 +87,13 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 		catalogRepository.deleteAll();
 		artifactRepository.deleteAll();
 		datasetRepository.deleteAll();
-		if (!s3ClientService.bucketExists(s3Properties.getBucketName())) {
+		if (s3ClientService.bucketExists(s3Properties.getBucketName())) {
 			List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
 			if (files != null) {
 				for (String file : files) {
 					s3ClientService.deleteFile(s3Properties.getBucketName(), file);
 				}
 			}
-			s3ClientService.deleteBucket(s3Properties.getBucketName());
 		}
 	}
 	
@@ -336,15 +335,15 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 		// check if the file is inserted in S3
 		int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
 
-//		ResponseBytes<GetObjectResponse> s3Response = s3ClientService.downloadFile(s3Properties.getBucketName(), artifactFromDb.getValue(), mockHttpServletResponse);
-//
-//		ContentDisposition contentDisposition = ContentDisposition.parse(s3Response.response().contentDisposition());
-//
-//		assertEquals(filePart.getContentType(), s3Response.response().contentType());
-//		assertEquals(filePart.getOriginalFilename(), contentDisposition.getFilename());
-//		assertEquals(fileContent, s3Response.asUtf8String());
-//		// + 1 from test
-//		assertEquals(startingBucketFileCount + 1, endBucketFileCount);
+		ResponseBytes<GetObjectResponse> s3Response = s3ClientService.downloadFile(s3Properties.getBucketName(), artifactFromDb.getValue(), mockHttpServletResponse);
+
+		ContentDisposition contentDisposition = ContentDisposition.parse(s3Response.response().contentDisposition());
+
+		assertEquals(filePart.getContentType(), s3Response.response().contentType());
+		assertEquals(filePart.getOriginalFilename(), contentDisposition.getFilename());
+		assertEquals(fileContent, s3Response.asUtf8String());
+		// + 1 from test
+		assertEquals(startingBucketFileCount + 1, endBucketFileCount);
 		
 	}
 
@@ -459,15 +458,15 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 		// check if the file is inserted in S3
 		int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
 
-//		ResponseBytes<GetObjectResponse> s3Response = s3ClientService.downloadFile(s3Properties.getBucketName(), artifactFromDb.getValue());
-//
-//		ContentDisposition contentDisposition = ContentDisposition.parse(s3Response.response().contentDisposition());
-//
-//		assertEquals(filePart.getContentType(), s3Response.response().contentType());
-//		assertEquals(filePart.getOriginalFilename(), contentDisposition.getFilename());
-//		assertEquals(fileContent, s3Response.asUtf8String());
-//		// + 1 from test
-//		assertEquals(startingBucketFileCount + 1, endBucketFileCount);
+		ResponseBytes<GetObjectResponse> s3Response = s3ClientService.downloadFile(s3Properties.getBucketName(), artifactFromDb.getValue());
+
+		ContentDisposition contentDisposition = ContentDisposition.parse(s3Response.response().contentDisposition());
+
+		assertEquals(filePart.getContentType(), s3Response.response().contentType());
+		assertEquals(filePart.getOriginalFilename(), contentDisposition.getFilename());
+		assertEquals(fileContent, s3Response.asUtf8String());
+		// + 1 from test
+		assertEquals(startingBucketFileCount + 1, endBucketFileCount);
 
 	}
 	
@@ -500,12 +499,12 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 				.build();
 
 		String fileId = ToolsUtil.generateUniqueId();
-//		try {
-//			s3ClientService.uploadFile(s3Properties.getBucketName(), fileId, file.getBytes(),
-//					file.getContentType(), contentDisposition.toString());
-//		} catch (Exception e) {
-//			throw new Exception("File storing aborted, " + e.getLocalizedMessage());
-//		}
+		try {
+			s3ClientService.uploadFile(s3Properties.getBucketName(), fileId, file.getBytes(),
+					file.getContentType(), contentDisposition.toString());
+		} catch (Exception e) {
+			throw new Exception("File storing aborted, " + e.getLocalizedMessage());
+		}
 		
 		Artifact artifactFile = Artifact.Builder.newInstance()
 				.artifactType(ArtifactType.FILE)
@@ -618,12 +617,12 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 				.build();
 
 		String fileId = ToolsUtil.generateUniqueId();
-//		try {
-//			s3ClientService.uploadFile(s3Properties.getBucketName(), fileId, file.getBytes(),
-//					file.getContentType(), contentDisposition.toString());
-//		} catch (Exception e) {
-//			throw new Exception("File storing aborted, " + e.getLocalizedMessage());
-//		}
+		try {
+			s3ClientService.uploadFile(s3Properties.getBucketName(), fileId, file.getBytes(),
+					file.getContentType(), contentDisposition.toString());
+		} catch (Exception e) {
+			throw new Exception("File storing aborted, " + e.getLocalizedMessage());
+		}
 
 		Artifact artifactFile = Artifact.Builder.newInstance()
 				.artifactType(ArtifactType.FILE)
