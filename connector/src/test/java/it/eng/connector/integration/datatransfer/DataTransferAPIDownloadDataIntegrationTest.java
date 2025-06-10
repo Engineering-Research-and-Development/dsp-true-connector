@@ -81,7 +81,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
     private S3Properties s3Properties;
 
     @BeforeEach
-    public void cleanup() throws InterruptedException {
+    public void cleanup() {
         transferProcessRepository.deleteAll();
         agreementRepository.deleteAll();
         policyEnforcementRepository.deleteAll();
@@ -95,7 +95,6 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
                 }
             }
         }
-        Thread.sleep(5000); // wait for db to be cleaned up
     }
 
     @Test

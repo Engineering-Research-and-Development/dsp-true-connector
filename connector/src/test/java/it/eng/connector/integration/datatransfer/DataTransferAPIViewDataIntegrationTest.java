@@ -65,7 +65,7 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
     private static final String FILE_NAME = "hello.txt";
 
     @AfterEach
-    public void cleanup() throws InterruptedException {
+    public void cleanup() {
         transferProcessRepository.deleteAll();
         agreementRepository.deleteAll();
         policyEnforcementRepository.deleteAll();
@@ -77,7 +77,6 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
                 }
             }
         }
-        Thread.sleep(5000); // wait for db to be cleaned up
     }
 
     @ParameterizedTest

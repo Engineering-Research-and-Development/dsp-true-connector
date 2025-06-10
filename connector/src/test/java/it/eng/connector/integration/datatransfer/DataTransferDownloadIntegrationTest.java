@@ -65,7 +65,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
     private static final String FILE_NAME = "hello.txt";
 
     @AfterEach
-    public void cleanup() throws InterruptedException {
+    public void cleanup() {
         datasetRepository.deleteAll();
         artifactRepository.deleteAll();
         transferProcessRepository.deleteAll();
@@ -79,7 +79,6 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
                 }
             }
         }
-        Thread.sleep(5000); // wait for db to be cleaned up
     }
 
     @Test

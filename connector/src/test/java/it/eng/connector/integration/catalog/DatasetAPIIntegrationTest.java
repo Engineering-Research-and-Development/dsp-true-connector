@@ -69,7 +69,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 	private WireMockServer wiremock;
 
 	@BeforeEach
-	public void cleanup() throws InterruptedException {
+	public void cleanup() {
 		catalogRepository.deleteAll();
 		artifactRepository.deleteAll();
 		datasetRepository.deleteAll();
@@ -81,7 +81,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 				}
 			}
 		}
-		Thread.sleep(5000); // wait for db to be cleaned up
 	}
 	
 	@Test
@@ -373,7 +372,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 	@DisplayName("Dataset API - update from external to file")
 	@WithUserDetails(TestUtil.API_USER)
 	public void updateArtifactExternalToFile() throws Exception {
-
 		Artifact artifactExternal = Artifact.Builder.newInstance()
 				.artifactType(ArtifactType.EXTERNAL)
 				.createdBy(CatalogMockObjectUtil.CREATOR)
@@ -387,7 +385,12 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 				.hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
 				.artifact(artifactExternal)
 				.build();
-		
+
+		Catalog catalog = Catalog.Builder.newInstance()
+				.dataset(Set.of(dataset))
+				.build();
+
+		catalogRepository.save(catalog);
 		artifactRepository.save(artifactExternal);
 		datasetRepository.save(dataset);
 		
@@ -516,7 +519,12 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 				.hasPolicy(dataset.getHasPolicy())
 				.artifact(artifactFile)
 				.build();
-		
+
+		Catalog catalog = Catalog.Builder.newInstance()
+				.dataset(Set.of(dataset))
+				.build();
+
+		catalogRepository.save(catalog);
 		artifactRepository.save(artifactFile);
 		datasetRepository.save(datasetWithFile);
 		
