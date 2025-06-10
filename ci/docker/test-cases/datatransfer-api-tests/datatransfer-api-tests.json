@@ -254,6 +254,8 @@
 						"exec": [
 							"pm.test(\"Check if status code is 200\", function () {\r",
 							"    pm.response.to.have.status(200);\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.collectionVariables.set(\"presignedURL\", jsonData[\"data\"][\"dataAddress\"][\"endpoint\"])\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -337,10 +339,10 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test(\"Check expected response\", ()=> {\r",
+							"pm.test(\"Check expected response\", () => {\r",
 							"    pm.response.to.have.status(200);\r",
-							"    var jsonData = pm.response.json();\r",
-							"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
+							"    var response = pm.response.text();\r",
+							"    pm.expect(response).to.include(\"http://localhost:9000/dsp-true-connector-consumer\");\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -371,7 +373,7 @@
 			"response": []
 		},
 		{
-			"name": "[P] Download data",
+			"name": "[C] Use presignedURL to download actual data",
 			"event": [
 				{
 					"listen": "test",
@@ -390,15 +392,17 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
 				"url": {
-					"raw": "{{PROVIDER}}/artifacts/{{transactionId}}",
+					"raw": "{{presignedURL}}",
 					"host": [
-						"{{PROVIDER}}"
-					],
-					"path": [
-						"artifacts",
-						"{{transactionId}}"
+						"{{presignedURL}}"
 					]
 				}
 			},
@@ -530,14 +534,16 @@
 			"response": []
 		},
 		{
-			"name": "[P] Download data fail",
+			"name": "[C] Use presignedURL to download actual data",
 			"event": [
 				{
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test(\"Status code is client error or server error\", () => {\r",
-							"    pm.expect(pm.response.code).to.be.oneOf([400, 401, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 422, 423, 424, 425, 426, 428, 429, 431, 451, 500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511]);\r",
+							"pm.test(\"Check expected response\", ()=> {\r",
+							"    pm.response.to.have.status(200);\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -547,15 +553,17 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
 				"url": {
-					"raw": "{{PROVIDER}}/artifacts/{{transactionId}}",
+					"raw": "{{presignedURL}}",
 					"host": [
-						"{{PROVIDER}}"
-					],
-					"path": [
-						"artifacts",
-						"{{transactionId}}"
+						"{{presignedURL}}"
 					]
 				}
 			},
@@ -609,7 +617,7 @@
 			"response": []
 		},
 		{
-			"name": "[C] Download data",
+			"name": "[C] Download data fail",
 			"event": [
 				{
 					"listen": "test",
@@ -687,7 +695,7 @@
 			"response": []
 		},
 		{
-			"name": "[P] Download data",
+			"name": "[C] Use presignedURL to download actual data",
 			"event": [
 				{
 					"listen": "test",
@@ -706,15 +714,17 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
 				"url": {
-					"raw": "{{PROVIDER}}/artifacts/{{transactionId}}",
+					"raw": "{{presignedURL}}",
 					"host": [
-						"{{PROVIDER}}"
-					],
-					"path": [
-						"artifacts",
-						"{{transactionId}}"
+						"{{presignedURL}}"
 					]
 				}
 			},
@@ -846,14 +856,16 @@
 			"response": []
 		},
 		{
-			"name": "[P] Download data fail",
+			"name": "[C] Use presignedURL to download actual data",
 			"event": [
 				{
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test(\"Status code is client error or server error\", () => {\r",
-							"    pm.expect(pm.response.code).to.be.oneOf([400, 401, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 422, 423, 424, 425, 426, 428, 429, 431, 451, 500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511]);\r",
+							"pm.test(\"Check expected response\", ()=> {\r",
+							"    pm.response.to.have.status(200);\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -863,15 +875,17 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
 				"url": {
-					"raw": "{{PROVIDER}}/artifacts/{{transactionId}}",
+					"raw": "{{presignedURL}}",
 					"host": [
-						"{{PROVIDER}}"
-					],
-					"path": [
-						"artifacts",
-						"{{transactionId}}"
+						"{{presignedURL}}"
 					]
 				}
 			},

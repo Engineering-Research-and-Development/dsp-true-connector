@@ -1,9 +1,10 @@
 {
 	"info": {
-		"_postman_id": "7cced753-6eb9-44e9-97c5-ec4da7255fac",
+		"_postman_id": "b1d0623d-e1ea-4b12-82a7-cd53811193db",
 		"name": "True_connector_DSP",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "36278855"
+		"_exporter_id": "21815221",
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-b1d0623d-e1ea-4b12-82a7-cd53811193db?action=share&source=collection_link&creator=21815221"
 	},
 	"item": [
 		{
@@ -87,6 +88,43 @@
 											"key": "key_prefix",
 											"value": "{{KEY_PREFIX}}"
 										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Application Property By Key",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/application.daps.dapsJWKSUrl",
+									"host": [
+										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
+									],
+									"path": [
+										"application.daps.dapsJWKSUrl"
 									]
 								}
 							},
@@ -469,7 +507,7 @@
 									"formdata": [
 										{
 											"key": "dataset",
-											"value": "{\n    \"@id\": \"dataset_uuid_test\",\n    \"artifact\": null,\n    \"conformsTo\": \"conformsToSomething\",\n    \"createdBy\": null,\n    \"creator\": \"Chuck_Norris\",\n    \"description\": [{\n            \"value\": \"For test\",\n            \"language\": \"en\"\n        }\n    ],\n    \"distribution\": [{\n            \"@id\": \"urn:uuid:128a7504-989f-4f5e-8e19-694e0bdacbd7\",\n            \"accessService\": [{\n                    \"@id\": \"e84adca0-eb09-47b0-975c-f182aac8377f\",\n                    \"conformsTo\": \"conformsToSomething\",\n                    \"createdBy\": null,\n                    \"creator\": \"Chuck_Norris\",\n                    \"description\": [{\n                            \"value\": \"For test\",\n                            \"language\": \"en\"\n                        }\n                    ],\n                    \"endpointDescription\": \"endpoint description\",\n                    \"endpointURL\": \"http://dataservice.com\",\n                    \"identifier\": \"Unique_identifier_for_tests\",\n                    \"issued\": \"2024-04-23T18:26:00+02:00\",\n                    \"keyword\": [\"DataService keyword1\", \"DataService keyword2\"],\n                    \"lastModifiedBy\": null,\n                    \"modified\": \"2024-04-23T18:26:00+02:00\",\n                    \"theme\": [\"DataService theme1\", \"DataService theme2\"],\n                    \"title\": \"Title_for_test\",\n                    \"type\": \"dcat:DataService\",\n                    \"version\": null\n                }\n            ],\n            \"createdBy\": null,\n            \"description\": [{\n                    \"value\": \"For test\",\n                    \"language\": \"en\"\n                }\n            ],\n            \"format\": {\n                \"@id\": \"HTTP:PULL\"\n            },\n            \"hasPolicy\": [{\n                    \"@id\": \"urn:offer_id\",\n                    \"assignee\": null,\n                    \"assigner\": null,\n                    \"permission\": [{\n                            \"assigner\": null,\n                            \"assignee\": null,\n                            \"target\": null,\n                            \"action\": \"USE\",\n                            \"constraint\": [{\n                                    \"leftOperand\": \"COUNT\",\n                                    \"operator\": \"EQ\",\n                                    \"rightOperand\": \"5\"\n                                }\n                            ]\n                        }\n                    ],\n                    \"target\": null\n                }\n            ],\n            \"issued\": \"2024-04-23T18:26:00+02:00\",\n            \"lastModifiedBy\": null,\n            \"modified\": \"2024-04-23T18:26:00+02:00\",\n            \"title\": \"Title_for_test\",\n            \"type\": \"dspace:Distribution\",\n            \"version\": null\n        }\n    ],\n    \"hasPolicy\": [{\n            \"@id\": \"urn:offer_id\",\n            \"assignee\": null,\n            \"assigner\": null,\n            \"permission\": [{\n                    \"assigner\": null,\n                    \"assignee\": null,\n                    \"target\": null,\n                    \"action\": \"USE\",\n                    \"constraint\": [{\n                            \"leftOperand\": \"COUNT\",\n                            \"operator\": \"EQ\",\n                            \"rightOperand\": \"5\"\n                        }\n                    ]\n                }\n            ],\n            \"target\": null\n        }\n    ],\n    \"identifier\": \"Unique_identifier_for_tests\",\n    \"issued\": \"2024-04-23T18:26:00+02:00\",\n    \"keyword\": [\"keyword1\", \"keyword2\"],\n    \"lastModifiedBy\": null,\n    \"modified\": \"2024-04-23T18:26:00+02:00\",\n    \"theme\": [\"aqua\", \"white\", \"blue\"],\n    \"title\": \"Title_for_test\",\n    \"type\": \"dcat:Dataset\",\n    \"version\": null\n}\n",
+											"value": "{\n    \"artifact\": null,\n    \"conformsTo\": \"conformsToSomething\",\n    \"createdBy\": null,\n    \"creator\": \"Chuck_Norris\",\n    \"description\": [{\n            \"value\": \"For test\",\n            \"language\": \"en\"\n        }\n    ],\n    \"distribution\": [{\n            \"@id\": \"urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5\",\n            \"accessService\": [{\n                    \"@id\": \"e84adca0-eb09-47b0-975c-f182aac8377f\",\n                    \"conformsTo\": \"conformsToSomething\",\n                    \"createdBy\": null,\n                    \"creator\": \"Chuck_Norris\",\n                    \"description\": [{\n                            \"value\": \"For test\",\n                            \"language\": \"en\"\n                        }\n                    ],\n                    \"endpointDescription\": \"endpoint description\",\n                    \"endpointURL\": \"http://dataservice.com\",\n                    \"identifier\": \"Unique_identifier_for_tests\",\n                    \"issued\": \"2024-04-23T18:26:00+02:00\",\n                    \"keyword\": [\"DataService keyword1\", \"DataService keyword2\"],\n                    \"lastModifiedBy\": null,\n                    \"modified\": \"2024-04-23T18:26:00+02:00\",\n                    \"theme\": [\"DataService theme1\", \"DataService theme2\"],\n                    \"title\": \"Title_for_test\",\n                    \"type\": \"dcat:DataService\",\n                    \"version\": null\n                }\n            ],\n            \"createdBy\": null,\n            \"description\": [{\n                    \"value\": \"For test\",\n                    \"language\": \"en\"\n                }\n            ],\n            \"format\": {\n                \"@id\": \"HTTP:PULL\"\n            },\n            \"hasPolicy\": [{\n                    \"@id\": \"urn:offer_id\",\n                    \"assignee\": null,\n                    \"assigner\": null,\n                    \"permission\": [{\n                            \"assigner\": null,\n                            \"assignee\": null,\n                            \"target\": null,\n                            \"action\": \"USE\",\n                            \"constraint\": [{\n                                    \"leftOperand\": \"COUNT\",\n                                    \"operator\": \"EQ\",\n                                    \"rightOperand\": \"5\"\n                                }\n                            ]\n                        }\n                    ],\n                    \"target\": null\n                }\n            ],\n            \"issued\": \"2024-04-23T18:26:00+02:00\",\n            \"lastModifiedBy\": null,\n            \"modified\": \"2024-04-23T18:26:00+02:00\",\n            \"title\": \"Title_for_test\",\n            \"type\": \"dspace:Distribution\",\n            \"version\": null\n        }\n    ],\n    \"hasPolicy\": [{\n            \"@id\": \"urn:offer_id\",\n            \"assignee\": null,\n            \"assigner\": null,\n            \"permission\": [{\n                    \"assigner\": null,\n                    \"assignee\": null,\n                    \"target\": null,\n                    \"action\": \"USE\",\n                    \"constraint\": [{\n                            \"leftOperand\": \"COUNT\",\n                            \"operator\": \"LTEQ\",\n                            \"rightOperand\": \"5\"\n                        }\n                    ]\n                }\n            ],\n            \"target\": null\n        }\n    ],\n    \"identifier\": \"Unique_identifier_for_tests\",\n    \"issued\": \"2024-04-23T18:26:00+02:00\",\n    \"keyword\": [\"keyword1\", \"keyword2\"],\n    \"lastModifiedBy\": null,\n    \"modified\": \"2024-04-23T18:26:00+02:00\",\n    \"theme\": [\"aqua\", \"white\", \"blue\"],\n    \"title\": \"Title_for_test\",\n    \"type\": \"dcat:Dataset\",\n    \"version\": null\n}\n",
 											"description": "Dataset to insert",
 											"type": "text"
 										},
@@ -477,21 +515,21 @@
 											"key": "file",
 											"description": "File for upload",
 											"type": "file",
-											"src": [],
-											"disabled": true
+											"src": []
 										},
 										{
 											"key": "url",
 											"value": "https://example.com/dsptc",
 											"description": "URL for external download",
-											"type": "text"
+											"type": "text",
+											"disabled": true
 										}
 									]
 								},
 								"url": {
-									"raw": "{{CONSUMER_SERVER_API_DATASET}}",
+									"raw": "{{PROVIDER_SERVER_API_DATASET}}",
 									"host": [
-										"{{CONSUMER_SERVER_API_DATASET}}"
+										"{{PROVIDER_SERVER_API_DATASET}}"
 									]
 								}
 							},
@@ -520,24 +558,24 @@
 											"key": "file",
 											"description": "File for upload",
 											"type": "file",
-											"src": [],
-											"disabled": true
+											"src": "/C:/Users/davjovanov/OneDrive - Engineering Ingegneria Informatica S.p.A/Immagini/Screenshot/Screenshot 2025-04-16 124041.png"
 										},
 										{
 											"key": "url",
 											"value": "https://example.com/dsptc",
 											"description": "URL for external download",
-											"type": "text"
+											"type": "text",
+											"disabled": true
 										}
 									]
 								},
 								"url": {
-									"raw": "{{CONSUMER_SERVER_API_DATASET}}/{$ID}",
+									"raw": "{{PROVIDER_SERVER_API_DATASET}}/urn:uuid:14e2f313-49c2-4f33-8926-57cb69eb484a",
 									"host": [
-										"{{CONSUMER_SERVER_API_DATASET}}"
+										"{{PROVIDER_SERVER_API_DATASET}}"
 									],
 									"path": [
-										"{$ID}"
+										"urn:uuid:14e2f313-49c2-4f33-8926-57cb69eb484a"
 									]
 								}
 							},
@@ -570,6 +608,45 @@
 				{
 					"name": "Negotiation",
 					"item": [
+						{
+							"name": "[C] Get Dataset ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"provider_datasetId\", jsonData[\"data\"][jsonData.data.length-1][\"@id\"])\r",
+											"    pm.collectionVariables.set(\"provider_offerId\", jsonData[\"data\"][jsonData.data.length-1][\"hasPolicy\"][0][\"@id\"])\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_DATASET}}",
+									"host": [
+										"{{PROVIDER_SERVER_API_DATASET}}"
+									]
+								}
+							},
+							"response": []
+						},
 						{
 							"name": "[C] Start negotiation",
 							"event": [
@@ -606,7 +683,7 @@
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER}}\",\r\n    \"offer\": {\r\n        \"@id\": \"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5\",\r\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"LTEQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+									"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER}}\",\r\n    \"offer\": {\r\n        \"@id\": \"{{provider_offerId}}\",\r\n        \"target\": \"{{provider_datasetId}}\",\r\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"LTEQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -2404,6 +2481,14 @@
 		},
 		{
 			"key": "dataAddress_endpoint",
+			"value": ""
+		},
+		{
+			"key": "provider_datasetId",
+			"value": ""
+		},
+		{
+			"key": "provider_offerId",
 			"value": ""
 		}
 	]

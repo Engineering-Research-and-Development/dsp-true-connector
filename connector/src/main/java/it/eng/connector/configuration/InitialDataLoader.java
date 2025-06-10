@@ -121,8 +121,8 @@ public class InitialDataLoader {
 
             ClassPathResource file = new ClassPathResource("ENG-employee.json");
             if (file.exists()) {
-                // from initial_data.json Artifacts.value
-                String fileKey = "urn:uuid:fdc45798-empl-json-8baf-vc3gh22qh3j8";
+                // from initial_data.json Artifacts.value which is the same as dataset.id
+                String fileKey = "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5";
                 String contentDisposition = ContentDisposition.attachment()
                         .filename(file.getFile().getName())
                         .build()
