@@ -6,6 +6,9 @@ services:
       - network-a
       - network-b
     container_name: minio
+    # Use host-gateway to allow the container to access the host network on Linux
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "9000:9000"
       - "9001:9001"
