@@ -6,9 +6,6 @@ services:
       - network-a
       - network-b
     container_name: minio
-    # Use host-gateway to allow the container to access the host network on Linux
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -34,9 +31,6 @@ services:
       - network-a
       - network-b
     container_name: connector-a
-    # Use host-gateway to allow the container to access the host network on Linux
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     ports:
       - "0.0.0.0:8888:2222" #FTP
       - "8080:8080"
@@ -88,9 +82,6 @@ services:
       - network-a
       - network-b
     container_name: connector-b
-    # Use host-gateway to allow the container to access the host network on Linux
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     ports:
       - "0.0.0.0:8889:2222" #FTP
       - "8090:8080"
