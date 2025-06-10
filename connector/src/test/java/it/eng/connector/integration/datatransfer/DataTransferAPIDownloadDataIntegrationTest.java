@@ -95,6 +95,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
                 }
             }
         }
+        Thread.sleep(5000); // wait for db to be cleaned up
     }
 
     @Test

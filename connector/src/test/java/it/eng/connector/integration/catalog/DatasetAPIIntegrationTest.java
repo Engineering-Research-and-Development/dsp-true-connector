@@ -69,7 +69,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 	private WireMockServer wiremock;
 
 	@BeforeEach
-	public void cleanup() {
+	public void cleanup() throws InterruptedException {
 		catalogRepository.deleteAll();
 		artifactRepository.deleteAll();
 		datasetRepository.deleteAll();
@@ -81,6 +81,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 				}
 			}
 		}
+		Thread.sleep(5000); // wait for db to be cleaned up
 	}
 	
 	@Test
