@@ -492,14 +492,13 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 				.filename(file.getOriginalFilename())
 				.build();
 
-		String fileId = ToolsUtil.generateUniqueId();
 		try {
-			s3ClientService.uploadFile(file.getInputStream(), s3Properties.getBucketName(), fileId,
+			s3ClientService.uploadFile(file.getInputStream(), s3Properties.getBucketName(), dataset.getId(),
 					file.getContentType(), contentDisposition.toString());
 		} catch (Exception e) {
 			throw new Exception("File storing aborted, " + e.getLocalizedMessage());
 		}
-		
+
 		Artifact artifactFile = Artifact.Builder.newInstance()
 				.artifactType(ArtifactType.FILE)
 				.contentType(file.getContentType())
@@ -508,9 +507,9 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 				.lastModifiedDate(CatalogMockObjectUtil.NOW)
 				.lastModifiedBy(CatalogMockObjectUtil.CREATOR)
 				.filename(file.getOriginalFilename())
-				.value(fileId)
+				.value(dataset.getId())
 				.build();
-		
+
 		Dataset datasetWithFile = Dataset.Builder.newInstance()
 				.id(dataset.getId())
 				.hasPolicy(dataset.getHasPolicy())
