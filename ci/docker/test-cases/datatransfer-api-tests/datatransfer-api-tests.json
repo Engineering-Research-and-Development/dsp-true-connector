@@ -342,7 +342,7 @@
 							"pm.test(\"Check expected response\", () => {\r",
 							"    pm.response.to.have.status(200);\r",
 							"    var response = pm.response.text();\r",
-							"    pm.expect(response).to.include(\"http://localhost:9000/dsp-true-connector-consumer\");\r",
+							"    pm.expect(response).to.include(\"http://172.17.0.1:9000/dsp-true-connector-consumer\");\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -502,8 +502,8 @@
 						"exec": [
 							"pm.test(\"Check expected response\", ()=> {\r",
 							"    pm.response.to.have.status(200);\r",
-							"    var jsonData = pm.response.json();\r",
-							"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
+							"    var response = pm.response.text();\r",
+							"    pm.expect(response).to.include(\"http://172.17.0.1:9000/dsp-true-connector-consumer\");\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -663,8 +663,8 @@
 						"exec": [
 							"pm.test(\"Check expected response\", ()=> {\r",
 							"    pm.response.to.have.status(200);\r",
-							"    var jsonData = pm.response.json();\r",
-							"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
+							"    var response = pm.response.text();\r",
+							"    pm.expect(response).to.include(\"http://172.17.0.1:9000/dsp-true-connector-consumer\");\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -824,8 +824,8 @@
 						"exec": [
 							"pm.test(\"Check expected response\", ()=> {\r",
 							"    pm.response.to.have.status(200);\r",
-							"    var jsonData = pm.response.json();\r",
-							"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
+							"    var response = pm.response.text();\r",
+							"    pm.expect(response).to.include(\"http://172.17.0.1:9000/dsp-true-connector-consumer\");\r",
 							"});"
 						],
 						"type": "text/javascript",
