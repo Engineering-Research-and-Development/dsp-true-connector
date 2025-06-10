@@ -1,5 +1,6 @@
 package it.eng.datatransfer.service.api;
 
+import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.service.api.strategy.HttpPullTransferStrategy;
 import it.eng.datatransfer.service.api.strategy.HttpPushTransferStrategy;
@@ -28,7 +29,16 @@ public class DataTransferStrategyFactory {
 
     public DataTransferStrategy getStrategy(String endpointType) {
         log.debug("Getting strategy for endpointType {}", endpointType);
-        return strategies.get(DataTransferFormat.fromString(endpointType));
+        try {
+            DataTransferFormat format = DataTransferFormat.fromString(endpointType);
+            DataTransferStrategy strategy = strategies.get(format);
+            if (strategy == null) {
+                throw new DataTransferAPIException("No strategy found for endpoint type: " + endpointType);
+            }
+            return strategy;
+        } catch (IllegalArgumentException e) {
+            throw new DataTransferAPIException("Invalid endpoint type: " + endpointType, e);
+        }
     }
 
 }

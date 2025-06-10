@@ -23,6 +23,13 @@ public class ArtifactTransferService {
         this.okHttpRestClient = okHttpRestClient;
     }
 
+    /**
+     * Finds the artifact associated with the given transfer process.
+     *
+     * @param transferProcess the transfer process containing the dataset ID
+     * @return the artifact associated with the transfer process
+     * @throws DownloadException if no artifact is found or if an error occurs during retrieval
+     */
     public Artifact findArtifact(TransferProcess transferProcess) {
         TypeReference<GenericApiResponse<Artifact>> typeRef = new TypeReference<GenericApiResponse<Artifact>>() {
         };

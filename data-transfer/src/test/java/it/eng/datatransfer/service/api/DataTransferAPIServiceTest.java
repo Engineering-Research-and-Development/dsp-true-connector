@@ -33,10 +33,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
-import software.amazon.awssdk.core.ResponseBytes;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -387,24 +384,15 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("Download data - success")
     public void downloadData_success() {
-//        ExternalData data = new ExternalData();
-//        data.setContentDisposition(CONTENT_DISPOSITION);
-//        data.setContentType(okhttp3.MediaType.get(MediaType.TEXT_PLAIN_VALUE));
-//        data.setData("data".getBytes());
-//        GenericApiResponse<ExternalData> dataResponse = GenericApiResponse.success(data, "successful response");
-
-        GenericApiResponse<String> internalResponse = GenericApiResponse.success(null, "successful response");
-
         when(transferProcessRepository.findById(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        GenericApiResponse<String> internalResponse = GenericApiResponse.success(null,
+                "successful response");
         when(usageControlProperties.usageControlEnabled()).thenReturn(true);
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
-//        when(okHttpRestClient.downloadData(any(), any()))
-//                .thenReturn(dataResponse);
-//        when(s3ClientService.bucketExists(any())).thenReturn(false);
-//        doNothing().when(s3ClientService).createBucket(any());
-//        doNothing().when(s3ClientService).uploadFile(any(), any(), any(), any(), any());
+
         when(transferProcessRepository.save(any(TransferProcess.class)))
                 .thenReturn(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED);
         when(transferStrategyFactory.getStrategy(any(String.class))).thenReturn(httpPullTransferStrategy);
@@ -412,78 +400,61 @@ class DataTransferAPIServiceTest {
 
         assertDoesNotThrow(() -> apiService.downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
-//        verify(s3ClientService).bucketExists(eq(s3Properties.getBucketName()));
-//        verify(s3ClientService).createBucket(s3Properties.getBucketName());
-//        verify(s3ClientService).uploadFile(eq(s3Properties.getBucketName()),
-//                eq(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()),
-//                any(byte[].class),
-//                eq(MediaType.TEXT_PLAIN_VALUE),
-//                eq(CONTENT_DISPOSITION));
+        verify(transferStrategyFactory, times(1)).getStrategy(any(String.class));
+        verify(httpPullTransferStrategy).transfer(argCaptorTransferProcess.capture());
+        verify(transferProcessRepository, times(1)).save(any(TransferProcess.class));
+
+        TransferProcess capturedProcess = argCaptorTransferProcess.getValue();
+        assertEquals(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(), capturedProcess.getId());
+        assertEquals(DataTransferFormat.HTTP_PULL.name(), capturedProcess.getFormat());
     }
 
     @Test
     @DisplayName("Download data - fail - can not store data")
-    public void downloadData_fail_canNotStoreData() {
-//        ExternalData data = new ExternalData();
-//        data.setContentDisposition(CONTENT_DISPOSITION);
-//        data.setContentType(okhttp3.MediaType.get(MediaType.TEXT_PLAIN_VALUE));
-//        data.setData("data".getBytes());
-//        GenericApiResponse<ExternalData> dataResponse = GenericApiResponse.success(data, "successful response");
-
-        GenericApiResponse<String> internalResponse = GenericApiResponse.success(null, "successful response");
-
+    public void downloadData_transferFail() {
         when(transferProcessRepository.findById(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        GenericApiResponse<String> internalResponse = GenericApiResponse.success(null, "successful response");
         when(usageControlProperties.usageControlEnabled()).thenReturn(true);
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
-//        when(okHttpRestClient.downloadData(any(), any()))
-//                .thenReturn(dataResponse);
-//        when(s3ClientService.bucketExists(any())).thenReturn(true);
         when(transferStrategyFactory.getStrategy(any(String.class))).thenReturn(httpPullTransferStrategy);
-        doThrow(DataTransferAPIException.class).when(httpPullTransferStrategy).transfer(isA(TransferProcess.class));
 
-//        doThrow(DataTransferAPIException.class).when(s3ClientService).uploadFile(any(), any(), any(), any(), any());
+        doThrow(DataTransferAPIException.class).when(httpPullTransferStrategy).transfer(isA(TransferProcess.class));
 
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
     }
 
     @Test
-    @DisplayName("Download data - fail - can not download data")
-    public void downloadData_fail_canNotDownloadData() {
-//        GenericApiResponse<ExternalData> dataResponse = GenericApiResponse.error("Fail to download");
-        GenericApiResponse<String> internalResponse = GenericApiResponse.success(null, "successful response");
-
+    @DisplayName("Download data - fail - strategy not found")
+    public void downloadData_fail_strategyNotFound() {
         when(transferProcessRepository.findById(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        GenericApiResponse<String> internalResponse = GenericApiResponse.success(null, "successful response");
         when(usageControlProperties.usageControlEnabled()).thenReturn(true);
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
-//        when(okHttpRestClient.downloadData(any(), any()))
-//                .thenReturn(dataResponse);
-        when(transferStrategyFactory.getStrategy(any(String.class))).thenReturn(httpPullTransferStrategy);
-        doThrow(DataTransferAPIException.class).when(httpPullTransferStrategy).transfer(isA(TransferProcess.class));
+
+        when(transferStrategyFactory.getStrategy(any(String.class)))
+                .thenThrow(DataTransferAPIException.class);
 
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
-
-//        verify(s3ClientService, times(0)).bucketExists(any());
-//        verify(s3ClientService, times(0)).uploadFile(any(), any(), any(), any(), any());
     }
 
     @Test
     @DisplayName("Download data - fail - policy not valid")
     public void downloadData_fail_policyNotValid() {
-
-        GenericApiResponse<String> internalResponse = GenericApiResponse.error("Policy not valid");
-
         when(transferProcessRepository.findById(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        GenericApiResponse<String> internalResponse = GenericApiResponse.error("Policy not valid");
         when(usageControlProperties.usageControlEnabled()).thenReturn(true);
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
-
 
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
@@ -497,10 +468,8 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.findById(input.getId()))
                 .thenReturn(Optional.of(input));
 
-
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.downloadData(input.getId()));
-
     }
 
     @Test
@@ -509,7 +478,6 @@ class DataTransferAPIServiceTest {
         mockHttpServletResponse = new MockHttpServletResponse();
         String bucketName = "test-bucket";
         String objectKey = DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId();
-        byte[] testData = "test data".getBytes();
 
         when(transferProcessRepository.findById(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId()))
                 .thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED));
@@ -521,33 +489,20 @@ class DataTransferAPIServiceTest {
         when(s3Properties.getBucketName()).thenReturn(bucketName);
         when(s3ClientService.fileExists(bucketName, objectKey)).thenReturn(true);
 
-        ResponseBytes<GetObjectResponse> s3Response = ResponseBytes.fromByteArray(
-                GetObjectResponse.builder()
-                        .contentType(MediaType.TEXT_PLAIN_VALUE)
-                        .contentDisposition(CONTENT_DISPOSITION)
-                        .build(),
-                testData);
-
-//        doNothing().when(s3ClientService).downloadFile(bucketName, objectKey, mockHttpServletResponse);
         when(s3ClientService.generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L)))
                 .thenReturn("http://example.com/presigned-url");
-//        when(s3ClientService.downloadFile(bucketName, objectKey, mockHttpServletResponse))
-//                .thenReturn(s3Response);
 
         assertDoesNotThrow(() -> apiService.viewData(objectKey));
 
+        verify(s3ClientService).fileExists(bucketName, objectKey);
+        verify(s3ClientService).generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L));
         verify(applicationEventPublisher)
                 .publishEvent(any(ArtifactConsumedEvent.class));
-//        assertEquals(MediaType.TEXT_PLAIN_VALUE, mockHttpServletResponse.getContentType());
-//        assertEquals(CONTENT_DISPOSITION, mockHttpServletResponse.getHeader(HttpHeaders.CONTENT_DISPOSITION));
-//        assertEquals(testData.length, mockHttpServletResponse.getContentAsByteArray().length);
-//        assertEquals(new String(testData), new String(mockHttpServletResponse.getContentAsByteArray()));
     }
 
     @Test
-    @DisplayName("View data - fail - can not access data")
+    @DisplayName("View data - fail - generate presignURL exception")
     public void viewData_fail_canNotAccessData() {
-        mockHttpServletResponse = new MockHttpServletResponse();
         String bucketName = "test-bucket";
         String objectKey = DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId();
 
@@ -560,8 +515,8 @@ class DataTransferAPIServiceTest {
 
         when(s3Properties.getBucketName()).thenReturn(bucketName);
         when(s3ClientService.fileExists(bucketName, objectKey)).thenReturn(true);
-//        doThrow(new RuntimeException("Test error")).when(s3ClientService).downloadFile(bucketName, objectKey, mockHttpServletResponse);
         doThrow(RuntimeException.class).when(s3ClientService).generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L));
+
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.viewData(objectKey));
     }
@@ -569,7 +524,6 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("View data - fail - file not found")
     public void viewData_fail_fileNotFound() {
-        mockHttpServletResponse = new MockHttpServletResponse();
         String bucketName = "test-bucket";
         String objectKey = DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId();
 
@@ -585,13 +539,14 @@ class DataTransferAPIServiceTest {
 
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.viewData(objectKey));
+
+        verify(s3ClientService).fileExists(bucketName, objectKey);
     }
 
 
     @Test
     @DisplayName("View data - fail - policy not valid")
     public void viewData_fail_policyNotValid() {
-
         GenericApiResponse<String> internalResponse = GenericApiResponse.error("Policy not valid");
 
         when(transferProcessRepository.findById(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId()))
@@ -600,23 +555,24 @@ class DataTransferAPIServiceTest {
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
 
-
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.viewData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId()));
 
+        verify(s3ClientService, times(0)).fileExists(anyString(), anyString());
+        verify(s3ClientService, times(0)).generateGetPresignedUrl(anyString(), anyString(), any(Duration.class));
     }
 
     @Test
     @DisplayName("View data - fail - not downloaded")
     public void viewData_fail_notDownloaded() {
-
         when(transferProcessRepository.findById(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
-
 
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.viewData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
+        verify(s3ClientService, times(0)).fileExists(anyString(), anyString());
+        verify(s3ClientService, times(0)).generateGetPresignedUrl(anyString(), anyString(), any(Duration.class));
     }
 
     private static Stream<Arguments> startTransfer_wrongStates() {

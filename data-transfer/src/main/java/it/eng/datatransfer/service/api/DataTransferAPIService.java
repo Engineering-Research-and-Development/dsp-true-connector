@@ -455,7 +455,6 @@ public class DataTransferAPIService {
                 .build();
 
         transferProcessRepository.save(transferProcessWithData);
-
     }
 
     /**
