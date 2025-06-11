@@ -91,7 +91,7 @@ c->cs3 : upload artifact to S3 bucket
 end
 
 group S3 data
-c->ps3 ++: http://localhost:9000/dsp-true-connector-consumer/urn%3Auuid%3A71053997-02f8-4def-b445-a6b9ce5a1d18 (DataAddress)
+c->ps3 ++: http://localhost:9000/dsp-true-connector-provider-bucket/urn%3Auuid%3A71053997-02f8-4def-b445-a6b9ce5a1d18 (DataAddress)
 ps3->ps3: performs checks
 return download artifact
 ps3->cs3 : upload artifact to S3 bucket
