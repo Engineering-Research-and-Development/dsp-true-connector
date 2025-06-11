@@ -482,7 +482,7 @@
       "_id": "urn:uuid:abc45797-pdff-4932-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferRequestMessage",
       "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
-      "format": "example:HTTP_PULL",
+      "format": "HttpData-PULL",
       "callbackAddress": "https://callback.url.com"
     }
   ],
