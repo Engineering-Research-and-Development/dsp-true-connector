@@ -342,7 +342,7 @@
 							"pm.test(\"Check expected response\", () => {\r",
 							"    pm.response.to.have.status(200);\r",
 							"    var response = pm.response.text();\r",
-							"    pm.expect(response).to.include(\"http://172.17.0.1:9000/dsp-true-connector-b\");\r",
+							"    pm.expect(response).to.include(\"http://172.17.0.1:9000/dsp-true-connector-a\");\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -503,7 +503,7 @@
 							"pm.test(\"Check expected response\", ()=> {\r",
 							"    pm.response.to.have.status(200);\r",
 							"    var response = pm.response.text();\r",
-							"    pm.expect(response).to.include(\"http://172.17.0.1:9000/dsp-true-connector-b\");\r",
+							"    pm.expect(response).to.include(\"http://172.17.0.1:9000/dsp-true-connector-a\");\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -664,7 +664,7 @@
 							"pm.test(\"Check expected response\", ()=> {\r",
 							"    pm.response.to.have.status(200);\r",
 							"    var response = pm.response.text();\r",
-							"    pm.expect(response).to.include(\"http://172.17.0.1:9000/dsp-true-connector-b\");\r",
+							"    pm.expect(response).to.include(\"http://172.17.0.1:9000/dsp-true-connector-a\");\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -825,7 +825,7 @@
 							"pm.test(\"Check expected response\", ()=> {\r",
 							"    pm.response.to.have.status(200);\r",
 							"    var response = pm.response.text();\r",
-							"    pm.expect(response).to.include(\"http://172.17.0.1:9000/dsp-true-connector-b\");\r",
+							"    pm.expect(response).to.include(\"http://172.17.0.1:9000/dsp-true-connector-a\");\r",
 							"});"
 						],
 						"type": "text/javascript",
