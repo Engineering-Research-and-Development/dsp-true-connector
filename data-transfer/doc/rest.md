@@ -74,7 +74,7 @@ Here the path branches and depending on the data storage solution the DataAddres
 Connector will generate a presignedURL(download link), in following format:
 
 ```
-https://presignedUrl.com
+http://localhost:9000/dsp-true-connector-consumer/urn%3Auuid%3A71053997-02f8-4def-b445-a6b9ce5a1d18?response-content-disposition=attachment%3B%20filename%3D%22ENG-employee.json
 
 ```
 

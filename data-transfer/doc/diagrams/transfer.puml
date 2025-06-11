@@ -10,7 +10,7 @@ participant PROVIDER_S3 as ps3
 == TransfertRequestMessage ==
 
 c->p : https://provider.com/transfers/request
-note left
+note over c
 TransferRequestMessage
 {
   "@context":  "https://w3id.org/dspace/2024/1/context.json",
@@ -32,10 +32,11 @@ p->c: 200 OK, TransferProcess
 == TransferStartMessage ==
 p->p: Create TransferStartMessage
 group External data
-p->p: uses consumerPid and providerPid from TransferProcess to generate DataAddress (download link) if the data is stored in and external system
+p->p: uses consumerPid and providerPid from TransferProcess to generate DataAddress (download link) \n if the data is stored in and external system
 
-note right
-Base64.encodeBase64URLSafeString((urn:uuid:CONSUMER_PID_TRANSFER + "|" + urn:uuid:PROVIDER_PID_TRANSFER)
+note over p
+Base64.encodeBase64URLSafeString(
+(urn:uuid:CONSUMER_PID_TRANSFER + "|" + urn:uuid:PROVIDER_PID_TRANSFER)
 .getBytes(Charset.forName("UTF-8")));
 http://localhost:8080/artifact/encodedValue/1
 end note
@@ -43,8 +44,9 @@ end
 group S3 data
 p->p: creates DataAddress from a presignedURL if the data is stored in S3 bucket
 
-note right
-The data will be later downloaded directly from S3, whereas the external data has to pass through the PROVIDER
+note over p
+The data will be later downloaded directly from S3,
+whereas the external data has to pass through the PROVIDER
 end note
 end
 
@@ -89,7 +91,7 @@ c->cs3 : upload artifact to S3 bucket
 end
 
 group S3 data
-c->ps3 ++: https://presignedURL.com (DataAddress)
+c->ps3 ++: http://localhost:9000/dsp-true-connector-consumer/urn%3Auuid%3A71053997-02f8-4def-b445-a6b9ce5a1d18 (DataAddress)
 ps3->ps3: performs checks
 return download artifact
 ps3->cs3 : upload artifact to S3 bucket
