@@ -76,7 +76,7 @@ jobs:
          file: ./connector/Dockerfile
          no-cache: true
          push: true
-         tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev
+         tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:develop
          labels: ${{ steps.meta.outputs.labels }}
 
   build-develop-after-release:
