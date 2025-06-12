@@ -1,12 +1,19 @@
 package it.eng.catalog.service;
 
-import it.eng.catalog.exceptions.CatalogErrorException;
-import it.eng.catalog.model.*;
-import it.eng.catalog.repository.CatalogRepository;
-import it.eng.catalog.serializer.CatalogSerializer;
-import it.eng.catalog.util.CatalogMockObjectUtil;
-import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
-import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,14 +24,20 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
-import java.util.*;
-import java.util.stream.Collectors;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import it.eng.catalog.exceptions.CatalogErrorException;
+import it.eng.catalog.model.Action;
+import it.eng.catalog.model.Catalog;
+import it.eng.catalog.model.Constraint;
+import it.eng.catalog.model.DataService;
+import it.eng.catalog.model.LeftOperand;
+import it.eng.catalog.model.Offer;
+import it.eng.catalog.model.Operator;
+import it.eng.catalog.model.Permission;
+import it.eng.catalog.repository.CatalogRepository;
+import it.eng.catalog.serializer.CatalogSerializer;
+import it.eng.catalog.util.CatalogMockObjectUtil;
+import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
+import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
 
 @ExtendWith(MockitoExtension.class)
 public class CatalogServiceTest {
@@ -89,7 +102,7 @@ public class CatalogServiceTest {
     @DisplayName("Update catalog successfully")
     void updateCatalog_success() {
         when(repository.findById(anyString())).thenReturn(Optional.of(CatalogMockObjectUtil.CATALOG));
-        when(repository.save(any(Catalog.class))).thenReturn(CatalogMockObjectUtil.CATALOG);
+        when(repository.save(any(Catalog.class))).thenReturn(CatalogMockObjectUtil.CATALOG_FOR_UPDATE);
 
         Catalog updatedCatalogData = CatalogMockObjectUtil.CATALOG_FOR_UPDATE;
         
@@ -99,16 +112,18 @@ public class CatalogServiceTest {
         verify(repository).save(argCaptorCatalog.capture());
         assertTrue(argCaptorCatalog.getValue().getDescription().stream().filter(d -> d.getValue().contains("update")).findFirst().isPresent());
         assertTrue(argCaptorCatalog.getValue().getDistribution().stream().filter(d -> d.getTitle().contains("update")).findFirst().isPresent());
-       
+
         assertTrue(argCaptorCatalog.getValue().getDistribution().stream().findFirst().get().getHasPolicy()
         		.stream()
         		.filter(p -> p.getId().equals("urn:offer_id_update"))
         		.findFirst().isPresent());
-        
-        DataService dataServiceUpdated = argCaptorCatalog.getValue().getService().stream().findFirst().get();
-        assertTrue(dataServiceUpdated.getCreator().contains("update"));
-        assertTrue(dataServiceUpdated.getEndpointURL().contains("update"));
-        assertTrue(dataServiceUpdated.getEndpointDescription().contains("update"));
+
+
+        assertTrue(argCaptorCatalog.getValue().getService().stream()
+                .filter(s -> s.getCreator().contains("update")
+                        && s.getEndpointURL().contains("update")
+                        && s.getEndpointDescription().contains("update"))
+                .findFirst().isPresent());
     }
 
     @Test

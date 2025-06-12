@@ -73,17 +73,32 @@ jobs:
       uses: docker/metadata-action@v5
       with:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-   
+        tags: |
+          type=raw,value=${{ github.event.inputs.releaseVersion }}
+          type=raw,value=latest
+
     - name: Build and push Docker image
       id: push
       uses: docker/build-push-action@v6
       with:
-       context: ./connector
-       file: ./connector/Dockerfile
-       no-cache: true
-       push: true
-       tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.releaseVersion }}
-       labels: ${{ steps.meta.outputs.labels }}
+        context: .
+        file: ./Dockerfile
+        no-cache: true
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: "${{ github.event.inputs.releaseVersion }}"
+        tag_name: ${{ github.event.inputs.releaseVersion }}
+        body: "Release version ${{ github.event.inputs.releaseVersion }}"
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ env.TOKEN }}
 
     - name: Bump up version in branch to next development version
       shell: bash -l {0}
