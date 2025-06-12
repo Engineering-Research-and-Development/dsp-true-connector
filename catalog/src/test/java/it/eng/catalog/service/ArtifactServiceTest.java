@@ -72,9 +72,7 @@ public class ArtifactServiceTest {
     public void uploadFile_success() throws IOException {
         when(file.getContentType()).thenReturn(MediaType.APPLICATION_JSON_VALUE);
         when(file.getOriginalFilename()).thenReturn(CatalogMockObjectUtil.ARTIFACT_FILE.getFilename());
-//        when(s3ClientService.bucketExists(anyString())).thenReturn(false);
         when(s3Properties.getBucketName()).thenReturn("test-bucket");
-//	    doNothing().when(s3ClientService).createBucket(anyString());
         when(file.getInputStream()).thenReturn(inputStream);
         when(s3ClientService.uploadFile(any(InputStream.class), anyString(), anyString(), anyString(), anyString()))
                 .thenReturn(CompletableFuture.completedFuture("etag"));
@@ -83,7 +81,6 @@ public class ArtifactServiceTest {
         Artifact artifact = artifactService.uploadArtifact(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), file, null, null);
 
         assertEquals(CatalogMockObjectUtil.ARTIFACT_FILE, artifact);
-//	    verify(s3ClientService).createBucket("test-bucket");
         verify(s3ClientService).uploadFile(eq(inputStream), eq("test-bucket"), anyString(), eq(MediaType.APPLICATION_JSON_VALUE), anyString());
     }
 
@@ -92,28 +89,25 @@ public class ArtifactServiceTest {
     public void uploadFile_fail() throws IOException {
         when(file.getContentType()).thenReturn(MediaType.APPLICATION_JSON_VALUE);
         when(file.getInputStream()).thenReturn(inputStream);
-//		when(s3ClientService.bucketExists(anyString())).thenReturn(false);
         doThrow(RuntimeException.class).when(s3ClientService).uploadFile(any(InputStream.class), anyString(), anyString(), anyString(), anyString());
         when(s3Properties.getBucketName()).thenReturn("test-bucket");
-//	    doNothing().when(s3ClientService).createBucket(anyString());
 
         assertThrows(CatalogErrorAPIException.class, () -> artifactService.uploadArtifact(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), file, null, null));
     }
 
     @Test
     @DisplayName("Upload external - success")
-    public void uploadExternal_success() throws IOException {
+    public void uploadExternal_success() {
         when(artifactRepository.save(any(Artifact.class))).thenReturn(CatalogMockObjectUtil.ARTIFACT_EXTERNAL);
 
         Artifact artifact = artifactService.uploadArtifact(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), null, CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), null);
 
-        assertEquals(artifact, CatalogMockObjectUtil.ARTIFACT_EXTERNAL);
-
+        assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL, artifact);
     }
 
     @Test
     @DisplayName("Upload no data - fail")
-    public void uploadNoData_fail() throws IOException {
+    public void uploadNoData_fail() {
         assertThrows(CatalogErrorAPIException.class, () -> artifactService.uploadArtifact(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), null, null, null));
     }
 
