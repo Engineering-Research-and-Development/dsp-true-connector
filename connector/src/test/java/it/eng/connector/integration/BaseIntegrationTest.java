@@ -58,10 +58,7 @@ public class BaseIntegrationTest {
 
     // starts a mongodb and s3 simulated cloud storage container; the containers are shared among all tests; docker must be running
     protected static final MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:7.0.12");
-//    protected static final LocalStackContainer cloudProvider = new LocalStackContainer("4.3.0")
-//        .withServices(S3);
-
-    protected static final MinIOContainer cloudProvider = new MinIOContainer("minio/minio");
+    protected static final MinIOContainer minIOContainer = new MinIOContainer("minio/minio");
 
     @Autowired
     protected MockMvc mockMvc;
@@ -74,17 +71,16 @@ public class BaseIntegrationTest {
     static {
         mongoDBContainer.start();
         // used for checking S3 storage during test debugging; will be exposed on random localhost port which can be checked with `docker ps`or some docker GUI
-        cloudProvider.addExposedPort(9001);
-        cloudProvider.start();
+        minIOContainer.addExposedPort(9001);
+        minIOContainer.start();
     }
 
     @DynamicPropertySource
     static void containersProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.data.mongodb.host", mongoDBContainer::getHost);
         registry.add("spring.data.mongodb.port", mongoDBContainer::getFirstMappedPort);
-//        registry.add("s3.endpoint", () -> cloudProvider.getEndpointOverride(S3).toString());
-        registry.add("s3.endpoint", () -> cloudProvider.getS3URL());
-        registry.add("s3.externalPresignedEndpoint", () -> cloudProvider.getS3URL());
+        registry.add("s3.endpoint", () -> minIOContainer.getS3URL());
+        registry.add("s3.externalPresignedEndpoint", () -> minIOContainer.getS3URL());
 
     }
 
@@ -114,11 +110,6 @@ public class BaseIntegrationTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
         JsonNode jsonNode = jsonMapper.readTree(result.andReturn().getResponse().getContentAsString());
-
-//		String json = result.andReturn().getResponse().getContentAsString();
-////		GenericApiResponse<List<ContractNegotiation>>
-//		TypeReference<GenericApiResponse<List<ContractNegotiation>>> typeRef = new TypeReference<GenericApiResponse<List<ContractNegotiation>>>() {};
-//		GenericApiResponse<List<ContractNegotiation>> apiResp =  Serializer.deserializePlain(json, typeRef);
 
         return jsonNode.findValues("data").get(0).get(jsonNode.findValues("data").get(0).size() - 1);
     }
