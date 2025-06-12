@@ -82,8 +82,8 @@ jobs:
       id: push
       uses: docker/build-push-action@v6
       with:
-        context: .
-        file: ./Dockerfile
+        context: ./connector
+        file: ./connector/Dockerfile
         no-cache: true
         push: true
         tags: ${{ steps.meta.outputs.tags }}
