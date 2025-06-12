@@ -2,9 +2,7 @@
 	"info": {
 		"_postman_id": "b1d0623d-e1ea-4b12-82a7-cd53811193db",
 		"name": "True_connector_DSP",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "21815221",
-		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-b1d0623d-e1ea-4b12-82a7-cd53811193db?action=share&source=collection_link&creator=21815221"
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
 		{
@@ -558,7 +556,7 @@
 											"key": "file",
 											"description": "File for upload",
 											"type": "file",
-											"src": "/C:/Users/davjovanov/OneDrive - Engineering Ingegneria Informatica S.p.A/Immagini/Screenshot/Screenshot 2025-04-16 124041.png"
+											"src": []
 										},
 										{
 											"key": "url",
