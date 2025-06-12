@@ -56,7 +56,7 @@ public class DataTransferService {
 	 * Note: those 2 Pid's are not to be mixed with Contract Negotiation ones. They are unique
 	 * @param consumerPid 
 	 * @param providerPid
-	 * @return true if there is transferProces with state STARTED for cosnumerPid and providerPid
+	 * @return true if there is transferProcess with state STARTED for consumerPid and providerPid
 	 */
 	public boolean isDataTransferStarted(String consumerPid ,String providerPid) {
 		return transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid)

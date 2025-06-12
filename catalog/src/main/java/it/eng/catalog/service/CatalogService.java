@@ -121,15 +121,13 @@ public class CatalogService {
 	
 	public Catalog updateCatalog(String id, Catalog cat) {
 		Catalog existingCatalog = getCatalogByIdForApi(id);
-		Catalog storedCatalog = null;;
 		try {
 			Catalog updatedCatalog= existingCatalog.updateInstance(cat);
-			storedCatalog = repository.save(updatedCatalog);
+			return repository.save(updatedCatalog);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			throw new InternalServerErrorAPIException("Catalog could not be updated");
 		}
-        return storedCatalog;
 	}
 
 	@Deprecated

@@ -1,4 +1,21 @@
 services:
+### minio (simulated S3 cloud storage)
+  minio:
+    image: minio/minio
+    networks:
+      - network-a
+      - network-b
+    container_name: minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    command: server /data --console-address ":9001"
+
 ### intstance a
   connector-a:
     image: ghcr.io/engineering-research-and-development/dsp-true-connector:test
@@ -15,10 +32,11 @@ services:
       - network-b
     container_name: connector-a
     ports:
-      - 0.0.0.0:8888:2222 #FTP
-      - 8080:8080
+      - "0.0.0.0:8888:2222" #FTP
+      - "8080:8080"
     depends_on:
       - mongodb-a
+      - minio
     environment:
       - "JDK_JAVA_OPTIONS=-Xmx1024m"
       - CALLBACK_ADDRESS=${CONNECTOR_A_CALLBACK_ADDRESS}
@@ -36,7 +54,8 @@ services:
       - ./tc_cert:/cert
       - ./:/home/nobody/ftp
       - tc_a_log:/var/log/tc
-      
+
+
   mongodb-a:
     container_name: mongodb-a
     image: mongo:7.0.12
@@ -47,7 +66,6 @@ services:
     volumes:
       - mongodb-data_a:/data/db
       - mongodb-configdb_a:/data/configdb
-      
 ### instance b
 
   connector-b:
@@ -65,10 +83,11 @@ services:
       - network-b
     container_name: connector-b
     ports:
-      - 0.0.0.0:8889:2222 #FTP
-      - 8090:8080
+      - "0.0.0.0:8889:2222" #FTP
+      - "8090:8080"
     depends_on:
       - mongodb-b
+      - minio
     environment:
       - "JDK_JAVA_OPTIONS=-Xmx1024m"
       - CALLBACK_ADDRESS=${CONNECTOR_B_CALLBACK_ADDRESS}
@@ -86,7 +105,7 @@ services:
       - ./tc_cert:/cert
       - ./:/home/nobody/ftp
       - tc_b_log:/var/log/tc
-      
+
   mongodb-b:
     container_name: mongodb-b
     image: mongo:7.0.12
@@ -97,12 +116,13 @@ services:
     volumes:
       - mongodb-data_b:/data/db
       - mongodb-configdb_b:/data/configdb
-      
+
 networks:
   network-a: { }
   network-b: { }
-  
+
 volumes:
+  minio_data: { }
   tc_a_log: { }
   mongodb-data_a: { }
   mongodb-configdb_a: { }

@@ -264,7 +264,6 @@ public class CatalogSerializer {
      * @param <T> typed class
      * @param jsonNode JsonNode
      * @param clazz Class to check
-     * @throws jakarta.validationException
      */
     private static <T> void validateProtocol(JsonNode jsonNode, Class<T> clazz) {
         try {

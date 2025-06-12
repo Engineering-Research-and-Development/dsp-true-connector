@@ -2,10 +2,12 @@ package it.eng.tools.client.rest;
 
 import java.io.IOException;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -161,7 +163,7 @@ public class OkHttpRestClient {
 			return GenericApiResponse.error(e.getLocalizedMessage());
         }
 	}
-	
+
 	public String sendInternalRequest(String contextAddress, HttpMethod method, JsonNode jsonBody) {
 		
 		 String connectorAddress;
