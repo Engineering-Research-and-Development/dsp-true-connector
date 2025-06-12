@@ -207,8 +207,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         assertEquals(FILE_NAME, contentDisposition.getFilename());
         assertEquals(fileContent, fileFromStorage.asUtf8String());
         // +2 from test; inserted Dataset with file and downloaded TransferProcess
-        int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
-        assertEquals(startingBucketFileCount + 2, endBucketFileCount);
+        checkIfEndBucketFileCountIsAsExpected(startingBucketFileCount + 2);
     }
 
     @Test
@@ -308,8 +307,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 
         // check if the file is inserted in the database
         // 1 from initial data + 1 from test; dataset is added but not downloaded
-        int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
-        assertEquals(startingBucketFileCount +1, endBucketFileCount);
+        checkIfEndBucketFileCountIsAsExpected(startingBucketFileCount + 1);
 
     }
 
@@ -381,9 +379,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         // + 1 from test
         assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
         // +2 from test; inserted Dataset with file and downloaded TransferProcess
-        int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
-        assertEquals(startingBucketFileCount + 2, endBucketFileCount);
-
+        checkIfEndBucketFileCountIsAsExpected(startingBucketFileCount + 2);
     }
 
     @Test
@@ -454,8 +450,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         // + 1 from test
         assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
         // +2 from test; inserted Dataset with file and downloaded TransferProcess
-        int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
-        assertEquals(startingBucketFileCount + 2, endBucketFileCount);
+        checkIfEndBucketFileCountIsAsExpected(startingBucketFileCount + 2);
     }
 
     private Agreement insertAgreement(Constraint constraint) {
@@ -502,5 +497,19 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         MockMultipartFile mockFile = new MockMultipartFile(FILE_NAME, FILE_NAME, MediaType.TEXT_PLAIN_VALUE, fileContent.getBytes());
         datasetService.saveDataset(mockDataset, mockFile, null, null);
         return mockDataset;
+    }
+
+    private void checkIfEndBucketFileCountIsAsExpected(int expectedEndBucketFileCount) throws InterruptedException {
+        // Wait for S3 to reflect the deletion (max 5 seconds)
+        int maxRetries = 10;
+        int delayMs = 500;
+        // this is to ensure that the test functions correctly since the count will never -10000
+        int endBucketFileCount = -10000;
+        for (int i = 0; i < maxRetries; i++) {
+            endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
+            if (endBucketFileCount == expectedEndBucketFileCount) break;
+            Thread.sleep(delayMs);
+        }
+        assertEquals(endBucketFileCount, expectedEndBucketFileCount);
     }
 }

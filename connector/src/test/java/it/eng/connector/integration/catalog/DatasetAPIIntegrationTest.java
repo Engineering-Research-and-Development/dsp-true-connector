@@ -17,7 +17,6 @@ import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
-import it.eng.tools.util.ToolsUtil;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -258,12 +257,12 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 		int initialDatasetSize = datasetRepository.findAll().size();
 		int initialArtifactSize = artifactRepository.findAll().size();
 		int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
-		
+
 		Dataset dataset = Dataset.Builder.newInstance()
 				.hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
 				.build();
 		datasetRepository.save(dataset);
-		
+
 		Catalog catalog = Catalog.Builder.newInstance()
 				.dataset(Set.of(dataset))
 				.build();
@@ -318,9 +317,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 		assertEquals(ArtifactType.FILE, artifactFromDb.getArtifactType());
 		assertEquals(initialArtifactSize + 1, artifactRepository.findAll().size());
 
-		// check if the file is inserted in S3
-		int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
-
         MockHttpServletResponse mockHttpServletResponse = new MockHttpServletResponse();
 		s3ClientService.downloadFile(s3Properties.getBucketName(), artifactFromDb.getValue(), mockHttpServletResponse);
 
@@ -336,7 +332,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         assertEquals(filePart.getOriginalFilename(), contentDisposition.getFilename());
         assertEquals(fileContent, fileFromStorage.asUtf8String());
         // + 1 from test
-        assertEquals(startingBucketFileCount + 1, endBucketFileCount);
+		checkIfEndBucketFileCountIsAsExpected(startingBucketFileCount + 1);
 
 	}
 
@@ -452,9 +448,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 		assertEquals(ArtifactType.FILE, artifactFromDb.getArtifactType());
 		assertEquals(initialArtifactSize, artifactRepository.findAll().size());
 		
-		// check if the file is inserted in S3
-		int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
-
         MockHttpServletResponse mockHttpServletResponse = new MockHttpServletResponse();
 		s3ClientService.downloadFile(s3Properties.getBucketName(), artifactFromDb.getValue(), mockHttpServletResponse);
 
@@ -470,7 +463,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         assertEquals(filePart.getOriginalFilename(), contentDisposition.getFilename());
         assertEquals(fileContent, fileFromStorage.asUtf8String());
         // + 1 from test
-        assertEquals(startingBucketFileCount + 1, endBucketFileCount);
+		checkIfEndBucketFileCountIsAsExpected(startingBucketFileCount + 1);
 	}
 	
 	@Test
@@ -578,44 +571,38 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 		assertEquals(initialArtifactSize, artifactRepository.findAll().size());
 
 		// check if the file is deleted from S3
-		int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
-		assertEquals(startingBucketFileCount - 1, endBucketFileCount);
-		
+		checkIfEndBucketFileCountIsAsExpected(startingBucketFileCount - 1);
 	}
 	
 	@Test
 	@DisplayName("Dataset API - delete dataset with file")
 	@WithUserDetails(TestUtil.API_USER)
 	public void deleteDatasetWithFile() throws Exception {
-		int initialDatasetSize = datasetRepository.findAll().size();
-		int initialArtifactSize = artifactRepository.findAll().size();
-		int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
-		
+
 		Dataset dataset = Dataset.Builder.newInstance()
 				.hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
 				.build();
-		
+
 		Catalog catalog = Catalog.Builder.newInstance()
 				.dataset(Set.of(dataset))
 				.build();
-		
+
 		String fileContent = "Hello, World!";
-		
-		MockMultipartFile file 
+
+		MockMultipartFile file
 		= new MockMultipartFile(
-				"file", 
-				"hello.txt", 
-				MediaType.TEXT_PLAIN_VALUE, 
+				"file",
+				"hello.txt",
+				MediaType.TEXT_PLAIN_VALUE,
 				fileContent.getBytes()
 				);
-		
+
 		ContentDisposition contentDisposition = ContentDisposition.attachment()
 				.filename(file.getOriginalFilename())
 				.build();
 
-		String fileId = ToolsUtil.generateUniqueId();
 		try {
-			s3ClientService.uploadFile(file.getInputStream(), s3Properties.getBucketName(), fileId,
+			s3ClientService.uploadFile(file.getInputStream(), s3Properties.getBucketName(), dataset.getId(),
 					file.getContentType(), contentDisposition.toString());
 		} catch (Exception e) {
 			throw new Exception("File storing aborted, " + e.getLocalizedMessage());
@@ -629,28 +616,31 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 				.lastModifiedDate(CatalogMockObjectUtil.NOW)
 				.lastModifiedBy(CatalogMockObjectUtil.CREATOR)
 				.filename(file.getOriginalFilename())
-				.value(fileId)
+				.value(dataset.getId())
 				.build();
-		
+
 		Dataset datasetWithFile = Dataset.Builder.newInstance()
 				.id(dataset.getId())
 				.hasPolicy(dataset.getHasPolicy())
 				.artifact(artifactFile)
 				.build();
-		
+
 		artifactRepository.save(artifactFile);
 		datasetRepository.save(datasetWithFile);
 		catalogRepository.save(catalog);
-		
-		
+
+		int initialDatasetSize = datasetRepository.findAll().size();
+		int initialArtifactSize = artifactRepository.findAll().size();
+		int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
+
 		TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {};
-		
+
 		MvcResult result = mockMvc.perform(
 				delete(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + datasetWithFile.getId()))
 			.andExpect(status().isOk())
 			.andExpect(content().contentType(MediaType.APPLICATION_JSON))
 			.andReturn();
-		
+
 		String json = result.getResponse().getContentAsString();
 		GenericApiResponse<String> apiResp =  CatalogSerializer.deserializePlain(json, typeRef);
 		  
@@ -661,15 +651,14 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
 		// check if the Dataset is deleted from the database
 		assertEquals(Optional.empty(), datasetRepository.findById(dataset.getId()));
-		assertEquals(initialDatasetSize, datasetRepository.findAll().size());
+		assertEquals(initialDatasetSize -1, datasetRepository.findAll().size());
 
 		// check if the artifact is deleted from the database
 		assertEquals(Optional.empty(), artifactRepository.findById(artifactFile.getId()));
-		assertEquals(initialArtifactSize, artifactRepository.findAll().size());
+		assertEquals(initialArtifactSize -1, artifactRepository.findAll().size());
 
 		// check if the file is deleted from the database
-		int endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
-		assertEquals(startingBucketFileCount, endBucketFileCount);
+		checkIfEndBucketFileCountIsAsExpected(startingBucketFileCount - 1);
 		
 	}
 	
@@ -677,9 +666,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 	@DisplayName("Dataset API - delete dataset with external")
 	@WithUserDetails(TestUtil.API_USER)
 	public void deleteDatasetWithExternal() throws Exception {
-		int initialDatasetSize = datasetRepository.findAll().size();
-		int initialArtifactSize = artifactRepository.findAll().size();
-		
+
 		Artifact artifactExternal = Artifact.Builder.newInstance()
 				.artifactType(ArtifactType.EXTERNAL)
 				.createdBy(CatalogMockObjectUtil.CREATOR)
@@ -688,23 +675,25 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 				.lastModifiedBy(CatalogMockObjectUtil.CREATOR)
 				.value("https://example.com/employees")
 				.build();
-		
+
 		Dataset dataset = Dataset.Builder.newInstance()
 				.hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
 				.artifact(artifactExternal)
 				.build();
-		
+
 		Catalog catalog = Catalog.Builder.newInstance()
 				.dataset(Set.of(dataset))
 				.build();
-		
+
 		catalogRepository.save(catalog);
 		artifactRepository.save(artifactExternal);
 		datasetRepository.save(dataset);
-		
-		
+
+		int initialDatasetSize = datasetRepository.findAll().size();
+		int initialArtifactSize = artifactRepository.findAll().size();
+
 		TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {};
-		
+
 		MvcResult result = mockMvc.perform(
 				delete(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + dataset.getId()))
 			.andExpect(status().isOk())
@@ -721,11 +710,11 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
 		// check if the Dataset is deleted from the database
 		assertEquals(Optional.empty(), datasetRepository.findById(dataset.getId()));
-		assertEquals(initialDatasetSize, datasetRepository.findAll().size());
+		assertEquals(initialDatasetSize - 1, datasetRepository.findAll().size());
 
 		// check if the artifact is deleted from the database
 		assertEquals(Optional.empty(), artifactRepository.findById(artifactExternal.getId()));
-		assertEquals(initialArtifactSize, artifactRepository.findAll().size());
+		assertEquals(initialArtifactSize -1, artifactRepository.findAll().size());
 
 	}
 	
@@ -761,6 +750,19 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 		assertEquals(startingBucketFileCount, s3ClientService.listFiles(s3Properties.getBucketName()).size());
 
 	}
-	
+
+	private void checkIfEndBucketFileCountIsAsExpected(int expectedEndBucketFileCount) throws InterruptedException {
+		// Wait for S3 to reflect the deletion (max 5 seconds)
+		int maxRetries = 10;
+		int delayMs = 500;
+		// this is to ensure that the test functions correctly since the count will never -10000
+		int endBucketFileCount = -10000;
+		for (int i = 0; i < maxRetries; i++) {
+			endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
+			if (endBucketFileCount == expectedEndBucketFileCount) break;
+			Thread.sleep(delayMs);
+		}
+		assertEquals(endBucketFileCount, expectedEndBucketFileCount);
+	}
 
 }
