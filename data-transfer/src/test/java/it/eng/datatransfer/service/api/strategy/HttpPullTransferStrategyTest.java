@@ -1,22 +1,25 @@
 package it.eng.datatransfer.service.api.strategy;
 
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
-import it.eng.datatransfer.model.DataAddress;
-import it.eng.datatransfer.model.EndpointProperty;
-import it.eng.datatransfer.model.TransferProcess;
+import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.util.DataTranferMockObjectUtil;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.s3.properties.S3Properties;
-import org.junit.jupiter.api.BeforeEach;
+import it.eng.tools.s3.service.S3ClientService;
+import org.bson.types.ObjectId;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Mockito;
+import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
-import software.amazon.awssdk.services.s3.S3AsyncClient;
+import org.springframework.http.HttpHeaders;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -30,50 +33,102 @@ public class HttpPullTransferStrategyTest {
     @Mock
     private S3Properties s3Properties;
     @Mock
-    private S3AsyncClient s3AsyncClient;
+    private S3ClientService s3ClientService;
+    @Mock
+    private HttpURLConnection mockConnection;
 
     @InjectMocks
     private HttpPullTransferStrategy strategy;
 
-    @BeforeEach
-    void setUp() {
-        strategy = Mockito.spy(new HttpPullTransferStrategy(s3Properties, s3AsyncClient));
-    }
+    private static final String TEST_BUCKET = "test-bucket";
+    private static final String TEST_CONTENT = "test-content";
+    private static final String TEST_CONTENT_TYPE = "application/json";
+    private static final String TEST_CONTENT_DISPOSITION = "attachment; filename=test.json";
 
     @Test
     @DisplayName("Should execute transfer successfully")
     void transfer_success() throws Exception {
-        // Arrange
-        when(s3Properties.getBucketName()).thenReturn("test");
-        doReturn(CompletableFuture.completedFuture("test-key"))
-                .when(strategy)
-                .uploadStream(anyString(), isNull(), anyString(), anyString());
+        TransferProcess transferProcess = DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED;
 
-        // Act & Assert
-        assertDoesNotThrow(() -> strategy.transfer(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED));
-        verify(strategy).uploadStream(anyString(), any(), anyString(), anyString());
+        when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
+
+        when(s3ClientService.uploadFile(
+                any(InputStream.class),
+                eq(TEST_BUCKET),
+                eq(transferProcess.getId()),
+                eq(TEST_CONTENT_TYPE),
+                eq(TEST_CONTENT_DISPOSITION)
+        )).thenReturn(CompletableFuture.completedFuture("test-etag"));
+
+        /**
+         * When you move the mocks inside the try block:
+         *
+         * The mocks are configured within the scope of the try block.
+         * However, the MockedConstruction creates a new scope for mocking, and Mockito treats
+         * these as "unnecessary stubbings" because:
+         *
+         * @Mock and @InjectMocks annotations create the mocks at the class level
+         * These mocks are injected into strategy before entering the try block
+         * When you define new behaviors inside the try block, Mockito sees them as redundant
+         * because they're in a different scope than where they're actually used.
+         *
+         * Best Practice: Keep mock configurations that are needed throughout the test at the
+         * method level (outside the try block), and only put construction-specific mocking
+         * (like URL and HttpURLConnection) inside the MockedConstruction block.
+         */
+        try (MockedConstruction<URL> mockedUrl = mockConstruction(URL.class,
+                (mock, context) -> {
+                    // Configure the mock URL object
+                    when(mock.openConnection()).thenReturn(mockConnection);
+
+                })) {
+
+            when(mockConnection.getResponseCode()).thenReturn(HttpURLConnection.HTTP_OK);
+            when(mockConnection.getContentType()).thenReturn(TEST_CONTENT_TYPE);
+            when(mockConnection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION))
+                    .thenReturn(TEST_CONTENT_DISPOSITION);
+            when(mockConnection.getInputStream())
+                    .thenReturn(new ByteArrayInputStream(TEST_CONTENT.getBytes()));
+
+            // Act & Assert
+            assertDoesNotThrow(() -> strategy.transfer(transferProcess));
+
+            verify(s3ClientService).uploadFile(
+                    any(InputStream.class),
+                    eq(TEST_BUCKET),
+                    eq(transferProcess.getId()),
+                    eq(TEST_CONTENT_TYPE),
+                    eq(TEST_CONTENT_DISPOSITION)
+            );
+        } catch (Exception e) {
+            fail("Test failed: " + e.getMessage());
+        }
     }
 
     @Test
     @DisplayName("Should throw DataTransferAPIException on upload failure")
-    void transfer_uploadFails_throwsException() {
+    void transfer_uploadFails_throwsException() throws Exception {
         // Arrange
-        when(s3Properties.getBucketName()).thenReturn("test");
-        TransferProcess process = DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED;
-        doThrow(new RuntimeException("fail"))
-                .when(strategy).uploadStream(anyString(), any(), anyString(), anyString());
+        TransferProcess transferProcess = DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED;
 
-        // Act & Assert
-        DataTransferAPIException ex = assertThrows(DataTransferAPIException.class,
-                () -> strategy.transfer(process));
-        assertTrue(ex.getMessage().contains("Download failed"));
+        try (MockedConstruction<URL> mockedUrl = mockConstruction(URL.class,
+                (mock, context) -> {
+                    // Configure the mock URL object
+                    when(mock.openConnection()).thenReturn(mockConnection);
+                })) {
+            when(mockConnection.getResponseCode()).thenReturn(HttpURLConnection.HTTP_NOT_FOUND);
+
+            // Act & Assert
+            DataTransferAPIException ex = assertThrows(DataTransferAPIException.class,
+                    () -> strategy.transfer(transferProcess));
+            assertTrue(ex.getMessage().contains("Download failed"));
+        }
     }
 
     @Test
     @DisplayName("Should set Authorization header if present in endpoint properties")
     void transfer_withAuthorizationHeader() throws Exception {
         // Arrange
-        when(s3Properties.getBucketName()).thenReturn("test");
         EndpointProperty authType = EndpointProperty.Builder.newInstance()
                 .name(IConstants.AUTH_TYPE)
                 .value("Bearer")
@@ -82,44 +137,112 @@ public class HttpPullTransferStrategyTest {
                 .name(IConstants.AUTHORIZATION)
                 .value("token123")
                 .build();
-        TransferProcess process = mockTransferProcess("http://test", List.of(authType, token), null);
+        TransferProcess transferProcess = mockTransferProcess("http://test", List.of(authType, token));
 
-        doReturn(CompletableFuture.completedFuture("test-key"))
-                .when(strategy).uploadStream(anyString(), eq("Bearer token123"), anyString(), anyString());
+        when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
 
-        // Act
-        strategy.transfer(process);
+        when(s3ClientService.uploadFile(
+                any(InputStream.class),
+                eq(TEST_BUCKET),
+                eq(transferProcess.getId()),
+                eq(TEST_CONTENT_TYPE),
+                eq(TEST_CONTENT_DISPOSITION)
+        )).thenReturn(CompletableFuture.completedFuture("test-etag"));
 
-        // Assert
-        verify(strategy).uploadStream(anyString(), eq("Bearer token123"), anyString(), anyString());
+        try (MockedConstruction<URL> mockedUrl = mockConstruction(URL.class,
+                (mock, context) -> {
+                    // Configure the mock URL object
+                    when(mock.openConnection()).thenReturn(mockConnection);
+                })) {
+
+            when(mockConnection.getResponseCode()).thenReturn(HttpURLConnection.HTTP_OK);
+            when(mockConnection.getContentType()).thenReturn(TEST_CONTENT_TYPE);
+            when(mockConnection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION))
+                    .thenReturn(TEST_CONTENT_DISPOSITION);
+            when(mockConnection.getInputStream())
+                    .thenReturn(new ByteArrayInputStream(TEST_CONTENT.getBytes()));
+
+            // Act
+            strategy.transfer(transferProcess);
+
+            // Assert
+            verify(mockConnection).setRequestProperty(
+                    eq(HttpHeaders.AUTHORIZATION),
+                    eq("Bearer token123")
+            );
+            verify(s3ClientService).uploadFile(
+                    any(InputStream.class),
+                    eq(TEST_BUCKET),
+                    eq(transferProcess.getId()),
+                    eq(TEST_CONTENT_TYPE),
+                    anyString()
+            );
+        }
     }
 
     @Test
     @DisplayName("Should not set Authorization header if not present")
     void transfer_withoutAuthorizationHeader() throws Exception {
         // Arrange
-        when(s3Properties.getBucketName()).thenReturn("test");
-        TransferProcess process = mockTransferProcess("http://test", List.of(), null);
+        TransferProcess transferProcess = mockTransferProcess("http://test", List.of());
 
-        doReturn(CompletableFuture.completedFuture("test-key"))
-                .when(strategy).uploadStream(anyString(), isNull(), anyString(), anyString());
+        when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
 
-        // Act
-        strategy.transfer(process);
+        when(s3ClientService.uploadFile(
+                any(InputStream.class),
+                eq(TEST_BUCKET),
+                eq(transferProcess.getId()),
+                eq(TEST_CONTENT_TYPE),
+                eq(TEST_CONTENT_DISPOSITION)
+        )).thenReturn(CompletableFuture.completedFuture("test-etag"));
 
-        // Assert
-        verify(strategy).uploadStream(anyString(), isNull(), anyString(), anyString());
+        try (MockedConstruction<URL> mockedUrl = mockConstruction(URL.class,
+                (mock, context) -> {
+                    // Configure the mock URL object
+                    when(mock.openConnection()).thenReturn(mockConnection);
+                })) {
+
+            when(mockConnection.getResponseCode()).thenReturn(HttpURLConnection.HTTP_OK);
+            when(mockConnection.getContentType()).thenReturn(TEST_CONTENT_TYPE);
+            when(mockConnection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION))
+                    .thenReturn(TEST_CONTENT_DISPOSITION);
+            when(mockConnection.getInputStream())
+                    .thenReturn(new ByteArrayInputStream(TEST_CONTENT.getBytes()));
+
+            // Act & Assert
+            assertDoesNotThrow(() -> strategy.transfer(transferProcess));
+
+            verify(s3ClientService).uploadFile(
+                    any(InputStream.class),
+                    eq(TEST_BUCKET),
+                    eq(transferProcess.getId()),
+                    eq(TEST_CONTENT_TYPE),
+                    eq(TEST_CONTENT_DISPOSITION)
+            );
+        }
     }
 
     // Helper to create a mock TransferProcess
-    private TransferProcess mockTransferProcess(String endpoint, List<EndpointProperty> props, String id) {
-        DataAddress dataAddress = mock(DataAddress.class);
-        when(dataAddress.getEndpoint()).thenReturn(endpoint);
-        when(dataAddress.getEndpointProperties()).thenReturn(props);
-        TransferProcess process = mock(TransferProcess.class);
-        when(process.getDataAddress()).thenReturn(dataAddress);
-        when(process.getId()).thenReturn(id != null ? id : "process-id");
-        return process;
+    private TransferProcess mockTransferProcess(String endpoint, List<EndpointProperty> props) {
+        DataAddress dataAddress = DataAddress.Builder.newInstance()
+                .endpoint(endpoint)
+                .endpointType(DataTranferMockObjectUtil.ENDPOINT_TYPE)
+                .endpointProperties(props)
+                .build();
+
+        return TransferProcess.Builder.newInstance()
+                .consumerPid(DataTranferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTranferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(dataAddress)
+                .datasetId(DataTranferMockObjectUtil.DATASET_ID)
+                .isDownloaded(true)
+                .dataId(new ObjectId().toHexString())
+                .agreementId(DataTranferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTranferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_PROVIDER)
+                .state(TransferState.STARTED)
+                .format(DataTransferFormat.HTTP_PULL.name())
+                .build();
     }
 
 }
