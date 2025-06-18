@@ -214,7 +214,7 @@ public class DataTransferAPIService {
                         try {
                             yield s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), transferProcess.getDatasetId(), Duration.ofDays(7L));
                         } catch (Exception e) {
-                            throw new DataTransferAPIException("The requested artifact is not yet uploaded.");
+                            throw new DataTransferAPIException("The requested artifact is currently not available. Please try again later.");
                         }
                     }
                     case EXTERNAL -> {

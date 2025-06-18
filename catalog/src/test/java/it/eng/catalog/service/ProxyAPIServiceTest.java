@@ -74,27 +74,11 @@ class ProxyAPIServiceTest {
 	}
 
 	private void mockCatalogCall() {
-		Catalog CATALOG = Catalog.Builder.newInstance()
-				.conformsTo(CatalogMockObjectUtil.CONFORMSTO)
-				.creator(CatalogMockObjectUtil.CREATOR)
-				.description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Catalog description").build()).stream().collect(Collectors.toCollection(HashSet::new)))
-				.identifier(CatalogMockObjectUtil.IDENTIFIER)
-				.issued(CatalogMockObjectUtil.ISSUED)
-				.keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
-				.modified(CatalogMockObjectUtil.MODIFIED)
-				.theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
-				.title(CatalogMockObjectUtil.TITLE)
-				.participantId("urn:example:DataProviderA")
-				.service(Arrays.asList(CatalogMockObjectUtil.DATA_SERVICE).stream().collect(Collectors.toCollection(HashSet::new)))
-				.dataset(Arrays.asList(CatalogMockObjectUtil.DATASET).stream().collect(Collectors.toCollection(HashSet::new)))
-				.distribution(Arrays.asList(CatalogMockObjectUtil.DISTRIBUTION).stream().collect(Collectors.toCollection(HashSet::new)))
-				.hasPolicy(Arrays.asList(CatalogMockObjectUtil.OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
-				.homepage(CatalogMockObjectUtil.ENDPOINT_URL)
-				.build();
+		Catalog catalog = CatalogMockObjectUtil.createNewCatalog();
 		when(credentialUtils.getConnectorCredentials()).thenReturn("ABC");
 		when(okHttpClient.sendRequestProtocol(anyString(), any(JsonNode.class), anyString()))
 				.thenReturn(genericApiResponse);
 		when(genericApiResponse.isSuccess()).thenReturn(true);
-		when(genericApiResponse.getData()).thenReturn(CatalogSerializer.serializeProtocol(CATALOG));
+		when(genericApiResponse.getData()).thenReturn(CatalogSerializer.serializeProtocol(catalog));
 	}
 }
