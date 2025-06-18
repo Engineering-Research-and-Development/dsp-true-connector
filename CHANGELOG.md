@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.4.1-SNAPSHOT] - 17.06.2025.
+## [0.4.2-SNAPSHOT] - 19.06.2025.
 
 ### Added
 
@@ -10,6 +10,14 @@ All notable changes to this project will be documented in this file.
 - on Catalog request a list of available(fully uploaded) files is requested from S3 bucket, if the Dataset serving such
 artifact is not found in the list it will be removed from the current response Catalog
 
+
+## [0.4.1-SNAPSHOT] - 18.06.2025.
+
+### Changed
+
+- Refactored HttpPullTransferStrategy to use S3ClientService.uploadFile
+- S3ClientService.uploadFile now closes stream after upload
+- Updated junit tests
 
 ## [0.3.2-SNAPSHOT] - 10.06.2025.
 
