@@ -7,8 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - added try-catch block to handle exceptions in DataTransferApiService, when creating DataAddress with presigned URL
-- on Catalog request a list of available(fully uploaded) files is requested from S3 bucket, if the Dataset serving such
-artifact is not found in the list it will be removed from the current response Catalog
+- On Catalog request, filter out datasets serving files still uploading
 
 
 ## [0.4.1-SNAPSHOT] - 18.06.2025.
