@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.3-SNAPSHOT] - 19.06.2025.
+
+### Added
+
+- 3 new fields in ApplicationProperty, needed for UI
+
 ## [0.4.1-SNAPSHOT] - 18.06.2025.
 
 ### Changed
