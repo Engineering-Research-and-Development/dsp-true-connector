@@ -1,11 +1,12 @@
 package it.eng.catalog.event;
 
+import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Component;
+
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.service.CatalogService;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
-import org.springframework.stereotype.Component;
 
 @Component
 @Slf4j

@@ -1,8 +1,6 @@
 package it.eng.datatransfer.exceptions;
 
-import it.eng.tools.response.GenericApiResponse;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -17,7 +15,8 @@ public class DownloadExceptionAdvice extends ResponseEntityExceptionHandler{
 	
 	@ExceptionHandler(value = {DownloadException.class })
 	protected ResponseEntity<Object> handleTransferProcessArtifactNotFoundException(DownloadException ex, WebRequest request) {
-		return new ResponseEntity<>(GenericApiResponse.error(ex, ex.getLocalizedMessage()), ex.getHttpStatus());
+		return handleExceptionInternal(ex, ex.getLocalizedMessage(), new HttpHeaders(),
+				ex.getHttpStatus(), request);
 	}
 
 }

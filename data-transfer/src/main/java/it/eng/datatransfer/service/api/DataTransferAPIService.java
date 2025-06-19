@@ -210,20 +210,14 @@ public class DataTransferAPIService {
                 String artifactURL = switch (artifact.getArtifactType()) {
                     case FILE ->
                         // Generate a presigned URL for S3 with 7 days duration, which will be used as the endpoint for the data transfer
-                    {
-                        try {
-                            yield s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), transferProcess.getDatasetId(), Duration.ofDays(7L));
-                        } catch (Exception e) {
-                            throw new DataTransferAPIException("The requested artifact is currently not available. Please try again later.");
-                        }
-                    }
+                            s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), transferProcess.getDatasetId(), Duration.ofDays(7L));
                     case EXTERNAL -> {
                         String transactionId = Base64.encodeBase64URLSafeString((transferProcess.getConsumerPid() + "|" + transferProcess.getProviderPid()).getBytes(StandardCharsets.UTF_8));
                         yield DataTransferCallback.getValidCallback(dataTransferProperties.providerCallbackAddress()) + "/artifacts/" + transactionId;
                     }
                     default -> {
                         log.error("Wrong artifact type: {}", artifact.getArtifactType());
-                        throw new DataTransferAPIException("Wrong artifact type: " + artifact.getArtifactType());
+                        throw new DownloadException("Error while downloading data", HttpStatus.INTERNAL_SERVER_ERROR);
                     }
                 };
 

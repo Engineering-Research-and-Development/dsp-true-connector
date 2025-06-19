@@ -1,21 +1,24 @@
 
 package it.eng.catalog.service;
 
+import java.util.List;
+
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+
 import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.exceptions.InternalServerErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
-import it.eng.catalog.model.*;
+import it.eng.catalog.model.Catalog;
+import it.eng.catalog.model.DataService;
+import it.eng.catalog.model.Dataset;
+import it.eng.catalog.model.Distribution;
+import it.eng.catalog.model.Offer;
 import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
-import it.eng.tools.s3.properties.S3Properties;
-import it.eng.tools.s3.service.S3ClientService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 /**
  * The CatalogService class provides methods to interact with catalog data, including saving, retrieving, and deleting catalogs.
@@ -26,14 +29,10 @@ public class CatalogService {
 
     private final CatalogRepository repository;
     private final ApplicationEventPublisher publisher;
-    private final S3ClientService s3ClientService;
-    private final S3Properties s3Properties;
 
-    public CatalogService(CatalogRepository repository, ApplicationEventPublisher publisher, S3ClientService s3ClientService, S3Properties s3Properties) {
+    public CatalogService(CatalogRepository repository, ApplicationEventPublisher publisher) {
         this.repository = repository;
         this.publisher = publisher;
-        this.s3ClientService = s3ClientService;
-        this.s3Properties = s3Properties;
     }
     
     /********* PROTOCOL ***********/
@@ -44,12 +43,7 @@ public class CatalogService {
      * @throws CatalogErrorException Thrown if the catalog is not found.
      */
     public Catalog getCatalog() {
-// TODO: remove the filtering of datasets by files in S3, after the file upload and dataset insert are separated
-//  (choose artifact from files list instead of uploading when making a new dataset)
-        List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
-
         List<Catalog> allCatalogs = repository.findAll();
-        allCatalogs.forEach(catalog -> catalog.getDataset().removeIf(dataset -> !files.contains(dataset.getId())));
 
         if (allCatalogs.isEmpty()) {
             throw new CatalogErrorException("Catalog not found");

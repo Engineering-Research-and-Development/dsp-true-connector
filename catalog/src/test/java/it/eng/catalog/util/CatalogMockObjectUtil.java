@@ -231,31 +231,6 @@ public class CatalogMockObjectUtil {
             .homepage(ENDPOINT_URL)
             .build();
 
-    /**
-     * Creates a new Catalog instance with predefined values for testing purposes.
-     *
-     * @return A new Catalog instance.
-     */
-    public static final Catalog createNewCatalog() {
-        return Catalog.Builder.newInstance()
-                .conformsTo(CONFORMSTO)
-                .creator(CREATOR)
-                .description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Catalog description").build()).stream().collect(Collectors.toCollection(HashSet::new)))
-                .identifier(IDENTIFIER)
-                .issued(ISSUED)
-                .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
-                .modified(MODIFIED)
-                .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
-                .title(TITLE)
-                .participantId("urn:example:DataProviderA")
-                .service(Arrays.asList(DATA_SERVICE).stream().collect(Collectors.toCollection(HashSet::new)))
-                .dataset(Arrays.asList(DATASET).stream().collect(Collectors.toCollection(HashSet::new)))
-                .distribution(Arrays.asList(DISTRIBUTION).stream().collect(Collectors.toCollection(HashSet::new)))
-                .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
-                .homepage(ENDPOINT_URL)
-                .build();
-    }
-
     public static final Catalog CATALOG_FOR_UPDATE = Catalog.Builder.newInstance()
             .conformsTo(CONFORMSTO)
             .creator(CREATOR)
