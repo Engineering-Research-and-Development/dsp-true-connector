@@ -144,6 +144,7 @@ public class S3ClientServiceImpl implements S3ClientService {
 
                 ByteArrayOutputStream accumulator = new ByteArrayOutputStream();
 
+                log.debug("Opening stream...");
                 while ((bytesRead = inputStream.read(buffer)) > 0) {
                     accumulator.write(buffer, 0, bytesRead);
 
@@ -192,6 +193,12 @@ public class S3ClientServiceImpl implements S3ClientService {
 
             } catch (IOException e) {
                 throw new CompletionException("Failed to upload large stream to S3", e);
+            } finally {
+                try {
+                    inputStream.close();
+                } catch (IOException e) {
+                    log.error("Failed to close input stream: {}", e.getMessage());
+                }
             }
         });
     }

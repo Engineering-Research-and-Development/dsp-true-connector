@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.2-SNAPSHOT] - 19.06.2025.
+
+### Added
+
+- added try-catch block to handle exceptions in DataTransferApiService, when creating DataAddress with presigned URL
+- On Catalog request, filter out datasets serving files still uploading
+
+
+## [0.4.1-SNAPSHOT] - 18.06.2025.
+
+### Changed
+
+- Refactored HttpPullTransferStrategy to use S3ClientService.uploadFile
+- S3ClientService.uploadFile now closes stream after upload
+- Updated junit tests
+
 ## [0.3.2-SNAPSHOT] - 10.06.2025.
 
 ### Added
