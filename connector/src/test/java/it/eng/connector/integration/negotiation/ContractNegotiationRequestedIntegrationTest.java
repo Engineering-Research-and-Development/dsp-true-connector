@@ -1,22 +1,5 @@
 package it.eng.connector.integration.negotiation;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import java.util.Arrays;
-import java.util.Collections;
-
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithUserDetails;
-import org.springframework.test.web.servlet.ResultActions;
-
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.repository.CatalogRepository;
@@ -24,15 +7,28 @@ import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
-import it.eng.negotiation.model.Action;
-import it.eng.negotiation.model.ContractNegotiation;
-import it.eng.negotiation.model.ContractNegotiationErrorMessage;
-import it.eng.negotiation.model.ContractNegotiationState;
-import it.eng.negotiation.model.ContractRequestMessage;
-import it.eng.negotiation.model.NegotiationMockObjectUtil;
-import it.eng.negotiation.model.Offer;
-import it.eng.negotiation.model.Permission;
+import it.eng.negotiation.model.*;
 import it.eng.negotiation.serializer.NegotiationSerializer;
+import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.S3ClientService;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.test.context.support.WithUserDetails;
+import org.springframework.test.web.servlet.ResultActions;
+
+import java.util.Arrays;
+import java.util.Collections;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 public class ContractNegotiationRequestedIntegrationTest extends BaseIntegrationTest {
 // -> REQUESTED
@@ -42,6 +38,10 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
 	private CatalogRepository catalogRepository;
 	@Autowired
 	private DatasetRepository datasetRepository;
+	@Autowired
+	private S3ClientService s3ClientService;
+	@Autowired
+	private S3Properties s3Properties;
 	
 	private Catalog catalog;
 	private Dataset dataset;
@@ -69,24 +69,45 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void createNegotiation_success() throws Exception {
     	//needs to match offer in catalog
-    	Permission permsission = Permission.Builder.newInstance()
-    			.action(Action.USE)
-    			.constraint(Arrays.asList(NegotiationMockObjectUtil.CONSTRAINT_COUNT_5))
-    			.build();
+		Permission permission = Permission.Builder.newInstance()
+				.action(Action.USE)
+				.constraint(Arrays.asList(NegotiationMockObjectUtil.CONSTRAINT_COUNT_5))
+				.build();
     	String datasetOfferId = dataset.getHasPolicy().stream().findFirst().get().getId();
     	Offer offerRequest = Offer.Builder.newInstance()
     			.id(datasetOfferId)
     			.target(dataset.getId())
     			.assigner(NegotiationMockObjectUtil.ASSIGNER)
-    			.permission(Arrays.asList(permsission))
+    			.permission(Arrays.asList(permission))
     			.build();
+
+		String fileContent = "Hello, World!";
+
+		MockMultipartFile file
+				= new MockMultipartFile(
+				"file",
+				"hello.txt",
+				MediaType.TEXT_PLAIN_VALUE,
+				fileContent.getBytes()
+		);
+
+		ContentDisposition contentDisposition = ContentDisposition.attachment()
+				.filename(file.getOriginalFilename())
+				.build();
+
+		try {
+			s3ClientService.uploadFile(file.getInputStream(), s3Properties.getBucketName(), dataset.getId(),
+					file.getContentType(), contentDisposition.toString());
+		} catch (Exception e) {
+			throw new Exception("File storing aborted, " + e.getLocalizedMessage());
+		}
     	
     	ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
     			.callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
     			.consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
     			.offer(offerRequest)
     			.build();
-    	
+
     	final ResultActions result =
     			mockMvc.perform(
     					post("/negotiations/request")

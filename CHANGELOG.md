@@ -8,6 +8,14 @@ All notable changes to this project will be documented in this file.
 
 - 3 new fields in ApplicationProperty, needed for UI
 
+## [0.4.2-SNAPSHOT] - 19.06.2025.
+
+### Added
+
+- added try-catch block to handle exceptions in DataTransferApiService, when creating DataAddress with presigned URL
+- On Catalog request, filter out datasets serving files still uploading
+
+
 ## [0.4.1-SNAPSHOT] - 18.06.2025.
 
 ### Changed
@@ -22,12 +30,12 @@ All notable changes to this project will be documented in this file.
 
 - Support for MinIO as an external storage for artifacts
 - New properties for S3 storage configuration:
-    - `s3.endpoint=http://localhost:9000`
-    - `s3.accessKey=minioadmin`
-    - `s3.secretKey=minioadmin`
-    - `s3.region=us-east-1`
-    - `s3.bucketName=dsp-true-connector-provider`
-    - `s3.externalPresignedEndpoint=http://localhost:9000`
+  - `s3.endpoint=http://localhost:9000`
+  - `s3.accessKey=minioadmin`
+  - `s3.secretKey=minioadmin`
+  - `s3.region=us-east-1`
+  - `s3.bucketName=dsp-true-connector-provider`
+  - `s3.externalPresignedEndpoint=http://localhost:9000`
 - Service for S3 storage operations
 - Artifact as files are uploaded into S3 bucket and dataset points to the S3 file
 - DataAddress contains S3 presigned URL for download
