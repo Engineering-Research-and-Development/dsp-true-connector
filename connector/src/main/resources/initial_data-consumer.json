@@ -374,17 +374,6 @@
       "issued": "2024-06-24T16:26:00.000Z",
       "modified": "2024-06-24T16:26:00.000Z",
       "version": 0
-    },
-    {
-      "_id": "application.igor.test",
-      "value": "true",
-      "label": "Igor test",
-      "group": "Abc",
-      "tooltip": "Test tooltip.",
-      "mandatory": false,
-      "issued": "2024-06-24T16:26:00.000Z",
-      "modified": "2024-06-24T16:26:00.000Z",
-      "version": 0
     }
   ],
   "agreements": [
