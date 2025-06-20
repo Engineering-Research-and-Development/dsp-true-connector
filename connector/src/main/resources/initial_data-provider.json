@@ -301,6 +301,9 @@
     {
       "_id": "application.daps.dapsJWKSUrl",
       "value": "https://daps.aisec.fraunhofer.de/.well-known/jwks.json",
+      "label": "DAPS JWKS URL",
+      "group": "DAPS",
+      "tooltip": "The URL to the DAPS JWKS endpoint.",
       "mandatory": false,
       "issued": "2024-06-24T16:26:00.000Z",
       "modified": "2024-06-24T16:26:00.000Z",
@@ -309,6 +312,9 @@
     {
       "_id": "application.daps.dapsUrl",
       "value": "https://daps.aisec.fraunhofer.de/v2/token",
+      "label": "DAPS URL",
+      "group": "DAPS",
+      "tooltip": "The URL to the DAPS token endpoint.",
       "mandatory": false,
       "issued": "2024-06-24T16:26:00.000Z",
       "modified": "2024-06-24T16:26:00.000Z",
@@ -317,6 +323,9 @@
     {
       "_id": "application.daps.enabledDapsInteraction",
       "value": "false",
+      "label": "Enable DAPS Interaction",
+      "group": "DAPS",
+      "tooltip": "Enable interaction with DAPS for token validation.",
       "mandatory": false,
       "issued": "2024-06-24T16:26:00.000Z",
       "modified": "2024-06-24T16:26:00.000Z",
@@ -325,6 +334,9 @@
     {
       "_id": "application.daps.extendedTokenValidation",
       "value": "false",
+      "label": "Extended Token Validation",
+      "group": "DAPS",
+      "tooltip": "Enable extended validation of tokens using DAPS. Performs additional checks on the token's validity like OCSP.",
       "mandatory": false,
       "issued": "2024-06-24T16:26:00.000Z",
       "modified": "2024-06-24T16:26:00.000Z",
@@ -333,6 +345,9 @@
     {
       "_id": "application.daps.fetchTokenOnStartup",
       "value": "false",
+      "label": "Fetch Token on Startup",
+      "group": "DAPS",
+      "tooltip": "Fetch a DAPS token on application startup. This is useful if the application needs to interact with DAPS immediately after startup.",
       "mandatory": false,
       "issued": "2024-06-24T16:26:00.000Z",
       "modified": "2024-06-24T16:26:00.000Z",
@@ -341,6 +356,9 @@
     {
       "_id": "application.daps.tokenCaching",
       "value": "false",
+      "label": "Token Caching",
+      "group": "DAPS",
+      "tooltip": "Enable caching of DAPS tokens to avoid frequent requests to the DAPS server. This can improve performance but may lead to using stale tokens if not managed properly.",
       "mandatory": false,
       "issued": "2024-06-24T16:26:00.000Z",
       "modified": "2024-06-24T16:26:00.000Z",
@@ -349,6 +367,9 @@
     {
       "_id": "application.protocol.authentication.enabled",
       "value": "true",
+      "label": "Enable Authentication",
+      "group": "Security",
+      "tooltip": "Enable authentication for the application protocol. This setting controls whether the application requires authentication for accessing its resources.",
       "mandatory": false,
       "issued": "2024-06-24T16:26:00.000Z",
       "modified": "2024-06-24T16:26:00.000Z",
