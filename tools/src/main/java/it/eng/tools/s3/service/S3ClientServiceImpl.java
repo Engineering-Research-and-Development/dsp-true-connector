@@ -17,6 +17,8 @@ import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -274,7 +276,7 @@ public class S3ClientServiceImpl implements S3ClientService {
     }
 
     @Override
-    public String generateGetPresignedUrl(String bucketName, String objectKey, Duration expiration) {
+    public String generatePresignedGETUrl(String bucketName, String objectKey, Duration expiration) {
         validateBucketName(bucketName);
         if (objectKey == null || objectKey.isEmpty()) {
             throw new IllegalArgumentException("Object key cannot be null or empty");
@@ -323,6 +325,41 @@ public class S3ClientServiceImpl implements S3ClientService {
             throw new RuntimeException("Error generating pre-signed URL: " + e.getMessage(), e);
         }
     }
+
+    @Override
+    public String generatePresignedPUTUrl(String bucketName, String objectKey, Duration expiration) {
+            validateBucketName(bucketName);
+            if (objectKey == null || objectKey.isEmpty()) {
+                throw new IllegalArgumentException("Object key cannot be null or empty");
+            }
+            try (S3Presigner presigner = S3Presigner.builder()
+                    .endpointOverride(URI.create(s3Properties.getExternalPresignedEndpoint()))
+                    .credentialsProvider(StaticCredentialsProvider.create(
+                            AwsBasicCredentials.create(s3Properties.getAccessKey(), s3Properties.getSecretKey())))
+                    .region(Region.of(s3Properties.getRegion()))
+                    .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
+                            .pathStyleAccessEnabled(true)
+                            .build())
+                    .build()) {
+
+                PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(objectKey)
+                        .build();
+
+                PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
+                        .signatureDuration(expiration)
+                        .putObjectRequest(putObjectRequest)
+                        .build();
+
+                PresignedPutObjectRequest presignedRequest = presigner.presignPutObject(presignRequest);
+                log.info("Pre-signed PUT URL generated successfully for file {} in bucket {}", objectKey, bucketName);
+                return presignedRequest.url().toExternalForm();
+            } catch (Exception e) {
+                log.error("Error generating pre-signed PUT URL for file {} in bucket {}: {}", objectKey, bucketName, e.getMessage());
+                throw new RuntimeException("Error generating pre-signed PUT URL: " + e.getMessage(), e);
+            }
+        }
 
     @Override
     public List<String> listFiles(String bucketName) {

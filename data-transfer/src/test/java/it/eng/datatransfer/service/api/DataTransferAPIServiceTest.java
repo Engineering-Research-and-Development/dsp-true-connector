@@ -85,10 +85,6 @@ class DataTransferAPIServiceTest {
     @InjectMocks
     private DataTransferAPIService apiService;
 
-    private final DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
-            DataTransferFormat.HTTP_PULL.name(),
-            null);
-
     @Test
     @DisplayName("Find transfer process by id, state and all")
     public void findDataTransfers() {
@@ -116,8 +112,12 @@ class DataTransferAPIServiceTest {
     }
 
     @Test
-    @DisplayName("Request transfer process success")
-    public void startNegotiation_success() {
+    @DisplayName("Request transfer process success for http Pull")
+    public void requestTransfer_success_httpPull() {
+        DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
+                DataTransferFormat.HTTP_PULL.format(),
+                null);
+
         when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
@@ -130,11 +130,42 @@ class DataTransferAPIServiceTest {
 
         verify(transferProcessRepository).save(argCaptorTransferProcess.capture());
         assertEquals(IConstants.ROLE_CONSUMER, argCaptorTransferProcess.getValue().getRole());
+        assertNull(argCaptorTransferProcess.getValue().getDataAddress());
+    }
+
+    @Test
+    @DisplayName("Request transfer process success for http Push")
+    public void requestTransfer_success_httpPush() {
+        DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
+                DataTransferFormat.HTTP_PUSH.format(),
+                null);
+
+        String presignedUrl = "http://example.com/presigned-url";
+
+        when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
+        when(s3ClientService.generatePresignedPUTUrl(any(String.class), any(String.class), any(Duration.class))).thenReturn(presignedUrl);
+        when(s3Properties.getBucketName()).thenReturn("test-bucket");
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(apiResponse.getData()).thenReturn(TransferSerializer.serializeProtocol(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(properties.consumerCallbackAddress()).thenReturn(DataTranferMockObjectUtil.CALLBACK_ADDRESS);
+        when(transferProcessRepository.save(any(TransferProcess.class))).thenReturn(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER);
+
+        apiService.requestTransfer(dataTransferRequest);
+
+        verify(transferProcessRepository).save(argCaptorTransferProcess.capture());
+        assertEquals(IConstants.ROLE_CONSUMER, argCaptorTransferProcess.getValue().getRole());
+        assertEquals(presignedUrl, argCaptorTransferProcess.getValue().getDataAddress());
     }
 
     @Test
     @DisplayName("Request transfer process failed")
-    public void startNegotiation_failed() {
+    public void requestTransfer_failed() {
+        DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
+                DataTransferFormat.HTTP_PULL.format(),
+                null);
+
         when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
@@ -149,7 +180,11 @@ class DataTransferAPIServiceTest {
 
     @Test
     @DisplayName("Request transfer process json exception")
-    public void startNegotiation_jsonException() {
+    public void requestTransfer_jsonException() {
+        DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
+                DataTransferFormat.HTTP_PULL.format(),
+                null);
+
         when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
@@ -489,13 +524,13 @@ class DataTransferAPIServiceTest {
         when(s3Properties.getBucketName()).thenReturn(bucketName);
         when(s3ClientService.fileExists(bucketName, objectKey)).thenReturn(true);
 
-        when(s3ClientService.generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L)))
+        when(s3ClientService.generatePresignedGETUrl(bucketName, objectKey, Duration.ofDays(7L)))
                 .thenReturn("http://example.com/presigned-url");
 
         assertDoesNotThrow(() -> apiService.viewData(objectKey));
 
         verify(s3ClientService).fileExists(bucketName, objectKey);
-        verify(s3ClientService).generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L));
+        verify(s3ClientService).generatePresignedGETUrl(bucketName, objectKey, Duration.ofDays(7L));
         verify(applicationEventPublisher)
                 .publishEvent(any(ArtifactConsumedEvent.class));
     }
@@ -515,7 +550,7 @@ class DataTransferAPIServiceTest {
 
         when(s3Properties.getBucketName()).thenReturn(bucketName);
         when(s3ClientService.fileExists(bucketName, objectKey)).thenReturn(true);
-        doThrow(RuntimeException.class).when(s3ClientService).generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L));
+        doThrow(RuntimeException.class).when(s3ClientService).generatePresignedGETUrl(bucketName, objectKey, Duration.ofDays(7L));
 
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.viewData(objectKey));
@@ -559,7 +594,7 @@ class DataTransferAPIServiceTest {
                 () -> apiService.viewData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId()));
 
         verify(s3ClientService, times(0)).fileExists(anyString(), anyString());
-        verify(s3ClientService, times(0)).generateGetPresignedUrl(anyString(), anyString(), any(Duration.class));
+        verify(s3ClientService, times(0)).generatePresignedGETUrl(anyString(), anyString(), any(Duration.class));
     }
 
     @Test
@@ -572,7 +607,7 @@ class DataTransferAPIServiceTest {
                 () -> apiService.viewData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
         verify(s3ClientService, times(0)).fileExists(anyString(), anyString());
-        verify(s3ClientService, times(0)).generateGetPresignedUrl(anyString(), anyString(), any(Duration.class));
+        verify(s3ClientService, times(0)).generatePresignedGETUrl(anyString(), anyString(), any(Duration.class));
     }
 
     private static Stream<Arguments> startTransfer_wrongStates() {

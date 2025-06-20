@@ -86,7 +86,9 @@ public interface S3ClientService {
      * @param expiration the expiration time of the URL
      * @return the pre-signed URL
      */
-    String generateGetPresignedUrl(String bucketName, String objectKey, Duration expiration);
+    String generatePresignedGETUrl(String bucketName, String objectKey, Duration expiration);
+
+    String generatePresignedPUTUrl(String bucketName, String objectKey, Duration expiration);
 
     /**
      * Lists all files in the specified bucket.

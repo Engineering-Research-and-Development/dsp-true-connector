@@ -908,7 +908,7 @@ public class S3ClientServiceImplTest {
     //generateGetPresignedUrl tests
     @Test
     @DisplayName("Should successfully generate presigned URL")
-    void generateGetPresignedUrl_Success() {
+    void generatePresignedGETUrl_Success() {
         // Arrange
         String bucketName = "test-bucket";
         String objectKey = "test-file.txt";
@@ -926,7 +926,7 @@ public class S3ClientServiceImplTest {
                         .build());
 
         // Act
-        String result = s3ClientService.generateGetPresignedUrl(bucketName, objectKey, expiration);
+        String result = s3ClientService.generatePresignedGETUrl(bucketName, objectKey, expiration);
 
         // Assert
         assertNotNull(result);
@@ -935,7 +935,7 @@ public class S3ClientServiceImplTest {
 
     @Test
     @DisplayName("Should throw RuntimeException when file does not exist")
-    void generateGetPresignedUrl_FileNotFound() {
+    void generatePresignedGETUrl_FileNotFound() {
         // Arrange
         String bucketName = "test-bucket";
         String objectKey = "non-existent-file.txt";
@@ -952,21 +952,21 @@ public class S3ClientServiceImplTest {
 
         // Act & Assert
         RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> s3ClientService.generateGetPresignedUrl(bucketName, objectKey, expiration));
+                () -> s3ClientService.generatePresignedGETUrl(bucketName, objectKey, expiration));
 
         assertTrue(exception.getMessage().contains("Error generating pre-signed URL"));
     }
 
     @Test
     @DisplayName("Should throw IllegalArgumentException when bucket name is null")
-    void generateGetPresignedUrl_NullBucketName() {
+    void generatePresignedGETUrl_NullBucketName() {
         // Arrange
         String objectKey = "test-file.txt";
         Duration expiration = Duration.ofMinutes(5);
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> s3ClientService.generateGetPresignedUrl(null, objectKey, expiration));
+                () -> s3ClientService.generatePresignedGETUrl(null, objectKey, expiration));
 
         assertEquals("Bucket name cannot be null or empty", exception.getMessage());
         verifyNoInteractions(s3Client);

@@ -131,7 +131,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         String consumerPid = createNewId();
         String providerPid = createNewId();
 
-        String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), mockDataset.getId(), Duration.ofMinutes(10));
+        String artifactURL = s3ClientService.generatePresignedGETUrl(s3Properties.getBucketName(), mockDataset.getId(), Duration.ofMinutes(10));
 
         EndpointProperty endpointProperty = EndpointProperty.Builder.newInstance()
                 .name("https://w3id.org/edc/v0.0.1/ns/endpoint")
@@ -244,7 +244,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         String consumerPid = createNewId();
         String providerPid = createNewId();
 
-        String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), mockDataset.getId(), Duration.ofSeconds(1));
+        String artifactURL = s3ClientService.generatePresignedGETUrl(s3Properties.getBucketName(), mockDataset.getId(), Duration.ofSeconds(1));
 
         Thread.sleep(2000); // wait for the presigned URL to expire
 
@@ -331,7 +331,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         String consumerPid = createNewId();
         String providerPid = createNewId();
 
-        String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), mockDataset.getId(), Duration.ofMinutes(10));
+        String artifactURL = s3ClientService.generatePresignedGETUrl(s3Properties.getBucketName(), mockDataset.getId(), Duration.ofMinutes(10));
 
         EndpointProperty endpointProperty = EndpointProperty.Builder.newInstance()
                 .name("https://w3id.org/edc/v0.0.1/ns/endpoint")
@@ -402,7 +402,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         String consumerPid = createNewId();
         String providerPid = createNewId();
 
-        String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), mockDataset.getId(), Duration.ofMinutes(10));
+        String artifactURL = s3ClientService.generatePresignedGETUrl(s3Properties.getBucketName(), mockDataset.getId(), Duration.ofMinutes(10));
 
         EndpointProperty endpointProperty = EndpointProperty.Builder.newInstance()
                 .name("https://w3id.org/edc/v0.0.1/ns/endpoint")

@@ -5,7 +5,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
-import it.eng.datatransfer.exceptions.DownloadException;
 import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
@@ -27,7 +26,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.tomcat.util.codec.binary.Base64;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -114,9 +112,24 @@ public class DataTransferAPIService {
 
         stateTransitionCheck(TransferState.REQUESTED, transferProcessInitialized.getState());
         DataAddress dataAddressForMessage = null;
-        if (StringUtils.isNotBlank(dataTransferRequest.getFormat()) && dataTransferRequest.getDataAddress() != null && !dataTransferRequest.getDataAddress().isEmpty()) {
-            dataAddressForMessage = TransferSerializer.deserializePlain(dataTransferRequest.getDataAddress().toPrettyString(), DataAddress.class);
+        if ( DataTransferFormat.HTTP_PUSH.format().equals(dataTransferRequest.getFormat())) {
+            String artifactURL = s3ClientService.generatePresignedPUTUrl(s3Properties.getBucketName(), transferProcessInitialized.getId(), Duration.ofDays(7L));
+
+            EndpointProperty endpointProperty = EndpointProperty.Builder.newInstance()
+                    .name("https://w3id.org/edc/v0.0.1/ns/endpoint")
+                    .value(artifactURL)
+                    .build();
+            EndpointProperty endpointTypeProperty = EndpointProperty.Builder.newInstance()
+                    .name("https://w3id.org/edc/v0.0.1/ns/endpointType")
+                    .value("https://w3id.org/idsa/v4.1/HTTP")
+                    .build();
+            dataAddressForMessage = DataAddress.Builder.newInstance()
+                    .endpoint(artifactURL)
+                    .endpointProperties(List.of(endpointProperty, endpointTypeProperty))
+                    .endpointType("https://w3id.org/idsa/v4.1/HTTP")
+                    .build();
         }
+
         TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
                 .agreementId(transferProcessInitialized.getAgreementId())
                 .callbackAddress(dataTransferProperties.consumerCallbackAddress())
@@ -212,7 +225,7 @@ public class DataTransferAPIService {
                         // Generate a presigned URL for S3 with 7 days duration, which will be used as the endpoint for the data transfer
                     {
                         try {
-                            yield s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), transferProcess.getDatasetId(), Duration.ofDays(7L));
+                            yield s3ClientService.generatePresignedGETUrl(s3Properties.getBucketName(), transferProcess.getDatasetId(), Duration.ofDays(7L));
                         } catch (Exception e) {
                             throw new DataTransferAPIException("The requested artifact is currently not available. Please try again later.");
                         }
@@ -487,7 +500,7 @@ public class DataTransferAPIService {
         }
 
         try {
-            String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), transferProcessId, Duration.ofDays(7L));
+            String artifactURL = s3ClientService.generatePresignedGETUrl(s3Properties.getBucketName(), transferProcessId, Duration.ofDays(7L));
             publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId()));
             return artifactURL;
         } catch (Exception e) {
