@@ -17,7 +17,7 @@ public interface S3ClientService {
      *
      * @param bucketName the name of the bucket to create
      */
-    void createBucket(String bucketName);
+//    void createBucket(String bucketName);
 
     /**
      * Deletes a bucket with the specified name.

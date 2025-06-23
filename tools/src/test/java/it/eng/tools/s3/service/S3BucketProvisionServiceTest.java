@@ -1,5 +1,6 @@
 package it.eng.tools.s3.service;
 
+import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.repository.BucketCredentialsRepository;
@@ -23,10 +24,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class S3BucketServiceTest {
+public class S3BucketProvisionServiceTest {
 
     @Mock
     private S3Client s3Client;
+
+    @Mock
+    private S3ClientProvider s3ClientProvider;
 
     @Mock
     private S3Properties s3Properties;
@@ -34,11 +38,12 @@ public class S3BucketServiceTest {
     @Mock
     private BucketCredentialsRepository bucketCredentialsRepository;
 
-    private S3BucketService s3BucketService;
+    private S3BucketProvisionService s3BucketProvisionService;
 
     @BeforeEach
     void setUp() {
-        s3BucketService = new S3BucketService(s3Client, s3Properties, bucketCredentialsRepository);
+        s3BucketProvisionService = new S3BucketProvisionService(s3ClientProvider, s3Properties, bucketCredentialsRepository);
+        lenient().when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
     }
 
     @Test
@@ -52,7 +57,7 @@ public class S3BucketServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
-        BucketCredentials result = s3BucketService.createSecureBucket(bucketName);
+        BucketCredentials result = s3BucketProvisionService.createSecureBucket(bucketName);
 
         // Assert
         assertNotNull(result);
@@ -103,7 +108,7 @@ public class S3BucketServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
-        BucketCredentials result = s3BucketService.createSecureBucket(bucketName);
+        BucketCredentials result = s3BucketProvisionService.createSecureBucket(bucketName);
 
         // Assert
         assertNotNull(result);
@@ -142,7 +147,7 @@ public class S3BucketServiceTest {
 
         // Act & Assert
         assertThrows(RuntimeException.class,
-                () -> s3BucketService.createSecureBucket(bucketName));
+                () -> s3BucketProvisionService.createSecureBucket(bucketName));
 
         verify(bucketCredentialsRepository, never()).save(any());
     }
@@ -167,7 +172,7 @@ public class S3BucketServiceTest {
 
         // Act & Assert
         RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> s3BucketService.createSecureBucket(bucketName));
+                () -> s3BucketProvisionService.createSecureBucket(bucketName));
         assertEquals("Failed to update bucket policy", exception.getMessage());
 
         verify(s3Client).createBucket(any(CreateBucketRequest.class));
@@ -184,7 +189,7 @@ public class S3BucketServiceTest {
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> s3BucketService.createSecureBucket(bucketName));
+                () -> s3BucketProvisionService.createSecureBucket(bucketName));
         assertEquals("Bucket name cannot be empty", exception.getMessage());
     }
 
@@ -196,7 +201,7 @@ public class S3BucketServiceTest {
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> s3BucketService.createSecureBucket(bucketName));
+                () -> s3BucketProvisionService.createSecureBucket(bucketName));
         assertEquals("Invalid bucket name format", exception.getMessage());
     }
 
@@ -217,7 +222,7 @@ public class S3BucketServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
-        BucketCredentials result = s3BucketService.createSecureBucket(bucketName);
+        BucketCredentials result = s3BucketProvisionService.createSecureBucket(bucketName);
 
         // Assert
         assertNotNull(result);
@@ -247,7 +252,7 @@ public class S3BucketServiceTest {
                 .thenReturn(listResponse);
 
         // Act
-        s3BucketService.cleanupBucket(bucketName);
+        s3BucketProvisionService.cleanupBucket(bucketName);
 
         // Assert
         verify(s3Client).listObjectsV2(any(ListObjectsV2Request.class));
@@ -270,7 +275,7 @@ public class S3BucketServiceTest {
                 .thenReturn(listResponse);
 
         // Act
-        s3BucketService.cleanupBucket(bucketName);
+        s3BucketProvisionService.cleanupBucket(bucketName);
 
         // Assert
         verify(s3Client).listObjectsV2(any(ListObjectsV2Request.class));
@@ -300,7 +305,7 @@ public class S3BucketServiceTest {
                 .thenReturn(secondPage);
 
         // Act
-        s3BucketService.cleanupBucket(bucketName);
+        s3BucketProvisionService.cleanupBucket(bucketName);
 
         // Assert
         verify(s3Client, times(2)).listObjectsV2(any(ListObjectsV2Request.class));
@@ -319,7 +324,7 @@ public class S3BucketServiceTest {
 
         // Act & Assert
         assertThrows(RuntimeException.class,
-                () -> s3BucketService.cleanupBucket(bucketName));
+                () -> s3BucketProvisionService.cleanupBucket(bucketName));
 
         verify(s3Client, never()).deleteObject(any(DeleteObjectRequest.class));
         verify(s3Client, never()).deleteBucketPolicy(any(DeleteBucketPolicyRequest.class));
@@ -345,7 +350,7 @@ public class S3BucketServiceTest {
 
         // Act & Assert
         assertThrows(RuntimeException.class,
-                () -> s3BucketService.cleanupBucket(bucketName));
+                () -> s3BucketProvisionService.cleanupBucket(bucketName));
 
         verify(s3Client).listObjectsV2(any(ListObjectsV2Request.class));
         verify(s3Client).deleteObject(any(DeleteObjectRequest.class));
@@ -373,7 +378,7 @@ public class S3BucketServiceTest {
 
         // Act
         assertThrows(RuntimeException.class,
-                () -> s3BucketService.cleanupBucket(bucketName));
+                () -> s3BucketProvisionService.cleanupBucket(bucketName));
 
         // Assert
         verify(s3Client).listObjectsV2(any(ListObjectsV2Request.class));
@@ -401,7 +406,7 @@ public class S3BucketServiceTest {
 
         // Act & Assert
         assertThrows(RuntimeException.class,
-                () -> s3BucketService.cleanupBucket(bucketName));
+                () -> s3BucketProvisionService.cleanupBucket(bucketName));
         verify(s3Client).listObjectsV2(any(ListObjectsV2Request.class));
         verify(s3Client, times(0)).deleteBucketPolicy(any(DeleteBucketPolicyRequest.class));
         verify(s3Client, times(0)).deleteBucket(any(DeleteBucketRequest.class));
@@ -427,7 +432,7 @@ public class S3BucketServiceTest {
         when(s3Properties.getRegion()).thenReturn("us-east-1");
 
         // Act
-        String url = s3BucketService.generatePresignedUrl(bucketName, objectKey, expiration);
+        String url = s3BucketProvisionService.generatePresignedUrl(bucketName, objectKey, expiration);
 
         // Assert
         assertNotNull(url);
@@ -448,7 +453,7 @@ public class S3BucketServiceTest {
 
         // Act & Assert
         RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> s3BucketService.generatePresignedUrl(bucketName, objectKey, expiration));
+                () -> s3BucketProvisionService.generatePresignedUrl(bucketName, objectKey, expiration));
 
         assertEquals("No credentials found for bucket: " + bucketName, exception.getMessage());
     }
@@ -473,7 +478,7 @@ public class S3BucketServiceTest {
 
         // Act & Assert
         assertThrows(RuntimeException.class,
-                () -> s3BucketService.generatePresignedUrl(bucketName, objectKey, expiration));
+                () -> s3BucketProvisionService.generatePresignedUrl(bucketName, objectKey, expiration));
     }
 
     @Test
@@ -491,7 +496,7 @@ public class S3BucketServiceTest {
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> s3BucketService.generatePresignedUrl(bucketName, objectKey, expiration));
+                () -> s3BucketProvisionService.generatePresignedUrl(bucketName, objectKey, expiration));
         assertEquals("Expiration duration cannot exceed 7 days", exception.getMessage());
     }
 
@@ -505,7 +510,7 @@ public class S3BucketServiceTest {
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> s3BucketService.generatePresignedUrl(bucketName, objectKey, expiration));
+                () -> s3BucketProvisionService.generatePresignedUrl(bucketName, objectKey, expiration));
         assertEquals("Object key cannot be empty", exception.getMessage());
     }
 
@@ -519,7 +524,7 @@ public class S3BucketServiceTest {
 
         // Act & Assert
         NullPointerException exception = assertThrows(NullPointerException.class,
-                () -> s3BucketService.generatePresignedUrl(bucketName, objectKey, expiration));
+                () -> s3BucketProvisionService.generatePresignedUrl(bucketName, objectKey, expiration));
         assertEquals("Expiration duration cannot be null", exception.getMessage());
     }
 

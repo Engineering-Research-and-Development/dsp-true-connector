@@ -1,5 +1,6 @@
 package it.eng.tools.s3.service;
 
+import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.repository.BucketCredentialsRepository;
@@ -20,19 +21,20 @@ import java.util.UUID;
 
 @Service
 @Slf4j
-public class S3BucketService {
-    private final S3Client s3Client;
+public class S3BucketProvisionService {
+    private final S3ClientProvider s3ClientProvider;
     private final S3Properties s3Properties;
     private final BucketCredentialsRepository bucketCredentialsRepository;
 
-    public S3BucketService(S3Client s3Client, S3Properties s3Properties, BucketCredentialsRepository bucketCredentialsRepository) {
-        this.s3Client = s3Client;
+    public S3BucketProvisionService(S3ClientProvider s3ClientProvider, S3Properties s3Properties, BucketCredentialsRepository bucketCredentialsRepository) {
+        this.s3ClientProvider = s3ClientProvider;
         this.s3Properties = s3Properties;
         this.bucketCredentialsRepository = bucketCredentialsRepository;
     }
 
     public BucketCredentials createSecureBucket(String bucketName) {
         validateBucketName(bucketName);
+        log.info("Create secure bucket {}", bucketName);
         // Generate temporary credentials
         String accessKey = "GetBucketUser-" + UUID.randomUUID().toString().substring(0, 8);
         String secretKey = UUID.randomUUID().toString();
@@ -41,10 +43,11 @@ public class S3BucketService {
         CreateBucketRequest createBucketRequest = CreateBucketRequest.builder()
                 .bucket(bucketName)
                 .build();
-        s3Client.createBucket(createBucketRequest);
+        S3Client s3ClientAdmin = s3ClientProvider.adminS3Client();
+        s3ClientAdmin.createBucket(createBucketRequest);
 
         // Update bucket policy while preserving existing policies
-        updateBucketPolicy(bucketName, accessKey);
+        updateBucketPolicy(s3ClientAdmin, bucketName, accessKey);
 
         // Store credentials
         bucketCredentialsRepository.save(BucketCredentialsEntity.Builder.newInstance()
@@ -56,7 +59,7 @@ public class S3BucketService {
         return new BucketCredentials(accessKey, secretKey, bucketName);
     }
 
-    private void updateBucketPolicy(String bucketName, String accessKey) {
+    private void updateBucketPolicy(S3Client s3ClientAdmin, String bucketName, String accessKey) {
         try {
             // Try to get existing policy
             GetBucketPolicyRequest getPolicyRequest = GetBucketPolicyRequest.builder()
@@ -65,7 +68,7 @@ public class S3BucketService {
 
             String existingPolicy = null;
             try {
-                String policy = s3Client.getBucketPolicy(getPolicyRequest).policy();
+                String policy = s3ClientAdmin.getBucketPolicy(getPolicyRequest).policy();
                 // Treat empty JSON object as no policy for MinIO compatibility
                 if (!policy.equals("{}")) {
                     existingPolicy = policy;
@@ -80,7 +83,7 @@ public class S3BucketService {
                         "Sid": "AllowTemporaryAccess-%s",
                         "Effect": "Allow",
                         "Principal": {
-                            "AWS": ["%s"]
+                            "AWS": ["arn:aws:iam::*:user/%s"]
                         },
                         "Action": [
                             "s3:GetObject",
@@ -129,8 +132,8 @@ public class S3BucketService {
                     .bucket(bucketName)
                     .policy(finalPolicy)
                     .build();
-            s3Client.putBucketPolicy(policyRequest);
-
+            s3ClientAdmin.putBucketPolicy(policyRequest);
+            log.info("Update secure bucket {} whit policy", bucketName);
         } catch (Exception e) {
             log.error("Failed to update bucket policy for bucket: {}", bucketName, e);
             throw new RuntimeException("Failed to update bucket policy", e);
@@ -186,14 +189,16 @@ public class S3BucketService {
                     .bucket(bucketName)
                     .build();
             ListObjectsV2Response listResponse;
+
+            S3Client s3ClientAdmin = s3ClientProvider.adminS3Client();
             do {
-                listResponse = s3Client.listObjectsV2(listRequest);
+                listResponse = s3ClientAdmin.listObjectsV2(listRequest);
                 for (S3Object object : listResponse.contents()) {
                     DeleteObjectRequest deleteRequest = DeleteObjectRequest.builder()
                             .bucket(bucketName)
                             .key(object.key())
                             .build();
-                    s3Client.deleteObject(deleteRequest);
+                    s3ClientAdmin.deleteObject(deleteRequest);
                 }
                 listRequest = ListObjectsV2Request.builder()
                         .bucket(bucketName)
@@ -205,13 +210,13 @@ public class S3BucketService {
             DeleteBucketPolicyRequest deletePolicyRequest = DeleteBucketPolicyRequest.builder()
                     .bucket(bucketName)
                     .build();
-            s3Client.deleteBucketPolicy(deletePolicyRequest);
+            s3ClientAdmin.deleteBucketPolicy(deletePolicyRequest);
 
             // Delete bucket
             DeleteBucketRequest deleteBucketRequest = DeleteBucketRequest.builder()
                     .bucket(bucketName)
                     .build();
-            s3Client.deleteBucket(deleteBucketRequest);
+            s3ClientAdmin.deleteBucket(deleteBucketRequest);
         } catch (Exception e) {
             log.error("Failed to cleanup bucket: {}", bucketName, e);
             throw new RuntimeException("Failed to cleanup bucket", e);

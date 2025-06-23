@@ -9,7 +9,8 @@ services:
       - mongodb-configdb:/data/configdb
 
   minio:
-    image: minio/minio
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    #docker.io/bitnami/minio:2025
     ports:
       - "9000:9000"
       - "9001:9001"

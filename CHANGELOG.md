@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.4-SNAPSHOT] - 23.06.2025.
+
+### Added
+
+- When creating S3 bucket, a policy for restricting access will be created
+- S3 client providers, for creating clients with different configurations
+
+### Changed
+
+- minio version minio/minio:RELEASE.2025-04-22T22-12-26Z - has extended UI interface
+
 ## [0.4.3-SNAPSHOT] - 20.06.2025.
 
 ### Added
