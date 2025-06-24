@@ -197,6 +197,7 @@ public class S3ClientServiceImplTest {
         String bucketName = "test-bucket";
 
         // Mock bucket check - bucket exists
+        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
         when(s3Client.headBucket(any(HeadBucketRequest.class)))
                 .thenReturn(HeadBucketResponse.builder().build());
 
@@ -216,7 +217,7 @@ public class S3ClientServiceImplTest {
     void deleteBucket_WhenBucketDoesNotExist() {
         // Arrange
         String bucketName = "test-bucket";
-
+        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
         // Mock bucket check - bucket doesn't exist
         when(s3Client.headBucket(any(HeadBucketRequest.class)))
                 .thenThrow(NoSuchBucketException.builder()
@@ -236,7 +237,7 @@ public class S3ClientServiceImplTest {
     void deleteBucket_WhenDeletionFails() {
         // Arrange
         String bucketName = "test-bucket";
-
+        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
         // Mock bucket check - bucket exists
         when(s3Client.headBucket(any(HeadBucketRequest.class)))
                 .thenReturn(HeadBucketResponse.builder().build());
@@ -261,7 +262,7 @@ public class S3ClientServiceImplTest {
     void deleteBucket_WhenBucketCheckFails() {
         // Arrange
         String bucketName = "test-bucket";
-
+        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
         // Mock bucket check failure
         when(s3Client.headBucket(any(HeadBucketRequest.class)))
                 .thenThrow(S3Exception.builder()
@@ -322,6 +323,7 @@ public class S3ClientServiceImplTest {
     void bucketExists_WhenBucketExists() {
         // Arrange
         String bucketName = "test-bucket";
+        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
         when(s3Client.headBucket(any(HeadBucketRequest.class)))
                 .thenReturn(HeadBucketResponse.builder().build());
 
@@ -338,6 +340,8 @@ public class S3ClientServiceImplTest {
     void bucketExists_WhenBucketDoesNotExist() {
         // Arrange
         String bucketName = "test-bucket";
+        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
+
         when(s3Client.headBucket(any(HeadBucketRequest.class)))
                 .thenThrow(NoSuchBucketException.builder()
                         .message("The specified bucket does not exist")
@@ -356,6 +360,7 @@ public class S3ClientServiceImplTest {
     void bucketExists_WhenCheckFails() {
         // Arrange
         String bucketName = "test-bucket";
+        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
         when(s3Client.headBucket(any(HeadBucketRequest.class)))
                 .thenThrow(S3Exception.builder()
                         .message("Connection timeout")
@@ -845,7 +850,7 @@ public class S3ClientServiceImplTest {
                 S3Object.builder().key("file2.txt").build(),
                 S3Object.builder().key("file3.txt").build()
         );
-
+        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
         when(s3Client.listObjectsV2(any(ListObjectsV2Request.class)))
                 .thenReturn(ListObjectsV2Response.builder()
                         .contents(s3Objects)
@@ -867,7 +872,7 @@ public class S3ClientServiceImplTest {
     void listFiles_EmptyBucket() {
         // Arrange
         String bucketName = "empty-bucket";
-
+        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
         when(s3Client.listObjectsV2(any(ListObjectsV2Request.class)))
                 .thenReturn(ListObjectsV2Response.builder()
                         .contents(new ArrayList<>())
@@ -888,7 +893,7 @@ public class S3ClientServiceImplTest {
     void listFiles_WhenListingFails() {
         // Arrange
         String bucketName = "test-bucket";
-
+        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
         when(s3Client.listObjectsV2(any(ListObjectsV2Request.class)))
                 .thenThrow(S3Exception.builder()
                         .message("Failed to list objects")

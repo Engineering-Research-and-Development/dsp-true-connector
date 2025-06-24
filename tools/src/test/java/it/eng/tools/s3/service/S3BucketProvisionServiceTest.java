@@ -11,7 +11,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
@@ -38,11 +37,15 @@ public class S3BucketProvisionServiceTest {
     @Mock
     private BucketCredentialsRepository bucketCredentialsRepository;
 
+    @Mock
+    private IamUserManagementService iamUserManagementService;
+
     private S3BucketProvisionService s3BucketProvisionService;
 
     @BeforeEach
     void setUp() {
-        s3BucketProvisionService = new S3BucketProvisionService(s3ClientProvider, s3Properties, bucketCredentialsRepository);
+        s3BucketProvisionService = new S3BucketProvisionService(s3ClientProvider, s3Properties,
+                bucketCredentialsRepository, iamUserManagementService);
         lenient().when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
     }
 
@@ -51,8 +54,16 @@ public class S3BucketProvisionServiceTest {
     void createSecureBucket_WithNoExistingPolicy_ShouldCreateNewPolicy() {
         // Arrange
         String bucketName = "test-bucket";
+
+        // Mock IAM service calls
+        doNothing().when(iamUserManagementService).createUser(any(BucketCredentials.class));
+        doNothing().when(iamUserManagementService).attachPolicyToUser(any(BucketCredentials.class));
+
+        when(s3Client.createBucket(any(CreateBucketRequest.class)))
+                .thenReturn(CreateBucketResponse.builder().build());
         when(s3Client.getBucketPolicy(any(GetBucketPolicyRequest.class)))
-                .thenThrow(AwsServiceException.class);
+                .thenReturn(GetBucketPolicyResponse.builder().policy("{}").build());
+
         when(bucketCredentialsRepository.save(any(BucketCredentialsEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -81,6 +92,43 @@ public class S3BucketProvisionServiceTest {
 
         // Verify credentials storage
         verify(bucketCredentialsRepository).save(any(BucketCredentialsEntity.class));
+    }
+
+    @Test
+    @DisplayName("createSecureBucket - should handle when bucket already exists")
+    void createSecureBucket_WhenBucketExists_ShouldContinueWithPolicyUpdate() {
+        // Arrange
+        String bucketName = "test-bucket";
+        when(s3Client.createBucket(any(CreateBucketRequest.class)))
+                .thenThrow(BucketAlreadyExistsException.builder().build());
+
+        // Mock IAM service calls
+        doNothing().when(iamUserManagementService).createUser(any(BucketCredentials.class));
+        doNothing().when(iamUserManagementService).attachPolicyToUser(any(BucketCredentials.class));
+
+        when(bucketCredentialsRepository.save(any(BucketCredentialsEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        when(s3Client.getBucketPolicy(any(GetBucketPolicyRequest.class)))
+                .thenReturn(GetBucketPolicyResponse.builder().policy("{}").build());
+        // Act
+        BucketCredentials result = s3BucketProvisionService.createSecureBucket(bucketName);
+
+        // Assert
+        assertNotNull(result);
+        verify(s3Client).createBucket(any(CreateBucketRequest.class));
+        verify(iamUserManagementService).createUser(any(BucketCredentials.class));
+        verify(iamUserManagementService).attachPolicyToUser(any(BucketCredentials.class));
+        verify(bucketCredentialsRepository).save(any(BucketCredentialsEntity.class));
+    }
+
+    @Test
+    @DisplayName("createSecureBucket - should throw exception if bucket name is null")
+    void createSecureBucket_WithNullBucketName_ShouldThrowException() {
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> s3BucketProvisionService.createSecureBucket(null));
+        assertEquals("Bucket name cannot be empty", exception.getMessage());
     }
 
     @Test
@@ -157,27 +205,51 @@ public class S3BucketProvisionServiceTest {
     void createSecureBucket_WhenPolicyUpdateFails_ShouldThrowException() {
         // Arrange
         String bucketName = "test-bucket";
-        // MinIO returns {} when no policy exists, while AWS throws NoSuchBucketPolicyException
-        when(s3Client.getBucketPolicy(any(GetBucketPolicyRequest.class)))
-                .thenReturn(GetBucketPolicyResponse.builder()
-                        .policy("{}")
-                        .build());
-        when(s3Client.putBucketPolicy(any(PutBucketPolicyRequest.class)))
-                .thenThrow(S3Exception.builder()
-                        .message("Policy update failed")
-                        .build());
-
-        when(s3Client.createBucket(any(CreateBucketRequest.class)))
-                .thenReturn(CreateBucketResponse.builder().build());
+        // Mock IAM service calls first
+        doNothing().when(iamUserManagementService).createUser(any(BucketCredentials.class));
+        doThrow(new RuntimeException("Failed to attach policy"))
+                .when(iamUserManagementService).attachPolicyToUser(any(BucketCredentials.class));
 
         // Act & Assert
         RuntimeException exception = assertThrows(RuntimeException.class,
                 () -> s3BucketProvisionService.createSecureBucket(bucketName));
-        assertEquals("Failed to update bucket policy", exception.getMessage());
+        assertEquals("Failed to attach policy", exception.getMessage());
 
-        verify(s3Client).createBucket(any(CreateBucketRequest.class));
-        verify(s3Client).getBucketPolicy(any(GetBucketPolicyRequest.class));
-        verify(s3Client).putBucketPolicy(any(PutBucketPolicyRequest.class));
+        verify(bucketCredentialsRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("createSecureBucket - should handle policy update failure with existing policy")
+    void createSecureBucket_WhenUpdatingExistingPolicy_ShouldThrowException() {
+        // Arrange
+        String bucketName = "test-bucket";
+        String existingPolicy = """
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "ExistingPolicy",
+                            "Effect": "Allow",
+                            "Principal": {"AWS": ["existing-user"]},
+                            "Action": ["s3:GetObject"],
+                            "Resource": ["arn:aws:s3:::test-bucket/*"]
+                        }
+                    ]
+                }""";
+
+        // Mock IAM service calls
+        doNothing().when(iamUserManagementService).createUser(any(BucketCredentials.class));
+        doNothing().when(iamUserManagementService).attachPolicyToUser(any(BucketCredentials.class));
+
+        when(s3Client.getBucketPolicy(any(GetBucketPolicyRequest.class)))
+                .thenReturn(GetBucketPolicyResponse.builder().policy(existingPolicy).build());
+        when(s3Client.putBucketPolicy(any(PutBucketPolicyRequest.class)))
+                .thenThrow(S3Exception.builder().message("Failed to update policy").build());
+
+        // Act & Assert
+        assertThrows(RuntimeException.class,
+                () -> s3BucketProvisionService.createSecureBucket(bucketName));
+
         verify(bucketCredentialsRepository, never()).save(any());
     }
 
@@ -206,18 +278,46 @@ public class S3BucketProvisionServiceTest {
     }
 
     @Test
+    @DisplayName("createSecureBucket - should handle policy get failure")
+    void createSecureBucket_WhenGetPolicyFails_ShouldCreateNewPolicy() {
+        // Arrange
+        String bucketName = "test-bucket";
+
+        // Mock IAM service calls
+        doNothing().when(iamUserManagementService).createUser(any(BucketCredentials.class));
+        doNothing().when(iamUserManagementService).attachPolicyToUser(any(BucketCredentials.class));
+
+        when(s3Client.getBucketPolicy(any(GetBucketPolicyRequest.class)))
+                .thenThrow(S3Exception.builder().message("No policy exists").build());
+
+        when(bucketCredentialsRepository.save(any(BucketCredentialsEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        BucketCredentials result = s3BucketProvisionService.createSecureBucket(bucketName);
+
+        // Assert
+        assertNotNull(result);
+        verify(s3Client).putBucketPolicy(any(PutBucketPolicyRequest.class));
+        verify(bucketCredentialsRepository).save(any(BucketCredentialsEntity.class));
+    }
+
+    @Test
     @DisplayName("createSecureBucket - should create a new bucket with empty policy")
     void createSecureBucket_WithExistingEmptyPolicy_ShouldCreateNewPolicy() {
         // Arrange
         String bucketName = "test-bucket";
-        String emptyPolicy = """
-                {
-                    "Version": "2012-10-17",
-                    "Statement": []
-                }""";
 
+        // Mock IAM service calls
+        doNothing().when(iamUserManagementService).createUser(any(BucketCredentials.class));
+        doNothing().when(iamUserManagementService).attachPolicyToUser(any(BucketCredentials.class));
+
+        // Mock bucket creation
+        when(s3Client.createBucket(any(CreateBucketRequest.class)))
+                .thenReturn(CreateBucketResponse.builder().build());
         when(s3Client.getBucketPolicy(any(GetBucketPolicyRequest.class)))
-                .thenReturn(GetBucketPolicyResponse.builder().policy(emptyPolicy).build());
+                .thenReturn(GetBucketPolicyResponse.builder().policy("{}").build());
+
         when(bucketCredentialsRepository.save(any(BucketCredentialsEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 

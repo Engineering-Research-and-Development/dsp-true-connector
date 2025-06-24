@@ -25,11 +25,15 @@ public class S3BucketProvisionService {
     private final S3ClientProvider s3ClientProvider;
     private final S3Properties s3Properties;
     private final BucketCredentialsRepository bucketCredentialsRepository;
+    private final IamUserManagementService iamUserManagementService;
 
-    public S3BucketProvisionService(S3ClientProvider s3ClientProvider, S3Properties s3Properties, BucketCredentialsRepository bucketCredentialsRepository) {
+    public S3BucketProvisionService(S3ClientProvider s3ClientProvider, S3Properties s3Properties,
+                                    BucketCredentialsRepository bucketCredentialsRepository,
+                                    IamUserManagementService iamUserManagementService) {
         this.s3ClientProvider = s3ClientProvider;
         this.s3Properties = s3Properties;
         this.bucketCredentialsRepository = bucketCredentialsRepository;
+        this.iamUserManagementService = iamUserManagementService;
     }
 
     public BucketCredentials createSecureBucket(String bucketName) {
@@ -39,15 +43,16 @@ public class S3BucketProvisionService {
         String accessKey = "GetBucketUser-" + UUID.randomUUID().toString().substring(0, 8);
         String secretKey = UUID.randomUUID().toString();
 
-        // Create bucket
-        CreateBucketRequest createBucketRequest = CreateBucketRequest.builder()
-                .bucket(bucketName)
-                .build();
-        S3Client s3ClientAdmin = s3ClientProvider.adminS3Client();
-        s3ClientAdmin.createBucket(createBucketRequest);
+        BucketCredentials bucketCredentials = BucketCredentials.from(accessKey, secretKey, bucketName);
 
-        // Update bucket policy while preserving existing policies
-        updateBucketPolicy(s3ClientAdmin, bucketName, accessKey);
+        iamUserManagementService.createUser(bucketCredentials);
+        iamUserManagementService.attachPolicyToUser(bucketCredentials);
+
+        // Create bucket
+        createBucket(bucketName);
+
+        // Attach bucket policy
+        updateBucketPolicy(bucketName, accessKey);
 
         // Store credentials
         bucketCredentialsRepository.save(BucketCredentialsEntity.Builder.newInstance()
@@ -59,8 +64,47 @@ public class S3BucketProvisionService {
         return new BucketCredentials(accessKey, secretKey, bucketName);
     }
 
-    private void updateBucketPolicy(S3Client s3ClientAdmin, String bucketName, String accessKey) {
+    private void createBucket(String bucketName) {
         try {
+            s3ClientProvider.adminS3Client().createBucket(CreateBucketRequest.builder()
+                    .bucket(bucketName)
+                    .build());
+        } catch (BucketAlreadyExistsException e) {
+            log.warn("Bucket {} already exists", bucketName);
+        }
+    }
+
+    private void attachBucketPolicy(String bucketName, String accessKey) {
+        String policy = String.format("""
+                {
+                    "Version": "2012-10-17",
+                    "Sid": "AllowTemporaryAccess-%s",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "AWS": ["arn:aws:iam::*:user/%s"]
+                            },
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject",
+                                "s3:DeleteObject"
+                            ],
+                            "Resource": ["arn:aws:s3:::%s/*"]
+                        }
+                    ]
+                }
+                """, UUID.randomUUID().toString().substring(0, 8), accessKey, bucketName);
+
+        s3ClientProvider.adminS3Client().putBucketPolicy(PutBucketPolicyRequest.builder()
+                .bucket(bucketName)
+                .policy(policy)
+                .build());
+    }
+
+    private void updateBucketPolicy(String bucketName, String accessKey) {
+        try {
+            S3Client s3ClientAdmin = s3ClientProvider.adminS3Client();
             // Try to get existing policy
             GetBucketPolicyRequest getPolicyRequest = GetBucketPolicyRequest.builder()
                     .bucket(bucketName)
