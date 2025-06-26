@@ -119,7 +119,7 @@ public class S3ClientServiceImpl implements S3ClientService {
                             .build());
             S3ClientRequest s3ClientRequest = S3ClientRequest.from(s3Properties.getRegion(),
                     null,
-                    BucketCredentials.from(bucketCredentials.getAccessKey(), bucketCredentials.getSecretKey(), bucketCredentials.getBucketName()));
+                    bucketCredentials);
 
             S3Client s3Client = s3ClientProvider.adminS3Client();
             HeadBucketRequest headBucketRequest = HeadBucketRequest.builder()
@@ -152,7 +152,7 @@ public class S3ClientServiceImpl implements S3ClientService {
         log.info("Bucket credentials: accessKey={}, secretKey={}", bucketCredentials.getAccessKey(), bucketCredentials.getSecretKey());
         S3ClientRequest s3ClientRequest = S3ClientRequest.from(s3Properties.getRegion(),
                 null,
-                BucketCredentials.from(bucketCredentials.getAccessKey(), bucketCredentials.getSecretKey(), bucketCredentials.getBucketName()));
+                bucketCredentials);
 
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -250,7 +250,7 @@ public class S3ClientServiceImpl implements S3ClientService {
                     .orElseThrow(() -> new IllegalArgumentException("Bucket credentials not found for bucket: " + bucketName));
             S3ClientRequest s3ClientRequest = S3ClientRequest.from(s3Properties.getRegion(),
                     null,
-                    BucketCredentials.from(bucketCredentials.getAccessKey(), bucketCredentials.getSecretKey(), bucketCredentials.getBucketName()));
+                    bucketCredentials);
             S3Client s3Client = s3ClientProvider.s3Client(s3ClientRequest);
 
             ResponseInputStream<GetObjectResponse> responseInputStream = s3Client.getObject(getObjectRequest);
@@ -285,7 +285,8 @@ public class S3ClientServiceImpl implements S3ClientService {
                         .orElseThrow(() -> new IllegalArgumentException("Bucket credentials not found for bucket: " + bucketName));
                 S3ClientRequest s3ClientRequest = S3ClientRequest.from(s3Properties.getRegion(),
                         null,
-                        BucketCredentials.from(bucketCredentials.getAccessKey(), bucketCredentials.getSecretKey(), bucketCredentials.getBucketName()));
+                        bucketCredentials);
+
                 S3Client s3Client = s3ClientProvider.s3Client(s3ClientRequest);
                 DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
                         .bucket(bucketName)
@@ -310,7 +311,7 @@ public class S3ClientServiceImpl implements S3ClientService {
                     .orElseThrow(() -> new IllegalArgumentException("Bucket credentials not found for bucket: " + bucketName));
             S3ClientRequest s3ClientRequest = S3ClientRequest.from(s3Properties.getRegion(),
                     null,
-                    BucketCredentials.from(bucketCredentials.getAccessKey(), bucketCredentials.getSecretKey(), bucketCredentials.getBucketName()));
+                    bucketCredentials);
             S3Client s3Client = s3ClientProvider.s3Client(s3ClientRequest);
             HeadObjectRequest headObjectRequest = HeadObjectRequest.builder()
                     .bucket(bucketName)
@@ -346,7 +347,8 @@ public class S3ClientServiceImpl implements S3ClientService {
                     .orElseThrow(() -> new IllegalArgumentException("Bucket credentials not found for bucket: " + bucketName));
             S3ClientRequest s3ClientRequest = S3ClientRequest.from(s3Properties.getRegion(),
                     null,
-                    BucketCredentials.from(bucketCredentials.getAccessKey(), bucketCredentials.getSecretKey(), bucketCredentials.getBucketName()));
+                    bucketCredentials);
+
             S3Client s3Client = s3ClientProvider.s3Client(s3ClientRequest);
 
             // First, get the object's metadata

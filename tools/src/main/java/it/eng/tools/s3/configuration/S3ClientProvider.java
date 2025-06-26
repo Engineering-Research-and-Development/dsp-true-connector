@@ -27,9 +27,24 @@ public class S3ClientProvider {
 
     private final Executor executor;
     private final S3Properties s3Properties;
-    // Using admin credentials from property file or environment variables
     private final AwsCredentialsProvider credentialsProvider;
 
+    public S3ClientProvider(S3Properties s3Properties) {
+        this.s3Properties = s3Properties;
+        this.executor = Executors.newFixedThreadPool(10, new ThreadFactoryBuilder()
+                .threadNamePrefix("aws-client")
+                .build());
+        credentialsProvider = StaticCredentialsProvider.create(AwsBasicCredentials
+                .create(s3Properties.getAccessKey(), s3Properties.getSecretKey()));
+    }
+
+    /**
+     * Creates a S3Client for administrative operations on S3 buckets.
+     * This client is used for operations that require admin privileges.
+     * AccessKey and SecretKey are read from the S3Properties configuration.
+     *
+     * @return a configured administrative privileges S3Client instance
+     */
     public S3Client adminS3Client() {
         return S3Client.builder()
                 .endpointOverride(URI.create(s3Properties.getEndpoint()))
@@ -42,21 +57,28 @@ public class S3ClientProvider {
                 .build();
     }
 
-    public S3ClientProvider(S3Properties s3Properties) {
-        this.s3Properties = s3Properties;
-        this.executor = Executors.newFixedThreadPool(10, new ThreadFactoryBuilder()
-                .threadNamePrefix("aws-client")
-                .build());
-        credentialsProvider = StaticCredentialsProvider.create(AwsBasicCredentials
-                .create(s3Properties.getAccessKey(), s3Properties.getSecretKey()));
-    }
-
+    /**
+     * Creates a S3Client for general operations on S3 buckets.
+     * This client is used for operations that do not require admin privileges.
+     * AccessKey and SecretKey are read from the S3ClientRequest.
+     *
+     * @param s3ClientRequest the request containing bucket credentials, region, and endpoint override
+     * @return a configured general privileges S3Client instance
+     */
     public S3Client s3Client(S3ClientRequest s3ClientRequest) {
         return createS3Client(s3ClientRequest);
     }
 
-    public S3AsyncClient s3AsyncClient(S3ClientRequest clientRequest) {
-        return createS3AsyncClient(clientRequest);
+    /**
+     * Creates a S3AsyncClient for asynchronous operations on S3 buckets.
+     * This client is used for operations that do not require admin privileges.
+     * AccessKey and SecretKey are read from the S3ClientRequest.
+     *
+     * @param s3ClientRequest the request containing bucket credentials, region, and endpoint override
+     * @return a configured general privileges S3AsyncClient instance
+     */
+    public S3AsyncClient s3AsyncClient(S3ClientRequest s3ClientRequest) {
+        return createS3AsyncClient(s3ClientRequest);
     }
 
     private S3Client createS3Client(S3ClientRequest s3ClientRequest) {
@@ -65,7 +87,7 @@ public class S3ClientProvider {
         var endpointOverride = s3ClientRequest.endpointOverride();
 
         if (bucketCredentials != null) {
-            AwsCredentials credentials = AwsBasicCredentials.create(bucketCredentials.accessKey(), bucketCredentials.secretKey());
+            AwsCredentials credentials = AwsBasicCredentials.create(bucketCredentials.getAccessKey(), bucketCredentials.getSecretKey());
             return createS3Client(StaticCredentialsProvider.create(credentials), region, endpointOverride);
         } else {
             return createS3Client(credentialsProvider, region, endpointOverride);
@@ -93,7 +115,7 @@ public class S3ClientProvider {
         var endpointOverride = s3ClientRequest.endpointOverride();
 
         if (bucketCredentials != null) {
-            var credentials = AwsBasicCredentials.create(bucketCredentials.accessKey(), bucketCredentials.secretKey());
+            var credentials = AwsBasicCredentials.create(bucketCredentials.getAccessKey(), bucketCredentials.getSecretKey());
             return createS3AsyncClient(StaticCredentialsProvider.create(credentials), region, endpointOverride);
         } else {
             var key = s3ClientRequest.region() + "/" + s3ClientRequest.endpointOverride();

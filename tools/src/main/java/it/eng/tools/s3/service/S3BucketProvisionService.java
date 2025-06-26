@@ -36,14 +36,18 @@ public class S3BucketProvisionService {
         this.iamUserManagementService = iamUserManagementService;
     }
 
-    public BucketCredentials createSecureBucket(String bucketName) {
+    public BucketCredentialsEntity createSecureBucket(String bucketName) {
         validateBucketName(bucketName);
         log.info("Create secure bucket {}", bucketName);
         // Generate temporary credentials
         String accessKey = "GetBucketUser-" + UUID.randomUUID().toString().substring(0, 8);
         String secretKey = UUID.randomUUID().toString();
 
-        BucketCredentials bucketCredentials = BucketCredentials.from(accessKey, secretKey, bucketName);
+        BucketCredentialsEntity bucketCredentials = BucketCredentialsEntity.Builder.newInstance()
+                .bucketName(bucketName)
+                .accessKey(accessKey)
+                .secretKey(secretKey)
+                .build();
 
         iamUserManagementService.createUser(bucketCredentials);
         iamUserManagementService.attachPolicyToUser(bucketCredentials);
@@ -55,13 +59,7 @@ public class S3BucketProvisionService {
         updateBucketPolicy(bucketName, accessKey);
 
         // Store credentials
-        bucketCredentialsRepository.save(BucketCredentialsEntity.Builder.newInstance()
-                .bucketName(bucketName)
-                .accessKey(accessKey)
-                .secretKey(secretKey)
-                .build());
-
-        return new BucketCredentials(accessKey, secretKey, bucketName);
+        return bucketCredentialsRepository.save(bucketCredentials);
     }
 
     private void createBucket(String bucketName) {

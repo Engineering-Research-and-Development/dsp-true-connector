@@ -1,8 +1,0 @@
-package it.eng.tools.s3.service;
-
-public record BucketCredentials(String accessKey, String secretKey, String bucketName) {
-
-    public static BucketCredentials from(String accessKey, String secretKey, String bucketName) {
-        return new BucketCredentials(accessKey, secretKey, bucketName);
-    }
-}

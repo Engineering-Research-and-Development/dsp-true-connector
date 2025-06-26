@@ -2,6 +2,7 @@ package it.eng.tools.s3.service;
 
 import io.minio.admin.MinioAdminClient;
 import io.minio.admin.UserInfo;
+import it.eng.tools.s3.model.BucketCredentialsEntity;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -16,38 +17,38 @@ public class MinioUserManagementService implements IamUserManagementService {
     }
 
     @Override
-    public void createUser(BucketCredentials bucketCredentials) {
+    public void createUser(BucketCredentialsEntity bucketCredentials) {
         try {
             // Check if user already exists
-            if (minioAdminClient.getUserInfo(bucketCredentials.accessKey()) != null) {
-                log.info("User {} already exists, skipping creation.", bucketCredentials.accessKey());
+            if (minioAdminClient.getUserInfo(bucketCredentials.getAccessKey()) != null) {
+                log.info("User {} already exists, skipping creation.", bucketCredentials.getAccessKey());
             }
         } catch (Exception e) {
             // User doesn't exist, create it
             try {
-                minioAdminClient.addUser(bucketCredentials.accessKey(), UserInfo.Status.ENABLED, bucketCredentials.secretKey(), null, null);
-                log.info("User {} created successfully", bucketCredentials.accessKey());
+                minioAdminClient.addUser(bucketCredentials.getAccessKey(), UserInfo.Status.ENABLED, bucketCredentials.getSecretKey(), null, null);
+                log.info("User {} created successfully", bucketCredentials.getAccessKey());
             } catch (Exception createError) {
-                log.error("Failed to create user {}: {}", bucketCredentials.accessKey(), createError.getMessage());
+                log.error("Failed to create user {}: {}", bucketCredentials.getAccessKey(), createError.getMessage());
                 throw new RuntimeException("Failed to create user", createError);
             }
         }
     }
 
     @Override
-    public void attachPolicyToUser(BucketCredentials bucketCredentials) {
+    public void attachPolicyToUser(BucketCredentialsEntity bucketCredentials) {
         // Create and attach policy
-        String policyName = "policy-" + bucketCredentials.bucketName();
+        String policyName = "policy-" + bucketCredentials.getBucketName();
 
         try {
             // TODO Check if policy already exists
-            String policyJson = createUserPolicy(bucketCredentials.bucketName());
+            String policyJson = createUserPolicy(bucketCredentials.getBucketName());
             log.debug("Creating policy {} with content: {}", policyName, policyJson);
             minioAdminClient.addCannedPolicy(policyName, policyJson);
 
             // Attach policy to user (correct order: userOrGroupName, policyName, isGroup)
-            log.debug("Attaching policy {} to user {}", policyName, bucketCredentials.accessKey());
-            minioAdminClient.setPolicy(bucketCredentials.accessKey(), false, policyName);
+            log.debug("Attaching policy {} to user {}", policyName, bucketCredentials.getAccessKey());
+            minioAdminClient.setPolicy(bucketCredentials.getAccessKey(), false, policyName);
         } catch (Exception e) {
             log.error("Error checking policy existence: {}", e.getMessage());
         }
