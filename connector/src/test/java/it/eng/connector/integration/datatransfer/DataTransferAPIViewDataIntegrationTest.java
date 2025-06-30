@@ -14,8 +14,8 @@ import it.eng.negotiation.repository.PolicyEnforcementRepository;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.S3BucketProvisionService;
 import it.eng.tools.s3.service.S3ClientService;
-import org.hibernate.validator.internal.constraintvalidators.hv.URLValidator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -29,7 +29,6 @@ import org.wiremock.spring.InjectWireMock;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.net.URI;
 import java.net.URL;
 import java.time.Instant;
 import java.util.Arrays;
@@ -60,6 +59,9 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
     private S3ClientService s3ClientService;
 
     @Autowired
+    private S3BucketProvisionService s3BucketProvisionService;
+
+    @Autowired
     private S3Properties s3Properties;
 
     private static final String FILE_NAME = "hello.txt";
@@ -69,7 +71,7 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
         transferProcessRepository.deleteAll();
         agreementRepository.deleteAll();
         policyEnforcementRepository.deleteAll();
-        if (s3ClientService.bucketExists(s3Properties.getBucketName())) {
+        if (s3BucketProvisionService.bucketExists(s3Properties.getBucketName())) {
             List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
             if (files != null) {
                 for (String file : files) {

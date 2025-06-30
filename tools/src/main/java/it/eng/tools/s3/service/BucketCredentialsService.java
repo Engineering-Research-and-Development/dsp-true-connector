@@ -1,5 +1,6 @@
 package it.eng.tools.s3.service;
 
+import it.eng.tools.exception.S3ServerException;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.repository.BucketCredentialsRepository;
 import it.eng.tools.service.FieldEncryptionService;
@@ -23,7 +24,7 @@ public class BucketCredentialsService {
                 .orElse(null);
         if (bucketCredentials == null) {
             log.error("Bucket credentials not found for bucket: {}", bucketName);
-            throw new IllegalArgumentException("Bucket credentials not found for bucket: " + bucketName);
+            throw new S3ServerException("Bucket credentials not found for bucket: " + bucketName);
         }
         return BucketCredentialsEntity.Builder.newInstance()
                 .accessKey(bucketCredentials.getAccessKey())

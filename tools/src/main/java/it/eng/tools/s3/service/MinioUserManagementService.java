@@ -2,6 +2,7 @@ package it.eng.tools.s3.service;
 
 import io.minio.admin.MinioAdminClient;
 import io.minio.admin.UserInfo;
+import it.eng.tools.exception.S3ServerException;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -30,7 +31,7 @@ public class MinioUserManagementService implements IamUserManagementService {
                 log.info("User {} created successfully", bucketCredentials.getAccessKey());
             } catch (Exception createError) {
                 log.error("Failed to create user {}: {}", bucketCredentials.getAccessKey(), createError.getMessage());
-                throw new RuntimeException("Failed to create user", createError);
+                throw new S3ServerException("Failed to create user", createError);
             }
         }
     }
@@ -51,6 +52,7 @@ public class MinioUserManagementService implements IamUserManagementService {
             minioAdminClient.setPolicy(bucketCredentials.getAccessKey(), false, policyName);
         } catch (Exception e) {
             log.error("Error checking policy existence: {}", e.getMessage());
+            throw new S3ServerException("Error attaching policy to user", e);
         }
     }
 

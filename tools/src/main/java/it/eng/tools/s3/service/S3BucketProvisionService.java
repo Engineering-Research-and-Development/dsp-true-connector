@@ -1,5 +1,6 @@
 package it.eng.tools.s3.service;
 
+import it.eng.tools.exception.S3ServerException;
 import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.properties.S3Properties;
@@ -177,7 +178,7 @@ public class S3BucketProvisionService {
             log.info("Update secure bucket {} whit policy", bucketName);
         } catch (Exception e) {
             log.error("Failed to update bucket policy for bucket: {}", bucketName, e);
-            throw new RuntimeException("Failed to update bucket policy", e);
+            throw new S3ServerException("Failed to update bucket policy", e);
         }
     }
 
@@ -259,16 +260,39 @@ public class S3BucketProvisionService {
             s3ClientAdmin.deleteBucket(deleteBucketRequest);
         } catch (Exception e) {
             log.error("Failed to cleanup bucket: {}", bucketName, e);
-            throw new RuntimeException("Failed to cleanup bucket", e);
+            throw new S3ServerException("Failed to cleanup bucket", e);
+        }
+    }
+
+    /**
+     * Checks if a bucket with the specified name exists.
+     *
+     * @param bucketName the name of the bucket to check
+     * @return true if the bucket exists, false otherwise
+     */
+    public boolean bucketExists(String bucketName) {
+        validateBucketName(bucketName);
+        try {
+            S3Client s3Client = s3ClientProvider.adminS3Client();
+            HeadBucketRequest headBucketRequest = HeadBucketRequest.builder()
+                    .bucket(bucketName)
+                    .build();
+            s3Client.headBucket(headBucketRequest);
+            return true;
+        } catch (NoSuchBucketException e) {
+            return false;
+        } catch (Exception e) {
+            log.error("Error checking if bucket {} exists: {}", bucketName, e.getMessage());
+            throw new S3ServerException("Error checking if bucket exists: " + e.getMessage(), e);
         }
     }
 
     private void validateBucketName(String bucketName) {
         if (bucketName == null || bucketName.isEmpty()) {
-            throw new IllegalArgumentException("Bucket name cannot be empty");
+            throw new IllegalArgumentException("Bucket name cannot be null or empty");
         }
         if (!bucketName.matches("^[a-z0-9][a-z0-9.-]*[a-z0-9]$")) {
-            throw new IllegalArgumentException("Invalid bucket name format");
+            throw new IllegalArgumentException("Invalid bucket name format: " + bucketName);
         }
     }
 

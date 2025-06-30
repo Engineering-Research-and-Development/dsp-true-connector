@@ -60,44 +60,6 @@ public class S3ClientServiceImpl implements S3ClientService {
     }
 
     @Override
-    public void deleteBucket(String bucketName) {
-        validateBucketName(bucketName);
-        try {
-            if (bucketExists(bucketName)) {
-                S3Client s3Client = s3ClientProvider.adminS3Client();
-                DeleteBucketRequest deleteBucketRequest = DeleteBucketRequest.builder()
-                        .bucket(bucketName)
-                        .build();
-                s3Client.deleteBucket(deleteBucketRequest);
-                log.info("Bucket {} deleted successfully", bucketName);
-            } else {
-                log.info("Bucket {} does not exist", bucketName);
-            }
-        } catch (Exception e) {
-            log.error("Error deleting bucket {}: {}", bucketName, e.getMessage());
-            throw new RuntimeException("Error deleting bucket: " + e.getMessage(), e);
-        }
-    }
-
-    @Override
-    public boolean bucketExists(String bucketName) {
-        validateBucketName(bucketName);
-        try {
-            S3Client s3Client = s3ClientProvider.adminS3Client();
-            HeadBucketRequest headBucketRequest = HeadBucketRequest.builder()
-                    .bucket(bucketName)
-                    .build();
-            s3Client.headBucket(headBucketRequest);
-            return true;
-        } catch (NoSuchBucketException e) {
-            return false;
-        } catch (Exception e) {
-            log.error("Error checking if bucket {} exists: {}", bucketName, e.getMessage());
-            throw new RuntimeException("Error checking if bucket exists: " + e.getMessage(), e);
-        }
-    }
-
-    @Override
     public CompletableFuture<String> uploadFile(InputStream inputStream,
                                                 String bucketName,
                                                 String key,

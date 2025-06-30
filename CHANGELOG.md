@@ -11,10 +11,12 @@ All notable changes to this project will be documented in this file.
 - IAM user management for S3 bucket access
 - minio-admin dependency for managing IAM users for MiniIO
 - Encrypting secretKey in BucketCredentialsEntity
+- Created S3ServerException
 
 ### Changed
 
 - minio version minio/minio:RELEASE.2025-04-22T22-12-26Z - has extended UI interface
+- Move deleteBucket to S3BucketProvisionService
 - updated tests
 
 ## [0.4.3-SNAPSHOT] - 20.06.2025.

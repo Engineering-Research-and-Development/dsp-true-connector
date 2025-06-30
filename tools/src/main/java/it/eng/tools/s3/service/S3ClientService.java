@@ -13,28 +13,6 @@ import java.util.concurrent.CompletableFuture;
 public interface S3ClientService {
 
     /**
-     * Creates a bucket with the specified name.
-     *
-     * @param bucketName the name of the bucket to create
-     */
-//    void createBucket(String bucketName);
-
-    /**
-     * Deletes a bucket with the specified name.
-     *
-     * @param bucketName the name of the bucket to delete
-     */
-    void deleteBucket(String bucketName);
-
-    /**
-     * Checks if a bucket with the specified name exists.
-     *
-     * @param bucketName the name of the bucket to check
-     * @return true if the bucket exists, false otherwise
-     */
-    boolean bucketExists(String bucketName);
-
-    /**
      * Uploads a file to the specified bucket with the specified object key.
      * <p>
      * After stream is processed, it will be closed automatically.

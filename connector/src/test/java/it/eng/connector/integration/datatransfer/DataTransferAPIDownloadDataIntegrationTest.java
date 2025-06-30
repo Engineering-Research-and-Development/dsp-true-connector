@@ -19,6 +19,7 @@ import it.eng.negotiation.repository.PolicyEnforcementRepository;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.S3BucketProvisionService;
 import it.eng.tools.s3.service.S3ClientService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -78,6 +79,9 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
     private S3ClientService s3ClientService;
 
     @Autowired
+    private S3BucketProvisionService s3BucketProvisionService;
+
+    @Autowired
     private S3Properties s3Properties;
 
     @BeforeEach
@@ -87,7 +91,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         policyEnforcementRepository.deleteAll();
         datasetRepository.deleteAll();
         catalogRepository.deleteAll();
-        if (s3ClientService.bucketExists(s3Properties.getBucketName())) {
+        if (s3BucketProvisionService.bucketExists(s3Properties.getBucketName())) {
             List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
             if (files != null) {
                 for (String file : files) {

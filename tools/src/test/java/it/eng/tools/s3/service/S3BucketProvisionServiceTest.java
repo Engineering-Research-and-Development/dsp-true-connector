@@ -126,7 +126,7 @@ public class S3BucketProvisionServiceTest {
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> s3BucketProvisionService.createSecureBucket(null));
-        assertEquals("Bucket name cannot be empty", exception.getMessage());
+        assertEquals("Bucket name cannot be null or empty", exception.getMessage());
     }
 
     @Test
@@ -260,7 +260,7 @@ public class S3BucketProvisionServiceTest {
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> s3BucketProvisionService.createSecureBucket(bucketName));
-        assertEquals("Bucket name cannot be empty", exception.getMessage());
+        assertEquals("Bucket name cannot be null or empty", exception.getMessage());
     }
 
     @Test
@@ -272,7 +272,7 @@ public class S3BucketProvisionServiceTest {
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> s3BucketProvisionService.createSecureBucket(bucketName));
-        assertEquals("Invalid bucket name format", exception.getMessage());
+        assertEquals("Invalid bucket name format: " + bucketName, exception.getMessage());
     }
 
     @Test
@@ -625,5 +625,100 @@ public class S3BucketProvisionServiceTest {
                 () -> s3BucketProvisionService.generatePresignedUrl(bucketName, objectKey, expiration));
         assertEquals("Expiration duration cannot be null", exception.getMessage());
     }
+
+    // bucket exists
+    //bucketExists test cases
+    @Test
+    @DisplayName("Should return true when bucket exists")
+    void bucketExists_WhenBucketExists() {
+        // Arrange
+        String bucketName = "test-bucket";
+        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
+        when(s3Client.headBucket(any(HeadBucketRequest.class)))
+                .thenReturn(HeadBucketResponse.builder().build());
+
+        // Act
+        boolean result = s3BucketProvisionService.bucketExists(bucketName);
+
+        // Assert
+        assertTrue(result);
+        verify(s3Client).headBucket(any(HeadBucketRequest.class));
+    }
+
+    @Test
+    @DisplayName("Should return false when bucket does not exist")
+    void bucketExists_WhenBucketDoesNotExist() {
+        // Arrange
+        String bucketName = "test-bucket";
+        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
+
+        when(s3Client.headBucket(any(HeadBucketRequest.class)))
+                .thenThrow(NoSuchBucketException.builder()
+                        .message("The specified bucket does not exist")
+                        .build());
+
+        // Act
+        boolean result = s3BucketProvisionService.bucketExists(bucketName);
+
+        // Assert
+        assertFalse(result);
+        verify(s3Client).headBucket(any(HeadBucketRequest.class));
+    }
+
+    @Test
+    @DisplayName("Should throw RuntimeException when checking bucket existence fails")
+    void bucketExists_WhenCheckFails() {
+        // Arrange
+        String bucketName = "test-bucket";
+        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
+        when(s3Client.headBucket(any(HeadBucketRequest.class)))
+                .thenThrow(S3Exception.builder()
+                        .message("Connection timeout")
+                        .build());
+
+        // Act & Assert
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> s3BucketProvisionService.bucketExists(bucketName));
+
+        assertTrue(exception.getMessage().contains("Error checking if bucket exists"));
+        verify(s3Client).headBucket(any(HeadBucketRequest.class));
+    }
+
+    @Test
+    @DisplayName("Should throw IllegalArgumentException when bucket name is null")
+    void bucketExists_WhenBucketNameIsNull() {
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> s3BucketProvisionService.bucketExists(null));
+
+        assertEquals("Bucket name cannot be null or empty", exception.getMessage());
+        verify(s3Client, never()).headBucket(any(HeadBucketRequest.class));
+    }
+
+    @Test
+    @DisplayName("Should throw IllegalArgumentException when bucket name is empty")
+    void bucketExists_WhenBucketNameIsEmpty() {
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> s3BucketProvisionService.bucketExists(""));
+
+        assertEquals("Bucket name cannot be null or empty", exception.getMessage());
+        verify(s3Client, never()).headBucket(any(HeadBucketRequest.class));
+    }
+
+    @Test
+    @DisplayName("Should throw IllegalArgumentException when bucket name format is invalid")
+    void bucketExists_WhenBucketNameFormatIsInvalid() {
+        // Arrange
+        String bucketName = "Invalid.Bucket.Name";
+
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> s3BucketProvisionService.bucketExists(bucketName));
+
+        assertEquals("Invalid bucket name format: " + bucketName, exception.getMessage());
+        verify(s3Client, never()).headBucket(any(HeadBucketRequest.class));
+    }
+
 
 }

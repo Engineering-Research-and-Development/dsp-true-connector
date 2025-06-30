@@ -117,7 +117,7 @@ public class InitialDataLoader {
         try {
             // Create S3 bucket if it doesn't exist
             String bucketName = s3Properties.getBucketName();
-            if (!s3ClientService.bucketExists(bucketName)) {
+            if (!s3BucketProvisionService.bucketExists(bucketName)) {
                 s3BucketProvisionService.createSecureBucket(bucketName);
                 log.info("Created S3 bucket: {}", bucketName);
             }
