@@ -4,7 +4,6 @@ import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.model.S3ClientRequest;
 import it.eng.tools.s3.properties.S3Properties;
-import it.eng.tools.s3.repository.BucketCredentialsRepository;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +27,6 @@ import java.io.InputStream;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
@@ -52,9 +50,6 @@ public class S3ClientServiceImplTest {
     private S3Properties s3Properties;
 
     @Mock
-    BucketCredentialsRepository bucketCredentialsRepository;
-
-    @Mock
     private HttpServletResponse response;
 
     @Mock
@@ -62,6 +57,9 @@ public class S3ClientServiceImplTest {
 
     @Mock
     private ResponseInputStream<GetObjectResponse> responseInputStream;
+
+    @Mock
+    private BucketCredentialsService bucketCredentialsService;
 
     @Mock
     private GetObjectResponse getObjectResponse;
@@ -72,13 +70,13 @@ public class S3ClientServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        s3ClientService = new S3ClientServiceImpl(s3ClientProvider, s3Properties, bucketCredentialsRepository);
+        s3ClientService = new S3ClientServiceImpl(s3ClientProvider, s3Properties, bucketCredentialsService);
         BucketCredentialsEntity bucketCredentials = BucketCredentialsEntity.Builder.newInstance()
                 .accessKey("accessKey")
                 .secretKey("secretKey")
                 .bucketName(bucketName)
                 .build();
-        lenient().when(bucketCredentialsRepository.findByBucketName(anyString())).thenReturn(Optional.of(bucketCredentials));
+        lenient().when(bucketCredentialsService.getBucketCredentials(anyString())).thenReturn(bucketCredentials);
         lenient().when(s3ClientProvider.s3Client(any(S3ClientRequest.class))).thenReturn(s3Client);
         lenient().when(s3ClientProvider.s3AsyncClient(any(S3ClientRequest.class))).thenReturn(s3AsyncClient);
     }
@@ -423,12 +421,6 @@ public class S3ClientServiceImplTest {
         InputStream inputStream = new ByteArrayInputStream("test content".getBytes());
 //        when(s3Properties.getBucketName()).thenReturn(bucketName);
 //        when(s3Client.headBucket(any(HeadBucketRequest.class))).thenReturn(HeadBucketResponse.builder().build());
-        BucketCredentialsEntity bucketCredentialsEntity = BucketCredentialsEntity.Builder.newInstance()
-                .bucketName(bucketName)
-                .accessKey("test-access-key")
-                .secretKey("test-secret-key")
-                .build();
-        when(bucketCredentialsRepository.findByBucketName(bucketName)).thenReturn(Optional.of(bucketCredentialsEntity));
         when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
                 .thenReturn(CompletableFuture.completedFuture(
                         CreateMultipartUploadResponse.builder().uploadId("test-upload-id").build()));
@@ -459,12 +451,6 @@ public class S3ClientServiceImplTest {
         String contentDisposition = "attachment; filename=test-file.txt";
         InputStream inputStream = new ByteArrayInputStream("test content".getBytes());
 
-        BucketCredentialsEntity bucketCredentialsEntity = BucketCredentialsEntity.Builder.newInstance()
-                .bucketName(bucketName)
-                .accessKey("test-access-key")
-                .secretKey("test-secret-key")
-                .build();
-        when(bucketCredentialsRepository.findByBucketName(bucketName)).thenReturn(Optional.of(bucketCredentialsEntity));
 //        when(s3Properties.getBucketName()).thenReturn(bucketName);
 //        when(s3Client.headBucket(any(HeadBucketRequest.class))).thenReturn(HeadBucketResponse.builder().build());
         when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))

@@ -3,7 +3,6 @@ package it.eng.tools.s3.service;
 import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.properties.S3Properties;
-import it.eng.tools.s3.repository.BucketCredentialsRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -24,15 +23,15 @@ import java.util.UUID;
 public class S3BucketProvisionService {
     private final S3ClientProvider s3ClientProvider;
     private final S3Properties s3Properties;
-    private final BucketCredentialsRepository bucketCredentialsRepository;
+    private final BucketCredentialsService bucketCredentialsService;
     private final IamUserManagementService iamUserManagementService;
 
     public S3BucketProvisionService(S3ClientProvider s3ClientProvider, S3Properties s3Properties,
-                                    BucketCredentialsRepository bucketCredentialsRepository,
+                                    BucketCredentialsService bucketCredentialsService,
                                     IamUserManagementService iamUserManagementService) {
         this.s3ClientProvider = s3ClientProvider;
         this.s3Properties = s3Properties;
-        this.bucketCredentialsRepository = bucketCredentialsRepository;
+        this.bucketCredentialsService = bucketCredentialsService;
         this.iamUserManagementService = iamUserManagementService;
     }
 
@@ -59,7 +58,7 @@ public class S3BucketProvisionService {
         updateBucketPolicy(bucketName, accessKey);
 
         // Store credentials
-        return bucketCredentialsRepository.save(bucketCredentials);
+        return bucketCredentialsService.saveBucketCredentials(bucketCredentials);
     }
 
     private void createBucket(String bucketName) {
@@ -186,8 +185,7 @@ public class S3BucketProvisionService {
                                        Duration expiration) {
 
         validatePresignedUrlParams(objectKey, expiration);
-        BucketCredentialsEntity credentials = bucketCredentialsRepository.findByBucketName(bucketName)
-                .orElseThrow(() -> new RuntimeException("No credentials found for bucket: " + bucketName));
+        BucketCredentialsEntity credentials = bucketCredentialsService.getBucketCredentials(bucketName);
 
         return generatePresignedUrl(bucketName, objectKey,
                 credentials.getAccessKey(),

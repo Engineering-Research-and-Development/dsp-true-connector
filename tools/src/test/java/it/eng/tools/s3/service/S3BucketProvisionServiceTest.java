@@ -3,7 +3,6 @@ package it.eng.tools.s3.service;
 import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.properties.S3Properties;
-import it.eng.tools.s3.repository.BucketCredentialsRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,7 +15,6 @@ import software.amazon.awssdk.services.s3.model.*;
 
 import java.time.Duration;
 import java.util.Collections;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -35,7 +33,7 @@ public class S3BucketProvisionServiceTest {
     private S3Properties s3Properties;
 
     @Mock
-    private BucketCredentialsRepository bucketCredentialsRepository;
+    private BucketCredentialsService bucketCredentialsService;
 
     @Mock
     private IamUserManagementService iamUserManagementService;
@@ -45,7 +43,7 @@ public class S3BucketProvisionServiceTest {
     @BeforeEach
     void setUp() {
         s3BucketProvisionService = new S3BucketProvisionService(s3ClientProvider, s3Properties,
-                bucketCredentialsRepository, iamUserManagementService);
+                bucketCredentialsService, iamUserManagementService);
         lenient().when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
     }
 
@@ -64,7 +62,7 @@ public class S3BucketProvisionServiceTest {
         when(s3Client.getBucketPolicy(any(GetBucketPolicyRequest.class)))
                 .thenReturn(GetBucketPolicyResponse.builder().policy("{}").build());
 
-        when(bucketCredentialsRepository.save(any(BucketCredentialsEntity.class)))
+        when(bucketCredentialsService.saveBucketCredentials(any(BucketCredentialsEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
@@ -91,7 +89,7 @@ public class S3BucketProvisionServiceTest {
         assertTrue(policy.contains(result.getAccessKey()));
 
         // Verify credentials storage
-        verify(bucketCredentialsRepository).save(any(BucketCredentialsEntity.class));
+        verify(bucketCredentialsService).saveBucketCredentials(any(BucketCredentialsEntity.class));
     }
 
     @Test
@@ -106,7 +104,7 @@ public class S3BucketProvisionServiceTest {
         doNothing().when(iamUserManagementService).createUser(any(BucketCredentialsEntity.class));
         doNothing().when(iamUserManagementService).attachPolicyToUser(any(BucketCredentialsEntity.class));
 
-        when(bucketCredentialsRepository.save(any(BucketCredentialsEntity.class)))
+        when(bucketCredentialsService.saveBucketCredentials(any(BucketCredentialsEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         when(s3Client.getBucketPolicy(any(GetBucketPolicyRequest.class)))
@@ -119,7 +117,7 @@ public class S3BucketProvisionServiceTest {
         verify(s3Client).createBucket(any(CreateBucketRequest.class));
         verify(iamUserManagementService).createUser(any(BucketCredentialsEntity.class));
         verify(iamUserManagementService).attachPolicyToUser(any(BucketCredentialsEntity.class));
-        verify(bucketCredentialsRepository).save(any(BucketCredentialsEntity.class));
+        verify(bucketCredentialsService).saveBucketCredentials(any(BucketCredentialsEntity.class));
     }
 
     @Test
@@ -152,7 +150,7 @@ public class S3BucketProvisionServiceTest {
 
         when(s3Client.getBucketPolicy(any(GetBucketPolicyRequest.class)))
                 .thenReturn(GetBucketPolicyResponse.builder().policy(existingPolicy).build());
-        when(bucketCredentialsRepository.save(any(BucketCredentialsEntity.class)))
+        when(bucketCredentialsService.saveBucketCredentials(any(BucketCredentialsEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
@@ -182,7 +180,7 @@ public class S3BucketProvisionServiceTest {
         assertEquals(2, statementCount);
 
         // Verify credentials storage
-        verify(bucketCredentialsRepository).save(any(BucketCredentialsEntity.class));
+        verify(bucketCredentialsService).saveBucketCredentials(any(BucketCredentialsEntity.class));
     }
 
     @Test
@@ -197,7 +195,7 @@ public class S3BucketProvisionServiceTest {
         assertThrows(RuntimeException.class,
                 () -> s3BucketProvisionService.createSecureBucket(bucketName));
 
-        verify(bucketCredentialsRepository, never()).save(any());
+        verify(bucketCredentialsService, never()).saveBucketCredentials(any());
     }
 
     @Test
@@ -215,7 +213,7 @@ public class S3BucketProvisionServiceTest {
                 () -> s3BucketProvisionService.createSecureBucket(bucketName));
         assertEquals("Failed to attach policy", exception.getMessage());
 
-        verify(bucketCredentialsRepository, never()).save(any());
+        verify(bucketCredentialsService, never()).saveBucketCredentials(any());
     }
 
     @Test
@@ -250,7 +248,7 @@ public class S3BucketProvisionServiceTest {
         assertThrows(RuntimeException.class,
                 () -> s3BucketProvisionService.createSecureBucket(bucketName));
 
-        verify(bucketCredentialsRepository, never()).save(any());
+        verify(bucketCredentialsService, never()).saveBucketCredentials(any());
     }
 
     @Test
@@ -290,7 +288,7 @@ public class S3BucketProvisionServiceTest {
         when(s3Client.getBucketPolicy(any(GetBucketPolicyRequest.class)))
                 .thenThrow(S3Exception.builder().message("No policy exists").build());
 
-        when(bucketCredentialsRepository.save(any(BucketCredentialsEntity.class)))
+        when(bucketCredentialsService.saveBucketCredentials(any(BucketCredentialsEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
@@ -299,7 +297,7 @@ public class S3BucketProvisionServiceTest {
         // Assert
         assertNotNull(result);
         verify(s3Client).putBucketPolicy(any(PutBucketPolicyRequest.class));
-        verify(bucketCredentialsRepository).save(any(BucketCredentialsEntity.class));
+        verify(bucketCredentialsService).saveBucketCredentials(any(BucketCredentialsEntity.class));
     }
 
     @Test
@@ -318,7 +316,7 @@ public class S3BucketProvisionServiceTest {
         when(s3Client.getBucketPolicy(any(GetBucketPolicyRequest.class)))
                 .thenReturn(GetBucketPolicyResponse.builder().policy("{}").build());
 
-        when(bucketCredentialsRepository.save(any(BucketCredentialsEntity.class)))
+        when(bucketCredentialsService.saveBucketCredentials(any(BucketCredentialsEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
@@ -526,8 +524,8 @@ public class S3BucketProvisionServiceTest {
                 .secretKey("testSecret")
                 .build();
 
-        when(bucketCredentialsRepository.findByBucketName(bucketName))
-                .thenReturn(Optional.of(credentials));
+        when(bucketCredentialsService.getBucketCredentials(bucketName))
+                .thenReturn(credentials);
         when(s3Properties.getEndpoint()).thenReturn("http://localhost:9000");
         when(s3Properties.getRegion()).thenReturn("us-east-1");
 
@@ -548,8 +546,8 @@ public class S3BucketProvisionServiceTest {
         String objectKey = "test-file.txt";
         Duration expiration = Duration.ofMinutes(5);
 
-        when(bucketCredentialsRepository.findByBucketName(bucketName))
-                .thenReturn(Optional.empty());
+        when(bucketCredentialsService.getBucketCredentials(bucketName)).thenThrow(new IllegalArgumentException(
+                "No credentials found for bucket: " + bucketName));
 
         // Act & Assert
         RuntimeException exception = assertThrows(RuntimeException.class,
@@ -571,8 +569,8 @@ public class S3BucketProvisionServiceTest {
                 .secretKey("testSecret")
                 .build();
 
-        when(bucketCredentialsRepository.findByBucketName(bucketName))
-                .thenReturn(Optional.of(credentials));
+        when(bucketCredentialsService.getBucketCredentials(bucketName))
+                .thenReturn(credentials);
         when(s3Properties.getEndpoint()).thenReturn("invalid-endpoint");
         when(s3Properties.getRegion()).thenReturn("us-east-1");
 

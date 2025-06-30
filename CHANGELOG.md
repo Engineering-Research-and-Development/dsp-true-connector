@@ -2,14 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.4.4-SNAPSHOT] - 23.06.2025.
+## [0.4.4-SNAPSHOT] - 01.07.2025.
 
 ### Added
 
 - When creating S3 bucket, a policy for restricting access will be created
-- S3 client providers, for creating clients with different configurations
+- S3 client providers, with caching, for creating clients with different configurations
 - IAM user management for S3 bucket access
 - minio-admin dependency for managing IAM users for MiniIO
+- Encrypting secretKey in BucketCredentialsEntity
 
 ### Changed
 

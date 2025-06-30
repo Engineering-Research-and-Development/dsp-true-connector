@@ -4,7 +4,6 @@ import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.model.S3ClientRequest;
 import it.eng.tools.s3.properties.S3Properties;
-import it.eng.tools.s3.repository.BucketCredentialsRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -41,57 +40,30 @@ public class S3ClientServiceImpl implements S3ClientService {
 
     private final S3ClientProvider s3ClientProvider;
     private final S3Properties s3Properties;
-    private final BucketCredentialsRepository bucketCredentialsRepository;
+    private final BucketCredentialsService bucketCredentialsService;
 
     private static final int CHUNK_SIZE = 50 * 1024 * 1024; // 50MB chunks
 
     /**
      * Constructor for S3ClientServiceImpl.
      *
-     * @param s3ClientProvider            provider for S3 client (sync and async)
-     * @param s3Properties                the S3 properties
-     * @param bucketCredentialsRepository repository for bucket credentials
+     * @param s3ClientProvider         provider for S3 client (sync and async)
+     * @param s3Properties             the S3 properties
+     * @param bucketCredentialsService service for managing bucket credentials
      */
     public S3ClientServiceImpl(S3ClientProvider s3ClientProvider,
                                S3Properties s3Properties,
-                               BucketCredentialsRepository bucketCredentialsRepository) {
+                               BucketCredentialsService bucketCredentialsService) {
         this.s3ClientProvider = s3ClientProvider;
         this.s3Properties = s3Properties;
-        this.bucketCredentialsRepository = bucketCredentialsRepository;
+        this.bucketCredentialsService = bucketCredentialsService;
     }
 
-    /*
-        @Override
-        public void createBucket(String bucketName) {
-            validateBucketName(bucketName);
-            try {
-                if (!bucketExists(bucketName)) {
-                    CreateBucketRequest createBucketRequest = CreateBucketRequest.builder()
-                            .bucket(bucketName)
-                            .build();
-                    s3Client.createBucket(createBucketRequest);
-                    log.info("Bucket {} created successfully", bucketName);
-
-                } else {
-                    log.info("Bucket {} already exists", bucketName);
-                }
-            } catch (Exception e) {
-                log.error("Error creating bucket {}: {}", bucketName, e.getMessage());
-                throw new RuntimeException("Error creating bucket: " + e.getMessage(), e);
-            }
-        }
-    */
     @Override
     public void deleteBucket(String bucketName) {
         validateBucketName(bucketName);
         try {
             if (bucketExists(bucketName)) {
-//                BucketCredentialsEntity bucketCredentials = bucketCredentialsRepository.findByBucketName(bucketName)
-//                        .orElseThrow(() -> new IllegalArgumentException("Bucket credentials not found for bucket: " + bucketName));
-//                S3ClientRequest s3ClientRequest = S3ClientRequest.from(s3Properties.getRegion(),
-//                        null,
-//                        BucketCredentials.from(bucketCredentials.getAccessKey(), bucketCredentials.getSecretKey(), bucketCredentials.getBucketName()));
-
                 S3Client s3Client = s3ClientProvider.adminS3Client();
                 DeleteBucketRequest deleteBucketRequest = DeleteBucketRequest.builder()
                         .bucket(bucketName)
@@ -111,16 +83,6 @@ public class S3ClientServiceImpl implements S3ClientService {
     public boolean bucketExists(String bucketName) {
         validateBucketName(bucketName);
         try {
-            BucketCredentialsEntity bucketCredentials = bucketCredentialsRepository.findByBucketName(bucketName)
-                    .orElse(BucketCredentialsEntity.Builder.newInstance()
-                            .bucketName(bucketName)
-                            .accessKey(s3Properties.getAccessKey())
-                            .secretKey(s3Properties.getSecretKey())
-                            .build());
-            S3ClientRequest s3ClientRequest = S3ClientRequest.from(s3Properties.getRegion(),
-                    null,
-                    bucketCredentials);
-
             S3Client s3Client = s3ClientProvider.adminS3Client();
             HeadBucketRequest headBucketRequest = HeadBucketRequest.builder()
                     .bucket(bucketName)
@@ -142,14 +104,8 @@ public class S3ClientServiceImpl implements S3ClientService {
                                                 String contentType,
                                                 String contentDisposition) {
 
-        // Create bucket if it doesn't exist
-//        if (!bucketExists(s3Properties.getBucketName())) {
-//            createBucket(s3Properties.getBucketName());
-//        }
-        BucketCredentialsEntity bucketCredentials = bucketCredentialsRepository.findByBucketName(bucketName)
-                .orElseThrow(() -> new IllegalArgumentException("Bucket credentials not found for bucket: " + bucketName));
+        BucketCredentialsEntity bucketCredentials = bucketCredentialsService.getBucketCredentials(bucketName);
         log.info("Uploading file {} to bucket {}", key, bucketName);
-        log.info("Bucket credentials: accessKey={}, secretKey={}", bucketCredentials.getAccessKey(), bucketCredentials.getSecretKey());
         S3ClientRequest s3ClientRequest = S3ClientRequest.from(s3Properties.getRegion(),
                 null,
                 bucketCredentials);
@@ -246,12 +202,7 @@ public class S3ClientServiceImpl implements S3ClientService {
                     .key(objectKey)
                     .build();
 
-            BucketCredentialsEntity bucketCredentials = bucketCredentialsRepository.findByBucketName(bucketName)
-                    .orElseThrow(() -> new IllegalArgumentException("Bucket credentials not found for bucket: " + bucketName));
-            S3ClientRequest s3ClientRequest = S3ClientRequest.from(s3Properties.getRegion(),
-                    null,
-                    bucketCredentials);
-            S3Client s3Client = s3ClientProvider.s3Client(s3ClientRequest);
+            S3Client s3Client = getS3Client(bucketName);
 
             ResponseInputStream<GetObjectResponse> responseInputStream = s3Client.getObject(getObjectRequest);
             byte[] buffer = new byte[8192]; // 8KB buffer
@@ -281,13 +232,7 @@ public class S3ClientServiceImpl implements S3ClientService {
         validateBucketName(bucketName);
         try {
             if (fileExists(bucketName, objectKey)) {
-                BucketCredentialsEntity bucketCredentials = bucketCredentialsRepository.findByBucketName(bucketName)
-                        .orElseThrow(() -> new IllegalArgumentException("Bucket credentials not found for bucket: " + bucketName));
-                S3ClientRequest s3ClientRequest = S3ClientRequest.from(s3Properties.getRegion(),
-                        null,
-                        bucketCredentials);
-
-                S3Client s3Client = s3ClientProvider.s3Client(s3ClientRequest);
+                S3Client s3Client = getS3Client(bucketName);
                 DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
                         .bucket(bucketName)
                         .key(objectKey)
@@ -307,12 +252,7 @@ public class S3ClientServiceImpl implements S3ClientService {
     public boolean fileExists(String bucketName, String objectKey) {
         validateBucketName(bucketName);
         try {
-            BucketCredentialsEntity bucketCredentials = bucketCredentialsRepository.findByBucketName(bucketName)
-                    .orElseThrow(() -> new IllegalArgumentException("Bucket credentials not found for bucket: " + bucketName));
-            S3ClientRequest s3ClientRequest = S3ClientRequest.from(s3Properties.getRegion(),
-                    null,
-                    bucketCredentials);
-            S3Client s3Client = s3ClientProvider.s3Client(s3ClientRequest);
+            S3Client s3Client = getS3Client(bucketName);
             HeadObjectRequest headObjectRequest = HeadObjectRequest.builder()
                     .bucket(bucketName)
                     .key(objectKey)
@@ -325,6 +265,15 @@ public class S3ClientServiceImpl implements S3ClientService {
             log.error("Error checking if file {} exists in bucket {}: {}", objectKey, bucketName, e.getMessage());
             throw new RuntimeException("Error checking if file exists: " + e.getMessage(), e);
         }
+    }
+
+    private S3Client getS3Client(String bucketName) {
+        log.info("Getting S3 Client for bucket {}", bucketName);
+        BucketCredentialsEntity bucketCredentials = bucketCredentialsService.getBucketCredentials(bucketName);
+        S3ClientRequest s3ClientRequest = S3ClientRequest.from(s3Properties.getRegion(),
+                s3Properties.getEndpoint(),
+                bucketCredentials);
+        return s3ClientProvider.s3Client(s3ClientRequest);
     }
 
     @Override
@@ -343,13 +292,7 @@ public class S3ClientServiceImpl implements S3ClientService {
                         .build())
                 .build()) {
 
-            BucketCredentialsEntity bucketCredentials = bucketCredentialsRepository.findByBucketName(bucketName)
-                    .orElseThrow(() -> new IllegalArgumentException("Bucket credentials not found for bucket: " + bucketName));
-            S3ClientRequest s3ClientRequest = S3ClientRequest.from(s3Properties.getRegion(),
-                    null,
-                    bucketCredentials);
-
-            S3Client s3Client = s3ClientProvider.s3Client(s3ClientRequest);
+            S3Client s3Client = getS3Client(bucketName);
 
             // First, get the object's metadata
             HeadObjectRequest headObjectRequest = HeadObjectRequest.builder()
@@ -390,11 +333,6 @@ public class S3ClientServiceImpl implements S3ClientService {
     public List<String> listFiles(String bucketName) {
         validateBucketName(bucketName);
         try {
-//            BucketCredentialsEntity bucketCredentials = bucketCredentialsRepository.findByBucketName(bucketName)
-//                    .orElseThrow(() -> new IllegalArgumentException("Bucket credentials not found for bucket: " + bucketName));
-//            S3ClientRequest s3ClientRequest = S3ClientRequest.from(s3Properties.getRegion(),
-//                    null,
-//                    BucketCredentials.from(bucketCredentials.getAccessKey(), bucketCredentials.getSecretKey(), bucketCredentials.getBucketName()));
             S3Client s3Client = s3ClientProvider.adminS3Client();
 
             ListObjectsV2Request request = ListObjectsV2Request.builder()

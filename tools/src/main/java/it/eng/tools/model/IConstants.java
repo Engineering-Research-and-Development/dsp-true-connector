@@ -23,6 +23,7 @@ public interface IConstants {
     public static final String TEMPORARY_CONSUMER_PID = "temporary_consumer_pid";
     public static final String TEMPORARY_PROVIDER_PID = "temporary_provider_pid";
 
+    public static final String SECRET_KEY = "secretKey";
 
     String ATTACHMENT_FILENAME = "attachment;filename=";
 }

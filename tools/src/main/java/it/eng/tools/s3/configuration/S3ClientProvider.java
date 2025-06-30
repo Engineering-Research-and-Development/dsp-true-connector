@@ -16,6 +16,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.utils.ThreadFactoryBuilder;
 
 import java.net.URI;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -28,6 +29,11 @@ public class S3ClientProvider {
     private final Executor executor;
     private final S3Properties s3Properties;
     private final AwsCredentialsProvider credentialsProvider;
+
+    private final ConcurrentHashMap<String, S3Client> s3ClientCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, S3AsyncClient> asyncS3ClientCache = new ConcurrentHashMap<>();
+    private final ThreadLocal<S3Client> adminS3ClientCache = ThreadLocal.withInitial(() -> null);
+
 
     public S3ClientProvider(S3Properties s3Properties) {
         this.s3Properties = s3Properties;
@@ -46,15 +52,20 @@ public class S3ClientProvider {
      * @return a configured administrative privileges S3Client instance
      */
     public S3Client adminS3Client() {
-        return S3Client.builder()
-                .endpointOverride(URI.create(s3Properties.getEndpoint()))
-                .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(s3Properties.getAccessKey(), s3Properties.getSecretKey())))
-                .region(Region.of(s3Properties.getRegion()))
-                .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
-                        .pathStyleAccessEnabled(true)
-                        .build())
-                .build();
+        S3Client cached = adminS3ClientCache.get();
+        if (cached == null) {
+            cached = S3Client.builder()
+                    .endpointOverride(URI.create(s3Properties.getEndpoint()))
+                    .credentialsProvider(StaticCredentialsProvider.create(
+                            AwsBasicCredentials.create(s3Properties.getAccessKey(), s3Properties.getSecretKey())))
+                    .region(Region.of(s3Properties.getRegion()))
+                    .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
+                            .pathStyleAccessEnabled(true)
+                            .build())
+                    .build();
+            adminS3ClientCache.set(cached);
+        }
+        return cached;
     }
 
     /**
@@ -66,7 +77,8 @@ public class S3ClientProvider {
      * @return a configured general privileges S3Client instance
      */
     public S3Client s3Client(S3ClientRequest s3ClientRequest) {
-        return createS3Client(s3ClientRequest);
+        String bucketName = s3ClientRequest.bucketCredentials().getBucketName();
+        return s3ClientCache.computeIfAbsent(bucketName, bn -> createS3Client(s3ClientRequest));
     }
 
     /**
@@ -78,7 +90,8 @@ public class S3ClientProvider {
      * @return a configured general privileges S3AsyncClient instance
      */
     public S3AsyncClient s3AsyncClient(S3ClientRequest s3ClientRequest) {
-        return createS3AsyncClient(s3ClientRequest);
+        String bucketName = s3ClientRequest.bucketCredentials().getBucketName();
+        return asyncS3ClientCache.computeIfAbsent(bucketName, bn -> createS3AsyncClient(s3ClientRequest));
     }
 
     private S3Client createS3Client(S3ClientRequest s3ClientRequest) {
