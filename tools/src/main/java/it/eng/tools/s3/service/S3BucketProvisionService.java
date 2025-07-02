@@ -6,16 +6,10 @@ import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.properties.S3Properties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
-import software.amazon.awssdk.services.s3.presigner.S3Presigner;
-import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
-import java.net.URI;
 import java.time.Duration;
 import java.util.UUID;
 
@@ -179,47 +173,6 @@ public class S3BucketProvisionService {
         } catch (Exception e) {
             log.error("Failed to update bucket policy for bucket: {}", bucketName, e);
             throw new S3ServerException("Failed to update bucket policy", e);
-        }
-    }
-
-    public String generatePresignedUrl(String bucketName, String objectKey,
-                                       Duration expiration) {
-
-        validatePresignedUrlParams(objectKey, expiration);
-        BucketCredentialsEntity credentials = bucketCredentialsService.getBucketCredentials(bucketName);
-
-        return generatePresignedUrl(bucketName, objectKey,
-                credentials.getAccessKey(),
-                credentials.getSecretKey(),
-                expiration);
-    }
-
-    private String generatePresignedUrl(String bucketName, String objectKey,
-                                        String accessKey, String secretKey,
-                                        Duration expiration) {
-
-        try (S3Presigner presigner = S3Presigner.builder()
-                .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(accessKey, secretKey)))
-                .endpointOverride(URI.create(s3Properties.getEndpoint()))
-                .region(Region.of(s3Properties.getRegion()))
-                .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
-                        .pathStyleAccessEnabled(true)
-                        .build())
-                .build()) {
-            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-                    .bucket(bucketName)
-                    .key(objectKey)
-                    .build();
-
-            GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-                    .signatureDuration(expiration)
-                    .getObjectRequest(getObjectRequest)
-                    .build();
-
-            return presigner.presignGetObject(presignRequest)
-                    .url()
-                    .toString();
         }
     }
 

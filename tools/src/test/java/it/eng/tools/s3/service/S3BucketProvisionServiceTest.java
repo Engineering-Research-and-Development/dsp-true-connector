@@ -13,7 +13,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
-import java.time.Duration;
 import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -510,123 +509,6 @@ public class S3BucketProvisionServiceTest {
         verify(s3Client, times(0)).deleteBucket(any(DeleteBucketRequest.class));
     }
 
-    // generate presigned url
-    @Test
-    @DisplayName("generatePresignedUrl - should generate a valid presigned URL")
-    void generatePresignedUrl_Success() {
-        // Arrange
-        String bucketName = "test-bucket";
-        String objectKey = "test-file.txt";
-        Duration expiration = Duration.ofMinutes(5);
-        BucketCredentialsEntity credentials = BucketCredentialsEntity.Builder.newInstance()
-                .bucketName(bucketName)
-                .accessKey("testKey")
-                .secretKey("testSecret")
-                .build();
-
-        when(bucketCredentialsService.getBucketCredentials(bucketName))
-                .thenReturn(credentials);
-        when(s3Properties.getEndpoint()).thenReturn("http://localhost:9000");
-        when(s3Properties.getRegion()).thenReturn("us-east-1");
-
-        // Act
-        String url = s3BucketProvisionService.generatePresignedUrl(bucketName, objectKey, expiration);
-
-        // Assert
-        assertNotNull(url);
-        assertTrue(url.contains(bucketName));
-        assertTrue(url.contains(objectKey));
-    }
-
-    @Test
-    @DisplayName("generatePresignedUrl - should throw exception when bucket credentials are not found")
-    void generatePresignedUrl_WhenCredentialsNotFound_ShouldThrowException() {
-        // Arrange
-        String bucketName = "test-bucket";
-        String objectKey = "test-file.txt";
-        Duration expiration = Duration.ofMinutes(5);
-
-        when(bucketCredentialsService.getBucketCredentials(bucketName)).thenThrow(new IllegalArgumentException(
-                "No credentials found for bucket: " + bucketName));
-
-        // Act & Assert
-        RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> s3BucketProvisionService.generatePresignedUrl(bucketName, objectKey, expiration));
-
-        assertEquals("No credentials found for bucket: " + bucketName, exception.getMessage());
-    }
-
-    @Test
-    @DisplayName("generatePresignedUrl - should throw exception when S3 properties are not configured")
-    void generatePresignedUrl_WhenPresignerFails_ShouldThrowException() {
-        // Arrange
-        String bucketName = "test-bucket";
-        String objectKey = "test-file.txt";
-        Duration expiration = Duration.ofMinutes(5);
-        BucketCredentialsEntity credentials = BucketCredentialsEntity.Builder.newInstance()
-                .bucketName(bucketName)
-                .accessKey("testKey")
-                .secretKey("testSecret")
-                .build();
-
-        when(bucketCredentialsService.getBucketCredentials(bucketName))
-                .thenReturn(credentials);
-        when(s3Properties.getEndpoint()).thenReturn("invalid-endpoint");
-        when(s3Properties.getRegion()).thenReturn("us-east-1");
-
-        // Act & Assert
-        assertThrows(RuntimeException.class,
-                () -> s3BucketProvisionService.generatePresignedUrl(bucketName, objectKey, expiration));
-    }
-
-    @Test
-    @DisplayName("generatePresignedUrl - should throw exception if expiration is too long")
-    void generatePresignedUrl_WithLongExpiration_ShouldThrowException() {
-        // Arrange
-        String bucketName = "test-bucket";
-        String objectKey = "test-file.txt";
-        Duration expiration = Duration.ofDays(8); // AWS maximum is 7 days
-        BucketCredentialsEntity credentials = BucketCredentialsEntity.Builder.newInstance()
-                .bucketName(bucketName)
-                .accessKey("testKey")
-                .secretKey("testSecret")
-                .build();
-
-        // Act & Assert
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> s3BucketProvisionService.generatePresignedUrl(bucketName, objectKey, expiration));
-        assertEquals("Expiration duration cannot exceed 7 days", exception.getMessage());
-    }
-
-    @Test
-    @DisplayName("generatePresignedUrl - should throw exception if object name is empty")
-    void generatePresignedUrl_WithEmptyObjectKey_ShouldThrowException() {
-        // Arrange
-        String bucketName = "test-bucket";
-        String objectKey = "";
-        Duration expiration = Duration.ofMinutes(5);
-
-        // Act & Assert
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> s3BucketProvisionService.generatePresignedUrl(bucketName, objectKey, expiration));
-        assertEquals("Object key cannot be empty", exception.getMessage());
-    }
-
-    @Test
-    @DisplayName("generatePresignedUrl - should throw exception if expiration is null")
-    void generatePresignedUrl_WithNullExpiration_ShouldThrowException() {
-        // Arrange
-        String bucketName = "test-bucket";
-        String objectKey = "test-file.txt";
-        Duration expiration = null;
-
-        // Act & Assert
-        NullPointerException exception = assertThrows(NullPointerException.class,
-                () -> s3BucketProvisionService.generatePresignedUrl(bucketName, objectKey, expiration));
-        assertEquals("Expiration duration cannot be null", exception.getMessage());
-    }
-
-    // bucket exists
     //bucketExists test cases
     @Test
     @DisplayName("Should return true when bucket exists")
