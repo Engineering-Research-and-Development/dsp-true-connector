@@ -23,6 +23,7 @@ import org.springframework.http.ResponseEntity;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -188,18 +189,18 @@ class DataTransferAPIControllerTest {
     @Test
     @DisplayName("Download data - success")
     public void downloadData_success() throws IllegalStateException, IOException {
-        doNothing().when(apiService).downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
-        ;
-
+        when(apiService.downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
+                .thenReturn(CompletableFuture.completedFuture(null));
 
         assertDoesNotThrow(() -> controller.downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
-
     }
 
     @Test
     @DisplayName("Download data - fail")
     public void downloadData_fail() throws IllegalStateException, IOException {
-        doThrow(new DataTransferAPIException("message")).when(apiService).downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+        doThrow(new DataTransferAPIException("message"))
+                .when(apiService)
+                .downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
 
         assertThrows(DataTransferAPIException.class, () -> controller.downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
     }

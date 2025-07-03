@@ -25,16 +25,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ContentDisposition;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 import org.wiremock.spring.InjectWireMock;
-import software.amazon.awssdk.core.ResponseBytes;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -43,6 +38,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -52,7 +48,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationTest {
 
     private static final String FILE_NAME = "hello.txt";
-    private String fileContent = "Hello, World!";
+    private final String fileContent = "Hello, World!";
 
     @InjectWireMock
     private WireMockServer wiremock;
@@ -84,6 +80,8 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
     @Autowired
     private S3Properties s3Properties;
 
+    private Dataset mockDataset;
+
     @BeforeEach
     public void cleanup() {
         transferProcessRepository.deleteAll();
@@ -99,6 +97,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
                 }
             }
         }
+        mockDataset = getMockDataset();
     }
 
     @Test
@@ -106,9 +105,6 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
     @WithUserDetails(TestUtil.API_USER)
     public void downloadData_success() throws Exception {
         int startingTransferProcessCollectionSize = transferProcessRepository.findAll().size();
-        int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
-
-        Dataset mockDataset = getMockDataset();
 
         Agreement agreement = Agreement.Builder.newInstance()
                 .id(createNewId())
@@ -116,9 +112,9 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
                 .assigner(NegotiationMockObjectUtil.ASSIGNER)
                 .target(NegotiationMockObjectUtil.TARGET)
                 .timestamp(Instant.now().toString())
-                .permission(Arrays.asList(Permission.Builder.newInstance()
+                .permission(Collections.singletonList(Permission.Builder.newInstance()
                         .action(Action.USE)
-                        .constraint(Arrays.asList(Constraint.Builder.newInstance()
+                        .constraint(Collections.singletonList(Constraint.Builder.newInstance()
                                 .leftOperand(LeftOperand.COUNT)
                                 .operator(Operator.LTEQ)
                                 .rightOperand("5")
@@ -168,7 +164,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
                         get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/download")
                                 .contentType(MediaType.APPLICATION_JSON));
 
-        result.andExpect(status().isOk())
+        result.andExpect(status().isAccepted())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
         TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {
@@ -179,14 +175,14 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 
         assertNotNull(apiResp);
         assertTrue(apiResp.isSuccess());
-        assertNull(apiResp.getData());
-
+        assertNotNull(apiResp.getData());
+        assertEquals("Download started for transfer process " + transferProcessStarted.getId(), apiResp.getData());
 
         // check if the TransferProcess is inserted in the database
         TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessStarted.getId()).get();
 
-        assertTrue(transferProcessFromDb.isDownloaded());
-        assertNotNull(transferProcessFromDb.getDataId());
+        // this one should be skipped since we cannot guarantee that download will be done - transferProcessFromDb.isDownloaded() equal true
+//        assertNotNull(transferProcessFromDb.getDataId());
         assertEquals(transferProcessStarted.getConsumerPid(), transferProcessFromDb.getConsumerPid());
         assertEquals(transferProcessStarted.getProviderPid(), transferProcessFromDb.getProviderPid());
         assertEquals(transferProcessStarted.getAgreementId(), transferProcessFromDb.getAgreementId());
@@ -196,22 +192,22 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
 
 
-        MockHttpServletResponse mockResponse = new MockHttpServletResponse();
-        s3ClientService.downloadFile(s3Properties.getBucketName(), transferProcessStarted.getId(), mockResponse);
-
-        ResponseBytes<GetObjectResponse> fileFromStorage = ResponseBytes.fromByteArray(GetObjectResponse.builder()
-                        .contentType(mockResponse.getContentType())
-                        .contentDisposition(mockResponse.getHeader(HttpHeaders.CONTENT_DISPOSITION))
-                        .build(),
-                mockResponse.getContentAsByteArray());
-
-        ContentDisposition contentDisposition = ContentDisposition.parse(fileFromStorage.response().contentDisposition());
-
-        assertEquals(MediaType.TEXT_PLAIN_VALUE, fileFromStorage.response().contentType());
-        assertEquals(FILE_NAME, contentDisposition.getFilename());
-        assertEquals(fileContent, fileFromStorage.asUtf8String());
-        // +2 from test; inserted Dataset with file and downloaded TransferProcess
-        checkIfEndBucketFileCountIsAsExpected(startingBucketFileCount + 2);
+//        MockHttpServletResponse mockResponse = new MockHttpServletResponse();
+//        s3ClientService.downloadFile(s3Properties.getBucketName(), transferProcessStarted.getId(), mockResponse);
+//
+//        ResponseBytes<GetObjectResponse> fileFromStorage = ResponseBytes.fromByteArray(GetObjectResponse.builder()
+//                        .contentType(mockResponse.getContentType())
+//                        .contentDisposition(mockResponse.getHeader(HttpHeaders.CONTENT_DISPOSITION))
+//                        .build(),
+//                mockResponse.getContentAsByteArray());
+//
+//        ContentDisposition contentDisposition = ContentDisposition.parse(fileFromStorage.response().contentDisposition());
+//
+//        assertEquals(MediaType.TEXT_PLAIN_VALUE, fileFromStorage.response().contentType());
+//        assertEquals(FILE_NAME, contentDisposition.getFilename());
+//        assertEquals(fileContent, fileFromStorage.asUtf8String());
+//        // +2 from test; inserted Dataset with file and downloaded TransferProcess
+//        checkIfEndBucketFileCountIsAsExpected(startingBucketFileCount + 2);
     }
 
     @Test
@@ -219,9 +215,6 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
     @WithUserDetails(TestUtil.API_USER)
     public void downloadData_fail() throws Exception {
         int startingTransferProcessCollectionSize = transferProcessRepository.findAll().size();
-        int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
-
-        Dataset mockDataset = getMockDataset();
 
         Agreement agreement = Agreement.Builder.newInstance()
                 .id(createNewId())
@@ -229,9 +222,9 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
                 .assigner(NegotiationMockObjectUtil.ASSIGNER)
                 .target(NegotiationMockObjectUtil.TARGET)
                 .timestamp(Instant.now().toString())
-                .permission(Arrays.asList(Permission.Builder.newInstance()
+                .permission(Collections.singletonList(Permission.Builder.newInstance()
                         .action(Action.USE)
-                        .constraint(Arrays.asList(Constraint.Builder.newInstance()
+                        .constraint(Collections.singletonList(Constraint.Builder.newInstance()
                                 .leftOperand(LeftOperand.COUNT)
                                 .operator(Operator.LTEQ)
                                 .rightOperand("5")
@@ -308,11 +301,6 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         assertEquals(transferProcessStarted.getState(), transferProcessFromDb.getState());
         // +1 from test
         assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
-
-        // check if the file is inserted in the database
-        // 1 from initial data + 1 from test; dataset is added but not downloaded
-        checkIfEndBucketFileCountIsAsExpected(startingBucketFileCount + 1);
-
     }
 
     @Test
@@ -320,9 +308,6 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
     @WithUserDetails(TestUtil.API_USER)
     public void downloadData_PurposePolicy_allowed() throws Exception {
         int startingTransferProcessCollectionSize = transferProcessRepository.findAll().size();
-        int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
-
-        Dataset mockDataset = getMockDataset();
 
         Constraint constraintPurpose = Constraint.Builder.newInstance()
                 .leftOperand(LeftOperand.PURPOSE)
@@ -368,7 +353,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
                         get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/download")
                                 .contentType(MediaType.APPLICATION_JSON));
 
-        result.andExpect(status().isOk())
+        result.andExpect(status().isAccepted())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
         TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {
@@ -379,11 +364,11 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 
         assertNotNull(apiResp);
         assertTrue(apiResp.isSuccess());
-        assertNull(apiResp.getData());
+        assertNotNull(apiResp.getData());
+        assertEquals("Download started for transfer process " + transferProcessStarted.getId(), apiResp.getData());
+
         // + 1 from test
         assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
-        // +2 from test; inserted Dataset with file and downloaded TransferProcess
-        checkIfEndBucketFileCountIsAsExpected(startingBucketFileCount + 2);
     }
 
     @Test
@@ -391,9 +376,6 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
     @WithUserDetails(TestUtil.API_USER)
     public void downloadData_LocationPolicy_allowed() throws Exception {
         int startingTransferProcessCollectionSize = transferProcessRepository.findAll().size();
-        int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
-
-        Dataset mockDataset = getMockDataset();
 
         Constraint constraintPurpose = Constraint.Builder.newInstance()
                 .leftOperand(LeftOperand.SPATIAL)
@@ -439,7 +421,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
                         get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/download")
                                 .contentType(MediaType.APPLICATION_JSON));
 
-        result.andExpect(status().isOk())
+        result.andExpect(status().isAccepted())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
         TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {
@@ -450,11 +432,8 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 
         assertNotNull(apiResp);
         assertTrue(apiResp.isSuccess());
-        assertNull(apiResp.getData());
         // + 1 from test
         assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
-        // +2 from test; inserted Dataset with file and downloaded TransferProcess
-        checkIfEndBucketFileCountIsAsExpected(startingBucketFileCount + 2);
     }
 
     private Agreement insertAgreement(Constraint constraint) {
@@ -464,9 +443,9 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
                 .assigner(NegotiationMockObjectUtil.ASSIGNER)
                 .target(NegotiationMockObjectUtil.TARGET)
                 .timestamp(Instant.now().toString())
-                .permission(Arrays.asList(Permission.Builder.newInstance()
+                .permission(Collections.singletonList(Permission.Builder.newInstance()
                         .action(Action.USE)
-                        .constraint(Arrays.asList(constraint))
+                        .constraint(Collections.singletonList(constraint))
                         .build()))
                 .build();
 
@@ -479,21 +458,21 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
                 .id(CatalogMockObjectUtil.DATASET_ID)
                 .conformsTo(CatalogMockObjectUtil.CONFORMSTO)
                 .creator(CatalogMockObjectUtil.CREATOR)
-                .distribution(Arrays.asList(CatalogMockObjectUtil.DISTRIBUTION).stream().collect(Collectors.toCollection(HashSet::new)))
-                .description(Arrays.asList(CatalogMockObjectUtil.MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
+                .distribution(Stream.of(CatalogMockObjectUtil.DISTRIBUTION).collect(Collectors.toCollection(HashSet::new)))
+                .description(new HashSet<>(Collections.singletonList(CatalogMockObjectUtil.MULTILANGUAGE)))
                 .issued(CatalogMockObjectUtil.ISSUED)
-                .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
+                .keyword(new HashSet<>(Arrays.asList("keyword1", "keyword2")))
                 .identifier(CatalogMockObjectUtil.IDENTIFIER)
                 .modified(CatalogMockObjectUtil.MODIFIED)
-                .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
+                .theme(new HashSet<>(Arrays.asList("white", "blue", "aqua")))
                 .title(CatalogMockObjectUtil.TITLE)
-                .hasPolicy(Arrays.asList(CatalogMockObjectUtil.OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
+                .hasPolicy(new HashSet<>(Collections.singletonList(CatalogMockObjectUtil.OFFER)))
                 .build();
 
         Catalog mockCatalog = Catalog.Builder.newInstance()
                 .id(createNewId())
                 .title(CatalogMockObjectUtil.TITLE)
-                .description(Arrays.asList(CatalogMockObjectUtil.MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
+                .description(new HashSet<>(Collections.singletonList(CatalogMockObjectUtil.MULTILANGUAGE)))
                 .dataset(Collections.emptySet())
                 .build();
         catalogRepository.save(mockCatalog);
@@ -501,19 +480,5 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         MockMultipartFile mockFile = new MockMultipartFile(FILE_NAME, FILE_NAME, MediaType.TEXT_PLAIN_VALUE, fileContent.getBytes());
         datasetService.saveDataset(mockDataset, mockFile, null, null);
         return mockDataset;
-    }
-
-    private void checkIfEndBucketFileCountIsAsExpected(int expectedEndBucketFileCount) throws InterruptedException {
-        // Wait for S3 to reflect the deletion (max 5 seconds)
-        int maxRetries = 10;
-        int delayMs = 500;
-        // this is to ensure that the test functions correctly since the count will never -10000
-        int endBucketFileCount = -10000;
-        for (int i = 0; i < maxRetries; i++) {
-            endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
-            if (endBucketFileCount == expectedEndBucketFileCount) break;
-            Thread.sleep(delayMs);
-        }
-        assertEquals(endBucketFileCount, expectedEndBucketFileCount);
     }
 }

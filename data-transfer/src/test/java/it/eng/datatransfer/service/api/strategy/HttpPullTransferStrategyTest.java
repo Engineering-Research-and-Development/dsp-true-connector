@@ -121,7 +121,8 @@ public class HttpPullTransferStrategyTest {
             // Act & Assert
             DataTransferAPIException ex = assertThrows(DataTransferAPIException.class,
                     () -> strategy.transfer(transferProcess));
-            assertTrue(ex.getMessage().contains("Download failed"));
+            assertTrue(ex.getMessage().contains("Failed to get stream. HTTP response code"));
+            assertEquals(HttpURLConnection.HTTP_NOT_FOUND, mockConnection.getResponseCode());
         }
     }
 

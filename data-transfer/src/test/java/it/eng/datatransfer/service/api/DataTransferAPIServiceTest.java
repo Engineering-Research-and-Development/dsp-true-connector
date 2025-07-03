@@ -31,14 +31,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpMethod;
-import org.springframework.mock.web.MockHttpServletResponse;
 
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -48,11 +49,6 @@ import static org.mockito.Mockito.isA;
 
 @ExtendWith(MockitoExtension.class)
 class DataTransferAPIServiceTest {
-
-    private static final String FILENAME = "file.txt";
-    private static final String CONTENT_DISPOSITION = ContentDisposition.attachment().filename(FILENAME).build().toString();
-
-    private MockHttpServletResponse mockHttpServletResponse;
 
     @Mock
     private UsageControlProperties usageControlProperties;
@@ -96,23 +92,23 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
         Collection<JsonNode> response = apiService.findDataTransfers("test", TransferState.REQUESTED.name(), null);
         assertNotNull(response);
-        assertEquals(response.size(), 1);
+        assertEquals(1, response.size());
 
         when(transferProcessRepository.findById(anyString())).thenReturn(Optional.empty());
         response = apiService.findDataTransfers("test_not_found", null, null);
         assertNotNull(response);
         assertTrue(response.isEmpty());
 
-        when(transferProcessRepository.findByStateAndRole(anyString(), anyString())).thenReturn(Arrays.asList(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+        when(transferProcessRepository.findByStateAndRole(anyString(), anyString())).thenReturn(Collections.singletonList(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
         response = apiService.findDataTransfers(null, TransferState.STARTED.name(), IConstants.ROLE_PROVIDER);
         assertNotNull(response);
-        assertEquals(response.size(), 1);
+        assertEquals(1, response.size());
 
         when(transferProcessRepository.findByRole(anyString()))
                 .thenReturn(Arrays.asList(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER, DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
         response = apiService.findDataTransfers(null, null, IConstants.ROLE_PROVIDER);
         assertNotNull(response);
-        assertEquals(response.size(), 2);
+        assertEquals(2, response.size());
     }
 
     @Test
@@ -396,7 +392,8 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.save(any(TransferProcess.class)))
                 .thenReturn(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED);
         when(transferStrategyFactory.getStrategy(any(String.class))).thenReturn(httpPullTransferStrategy);
-        doNothing().when(httpPullTransferStrategy).transfer(isA(TransferProcess.class));
+        when(httpPullTransferStrategy.transfer(isA(TransferProcess.class)))
+                .thenReturn(CompletableFuture.completedFuture(null));
 
         assertDoesNotThrow(() -> apiService.downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
@@ -456,9 +453,11 @@ class DataTransferAPIServiceTest {
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
 
-        assertThrows(DataTransferAPIException.class,
-                () -> apiService.downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+        CompletableFuture<Void> future = apiService.downloadData(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
 
+        assertTrue(future.isCompletedExceptionally());
+        ExecutionException ex = assertThrows(ExecutionException.class, future::get);
+        assertInstanceOf(DataTransferAPIException.class, ex.getCause());
     }
 
     @ParameterizedTest
@@ -468,14 +467,16 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.findById(input.getId()))
                 .thenReturn(Optional.of(input));
 
-        assertThrows(DataTransferAPIException.class,
-                () -> apiService.downloadData(input.getId()));
+        CompletableFuture<Void> future = apiService.downloadData(input.getId());
+
+        assertTrue(future.isCompletedExceptionally());
+        ExecutionException ex = assertThrows(ExecutionException.class, future::get);
+        assertInstanceOf(DataTransferAPIException.class, ex.getCause());
     }
 
     @Test
     @DisplayName("View data - success")
     public void viewData_success() {
-        mockHttpServletResponse = new MockHttpServletResponse();
         String bucketName = "test-bucket";
         String objectKey = DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId();
 
@@ -490,7 +491,7 @@ class DataTransferAPIServiceTest {
         when(s3ClientService.fileExists(bucketName, objectKey)).thenReturn(true);
 
         when(s3ClientService.generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L)))
-                .thenReturn("http://example.com/presigned-url");
+                .thenReturn("https://example.com/presigned-url");
 
         assertDoesNotThrow(() -> apiService.viewData(objectKey));
 

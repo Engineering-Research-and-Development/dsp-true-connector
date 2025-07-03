@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.5-SNAPSHOT] - 03.07.2025.
+
+### Changed
+
+- DataTransferAPIController.downloadData is now async - response with code 202 is returned and download is done in
+  background
+- Refactored DataTransferStrategy and implementing classes to return CompletableFuture<Void> for transfer method
+- GeneratePresignURL uses BucketCredentials
+- Updated tests and Postman collection
+
 ## [0.4.4-SNAPSHOT] - 03.07.2025.
 
 ### Added
