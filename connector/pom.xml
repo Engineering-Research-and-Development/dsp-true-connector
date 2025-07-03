@@ -1,235 +1,235 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>it.eng</groupId>
-		<artifactId>trueconnector</artifactId>
-		<version>${revision}</version>
-	</parent>
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>it.eng</groupId>
+        <artifactId>trueconnector</artifactId>
+        <version>${revision}</version>
+    </parent>
 
-	<artifactId>connector</artifactId>
-	<name>Connector module</name>
-	<description>Wrapper module - assemble and run connector</description>
+    <artifactId>connector</artifactId>
+    <name>Connector module</name>
+    <description>Wrapper module - assemble and run connector</description>
 
-	<dependencies>
-		<dependency>
-			<groupId>it.eng.catalog</groupId>
-			<artifactId>catalog</artifactId>
-			<version>${revision}</version>
-		</dependency>
-		<dependency>
-			<groupId>it.eng.negotiation</groupId>
-			<artifactId>negotiation</artifactId>
-			<version>${revision}</version>
-		</dependency>
-		<dependency>
-			<groupId>it.eng.datatransfer</groupId>
-			<artifactId>datatransfer</artifactId>
-			<version>${revision}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-actuator</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-devtools</artifactId>
-			<scope>runtime</scope>
-			<optional>true</optional>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-security</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-web</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-mongodb</artifactId>
-		</dependency>
+    <dependencies>
+        <dependency>
+            <groupId>it.eng.catalog</groupId>
+            <artifactId>catalog</artifactId>
+            <version>${revision}</version>
+        </dependency>
+        <dependency>
+            <groupId>it.eng.negotiation</groupId>
+            <artifactId>negotiation</artifactId>
+            <version>${revision}</version>
+        </dependency>
+        <dependency>
+            <groupId>it.eng.datatransfer</groupId>
+            <artifactId>datatransfer</artifactId>
+            <version>${revision}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
 
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<optional>true</optional>
-		</dependency>
-		<dependency>
-			<groupId>jakarta.json</groupId>
-			<artifactId>jakarta.json-api</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-databind</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>com.fasterxml.jackson.datatype</groupId>
-			<artifactId>jackson-datatype-jsr310</artifactId>
-			<version>2.17.1</version>
-		</dependency>
-		<dependency>
-			<groupId>org.eclipse.parsson</groupId>
-			<artifactId>parsson</artifactId>
-			<version>1.1.1</version>
-		</dependency>
-		<dependency>
-			<groupId>org.json</groupId>
-			<artifactId>json</artifactId>
-			<version>20230618</version>
-		</dependency>
-		<dependency>
-	      	<groupId>org.passay</groupId>
-	      	<artifactId>passay</artifactId>
-	      	<version>1.6.6</version>
-	  	</dependency>
-		<!-- TEST -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.security</groupId>
-			<artifactId>spring-security-test</artifactId>
-			<scope>test</scope>
-		</dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.json</groupId>
+            <artifactId>jakarta.json-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+            <version>2.17.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.parsson</groupId>
+            <artifactId>parsson</artifactId>
+            <version>1.1.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20230618</version>
+        </dependency>
+        <dependency>
+            <groupId>org.passay</groupId>
+            <artifactId>passay</artifactId>
+            <version>1.6.6</version>
+        </dependency>
+        <!-- TEST -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
 
-		<dependency>
-		    <groupId>org.wiremock.integrations</groupId>
-		    <artifactId>wiremock-spring-boot</artifactId>
-		    <version>3.2.0</version>
-		    <scope>test</scope>
-		</dependency>
+        <dependency>
+            <groupId>org.wiremock.integrations</groupId>
+            <artifactId>wiremock-spring-boot</artifactId>
+            <version>3.2.0</version>
+            <scope>test</scope>
+        </dependency>
 
-		<dependency>
-			<groupId>org.testcontainers</groupId>
-			<artifactId>testcontainers</artifactId>
-			<version>1.20.5</version>
-			<scope>test</scope>
-		</dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>1.20.5</version>
+            <scope>test</scope>
+        </dependency>
 
-		<dependency>
-			<groupId>org.testcontainers</groupId>
-			<artifactId>minio</artifactId>
-			<version>1.20.5</version>
-			<scope>test</scope>
-		</dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>minio</artifactId>
+            <version>1.20.5</version>
+            <scope>test</scope>
+        </dependency>
 
-		<dependency>
-			<groupId>org.testcontainers</groupId>
-			<artifactId>junit-jupiter</artifactId>
-			<version>1.20.5</version>
-			<scope>test</scope>
-		</dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>1.20.5</version>
+            <scope>test</scope>
+        </dependency>
 
-		<dependency>
-			<groupId>org.testcontainers</groupId>
-			<artifactId>mongodb</artifactId>
-			<version>1.20.5</version>
-			<scope>test</scope>
-		</dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>mongodb</artifactId>
+            <version>1.20.5</version>
+            <scope>test</scope>
+        </dependency>
 
 
-		<dependency>
-			<groupId>it.eng.catalog</groupId>
-			<artifactId>catalog</artifactId>
-			<classifier>tests</classifier>
-			<type>test-jar</type>
-			<version>${revision}</version>
-			<scope>test</scope>
-		</dependency>
-		
-		<dependency>
-			<groupId>it.eng.negotiation</groupId>
-			<artifactId>negotiation</artifactId>
-			<classifier>tests</classifier>
-			<type>test-jar</type>
-			<version>${revision}</version>
-			<scope>test</scope>
-		</dependency>
-		
-		<dependency>
-			<groupId>it.eng.datatransfer</groupId>
-			<artifactId>datatransfer</artifactId>
-			<classifier>tests</classifier>
-			<type>test-jar</type>
-			<version>${revision}</version>
-			<scope>test</scope>
-		</dependency>
-	</dependencies>
+        <dependency>
+            <groupId>it.eng.catalog</groupId>
+            <artifactId>catalog</artifactId>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
+            <version>${revision}</version>
+            <scope>test</scope>
+        </dependency>
 
-	<!-- <build> -->
-	<!-- <plugins> -->
-	<!-- <plugin> -->
-	<!-- <groupId>org.springframework.boot</groupId> -->
-	<!-- <artifactId>spring-boot-maven-plugin</artifactId> -->
-	<!-- <configuration> -->
-	<!-- <excludes> -->
-	<!-- <exclude> -->
-	<!-- <groupId>org.projectlombok</groupId> -->
-	<!-- <artifactId>lombok</artifactId> -->
-	<!-- </exclude> -->
-	<!-- </excludes> -->
-	<!-- </configuration> -->
-	<!-- </plugin> -->
-	<!-- </plugins> -->
-	<!-- </build> -->
+        <dependency>
+            <groupId>it.eng.negotiation</groupId>
+            <artifactId>negotiation</artifactId>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
+            <version>${revision}</version>
+            <scope>test</scope>
+        </dependency>
 
-	<build>
-		<finalName>${project.artifactId}</finalName>
-		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-dependency-plugin</artifactId>
-				<executions>
-					<execution>
-						<id>copy-dependencies</id>
-						<phase>package</phase>
-						<goals>
-							<goal>copy-dependencies</goal>
-						</goals>
-						<configuration>
-							<outputDirectory>${project.build.directory}/dependency-jars/</outputDirectory>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
-				<artifactId>maven-jar-plugin</artifactId>
-				<configuration>
-					<finalName>dsp-true-connector</finalName>
-					<excludes>
-						<exclude>**/*.p12</exclude>
-						<exclude>**/*.jks</exclude>
-						<exclude>**/*.sql</exclude>
-						<exclude>*.properties</exclude>
-						<exclude>*.json</exclude>
-					</excludes>
-					<archive>
-						<manifest>
-							<addClasspath>true</addClasspath>
-							<classpathPrefix>dependency-jars/</classpathPrefix>
-							<mainClass>it.eng.connector.ApplicationConnector</mainClass>
-						</manifest>
-						<manifestEntries>
-							<Class-Path>. /config/ /cert/</Class-Path>
-						</manifestEntries>
-					</archive>
-				</configuration>
-			</plugin>
+        <dependency>
+            <groupId>it.eng.datatransfer</groupId>
+            <artifactId>datatransfer</artifactId>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
+            <version>${revision}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 
-			<!-- <plugin> <groupId>org.springframework.boot</groupId> <artifactId>spring-boot-maven-plugin</artifactId> 
-				<configuration> <mainClass>it.eng.connector.ApplicationConnector</mainClass> 
-				<layout>JAR</layout> <finalName>connector</finalName> </configuration> <executions> 
-				<execution> <goals> <goal>repackage</goal> </goals> </execution> </executions> 
-				</plugin> -->
-		</plugins>
+    <!-- <build> -->
+    <!-- <plugins> -->
+    <!-- <plugin> -->
+    <!-- <groupId>org.springframework.boot</groupId> -->
+    <!-- <artifactId>spring-boot-maven-plugin</artifactId> -->
+    <!-- <configuration> -->
+    <!-- <excludes> -->
+    <!-- <exclude> -->
+    <!-- <groupId>org.projectlombok</groupId> -->
+    <!-- <artifactId>lombok</artifactId> -->
+    <!-- </exclude> -->
+    <!-- </excludes> -->
+    <!-- </configuration> -->
+    <!-- </plugin> -->
+    <!-- </plugins> -->
+    <!-- </build> -->
 
-	</build>
+    <build>
+        <finalName>${project.artifactId}</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/dependency-jars/</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <finalName>dsp-true-connector</finalName>
+                    <excludes>
+                        <exclude>**/*.p12</exclude>
+                        <exclude>**/*.jks</exclude>
+                        <exclude>**/*.sql</exclude>
+                        <exclude>*.properties</exclude>
+                        <exclude>*.json</exclude>
+                    </excludes>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <classpathPrefix>dependency-jars/</classpathPrefix>
+                            <mainClass>it.eng.connector.ApplicationConnector</mainClass>
+                        </manifest>
+                        <manifestEntries>
+                            <Class-Path>. /config/ /cert/</Class-Path>
+                        </manifestEntries>
+                    </archive>
+                </configuration>
+            </plugin>
+
+            <!-- <plugin> <groupId>org.springframework.boot</groupId> <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration> <mainClass>it.eng.connector.ApplicationConnector</mainClass>
+                <layout>JAR</layout> <finalName>connector</finalName> </configuration> <executions>
+                <execution> <goals> <goal>repackage</goal> </goals> </execution> </executions>
+                </plugin> -->
+        </plugins>
+
+    </build>
 </project>

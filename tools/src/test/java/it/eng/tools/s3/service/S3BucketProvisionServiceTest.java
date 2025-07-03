@@ -1,8 +1,8 @@
 package it.eng.tools.s3.service;
 
+import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.properties.S3Properties;
-import it.eng.tools.s3.repository.BucketCredentialsRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -10,35 +10,40 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
-import java.time.Duration;
 import java.util.Collections;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class S3BucketServiceTest {
+public class S3BucketProvisionServiceTest {
 
     @Mock
     private S3Client s3Client;
 
     @Mock
+    private S3ClientProvider s3ClientProvider;
+
+    @Mock
     private S3Properties s3Properties;
 
     @Mock
-    private BucketCredentialsRepository bucketCredentialsRepository;
+    private BucketCredentialsService bucketCredentialsService;
 
-    private S3BucketService s3BucketService;
+    @Mock
+    private IamUserManagementService iamUserManagementService;
+
+    private S3BucketProvisionService s3BucketProvisionService;
 
     @BeforeEach
     void setUp() {
-        s3BucketService = new S3BucketService(s3Client, s3Properties, bucketCredentialsRepository);
+        s3BucketProvisionService = new S3BucketProvisionService(s3ClientProvider, s3Properties,
+                bucketCredentialsService, iamUserManagementService);
+        lenient().when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
     }
 
     @Test
@@ -46,20 +51,28 @@ public class S3BucketServiceTest {
     void createSecureBucket_WithNoExistingPolicy_ShouldCreateNewPolicy() {
         // Arrange
         String bucketName = "test-bucket";
+
+        // Mock IAM service calls
+        doNothing().when(iamUserManagementService).createUser(any(BucketCredentialsEntity.class));
+        doNothing().when(iamUserManagementService).attachPolicyToUser(any(BucketCredentialsEntity.class));
+
+        when(s3Client.createBucket(any(CreateBucketRequest.class)))
+                .thenReturn(CreateBucketResponse.builder().build());
         when(s3Client.getBucketPolicy(any(GetBucketPolicyRequest.class)))
-                .thenThrow(AwsServiceException.class);
-        when(bucketCredentialsRepository.save(any(BucketCredentialsEntity.class)))
+                .thenReturn(GetBucketPolicyResponse.builder().policy("{}").build());
+
+        when(bucketCredentialsService.saveBucketCredentials(any(BucketCredentialsEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
-        BucketCredentials result = s3BucketService.createSecureBucket(bucketName);
+        BucketCredentialsEntity result = s3BucketProvisionService.createSecureBucket(bucketName);
 
         // Assert
         assertNotNull(result);
-        assertNotNull(result.accessKey());
-        assertNotNull(result.secretKey());
-        assertEquals(bucketName, result.bucketName());
-        assertTrue(result.accessKey().startsWith("GetBucketUser-"));
+        assertNotNull(result.getAccessKey());
+        assertNotNull(result.getSecretKey());
+        assertEquals(bucketName, result.getBucketName());
+        assertTrue(result.getAccessKey().startsWith("GetBucketUser-"));
 
         // Verify bucket creation
         verify(s3Client).createBucket(any(CreateBucketRequest.class));
@@ -72,10 +85,47 @@ public class S3BucketServiceTest {
         assertTrue(policy.contains("\"Version\": \"2012-10-17\""));
         assertTrue(policy.contains("\"Effect\": \"Allow\""));
         assertTrue(policy.contains(bucketName));
-        assertTrue(policy.contains(result.accessKey()));
+        assertTrue(policy.contains(result.getAccessKey()));
 
         // Verify credentials storage
-        verify(bucketCredentialsRepository).save(any(BucketCredentialsEntity.class));
+        verify(bucketCredentialsService).saveBucketCredentials(any(BucketCredentialsEntity.class));
+    }
+
+    @Test
+    @DisplayName("createSecureBucket - should handle when bucket already exists")
+    void createSecureBucket_WhenBucketExists_ShouldContinueWithPolicyUpdate() {
+        // Arrange
+        String bucketName = "test-bucket";
+        when(s3Client.createBucket(any(CreateBucketRequest.class)))
+                .thenThrow(BucketAlreadyExistsException.builder().build());
+
+        // Mock IAM service calls
+        doNothing().when(iamUserManagementService).createUser(any(BucketCredentialsEntity.class));
+        doNothing().when(iamUserManagementService).attachPolicyToUser(any(BucketCredentialsEntity.class));
+
+        when(bucketCredentialsService.saveBucketCredentials(any(BucketCredentialsEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        when(s3Client.getBucketPolicy(any(GetBucketPolicyRequest.class)))
+                .thenReturn(GetBucketPolicyResponse.builder().policy("{}").build());
+        // Act
+        BucketCredentialsEntity result = s3BucketProvisionService.createSecureBucket(bucketName);
+
+        // Assert
+        assertNotNull(result);
+        verify(s3Client).createBucket(any(CreateBucketRequest.class));
+        verify(iamUserManagementService).createUser(any(BucketCredentialsEntity.class));
+        verify(iamUserManagementService).attachPolicyToUser(any(BucketCredentialsEntity.class));
+        verify(bucketCredentialsService).saveBucketCredentials(any(BucketCredentialsEntity.class));
+    }
+
+    @Test
+    @DisplayName("createSecureBucket - should throw exception if bucket name is null")
+    void createSecureBucket_WithNullBucketName_ShouldThrowException() {
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> s3BucketProvisionService.createSecureBucket(null));
+        assertEquals("Bucket name cannot be null or empty", exception.getMessage());
     }
 
     @Test
@@ -99,17 +149,17 @@ public class S3BucketServiceTest {
 
         when(s3Client.getBucketPolicy(any(GetBucketPolicyRequest.class)))
                 .thenReturn(GetBucketPolicyResponse.builder().policy(existingPolicy).build());
-        when(bucketCredentialsRepository.save(any(BucketCredentialsEntity.class)))
+        when(bucketCredentialsService.saveBucketCredentials(any(BucketCredentialsEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
-        BucketCredentials result = s3BucketService.createSecureBucket(bucketName);
+        BucketCredentialsEntity result = s3BucketProvisionService.createSecureBucket(bucketName);
 
         // Assert
         assertNotNull(result);
-        assertNotNull(result.accessKey());
-        assertNotNull(result.secretKey());
-        assertEquals(bucketName, result.bucketName());
+        assertNotNull(result.getAccessKey());
+        assertNotNull(result.getSecretKey());
+        assertEquals(bucketName, result.getBucketName());
 
         // Verify bucket creation
         verify(s3Client).createBucket(any(CreateBucketRequest.class));
@@ -121,7 +171,7 @@ public class S3BucketServiceTest {
         String updatedPolicy = policyCaptor.getValue().policy();
         assertTrue(updatedPolicy.contains("ExistingPolicy")); // Contains existing policy
         assertTrue(updatedPolicy.contains("AllowTemporaryAccess")); // Contains new policy
-        assertTrue(updatedPolicy.contains(result.accessKey())); // Contains new access key
+        assertTrue(updatedPolicy.contains(result.getAccessKey())); // Contains new access key
         assertTrue(updatedPolicy.contains(bucketName));
 
         // Verify there are two statement entries
@@ -129,7 +179,7 @@ public class S3BucketServiceTest {
         assertEquals(2, statementCount);
 
         // Verify credentials storage
-        verify(bucketCredentialsRepository).save(any(BucketCredentialsEntity.class));
+        verify(bucketCredentialsService).saveBucketCredentials(any(BucketCredentialsEntity.class));
     }
 
     @Test
@@ -142,9 +192,9 @@ public class S3BucketServiceTest {
 
         // Act & Assert
         assertThrows(RuntimeException.class,
-                () -> s3BucketService.createSecureBucket(bucketName));
+                () -> s3BucketProvisionService.createSecureBucket(bucketName));
 
-        verify(bucketCredentialsRepository, never()).save(any());
+        verify(bucketCredentialsService, never()).saveBucketCredentials(any());
     }
 
     @Test
@@ -152,28 +202,52 @@ public class S3BucketServiceTest {
     void createSecureBucket_WhenPolicyUpdateFails_ShouldThrowException() {
         // Arrange
         String bucketName = "test-bucket";
-        // MinIO returns {} when no policy exists, while AWS throws NoSuchBucketPolicyException
-        when(s3Client.getBucketPolicy(any(GetBucketPolicyRequest.class)))
-                .thenReturn(GetBucketPolicyResponse.builder()
-                        .policy("{}")
-                        .build());
-        when(s3Client.putBucketPolicy(any(PutBucketPolicyRequest.class)))
-                .thenThrow(S3Exception.builder()
-                        .message("Policy update failed")
-                        .build());
-
-        when(s3Client.createBucket(any(CreateBucketRequest.class)))
-                .thenReturn(CreateBucketResponse.builder().build());
+        // Mock IAM service calls first
+        doNothing().when(iamUserManagementService).createUser(any(BucketCredentialsEntity.class));
+        doThrow(new RuntimeException("Failed to attach policy"))
+                .when(iamUserManagementService).attachPolicyToUser(any(BucketCredentialsEntity.class));
 
         // Act & Assert
         RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> s3BucketService.createSecureBucket(bucketName));
-        assertEquals("Failed to update bucket policy", exception.getMessage());
+                () -> s3BucketProvisionService.createSecureBucket(bucketName));
+        assertEquals("Failed to attach policy", exception.getMessage());
 
-        verify(s3Client).createBucket(any(CreateBucketRequest.class));
-        verify(s3Client).getBucketPolicy(any(GetBucketPolicyRequest.class));
-        verify(s3Client).putBucketPolicy(any(PutBucketPolicyRequest.class));
-        verify(bucketCredentialsRepository, never()).save(any());
+        verify(bucketCredentialsService, never()).saveBucketCredentials(any());
+    }
+
+    @Test
+    @DisplayName("createSecureBucket - should handle policy update failure with existing policy")
+    void createSecureBucket_WhenUpdatingExistingPolicy_ShouldThrowException() {
+        // Arrange
+        String bucketName = "test-bucket";
+        String existingPolicy = """
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "ExistingPolicy",
+                            "Effect": "Allow",
+                            "Principal": {"AWS": ["existing-user"]},
+                            "Action": ["s3:GetObject"],
+                            "Resource": ["arn:aws:s3:::test-bucket/*"]
+                        }
+                    ]
+                }""";
+
+        // Mock IAM service calls
+        doNothing().when(iamUserManagementService).createUser(any(BucketCredentialsEntity.class));
+        doNothing().when(iamUserManagementService).attachPolicyToUser(any(BucketCredentialsEntity.class));
+
+        when(s3Client.getBucketPolicy(any(GetBucketPolicyRequest.class)))
+                .thenReturn(GetBucketPolicyResponse.builder().policy(existingPolicy).build());
+        when(s3Client.putBucketPolicy(any(PutBucketPolicyRequest.class)))
+                .thenThrow(S3Exception.builder().message("Failed to update policy").build());
+
+        // Act & Assert
+        assertThrows(RuntimeException.class,
+                () -> s3BucketProvisionService.createSecureBucket(bucketName));
+
+        verify(bucketCredentialsService, never()).saveBucketCredentials(any());
     }
 
     @Test
@@ -184,8 +258,8 @@ public class S3BucketServiceTest {
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> s3BucketService.createSecureBucket(bucketName));
-        assertEquals("Bucket name cannot be empty", exception.getMessage());
+                () -> s3BucketProvisionService.createSecureBucket(bucketName));
+        assertEquals("Bucket name cannot be null or empty", exception.getMessage());
     }
 
     @Test
@@ -196,8 +270,33 @@ public class S3BucketServiceTest {
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> s3BucketService.createSecureBucket(bucketName));
-        assertEquals("Invalid bucket name format", exception.getMessage());
+                () -> s3BucketProvisionService.createSecureBucket(bucketName));
+        assertEquals("Invalid bucket name format: " + bucketName, exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("createSecureBucket - should handle policy get failure")
+    void createSecureBucket_WhenGetPolicyFails_ShouldCreateNewPolicy() {
+        // Arrange
+        String bucketName = "test-bucket";
+
+        // Mock IAM service calls
+        doNothing().when(iamUserManagementService).createUser(any(BucketCredentialsEntity.class));
+        doNothing().when(iamUserManagementService).attachPolicyToUser(any(BucketCredentialsEntity.class));
+
+        when(s3Client.getBucketPolicy(any(GetBucketPolicyRequest.class)))
+                .thenThrow(S3Exception.builder().message("No policy exists").build());
+
+        when(bucketCredentialsService.saveBucketCredentials(any(BucketCredentialsEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        BucketCredentialsEntity result = s3BucketProvisionService.createSecureBucket(bucketName);
+
+        // Assert
+        assertNotNull(result);
+        verify(s3Client).putBucketPolicy(any(PutBucketPolicyRequest.class));
+        verify(bucketCredentialsService).saveBucketCredentials(any(BucketCredentialsEntity.class));
     }
 
     @Test
@@ -205,19 +304,22 @@ public class S3BucketServiceTest {
     void createSecureBucket_WithExistingEmptyPolicy_ShouldCreateNewPolicy() {
         // Arrange
         String bucketName = "test-bucket";
-        String emptyPolicy = """
-                {
-                    "Version": "2012-10-17",
-                    "Statement": []
-                }""";
 
+        // Mock IAM service calls
+        doNothing().when(iamUserManagementService).createUser(any(BucketCredentialsEntity.class));
+        doNothing().when(iamUserManagementService).attachPolicyToUser(any(BucketCredentialsEntity.class));
+
+        // Mock bucket creation
+        when(s3Client.createBucket(any(CreateBucketRequest.class)))
+                .thenReturn(CreateBucketResponse.builder().build());
         when(s3Client.getBucketPolicy(any(GetBucketPolicyRequest.class)))
-                .thenReturn(GetBucketPolicyResponse.builder().policy(emptyPolicy).build());
-        when(bucketCredentialsRepository.save(any(BucketCredentialsEntity.class)))
+                .thenReturn(GetBucketPolicyResponse.builder().policy("{}").build());
+
+        when(bucketCredentialsService.saveBucketCredentials(any(BucketCredentialsEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
-        BucketCredentials result = s3BucketService.createSecureBucket(bucketName);
+        BucketCredentialsEntity result = s3BucketProvisionService.createSecureBucket(bucketName);
 
         // Assert
         assertNotNull(result);
@@ -247,7 +349,7 @@ public class S3BucketServiceTest {
                 .thenReturn(listResponse);
 
         // Act
-        s3BucketService.cleanupBucket(bucketName);
+        s3BucketProvisionService.cleanupBucket(bucketName);
 
         // Assert
         verify(s3Client).listObjectsV2(any(ListObjectsV2Request.class));
@@ -270,7 +372,7 @@ public class S3BucketServiceTest {
                 .thenReturn(listResponse);
 
         // Act
-        s3BucketService.cleanupBucket(bucketName);
+        s3BucketProvisionService.cleanupBucket(bucketName);
 
         // Assert
         verify(s3Client).listObjectsV2(any(ListObjectsV2Request.class));
@@ -300,7 +402,7 @@ public class S3BucketServiceTest {
                 .thenReturn(secondPage);
 
         // Act
-        s3BucketService.cleanupBucket(bucketName);
+        s3BucketProvisionService.cleanupBucket(bucketName);
 
         // Assert
         verify(s3Client, times(2)).listObjectsV2(any(ListObjectsV2Request.class));
@@ -319,7 +421,7 @@ public class S3BucketServiceTest {
 
         // Act & Assert
         assertThrows(RuntimeException.class,
-                () -> s3BucketService.cleanupBucket(bucketName));
+                () -> s3BucketProvisionService.cleanupBucket(bucketName));
 
         verify(s3Client, never()).deleteObject(any(DeleteObjectRequest.class));
         verify(s3Client, never()).deleteBucketPolicy(any(DeleteBucketPolicyRequest.class));
@@ -345,7 +447,7 @@ public class S3BucketServiceTest {
 
         // Act & Assert
         assertThrows(RuntimeException.class,
-                () -> s3BucketService.cleanupBucket(bucketName));
+                () -> s3BucketProvisionService.cleanupBucket(bucketName));
 
         verify(s3Client).listObjectsV2(any(ListObjectsV2Request.class));
         verify(s3Client).deleteObject(any(DeleteObjectRequest.class));
@@ -373,7 +475,7 @@ public class S3BucketServiceTest {
 
         // Act
         assertThrows(RuntimeException.class,
-                () -> s3BucketService.cleanupBucket(bucketName));
+                () -> s3BucketProvisionService.cleanupBucket(bucketName));
 
         // Assert
         verify(s3Client).listObjectsV2(any(ListObjectsV2Request.class));
@@ -401,126 +503,104 @@ public class S3BucketServiceTest {
 
         // Act & Assert
         assertThrows(RuntimeException.class,
-                () -> s3BucketService.cleanupBucket(bucketName));
+                () -> s3BucketProvisionService.cleanupBucket(bucketName));
         verify(s3Client).listObjectsV2(any(ListObjectsV2Request.class));
         verify(s3Client, times(0)).deleteBucketPolicy(any(DeleteBucketPolicyRequest.class));
         verify(s3Client, times(0)).deleteBucket(any(DeleteBucketRequest.class));
     }
 
-    // generate presigned url
+    //bucketExists test cases
     @Test
-    @DisplayName("generatePresignedUrl - should generate a valid presigned URL")
-    void generatePresignedUrl_Success() {
+    @DisplayName("Should return true when bucket exists")
+    void bucketExists_WhenBucketExists() {
         // Arrange
         String bucketName = "test-bucket";
-        String objectKey = "test-file.txt";
-        Duration expiration = Duration.ofMinutes(5);
-        BucketCredentialsEntity credentials = BucketCredentialsEntity.Builder.newInstance()
-                .bucketName(bucketName)
-                .accessKey("testKey")
-                .secretKey("testSecret")
-                .build();
-
-        when(bucketCredentialsRepository.findByBucketName(bucketName))
-                .thenReturn(Optional.of(credentials));
-        when(s3Properties.getEndpoint()).thenReturn("http://localhost:9000");
-        when(s3Properties.getRegion()).thenReturn("us-east-1");
+        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
+        when(s3Client.headBucket(any(HeadBucketRequest.class)))
+                .thenReturn(HeadBucketResponse.builder().build());
 
         // Act
-        String url = s3BucketService.generatePresignedUrl(bucketName, objectKey, expiration);
+        boolean result = s3BucketProvisionService.bucketExists(bucketName);
 
         // Assert
-        assertNotNull(url);
-        assertTrue(url.contains(bucketName));
-        assertTrue(url.contains(objectKey));
+        assertTrue(result);
+        verify(s3Client).headBucket(any(HeadBucketRequest.class));
     }
 
     @Test
-    @DisplayName("generatePresignedUrl - should throw exception when bucket credentials are not found")
-    void generatePresignedUrl_WhenCredentialsNotFound_ShouldThrowException() {
+    @DisplayName("Should return false when bucket does not exist")
+    void bucketExists_WhenBucketDoesNotExist() {
         // Arrange
         String bucketName = "test-bucket";
-        String objectKey = "test-file.txt";
-        Duration expiration = Duration.ofMinutes(5);
+        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
 
-        when(bucketCredentialsRepository.findByBucketName(bucketName))
-                .thenReturn(Optional.empty());
+        when(s3Client.headBucket(any(HeadBucketRequest.class)))
+                .thenThrow(NoSuchBucketException.builder()
+                        .message("The specified bucket does not exist")
+                        .build());
+
+        // Act
+        boolean result = s3BucketProvisionService.bucketExists(bucketName);
+
+        // Assert
+        assertFalse(result);
+        verify(s3Client).headBucket(any(HeadBucketRequest.class));
+    }
+
+    @Test
+    @DisplayName("Should throw RuntimeException when checking bucket existence fails")
+    void bucketExists_WhenCheckFails() {
+        // Arrange
+        String bucketName = "test-bucket";
+        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
+        when(s3Client.headBucket(any(HeadBucketRequest.class)))
+                .thenThrow(S3Exception.builder()
+                        .message("Connection timeout")
+                        .build());
 
         // Act & Assert
         RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> s3BucketService.generatePresignedUrl(bucketName, objectKey, expiration));
+                () -> s3BucketProvisionService.bucketExists(bucketName));
 
-        assertEquals("No credentials found for bucket: " + bucketName, exception.getMessage());
+        assertTrue(exception.getMessage().contains("Error checking if bucket exists"));
+        verify(s3Client).headBucket(any(HeadBucketRequest.class));
     }
 
     @Test
-    @DisplayName("generatePresignedUrl - should throw exception when S3 properties are not configured")
-    void generatePresignedUrl_WhenPresignerFails_ShouldThrowException() {
-        // Arrange
-        String bucketName = "test-bucket";
-        String objectKey = "test-file.txt";
-        Duration expiration = Duration.ofMinutes(5);
-        BucketCredentialsEntity credentials = BucketCredentialsEntity.Builder.newInstance()
-                .bucketName(bucketName)
-                .accessKey("testKey")
-                .secretKey("testSecret")
-                .build();
-
-        when(bucketCredentialsRepository.findByBucketName(bucketName))
-                .thenReturn(Optional.of(credentials));
-        when(s3Properties.getEndpoint()).thenReturn("invalid-endpoint");
-        when(s3Properties.getRegion()).thenReturn("us-east-1");
-
+    @DisplayName("Should throw IllegalArgumentException when bucket name is null")
+    void bucketExists_WhenBucketNameIsNull() {
         // Act & Assert
-        assertThrows(RuntimeException.class,
-                () -> s3BucketService.generatePresignedUrl(bucketName, objectKey, expiration));
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> s3BucketProvisionService.bucketExists(null));
+
+        assertEquals("Bucket name cannot be null or empty", exception.getMessage());
+        verify(s3Client, never()).headBucket(any(HeadBucketRequest.class));
     }
 
     @Test
-    @DisplayName("generatePresignedUrl - should throw exception if expiration is too long")
-    void generatePresignedUrl_WithLongExpiration_ShouldThrowException() {
+    @DisplayName("Should throw IllegalArgumentException when bucket name is empty")
+    void bucketExists_WhenBucketNameIsEmpty() {
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> s3BucketProvisionService.bucketExists(""));
+
+        assertEquals("Bucket name cannot be null or empty", exception.getMessage());
+        verify(s3Client, never()).headBucket(any(HeadBucketRequest.class));
+    }
+
+    @Test
+    @DisplayName("Should throw IllegalArgumentException when bucket name format is invalid")
+    void bucketExists_WhenBucketNameFormatIsInvalid() {
         // Arrange
-        String bucketName = "test-bucket";
-        String objectKey = "test-file.txt";
-        Duration expiration = Duration.ofDays(8); // AWS maximum is 7 days
-        BucketCredentialsEntity credentials = BucketCredentialsEntity.Builder.newInstance()
-                .bucketName(bucketName)
-                .accessKey("testKey")
-                .secretKey("testSecret")
-                .build();
+        String bucketName = "Invalid.Bucket.Name";
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> s3BucketService.generatePresignedUrl(bucketName, objectKey, expiration));
-        assertEquals("Expiration duration cannot exceed 7 days", exception.getMessage());
+                () -> s3BucketProvisionService.bucketExists(bucketName));
+
+        assertEquals("Invalid bucket name format: " + bucketName, exception.getMessage());
+        verify(s3Client, never()).headBucket(any(HeadBucketRequest.class));
     }
 
-    @Test
-    @DisplayName("generatePresignedUrl - should throw exception if object name is empty")
-    void generatePresignedUrl_WithEmptyObjectKey_ShouldThrowException() {
-        // Arrange
-        String bucketName = "test-bucket";
-        String objectKey = "";
-        Duration expiration = Duration.ofMinutes(5);
-
-        // Act & Assert
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> s3BucketService.generatePresignedUrl(bucketName, objectKey, expiration));
-        assertEquals("Object key cannot be empty", exception.getMessage());
-    }
-
-    @Test
-    @DisplayName("generatePresignedUrl - should throw exception if expiration is null")
-    void generatePresignedUrl_WithNullExpiration_ShouldThrowException() {
-        // Arrange
-        String bucketName = "test-bucket";
-        String objectKey = "test-file.txt";
-        Duration expiration = null;
-
-        // Act & Assert
-        NullPointerException exception = assertThrows(NullPointerException.class,
-                () -> s3BucketService.generatePresignedUrl(bucketName, objectKey, expiration));
-        assertEquals("Expiration duration cannot be null", exception.getMessage());
-    }
 
 }

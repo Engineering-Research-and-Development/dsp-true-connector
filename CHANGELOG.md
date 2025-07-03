@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.4-SNAPSHOT] - 03.07.2025.
+
+### Added
+
+- When creating S3 bucket, a policy for restricting access will be created
+- S3 client providers, with caching, for creating clients with different configurations
+- IAM user management for S3 bucket access
+- New dependency - io.minio:minio-admin:8.5.7 for managing IAM users for MiniIO
+- Encrypting secretKey in BucketCredentialsEntity
+- Created S3ServerException
+
+### Changed
+
+- MinIO version minio/minio:RELEASE.2025-04-22T22-12-26Z - has extended UI interface
+- Move deleteBucket to S3BucketProvisionService
+- Updated tests
+
 ## [0.4.3-SNAPSHOT] - 20.06.2025.
 
 ### Added
