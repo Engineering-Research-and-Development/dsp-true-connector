@@ -37,7 +37,7 @@ public class S3ClientProvider {
 
     public S3ClientProvider(S3Properties s3Properties) {
         this.s3Properties = s3Properties;
-        this.executor = Executors.newFixedThreadPool(10, new ThreadFactoryBuilder()
+        this.executor = Executors.newCachedThreadPool(new ThreadFactoryBuilder()
                 .threadNamePrefix("aws-client")
                 .build());
         credentialsProvider = StaticCredentialsProvider.create(AwsBasicCredentials
@@ -109,8 +109,6 @@ public class S3ClientProvider {
 
     private S3Client createS3Client(AwsCredentialsProvider credentialsProvider, String region, String endpointOverride) {
         var builder = S3Client.builder()
-//                .credentialsProvider(credentialsProvider)
-//                .region(Region.of(region));
                 .credentialsProvider(credentialsProvider)
                 .region(Region.of(region))
                 .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
