@@ -1,11 +1,13 @@
 package it.eng.datatransfer.rest.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import it.eng.datatransfer.event.TransferArtifactEvent;
 import it.eng.datatransfer.model.DataTransferRequest;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,9 +20,11 @@ import java.util.Collection;
 public class DataTransferAPIController {
 
     private final DataTransferAPIService apiService;
+    private final ApplicationEventPublisher publisher;
 
-    public DataTransferAPIController(DataTransferAPIService apiService) {
+    public DataTransferAPIController(DataTransferAPIService apiService, ApplicationEventPublisher publisher) {
         this.apiService = apiService;
+        this.publisher = publisher;
     }
 
     /********* CONSUMER ***********/
@@ -54,8 +58,19 @@ public class DataTransferAPIController {
                     if (throwable != null) {
                         log.error("Download failed for process {}: {}",
                                 transferProcessId, throwable.getMessage(), throwable);
+                        publisher.publishEvent(
+                                TransferArtifactEvent.Builder.newInstance()
+                                        .transferProcessId(transferProcessId)
+                                        .isDownload(false)
+                                        .message("Download failed: " + throwable.getMessage())
+                                        .build());
                     } else {
                         log.info("Download completed successfully for process {}", transferProcessId);
+                        publisher.publishEvent(TransferArtifactEvent.Builder.newInstance()
+                                .transferProcessId(transferProcessId)
+                                .isDownload(true)
+                                .message(String.format("Download completed successfully for process %s", transferProcessId))
+                                .build());
                     }
                 });
 
