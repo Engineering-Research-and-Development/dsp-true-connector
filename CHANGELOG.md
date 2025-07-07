@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.5-SNAPSHOT] - 04.07.2025.
+
+### Added
+
+- TransferProcessRepositoryCustom and TransferProcessRepositoryCustomImpl for custom queries for additional filtering
+
+### Changed
+
+- Updated TransferProcessApiController and TransferProcessService to use TransferProcessRepositoryCustom and additional
+  filtering
+
 ## [0.4.4-SNAPSHOT] - 03.07.2025.
 
 ### Added
