@@ -5,7 +5,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
-import it.eng.datatransfer.exceptions.DownloadException;
 import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
@@ -27,7 +26,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.tomcat.util.codec.binary.Base64;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -75,26 +73,27 @@ public class DataTransferAPIService {
 
     /**
      * Find dataTransfer based on criteria.<br>
-     * Find by transferProcessId, filter by state, filter by role or find all
+     * Find by transferProcessId, filter by state, filter by role, datasetId, providerPid, consumerPid or find all
      *
      * @param transferProcessId used for a single result
      * @param state             state of the transfer process (REQUESTED, STARTED, COMPLETED, SUSPENDED, TERMINATED)
      * @param role              role of the transfer process (CONSUMER, PROVIDER)
+     * @param datasetId         dataset identifier to filter by
+     * @param providerPid       provider PID to filter by
+     * @param consumerPid       consumer PID to filter by
      * @return List of JsonNode representations for data transfers
      */
-    public Collection<JsonNode> findDataTransfers(String transferProcessId, String state, String role) {
+    public Collection<JsonNode> findDataTransfers(String transferProcessId, String state, String role,
+                                                  String datasetId, String providerPid, String consumerPid) {
+
         if (StringUtils.isNotBlank(transferProcessId)) {
             return transferProcessRepository.findById(transferProcessId)
                     .stream()
                     .map(TransferSerializer::serializePlainJsonNode)
                     .collect(Collectors.toList());
-        } else if (StringUtils.isNotBlank(state)) {
-            return transferProcessRepository.findByStateAndRole(state, role)
-                    .stream()
-                    .map(TransferSerializer::serializePlainJsonNode)
-                    .collect(Collectors.toList());
         }
-        return transferProcessRepository.findByRole(role)
+
+        return transferProcessRepository.findWithDynamicFilters(state, role, datasetId, providerPid, consumerPid)
                 .stream()
                 .map(TransferSerializer::serializePlainJsonNode)
                 .collect(Collectors.toList());
@@ -209,7 +208,7 @@ public class DataTransferAPIService {
             if (transferProcess.getDataAddress() == null) {
                 String artifactURL = switch (artifact.getArtifactType()) {
                     case FILE ->
-                        // Generate a presigned URL for S3 with 7 days duration, which will be used as the endpoint for the data transfer
+                    // Generate a presigned URL for S3 with 7 days duration, which will be used as the endpoint for the data transfer
                     {
                         try {
                             yield s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), transferProcess.getDatasetId(), Duration.ofDays(7L));
@@ -530,4 +529,6 @@ public class DataTransferAPIService {
             log.warn("!!!!! UsageControl DISABLED - will not check if policy is present or valid !!!!!");
         }
     }
+
+
 }
