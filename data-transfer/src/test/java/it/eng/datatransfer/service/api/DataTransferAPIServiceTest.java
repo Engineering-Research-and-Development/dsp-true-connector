@@ -90,29 +90,148 @@ class DataTransferAPIServiceTest {
             null);
 
     @Test
-    @DisplayName("Find transfer process by id, state and all")
-    public void findDataTransfers() {
-
+    @DisplayName("Find transfer process by id - ignores other filters")
+    public void findDataTransfers_byId() {
         when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
-        Collection<JsonNode> response = apiService.findDataTransfers("test", TransferState.REQUESTED.name(), null);
+        Collection<JsonNode> response = apiService.findDataTransfers("test", TransferState.REQUESTED.name(), null, "ignored", "ignored", "ignored");
         assertNotNull(response);
-        assertEquals(response.size(), 1);
+        assertEquals(1, response.size());
 
-        when(transferProcessRepository.findById(anyString())).thenReturn(Optional.empty());
-        response = apiService.findDataTransfers("test_not_found", null, null);
+        // Verify that dynamic filter method is not called when ID is provided
+        verify(transferProcessRepository, never()).findWithDynamicFilters(anyString(), anyString(), anyString(), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("Find transfer process by dataset_id only")
+    public void findDataTransfers_byDatasetId() {
+        when(transferProcessRepository.findWithDynamicFilters(null, null, DataTranferMockObjectUtil.DATASET_ID, null, null))
+                .thenReturn(Arrays.asList(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(null, null, null, DataTranferMockObjectUtil.DATASET_ID, null, null);
+
         assertNotNull(response);
-        assertTrue(response.isEmpty());
+        assertEquals(1, response.size());
+        verify(transferProcessRepository).findWithDynamicFilters(null, null, DataTranferMockObjectUtil.DATASET_ID, null, null);
+    }
 
-        when(transferProcessRepository.findByStateAndRole(anyString(), anyString())).thenReturn(Arrays.asList(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
-        response = apiService.findDataTransfers(null, TransferState.STARTED.name(), IConstants.ROLE_PROVIDER);
+    @Test
+    @DisplayName("Find transfer process by datasetId and role")
+    public void findDataTransfers_byDatasetIdAndRole() {
+        when(transferProcessRepository.findWithDynamicFilters(null, IConstants.ROLE_PROVIDER, DataTranferMockObjectUtil.DATASET_ID, null, null))
+                .thenReturn(Arrays.asList(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(null, null, IConstants.ROLE_PROVIDER, DataTranferMockObjectUtil.DATASET_ID, null, null);
+
         assertNotNull(response);
-        assertEquals(response.size(), 1);
+        assertEquals(1, response.size());
+        verify(transferProcessRepository).findWithDynamicFilters(null, IConstants.ROLE_PROVIDER, DataTranferMockObjectUtil.DATASET_ID, null, null);
+    }
 
-        when(transferProcessRepository.findByRole(anyString()))
+    @Test
+    @DisplayName("Find transfer process by datasetId, state and role")
+    public void findDataTransfers_byDatasetIdStateAndRole() {
+        when(transferProcessRepository.findWithDynamicFilters(
+                TransferState.STARTED.name(), IConstants.ROLE_PROVIDER, DataTranferMockObjectUtil.DATASET_ID, null, null))
+                .thenReturn(Arrays.asList(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(null, TransferState.STARTED.name(), IConstants.ROLE_PROVIDER,
+                DataTranferMockObjectUtil.DATASET_ID, null, null);
+
+        assertNotNull(response);
+        assertEquals(1, response.size());
+        verify(transferProcessRepository).findWithDynamicFilters(
+                TransferState.STARTED.name(), IConstants.ROLE_PROVIDER, DataTranferMockObjectUtil.DATASET_ID, null, null);
+    }
+
+    @Test
+    @DisplayName("Find transfer process by providerPid only")
+    public void findDataTransfers_byProviderPid() {
+        when(transferProcessRepository.findWithDynamicFilters(null, null, null, DataTranferMockObjectUtil.PROVIDER_PID, null))
+                .thenReturn(Arrays.asList(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(null, null, null, null, DataTranferMockObjectUtil.PROVIDER_PID, null);
+
+        assertNotNull(response);
+        assertEquals(1, response.size());
+        verify(transferProcessRepository).findWithDynamicFilters(null, null, null, DataTranferMockObjectUtil.PROVIDER_PID, null);
+    }
+
+    @Test
+    @DisplayName("Find transfer process by providerPid and role")
+    public void findDataTransfers_byProviderPidAndRole() {
+        when(transferProcessRepository.findWithDynamicFilters(null, IConstants.ROLE_PROVIDER, null, DataTranferMockObjectUtil.PROVIDER_PID, null))
+                .thenReturn(Arrays.asList(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(null, null, IConstants.ROLE_PROVIDER, null, DataTranferMockObjectUtil.PROVIDER_PID, null);
+
+        assertNotNull(response);
+        assertEquals(1, response.size());
+        verify(transferProcessRepository).findWithDynamicFilters(null, IConstants.ROLE_PROVIDER, null, DataTranferMockObjectUtil.PROVIDER_PID, null);
+    }
+
+    @Test
+    @DisplayName("Find transfer process by consumerPid only")
+    public void findDataTransfers_byConsumerPid() {
+        when(transferProcessRepository.findWithDynamicFilters(null, null, null, null, DataTranferMockObjectUtil.CONSUMER_PID))
+                .thenReturn(Arrays.asList(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_CONSUMER));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(null, null, null, null, null, DataTranferMockObjectUtil.CONSUMER_PID);
+
+        assertNotNull(response);
+        assertEquals(1, response.size());
+        verify(transferProcessRepository).findWithDynamicFilters(null, null, null, null, DataTranferMockObjectUtil.CONSUMER_PID);
+    }
+
+    @Test
+    @DisplayName("Find transfer process by consumerPid and state")
+    public void findDataTransfers_byConsumerPidAndState() {
+        when(transferProcessRepository.findWithDynamicFilters(TransferState.REQUESTED.name(), null, null, null, DataTranferMockObjectUtil.CONSUMER_PID))
+                .thenReturn(Arrays.asList(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_CONSUMER));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(null, TransferState.REQUESTED.name(), null, null, null, DataTranferMockObjectUtil.CONSUMER_PID);
+
+        assertNotNull(response);
+        assertEquals(1, response.size());
+        verify(transferProcessRepository).findWithDynamicFilters(TransferState.REQUESTED.name(), null, null, null, DataTranferMockObjectUtil.CONSUMER_PID);
+    }
+
+    @Test
+    @DisplayName("Find transfer process falls back to state and role when no specific filters")
+    public void findDataTransfers_fallbackToStateAndRole() {
+        when(transferProcessRepository.findWithDynamicFilters(TransferState.STARTED.name(), IConstants.ROLE_PROVIDER, null, null, null))
+                .thenReturn(Arrays.asList(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(null, TransferState.STARTED.name(), IConstants.ROLE_PROVIDER, null, null, null);
+
+        assertNotNull(response);
+        assertEquals(1, response.size());
+        verify(transferProcessRepository).findWithDynamicFilters(TransferState.STARTED.name(), IConstants.ROLE_PROVIDER, null, null, null);
+    }
+
+    @Test
+    @DisplayName("Find transfer process falls back to role only")
+    public void findDataTransfers_fallbackToRole() {
+        when(transferProcessRepository.findWithDynamicFilters(null, IConstants.ROLE_PROVIDER, null, null, null))
                 .thenReturn(Arrays.asList(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER, DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
-        response = apiService.findDataTransfers(null, null, IConstants.ROLE_PROVIDER);
+
+        Collection<JsonNode> response = apiService.findDataTransfers(null, null, IConstants.ROLE_PROVIDER, null, null, null);
+
         assertNotNull(response);
-        assertEquals(response.size(), 2);
+        assertEquals(2, response.size());
+        verify(transferProcessRepository).findWithDynamicFilters(null, IConstants.ROLE_PROVIDER, null, null, null);
+    }
+
+    @Test
+    @DisplayName("Find transfer process with all filters applied")
+    public void findDataTransfers_allFiltersApplied() {
+        when(transferProcessRepository.findWithDynamicFilters(TransferState.STARTED.name(), IConstants.ROLE_PROVIDER, DataTranferMockObjectUtil.DATASET_ID, null, null))
+                .thenReturn(Arrays.asList(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(null, TransferState.STARTED.name(), IConstants.ROLE_PROVIDER, DataTranferMockObjectUtil.DATASET_ID, null, null);
+
+        assertNotNull(response);
+        assertEquals(1, response.size());
+        verify(transferProcessRepository).findWithDynamicFilters(TransferState.STARTED.name(), IConstants.ROLE_PROVIDER, DataTranferMockObjectUtil.DATASET_ID, null, null);
     }
 
     @Test

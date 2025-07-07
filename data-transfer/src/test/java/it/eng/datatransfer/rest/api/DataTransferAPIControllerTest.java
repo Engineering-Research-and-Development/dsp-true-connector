@@ -9,6 +9,7 @@ import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
 import it.eng.datatransfer.util.DataTranferMockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
+import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.DisplayName;
@@ -48,35 +49,116 @@ class DataTransferAPIControllerTest {
     @Test
     @DisplayName("Find transfer process by id, state and all")
     public void getTransfersProcess() {
-        when(apiService.findDataTransfers(anyString(), anyString(), isNull()))
+        when(apiService.findDataTransfers(anyString(), anyString(), isNull(), isNull(), isNull(), isNull()))
                 .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
-        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess("test", TransferState.REQUESTED.name(), null);
+        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess("test", TransferState.REQUESTED.name(), null, null, null, null);
         assertNotNull(response);
         assertTrue(response.getBody().isSuccess());
         assertFalse(response.getBody().getData().isEmpty());
 
-        when(apiService.findDataTransfers(anyString(), isNull(), isNull()))
+        when(apiService.findDataTransfers(anyString(), isNull(), isNull(), isNull(), isNull(), isNull()))
                 .thenReturn(new ArrayList<>());
-        response = controller.getTransfersProcess("test_not_found", null, null);
+        response = controller.getTransfersProcess("test_not_found", null, null, null, null, null);
         assertNotNull(response);
         assertTrue(response.getBody().isSuccess());
         assertTrue(response.getBody().getData().isEmpty());
 
-        when(apiService.findDataTransfers(isNull(), anyString(), anyString()))
+        when(apiService.findDataTransfers(isNull(), anyString(), anyString(), isNull(), isNull(), isNull()))
                 .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED)));
-        response = controller.getTransfersProcess(null, TransferState.STARTED.name(), DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getRole());
+        response = controller.getTransfersProcess(null, TransferState.STARTED.name(), DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getRole(), null, null, null);
         assertNotNull(response);
         assertTrue(response.getBody().isSuccess());
         assertFalse(response.getBody().getData().isEmpty());
 
-        when(apiService.findDataTransfers(isNull(), isNull(), isNull()))
+        when(apiService.findDataTransfers(isNull(), isNull(), isNull(), isNull(), isNull(), isNull()))
                 .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER),
                         TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED)));
-        response = controller.getTransfersProcess(null, null, null);
+        response = controller.getTransfersProcess(null, null, null, null, null, null);
         assertNotNull(response);
         assertTrue(response.getBody().isSuccess());
         assertFalse(response.getBody().getData().isEmpty());
+    }
 
+    @Test
+    @DisplayName("Find transfer process by datasetId filter")
+    public void getTransfersProcess_byDatasetId() {
+        when(apiService.findDataTransfers(isNull(), isNull(), isNull(), eq(DataTranferMockObjectUtil.DATASET_ID), isNull(), isNull()))
+                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED)));
+
+        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response =
+                controller.getTransfersProcess(null, null, null, DataTranferMockObjectUtil.DATASET_ID, null, null);
+
+        assertNotNull(response);
+        assertTrue(response.getBody().isSuccess());
+        assertEquals(1, response.getBody().getData().size());
+        verify(apiService).findDataTransfers(null, null, null, DataTranferMockObjectUtil.DATASET_ID, null, null);
+    }
+
+    @Test
+    @DisplayName("Find transfer process by providerPid filter")
+    public void getTransfersProcess_byProviderPid() {
+        when(apiService.findDataTransfers(isNull(), isNull(), isNull(), isNull(), eq(DataTranferMockObjectUtil.PROVIDER_PID), isNull()))
+                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
+
+        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response =
+                controller.getTransfersProcess(null, null, null, null, DataTranferMockObjectUtil.PROVIDER_PID, null);
+
+        assertNotNull(response);
+        assertTrue(response.getBody().isSuccess());
+        assertEquals(1, response.getBody().getData().size());
+        verify(apiService).findDataTransfers(null, null, null, null, DataTranferMockObjectUtil.PROVIDER_PID, null);
+    }
+
+    @Test
+    @DisplayName("Find transfer process by consumerPid filter")
+    public void getTransfersProcess_byConsumerPid() {
+        when(apiService.findDataTransfers(isNull(), isNull(), isNull(), isNull(), isNull(), eq(DataTranferMockObjectUtil.CONSUMER_PID)))
+                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_CONSUMER)));
+
+        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response =
+                controller.getTransfersProcess(null, null, null, null, null, DataTranferMockObjectUtil.CONSUMER_PID);
+
+        assertNotNull(response);
+        assertTrue(response.getBody().isSuccess());
+        assertEquals(1, response.getBody().getData().size());
+        verify(apiService).findDataTransfers(null, null, null, null, null, DataTranferMockObjectUtil.CONSUMER_PID);
+    }
+
+    @Test
+    @DisplayName("Find transfer process by multiple filters")
+    public void getTransfersProcess_multipleFilters() {
+        when(apiService.findDataTransfers(isNull(), eq(TransferState.REQUESTED.name()), eq(IConstants.ROLE_PROVIDER),
+                eq(DataTranferMockObjectUtil.DATASET_ID), eq(DataTranferMockObjectUtil.PROVIDER_PID), isNull()))
+                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
+
+        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response =
+                controller.getTransfersProcess(null, TransferState.REQUESTED.name(), IConstants.ROLE_PROVIDER,
+                        DataTranferMockObjectUtil.DATASET_ID, DataTranferMockObjectUtil.PROVIDER_PID, null);
+
+        assertNotNull(response);
+        assertTrue(response.getBody().isSuccess());
+        assertEquals(1, response.getBody().getData().size());
+        verify(apiService).findDataTransfers(null, TransferState.REQUESTED.name(), IConstants.ROLE_PROVIDER,
+                DataTranferMockObjectUtil.DATASET_ID, DataTranferMockObjectUtil.PROVIDER_PID, null);
+    }
+
+    @Test
+    @DisplayName("Find transfer process by id ignores other filters")
+    public void getTransfersProcess_byIdIgnoresOtherFilters() {
+        String transferProcessId = "test-id";
+        when(apiService.findDataTransfers(eq(transferProcessId), anyString(), anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
+
+        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response =
+                controller.getTransfersProcess(transferProcessId, TransferState.COMPLETED.name(), IConstants.ROLE_CONSUMER,
+                        "ignored-dataset", "ignored-provider", "ignored-consumer");
+
+        assertNotNull(response);
+        assertTrue(response.getBody().isSuccess());
+        assertEquals(1, response.getBody().getData().size());
+        // Verify that all parameters are passed to service, but ID takes priority
+        verify(apiService).findDataTransfers(transferProcessId, TransferState.COMPLETED.name(), IConstants.ROLE_CONSUMER,
+                "ignored-dataset", "ignored-provider", "ignored-consumer");
     }
 
     @Test
