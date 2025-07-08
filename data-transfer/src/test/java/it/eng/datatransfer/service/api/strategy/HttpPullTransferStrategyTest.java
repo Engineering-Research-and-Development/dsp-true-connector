@@ -2,7 +2,7 @@ package it.eng.datatransfer.service.api.strategy;
 
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.model.*;
-import it.eng.datatransfer.util.DataTranferMockObjectUtil;
+import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
@@ -48,7 +48,7 @@ public class HttpPullTransferStrategyTest {
     @Test
     @DisplayName("Should execute transfer successfully")
     void transfer_success() throws Exception {
-        TransferProcess transferProcess = DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED;
+        TransferProcess transferProcess = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED;
 
         when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
 
@@ -109,7 +109,7 @@ public class HttpPullTransferStrategyTest {
     @DisplayName("Should throw DataTransferAPIException on upload failure")
     void transfer_uploadFails_throwsException() throws Exception {
         // Arrange
-        TransferProcess transferProcess = DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED;
+        TransferProcess transferProcess = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED;
 
         try (MockedConstruction<URL> mockedUrl = mockConstruction(URL.class,
                 (mock, context) -> {
@@ -121,7 +121,8 @@ public class HttpPullTransferStrategyTest {
             // Act & Assert
             DataTransferAPIException ex = assertThrows(DataTransferAPIException.class,
                     () -> strategy.transfer(transferProcess));
-            assertTrue(ex.getMessage().contains("Download failed"));
+            assertTrue(ex.getMessage().contains("Failed to get stream. HTTP response code"));
+            assertEquals(HttpURLConnection.HTTP_NOT_FOUND, mockConnection.getResponseCode());
         }
     }
 
@@ -226,19 +227,19 @@ public class HttpPullTransferStrategyTest {
     private TransferProcess mockTransferProcess(String endpoint, List<EndpointProperty> props) {
         DataAddress dataAddress = DataAddress.Builder.newInstance()
                 .endpoint(endpoint)
-                .endpointType(DataTranferMockObjectUtil.ENDPOINT_TYPE)
+                .endpointType(DataTransferMockObjectUtil.ENDPOINT_TYPE)
                 .endpointProperties(props)
                 .build();
 
         return TransferProcess.Builder.newInstance()
-                .consumerPid(DataTranferMockObjectUtil.CONSUMER_PID)
-                .providerPid(DataTranferMockObjectUtil.PROVIDER_PID)
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
                 .dataAddress(dataAddress)
-                .datasetId(DataTranferMockObjectUtil.DATASET_ID)
+                .datasetId(DataTransferMockObjectUtil.DATASET_ID)
                 .isDownloaded(true)
                 .dataId(new ObjectId().toHexString())
-                .agreementId(DataTranferMockObjectUtil.AGREEMENT_ID)
-                .callbackAddress(DataTranferMockObjectUtil.CALLBACK_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
                 .role(IConstants.ROLE_PROVIDER)
                 .state(TransferState.STARTED)
                 .format(DataTransferFormat.HTTP_PULL.name())

@@ -615,8 +615,12 @@ public class S3ClientServiceImplTest {
         String expectedUrl = "https://test-bucket.s3.amazonaws.com/test-file.txt";
 
         when(s3Properties.getExternalPresignedEndpoint()).thenReturn("https://s3.amazonaws.com");
-        when(s3Properties.getAccessKey()).thenReturn("testAccessKey");
-        when(s3Properties.getSecretKey()).thenReturn("testSecretKey");
+        BucketCredentialsEntity bucketCredentials = BucketCredentialsEntity.Builder.newInstance()
+                .accessKey("accessKey")
+                .secretKey("secretKey")
+                .bucketName(bucketName)
+                .build();
+        when(bucketCredentialsService.getBucketCredentials(bucketName)).thenReturn(bucketCredentials);
         when(s3Properties.getRegion()).thenReturn("us-east-1");
         when(s3Client.headObject(any(HeadObjectRequest.class)))
                 .thenReturn(HeadObjectResponse.builder()
@@ -640,8 +644,12 @@ public class S3ClientServiceImplTest {
         String objectKey = "non-existent-file.txt";
         Duration expiration = Duration.ofMinutes(5);
         when(s3Properties.getExternalPresignedEndpoint()).thenReturn("https://s3.testaws.com");
-        when(s3Properties.getAccessKey()).thenReturn("testAccessKey");
-        when(s3Properties.getSecretKey()).thenReturn("testSecretKey");
+        BucketCredentialsEntity bucketCredentials = BucketCredentialsEntity.Builder.newInstance()
+                .accessKey("accessKey")
+                .secretKey("secretKey")
+                .bucketName(bucketName)
+                .build();
+        when(bucketCredentialsService.getBucketCredentials(bucketName)).thenReturn(bucketCredentials);
         when(s3Properties.getRegion()).thenReturn("us-east-1");
 
         when(s3Client.headObject(any(HeadObjectRequest.class)))
