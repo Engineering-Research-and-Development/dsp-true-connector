@@ -7,11 +7,13 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - TransferProcessRepositoryCustom and TransferProcessRepositoryCustomImpl for custom queries for additional filtering
+- GenericFilterBuilder for building custom filters directly from request
 
 ### Changed
 
 - Updated TransferProcessApiController and TransferProcessService to use TransferProcessRepositoryCustom and additional
   filtering
+- Updated tests and add new ones related to new implementation
 
 ## [0.4.4-SNAPSHOT] - 03.07.2025.
 

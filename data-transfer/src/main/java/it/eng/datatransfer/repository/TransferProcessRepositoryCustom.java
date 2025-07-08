@@ -1,6 +1,7 @@
 package it.eng.datatransfer.repository;
 
 import java.util.Collection;
+import java.util.Map;
 import it.eng.datatransfer.model.TransferProcess;
 
 /**
@@ -10,18 +11,12 @@ import it.eng.datatransfer.model.TransferProcess;
 public interface TransferProcessRepositoryCustom {
     
     /**
-     * Dynamic filtering using MongoTemplate.
-     * Builds MongoDB query dynamically based on provided parameters.
-     * Only adds criteria for non-null and non-empty parameters.
+     * Generic dynamic filtering using MongoTemplate.
+     * Builds MongoDB query dynamically based on provided filter map.
+     * Supports any field with automatic type detection and conversion.
      * 
-     * @param state       transfer state to filter by (nullable/empty means ignore)
-     * @param role        transfer role to filter by (nullable/empty means ignore)
-     * @param datasetId   dataset identifier to filter by (nullable/empty means ignore)
-     * @param providerPid provider PID to filter by (nullable/empty means ignore)
-     * @param consumerPid consumer PID to filter by (nullable/empty means ignore)
+     * @param filters Map of field names to filter values. All values are pre-validated and converted.
      * @return Collection of TransferProcess matching the provided criteria
      */
-    Collection<TransferProcess> findWithDynamicFilters(String state, String role, 
-                                                      String datasetId, String providerPid, 
-                                                      String consumerPid);
+    Collection<TransferProcess> findWithDynamicFilters(Map<String, Object> filters);
 } 

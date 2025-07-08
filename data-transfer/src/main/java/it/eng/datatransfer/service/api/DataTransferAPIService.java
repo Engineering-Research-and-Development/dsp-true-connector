@@ -32,6 +32,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -72,29 +73,32 @@ public class DataTransferAPIService {
     }
 
     /**
-     * Find dataTransfer based on criteria.<br>
-     * Find by transferProcessId, filter by state, filter by role, datasetId, providerPid, consumerPid or find all
+     * Find dataTransfer based on generic filter criteria.
+     * Supports any field with automatic type detection and conversion.
      *
-     * @param transferProcessId used for a single result
-     * @param state             state of the transfer process (REQUESTED, STARTED, COMPLETED, SUSPENDED, TERMINATED)
-     * @param role              role of the transfer process (CONSUMER, PROVIDER)
-     * @param datasetId         dataset identifier to filter by
-     * @param providerPid       provider PID to filter by
-     * @param consumerPid       consumer PID to filter by
+     * @param filters Map of field names to filter values. All values are pre-validated and converted.
      * @return List of JsonNode representations for data transfers
      */
-    public Collection<JsonNode> findDataTransfers(String transferProcessId, String state, String role,
-                                                  String datasetId, String providerPid, String consumerPid) {
-
-        if (StringUtils.isNotBlank(transferProcessId)) {
-            return transferProcessRepository.findById(transferProcessId)
-                    .stream()
+    public Collection<JsonNode> findDataTransfers(Map<String, Object> filters) {
+        if (filters == null || filters.isEmpty()) {
+            log.debug("No filters provided, returning all transfer processes");
+            return transferProcessRepository.findAll().stream()
                     .map(TransferSerializer::serializePlainJsonNode)
                     .collect(Collectors.toList());
         }
 
-        return transferProcessRepository.findWithDynamicFilters(state, role, datasetId, providerPid, consumerPid)
-                .stream()
+        Collection<TransferProcess> transferProcesses;
+        
+        if (filters.containsKey("id")) {
+            String id = (String) filters.get("id");
+            transferProcesses = transferProcessRepository.findById(id)
+                    .map(List::of)
+                    .orElse(List.of());
+        } else {
+            transferProcesses = transferProcessRepository.findWithDynamicFilters(filters);
+        }
+        
+        return transferProcesses.stream()
                 .map(TransferSerializer::serializePlainJsonNode)
                 .collect(Collectors.toList());
     }
