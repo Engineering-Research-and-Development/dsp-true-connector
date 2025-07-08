@@ -32,6 +32,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -88,7 +89,7 @@ public class DataTransferAPIService {
         }
 
         Collection<TransferProcess> transferProcesses;
-        
+
         if (filters.containsKey("id")) {
             String id = (String) filters.get("id");
             transferProcesses = transferProcessRepository.findById(id)
@@ -97,7 +98,7 @@ public class DataTransferAPIService {
         } else {
             transferProcesses = transferProcessRepository.findWithDynamicFilters(filters);
         }
-        
+
         return transferProcesses.stream()
                 .map(TransferSerializer::serializePlainJsonNode)
                 .collect(Collectors.toList());
@@ -223,10 +224,6 @@ public class DataTransferAPIService {
                     case EXTERNAL -> {
                         String transactionId = Base64.encodeBase64URLSafeString((transferProcess.getConsumerPid() + "|" + transferProcess.getProviderPid()).getBytes(StandardCharsets.UTF_8));
                         yield DataTransferCallback.getValidCallback(dataTransferProperties.providerCallbackAddress()) + "/artifacts/" + transactionId;
-                    }
-                    default -> {
-                        log.error("Wrong artifact type: {}", artifact.getArtifactType());
-                        throw new DataTransferAPIException("Wrong artifact type: " + artifact.getArtifactType());
                     }
                 };
 
@@ -425,45 +422,52 @@ public class DataTransferAPIService {
      * store artifact in S3; update Transfer Process downloaded to true
      *
      * @param transferProcessId transfer process id
+     * @return CompletableFuture<Void> that completes when the download is finished
      */
-    public void downloadData(String transferProcessId) {
+    public CompletableFuture<Void> downloadData(String transferProcessId) {
         TransferProcess transferProcess = findTransferProcessById(transferProcessId);
 
         if (!transferProcess.getState().equals(TransferState.STARTED)) {
             log.error("Download aborted, Transfer Process is not in STARTED state");
-            throw new DataTransferAPIException("Download aborted, Transfer Process is not in STARTED state");
+            return CompletableFuture.failedFuture(
+                    new DataTransferAPIException("Download aborted, Transfer Process is not in STARTED state"));
         }
 
-        policyCheck(transferProcess);
-
+        try {
+            policyCheck(transferProcess);
+        } catch (DataTransferAPIException e) {
+            return CompletableFuture.failedFuture(
+                    new DataTransferAPIException(e.getLocalizedMessage()));
+        }
         log.info("Starting download transfer process id - {} data...", transferProcessId);
 
         // Get appropriate strategy and execute transfer
         DataTransferStrategy strategy = dataTransferStrategyFactory.getStrategy(transferProcess.getFormat());
 
-        strategy.transfer(transferProcess);
+        return strategy.transfer(transferProcess)
+                .thenAccept(transfer -> {
+                    TransferProcess transferProcessWithData = TransferProcess.Builder.newInstance()
+                            .id(transferProcess.getId())
+                            .agreementId(transferProcess.getAgreementId())
+                            .consumerPid(transferProcess.getConsumerPid())
+                            .providerPid(transferProcess.getProviderPid())
+                            .callbackAddress(transferProcess.getCallbackAddress())
+                            .dataAddress(transferProcess.getDataAddress())
+                            .isDownloaded(true)
+                            .dataId(transferProcessId)
+                            .format(transferProcess.getFormat())
+                            .state(transferProcess.getState())
+                            .role(transferProcess.getRole())
+                            .datasetId(transferProcess.getDatasetId())
+                            .created(transferProcess.getCreated())
+                            .createdBy(transferProcess.getCreatedBy())
+                            .modified(transferProcess.getModified())
+                            .lastModifiedBy(transferProcess.getLastModifiedBy())
+                            .version(transferProcess.getVersion())
+                            .build();
 
-        TransferProcess transferProcessWithData = TransferProcess.Builder.newInstance()
-                .id(transferProcess.getId())
-                .agreementId(transferProcess.getAgreementId())
-                .consumerPid(transferProcess.getConsumerPid())
-                .providerPid(transferProcess.getProviderPid())
-                .callbackAddress(transferProcess.getCallbackAddress())
-                .dataAddress(transferProcess.getDataAddress())
-                .isDownloaded(true)
-                .dataId(transferProcessId)
-                .format(transferProcess.getFormat())
-                .state(transferProcess.getState())
-                .role(transferProcess.getRole())
-                .datasetId(transferProcess.getDatasetId())
-                .created(transferProcess.getCreated())
-                .createdBy(transferProcess.getCreatedBy())
-                .modified(transferProcess.getModified())
-                .lastModifiedBy(transferProcess.getLastModifiedBy())
-                .version(transferProcess.getVersion())
-                .build();
-
-        transferProcessRepository.save(transferProcessWithData);
+                    transferProcessRepository.save(transferProcessWithData);
+                });
     }
 
     /**
@@ -525,6 +529,7 @@ public class DataTransferAPIService {
             TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {
             };
             GenericApiResponse<String> internalResponse = ToolsSerializer.deserializePlain(response, typeRef);
+            assert internalResponse != null;
             if (!internalResponse.isSuccess()) {
                 log.error("Download aborted, Policy is not valid anymore");
                 throw new DataTransferAPIException("Download aborted, Policy is not valid anymore");
@@ -533,6 +538,4 @@ public class DataTransferAPIService {
             log.warn("!!!!! UsageControl DISABLED - will not check if policy is present or valid !!!!!");
         }
     }
-
-
 }

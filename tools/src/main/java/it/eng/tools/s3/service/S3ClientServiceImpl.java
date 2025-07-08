@@ -244,10 +244,11 @@ public class S3ClientServiceImpl implements S3ClientService {
         if (objectKey == null || objectKey.isEmpty()) {
             throw new IllegalArgumentException("Object key cannot be null or empty");
         }
+        BucketCredentialsEntity bucketCredentials = bucketCredentialsService.getBucketCredentials(bucketName);
         try (S3Presigner presigner = S3Presigner.builder()
                 .endpointOverride(URI.create(s3Properties.getExternalPresignedEndpoint()))
                 .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(s3Properties.getAccessKey(), s3Properties.getSecretKey())))
+                        AwsBasicCredentials.create(bucketCredentials.getAccessKey(), bucketCredentials.getSecretKey())))
                 .region(Region.of(s3Properties.getRegion()))
                 .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
                         .pathStyleAccessEnabled(true)

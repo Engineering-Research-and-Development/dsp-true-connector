@@ -6,14 +6,20 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- New event and logic for logging DataTransfer events
 - TransferProcessRepositoryCustom and TransferProcessRepositoryCustomImpl for custom queries for additional filtering
 - GenericFilterBuilder for building custom filters directly from request
 
 ### Changed
 
+- DataTransferAPIController.downloadData is now async - response with code 202 is returned and download is done in
+  background
+- Refactored DataTransferStrategy and implementing classes to return CompletableFuture<Void> for transfer method
+- GeneratePresignURL uses BucketCredentials
+- Renamed DataTranferMockObjectUtil to DataTransferMockObjectUtil
 - Updated TransferProcessApiController and TransferProcessService to use TransferProcessRepositoryCustom and additional
-  filtering
-- Updated tests and add new ones related to new implementation
+    filtering
+- Updated tests and Postman collection
 
 ## [0.4.4-SNAPSHOT] - 03.07.2025.
 

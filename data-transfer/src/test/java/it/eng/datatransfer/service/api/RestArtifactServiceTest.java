@@ -3,7 +3,7 @@ package it.eng.datatransfer.service.api;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.exceptions.DownloadException;
 import it.eng.datatransfer.service.DataTransferService;
-import it.eng.datatransfer.util.DataTranferMockObjectUtil;
+import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.model.ExternalData;
 import it.eng.tools.response.GenericApiResponse;
@@ -73,9 +73,9 @@ public class RestArtifactServiceTest {
     @DisplayName("Get artifact - dataset has no artifact")
     public void getArtifact_datasetHasNoArtifactId() {
         when(dataTransferService.findTransferProcess(CONSUMER_PID, PROVIDER_PID))
-                .thenReturn(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED);
+                .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED);
         doThrow(DownloadException.class).when(artifactTransferService)
-                .findArtifact(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED);
+                .findArtifact(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED);
 
         assertThrows(DownloadException.class, () -> restArtifactService.getArtifact(TRANSACTION_ID, mockHttpServletResponse));
     }
@@ -85,9 +85,9 @@ public class RestArtifactServiceTest {
     public void getExternalData_success() {
         mockHttpServletResponse = new MockHttpServletResponse();
         when(dataTransferService.findTransferProcess(CONSUMER_PID, PROVIDER_PID))
-                .thenReturn(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED);
-        when(artifactTransferService.findArtifact(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED))
-                .thenReturn(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL);
+                .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED);
+        when(artifactTransferService.findArtifact(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED))
+                .thenReturn(DataTransferMockObjectUtil.ARTIFACT_EXTERNAL);
 
         ExternalData externalData = new ExternalData();
         externalData.setData("some_data".getBytes());
@@ -95,7 +95,7 @@ public class RestArtifactServiceTest {
         GenericApiResponse<ExternalData> externalResponse = new GenericApiResponse<ExternalData>();
         externalResponse.setData(externalData);
         externalResponse.setSuccess(true);
-        when(okHttpRestClient.downloadData(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), null))
+        when(okHttpRestClient.downloadData(DataTransferMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), null))
                 .thenReturn(externalResponse);
 
         assertDoesNotThrow(() -> restArtifactService.getArtifact(TRANSACTION_ID, mockHttpServletResponse));
@@ -105,12 +105,12 @@ public class RestArtifactServiceTest {
     @DisplayName("Get external data - fail")
     public void getExternalData_fail() {
         when(dataTransferService.findTransferProcess(CONSUMER_PID, PROVIDER_PID))
-                .thenReturn(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED);
-        when(artifactTransferService.findArtifact(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED))
-                .thenReturn(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL);
+                .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED);
+        when(artifactTransferService.findArtifact(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED))
+                .thenReturn(DataTransferMockObjectUtil.ARTIFACT_EXTERNAL);
         GenericApiResponse<ExternalData> externalResponse = new GenericApiResponse<ExternalData>();
         externalResponse.setSuccess(false);
-        when(okHttpRestClient.downloadData(DataTranferMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), null))
+        when(okHttpRestClient.downloadData(DataTransferMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), null))
                 .thenReturn(externalResponse);
 
         assertThrows(DownloadException.class, () -> restArtifactService.getArtifact(TRANSACTION_ID, mockHttpServletResponse));
@@ -121,12 +121,12 @@ public class RestArtifactServiceTest {
     public void getFile_success() {
         mockHttpServletResponse = new MockHttpServletResponse();
         when(dataTransferService.findTransferProcess(CONSUMER_PID, PROVIDER_PID))
-                .thenReturn(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED);
-        when(artifactTransferService.findArtifact(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED))
-                .thenReturn(DataTranferMockObjectUtil.ARTIFACT_FILE);
+                .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED);
+        when(artifactTransferService.findArtifact(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED))
+                .thenReturn(DataTransferMockObjectUtil.ARTIFACT_FILE);
 
         when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
-        when(s3ClientService.fileExists(TEST_BUCKET, DataTranferMockObjectUtil.ARTIFACT_FILE.getValue()))
+        when(s3ClientService.fileExists(TEST_BUCKET, DataTransferMockObjectUtil.ARTIFACT_FILE.getValue()))
                 .thenReturn(true);
 
         ResponseBytes<GetObjectResponse> s3Response = Mockito.mock(ResponseBytes.class);
@@ -145,12 +145,12 @@ public class RestArtifactServiceTest {
     @DisplayName("Get file - fail")
     public void getFile_fail() {
         when(dataTransferService.findTransferProcess(CONSUMER_PID, PROVIDER_PID))
-                .thenReturn(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED);
-        when(artifactTransferService.findArtifact(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED))
-                .thenReturn(DataTranferMockObjectUtil.ARTIFACT_FILE);
+                .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED);
+        when(artifactTransferService.findArtifact(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED))
+                .thenReturn(DataTransferMockObjectUtil.ARTIFACT_FILE);
 
         when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
-        when(s3ClientService.fileExists(TEST_BUCKET, DataTranferMockObjectUtil.ARTIFACT_FILE.getValue()))
+        when(s3ClientService.fileExists(TEST_BUCKET, DataTransferMockObjectUtil.ARTIFACT_FILE.getValue()))
                 .thenReturn(false);
 
         assertThrows(DataTransferAPIException.class, () -> restArtifactService.getArtifact(TRANSACTION_ID, mockHttpServletResponse));

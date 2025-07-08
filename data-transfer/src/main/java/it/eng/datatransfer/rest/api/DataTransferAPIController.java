@@ -1,12 +1,14 @@
 package it.eng.datatransfer.rest.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import it.eng.datatransfer.event.TransferArtifactEvent;
 import it.eng.datatransfer.model.DataTransferRequest;
 import it.eng.tools.service.GenericFilterBuilder;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
@@ -24,10 +26,14 @@ public class DataTransferAPIController {
 
     private final DataTransferAPIService apiService;
     private final GenericFilterBuilder filterBuilder;
+    private final ApplicationEventPublisher publisher;
 
-    public DataTransferAPIController(DataTransferAPIService apiService, GenericFilterBuilder filterBuilder) {
+
+    public DataTransferAPIController(DataTransferAPIService apiService, GenericFilterBuilder filterBuilder,  ApplicationEventPublisher publisher) {
         this.apiService = apiService;
         this.filterBuilder = filterBuilder;
+        this.publisher = publisher;
+
     }
 
     /********* CONSUMER ***********/
@@ -53,12 +59,35 @@ public class DataTransferAPIController {
      * @return GenericApiResponse response with success message.
      */
     @GetMapping(path = {"/{transferProcessId}/download"})
-    public ResponseEntity<GenericApiResponse<Void>> downloadData(
+    public ResponseEntity<GenericApiResponse<String>> downloadData(
             @PathVariable String transferProcessId) {
         log.info("Downloading transfer process id - {} data", transferProcessId);
-        apiService.downloadData(transferProcessId);
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(null, "Data successfully downloaded"));
+        apiService.downloadData(transferProcessId)
+                .whenComplete((result, throwable) -> {
+                    if (throwable != null) {
+                        log.error("Download failed for process {}: {}",
+                                transferProcessId, throwable.getMessage(), throwable);
+                        publisher.publishEvent(
+                                TransferArtifactEvent.Builder.newInstance()
+                                        .transferProcessId(transferProcessId)
+                                        .isDownload(false)
+                                        .message("Download failed: " + throwable.getMessage())
+                                        .build());
+                    } else {
+                        log.info("Download completed successfully for process {}", transferProcessId);
+                        publisher.publishEvent(TransferArtifactEvent.Builder.newInstance()
+                                .transferProcessId(transferProcessId)
+                                .isDownload(true)
+                                .message(String.format("Download completed successfully for process %s", transferProcessId))
+                                .build());
+                    }
+                });
+
+        return ResponseEntity.accepted()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(GenericApiResponse.success(
+                        "Download started for transfer process " + transferProcessId,
+                        "Request accepted"));
     }
 
     /**
@@ -91,12 +120,12 @@ public class DataTransferAPIController {
     public ResponseEntity<GenericApiResponse<Collection<JsonNode>>> getTransfersProcess(
             @PathVariable(required = false) String transferProcessId,
             HttpServletRequest request) {
-        
+
         log.info("Fetching transfer processes with generic filtering");
-        
+
         // Build filter map automatically from ALL request parameters
         Map<String, Object> filters = filterBuilder.buildFromRequest(request);
-        
+
         // Handle path variable with proper validation
         if (StringUtils.hasText(transferProcessId)) {
             // Create mutable copy if needed (defensive programming)
@@ -107,21 +136,20 @@ public class DataTransferAPIController {
                 filters.put("id", transferProcessId.trim());
             }
         }
-        
+
         log.debug("Generated filters: {}", filters);
-        
+
         Collection<JsonNode> response = apiService.findDataTransfers(filters);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(GenericApiResponse.success(response, "Fetched transfer processes"));
     }
-
-    /**
-     * Start transfer process.
-     *
-     * @param transferProcessId transfer process id to start.
-     * @return GenericApiResponse response with success message.
-     */
-    @PutMapping(path = "/{transferProcessId}/start")
+	
+	/**
+	 * Start transfer process.
+	 * @param transferProcessId transfer process id to start.
+	 * @return GenericApiResponse response with success message.
+	 */
+	@PutMapping(path = "/{transferProcessId}/start")
     public ResponseEntity<GenericApiResponse<JsonNode>> startTransfer(@PathVariable String transferProcessId) {
         log.info("Starting data transfer {}", transferProcessId);
         JsonNode response = apiService.startTransfer(transferProcessId);
