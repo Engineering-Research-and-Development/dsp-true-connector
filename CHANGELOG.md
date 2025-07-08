@@ -2,13 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.6-SNAPSHOT] - 08.08.2025.
+
+### Added
+
+- TransferProcessRepositoryCustom and TransferProcessRepositoryCustomImpl for custom queries for additional filtering
+- GenericFilterBuilder for building custom filters directly from request
+
+### Changed
+
+- Updated TransferProcessApiController and TransferProcessService to use TransferProcessRepositoryCustom and additional
+  filtering
+- Updated tests and add new ones related to new implementation
+
 ## [0.4.5-SNAPSHOT] - 04.07.2025.
 
 ### Added
 
 - New event and logic for logging DataTransfer events
-- TransferProcessRepositoryCustom and TransferProcessRepositoryCustomImpl for custom queries for additional filtering
-- GenericFilterBuilder for building custom filters directly from request
 
 ### Changed
 
@@ -18,7 +29,7 @@ All notable changes to this project will be documented in this file.
 - GeneratePresignURL uses BucketCredentials
 - Renamed DataTranferMockObjectUtil to DataTransferMockObjectUtil
 - Updated TransferProcessApiController and TransferProcessService to use TransferProcessRepositoryCustom and additional
-    filtering
+  filtering
 - Updated tests and Postman collection
 
 ## [0.4.4-SNAPSHOT] - 03.07.2025.
