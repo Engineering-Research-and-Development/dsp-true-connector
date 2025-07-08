@@ -14,7 +14,6 @@ import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.GenericFilterBuilder;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,20 +26,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -78,7 +71,7 @@ class DataTransferAPIControllerTest {
         when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
                 .thenReturn(expectedFilters);
         when(apiService.findDataTransfers(any(Map.class)))
-                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
+                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
 
         ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(null, request);
 
@@ -102,7 +95,7 @@ class DataTransferAPIControllerTest {
         when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
                 .thenReturn(emptyFilters);
         when(apiService.findDataTransfers(any(Map.class)))
-                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
+                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
 
         ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(transferProcessId, request);
 
@@ -120,20 +113,20 @@ class DataTransferAPIControllerTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setParameter("state", TransferState.STARTED.name());
         request.setParameter("role", IConstants.ROLE_CONSUMER);
-        request.setParameter("datasetId", DataTranferMockObjectUtil.DATASET_ID);
+        request.setParameter("datasetId", DataTransferMockObjectUtil.DATASET_ID);
         request.setParameter("isDownloaded", "true");
 
         Map<String, Object> expectedFilters = Map.of(
                 "state", TransferState.STARTED.name(),
                 "role", IConstants.ROLE_CONSUMER,
-                "datasetId", DataTranferMockObjectUtil.DATASET_ID,
+                "datasetId", DataTransferMockObjectUtil.DATASET_ID,
                 "isDownloaded", true
         );
 
         when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
                 .thenReturn(expectedFilters);
         when(apiService.findDataTransfers(any(Map.class)))
-                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED)));
+                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED)));
 
         ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(null, request);
 
@@ -155,8 +148,8 @@ class DataTransferAPIControllerTest {
                 .thenReturn(emptyFilters);
         when(apiService.findDataTransfers(any(Map.class)))
                 .thenReturn(Arrays.asList(
-                        TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER),
-                        TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED)
+                        TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER),
+                        TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED)
                 ));
 
         ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(null, request);
@@ -184,7 +177,7 @@ class DataTransferAPIControllerTest {
         when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
                 .thenReturn(expectedFilters);
         when(apiService.findDataTransfers(any(Map.class)))
-                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED)));
+                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED)));
 
         ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(null, request);
 
@@ -211,7 +204,7 @@ class DataTransferAPIControllerTest {
         when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
                 .thenReturn(initialFilters);
         when(apiService.findDataTransfers(any(Map.class)))
-                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
+                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
 
         ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(pathVariableId, request);
 
@@ -226,12 +219,12 @@ class DataTransferAPIControllerTest {
     @DisplayName("Request transfer process success")
     public void requestTransfer_success() {
         Map<String, Object> map = new HashMap<>();
-        map.put("transferProcessId", DataTranferMockObjectUtil.FORWARD_TO);
+        map.put("transferProcessId", DataTransferMockObjectUtil.FORWARD_TO);
         map.put(DSpaceConstants.FORMAT, DataTransferFormat.HTTP_PULL.name());
-        map.put(DSpaceConstants.DATA_ADDRESS, TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.DATA_ADDRESS));
+        map.put(DSpaceConstants.DATA_ADDRESS, TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.DATA_ADDRESS));
 
         when(apiService.requestTransfer(any(DataTransferRequest.class)))
-                .thenReturn(TransferSerializer.serializeProtocolJsonNode(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+                .thenReturn(TransferSerializer.serializeProtocolJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
 
         ResponseEntity<GenericApiResponse<JsonNode>> response = controller.requestTransfer(dataTransferRequest);
         assertEquals(HttpStatus.OK, response.getStatusCode());
