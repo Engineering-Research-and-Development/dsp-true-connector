@@ -1,19 +1,17 @@
 package it.eng.connector.integration.datatransfer;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.client.WireMock;
+import it.eng.connector.integration.BaseIntegrationTest;
+import it.eng.connector.util.TestUtil;
+import it.eng.datatransfer.model.*;
+import it.eng.datatransfer.repository.TransferProcessRepository;
+import it.eng.datatransfer.serializer.TransferSerializer;
+import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.model.IConstants;
+import it.eng.tools.response.GenericApiResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,207 +22,519 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import org.wiremock.spring.InjectWireMock;
 
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.github.tomakehurst.wiremock.WireMockServer;
-import com.github.tomakehurst.wiremock.client.WireMock;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
-import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
-import it.eng.datatransfer.model.DataTransferFormat;
-import it.eng.datatransfer.model.DataTransferRequest;
-import it.eng.datatransfer.model.Reason;
-import it.eng.datatransfer.model.TransferError;
-import it.eng.datatransfer.model.TransferProcess;
-import it.eng.datatransfer.model.TransferState;
-import it.eng.datatransfer.repository.TransferProcessRepository;
-import it.eng.datatransfer.serializer.TransferSerializer;
-import it.eng.tools.controller.ApiEndpoints;
-import it.eng.tools.model.IConstants;
-import it.eng.tools.response.GenericApiResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * Data Transfer API endpoints integration test
  */
 public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
-	
-	@Autowired
-	private TransferProcessRepository transferProcessRepository;
-	
-	@InjectWireMock 
-	private WireMockServer wiremock;
-	
-	@AfterEach
-	public void cleanup() {
-		transferProcessRepository.deleteAll();
-	}
-	
-	@Test
-	@DisplayName("TransferProcess API - get")
-	@WithUserDetails(TestUtil.API_USER)
-	public void getTransferProcess() throws Exception {
-		TransferProcess transferProcessRequested = TransferProcess.Builder.newInstance()
-				.consumerPid(createNewId())
-				.providerPid(createNewId())
-				.state(TransferState.REQUESTED)
-				.build();
-		transferProcessRepository.save(transferProcessRequested);
-		
-		TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
-				.consumerPid(createNewId())
-				.providerPid(createNewId())
-				.state(TransferState.STARTED)
-				.build();
-		transferProcessRepository.save(transferProcessStarted);
-		
-		mockMvc.perform(
-    			get(ApiEndpoints.TRANSFER_DATATRANSFER_V1).contentType(MediaType.APPLICATION_JSON))
-			.andExpect(status().isOk())
-	    	.andExpect(content().contentType(MediaType.APPLICATION_JSON));
-		
-		JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, ArrayList.class);
 
-		MvcResult resultStarted = mockMvc.perform(
-    			get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "?state=STARTED").contentType(MediaType.APPLICATION_JSON))
-			.andExpect(status().isOk())
-			.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-			.andReturn();
-		String json = resultStarted.getResponse().getContentAsString();
-		GenericApiResponse<List<TransferProcess>> genericApiResponse = jsonMapper.readValue(json, javaType);
-		// so far, must do like this because List<LinkedHashMap> was not able to get it to be List<TransferProcess>
-		TransferProcess transferProcess = jsonMapper.convertValue(genericApiResponse.getData().get(0), TransferProcess.class);
-		assertNotNull(transferProcess);
-		assertEquals(TransferState.STARTED, transferProcess.getState());
-		
-		MvcResult result = mockMvc.perform(
-    			get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessRequested.getId()).contentType(MediaType.APPLICATION_JSON))
-			.andExpect(status().isOk())
-			.andReturn();
-		json = result.getResponse().getContentAsString();
-		genericApiResponse = jsonMapper.readValue(json, javaType);
+    @Autowired
+    private TransferProcessRepository transferProcessRepository;
 
-		assertNotNull(genericApiResponse);
-		assertTrue(genericApiResponse.isSuccess());
-		assertEquals(1, genericApiResponse.getData().size());
-		// so far, must do like this because List<LinkedHashMap> was not able to get it to be List<TransferProcess>
-		TransferProcess transferProcessFromDB = TransferSerializer.deserializePlain(jsonMapper.valueToTree(genericApiResponse.getData().get(0)), 
-				TransferProcess.class);
-		assertNotNull(transferProcessFromDB);
-		assertEquals(transferProcessRequested.getId(), transferProcessFromDB.getId());
-	}
-	
-	@Test
-	@DisplayName("Request transfer process - success")
-    @WithUserDetails(TestUtil.API_USER)
-	public void initiateDataTransfer() throws Exception {
-		TransferProcess transferProcessInitialized = TransferProcess.Builder.newInstance()
-				.consumerPid(createNewId())
-				.providerPid(IConstants.TEMPORARY_PROVIDER_PID)
-				.agreementId(createNewId())
-				.callbackAddress(wiremock.baseUrl())
-				.state(TransferState.INITIALIZED)
-				.role(IConstants.ROLE_CONSUMER)
-				.build();
-		transferProcessRepository.save(transferProcessInitialized);
-		
-		DataTransferRequest dataTransferRequest = new DataTransferRequest(transferProcessInitialized.getId(), 
-				DataTransferFormat.HTTP_PULL.name(), null);
-		
-		// mock provider success response TransferRequestMessage
-		TransferProcess providerResponse = TransferProcess.Builder.newInstance()
-				.consumerPid(transferProcessInitialized.getId())
-				.providerPid(createNewId())
-				.state(TransferState.REQUESTED)
-				.build();
-		
-		WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/transfers/request")
-				.withBasicAuth("connector@mail.com", "password")
-				.withRequestBody(WireMock.containing("dspace:TransferRequestMessage"))
-				.willReturn(
-	                aResponse().withHeader("Content-Type", "application/json")
-	                .withBody(TransferSerializer.serializeProtocol(providerResponse))));
-    	
-    	final ResultActions result =
-    			mockMvc.perform(
-    					post(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
-    					.content(jsonMapper.convertValue(dataTransferRequest, JsonNode.class).toString())
-    					.contentType(MediaType.APPLICATION_JSON));
-    	
-    	result.andExpect(status().isOk())
-    		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
-    	
-    	String json = result.andReturn().getResponse().getContentAsString();
-		JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, TransferProcess.class);
-		GenericApiResponse<TransferProcess> genericApiResponse = jsonMapper.readValue(json, javaType);
-		assertNotNull(genericApiResponse);
-		assertTrue(genericApiResponse.isSuccess());
-		assertNotNull(genericApiResponse.getData());
-		assertEquals(TransferProcess.class, genericApiResponse.getData().getClass());
-		
-		// check if the Transfer Process is properly inserted and that consumerPid and providerPid are correct
-    	TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessInitialized.getId()).get();
-    	
-    	assertEquals(transferProcessInitialized.getConsumerPid(), transferProcessFromDb.getConsumerPid());
-    	assertEquals(genericApiResponse.getData().getProviderPid(), transferProcessFromDb.getProviderPid());
-    	assertEquals(TransferState.REQUESTED, transferProcessFromDb.getState());
+    @InjectWireMock
+    private WireMockServer wiremock;
+
+    @AfterEach
+    public void cleanup() {
+        transferProcessRepository.deleteAll();
     }
-	
-	@Test
-	@DisplayName("Request transfer process - provider error")
+
+    @Test
+    @DisplayName("TransferProcess API - get")
     @WithUserDetails(TestUtil.API_USER)
-	public void initiateDataTransfer_provider_error() throws Exception { 
-		TransferProcess transferProcessInitialized = TransferProcess.Builder.newInstance()
-				.consumerPid(createNewId())
-				.providerPid(createNewId())
-				.agreementId(createNewId())
-				.callbackAddress(wiremock.baseUrl())
-				.state(TransferState.INITIALIZED)
-				.build();
-		transferProcessRepository.save(transferProcessInitialized);
-		
-		DataTransferRequest dataTransferRequest = new DataTransferRequest(transferProcessInitialized.getId(), 
-				DataTransferFormat.HTTP_PULL.name(), null);
-		
-		// mock provider transfer error response TransferRequestMessage
-		TransferError providerErrorResponse = TransferError.Builder.newInstance()
-				.consumerPid(transferProcessInitialized.getId())
-				.providerPid(createNewId())
-				.code("TEST")
-				.reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("TEST").build()))
-				.build();
-		
-		WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/transfers/request")
-				.withBasicAuth("connector@mail.com", "password")
-				.withRequestBody(WireMock.containing("dspace:TransferRequestMessage"))
-				.willReturn(
-	                aResponse().withHeader("Content-Type", "application/json")
-	                .withStatus(400)
-	                .withBody(TransferSerializer.serializeProtocol(providerErrorResponse))));
-    	
-    	final ResultActions result =
-    			mockMvc.perform(
-    					post(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
-    					.content(jsonMapper.convertValue(dataTransferRequest, JsonNode.class).toString())
-    					.contentType(MediaType.APPLICATION_JSON));
-		
-    	result.andExpect(status().is4xxClientError())
-			.andExpect(content().contentType(MediaType.APPLICATION_JSON));
-    	
-    	String json = result.andReturn().getResponse().getContentAsString();
-		JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, TransferError.class);
-		GenericApiResponse<TransferError> genericApiResponse = jsonMapper.readValue(json, javaType);
-		assertNotNull(genericApiResponse);
-		assertFalse(genericApiResponse.isSuccess());
-		assertNotNull(genericApiResponse.getData());
-		assertEquals(TransferError.class, genericApiResponse.getData().getClass());
-		
-		// check if the Transfer Process is unchanged and that consumerPid and providerPid are correct
-    	TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessInitialized.getId()).get();
-    	
-    	assertEquals(transferProcessInitialized.getProviderPid(), transferProcessFromDb.getProviderPid());
-    	assertEquals(transferProcessInitialized.getConsumerPid(), transferProcessFromDb.getConsumerPid());
-    	assertEquals(TransferState.INITIALIZED, transferProcessFromDb.getState());
-	}
+    public void getTransferProcess() throws Exception {
+        TransferProcess transferProcessRequested = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .state(TransferState.REQUESTED)
+                .build();
+        transferProcessRepository.save(transferProcessRequested);
+
+        TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .state(TransferState.STARTED)
+                .build();
+        transferProcessRepository.save(transferProcessStarted);
+
+        mockMvc.perform(
+                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1).contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
+        JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, ArrayList.class);
+
+        MvcResult resultStarted = mockMvc.perform(
+                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "?state=STARTED").contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andReturn();
+        String json = resultStarted.getResponse().getContentAsString();
+        GenericApiResponse<List<TransferProcess>> genericApiResponse = jsonMapper.readValue(json, javaType);
+        // so far, must do like this because List<LinkedHashMap> was not able to get it to be List<TransferProcess>
+        TransferProcess transferProcess = jsonMapper.convertValue(genericApiResponse.getData().get(0), TransferProcess.class);
+        assertNotNull(transferProcess);
+        assertEquals(TransferState.STARTED, transferProcess.getState());
+
+        MvcResult result = mockMvc.perform(
+                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessRequested.getId()).contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andReturn();
+        json = result.getResponse().getContentAsString();
+        genericApiResponse = jsonMapper.readValue(json, javaType);
+
+        assertNotNull(genericApiResponse);
+        assertTrue(genericApiResponse.isSuccess());
+        assertEquals(1, genericApiResponse.getData().size());
+        // so far, must do like this because List<LinkedHashMap> was not able to get it to be List<TransferProcess>
+        TransferProcess transferProcessFromDB = TransferSerializer.deserializePlain(jsonMapper.valueToTree(genericApiResponse.getData().get(0)),
+                TransferProcess.class);
+        assertNotNull(transferProcessFromDB);
+        assertEquals(transferProcessRequested.getId(), transferProcessFromDB.getId());
+    }
+
+    @Test
+    @DisplayName("Request transfer process - success")
+    @WithUserDetails(TestUtil.API_USER)
+    public void initiateDataTransfer() throws Exception {
+        TransferProcess transferProcessInitialized = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(IConstants.TEMPORARY_PROVIDER_PID)
+                .agreementId(createNewId())
+                .callbackAddress(wiremock.baseUrl())
+                .state(TransferState.INITIALIZED)
+                .role(IConstants.ROLE_CONSUMER)
+                .build();
+        transferProcessRepository.save(transferProcessInitialized);
+
+        DataTransferRequest dataTransferRequest = new DataTransferRequest(transferProcessInitialized.getId(),
+                DataTransferFormat.HTTP_PULL.name(), null);
+
+        // mock provider success response TransferRequestMessage
+        TransferProcess providerResponse = TransferProcess.Builder.newInstance()
+                .consumerPid(transferProcessInitialized.getId())
+                .providerPid(createNewId())
+                .state(TransferState.REQUESTED)
+                .build();
+
+        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/transfers/request")
+                .withBasicAuth("connector@mail.com", "password")
+                .withRequestBody(WireMock.containing("dspace:TransferRequestMessage"))
+                .willReturn(
+                        aResponse().withHeader("Content-Type", "application/json")
+                                .withBody(TransferSerializer.serializeProtocol(providerResponse))));
+
+        final ResultActions result =
+                mockMvc.perform(
+                        post(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
+                                .content(jsonMapper.convertValue(dataTransferRequest, JsonNode.class).toString())
+                                .contentType(MediaType.APPLICATION_JSON));
+
+        result.andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
+        String json = result.andReturn().getResponse().getContentAsString();
+        JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, TransferProcess.class);
+        GenericApiResponse<TransferProcess> genericApiResponse = jsonMapper.readValue(json, javaType);
+        assertNotNull(genericApiResponse);
+        assertTrue(genericApiResponse.isSuccess());
+        assertNotNull(genericApiResponse.getData());
+        assertEquals(TransferProcess.class, genericApiResponse.getData().getClass());
+
+        // check if the Transfer Process is properly inserted and that consumerPid and providerPid are correct
+        TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessInitialized.getId()).get();
+
+        assertEquals(transferProcessInitialized.getConsumerPid(), transferProcessFromDb.getConsumerPid());
+        assertEquals(genericApiResponse.getData().getProviderPid(), transferProcessFromDb.getProviderPid());
+        assertEquals(TransferState.REQUESTED, transferProcessFromDb.getState());
+    }
+
+    @Test
+    @DisplayName("Request transfer process - provider error")
+    @WithUserDetails(TestUtil.API_USER)
+    public void initiateDataTransfer_provider_error() throws Exception {
+        TransferProcess transferProcessInitialized = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .agreementId(createNewId())
+                .callbackAddress(wiremock.baseUrl())
+                .state(TransferState.INITIALIZED)
+                .build();
+        transferProcessRepository.save(transferProcessInitialized);
+
+        DataTransferRequest dataTransferRequest = new DataTransferRequest(transferProcessInitialized.getId(),
+                DataTransferFormat.HTTP_PULL.name(), null);
+
+        // mock provider transfer error response TransferRequestMessage
+        TransferError providerErrorResponse = TransferError.Builder.newInstance()
+                .consumerPid(transferProcessInitialized.getId())
+                .providerPid(createNewId())
+                .code("TEST")
+                .reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("TEST").build()))
+                .build();
+
+        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/transfers/request")
+                .withBasicAuth("connector@mail.com", "password")
+                .withRequestBody(WireMock.containing("dspace:TransferRequestMessage"))
+                .willReturn(
+                        aResponse().withHeader("Content-Type", "application/json")
+                                .withStatus(400)
+                                .withBody(TransferSerializer.serializeProtocol(providerErrorResponse))));
+
+        final ResultActions result =
+                mockMvc.perform(
+                        post(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
+                                .content(jsonMapper.convertValue(dataTransferRequest, JsonNode.class).toString())
+                                .contentType(MediaType.APPLICATION_JSON));
+
+        result.andExpect(status().is4xxClientError())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
+        String json = result.andReturn().getResponse().getContentAsString();
+        JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, TransferError.class);
+        GenericApiResponse<TransferError> genericApiResponse = jsonMapper.readValue(json, javaType);
+        assertNotNull(genericApiResponse);
+        assertFalse(genericApiResponse.isSuccess());
+        assertNotNull(genericApiResponse.getData());
+        assertEquals(TransferError.class, genericApiResponse.getData().getClass());
+
+        // check if the Transfer Process is unchanged and that consumerPid and providerPid are correct
+        TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessInitialized.getId()).get();
+
+        assertEquals(transferProcessInitialized.getProviderPid(), transferProcessFromDb.getProviderPid());
+        assertEquals(transferProcessInitialized.getConsumerPid(), transferProcessFromDb.getConsumerPid());
+        assertEquals(TransferState.INITIALIZED, transferProcessFromDb.getState());
+    }
+
+    @Test
+    @DisplayName("Filter by datasetId only")
+    @WithUserDetails(TestUtil.API_USER)
+    public void filterByDatasetId() throws Exception {
+        // Setup test data with diverse values
+        TransferProcess process1 = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .datasetId("dataset-1")
+                .role(IConstants.ROLE_CONSUMER)
+                .state(TransferState.REQUESTED)
+                .build();
+
+        TransferProcess process2 = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .datasetId("dataset-1")
+                .role(IConstants.ROLE_PROVIDER)
+                .state(TransferState.STARTED)
+                .build();
+
+        TransferProcess process3 = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .datasetId("dataset-2")
+                .role(IConstants.ROLE_CONSUMER)
+                .state(TransferState.COMPLETED)
+                .build();
+
+        transferProcessRepository.saveAll(List.of(process1, process2, process3));
+
+        MvcResult result = mockMvc.perform(
+                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
+                                .param("datasetId", "dataset-1")
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andReturn();
+
+        String json = result.getResponse().getContentAsString();
+        JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, ArrayList.class);
+        GenericApiResponse<List<TransferProcess>> genericApiResponse = jsonMapper.readValue(json, javaType);
+        
+        assertNotNull(genericApiResponse);
+        assertTrue(genericApiResponse.isSuccess());
+        assertEquals(2, genericApiResponse.getData().size());
+        
+        // Verify both processes have correct datasetId
+        for (Object obj : genericApiResponse.getData()) {
+            TransferProcess process = jsonMapper.convertValue(obj, TransferProcess.class);
+            assertEquals("dataset-1", process.getDatasetId());
+        }
+    }
+
+    @Test
+    @DisplayName("Filter by providerPid only")
+    @WithUserDetails(TestUtil.API_USER)
+    public void filterByProviderPid() throws Exception {
+        String testProviderPid = createNewId();
+
+        TransferProcess process1 = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(testProviderPid)
+                .datasetId("dataset-1")
+                .role(IConstants.ROLE_CONSUMER)
+                .state(TransferState.REQUESTED)
+                .build();
+
+        TransferProcess process2 = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .datasetId("dataset-2")
+                .role(IConstants.ROLE_PROVIDER)
+                .state(TransferState.STARTED)
+                .build();
+
+        transferProcessRepository.saveAll(List.of(process1, process2));
+
+        MvcResult result = mockMvc.perform(
+                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
+                                .param("providerPid", testProviderPid)
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andReturn();
+
+        String json = result.getResponse().getContentAsString();
+        JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, ArrayList.class);
+        GenericApiResponse<List<TransferProcess>> genericApiResponse = jsonMapper.readValue(json, javaType);
+        
+        assertNotNull(genericApiResponse);
+        assertTrue(genericApiResponse.isSuccess());
+        assertEquals(1, genericApiResponse.getData().size());
+        
+        TransferProcess process = jsonMapper.convertValue(genericApiResponse.getData().get(0), TransferProcess.class);
+        assertEquals(testProviderPid, process.getProviderPid());
+    }
+
+    @Test
+    @DisplayName("Filter by consumerPid only")
+    @WithUserDetails(TestUtil.API_USER)
+    public void filterByConsumerPid() throws Exception {
+        String testConsumerPid = createNewId();
+
+        TransferProcess process1 = TransferProcess.Builder.newInstance()
+                .consumerPid(testConsumerPid)
+                .providerPid(createNewId())
+                .datasetId("dataset-1")
+                .role(IConstants.ROLE_CONSUMER)
+                .state(TransferState.REQUESTED)
+                .build();
+
+        TransferProcess process2 = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .datasetId("dataset-2")
+                .role(IConstants.ROLE_PROVIDER)
+                .state(TransferState.STARTED)
+                .build();
+
+        transferProcessRepository.saveAll(List.of(process1, process2));
+
+        MvcResult result = mockMvc.perform(
+                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
+                                .param("consumerPid", testConsumerPid)
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andReturn();
+
+        String json = result.getResponse().getContentAsString();
+        JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, ArrayList.class);
+        GenericApiResponse<List<TransferProcess>> genericApiResponse = jsonMapper.readValue(json, javaType);
+        
+        assertNotNull(genericApiResponse);
+        assertTrue(genericApiResponse.isSuccess());
+        assertEquals(1, genericApiResponse.getData().size());
+        
+        TransferProcess process = jsonMapper.convertValue(genericApiResponse.getData().get(0), TransferProcess.class);
+        assertEquals(testConsumerPid, process.getConsumerPid());
+    }
+
+    @Test
+    @DisplayName("Filter by multiple parameters (datasetId, state, role)")
+    @WithUserDetails(TestUtil.API_USER)
+    public void filterByMultipleParameters() throws Exception {
+        TransferProcess process1 = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .datasetId("dataset-1")
+                .role(IConstants.ROLE_CONSUMER)
+                .state(TransferState.REQUESTED)
+                .build();
+
+        TransferProcess process2 = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .datasetId("dataset-1")
+                .role(IConstants.ROLE_PROVIDER)
+                .state(TransferState.REQUESTED)
+                .build();
+
+        TransferProcess process3 = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .datasetId("dataset-1")
+                .role(IConstants.ROLE_CONSUMER)
+                .state(TransferState.STARTED)
+                .build();
+
+        transferProcessRepository.saveAll(List.of(process1, process2, process3));
+
+        MvcResult result = mockMvc.perform(
+                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
+                                .param("datasetId", "dataset-1")
+                                .param("state", TransferState.REQUESTED.name())
+                                .param("role", IConstants.ROLE_CONSUMER)
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andReturn();
+
+        String json = result.getResponse().getContentAsString();
+        JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, ArrayList.class);
+        GenericApiResponse<List<TransferProcess>> genericApiResponse = jsonMapper.readValue(json, javaType);
+        
+        assertNotNull(genericApiResponse);
+        assertTrue(genericApiResponse.isSuccess());
+        assertEquals(1, genericApiResponse.getData().size());
+        
+        TransferProcess process = jsonMapper.convertValue(genericApiResponse.getData().get(0), TransferProcess.class);
+        assertEquals("dataset-1", process.getDatasetId());
+        assertEquals(TransferState.REQUESTED, process.getState());
+        assertEquals(IConstants.ROLE_CONSUMER, process.getRole());
+    }
+
+    @Test
+    @DisplayName("Filter with all new parameters")
+    @WithUserDetails(TestUtil.API_USER)
+    public void filterWithAllNewParameters() throws Exception {
+        String testConsumerPid = createNewId();
+        String testProviderPid = createNewId();
+
+        TransferProcess matchingProcess = TransferProcess.Builder.newInstance()
+                .consumerPid(testConsumerPid)
+                .providerPid(testProviderPid)
+                .datasetId("target-dataset")
+                .role(IConstants.ROLE_CONSUMER)
+                .state(TransferState.REQUESTED)
+                .build();
+
+        TransferProcess nonMatchingProcess = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .datasetId("other-dataset")
+                .role(IConstants.ROLE_PROVIDER)
+                .state(TransferState.STARTED)
+                .build();
+
+        transferProcessRepository.saveAll(List.of(matchingProcess, nonMatchingProcess));
+
+        MvcResult result = mockMvc.perform(
+                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
+                                .param("datasetId", "target-dataset")
+                                .param("providerPid", testProviderPid)
+                                .param("consumerPid", testConsumerPid)
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andReturn();
+
+        String json = result.getResponse().getContentAsString();
+        JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, ArrayList.class);
+        GenericApiResponse<List<TransferProcess>> genericApiResponse = jsonMapper.readValue(json, javaType);
+        
+        assertNotNull(genericApiResponse);
+        assertTrue(genericApiResponse.isSuccess());
+        assertEquals(1, genericApiResponse.getData().size());
+        
+        TransferProcess process = jsonMapper.convertValue(genericApiResponse.getData().get(0), TransferProcess.class);
+        assertEquals("target-dataset", process.getDatasetId());
+        assertEquals(testProviderPid, process.getProviderPid());
+        assertEquals(testConsumerPid, process.getConsumerPid());
+    }
+
+    @Test
+    @DisplayName("Transfer process ID takes priority over filters")
+    @WithUserDetails(TestUtil.API_USER)
+    public void transferProcessIdTakesPriority() throws Exception {
+        TransferProcess process = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .datasetId("actual-dataset")
+                .role(IConstants.ROLE_CONSUMER)
+                .state(TransferState.REQUESTED)
+                .build();
+
+        transferProcessRepository.save(process);
+
+        MvcResult result = mockMvc.perform(
+                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + process.getId())
+                                .param("datasetId", "different-dataset")  // Should be ignored
+                                .param("state", TransferState.COMPLETED.name())  // Should be ignored
+                                .param("role", IConstants.ROLE_PROVIDER)         // Should be ignored
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andReturn();
+
+        String json = result.getResponse().getContentAsString();
+        JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, ArrayList.class);
+        GenericApiResponse<List<TransferProcess>> genericApiResponse = jsonMapper.readValue(json, javaType);
+        
+        assertNotNull(genericApiResponse);
+        assertTrue(genericApiResponse.isSuccess());
+        assertEquals(1, genericApiResponse.getData().size());
+        
+        // so far, must do like this because List<LinkedHashMap> was not able to get it to be List<TransferProcess>
+        TransferProcess returnedProcess = TransferSerializer.deserializePlain(jsonMapper.valueToTree(genericApiResponse.getData().get(0)),
+                TransferProcess.class);
+        assertEquals(process.getId(), returnedProcess.getId());
+        // Verify actual values are returned, not filter values
+        assertEquals("actual-dataset", returnedProcess.getDatasetId());
+        assertEquals(TransferState.REQUESTED, returnedProcess.getState());
+        assertEquals(IConstants.ROLE_CONSUMER, returnedProcess.getRole());
+    }
+
+    @Test
+    @DisplayName("Filter returns empty result when no matches")
+    @WithUserDetails(TestUtil.API_USER)
+    public void filterReturnsEmptyWhenNoMatches() throws Exception {
+        TransferProcess process = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .datasetId("existing-dataset")
+                .role(IConstants.ROLE_CONSUMER)
+                .state(TransferState.REQUESTED)
+                .build();
+
+        transferProcessRepository.save(process);
+
+        MvcResult result = mockMvc.perform(
+                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
+                                .param("datasetId", "non-existent-dataset")
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andReturn();
+
+        String json = result.getResponse().getContentAsString();
+        JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, ArrayList.class);
+        GenericApiResponse<List<TransferProcess>> genericApiResponse = jsonMapper.readValue(json, javaType);
+        
+        assertNotNull(genericApiResponse);
+        assertTrue(genericApiResponse.isSuccess());
+        assertTrue(genericApiResponse.getData().isEmpty());
+    }
+
+
 	
 	
 	/* TODO continue adding tests
@@ -281,5 +591,5 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 	private void agreementCheck(JsonNode contractNegotiation) {
 		assertNotNull(contractNegotiation.get("agreement"));
 	} */
-	
+
 }

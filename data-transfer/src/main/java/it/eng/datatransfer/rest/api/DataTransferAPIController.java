@@ -3,6 +3,7 @@ package it.eng.datatransfer.rest.api;
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.event.TransferArtifactEvent;
 import it.eng.datatransfer.model.DataTransferRequest;
+import it.eng.tools.service.GenericFilterBuilder;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
@@ -10,9 +11,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping(path = ApiEndpoints.TRANSFER_DATATRANSFER_V1)
@@ -20,11 +25,15 @@ import java.util.Collection;
 public class DataTransferAPIController {
 
     private final DataTransferAPIService apiService;
+    private final GenericFilterBuilder filterBuilder;
     private final ApplicationEventPublisher publisher;
 
-    public DataTransferAPIController(DataTransferAPIService apiService, ApplicationEventPublisher publisher) {
+
+    public DataTransferAPIController(DataTransferAPIService apiService, GenericFilterBuilder filterBuilder,  ApplicationEventPublisher publisher) {
         this.apiService = apiService;
+        this.filterBuilder = filterBuilder;
         this.publisher = publisher;
+
     }
 
     /********* CONSUMER ***********/
@@ -100,31 +109,47 @@ public class DataTransferAPIController {
     /********* CONSUMER & PROVIDER ***********/
 
     /**
-     * Find by id if present, next by state and get all.
+     * Generic endpoint for finding transfer processes with automatic filtering.
+     * Supports any request parameter with automatic type detection and conversion.
      *
-     * @param transferProcessId transfer process id to filter by, if present.
-     * @param state             optional state to filter transfer processes by.
-     * @param role              optional role to filter transfer processes by (e.g., CONSUMER or PROVIDER).
-     * @return GenericApiResponse
+     * @param transferProcessId optional transfer process id to filter by (path variable)
+     * @param request           HttpServletRequest containing all filter parameters
+     * @return GenericApiResponse with matching transfer processes
      */
     @GetMapping(path = {"", "/{transferProcessId}"})
     public ResponseEntity<GenericApiResponse<Collection<JsonNode>>> getTransfersProcess(
             @PathVariable(required = false) String transferProcessId,
-            @RequestParam(required = false) String state,
-            @RequestParam(required = false) String role) {
-        log.info("Fetching transfer process id - {}, state {}", transferProcessId, state);
-        Collection<JsonNode> response = apiService.findDataTransfers(transferProcessId, state, role);
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(response, "Fetched transfer process"));
-    }
+            HttpServletRequest request) {
 
-    /**
-     * Start transfer process.
-     *
-     * @param transferProcessId transfer process id to start.
-     * @return GenericApiResponse response with success message.
-     */
-    @PutMapping(path = "/{transferProcessId}/start")
+        log.info("Fetching transfer processes with generic filtering");
+
+        // Build filter map automatically from ALL request parameters
+        Map<String, Object> filters = filterBuilder.buildFromRequest(request);
+
+        // Handle path variable with proper validation
+        if (StringUtils.hasText(transferProcessId)) {
+            // Create mutable copy if needed (defensive programming)
+            try {
+                filters.put("id", transferProcessId.trim());
+            } catch (UnsupportedOperationException e) {
+                filters = new HashMap<>(filters);
+                filters.put("id", transferProcessId.trim());
+            }
+        }
+
+        log.debug("Generated filters: {}", filters);
+
+        Collection<JsonNode> response = apiService.findDataTransfers(filters);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(GenericApiResponse.success(response, "Fetched transfer processes"));
+    }
+	
+	/**
+	 * Start transfer process.
+	 * @param transferProcessId transfer process id to start.
+	 * @return GenericApiResponse response with success message.
+	 */
+	@PutMapping(path = "/{transferProcessId}/start")
     public ResponseEntity<GenericApiResponse<JsonNode>> startTransfer(@PathVariable String transferProcessId) {
         log.info("Starting data transfer {}", transferProcessId);
         JsonNode response = apiService.startTransfer(transferProcessId);

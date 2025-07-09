@@ -9,7 +9,11 @@ import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
+import it.eng.tools.model.DSpaceConstants;
+import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.service.GenericFilterBuilder;
+import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,15 +24,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,6 +44,9 @@ class DataTransferAPIControllerTest {
     @Mock
     private ApplicationEventPublisher publisher;
 
+    @Mock
+    private GenericFilterBuilder filterBuilder;
+
     @InjectMocks
     private DataTransferAPIController controller;
 
@@ -47,46 +55,174 @@ class DataTransferAPIControllerTest {
             null);
 
     @Test
-    @DisplayName("Find transfer process by id, state and all")
-    public void getTransfersProcess() {
-        when(apiService.findDataTransfers(anyString(), anyString(), isNull()))
-                .thenReturn(Collections.singletonList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
-        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess("test", TransferState.REQUESTED.name(), null);
+    @DisplayName("Find transfer process with generic filters")
+    public void getTransfersProcess_genericFilters() {
+        // Create mock request
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setParameter("state", TransferState.REQUESTED.name());
+        request.setParameter("role", IConstants.ROLE_PROVIDER);
+
+        // Create expected filter map
+        Map<String, Object> expectedFilters = Map.of(
+                "state", TransferState.REQUESTED.name(),
+                "role", IConstants.ROLE_PROVIDER
+        );
+
+        when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
+                .thenReturn(expectedFilters);
+        when(apiService.findDataTransfers(any(Map.class)))
+                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
+
+        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(null, request);
+
         assertNotNull(response);
-        assertNotNull(response.getBody());
         assertTrue(response.getBody().isSuccess());
         assertFalse(response.getBody().getData().isEmpty());
 
-        when(apiService.findDataTransfers(anyString(), isNull(), isNull()))
-                .thenReturn(new ArrayList<>());
-        response = controller.getTransfersProcess("test_not_found", null, null);
-        assertNotNull(response);
-        assertNotNull(response.getBody());
-        assertTrue(response.getBody().isSuccess());
-        assertTrue(response.getBody().getData().isEmpty());
+        verify(filterBuilder).buildFromRequest(request);
+        verify(apiService).findDataTransfers(expectedFilters);
+    }
 
-        when(apiService.findDataTransfers(isNull(), anyString(), anyString()))
-                .thenReturn(Collections.singletonList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED)));
-        response = controller.getTransfersProcess(null, TransferState.STARTED.name(), DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getRole());
+    @Test
+    @DisplayName("Find transfer process by id with path variable")
+    public void getTransfersProcess_byId() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        String transferProcessId = "test-id";
+
+        Map<String, Object> emptyFilters = new HashMap<>();
+        Map<String, Object> expectedFilters = Map.of("id", transferProcessId);
+
+        when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
+                .thenReturn(emptyFilters);
+        when(apiService.findDataTransfers(any(Map.class)))
+                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
+
+        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(transferProcessId, request);
+
         assertNotNull(response);
-        assertNotNull(response.getBody());
         assertTrue(response.getBody().isSuccess());
         assertFalse(response.getBody().getData().isEmpty());
 
-        when(apiService.findDataTransfers(isNull(), isNull(), isNull()))
-                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER),
-                        TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED)));
-        response = controller.getTransfersProcess(null, null, null);
-        assertNotNull(response);
-        assertNotNull(response.getBody());
-        assertTrue(response.getBody().isSuccess());
-        assertFalse(response.getBody().getData().isEmpty());
+        verify(filterBuilder).buildFromRequest(request);
+        verify(apiService).findDataTransfers(expectedFilters);
+    }
 
+    @Test
+    @DisplayName("Find transfer process with multiple filters")
+    public void getTransfersProcess_multipleFilters() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setParameter("state", TransferState.STARTED.name());
+        request.setParameter("role", IConstants.ROLE_CONSUMER);
+        request.setParameter("datasetId", DataTransferMockObjectUtil.DATASET_ID);
+        request.setParameter("isDownloaded", "true");
+
+        Map<String, Object> expectedFilters = Map.of(
+                "state", TransferState.STARTED.name(),
+                "role", IConstants.ROLE_CONSUMER,
+                "datasetId", DataTransferMockObjectUtil.DATASET_ID,
+                "isDownloaded", true
+        );
+
+        when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
+                .thenReturn(expectedFilters);
+        when(apiService.findDataTransfers(any(Map.class)))
+                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED)));
+
+        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(null, request);
+
+        assertNotNull(response);
+        assertTrue(response.getBody().isSuccess());
+        assertEquals(1, response.getBody().getData().size());
+
+        verify(filterBuilder).buildFromRequest(request);
+        verify(apiService).findDataTransfers(expectedFilters);
+    }
+
+    @Test
+    @DisplayName("Find transfer process with no filters returns all")
+    public void getTransfersProcess_noFilters() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        Map<String, Object> emptyFilters = new HashMap<>();
+
+        when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
+                .thenReturn(emptyFilters);
+        when(apiService.findDataTransfers(any(Map.class)))
+                .thenReturn(Arrays.asList(
+                        TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER),
+                        TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED)
+                ));
+
+        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(null, request);
+
+        assertNotNull(response);
+        assertTrue(response.getBody().isSuccess());
+        assertEquals(2, response.getBody().getData().size());
+
+        verify(filterBuilder).buildFromRequest(request);
+        verify(apiService).findDataTransfers(emptyFilters);
+    }
+
+    @Test
+    @DisplayName("Find transfer process with datetime filters")
+    public void getTransfersProcess_datetimeFilters() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setParameter("created", "2024-01-01T10:00:00Z");
+        request.setParameter("state", TransferState.COMPLETED.name());
+
+        Map<String, Object> expectedFilters = Map.of(
+                "created", "2024-01-01T10:00:00Z", // GenericFilterBuilder will convert this to Instant
+                "state", TransferState.COMPLETED.name()
+        );
+
+        when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
+                .thenReturn(expectedFilters);
+        when(apiService.findDataTransfers(any(Map.class)))
+                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED)));
+
+        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(null, request);
+
+        assertNotNull(response);
+        assertTrue(response.getBody().isSuccess());
+
+        verify(filterBuilder).buildFromRequest(request);
+        verify(apiService).findDataTransfers(expectedFilters);
+    }
+
+    @Test
+    @DisplayName("Find transfer process with path variable overrides query param id")
+    public void getTransfersProcess_pathVariableOverridesQueryParam() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setParameter("id", "query-param-id"); // This should be ignored
+        String pathVariableId = "path-variable-id";
+
+        // Use mutable HashMap instead of immutable Map.of() since controller modifies the map
+        Map<String, Object> initialFilters = new HashMap<>();
+        initialFilters.put("id", "query-param-id");
+
+        Map<String, Object> expectedFilters = Map.of("id", pathVariableId); // Path variable wins
+
+        when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
+                .thenReturn(initialFilters);
+        when(apiService.findDataTransfers(any(Map.class)))
+                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
+
+        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(pathVariableId, request);
+
+        assertNotNull(response);
+        assertTrue(response.getBody().isSuccess());
+
+        verify(filterBuilder).buildFromRequest(request);
+        verify(apiService).findDataTransfers(expectedFilters);
     }
 
     @Test
     @DisplayName("Request transfer process success")
     public void requestTransfer_success() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("transferProcessId", DataTransferMockObjectUtil.FORWARD_TO);
+        map.put(DSpaceConstants.FORMAT, DataTransferFormat.HTTP_PULL.name());
+        map.put(DSpaceConstants.DATA_ADDRESS, TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.DATA_ADDRESS));
+
         when(apiService.requestTransfer(any(DataTransferRequest.class)))
                 .thenReturn(TransferSerializer.serializeProtocolJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
 

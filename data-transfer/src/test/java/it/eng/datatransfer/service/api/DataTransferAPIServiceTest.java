@@ -34,10 +34,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpMethod;
 
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Stream;
@@ -86,29 +83,282 @@ class DataTransferAPIServiceTest {
             null);
 
     @Test
-    @DisplayName("Find transfer process by id, state and all")
-    public void findDataTransfers() {
+    @DisplayName("Find transfer process by id - ignores other filters")
+    public void findDataTransfers_byId() {
+        Map<String, Object> filters = Map.of("id", "test");
 
         when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
-        Collection<JsonNode> response = apiService.findDataTransfers("test", TransferState.REQUESTED.name(), null);
+        Collection<JsonNode> response = apiService.findDataTransfers(filters);
         assertNotNull(response);
         assertEquals(1, response.size());
 
-        when(transferProcessRepository.findById(anyString())).thenReturn(Optional.empty());
-        response = apiService.findDataTransfers("test_not_found", null, null);
-        assertNotNull(response);
-        assertTrue(response.isEmpty());
+        // Verify that dynamic filter method is not called when ID is provided
+        verify(transferProcessRepository, never()).findWithDynamicFilters(any(Map.class));
+    }
 
-        when(transferProcessRepository.findByStateAndRole(anyString(), anyString())).thenReturn(Collections.singletonList(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
-        response = apiService.findDataTransfers(null, TransferState.STARTED.name(), IConstants.ROLE_PROVIDER);
+    @Test
+    @DisplayName("Find transfer process by datasetId only")
+    public void findDataTransfers_byDatasetId() {
+        Map<String, Object> filters = Map.of("datasetId", DataTransferMockObjectUtil.DATASET_ID);
+
+        when(transferProcessRepository.findWithDynamicFilters(any(Map.class)))
+                .thenReturn(Arrays.asList(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(filters);
+
         assertNotNull(response);
         assertEquals(1, response.size());
+        verify(transferProcessRepository).findWithDynamicFilters(filters);
+    }
 
-        when(transferProcessRepository.findByRole(anyString()))
-                .thenReturn(Arrays.asList(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER, DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
-        response = apiService.findDataTransfers(null, null, IConstants.ROLE_PROVIDER);
+    @Test
+    @DisplayName("Find transfer process by datasetId and role")
+    public void findDataTransfers_byDatasetIdAndRole() {
+        Map<String, Object> filters = Map.of(
+                "datasetId", DataTransferMockObjectUtil.DATASET_ID,
+                "role", IConstants.ROLE_PROVIDER
+        );
+
+        when(transferProcessRepository.findWithDynamicFilters(any(Map.class)))
+                .thenReturn(Arrays.asList(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(filters);
+
+        assertNotNull(response);
+        assertEquals(1, response.size());
+        verify(transferProcessRepository).findWithDynamicFilters(filters);
+    }
+
+    @Test
+    @DisplayName("Find transfer process by datasetId, state and role")
+    public void findDataTransfers_byDatasetIdStateAndRole() {
+        Map<String, Object> filters = Map.of(
+                "state", TransferState.STARTED.name(),
+                "role", IConstants.ROLE_PROVIDER,
+                "datasetId", DataTransferMockObjectUtil.DATASET_ID
+        );
+
+        when(transferProcessRepository.findWithDynamicFilters(any(Map.class)))
+                .thenReturn(Arrays.asList(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(filters);
+
+        assertNotNull(response);
+        assertEquals(1, response.size());
+        verify(transferProcessRepository).findWithDynamicFilters(filters);
+    }
+
+    @Test
+    @DisplayName("Find transfer process by providerPid only")
+    public void findDataTransfers_byProviderPid() {
+        Map<String, Object> filters = Map.of("providerPid", DataTransferMockObjectUtil.PROVIDER_PID);
+
+        when(transferProcessRepository.findWithDynamicFilters(any(Map.class)))
+                .thenReturn(Arrays.asList(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(filters);
+
+        assertNotNull(response);
+        assertEquals(1, response.size());
+        verify(transferProcessRepository).findWithDynamicFilters(filters);
+    }
+
+    @Test
+    @DisplayName("Find transfer process by providerPid and role")
+    public void findDataTransfers_byProviderPidAndRole() {
+        Map<String, Object> filters = Map.of(
+                "providerPid", DataTransferMockObjectUtil.PROVIDER_PID,
+                "role", IConstants.ROLE_PROVIDER
+        );
+
+        when(transferProcessRepository.findWithDynamicFilters(any(Map.class)))
+                .thenReturn(Arrays.asList(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(filters);
+
+        assertNotNull(response);
+        assertEquals(1, response.size());
+        verify(transferProcessRepository).findWithDynamicFilters(filters);
+    }
+
+    @Test
+    @DisplayName("Find transfer process by consumerPid only")
+    public void findDataTransfers_byConsumerPid() {
+        Map<String, Object> filters = Map.of("consumerPid", DataTransferMockObjectUtil.CONSUMER_PID);
+
+        when(transferProcessRepository.findWithDynamicFilters(any(Map.class)))
+                .thenReturn(Arrays.asList(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_CONSUMER));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(filters);
+
+        assertNotNull(response);
+        assertEquals(1, response.size());
+        verify(transferProcessRepository).findWithDynamicFilters(filters);
+    }
+
+    @Test
+    @DisplayName("Find transfer process by consumerPid and state")
+    public void findDataTransfers_byConsumerPidAndState() {
+        Map<String, Object> filters = Map.of(
+                "consumerPid", DataTransferMockObjectUtil.CONSUMER_PID,
+                "state", TransferState.REQUESTED.name()
+        );
+
+        when(transferProcessRepository.findWithDynamicFilters(any(Map.class)))
+                .thenReturn(Arrays.asList(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_CONSUMER));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(filters);
+
+        assertNotNull(response);
+        assertEquals(1, response.size());
+        verify(transferProcessRepository).findWithDynamicFilters(filters);
+    }
+
+    @Test
+    @DisplayName("Find transfer process falls back to state and role when no specific filters")
+    public void findDataTransfers_fallbackToStateAndRole() {
+        Map<String, Object> filters = Map.of(
+                "state", TransferState.STARTED.name(),
+                "role", IConstants.ROLE_CONSUMER
+        );
+
+        when(transferProcessRepository.findWithDynamicFilters(any(Map.class)))
+                .thenReturn(Arrays.asList(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(filters);
+
+        assertNotNull(response);
+        assertEquals(1, response.size());
+        verify(transferProcessRepository).findWithDynamicFilters(filters);
+    }
+
+    @Test
+    @DisplayName("Find transfer process falls back to role only")
+    public void findDataTransfers_fallbackToRole() {
+        Map<String, Object> filters = Map.of("role", IConstants.ROLE_PROVIDER);
+
+        when(transferProcessRepository.findWithDynamicFilters(any(Map.class)))
+                .thenReturn(Arrays.asList(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(filters);
+
+        assertNotNull(response);
+        assertEquals(1, response.size());
+        verify(transferProcessRepository).findWithDynamicFilters(filters);
+    }
+
+    @Test
+    @DisplayName("Find transfer process with all filters applied")
+    public void findDataTransfers_allFiltersApplied() {
+        Map<String, Object> filters = Map.of(
+                "state", TransferState.STARTED.name(),
+                "role", IConstants.ROLE_PROVIDER,
+                "datasetId", DataTransferMockObjectUtil.DATASET_ID,
+                "providerPid", DataTransferMockObjectUtil.PROVIDER_PID,
+                "consumerPid", DataTransferMockObjectUtil.CONSUMER_PID
+        );
+
+        when(transferProcessRepository.findWithDynamicFilters(any(Map.class)))
+                .thenReturn(Arrays.asList(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(filters);
+
+        assertNotNull(response);
+        assertEquals(1, response.size());
+        verify(transferProcessRepository).findWithDynamicFilters(filters);
+    }
+
+    @Test
+    @DisplayName("Find transfer process with boolean filters")
+    public void findDataTransfers_withBooleanFilters() {
+        Map<String, Object> filters = Map.of(
+                "isDownloaded", true,
+                "role", IConstants.ROLE_CONSUMER
+        );
+
+        when(transferProcessRepository.findWithDynamicFilters(any(Map.class)))
+                .thenReturn(Arrays.asList(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(filters);
+
+        assertNotNull(response);
+        assertEquals(1, response.size());
+        verify(transferProcessRepository).findWithDynamicFilters(filters);
+    }
+
+    @Test
+    @DisplayName("Find transfer process with datetime filters")
+    public void findDataTransfers_withDatetimeFilters() {
+        Map<String, Object> filters = Map.of(
+                "created", java.time.Instant.parse("2024-01-01T10:00:00Z"),
+                "state", TransferState.COMPLETED.name()
+        );
+
+        when(transferProcessRepository.findWithDynamicFilters(any(Map.class)))
+                .thenReturn(Arrays.asList(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(filters);
+
+        assertNotNull(response);
+        assertEquals(1, response.size());
+        verify(transferProcessRepository).findWithDynamicFilters(filters);
+    }
+
+    @Test
+    @DisplayName("Find transfer process with empty filters returns all")
+    public void findDataTransfers_emptyFilters() {
+        Map<String, Object> emptyFilters = new HashMap<>();
+
+        when(transferProcessRepository.findAll())
+                .thenReturn(Arrays.asList(
+                        DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER,
+                        DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED
+                ));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(emptyFilters);
+
         assertNotNull(response);
         assertEquals(2, response.size());
+        verify(transferProcessRepository).findAll();
+        verify(transferProcessRepository, never()).findWithDynamicFilters(any(Map.class));
+    }
+
+    @Test
+    @DisplayName("Find transfer process with null filters returns all")
+    public void findDataTransfers_nullFilters() {
+        when(transferProcessRepository.findAll())
+                .thenReturn(Arrays.asList(
+                        DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER,
+                        DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED
+                ));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(null);
+
+        assertNotNull(response);
+        assertEquals(2, response.size());
+        verify(transferProcessRepository).findAll();
+        verify(transferProcessRepository, never()).findWithDynamicFilters(any(Map.class));
+    }
+
+    @Test
+    @DisplayName("Find transfer process with multi-value filters (IN query)")
+    public void findDataTransfers_multiValueFilters() {
+        Map<String, Object> filters = Map.of(
+                "state", Arrays.asList(TransferState.STARTED.name(), TransferState.COMPLETED.name()),
+                "role", IConstants.ROLE_PROVIDER
+        );
+
+        when(transferProcessRepository.findWithDynamicFilters(any(Map.class)))
+                .thenReturn(Arrays.asList(
+                        DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED,
+                        DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER
+                ));
+
+        Collection<JsonNode> response = apiService.findDataTransfers(filters);
+
+        assertNotNull(response);
+        assertEquals(2, response.size());
+        verify(transferProcessRepository).findWithDynamicFilters(filters);
     }
 
     @Test
