@@ -15,6 +15,7 @@ import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.negotiation.model.*;
 import it.eng.negotiation.repository.AgreementRepository;
+import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.PolicyEnforcementRepository;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
@@ -60,6 +61,9 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
     private AgreementRepository agreementRepository;
 
     @Autowired
+    private ContractNegotiationRepository contractNegotiationRepository;
+
+    @Autowired
     private PolicyEnforcementRepository policyEnforcementRepository;
 
     @Autowired
@@ -86,6 +90,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
     public void cleanup() {
         transferProcessRepository.deleteAll();
         agreementRepository.deleteAll();
+        contractNegotiationRepository.deleteAll();
         policyEnforcementRepository.deleteAll();
         datasetRepository.deleteAll();
         catalogRepository.deleteAll();
@@ -216,6 +221,9 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
     public void downloadData_fail() throws Exception {
         int startingTransferProcessCollectionSize = transferProcessRepository.findAll().size();
 
+        String consumerPid = createNewId();
+        String providerPid = createNewId();
+
         Agreement agreement = Agreement.Builder.newInstance()
                 .id(createNewId())
                 .assignee(NegotiationMockObjectUtil.ASSIGNEE)
@@ -234,12 +242,18 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 
         agreementRepository.save(agreement);
 
+        ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
+                .id(createNewId())
+                .agreement(agreement)
+                .consumerPid(consumerPid)
+                .providerPid(providerPid)
+                .state(ContractNegotiationState.FINALIZED)
+                .build();
+        contractNegotiationRepository.save(contractNegotiation);
+
         PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
 
         policyEnforcementRepository.save(policyEnforcement);
-
-        String consumerPid = createNewId();
-        String providerPid = createNewId();
 
         String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), mockDataset.getId(), Duration.ofSeconds(1));
 

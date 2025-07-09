@@ -10,6 +10,7 @@ import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.negotiation.model.*;
 import it.eng.negotiation.repository.AgreementRepository;
+import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.PolicyEnforcementRepository;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
@@ -53,6 +54,9 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
     private AgreementRepository agreementRepository;
 
     @Autowired
+    private ContractNegotiationRepository contractNegotiationRepository;
+
+    @Autowired
     private PolicyEnforcementRepository policyEnforcementRepository;
 
     @Autowired
@@ -70,6 +74,7 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
     public void cleanup() {
         transferProcessRepository.deleteAll();
         agreementRepository.deleteAll();
+        contractNegotiationRepository.deleteAll();
         policyEnforcementRepository.deleteAll();
         if (s3BucketProvisionService.bucketExists(s3Properties.getBucketName())) {
             List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
@@ -92,6 +97,14 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
 
         String consumerPid = createNewId();
         String providerPid = createNewId();
+        ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
+                .id(createNewId())
+                .agreement(agreement)
+                .consumerPid(consumerPid)
+                .providerPid(providerPid)
+                .state(ContractNegotiationState.FINALIZED)
+                .build();
+        contractNegotiationRepository.save(contractNegotiation);
 
         TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
                 .consumerPid(consumerPid)

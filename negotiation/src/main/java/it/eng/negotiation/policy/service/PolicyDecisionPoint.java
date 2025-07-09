@@ -9,10 +9,7 @@ import it.eng.negotiation.policy.model.Policy;
 import it.eng.negotiation.policy.model.PolicyConstants;
 import it.eng.negotiation.policy.model.PolicyDecision;
 import it.eng.negotiation.policy.model.PolicyRequest;
-import it.eng.tools.event.AuditEvent;
-import it.eng.tools.event.AuditEventType;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -30,12 +27,10 @@ import java.util.stream.Collectors;
 public class PolicyDecisionPoint {
 
     private final Map<LeftOperand, PolicyEvaluator> evaluators;
-    private final ApplicationEventPublisher publisher;
 
-    public PolicyDecisionPoint(List<PolicyEvaluator> evaluators, ApplicationEventPublisher publisher) {
+    public PolicyDecisionPoint(List<PolicyEvaluator> evaluators) {
         this.evaluators = evaluators.stream()
                 .collect(Collectors.toMap(PolicyEvaluator::getPolicyType, Function.identity()));
-        this.publisher = publisher;
     }
 
     /**
@@ -60,12 +55,6 @@ public class PolicyDecisionPoint {
                     .message("Agreement ID is missing")
                     .build();
 //            decisionCache.put(cacheKey, decision);
-            publisher.publishEvent(
-                    AuditEvent.Builder.newInstance()
-                            .description("Policy evaluation failed: Agreement ID is missing")
-                            .eventType(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DENIED)
-                            .details(createAuditDetails(agreement, resourceId, userId, action, null, decision.getMessage()))
-                            .build());
             return decision;
         }
 
@@ -78,11 +67,6 @@ public class PolicyDecisionPoint {
                     .message("No policies found for agreement " + agreementId)
                     .build();
 //            decisionCache.put(cacheKey, decision);
-            publisher.publishEvent(AuditEvent.Builder.newInstance()
-                    .description("No policies found for agreement " + agreementId)
-                    .eventType(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DENIED)
-                    .details(createAuditDetails(agreement, resourceId, userId, action, null, decision.getMessage()))
-                    .build());
             return decision;
         }
 
@@ -104,20 +88,10 @@ public class PolicyDecisionPoint {
             if (!decision.isAllowed()) {
                 log.debug("Policy {} denied access: {}", policy.getId(), decision.getMessage());
 //                decisionCache.put(cacheKey, decision);
-                publisher.publishEvent(AuditEvent.Builder.newInstance()
-                        .description("Policy evaluation denied for agreement " + agreementId)
-                        .eventType(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DENIED)
-                        .details(createAuditDetails(agreement, resourceId, userId, action, policy, decision.getMessage()))
-                        .build());
                 return decision;
             }
         }
         // All policies passed
-        publisher.publishEvent(AuditEvent.Builder.newInstance()
-                .description("Policy evaluation approved for agreement " + agreementId)
-                .eventType(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_APPROVE)
-                .details(createAuditDetails(agreement, resourceId, userId, action, null, "All policies passed"))
-                .build());
         return PolicyDecision.Builder.newInstance()
                 .allowed(true)
                 .message("All policies passed")
@@ -169,29 +143,4 @@ public class PolicyDecisionPoint {
         attributes.put(PolicyConstants.OPERATOR, c.getOperator());
         return attributes;
     }
-
-    private Map<String, Object> createAuditDetails(Agreement agreement, String resourceId, String userId, Action action,
-                                                   Policy policy, String message) {
-        Map<String, Object> details = new HashMap<>();
-        if (agreement != null) {
-            details.put("agreement", agreement);
-        }
-        if (resourceId != null) {
-            details.put("resourceId", resourceId);
-        }
-        if (userId != null) {
-            details.put("userId", userId);
-        }
-        if (action != null) {
-            details.put("action", action);
-        }
-        if (policy != null) {
-            details.put("policy", policy);
-        }
-        if (message != null) {
-            details.put("message", message);
-        }
-        return details;
-    }
-
 }

@@ -5,15 +5,11 @@ import it.eng.negotiation.policy.evaluator.*;
 import it.eng.negotiation.policy.model.PolicyConstants;
 import it.eng.negotiation.policy.model.PolicyDecision;
 import it.eng.negotiation.policy.model.PolicyRequest;
-import it.eng.tools.event.AuditEvent;
-import it.eng.tools.event.AuditEventType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
@@ -22,17 +18,12 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class PolicyDecisionPointTest {
 
     @Mock
-    private ApplicationEventPublisher publisher;
-
     private PolicyDecisionPoint policyDecisionPoint;
-
-    ArgumentCaptor<AuditEvent> eventCaptor = ArgumentCaptor.forClass(AuditEvent.class);
 
     @BeforeEach
     public void setup() {
@@ -41,7 +32,7 @@ class PolicyDecisionPointTest {
                 new PurposePolicyEvaluator(),
                 new SpatialPolicyEvaluator(),
                 new TemporalPolicyEvaluator());
-        policyDecisionPoint = new PolicyDecisionPoint(evaluators, publisher);
+        policyDecisionPoint = new PolicyDecisionPoint(evaluators);
     }
 
     @Test
@@ -54,13 +45,9 @@ class PolicyDecisionPointTest {
 
         PolicyDecision policyDecision = policyDecisionPoint.evaluate(request, null);
 
-        verify(publisher).publishEvent(eventCaptor.capture());
-
         assertNotNull(policyDecision);
         assertFalse(policyDecision.isAllowed());
         assertEquals("Agreement ID is missing", policyDecision.getMessage());
-        AuditEvent event = eventCaptor.getValue();
-        assertEquals(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DENIED, event.getEventType());
     }
 
     @Test
@@ -75,13 +62,8 @@ class PolicyDecisionPointTest {
 
         PolicyDecision policyDecision = policyDecisionPoint.evaluate(request, NegotiationMockObjectUtil.AGREEMENT);
 
-        verify(publisher).publishEvent(eventCaptor.capture());
-
         assertNotNull(policyDecision);
         assertTrue(policyDecision.isAllowed());
-
-        AuditEvent event = eventCaptor.getValue();
-        assertEquals(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_APPROVE, event.getEventType());
     }
 
     @Test
@@ -96,13 +78,9 @@ class PolicyDecisionPointTest {
 
         PolicyDecision policyDecision = policyDecisionPoint.evaluate(request, NegotiationMockObjectUtil.AGREEMENT);
 
-        verify(publisher).publishEvent(eventCaptor.capture());
-
         assertNotNull(policyDecision);
         assertFalse(policyDecision.isAllowed());
         assertEquals("Access count exceeded", policyDecision.getMessage());
-        AuditEvent event = eventCaptor.getValue();
-        assertEquals(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DENIED, event.getEventType());
     }
 
     @Test
@@ -126,12 +104,8 @@ class PolicyDecisionPointTest {
 
         PolicyDecision policyDecision = policyDecisionPoint.evaluate(request, agreement);
 
-        verify(publisher).publishEvent(eventCaptor.capture());
-
         assertNotNull(policyDecision);
         assertTrue(policyDecision.isAllowed());
-        AuditEvent event = eventCaptor.getValue();
-        assertEquals(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_APPROVE, event.getEventType());
     }
 
     @Test
@@ -166,12 +140,8 @@ class PolicyDecisionPointTest {
 
         PolicyDecision policyDecision = policyDecisionPoint.evaluate(request, agreement);
 
-        verify(publisher).publishEvent(eventCaptor.capture());
-
         assertNotNull(policyDecision);
         assertFalse(policyDecision.isAllowed());
-        AuditEvent event = eventCaptor.getValue();
-        assertEquals(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DENIED, event.getEventType());
     }
 
     @Test
@@ -205,12 +175,8 @@ class PolicyDecisionPointTest {
 
         PolicyDecision policyDecision = policyDecisionPoint.evaluate(request, agreement);
 
-        verify(publisher).publishEvent(eventCaptor.capture());
-
         assertNotNull(policyDecision);
         assertTrue(policyDecision.isAllowed());
-        AuditEvent event = eventCaptor.getValue();
-        assertEquals(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_APPROVE, event.getEventType());
     }
 
     @Test
@@ -244,13 +210,9 @@ class PolicyDecisionPointTest {
 
         PolicyDecision policyDecision = policyDecisionPoint.evaluate(request, agreement);
 
-        verify(publisher).publishEvent(eventCaptor.capture());
-
         assertNotNull(policyDecision);
         assertFalse(policyDecision.isAllowed());
         assertEquals("Purpose is not allowed", policyDecision.getMessage());
-        AuditEvent event = eventCaptor.getValue();
-        assertEquals(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DENIED, event.getEventType());
     }
 
 
@@ -285,12 +247,8 @@ class PolicyDecisionPointTest {
 
         PolicyDecision policyDecision = policyDecisionPoint.evaluate(request, agreement);
 
-        verify(publisher).publishEvent(eventCaptor.capture());
-
         assertNotNull(policyDecision);
         assertTrue(policyDecision.isAllowed());
-        AuditEvent event = eventCaptor.getValue();
-        assertEquals(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_APPROVE, event.getEventType());
     }
 
     @Test
@@ -324,12 +282,8 @@ class PolicyDecisionPointTest {
 
         PolicyDecision policyDecision = policyDecisionPoint.evaluate(request, agreement);
 
-        verify(publisher).publishEvent(eventCaptor.capture());
-
         assertNotNull(policyDecision);
         assertFalse(policyDecision.isAllowed());
         assertEquals("Location is in the allowed", policyDecision.getMessage());
-        AuditEvent event = eventCaptor.getValue();
-        assertEquals(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DENIED, event.getEventType());
     }
 }

@@ -12,6 +12,7 @@ import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.negotiation.model.*;
 import it.eng.negotiation.repository.AgreementRepository;
+import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.PolicyEnforcementRepository;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
@@ -35,7 +36,10 @@ import org.wiremock.spring.InjectWireMock;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -50,6 +54,8 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private ArtifactRepository artifactRepository;
+    @Autowired
+    private ContractNegotiationRepository contractNegotiationRepository;
     @Autowired
     private DatasetRepository datasetRepository;
     @Autowired
@@ -73,6 +79,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
         artifactRepository.deleteAll();
         transferProcessRepository.deleteAll();
         agreementRepository.deleteAll();
+        contractNegotiationRepository.deleteAll();
         policyEnforcementRepository.deleteAll();
         if (s3BucketProvisionService.bucketExists(s3Properties.getBucketName())) {
             List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
@@ -107,7 +114,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 
         Permission permission = Permission.Builder.newInstance()
                 .action(Action.USE)
-                .constraint(Arrays.asList(Constraint.Builder.newInstance()
+                .constraint(Collections.singletonList(Constraint.Builder.newInstance()
                         .leftOperand(LeftOperand.COUNT)
                         .operator(Operator.LTEQ)
                         .rightOperand("5")
@@ -119,9 +126,20 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
                 .assignee("assignee")
                 .assigner("assigner")
                 .target("test_dataset")
-                .permission(Arrays.asList(permission))
+                .permission(Collections.singletonList(permission))
                 .build();
         agreementRepository.save(agreement);
+
+        String consumerPid = createNewId();
+        String providerPid = createNewId();
+        ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
+                .id(createNewId())
+                .agreement(agreement)
+                .consumerPid(consumerPid)
+                .providerPid(providerPid)
+                .state(ContractNegotiationState.FINALIZED)
+                .build();
+        contractNegotiationRepository.save(contractNegotiation);
 
         PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
         policyEnforcementRepository.save(policyEnforcement);
@@ -191,7 +209,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 
         Permission permission = Permission.Builder.newInstance()
                 .action(Action.USE)
-                .constraint(Arrays.asList(Constraint.Builder.newInstance()
+                .constraint(Collections.singletonList(Constraint.Builder.newInstance()
                         .leftOperand(LeftOperand.COUNT)
                         .operator(Operator.LTEQ)
                         .rightOperand("5")
@@ -203,9 +221,20 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
                 .assignee("assignee")
                 .assigner("assigner")
                 .target("test_dataset")
-                .permission(Arrays.asList(permission))
+                .permission(Collections.singletonList(permission))
                 .build();
         agreementRepository.save(agreement);
+
+        String consumerPid = createNewId();
+        String providerPid = createNewId();
+        ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
+                .id(createNewId())
+                .agreement(agreement)
+                .consumerPid(consumerPid)
+                .providerPid(providerPid)
+                .state(ContractNegotiationState.FINALIZED)
+                .build();
+        contractNegotiationRepository.save(contractNegotiation);
 
         PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
         policyEnforcementRepository.save(policyEnforcement);
@@ -226,7 +255,6 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
         // mock provider success response Download
         String fileContent = "Hello, World!";
         String fileName = "helloworld.txt";
-
 
         WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.get("/helloworld")
                 .withBasicAuth(mockUser, mockPassword)
@@ -255,7 +283,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
 
         Permission permission = Permission.Builder.newInstance()
                 .action(Action.USE)
-                .constraint(Arrays.asList(Constraint.Builder.newInstance()
+                .constraint(Collections.singletonList(Constraint.Builder.newInstance()
                         .leftOperand(LeftOperand.COUNT)
                         .operator(Operator.LTEQ)
                         .rightOperand("5")
@@ -267,7 +295,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
                 .assignee("assignee")
                 .assigner("assigner")
                 .target("test_dataset")
-                .permission(Arrays.asList(permission))
+                .permission(Collections.singletonList(permission))
                 .build();
         agreementRepository.save(agreement);
 
@@ -302,7 +330,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
         datasetRepository.save(dataset);
         Permission permission = Permission.Builder.newInstance()
                 .action(Action.USE)
-                .constraint(Arrays.asList(Constraint.Builder.newInstance()
+                .constraint(Collections.singletonList(Constraint.Builder.newInstance()
                         .leftOperand(LeftOperand.COUNT)
                         .operator(Operator.LTEQ)
                         .rightOperand("5")
@@ -314,7 +342,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
                 .assignee("assignee")
                 .assigner("assigner")
                 .target("test_dataset")
-                .permission(Arrays.asList(permission))
+                .permission(Collections.singletonList(permission))
                 .build();
         agreementRepository.save(agreement);
 
