@@ -1,7 +1,6 @@
 package it.eng.datatransfer.rest.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import it.eng.datatransfer.event.TransferArtifactEvent;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.DataTransferRequest;
@@ -9,7 +8,8 @@ import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
-import it.eng.tools.model.DSpaceConstants;
+import it.eng.tools.event.AuditEvent;
+import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.GenericFilterBuilder;
@@ -26,10 +26,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -71,11 +68,12 @@ class DataTransferAPIControllerTest {
         when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
                 .thenReturn(expectedFilters);
         when(apiService.findDataTransfers(any(Map.class)))
-                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
+                .thenReturn(Collections.singletonList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
 
         ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(null, request);
 
         assertNotNull(response);
+        assertNotNull(response.getBody());
         assertTrue(response.getBody().isSuccess());
         assertFalse(response.getBody().getData().isEmpty());
 
@@ -95,11 +93,12 @@ class DataTransferAPIControllerTest {
         when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
                 .thenReturn(emptyFilters);
         when(apiService.findDataTransfers(any(Map.class)))
-                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
+                .thenReturn(Collections.singletonList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
 
         ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(transferProcessId, request);
 
         assertNotNull(response);
+        assertNotNull(response.getBody());
         assertTrue(response.getBody().isSuccess());
         assertFalse(response.getBody().getData().isEmpty());
 
@@ -126,11 +125,12 @@ class DataTransferAPIControllerTest {
         when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
                 .thenReturn(expectedFilters);
         when(apiService.findDataTransfers(any(Map.class)))
-                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED)));
+                .thenReturn(Collections.singletonList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED)));
 
         ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(null, request);
 
         assertNotNull(response);
+        assertNotNull(response.getBody());
         assertTrue(response.getBody().isSuccess());
         assertEquals(1, response.getBody().getData().size());
 
@@ -155,6 +155,7 @@ class DataTransferAPIControllerTest {
         ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(null, request);
 
         assertNotNull(response);
+        assertNotNull(response.getBody());
         assertTrue(response.getBody().isSuccess());
         assertEquals(2, response.getBody().getData().size());
 
@@ -177,11 +178,12 @@ class DataTransferAPIControllerTest {
         when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
                 .thenReturn(expectedFilters);
         when(apiService.findDataTransfers(any(Map.class)))
-                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED)));
+                .thenReturn(Collections.singletonList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED)));
 
         ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(null, request);
 
         assertNotNull(response);
+        assertNotNull(response.getBody());
         assertTrue(response.getBody().isSuccess());
 
         verify(filterBuilder).buildFromRequest(request);
@@ -204,11 +206,12 @@ class DataTransferAPIControllerTest {
         when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
                 .thenReturn(initialFilters);
         when(apiService.findDataTransfers(any(Map.class)))
-                .thenReturn(Arrays.asList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
+                .thenReturn(Collections.singletonList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
 
         ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(pathVariableId, request);
 
         assertNotNull(response);
+        assertNotNull(response.getBody());
         assertTrue(response.getBody().isSuccess());
 
         verify(filterBuilder).buildFromRequest(request);
@@ -218,11 +221,6 @@ class DataTransferAPIControllerTest {
     @Test
     @DisplayName("Request transfer process success")
     public void requestTransfer_success() {
-        Map<String, Object> map = new HashMap<>();
-        map.put("transferProcessId", DataTransferMockObjectUtil.FORWARD_TO);
-        map.put(DSpaceConstants.FORMAT, DataTransferFormat.HTTP_PULL.name());
-        map.put(DSpaceConstants.DATA_ADDRESS, TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.DATA_ADDRESS));
-
         when(apiService.requestTransfer(any(DataTransferRequest.class)))
                 .thenReturn(TransferSerializer.serializeProtocolJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
 
@@ -319,7 +317,7 @@ class DataTransferAPIControllerTest {
     @Test
     @DisplayName("Download data - success")
     public void downloadData_success() throws IllegalStateException {
-        ArgumentCaptor<TransferArtifactEvent> eventCaptor = ArgumentCaptor.forClass(TransferArtifactEvent.class);
+        ArgumentCaptor<AuditEvent> eventCaptor = ArgumentCaptor.forClass(AuditEvent.class);
         when(apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(CompletableFuture.completedFuture(null));
 
@@ -327,17 +325,18 @@ class DataTransferAPIControllerTest {
 
         verify(publisher).publishEvent(eventCaptor.capture());
 
-        TransferArtifactEvent capturedEvent = eventCaptor.getValue();
-        assertTrue(capturedEvent.isDownload());
+        AuditEvent capturedEvent = eventCaptor.getValue();
+        assertEquals(AuditEventType.TRANSFER_COMPLETED, capturedEvent.getEventType());
         assertEquals(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(),
-                capturedEvent.getTransferProcessId());
-        assertEquals("Download completed successfully for process " + DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(), capturedEvent.getMessage());
+                capturedEvent.getDetails().get("transferProcessId"));
+        assertEquals("Download completed successfully for process " + DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(),
+                capturedEvent.getDescription());
     }
 
     @Test
     @DisplayName("Download data - fail")
     public void downloadData_fail() throws IllegalStateException {
-        ArgumentCaptor<TransferArtifactEvent> eventCaptor = ArgumentCaptor.forClass(TransferArtifactEvent.class);
+        ArgumentCaptor<AuditEvent> eventCaptor = ArgumentCaptor.forClass(AuditEvent.class);
         DataTransferAPIException exception = new DataTransferAPIException("message");
 
         when(apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
@@ -347,12 +346,12 @@ class DataTransferAPIControllerTest {
 
         verify(publisher).publishEvent(eventCaptor.capture());
 
-        TransferArtifactEvent capturedEvent = eventCaptor.getValue();
-        assertFalse(capturedEvent.isDownload());
+        AuditEvent capturedEvent = eventCaptor.getValue();
+        assertEquals(AuditEventType.TRANSFER_FAILED, capturedEvent.getEventType());
         assertEquals(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(),
-                capturedEvent.getTransferProcessId());
-        assertEquals("Download failed: " + exception.getMessage(),
-                capturedEvent.getMessage());
+                capturedEvent.getDetails().get("transferProcessId"));
+        assertEquals("Download failed for process " + DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(),
+                capturedEvent.getDescription());
     }
 
     @Test

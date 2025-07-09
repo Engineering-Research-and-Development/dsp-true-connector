@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.7-SNAPSHOT] - 09.07.2025.
+
+### Added
+
+- AuditEvent document and CRUD classes for storing audit events in MongoDB
+
+### Changed
+
+- Added publish AuditEvent for DataTransfer events and PolicyDecision
+- GenericDynamicFilterRepository for repositories that require dynamic filtering
+
 ## [0.4.6-SNAPSHOT] - 08.08.2025.
 
 ### Added

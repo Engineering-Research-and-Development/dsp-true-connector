@@ -2,6 +2,8 @@ package it.eng.connector.configuration;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.tools.event.AuditEvent;
+import it.eng.tools.event.AuditEventType;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3BucketProvisionService;
 import it.eng.tools.s3.service.S3ClientService;
@@ -10,8 +12,10 @@ import org.apache.commons.io.FileUtils;
 import org.bson.Document;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.env.Environment;
 import org.springframework.core.io.ClassPathResource;
@@ -34,14 +38,16 @@ public class InitialDataLoader {
     private final S3ClientService s3ClientService;
     private final S3BucketProvisionService s3BucketProvisionService;
     private final S3Properties s3Properties;
+    private final ApplicationEventPublisher publisher;
 
     public InitialDataLoader(MongoTemplate mongoTemplate, Environment environment, S3ClientService s3ClientService,
-                             S3BucketProvisionService s3BucketProvisionService, S3Properties s3Properties) {
+                             S3BucketProvisionService s3BucketProvisionService, S3Properties s3Properties, ApplicationEventPublisher publisher) {
         this.mongoTemplate = mongoTemplate;
         this.environment = environment;
         this.s3ClientService = s3ClientService;
         this.s3BucketProvisionService = s3BucketProvisionService;
         this.s3Properties = s3Properties;
+        this.publisher = publisher;
     }
 
     /**
@@ -112,6 +118,10 @@ public class InitialDataLoader {
      */
     @EventListener(ApplicationReadyEvent.class)
     public void loadMockData() {
+        publisher.publishEvent(AuditEvent.Builder.newInstance()
+                .description("Application started")
+                .eventType(AuditEventType.APPLICATION_START)
+                .build());
         log.info("Uploading mock data to S3...");
 
         try {
@@ -138,5 +148,13 @@ public class InitialDataLoader {
         } catch (Exception e) {
             log.error("Error while loading mock data to S3", e);
         }
+    }
+
+    @EventListener(ContextClosedEvent.class)
+    public void onApplicationShutdown(ContextClosedEvent event) {
+        publisher.publishEvent(AuditEvent.Builder.newInstance()
+                .description("Application stopped")
+                .eventType(AuditEventType.APPLICATION_STOP)
+                .build());
     }
 }

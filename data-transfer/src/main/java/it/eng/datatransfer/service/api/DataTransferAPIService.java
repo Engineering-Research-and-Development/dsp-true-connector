@@ -32,8 +32,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
@@ -96,7 +96,7 @@ public class DataTransferAPIService {
                     .map(List::of)
                     .orElse(List.of());
         } else {
-            transferProcesses = transferProcessRepository.findWithDynamicFilters(filters);
+            transferProcesses = transferProcessRepository.findWithDynamicFilters(filters, TransferProcess.class);
         }
 
         return transferProcesses.stream()
