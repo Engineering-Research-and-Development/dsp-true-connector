@@ -3,6 +3,7 @@ package it.eng.negotiation.policy.service;
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
 import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.ContractNegotiation;
+import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.policy.model.PolicyDecision;
 import it.eng.negotiation.policy.model.PolicyRequest;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
@@ -56,7 +57,20 @@ public class PolicyEnforcementPoint {
     public PolicyDecision enforcePolicy(Agreement agreement, String operation) {
         ContractNegotiation contractNegotiation = contractNegotiationRepository.findByAgreement(agreement.getId())
                 .orElseThrow(() -> new ContractNegotiationAPIException("Contract negotiation with agreement Id " + agreement.getId() + " not found."));
-
+        if (!ContractNegotiationState.FINALIZED.equals(contractNegotiation.getState())) {
+            String errorMessage = "Contract negotiation with agreement Id " + agreement.getId() + " not FINALIZED.";
+            log.warn(errorMessage);
+            publisher.publishEvent(AuditEvent.Builder.newInstance()
+                    .eventType(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DENIED)
+                    .description(errorMessage)
+                    .details(Map.of("agreement", agreement,
+                            "contractNegotiation", contractNegotiation))
+                    .build());
+            return PolicyDecision.Builder.newInstance()
+                    .allowed(false)
+                    .message(errorMessage)
+                    .build();
+        }
         if (!usageControlProperties.usageControlEnabled()) {
             log.warn("!!!!! UsageControl DISABLED - will not check if policy is present or valid !!!!!");
             publisher.publishEvent(AuditEvent.Builder.newInstance()

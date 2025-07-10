@@ -6,7 +6,6 @@ import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.policy.model.PolicyDecision;
 import it.eng.negotiation.policy.service.PolicyEnforcementPoint;
 import it.eng.negotiation.repository.AgreementRepository;
-import it.eng.negotiation.repository.ContractNegotiationRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -16,14 +15,11 @@ public class AgreementAPIService {
 
     private final PolicyEnforcementPoint policyEnforcementPoint;
     private final AgreementRepository agreementRepository;
-    private final ContractNegotiationRepository contractNegotiationRepository;
 
-    public AgreementAPIService(AgreementRepository agreementRepository, PolicyEnforcementPoint policyEnforcementPoint,
-                               ContractNegotiationRepository contractNegotiationRepository) {
+    public AgreementAPIService(AgreementRepository agreementRepository, PolicyEnforcementPoint policyEnforcementPoint) {
         super();
         this.policyEnforcementPoint = policyEnforcementPoint;
         this.agreementRepository = agreementRepository;
-        this.contractNegotiationRepository = contractNegotiationRepository;
     }
 
     public void enforceAgreement(String agreementId) {
