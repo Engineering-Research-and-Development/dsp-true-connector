@@ -12,6 +12,8 @@ public enum AuditEventType {
     APPLICATION_STOP("Application stop"),
     APPLICATION_LOGIN("Login"),
     APPLICATION_LOGOUT("Logout"),
+    PROTOCOL_NEGOTIATION_NOT_FOUND("Contract negotiation not found"),
+    PROTOCOL_NEGOTIATION_STATE_TRANSITION_ERROR("State transition invalid"),
     PROTOCOL_NEGOTIATION_REQUESTED("Protocol negotiation requested"),
     PROTOCOL_NEGOTIATION_ACCEPTED("Protocol negotiation accepted"),
     PROTOCOL_NEGOTIATION_AGREED("Protocol negotiation agreed"),
