@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - AuditEvent document and CRUD classes for storing audit events in MongoDB
-- Covered Contract Negotiation API flow with AuditEvent
+- Covered Contract Negotiation flow with AuditEvent
 
 ### Changed
 

@@ -146,7 +146,8 @@ public class ContractNegotiationAPIService {
                         .eventType(AuditEventType.PROTOCOL_NEGOTIATION_REQUESTED)
                         .details(Map.of("contractNegotiation", contractNegotiationWithOffer,
                                 "offer", savedOffer,
-                                "callbackAddress", callbackAddress))
+                                "callbackAddress", callbackAddress,
+                                "role", IConstants.ROLE_API))
                         .build());
             } catch (JsonProcessingException e) {
                 log.error("Contract negotiation from response not valid");
@@ -162,7 +163,8 @@ public class ContractNegotiationAPIService {
                         .description("Contract negotiation request failed")
                         .eventType(AuditEventType.PROTOCOL_NEGOTIATION_REQUESTED)
                         .details(Map.of("contractRequestMessage", contractRequestMessage,
-                                "contractNegotiationErrorMessage", contractNegotiationErrorMessage))
+                                "contractNegotiationErrorMessage", contractNegotiationErrorMessage,
+                                "role", IConstants.ROLE_API))
                         .build());
                 throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, "Error making request");
             } catch (JsonProcessingException e) {
@@ -312,7 +314,9 @@ public class ContractNegotiationAPIService {
                     .description("Contract negotiation finalized")
                     .eventType(AuditEventType.PROTOCOL_NEGOTIATION_FINALIZED)
                     .details(Map.of("contractNegotiation", contractNegotiationFinalized,
-                            "callbackAddress", callbackAddress))
+                            "consumerPid", contractNegotiationFinalized.getConsumerPid(),
+                            "providerPid", contractNegotiationFinalized.getProviderPid(),
+                            "role", IConstants.ROLE_API))
                     .build());
         } else {
             log.error("Error response received!");
@@ -321,7 +325,9 @@ public class ContractNegotiationAPIService {
                     .eventType(AuditEventType.PROTOCOL_NEGOTIATION_FINALIZED)
                     .details(Map.of("contractNegotiation", contractNegotiation,
                             "errorMessage", response.getMessage(),
-                            "callbackAddress", callbackAddress))
+                            "consumerPid", contractNegotiation.getConsumerPid(),
+                            "providerPid", contractNegotiation.getProviderPid(),
+                            "role", IConstants.ROLE_API))
                     .build());
             throw new ContractNegotiationAPIException(response.getMessage());
         }
@@ -358,7 +364,10 @@ public class ContractNegotiationAPIService {
             applicationEventPublisher.publishEvent(AuditEvent.Builder.newInstance()
                     .description("Contract negotiation accepted")
                     .eventType(AuditEventType.PROTOCOL_NEGOTIATION_ACCEPTED)
-                    .details(Map.of("contractNegotiation", contractNegotiationAccepted))
+                    .details(Map.of("contractNegotiation", contractNegotiationAccepted,
+                            "consumerPid", contractNegotiation.getConsumerPid(),
+                            "providerPid", contractNegotiation.getProviderPid(),
+                            "role", IConstants.ROLE_API))
                     .build());
             return contractNegotiationAccepted;
         } else {
@@ -367,7 +376,10 @@ public class ContractNegotiationAPIService {
                     .eventType(AuditEventType.PROTOCOL_NEGOTIATION_ACCEPTED)
                     .description("Contract negotiation accepted failed")
                     .details(Map.of("contractNegotiation", contractNegotiation,
-                            "errorMessage", response.getMessage()))
+                            "errorMessage", response.getMessage(),
+                            "consumerPid", contractNegotiation.getConsumerPid(),
+                            "providerPid", contractNegotiation.getProviderPid(),
+                            "role", IConstants.ROLE_API))
                     .build());
             throw new ContractNegotiationAPIException(response.getMessage());
         }
@@ -424,7 +436,9 @@ public class ContractNegotiationAPIService {
                     .eventType(AuditEventType.PROTOCOL_NEGOTIATION_AGREED)
                     .details(Map.of("contractNegotiation", contractNegtiationAgreed,
                             "agreement", agreementMessage.getAgreement(),
-                            "callbackAddress", contractNegtiationAgreed.getCallbackAddress()))
+                            "consumerPid", contractNegtiationAgreed.getConsumerPid(),
+                            "providerPid", contractNegtiationAgreed.getProviderPid(),
+                            "role", IConstants.ROLE_API))
                     .build());
             return contractNegtiationAgreed;
         } else {
@@ -433,7 +447,10 @@ public class ContractNegotiationAPIService {
                     .eventType(AuditEventType.PROTOCOL_NEGOTIATION_AGREED)
                     .description("Contract negotiation approval failed")
                     .details(Map.of("contractNegotiation", contractNegotiation,
-                            "errorMessage", response.getMessage()))
+                            "errorMessage", response.getMessage(),
+                            "consumerPid", contractNegotiation.getConsumerPid(),
+                            "providerPid", contractNegotiation.getProviderPid(),
+                            "role", IConstants.ROLE_API))
                     .build());
             throw new ContractNegotiationAPIException("consumer did not process AgreementMessage correct");
         }
@@ -471,7 +488,9 @@ public class ContractNegotiationAPIService {
                     .description("Contract negotiation verified")
                     .eventType(AuditEventType.PROTOCOL_NEGOTIATION_VERIFIED)
                     .details(Map.of("contractNegotiation", contractNegtiationVerified,
-                            "callbackAddress", callbackAddress))
+                            "consumerPid", contractNegtiationVerified.getConsumerPid(),
+                            "providerPid", contractNegtiationVerified.getProviderPid(),
+                            "role", IConstants.ROLE_API))
                     .build());
         } else {
             log.error("Response status not 200 - provider did not process Verification message correct");
@@ -484,7 +503,9 @@ public class ContractNegotiationAPIService {
                         .description("Contract negotiation verification failed")
                         .details(Map.of("contractNegotiation", contractNegotiation,
                                 "errorMessage", contractNegotiationErrorMessage,
-                                "callbackAddress", callbackAddress))
+                                "consumerPid", contractNegotiation.getConsumerPid(),
+                                "providerPid", contractNegotiation.getProviderPid(),
+                                "role", IConstants.ROLE_API))
                         .build());
                 throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, "Provider did not process Verification message correct");
             } catch (JsonProcessingException e) {
@@ -536,7 +557,10 @@ public class ContractNegotiationAPIService {
                     .eventType(AuditEventType.PROTOCOL_NEGOTIATION_TERMINATED)
                     .description("Contract negotiation terminated")
                     .details(Map.of("contractNegotiation", contractNegtiationTerminated,
-                            "address", address))
+                            "address", address,
+                            "consumerPid", contractNegtiationTerminated.getConsumerPid(),
+                            "providerPid", contractNegtiationTerminated.getProviderPid(),
+                            "role", IConstants.ROLE_API))
                     .build());
             return contractNegtiationTerminated;
         } else {
@@ -549,7 +573,10 @@ public class ContractNegotiationAPIService {
                         .eventType(AuditEventType.PROTOCOL_NEGOTIATION_TERMINATED)
                         .description("Contract negotiation termination failed")
                         .details(Map.of("contractNegotiation", contractNegotiation,
-                                "errorMessage", contractNegotiationErrorMessage))
+                                "errorMessage", contractNegotiationErrorMessage,
+                                "consumerPid", contractNegotiation.getConsumerPid(),
+                                "providerPid", contractNegotiation.getProviderPid(),
+                                "role", IConstants.ROLE_API))
                         .build());
                 throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, contractNegotiation.getRole() + " did not process Verification message correct");
             } catch (JsonProcessingException e) {
@@ -607,7 +634,9 @@ public class ContractNegotiationAPIService {
                     applicationEventPublisher.publishEvent(AuditEvent.Builder.newInstance()
                             .eventType(AuditEventType.PROTOCOL_NEGOTIATION_NOT_FOUND)
                             .description("Contract negotiation not found")
-                            .details(Map.of("providerPid", providerPid, "consumerPid", consumerPid))
+                            .details(Map.of("providerPid", providerPid,
+                                    "consumerPid", consumerPid,
+                                    "role", IConstants.ROLE_API))
                             .build());
                     return new ContractNegotiationAPIException("Contract negotiation with providerPid " + providerPid +
                             " and consumerPid " + consumerPid + " not found");
@@ -621,7 +650,10 @@ public class ContractNegotiationAPIService {
                     .description("Contract negotiation state transition error")
                     .details(Map.of("contractNegotiation", contractNegotiation,
                             "currentState", contractNegotiation.getState(),
-                            "newState", newState))
+                            "newState", newState,
+                            "consumerPid", contractNegotiation.getConsumerPid(),
+                            "providerPid", contractNegotiation.getProviderPid(),
+                            "role", IConstants.ROLE_API))
                     .build());
             throw new ContractNegotiationAPIException("State transition aborted, " + contractNegotiation.getState().name()
                     + " state can not transition to " + newState.name());
@@ -634,7 +666,8 @@ public class ContractNegotiationAPIService {
                     AuditEvent auditEvent = AuditEvent.Builder.newInstance()
                             .eventType(AuditEventType.PROTOCOL_NEGOTIATION_NOT_FOUND)
                             .description("Contract negotiation not found")
-                            .details(Map.of("contractNegotiationId", contractNegotiationId))
+                            .details(Map.of("contractNegotiationId", contractNegotiationId,
+                                    "role", IConstants.ROLE_API))
                             .build();
                     applicationEventPublisher.publishEvent(auditEvent);
                     return new ContractNegotiationAPIException("Contract negotiation with id " + contractNegotiationId + " not found");
