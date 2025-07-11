@@ -33,6 +33,7 @@ import org.springframework.stereotype.Service;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -185,14 +186,20 @@ public class DataTransferAPIService {
             try {
                 jsonNode = mapper.readTree(response.getData());
                 TransferError transferError = TransferSerializer.deserializeProtocol(jsonNode, TransferError.class);
+                Map<String, Object> details = new HashMap<>();
+                details.put("transferProcess", transferProcessInitialized);
+                details.put("role", IConstants.ROLE_API);
+                details.put("errorMessage", transferError);
+                if (transferProcessInitialized.getConsumerPid() != null) {
+                    details.put("consumerPid", transferProcessInitialized.getConsumerPid());
+                }
+                if (transferProcessInitialized.getProviderPid() != null) {
+                    details.put("providerPid", transferProcessInitialized.getProviderPid());
+                }
                 publisher.publishEvent(AuditEvent.Builder.newInstance()
                         .eventType(AuditEventType.PROTOCOL_TRANSFER_REQUESTED)
                         .description("Transfer process request failed")
-                        .details(Map.of("transferProcess", transferProcessInitialized,
-                                "role", IConstants.ROLE_API,
-                                "consumerPid", transferProcessInitialized.getConsumerPid(),
-                                "providerPid", transferProcessInitialized.getProviderPid(),
-                                "errorMessage", transferError))
+                        .details(details)
                         .build());
                 throw new DataTransferAPIException(transferError, "Error making request");
             } catch (JsonProcessingException ex) {

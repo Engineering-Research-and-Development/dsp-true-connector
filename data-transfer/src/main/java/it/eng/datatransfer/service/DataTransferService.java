@@ -137,16 +137,16 @@ public class DataTransferService {
                 HttpMethod.GET,
                 null);
 
+        Map<String, Object> details = new HashMap<>();
+        details.put("role", IConstants.ROLE_PROTOCOL);
+        details.put("transferProcess", transferProcess);
+        if (transferProcess.getConsumerPid() != null) {
+            details.put("consumerPid", transferProcess.getConsumerPid());
+        }
+        if (transferProcess.getProviderPid() != null) {
+            details.put("providerPid", transferProcess.getProviderPid());
+        }
         if (StringUtils.isBlank(response)) {
-            Map<String, Object> details = new HashMap<>();
-            details.put("role", IConstants.ROLE_PROTOCOL);
-            details.put("transferProcess", transferProcess);
-            if (transferProcess.getConsumerPid() != null) {
-                details.put("consumerPid", transferProcess.getConsumerPid());
-            }
-            if (transferProcess.getProviderPid() != null) {
-                details.put("providerPid", transferProcess.getProviderPid());
-            }
             publisher.publishEvent(AuditEvent.Builder.newInstance()
                     .eventType(AuditEventType.PROTOCOL_TRANSFER_REQUESTED)
                     .description("Internal error while checking supported formats for dataset " + transferProcess.getDatasetId())
@@ -163,10 +163,7 @@ public class DataTransferService {
         publisher.publishEvent(AuditEvent.Builder.newInstance()
                 .eventType(AuditEventType.PROTOCOL_TRANSFER_REQUESTED)
                 .description("Supported format evaluated as " + (formatValid ? "valid" : "invalid"))
-                .details(Map.of("role", IConstants.ROLE_PROTOCOL,
-                        "transferProcess", transferProcess,
-                        "consumerPid", transferProcess.getConsumerPid(),
-                        "providerPid", transferProcess.getProviderPid()))
+                .details(details)
                 .build());
         if (formatValid) {
             log.debug("Found supported format");
