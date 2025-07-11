@@ -22,6 +22,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -81,14 +82,16 @@ public class DataTransferService {
         TransferProcess transferProcessInitialized = transferProcessRepository.findByAgreementId(transferRequestMessage.getAgreementId())
                 .orElseThrow(() ->
                 {
+                    String errorMessage = "No agreement with id " + transferRequestMessage.getAgreementId() +
+                            " exists or Contract Negotiation not finalized";
                     publisher.publishEvent(AuditEvent.Builder.newInstance()
                             .eventType(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND)
                             .description("Transfer process not found for agreementId " + transferRequestMessage.getAgreementId())
                             .details(Map.of("role", IConstants.ROLE_PROTOCOL,
-                                    "transferRequestMessage", transferRequestMessage))
+                                    "transferRequestMessage", transferRequestMessage,
+                                    "errorMessage", errorMessage))
                             .build());
-                    return new TransferProcessNotFoundException("No agreement with id " + transferRequestMessage.getAgreementId() +
-                            " exists or Contract Negotiation not finalized");
+                    return new TransferProcessNotFoundException(errorMessage);
                 });
 
         stateTransitionCheck(transferProcessInitialized, TransferState.REQUESTED);
@@ -135,13 +138,19 @@ public class DataTransferService {
                 null);
 
         if (StringUtils.isBlank(response)) {
+            Map<String, Object> details = new HashMap<>();
+            details.put("role", IConstants.ROLE_PROTOCOL);
+            details.put("transferProcess", transferProcess);
+            if (transferProcess.getConsumerPid() != null) {
+                details.put("consumerPid", transferProcess.getConsumerPid());
+            }
+            if (transferProcess.getProviderPid() != null) {
+                details.put("providerPid", transferProcess.getProviderPid());
+            }
             publisher.publishEvent(AuditEvent.Builder.newInstance()
                     .eventType(AuditEventType.PROTOCOL_TRANSFER_REQUESTED)
                     .description("Internal error while checking supported formats for dataset " + transferProcess.getDatasetId())
-                    .details(Map.of("role", IConstants.ROLE_PROTOCOL,
-                            "transferProcess", transferProcess,
-                            "consumerPid", transferProcess.getConsumerPid(),
-                            "providerPid", transferProcess.getProviderPid()))
+                    .details(details)
                     .build());
             throw new TransferProcessInternalException("Internal error",
                     transferProcess.getConsumerPid(), transferProcess.getProviderPid());
