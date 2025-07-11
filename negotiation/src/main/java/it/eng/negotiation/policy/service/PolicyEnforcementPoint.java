@@ -74,7 +74,7 @@ public class PolicyEnforcementPoint {
         if (!usageControlProperties.usageControlEnabled()) {
             log.warn("!!!!! UsageControl DISABLED - will not check if policy is present or valid !!!!!");
             publisher.publishEvent(AuditEvent.Builder.newInstance()
-                    .eventType(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_APPROVE)
+                    .eventType(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DISABLED)
                     .description("Usage control disabled")
                     .details(Map.of("agreement", agreement,
                             "contractNegotiation", contractNegotiation))

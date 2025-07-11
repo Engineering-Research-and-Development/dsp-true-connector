@@ -2,12 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.4.7-SNAPSHOT] - 10.07.2025.
+## [0.4.7-SNAPSHOT] - 11.07.2025.
 
 ### Added
 
 - AuditEvent document and CRUD classes for storing audit events in MongoDB
 - Covered Contract Negotiation flow with AuditEvent
+- Covered Data Transfer flow with AuditEvent
 
 ### Changed
 

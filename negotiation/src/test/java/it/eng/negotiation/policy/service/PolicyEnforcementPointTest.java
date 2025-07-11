@@ -62,7 +62,7 @@ class PolicyEnforcementPointTest {
         verify(publisher, times(1)).publishEvent(auditEventCaptor.capture());
         AuditEvent auditEvent = auditEventCaptor.getValue();
         assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_APPROVE, auditEvent.getEventType());
+        assertEquals(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DISABLED, auditEvent.getEventType());
     }
 
     @Test

@@ -12,6 +12,8 @@ import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.event.AuditEvent;
+import it.eng.tools.event.AuditEventType;
 import it.eng.tools.response.GenericApiResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -56,6 +58,8 @@ public class DataTransferServiceTest {
 
     @Captor
     private ArgumentCaptor<TransferProcess> argTransferProcess;
+    @Captor
+    private ArgumentCaptor<AuditEvent> argAuditEvent;
 
     @Test
     @DisplayName("Data transfer exists and state is started")
@@ -114,12 +118,18 @@ public class DataTransferServiceTest {
         assertEquals(TransferState.REQUESTED, transferProcessRequested.getState());
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.REQUESTED, argTransferProcess.getValue().getState());
+
+        verify(publisher, times(2)).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_REQUESTED, auditEvent.getEventType());
     }
 
     @Test
     @DisplayName("DataTransfer requested - fail - dct:format")
     public void initiateTransferProcess_format_not_supported() {
-        when(transferProcessRepository.findByAgreementId(DataTransferMockObjectUtil.AGREEMENT_ID)).thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
+        when(transferProcessRepository.findByAgreementId(DataTransferMockObjectUtil.AGREEMENT_ID))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
 
         List<String> formats = new ArrayList<>();
         formats.add("ABC");
@@ -129,6 +139,11 @@ public class DataTransferServiceTest {
 
         assertThrows(TransferProcessInvalidFormatException.class,
                 () -> service.initiateDataTransfer(DataTransferMockObjectUtil.TRANSFER_REQUEST_MESSAGE));
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_REQUESTED, auditEvent.getEventType());
     }
 
     @Test
@@ -141,10 +156,15 @@ public class DataTransferServiceTest {
 
         assertThrows(TransferProcessInternalException.class,
                 () -> service.initiateDataTransfer(DataTransferMockObjectUtil.TRANSFER_REQUEST_MESSAGE));
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_REQUESTED, auditEvent.getEventType());
     }
 
     @Test
-    @DisplayName("DataTransfer requested - intialized TransferProcess does not exist")
+    @DisplayName("DataTransfer requested - initialized TransferProcess does not exist")
     public void initiateTransferProcess_exists() {
         when(transferProcessRepository.findByAgreementId(DataTransferMockObjectUtil.AGREEMENT_ID))
                 .thenReturn(Optional.empty());
@@ -152,6 +172,11 @@ public class DataTransferServiceTest {
                 () -> service.initiateDataTransfer(DataTransferMockObjectUtil.TRANSFER_REQUEST_MESSAGE));
 
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, auditEvent.getEventType());
     }
 
     // TransferStartMessage
@@ -164,6 +189,11 @@ public class DataTransferServiceTest {
         assertThrows(TransferProcessInvalidStateException.class,
                 () -> service.startDataTransfer(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE, null, DataTransferMockObjectUtil.PROVIDER_PID));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, auditEvent.getEventType());
     }
 
     @Test
@@ -177,6 +207,11 @@ public class DataTransferServiceTest {
         assertEquals(TransferState.STARTED, transferProcessStarted.getState());
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.STARTED, argTransferProcess.getValue().getState());
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_STARTED, auditEvent.getEventType());
     }
 
     @Test
@@ -190,6 +225,11 @@ public class DataTransferServiceTest {
         assertEquals(TransferState.STARTED, transferProcessStarted.getState());
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.STARTED, argTransferProcess.getValue().getState());
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_STARTED, auditEvent.getEventType());
     }
 
     @Test
@@ -203,6 +243,11 @@ public class DataTransferServiceTest {
         assertEquals(TransferState.STARTED, transferProcessStarted.getState());
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.STARTED, argTransferProcess.getValue().getState());
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_STARTED, auditEvent.getEventType());
     }
 
     @Test
@@ -214,6 +259,11 @@ public class DataTransferServiceTest {
         assertThrows(TransferProcessNotFoundException.class,
                 () -> service.startDataTransfer(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE, null, DataTransferMockObjectUtil.PROVIDER_PID));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, auditEvent.getEventType());
     }
 
     @Test
@@ -225,6 +275,11 @@ public class DataTransferServiceTest {
         assertThrows(TransferProcessNotFoundException.class,
                 () -> service.startDataTransfer(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE, DataTransferMockObjectUtil.CONSUMER_PID, null));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, auditEvent.getEventType());
     }
 
     @Test
@@ -236,6 +291,11 @@ public class DataTransferServiceTest {
         assertThrows(TransferProcessInvalidStateException.class,
                 () -> service.startDataTransfer(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE, null, DataTransferMockObjectUtil.PROVIDER_PID));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, auditEvent.getEventType());
     }
 
     // TransferCompletionMessage
@@ -250,6 +310,11 @@ public class DataTransferServiceTest {
         assertEquals(TransferState.COMPLETED, transferProcessCompleted.getState());
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.COMPLETED, argTransferProcess.getValue().getState());
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_COMPLETED, auditEvent.getEventType());
     }
 
     @Test
@@ -264,6 +329,11 @@ public class DataTransferServiceTest {
         assertEquals(TransferState.COMPLETED, transferProcessCompleted.getState());
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.COMPLETED, argTransferProcess.getValue().getState());
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_COMPLETED, auditEvent.getEventType());
     }
 
     @Test
@@ -275,6 +345,11 @@ public class DataTransferServiceTest {
         assertThrows(TransferProcessNotFoundException.class,
                 () -> service.completeDataTransfer(DataTransferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE, null, DataTransferMockObjectUtil.PROVIDER_PID));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, auditEvent.getEventType());
     }
 
     @Test
@@ -286,6 +361,11 @@ public class DataTransferServiceTest {
         assertThrows(TransferProcessNotFoundException.class,
                 () -> service.completeDataTransfer(DataTransferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE, DataTransferMockObjectUtil.CONSUMER_PID, null));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, auditEvent.getEventType());
     }
 
     @Test
@@ -297,6 +377,11 @@ public class DataTransferServiceTest {
         assertThrows(TransferProcessInvalidStateException.class,
                 () -> service.completeDataTransfer(DataTransferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE, null, DataTransferMockObjectUtil.PROVIDER_PID));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, auditEvent.getEventType());
     }
 
     // suspend
@@ -312,6 +397,11 @@ public class DataTransferServiceTest {
         assertEquals(TransferState.SUSPENDED, transferProcessSuspended.getState());
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.SUSPENDED, argTransferProcess.getValue().getState());
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, auditEvent.getEventType());
     }
 
     @Test
@@ -326,6 +416,11 @@ public class DataTransferServiceTest {
         assertEquals(TransferState.SUSPENDED, transferProcessSuspended.getState());
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.SUSPENDED, argTransferProcess.getValue().getState());
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, auditEvent.getEventType());
     }
 
     @Test
@@ -337,6 +432,11 @@ public class DataTransferServiceTest {
         assertThrows(TransferProcessNotFoundException.class,
                 () -> service.suspendDataTransfer(DataTransferMockObjectUtil.TRANSFER_SUSPENSION_MESSAGE, null, DataTransferMockObjectUtil.PROVIDER_PID));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, auditEvent.getEventType());
     }
 
     @Test
@@ -348,6 +448,11 @@ public class DataTransferServiceTest {
         assertThrows(TransferProcessNotFoundException.class,
                 () -> service.suspendDataTransfer(DataTransferMockObjectUtil.TRANSFER_SUSPENSION_MESSAGE, DataTransferMockObjectUtil.CONSUMER_PID, null));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, auditEvent.getEventType());
     }
 
     @Test
@@ -359,6 +464,11 @@ public class DataTransferServiceTest {
         assertThrows(TransferProcessInvalidStateException.class,
                 () -> service.suspendDataTransfer(DataTransferMockObjectUtil.TRANSFER_SUSPENSION_MESSAGE, null, DataTransferMockObjectUtil.PROVIDER_PID));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, auditEvent.getEventType());
     }
 
     private static Stream<Arguments> provideTransferProcess() {
@@ -383,6 +493,11 @@ public class DataTransferServiceTest {
         assertEquals(TransferState.TERMINATED, transferProcessSuspended.getState());
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.TERMINATED, argTransferProcess.getValue().getState());
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_TERMINATED, auditEvent.getEventType());
     }
 
     @DisplayName("TransferTerminationMessage - consumer callback")
@@ -398,6 +513,11 @@ public class DataTransferServiceTest {
         assertEquals(TransferState.TERMINATED, transferProcessSuspended.getState());
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.TERMINATED, argTransferProcess.getValue().getState());
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_TERMINATED, auditEvent.getEventType());
     }
 
     @Test
@@ -409,6 +529,11 @@ public class DataTransferServiceTest {
         assertThrows(TransferProcessNotFoundException.class,
                 () -> service.terminateDataTransfer(DataTransferMockObjectUtil.TRANSFER_TERMINATION_MESSAGE, null, DataTransferMockObjectUtil.PROVIDER_PID));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, auditEvent.getEventType());
     }
 
     @Test
@@ -420,6 +545,11 @@ public class DataTransferServiceTest {
         assertThrows(TransferProcessNotFoundException.class,
                 () -> service.terminateDataTransfer(DataTransferMockObjectUtil.TRANSFER_TERMINATION_MESSAGE, DataTransferMockObjectUtil.CONSUMER_PID, null));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, auditEvent.getEventType());
     }
 
     private static Stream<Arguments> provideInvalidTransferProcess() {
@@ -439,5 +569,10 @@ public class DataTransferServiceTest {
         assertThrows(TransferProcessInvalidStateException.class,
                 () -> service.terminateDataTransfer(DataTransferMockObjectUtil.TRANSFER_TERMINATION_MESSAGE, null, DataTransferMockObjectUtil.PROVIDER_PID));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
+
+        verify(publisher).publishEvent(argAuditEvent.capture());
+        AuditEvent auditEvent = argAuditEvent.getValue();
+        assertNotNull(auditEvent);
+        assertEquals(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, auditEvent.getEventType());
     }
 }
