@@ -1,9 +1,8 @@
-package it.eng.datatransfer.repository;
+package it.eng.tools.repository;
 
-import it.eng.datatransfer.model.TransferProcess;
-import it.eng.datatransfer.model.TransferState;
-import it.eng.datatransfer.util.DataTransferMockObjectUtil;
+import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.IConstants;
+import lombok.Data;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,6 +15,8 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -25,7 +26,25 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class TransferProcessRepositoryImplTest {
+class GenericDynamicFilterRepositoryImplTest {
+
+    // Test entity for generic repository testing
+    @Data
+    private static class TestEntity {
+        private String id;
+        private String stringField;
+        private Boolean booleanField;
+        private Integer numberField;
+        private Instant timestampField;
+        private LocalDateTime localDateTimeField;
+        private LocalDate localDateField;
+        private List<String> listField;
+        private TestEnum enumField;
+    }
+
+    private enum TestEnum {
+        VALUE_1, VALUE_2
+    }
 
     @Mock
     private MongoTemplate mongoTemplate;
@@ -33,38 +52,37 @@ class TransferProcessRepositoryImplTest {
     @Captor
     private ArgumentCaptor<Query> queryCaptor;
 
-    private TransferProcessRepositoryImpl repository;
+    private GenericDynamicFilterRepositoryImpl<TestEntity, String> repository;
 
     @BeforeEach
     void setUp() {
-        repository = new TransferProcessRepositoryImpl(mongoTemplate);
+        repository = new GenericDynamicFilterRepositoryImpl<>(mongoTemplate);
     }
 
     @Test
     @DisplayName("Find with dynamic filters - string values")
     void findWithDynamicFilters_stringValues() {
         Map<String, Object> filters = Map.of(
-                "state", TransferState.STARTED.name(),
-                "role", IConstants.ROLE_CONSUMER,
-                "datasetId", DataTransferMockObjectUtil.DATASET_ID
+                "eventType", AuditEventType.APPLICATION_START.name(),
+                "user", "testUser",
+                "description", "test description"
         );
 
-        when(mongoTemplate.find(any(Query.class), eq(TransferProcess.class)))
-                .thenReturn(Collections.singletonList(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+        TestEntity mockEvent = createMockEntity();
+        when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
+                .thenReturn(List.of(mockEvent));
 
-        Collection<TransferProcess> result = repository.findWithDynamicFilters(filters);
+        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
 
         assertNotNull(result);
         assertEquals(1, result.size());
 
-        verify(mongoTemplate).find(queryCaptor.capture(), eq(TransferProcess.class));
+        verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();
-
-        // Verify that all string filters were added as criteria
         String queryString = capturedQuery.toString();
-        assertTrue(queryString.contains("state"));
-        assertTrue(queryString.contains("role"));
-        assertTrue(queryString.contains("datasetId"));
+        assertTrue(queryString.contains("eventType"));
+        assertTrue(queryString.contains("user"));
+        assertTrue(queryString.contains("description"));
     }
 
     @Test
@@ -75,15 +93,16 @@ class TransferProcessRepositoryImplTest {
                 "role", IConstants.ROLE_CONSUMER
         );
 
-        when(mongoTemplate.find(any(Query.class), eq(TransferProcess.class)))
-                .thenReturn(Collections.singletonList(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+        TestEntity mockEvent = createMockEntity();
+        when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
+                .thenReturn(List.of(mockEvent));
 
-        Collection<TransferProcess> result = repository.findWithDynamicFilters(filters);
+        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
 
         assertNotNull(result);
         assertEquals(1, result.size());
 
-        verify(mongoTemplate).find(queryCaptor.capture(), eq(TransferProcess.class));
+        verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();
 
         String queryString = capturedQuery.toString();
@@ -97,18 +116,19 @@ class TransferProcessRepositoryImplTest {
         Instant testInstant = Instant.parse("2024-01-01T10:00:00Z");
         Map<String, Object> filters = Map.of(
                 "created", testInstant,
-                "state", TransferState.COMPLETED.name()
+                "state", TestEnum.VALUE_1
         );
 
-        when(mongoTemplate.find(any(Query.class), eq(TransferProcess.class)))
-                .thenReturn(Collections.singletonList(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+        TestEntity mockEvent = createMockEntity();
+        when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
+                .thenReturn(List.of(mockEvent));
 
-        Collection<TransferProcess> result = repository.findWithDynamicFilters(filters);
+        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
 
         assertNotNull(result);
         assertEquals(1, result.size());
 
-        verify(mongoTemplate).find(queryCaptor.capture(), eq(TransferProcess.class));
+        verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();
 
         String queryString = capturedQuery.toString();
@@ -125,15 +145,16 @@ class TransferProcessRepositoryImplTest {
                 "role", IConstants.ROLE_PROVIDER
         );
 
-        when(mongoTemplate.find(any(Query.class), eq(TransferProcess.class)))
-                .thenReturn(Collections.singletonList(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+        TestEntity mockEvent = createMockEntity();
+        when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
+                .thenReturn(List.of(mockEvent));
 
-        Collection<TransferProcess> result = repository.findWithDynamicFilters(filters);
+        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
 
         assertNotNull(result);
         assertEquals(1, result.size());
 
-        verify(mongoTemplate).find(queryCaptor.capture(), eq(TransferProcess.class));
+        verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();
 
         String queryString = capturedQuery.toString();
@@ -146,22 +167,22 @@ class TransferProcessRepositoryImplTest {
     @DisplayName("Find with dynamic filters - collection values (IN query)")
     void findWithDynamicFilters_collectionValues() {
         Map<String, Object> filters = Map.of(
-                "state", Arrays.asList(TransferState.STARTED.name(), TransferState.COMPLETED.name()),
+                "state", Arrays.asList(TestEnum.VALUE_2, TestEnum.VALUE_1),
                 "role", IConstants.ROLE_CONSUMER
         );
 
-        when(mongoTemplate.find(any(Query.class), eq(TransferProcess.class)))
+        when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
                 .thenReturn(Arrays.asList(
-                        DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED,
-                        DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_CONSUMER
+                        createMockEntity(),
+                        createMockEntity()
                 ));
 
-        Collection<TransferProcess> result = repository.findWithDynamicFilters(filters);
+        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
 
         assertNotNull(result);
         assertEquals(2, result.size());
 
-        verify(mongoTemplate).find(queryCaptor.capture(), eq(TransferProcess.class));
+        verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();
 
         String queryString = capturedQuery.toString();
@@ -182,15 +203,16 @@ class TransferProcessRepositoryImplTest {
                 "role", IConstants.ROLE_CONSUMER
         );
 
-        when(mongoTemplate.find(any(Query.class), eq(TransferProcess.class)))
-                .thenReturn(Collections.singletonList(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+        TestEntity mockEvent = createMockEntity();
+        when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
+                .thenReturn(List.of(mockEvent));
 
-        Collection<TransferProcess> result = repository.findWithDynamicFilters(filters);
+        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
 
         assertNotNull(result);
         assertEquals(1, result.size());
 
-        verify(mongoTemplate).find(queryCaptor.capture(), eq(TransferProcess.class));
+        verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();
 
         String queryString = capturedQuery.toString();
@@ -202,21 +224,22 @@ class TransferProcessRepositoryImplTest {
     @DisplayName("Find with dynamic filters - mixed types")
     void findWithDynamicFilters_mixedTypes() {
         Map<String, Object> filters = Map.of(
-                "state", TransferState.STARTED.name(), // String
+                "state", TestEnum.VALUE_2, // String
                 "isDownloaded", true, // Boolean
                 "version", 123L, // Number
                 "created", Instant.parse("2024-01-01T10:00:00Z") // Instant
         );
 
-        when(mongoTemplate.find(any(Query.class), eq(TransferProcess.class)))
-                .thenReturn(Collections.singletonList(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+        TestEntity mockEvent = createMockEntity();
+        when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
+                .thenReturn(List.of(mockEvent));
 
-        Collection<TransferProcess> result = repository.findWithDynamicFilters(filters);
+        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
 
         assertNotNull(result);
         assertEquals(1, result.size());
 
-        verify(mongoTemplate).find(queryCaptor.capture(), eq(TransferProcess.class));
+        verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();
 
         // Verify all criteria were added
@@ -232,18 +255,18 @@ class TransferProcessRepositoryImplTest {
     void findWithDynamicFilters_emptyFilters() {
         Map<String, Object> filters = new HashMap<>();
 
-        when(mongoTemplate.find(any(Query.class), eq(TransferProcess.class)))
+        when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
                 .thenReturn(Arrays.asList(
-                        DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED,
-                        DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER
+                        createMockEntity(),
+                        createMockEntity()
                 ));
 
-        Collection<TransferProcess> result = repository.findWithDynamicFilters(filters);
+        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
 
         assertNotNull(result);
         assertEquals(2, result.size());
 
-        verify(mongoTemplate).find(queryCaptor.capture(), eq(TransferProcess.class));
+        verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();
 
         // Should create an empty query (no criteria)
@@ -255,15 +278,16 @@ class TransferProcessRepositoryImplTest {
     void findWithDynamicFilters_singleFilter() {
         Map<String, Object> filters = Map.of("role", IConstants.ROLE_PROVIDER);
 
-        when(mongoTemplate.find(any(Query.class), eq(TransferProcess.class)))
-                .thenReturn(Collections.singletonList(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+        TestEntity mockEvent = createMockEntity();
+        when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
+                .thenReturn(List.of(mockEvent));
 
-        Collection<TransferProcess> result = repository.findWithDynamicFilters(filters);
+        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
 
         assertNotNull(result);
         assertEquals(1, result.size());
 
-        verify(mongoTemplate).find(queryCaptor.capture(), eq(TransferProcess.class));
+        verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();
 
         String queryString = capturedQuery.toString();
@@ -280,18 +304,19 @@ class TransferProcessRepositoryImplTest {
 
         Map<String, Object> filters = Map.of(
                 "version", versionRange,
-                "state", TransferState.STARTED.name()
+                "state", TestEnum.VALUE_1
         );
 
-        when(mongoTemplate.find(any(Query.class), eq(TransferProcess.class)))
-                .thenReturn(Collections.singletonList(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+        TestEntity mockEvent = createMockEntity();
+        when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
+                .thenReturn(List.of(mockEvent));
 
-        Collection<TransferProcess> result = repository.findWithDynamicFilters(filters);
+        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
 
         assertNotNull(result);
         assertEquals(1, result.size());
 
-        verify(mongoTemplate).find(queryCaptor.capture(), eq(TransferProcess.class));
+        verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();
 
         String queryString = capturedQuery.toString();
@@ -311,15 +336,16 @@ class TransferProcessRepositoryImplTest {
                 "created", dateRange
         );
 
-        when(mongoTemplate.find(any(Query.class), eq(TransferProcess.class)))
-                .thenReturn(Collections.singletonList(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+        TestEntity mockEvent = createMockEntity();
+        when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
+                .thenReturn(List.of(mockEvent));
 
-        Collection<TransferProcess> result = repository.findWithDynamicFilters(filters);
+        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
 
         assertNotNull(result);
         assertEquals(1, result.size());
 
-        verify(mongoTemplate).find(queryCaptor.capture(), eq(TransferProcess.class));
+        verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();
 
         String queryString = capturedQuery.toString();
@@ -334,15 +360,16 @@ class TransferProcessRepositoryImplTest {
                 "role", IConstants.ROLE_CONSUMER
         );
 
-        when(mongoTemplate.find(any(Query.class), eq(TransferProcess.class)))
+        TestEntity mockEvent = createMockEntity();
+        when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
                 .thenReturn(Collections.emptyList());
 
-        Collection<TransferProcess> result = repository.findWithDynamicFilters(filters);
+        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
 
         assertNotNull(result);
         assertTrue(result.isEmpty());
 
-        verify(mongoTemplate).find(any(Query.class), eq(TransferProcess.class));
+        verify(mongoTemplate).find(any(Query.class), eq(TestEntity.class));
     }
 
     @Test
@@ -354,22 +381,23 @@ class TransferProcessRepositoryImplTest {
         );
 
         Map<String, Object> filters = Map.of(
-                "state", Arrays.asList(TransferState.STARTED.name(), TransferState.COMPLETED.name()),
+                "state", Arrays.asList(TestEnum.VALUE_1, TestEnum.VALUE_2),
                 "role", IConstants.ROLE_CONSUMER,
                 "isDownloaded", true,
                 "created", dateRange,
-                "datasetId", DataTransferMockObjectUtil.DATASET_ID
+                "datasetId", UUID.randomUUID().toString()
         );
 
-        when(mongoTemplate.find(any(Query.class), eq(TransferProcess.class)))
-                .thenReturn(Collections.singletonList(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+        TestEntity mockEvent = createMockEntity();
+        when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
+                .thenReturn(List.of(mockEvent));
 
-        Collection<TransferProcess> result = repository.findWithDynamicFilters(filters);
+        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
 
         assertNotNull(result);
         assertEquals(1, result.size());
 
-        verify(mongoTemplate).find(queryCaptor.capture(), eq(TransferProcess.class));
+        verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();
 
         // Verify all criteria types were added
@@ -380,4 +408,15 @@ class TransferProcessRepositoryImplTest {
         assertTrue(queryString.contains("created"));
         assertTrue(queryString.contains("datasetId"));
     }
-} 
+
+    private TestEntity createMockEntity() {
+        TestEntity entity = new TestEntity();
+        entity.setId("test-id");
+        entity.setStringField("test value");
+        entity.setBooleanField(true);
+        entity.setNumberField(123);
+        entity.setTimestampField(Instant.now());
+        entity.setEnumField(TestEnum.VALUE_1);
+        return entity;
+    }
+}

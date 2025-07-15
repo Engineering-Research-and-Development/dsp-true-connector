@@ -90,9 +90,4 @@ public class DataTransferEventListener {
         log.info("Terminating transfer with consumerPid {} and providerPid {}", transferTerminationMessage.getConsumerPid(), transferTerminationMessage.getProviderPid());
     }
 
-    @EventListener
-    public void handleTransferArtifactEvent(TransferArtifactEvent transferArtifactEvent) {
-        log.info("Handling transfer artifact event for process {}: isDownload={}, message={}",
-                transferArtifactEvent.getTransferProcessId(), transferArtifactEvent.isDownload(), transferArtifactEvent.getMessage());
-    }
 }

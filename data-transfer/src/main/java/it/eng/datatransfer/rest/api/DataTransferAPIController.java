@@ -1,12 +1,14 @@
 package it.eng.datatransfer.rest.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import it.eng.datatransfer.event.TransferArtifactEvent;
 import it.eng.datatransfer.model.DataTransferRequest;
-import it.eng.tools.service.GenericFilterBuilder;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
 import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.event.AuditEvent;
+import it.eng.tools.event.AuditEventType;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.service.GenericFilterBuilder;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.MediaType;
@@ -14,7 +16,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.servlet.http.HttpServletRequest;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -29,11 +30,10 @@ public class DataTransferAPIController {
     private final ApplicationEventPublisher publisher;
 
 
-    public DataTransferAPIController(DataTransferAPIService apiService, GenericFilterBuilder filterBuilder,  ApplicationEventPublisher publisher) {
+    public DataTransferAPIController(DataTransferAPIService apiService, GenericFilterBuilder filterBuilder, ApplicationEventPublisher publisher) {
         this.apiService = apiService;
         this.filterBuilder = filterBuilder;
         this.publisher = publisher;
-
     }
 
     /********* CONSUMER ***********/
@@ -68,18 +68,22 @@ public class DataTransferAPIController {
                         log.error("Download failed for process {}: {}",
                                 transferProcessId, throwable.getMessage(), throwable);
                         publisher.publishEvent(
-                                TransferArtifactEvent.Builder.newInstance()
-                                        .transferProcessId(transferProcessId)
-                                        .isDownload(false)
-                                        .message("Download failed: " + throwable.getMessage())
-                                        .build());
+                                AuditEvent.Builder.newInstance()
+                                        .description("Download failed for process " + transferProcessId)
+                                        .eventType(AuditEventType.TRANSFER_FAILED)
+                                        .details(Map.of("transferProcessId", transferProcessId,
+                                                "error", throwable.getMessage()))
+                                        .build()
+                        );
                     } else {
                         log.info("Download completed successfully for process {}", transferProcessId);
-                        publisher.publishEvent(TransferArtifactEvent.Builder.newInstance()
-                                .transferProcessId(transferProcessId)
-                                .isDownload(true)
-                                .message(String.format("Download completed successfully for process %s", transferProcessId))
-                                .build());
+                        publisher.publishEvent(
+                                AuditEvent.Builder.newInstance()
+                                        .description("Download completed successfully for process " + transferProcessId)
+                                        .eventType(AuditEventType.TRANSFER_COMPLETED)
+                                        .details(Map.of("transferProcessId", transferProcessId))
+                                        .build()
+                        );
                     }
                 });
 
@@ -141,15 +145,16 @@ public class DataTransferAPIController {
 
         Collection<JsonNode> response = apiService.findDataTransfers(filters);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(response, "Fetched transfer processes"));
+                .body(GenericApiResponse.success(response, "Fetched transfer process"));
     }
-	
-	/**
-	 * Start transfer process.
-	 * @param transferProcessId transfer process id to start.
-	 * @return GenericApiResponse response with success message.
-	 */
-	@PutMapping(path = "/{transferProcessId}/start")
+
+    /**
+     * Start transfer process.
+     *
+     * @param transferProcessId transfer process id to start.
+     * @return GenericApiResponse response with success message.
+     */
+    @PutMapping(path = "/{transferProcessId}/start")
     public ResponseEntity<GenericApiResponse<JsonNode>> startTransfer(@PathVariable String transferProcessId) {
         log.info("Starting data transfer {}", transferProcessId);
         JsonNode response = apiService.startTransfer(transferProcessId);

@@ -1,6 +1,7 @@
 package it.eng.datatransfer.repository;
 
 import it.eng.datatransfer.model.TransferProcess;
+import it.eng.tools.repository.GenericDynamicFilterRepository;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
@@ -9,7 +10,8 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface TransferProcessRepository extends MongoRepository<TransferProcess, String>, TransferProcessRepositoryCustom {
+public interface TransferProcessRepository extends MongoRepository<TransferProcess, String>,
+        GenericDynamicFilterRepository<TransferProcess, String> {
 
     /**
      * Finds a transfer process by its consumerPid and providerPid.

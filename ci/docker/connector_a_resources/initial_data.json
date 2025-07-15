@@ -285,7 +285,22 @@
       "version": 0
     }
   ],
-  "contract_negotiations": [],
+  "contract_negotiations": [
+    {
+      "_id": "urn:uuid:CONTRACT_NEGOTIATION_ID_INITIALIZED_API_GHA",
+      "callbackAddress": "http://localhost:8080/consumer",
+      "assigner": "urn:uuid:ASSIGNER_PROVIDER",
+      "role": "provider",
+      "agreement": {
+        "$ref": "agreements",
+        "$id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA"
+      },
+      "consumerPid": "urn:uuid:be8c0f63-1350-4288-9bf7-5f5495da48b8",
+      "state": "FINALIZED",
+      "providerPid": "urn:uuid:3e370869-48ec-4475-bf51-ea0c37860d07",
+      "_class": "it.eng.negotiation.model.ContractNegotiation"
+    }
+  ],
   "agreements": [
     {
       "_id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
