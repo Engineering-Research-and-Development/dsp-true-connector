@@ -2,8 +2,10 @@ package it.eng.tools.service;
 
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
+import it.eng.tools.event.AuditEventTypeDTO;
 import it.eng.tools.repository.AuditEventRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -11,10 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -70,5 +69,16 @@ public class AuditEventServiceTest {
         assertNotNull(actualEvents);
         assertEquals(expectedEvents, actualEvents);
         verify(auditEventRepository).findWithDynamicFilters(emptyFilters, AuditEvent.class);
+    }
+
+    @Test
+    @DisplayName("getAuditEventTypes should return all audit event types")
+    public void getAuditEventTypes_shouldReturnAllAuditEventTypes() {
+        Collection<AuditEventTypeDTO> auditEventTypes = auditEventService.getAuditEventTypes();
+
+        assertNotNull(auditEventTypes);
+        assertEquals(Arrays.stream(AuditEventType.values())
+                .map(eventType -> new AuditEventTypeDTO(eventType.name(), eventType.toString()))
+                .toList(), auditEventTypes);
     }
 }

@@ -54,7 +54,7 @@ public enum AuditEventType {
         this.auditEventType = auditEventType;
     }
 
-    public static AuditEventType fromauditEventType(String auditEventType) {
+    public static AuditEventType fromAuditEventType(String auditEventType) {
         return BY_LABEL.get(auditEventType);
     }
 

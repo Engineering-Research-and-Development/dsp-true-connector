@@ -2,6 +2,7 @@ package it.eng.tools.rest.api;
 
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEvent;
+import it.eng.tools.event.AuditEventTypeDTO;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.AuditEventService;
 import it.eng.tools.service.GenericFilterBuilder;
@@ -44,5 +45,11 @@ public class AuditEventController {
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(GenericApiResponse.success(auditEvents, "Audit events for criteria: " + filterString));
 
+    }
+
+    @GetMapping("/types")
+    public ResponseEntity<GenericApiResponse<Collection<AuditEventTypeDTO>>> getAuditEventTypes() {
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(GenericApiResponse.success(auditEventService.getAuditEventTypes(), "Audit event types"));
     }
 }

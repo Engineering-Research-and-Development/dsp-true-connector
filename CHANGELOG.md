@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.8-SNAPSHOT] - 16.07.2025.
+
+### Added
+
+- Added new API endpoint to fetch all AuditEventTypes
+- Proper handling for GenericFilter timestamp query parameters
+
 ## [0.4.7-SNAPSHOT] - 11.07.2025.
 
 ### Added

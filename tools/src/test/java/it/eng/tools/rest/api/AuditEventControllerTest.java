@@ -2,6 +2,7 @@ package it.eng.tools.rest.api;
 
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
+import it.eng.tools.event.AuditEventTypeDTO;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.AuditEventService;
 import it.eng.tools.service.GenericFilterBuilder;
@@ -18,10 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.verify;
@@ -71,5 +69,25 @@ public class AuditEventControllerTest {
         assertTrue(response.getBody().getMessage().contains("user:testUser"));
         verify(filterBuilder).buildFromRequest(request);
         verify(auditEventService).getAuditEvents(filters);
+    }
+
+    @Test
+    @DisplayName("getAuditEventTypes should return audit event types with success response")
+    public void getAuditEventTypes_shouldReturnAuditEventTypesWithSuccessResponse() {
+        List<AuditEventTypeDTO> auditEventTypeDTOS = Arrays.stream(AuditEventType.values())
+                .map(eventType -> new AuditEventTypeDTO(eventType.name(), eventType.toString()))
+                .toList();
+        when(auditEventService.getAuditEventTypes()).thenReturn(auditEventTypeDTOS);
+
+        ResponseEntity<GenericApiResponse<Collection<AuditEventTypeDTO>>> response = auditEventController.getAuditEventTypes();
+
+        assertEquals(HttpStatusCode.valueOf(200), response.getStatusCode());
+        assertEquals(MediaType.APPLICATION_JSON, response.getHeaders().getContentType());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().isSuccess());
+        assertEquals("Audit event types", response.getBody().getMessage());
+        assertEquals(auditEventTypeDTOS, response.getBody().getData());
+
+        verify(auditEventService).getAuditEventTypes();
     }
 }
