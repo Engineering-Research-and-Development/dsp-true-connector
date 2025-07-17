@@ -30,10 +30,4 @@ public class AuditEventService {
                 .map(eventType -> new AuditEventTypeDTO(eventType.name(), eventType.toString()))
                 .toList();
     }
-
-    public Collection<AuditEventTypeDTO> getAuditEventTypes() {
-        return Arrays.stream(AuditEventType.values())
-                .map(eventType -> new AuditEventTypeDTO(eventType.name(), eventType.toString()))
-                .toList();
-    }
 }
