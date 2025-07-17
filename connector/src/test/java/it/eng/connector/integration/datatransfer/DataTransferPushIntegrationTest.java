@@ -1,6 +1,7 @@
 package it.eng.connector.integration.datatransfer;
 
 import it.eng.catalog.repository.DatasetRepository;
+import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.negotiation.repository.AgreementRepository;
@@ -11,10 +12,7 @@ import it.eng.tools.util.ToolsUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.context.support.WithUserDetails;
-import org.wiremock.spring.EnableWireMock;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -22,14 +20,7 @@ import java.time.Duration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@SpringBootTest(
-        webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT,
-        properties = {
-                "server.port=8090"
-        })
-@AutoConfigureMockMvc
-@EnableWireMock
-public class DataTransferPushIntegrationTest {
+public class DataTransferPushIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private TransferProcessRepository transferProcessRepository;
@@ -54,13 +45,10 @@ public class DataTransferPushIntegrationTest {
     @WithUserDetails(TestUtil.API_USER)
     public void pushTransferProcess_success() throws Exception {
 
-//        temporary test to verify that the presigned PUT URL generation works, start Minio manually before running this test
+//        temporary test to verify that the presigned PUT URL generation works
         int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
 
         String presignedUrl = s3ClientService.generatePresignedPUTUrl(s3Properties.getBucketName(), ToolsUtil.generateUniqueId(), Duration.ofMinutes(10));
-
-        System.out.println("Presigned URL: " + presignedUrl);
-
 
         // Create sample content
         byte[] content = "Test content".getBytes();

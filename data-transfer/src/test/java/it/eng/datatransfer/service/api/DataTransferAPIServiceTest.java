@@ -31,7 +31,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockHttpServletResponse;
 
@@ -50,7 +49,6 @@ import static org.mockito.Mockito.isA;
 class DataTransferAPIServiceTest {
 
     private static final String FILENAME = "file.txt";
-    private static final String CONTENT_DISPOSITION = ContentDisposition.attachment().filename(FILENAME).build().toString();
 
     private MockHttpServletResponse mockHttpServletResponse;
 
@@ -92,7 +90,7 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
         Collection<JsonNode> response = apiService.findDataTransfers("test", TransferState.REQUESTED.name(), null);
         assertNotNull(response);
-        assertEquals(response.size(), 1);
+        assertEquals(1, response.size());
 
         when(transferProcessRepository.findById(anyString())).thenReturn(Optional.empty());
         response = apiService.findDataTransfers("test_not_found", null, null);
@@ -102,21 +100,20 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.findByStateAndRole(anyString(), anyString())).thenReturn(Arrays.asList(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
         response = apiService.findDataTransfers(null, TransferState.STARTED.name(), IConstants.ROLE_PROVIDER);
         assertNotNull(response);
-        assertEquals(response.size(), 1);
+        assertEquals(1, response.size());
 
         when(transferProcessRepository.findByRole(anyString()))
                 .thenReturn(Arrays.asList(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER, DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED));
         response = apiService.findDataTransfers(null, null, IConstants.ROLE_PROVIDER);
         assertNotNull(response);
-        assertEquals(response.size(), 2);
+        assertEquals(2, response.size());
     }
 
     @Test
     @DisplayName("Request transfer process success for http Pull")
     public void requestTransfer_success_httpPull() {
         DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
-                DataTransferFormat.HTTP_PULL.format(),
-                null);
+                DataTransferFormat.HTTP_PULL.format());
 
         when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
@@ -137,8 +134,7 @@ class DataTransferAPIServiceTest {
     @DisplayName("Request transfer process success for http Push")
     public void requestTransfer_success_httpPush() {
         DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
-                DataTransferFormat.HTTP_PUSH.format(),
-                null);
+                DataTransferFormat.HTTP_PUSH.format());
 
         String presignedUrl = "http://example.com/presigned-url";
 
@@ -156,15 +152,14 @@ class DataTransferAPIServiceTest {
 
         verify(transferProcessRepository).save(argCaptorTransferProcess.capture());
         assertEquals(IConstants.ROLE_CONSUMER, argCaptorTransferProcess.getValue().getRole());
-        assertEquals(presignedUrl, argCaptorTransferProcess.getValue().getDataAddress());
+        assertEquals(presignedUrl, argCaptorTransferProcess.getValue().getDataAddress().getEndpoint());
     }
 
     @Test
     @DisplayName("Request transfer process failed")
     public void requestTransfer_failed() {
         DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
-                DataTransferFormat.HTTP_PULL.format(),
-                null);
+                DataTransferFormat.HTTP_PULL.format());
 
         when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
@@ -182,8 +177,7 @@ class DataTransferAPIServiceTest {
     @DisplayName("Request transfer process json exception")
     public void requestTransfer_jsonException() {
         DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
-                DataTransferFormat.HTTP_PULL.format(),
-                null);
+                DataTransferFormat.HTTP_PULL.format());
 
         when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
@@ -441,7 +435,7 @@ class DataTransferAPIServiceTest {
 
         TransferProcess capturedProcess = argCaptorTransferProcess.getValue();
         assertEquals(DataTranferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(), capturedProcess.getId());
-        assertEquals(DataTransferFormat.HTTP_PULL.name(), capturedProcess.getFormat());
+        assertEquals(DataTransferFormat.HTTP_PULL.format(), capturedProcess.getFormat());
     }
 
     @Test

@@ -24,6 +24,4 @@ public class DataTransferRequest implements Serializable {
 	private String transferProcessId;
 	@JsonProperty(DSpaceConstants.FORMAT)
 	private String format;
-	@JsonProperty(DSpaceConstants.DATA_ADDRESS)
-	private JsonNode dataAddress;
 }

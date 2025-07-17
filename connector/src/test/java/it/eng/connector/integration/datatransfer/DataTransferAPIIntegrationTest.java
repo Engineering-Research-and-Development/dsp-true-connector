@@ -114,9 +114,9 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 	}
 	
 	@Test
-	@DisplayName("Request transfer process - success")
+	@DisplayName("Request transfer process - pull format - success")
     @WithUserDetails(TestUtil.API_USER)
-	public void initiateDataTransfer() throws Exception {
+	public void initiateDataTransfer_pullFormat() throws Exception {
 		TransferProcess transferProcessInitialized = TransferProcess.Builder.newInstance()
 				.consumerPid(createNewId())
 				.providerPid(IConstants.TEMPORARY_PROVIDER_PID)
@@ -128,7 +128,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 		transferProcessRepository.save(transferProcessInitialized);
 		
 		DataTransferRequest dataTransferRequest = new DataTransferRequest(transferProcessInitialized.getId(), 
-				DataTransferFormat.HTTP_PULL.name(), null);
+				DataTransferFormat.HTTP_PULL.format());
 		
 		// mock provider success response TransferRequestMessage
 		TransferProcess providerResponse = TransferProcess.Builder.newInstance()
@@ -168,6 +168,64 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
     	assertEquals(genericApiResponse.getData().getProviderPid(), transferProcessFromDb.getProviderPid());
     	assertEquals(TransferState.REQUESTED, transferProcessFromDb.getState());
     }
+
+	@Test
+	@DisplayName("Request transfer process - push format - success")
+	@WithUserDetails(TestUtil.API_USER)
+	public void initiateDataTransfer_pushFormat() throws Exception {
+		TransferProcess transferProcessInitialized = TransferProcess.Builder.newInstance()
+				.consumerPid(createNewId())
+				.providerPid(IConstants.TEMPORARY_PROVIDER_PID)
+				.agreementId(createNewId())
+				.callbackAddress(wiremock.baseUrl())
+				.state(TransferState.INITIALIZED)
+				.role(IConstants.ROLE_CONSUMER)
+				.build();
+		transferProcessRepository.save(transferProcessInitialized);
+
+		DataTransferRequest dataTransferRequest = new DataTransferRequest(transferProcessInitialized.getId(),
+				DataTransferFormat.HTTP_PUSH.format());
+
+		// mock provider success response TransferRequestMessage
+		TransferProcess providerResponse = TransferProcess.Builder.newInstance()
+				.consumerPid(transferProcessInitialized.getId())
+				.providerPid(createNewId())
+				.state(TransferState.REQUESTED)
+				.build();
+
+		WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/transfers/request")
+				.withBasicAuth("connector@mail.com", "password")
+				.withRequestBody(WireMock.containing("dspace:TransferRequestMessage"))
+				// check if the request contains the X-Amz-Algorithm parameter which indicates that the request is a push transfer and the DataAddress is a presigned URL
+				.withRequestBody(WireMock.containing("X-Amz-Algorithm="))
+				.willReturn(
+						aResponse().withHeader("Content-Type", "application/json")
+								.withBody(TransferSerializer.serializeProtocol(providerResponse))));
+
+		final ResultActions result =
+				mockMvc.perform(
+						post(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
+								.content(jsonMapper.convertValue(dataTransferRequest, JsonNode.class).toString())
+								.contentType(MediaType.APPLICATION_JSON));
+
+		result.andExpect(status().isOk())
+				.andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
+		String json = result.andReturn().getResponse().getContentAsString();
+		JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, TransferProcess.class);
+		GenericApiResponse<TransferProcess> genericApiResponse = jsonMapper.readValue(json, javaType);
+		assertNotNull(genericApiResponse);
+		assertTrue(genericApiResponse.isSuccess());
+		assertNotNull(genericApiResponse.getData());
+		assertEquals(TransferProcess.class, genericApiResponse.getData().getClass());
+
+		// check if the Transfer Process is properly inserted and that consumerPid and providerPid are correct
+		TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessInitialized.getId()).get();
+
+		assertEquals(transferProcessInitialized.getConsumerPid(), transferProcessFromDb.getConsumerPid());
+		assertEquals(genericApiResponse.getData().getProviderPid(), transferProcessFromDb.getProviderPid());
+		assertEquals(TransferState.REQUESTED, transferProcessFromDb.getState());
+	}
 	
 	@Test
 	@DisplayName("Request transfer process - provider error")
@@ -183,7 +241,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 		transferProcessRepository.save(transferProcessInitialized);
 		
 		DataTransferRequest dataTransferRequest = new DataTransferRequest(transferProcessInitialized.getId(), 
-				DataTransferFormat.HTTP_PULL.name(), null);
+				DataTransferFormat.HTTP_PULL.format());
 		
 		// mock provider transfer error response TransferRequestMessage
 		TransferError providerErrorResponse = TransferError.Builder.newInstance()

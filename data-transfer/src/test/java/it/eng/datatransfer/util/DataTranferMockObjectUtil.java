@@ -94,7 +94,7 @@ public class DataTranferMockObjectUtil {
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_PROVIDER)
             .state(TransferState.STARTED)
-            .format(DataTransferFormat.HTTP_PULL.name())
+            .format(DataTransferFormat.HTTP_PULL.format())
             .build();
 
     public static final TransferProcess TRANSFER_PROCESS_STARTED_AND_DOWNLOADED = TransferProcess.Builder.newInstance()
@@ -108,7 +108,7 @@ public class DataTranferMockObjectUtil {
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_PROVIDER)
             .state(TransferState.STARTED)
-            .format(DataTransferFormat.HTTP_PULL.name())
+            .format(DataTransferFormat.HTTP_PULL.format())
             .build();
 
     public static final TransferProcess TRANSFER_PROCESS_COMPLETED = TransferProcess.Builder.newInstance()
@@ -154,7 +154,7 @@ public class DataTranferMockObjectUtil {
     public static final TransferRequestMessage TRANSFER_REQUEST_MESSAGE = TransferRequestMessage.Builder.newInstance()
             .consumerPid(CONSUMER_PID)
             .agreementId(AGREEMENT_ID)
-            .format(DataTransferFormat.HTTP_PULL.name())
+            .format(DataTransferFormat.HTTP_PULL.format())
             .callbackAddress(CALLBACK_ADDRESS)
             .dataAddress(DATA_ADDRESS)
             .build();

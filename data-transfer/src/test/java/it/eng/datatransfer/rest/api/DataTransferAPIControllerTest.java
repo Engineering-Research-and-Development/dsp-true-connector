@@ -41,8 +41,7 @@ class DataTransferAPIControllerTest {
     private DataTransferAPIController controller;
 
     private DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
-            DataTransferFormat.HTTP_PULL.name(),
-            null);
+            DataTransferFormat.HTTP_PULL.format());
 
 
     @Test
@@ -84,7 +83,7 @@ class DataTransferAPIControllerTest {
     public void requestTransfer_success() {
         Map<String, Object> map = new HashMap<>();
         map.put("transferProcessId", DataTranferMockObjectUtil.FORWARD_TO);
-        map.put(DSpaceConstants.FORMAT, DataTransferFormat.HTTP_PULL.name());
+        map.put(DSpaceConstants.FORMAT, DataTransferFormat.HTTP_PULL.format());
         map.put(DSpaceConstants.DATA_ADDRESS, TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.DATA_ADDRESS));
 
         when(apiService.requestTransfer(any(DataTransferRequest.class)))
@@ -100,7 +99,7 @@ class DataTransferAPIControllerTest {
     public void requestTransfer_failed() {
         Map<String, Object> map = new HashMap<>();
         map.put("transferProcessId", DataTranferMockObjectUtil.FORWARD_TO);
-        map.put(DSpaceConstants.FORMAT, DataTransferFormat.HTTP_PULL.name());
+        map.put(DSpaceConstants.FORMAT, DataTransferFormat.HTTP_PULL.format());
         map.put(DSpaceConstants.DATA_ADDRESS, TransferSerializer.serializePlainJsonNode(DataTranferMockObjectUtil.DATA_ADDRESS));
 
         doThrow(new DataTransferAPIException("Something not correct - tests"))

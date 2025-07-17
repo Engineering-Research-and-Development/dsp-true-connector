@@ -110,7 +110,7 @@ public class DataTransferServiceTest {
 		when(transferProcessRepository.findByAgreementId(DataTranferMockObjectUtil.AGREEMENT_ID)).thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
 		
 		List<String> formats = new ArrayList<>();
-		formats.add(DataTransferFormat.HTTP_PULL.name());
+		formats.add(DataTransferFormat.HTTP_PULL.format());
 		GenericApiResponse<List<String>> resp = GenericApiResponse.success(formats, "Ok");
 		when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
 			.thenReturn(TransferSerializer.serializePlain(resp));

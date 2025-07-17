@@ -3,6 +3,7 @@ package it.eng.tools.s3.service;
 import it.eng.tools.s3.properties.S3Properties;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -328,38 +329,41 @@ public class S3ClientServiceImpl implements S3ClientService {
 
     @Override
     public String generatePresignedPUTUrl(String bucketName, String objectKey, Duration expiration) {
-            validateBucketName(bucketName);
-            if (objectKey == null || objectKey.isEmpty()) {
-                throw new IllegalArgumentException("Object key cannot be null or empty");
-            }
-            try (S3Presigner presigner = S3Presigner.builder()
-                    .endpointOverride(URI.create(s3Properties.getExternalPresignedEndpoint()))
-                    .credentialsProvider(StaticCredentialsProvider.create(
-                            AwsBasicCredentials.create(s3Properties.getAccessKey(), s3Properties.getSecretKey())))
-                    .region(Region.of(s3Properties.getRegion()))
-                    .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
-                            .pathStyleAccessEnabled(true)
-                            .build())
-                    .build()) {
-
-                PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                        .bucket(bucketName)
-                        .key(objectKey)
-                        .build();
-
-                PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
-                        .signatureDuration(expiration)
-                        .putObjectRequest(putObjectRequest)
-                        .build();
-
-                PresignedPutObjectRequest presignedRequest = presigner.presignPutObject(presignRequest);
-                log.info("Pre-signed PUT URL generated successfully for file {} in bucket {}", objectKey, bucketName);
-                return presignedRequest.url().toExternalForm();
-            } catch (Exception e) {
-                log.error("Error generating pre-signed PUT URL for file {} in bucket {}: {}", objectKey, bucketName, e.getMessage());
-                throw new RuntimeException("Error generating pre-signed PUT URL: " + e.getMessage(), e);
-            }
+        if (!bucketExists(bucketName)) {
+            log.error("Error generating pre-signed PUT URL for file {} : Bucket {} does not exist", objectKey, bucketName);
+            throw new RuntimeException("Error generating pre-signed PUT URL for file " + objectKey + ": Bucket " + bucketName + " does not exist");
         }
+        if (StringUtils.isBlank(objectKey)) {
+                throw new IllegalArgumentException("Object key cannot be null or empty");
+        }
+        try (S3Presigner presigner = S3Presigner.builder()
+                .endpointOverride(URI.create(s3Properties.getExternalPresignedEndpoint()))
+                .credentialsProvider(StaticCredentialsProvider.create(
+                        AwsBasicCredentials.create(s3Properties.getAccessKey(), s3Properties.getSecretKey())))
+                .region(Region.of(s3Properties.getRegion()))
+                .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
+                        .pathStyleAccessEnabled(true)
+                        .build())
+                .build()) {
+
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(objectKey)
+                    .build();
+
+            PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
+                    .signatureDuration(expiration)
+                    .putObjectRequest(putObjectRequest)
+                    .build();
+
+            PresignedPutObjectRequest presignedRequest = presigner.presignPutObject(presignRequest);
+            log.info("Pre-signed PUT URL generated successfully for file {} in bucket {}", objectKey, bucketName);
+            return presignedRequest.url().toExternalForm();
+        } catch (Exception e) {
+            log.error("Error generating pre-signed PUT URL for file {} in bucket {}: {}", objectKey, bucketName, e.getMessage());
+            throw new RuntimeException("Error generating pre-signed PUT URL: " + e.getMessage(), e);
+        }
+    }
 
     @Override
     public List<String> listFiles(String bucketName) {
@@ -370,7 +374,7 @@ public class S3ClientServiceImpl implements S3ClientService {
                     .build();
             ListObjectsV2Response response = s3Client.listObjectsV2(request);
             return response.contents().stream()
-                    .map(s3Object -> s3Object.key())
+                    .map(S3Object::key)
                     .toList();
         } catch (Exception e) {
             log.error("Error listing files in bucket {}: {}", bucketName, e.getMessage());

@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Set;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -68,23 +69,30 @@ public class DataTransferProcessRequestedIntegrationTest extends BaseIntegration
 	
 	private Catalog catalog;
 	private Dataset dataset;
-	private Distribution distribution;
+	private Distribution distributionPullFormat;
+	private Distribution distributionPushFormat;
 	
 	@BeforeEach
 	public void populateCatalog() {
-		distribution = Distribution.Builder.newInstance()
+		distributionPullFormat = Distribution.Builder.newInstance()
 				.format(Reference.Builder.newInstance().id(DataTransferFormat.HTTP_PULL.format()).build())
+				.accessService(Collections.singleton(CatalogMockObjectUtil.DATA_SERVICE))
+				.build();
+		distributionPushFormat = Distribution.Builder.newInstance()
+				.format(Reference.Builder.newInstance().id(DataTransferFormat.HTTP_PUSH.format()).build())
 				.accessService(Collections.singleton(CatalogMockObjectUtil.DATA_SERVICE))
 				.build();
 		dataset = Dataset.Builder.newInstance()
 				.hasPolicy(Collections.singleton(CatalogMockObjectUtil.OFFER))
-				.distribution(Collections.singleton(distribution))
+				.distribution(Set.of(distributionPullFormat, distributionPushFormat))
 				.build();
 		catalog = Catalog.Builder.newInstance()
 				.dataset(Collections.singleton(dataset))
+				.distribution(Set.of(distributionPullFormat, distributionPushFormat))
 				.build();
 		
-		distributionRepository.save(distribution);
+		distributionRepository.save(distributionPullFormat);
+		distributionRepository.save(distributionPushFormat);
 		datasetRepository.save(dataset);
 		catalogRepository.save(catalog);
 	}
@@ -102,7 +110,7 @@ public class DataTransferProcessRequestedIntegrationTest extends BaseIntegration
 	
 	@Test
     @WithUserDetails(TestUtil.CONNECTOR_USER)
-    public void initiateDataTransfer() throws Exception {
+    public void initiateDataTransfer_pullFormat() throws Exception {
 		// finalized contract negotiation
 		Permission permission = Permission.Builder.newInstance()
     			.action(Action.USE)
@@ -173,6 +181,80 @@ public class DataTransferProcessRequestedIntegrationTest extends BaseIntegration
     	contractNegotiationRepository.delete(contractNegotiationFinalized);
     	transferProcessRepository.deleteById(transferProcessInitialized.getId());
     }
+
+	@Test
+	@WithUserDetails(TestUtil.CONNECTOR_USER)
+	public void initiateDataTransfer_pushFormat() throws Exception {
+		// finalized contract negotiation
+		Permission permission = Permission.Builder.newInstance()
+				.action(Action.USE)
+				.constraint(Arrays.asList(Constraint.Builder.newInstance()
+						.leftOperand(LeftOperand.COUNT)
+						.operator(Operator.LTEQ)
+						.rightOperand("5")
+						.build()))
+				.build();
+		Agreement agreement = Agreement.Builder.newInstance()
+				.assignee("assignee")
+				.assigner("assigner")
+				.target("test_dataset")
+				.permission(Arrays.asList(permission))
+				.build();
+		agreementRepository.save(agreement);
+
+		// finalized contract negotiation
+		ContractNegotiation contractNegotiationFinalized = ContractNegotiation.Builder.newInstance()
+				.consumerPid(createNewId())
+				.providerPid(createNewId())
+				.callbackAddress("callbackAddress.test")
+				.agreement(agreement)
+				.state(ContractNegotiationState.FINALIZED)
+				.role(IConstants.ROLE_PROVIDER)
+				.build();
+		contractNegotiationRepository.save(contractNegotiationFinalized);
+
+		TransferProcess transferProcessInitialized = TransferProcess.Builder.newInstance()
+				.consumerPid(IConstants.TEMPORARY_CONSUMER_PID)
+				.providerPid(createNewId())
+				.format(DataTransferFormat.HTTP_PUSH.format())
+				.agreementId(agreement.getId())
+				.state(TransferState.INITIALIZED)
+				.datasetId(dataset.getId())
+				.build();
+		transferProcessRepository.save(transferProcessInitialized);
+
+		TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
+				.consumerPid(createNewId())
+				.agreementId(agreement.getId())
+				.format(DataTransferFormat.HTTP_PUSH.format())
+				.callbackAddress(DataTranferMockObjectUtil.CALLBACK_ADDRESS)
+				.build();
+
+		final ResultActions result =
+				mockMvc.perform(
+						post("/transfers/request")
+								.content(TransferSerializer.serializeProtocol(transferRequestMessage))
+								.contentType(MediaType.APPLICATION_JSON));
+		result.andExpect(status().isCreated())
+				.andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
+		String response = result.andReturn().getResponse().getContentAsString();
+		TransferProcess transferProcessRequested = TransferSerializer.deserializeProtocol(response, TransferProcess.class);
+		assertNotNull(transferProcessRequested);
+		assertEquals(TransferState.REQUESTED, transferProcessRequested.getState());
+
+		// check if the Transfer Process is properly inserted and that consumerPid and providerPid are correct
+		TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessInitialized.getId()).get();
+
+		assertEquals(transferProcessInitialized.getProviderPid(), transferProcessFromDb.getProviderPid());
+		assertEquals(transferRequestMessage.getConsumerPid(), transferProcessFromDb.getConsumerPid());
+		assertEquals(TransferState.REQUESTED, transferProcessFromDb.getState());
+
+		// cleanup
+		agreementRepository.delete(agreement);
+		contractNegotiationRepository.delete(contractNegotiationFinalized);
+		transferProcessRepository.deleteById(transferProcessInitialized.getId());
+	}
 	
 	@Test
     @WithUserDetails(TestUtil.CONNECTOR_USER)

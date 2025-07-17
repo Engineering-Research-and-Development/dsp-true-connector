@@ -116,35 +116,6 @@ public class DataTransferService {
 		return transferProcessRequested;
 	}
 
-	private void checkSupportedFormats(TransferProcess transferProcess, String format) {
-		String response = okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" 
-				+  transferProcess.getDatasetId() + "/formats", 
-				HttpMethod.GET,
-				null);
-
-		if(StringUtils.isBlank(response)) {
-			throw new TransferProcessInternalException("Internal error", 
-					transferProcess.getConsumerPid(), transferProcess.getProviderPid());
-		}
-		
-		TypeReference<GenericApiResponse<List<String>>> typeRef = new TypeReference<GenericApiResponse<List<String>>>() {}; 
-        GenericApiResponse<List<String>> apiResp = TransferSerializer.deserializePlain(response, typeRef);
-        boolean formatValid = apiResp.getData().stream().anyMatch(f -> f.equals(format));
-        if(formatValid) {
-        	log.debug("Found supported format");
-        } else {
-        	log.info("{} not found as one of supported distribution formats");
-        	throw new TransferProcessInvalidFormatException("dct:format '" + format + "' not supported", 
-        			transferProcess.getConsumerPid(), transferProcess.getProviderPid());
-        }
-//	    } catch (JsonProcessingException e) {
-//	    	log.error(e.getLocalizedMessage(), e);
-//	        throw new TransferProcessInternalException("Internal error", transferProcess.getConsumerPid(), transferProcess.getProviderPid());
-//	    }
-	}
-	
-	
-
 	/**
 	 * Transfer from REQUESTED or SUSPENDED to STARTED state.
 	 * @param transferStartMessage TransferStartMessage
@@ -158,16 +129,16 @@ public class DataTransferService {
 		log.debug("Starting data transfer for consumerPid {} and providerPid {}", consumerPidFinal, providerPidFinal);
 
 		TransferProcess transferProcessRequested = findTransferProcess(consumerPidFinal, providerPidFinal);
-		
+
 		if (IConstants.ROLE_PROVIDER.equals(transferProcessRequested.getRole()) && TransferState.REQUESTED.equals(transferProcessRequested.getState())) {
 			// Only consumer can transit from REQUESTED to STARTED state
 			throw new TransferProcessInvalidStateException("State transition aborted, consumer can not transit from " + TransferState.REQUESTED.name()
 					+ " to " + TransferState.STARTED.name(),
 					transferProcessRequested.getConsumerPid(), transferProcessRequested.getProviderPid());
-		} 
-		
+		}
+
 		stateTransitionCheck(transferProcessRequested, TransferState.STARTED);
-		
+
 		TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
 				.id(transferProcessRequested.getId())
 				.agreementId(transferProcessRequested.getAgreementId())
@@ -194,7 +165,7 @@ public class DataTransferService {
 		publisher.publishEvent(transferStartMessage);
 		return transferProcessStarted;
 	}
-	
+
 	/**
 	 * Finds transfer process, check if status is correct, publish event and update state to COMPLETED.
 	 * @param transferCompletionMessage
@@ -246,7 +217,7 @@ public class DataTransferService {
 		publisher.publishEvent(transferSuspensionMessage);
 		return transferProcessSuspended;
 	}
-	
+
 	/**
 	 * Transition data transfer to TERMINATED state.
 	 * @param transferTerminationMessage message
@@ -273,7 +244,7 @@ public class DataTransferService {
 		publisher.publishEvent(transferTerminationMessage);
 		return transferProcessTerminated;
 	}
-	
+
 	/**
 	 * Find TransferProcess by consumerPid and providerPid.
 	 * @param consumerPid
@@ -286,12 +257,39 @@ public class DataTransferService {
 			 + " and providerPid " + providerPid + " not found"));
 		return transferProcessRequested;
 	}
-	
+
 	private void stateTransitionCheck(TransferProcess transferProcess, TransferState stateToTransit) {
 		if(!transferProcess.getState().canTransitTo(stateToTransit)) {
 			throw new TransferProcessInvalidStateException("TransferProcess is in invalid state " + transferProcess.getState(),
 					transferProcess.getConsumerPid(), transferProcess.getProviderPid());
 		}
+	}
+
+	private void checkSupportedFormats(TransferProcess transferProcess, String format) {
+		String response = okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/"
+						+  transferProcess.getDatasetId() + "/formats",
+				HttpMethod.GET,
+				null);
+
+		if(StringUtils.isBlank(response)) {
+			throw new TransferProcessInternalException("Internal error",
+					transferProcess.getConsumerPid(), transferProcess.getProviderPid());
+		}
+
+		TypeReference<GenericApiResponse<List<String>>> typeRef = new TypeReference<GenericApiResponse<List<String>>>() {};
+		GenericApiResponse<List<String>> apiResp = TransferSerializer.deserializePlain(response, typeRef);
+		boolean formatValid = apiResp.getData().stream().anyMatch(f -> f.equals(format));
+		if(formatValid) {
+			log.debug("Found supported format");
+		} else {
+			log.info("{} not found as one of supported distribution formats");
+			throw new TransferProcessInvalidFormatException("dct:format '" + format + "' not supported",
+					transferProcess.getConsumerPid(), transferProcess.getProviderPid());
+		}
+//	    } catch (JsonProcessingException e) {
+//	    	log.error(e.getLocalizedMessage(), e);
+//	        throw new TransferProcessInternalException("Internal error", transferProcess.getConsumerPid(), transferProcess.getProviderPid());
+//	    }
 	}
 
 }

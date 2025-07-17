@@ -241,7 +241,7 @@ public class HttpPullTransferStrategyTest {
                 .callbackAddress(DataTranferMockObjectUtil.CALLBACK_ADDRESS)
                 .role(IConstants.ROLE_PROVIDER)
                 .state(TransferState.STARTED)
-                .format(DataTransferFormat.HTTP_PULL.name())
+                .format(DataTransferFormat.HTTP_PULL.format())
                 .build();
     }
 
