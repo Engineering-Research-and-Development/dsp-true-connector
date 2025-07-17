@@ -2,6 +2,12 @@
 
 Example API calls with various filters:
 
+- All events, without any filters:
+
+```
+/api/v1/audit
+```
+
 - Single event type filter:
 
 ```
@@ -17,7 +23,7 @@ Example API calls with various filters:
 - Filtering by event type and details:
 
 ```
-/api/v1/audit?details.contractNegotiation.state=FINALIZED
+/api/v1/audit?eventType=PROTOCOL_NEGOTIATION_AGREED&details.contractNegotiation.state=FINALIZED
 ```
 
 - Filtering by timestamp range:
