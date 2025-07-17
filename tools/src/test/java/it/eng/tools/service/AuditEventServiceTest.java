@@ -91,4 +91,15 @@ public class AuditEventServiceTest {
                 .map(eventType -> new AuditEventTypeDTO(eventType.name(), eventType.toString()))
                 .toList(), auditEventTypes);
     }
+
+    @Test
+    @DisplayName("getAuditEventTypes should return all audit event types")
+    public void getAuditEventTypes_shouldReturnAllAuditEventTypes() {
+        Collection<AuditEventTypeDTO> auditEventTypes = auditEventService.getAuditEventTypes();
+
+        assertNotNull(auditEventTypes);
+        assertEquals(Arrays.stream(AuditEventType.values())
+                .map(eventType -> new AuditEventTypeDTO(eventType.name(), eventType.toString()))
+                .toList(), auditEventTypes);
+    }
 }
