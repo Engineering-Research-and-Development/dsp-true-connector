@@ -12,7 +12,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
-public class DataTranferMockObjectUtil {
+public class DataTransferMockObjectUtil {
 
     public static final String CONSUMER_PID = "urn:uuid:CONSUMER_PID";
     public static final String PROVIDER_PID = "urn:uuid:PROVIDER_PID";

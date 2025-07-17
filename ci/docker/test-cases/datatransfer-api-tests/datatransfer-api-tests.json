@@ -1,10 +1,9 @@
 {
 	"info": {
-		"_postman_id": "aeb056ff-5a87-4458-ae9a-dbe902fe3833",
+		"_postman_id": "6fa1f6f6-b027-4eb1-9fa1-e7c121eb0cb8",
 		"name": "Data Transfer API test",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "21815221",
-		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-aeb056ff-5a87-4458-ae9a-dbe902fe3833?action=share&source=collection_link&creator=21815221"
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "36278855"
 	},
 	"item": [
 		{
@@ -26,16 +25,7 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"url": {
-					"raw": "{{PROVIDER}}/artifacts/{{transactionId}}",
-					"host": [
-						"{{PROVIDER}}"
-					],
-					"path": [
-						"artifacts",
-						"{{transactionId}}"
-					]
-				}
+				"url": "{{PROVIDER}}/artifacts/{{transactionId}}"
 			},
 			"response": []
 		},
@@ -79,88 +69,7 @@
 						}
 					}
 				},
-				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}",
-					"host": [
-						"{{CONSUMER_API_TRANSFERS}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "[C] Download data fail",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is client error or server error\", () => {\r",
-							"    pm.expect(pm.response.code).to.be.oneOf([400, 401, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 422, 423, 424, 425, 426, 428, 429, 431, 451, 500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511]);\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
-					"host": [
-						"{{CONSUMER_API_TRANSFERS}}"
-					],
-					"path": [
-						"{{consumer_transferProcessId}}",
-						"download"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "[C] View data fail",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is client error or server error\", () => {\r",
-							"    pm.expect(pm.response.code).to.be.oneOf([400, 401, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 422, 423, 424, 425, 426, 428, 429, 431, 451, 500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511]);\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view",
-					"host": [
-						"{{CONSUMER_API_TRANSFERS}}"
-					],
-					"path": [
-						"{{consumer_transferProcessId}}",
-						"view"
-					]
-				}
+				"url": "{{CONSUMER_API_TRANSFERS}}"
 			},
 			"response": []
 		},
@@ -183,16 +92,7 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"url": {
-					"raw": "{{PROVIDER}}/artifacts/{{transactionId}}",
-					"host": [
-						"{{PROVIDER}}"
-					],
-					"path": [
-						"artifacts",
-						"{{transactionId}}"
-					]
-				}
+				"url": "{{PROVIDER}}/artifacts/{{transactionId}}"
 			},
 			"response": []
 		},
@@ -281,16 +181,7 @@
 						}
 					}
 				},
-				"url": {
-					"raw": "{{PROVIDER_API_TRANSFERS}}/{{provider_transferProcessId}}/start",
-					"host": [
-						"{{PROVIDER_API_TRANSFERS}}"
-					],
-					"path": [
-						"{{provider_transferProcessId}}",
-						"start"
-					]
-				}
+				"url": "{{PROVIDER_API_TRANSFERS}}/{{provider_transferProcessId}}/start"
 			},
 			"response": []
 		},
@@ -301,8 +192,8 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test(\"Status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
+							"pm.test(\"Status code is 202\", function () {\r",
+							"    pm.response.to.have.status(202);\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -319,22 +210,22 @@
 						"type": "text"
 					}
 				],
-				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
-					"host": [
-						"{{CONSUMER_API_TRANSFERS}}"
-					],
-					"path": [
-						"{{consumer_transferProcessId}}",
-						"download"
-					]
-				}
+				"url": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download"
 			},
 			"response": []
 		},
 		{
 			"name": "[C] View data",
 			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"setTimeout(() => {}, 5000);"
+						],
+						"type": "text/javascript"
+					}
+				},
 				{
 					"listen": "test",
 					"script": {
@@ -359,16 +250,7 @@
 						"type": "text"
 					}
 				],
-				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view",
-					"host": [
-						"{{CONSUMER_API_TRANSFERS}}"
-					],
-					"path": [
-						"{{consumer_transferProcessId}}",
-						"view"
-					]
-				}
+				"url": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view"
 			},
 			"response": []
 		},
@@ -399,12 +281,7 @@
 						"type": "text"
 					}
 				],
-				"url": {
-					"raw": "{{presignedURL}}",
-					"host": [
-						"{{presignedURL}}"
-					]
-				}
+				"url": "{{presignedURL}}"
 			},
 			"response": []
 		},
@@ -442,54 +319,7 @@
 						}
 					}
 				},
-				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/suspend",
-					"host": [
-						"{{CONSUMER_API_TRANSFERS}}"
-					],
-					"path": [
-						"{{consumer_transferProcessId}}",
-						"suspend"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "[C] Download data fail",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is client error or server error\", () => {\r",
-							"    pm.expect(pm.response.code).to.be.oneOf([400, 401, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 422, 423, 424, 425, 426, 428, 429, 431, 451, 500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511]);\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
-					"host": [
-						"{{CONSUMER_API_TRANSFERS}}"
-					],
-					"path": [
-						"{{consumer_transferProcessId}}",
-						"download"
-					]
-				}
+				"url": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/suspend"
 			},
 			"response": []
 		},
@@ -520,16 +350,7 @@
 						"type": "text"
 					}
 				],
-				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view",
-					"host": [
-						"{{CONSUMER_API_TRANSFERS}}"
-					],
-					"path": [
-						"{{consumer_transferProcessId}}",
-						"view"
-					]
-				}
+				"url": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view"
 			},
 			"response": []
 		},
@@ -560,12 +381,7 @@
 						"type": "text"
 					}
 				],
-				"url": {
-					"raw": "{{presignedURL}}",
-					"host": [
-						"{{presignedURL}}"
-					]
-				}
+				"url": "{{presignedURL}}"
 			},
 			"response": []
 		},
@@ -603,54 +419,7 @@
 						}
 					}
 				},
-				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/start",
-					"host": [
-						"{{CONSUMER_API_TRANSFERS}}"
-					],
-					"path": [
-						"{{consumer_transferProcessId}}",
-						"start"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "[C] Download data fail",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
-					"host": [
-						"{{CONSUMER_API_TRANSFERS}}"
-					],
-					"path": [
-						"{{consumer_transferProcessId}}",
-						"download"
-					]
-				}
+				"url": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/start"
 			},
 			"response": []
 		},
@@ -670,6 +439,18 @@
 						"type": "text/javascript",
 						"packages": {}
 					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Introduce a delay of 2 seconds before sending the request\r",
+							"setTimeout(() => {}, 2000);\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
 				}
 			],
 			"request": {
@@ -681,16 +462,7 @@
 						"type": "text"
 					}
 				],
-				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view",
-					"host": [
-						"{{CONSUMER_API_TRANSFERS}}"
-					],
-					"path": [
-						"{{consumer_transferProcessId}}",
-						"view"
-					]
-				}
+				"url": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view"
 			},
 			"response": []
 		},
@@ -721,12 +493,7 @@
 						"type": "text"
 					}
 				],
-				"url": {
-					"raw": "{{presignedURL}}",
-					"host": [
-						"{{presignedURL}}"
-					]
-				}
+				"url": "{{presignedURL}}"
 			},
 			"response": []
 		},
@@ -764,54 +531,7 @@
 						}
 					}
 				},
-				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/complete",
-					"host": [
-						"{{CONSUMER_API_TRANSFERS}}"
-					],
-					"path": [
-						"{{consumer_transferProcessId}}",
-						"complete"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "[C] Download data fail",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is client error or server error\", () => {\r",
-							"    pm.expect(pm.response.code).to.be.oneOf([400, 401, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 422, 423, 424, 425, 426, 428, 429, 431, 451, 500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511]);\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
-					"host": [
-						"{{CONSUMER_API_TRANSFERS}}"
-					],
-					"path": [
-						"{{consumer_transferProcessId}}",
-						"download"
-					]
-				}
+				"url": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/complete"
 			},
 			"response": []
 		},
@@ -842,16 +562,7 @@
 						"type": "text"
 					}
 				],
-				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view",
-					"host": [
-						"{{CONSUMER_API_TRANSFERS}}"
-					],
-					"path": [
-						"{{consumer_transferProcessId}}",
-						"view"
-					]
-				}
+				"url": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view"
 			},
 			"response": []
 		},
@@ -882,30 +593,17 @@
 						"type": "text"
 					}
 				],
-				"url": {
-					"raw": "{{presignedURL}}",
-					"host": [
-						"{{presignedURL}}"
-					]
-				}
+				"url": "{{presignedURL}}"
 			},
 			"response": []
 		}
 	],
 	"auth": {
 		"type": "basic",
-		"basic": [
-			{
-				"key": "password",
-				"value": "password",
-				"type": "string"
-			},
-			{
-				"key": "username",
-				"value": "admin@mail.com",
-				"type": "string"
-			}
-		]
+		"basic": {
+			"password": "password",
+			"username": "admin@mail.com"
+		}
 	},
 	"event": [
 		{
@@ -949,6 +647,18 @@
 			"key": "consumer_transferProcessId",
 			"value": "urn:uuid:abc45798-1434-4932-8baf-ab7fd66ql4d5",
 			"type": "string"
+		},
+		{
+			"key": "transactionId",
+			"value": ""
+		},
+		{
+			"key": "provider_transferProcessId",
+			"value": ""
+		},
+		{
+			"key": "presignedURL",
+			"value": ""
 		}
 	]
 }

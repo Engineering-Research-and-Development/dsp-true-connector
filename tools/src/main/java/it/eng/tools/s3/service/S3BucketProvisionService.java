@@ -1,63 +1,102 @@
 package it.eng.tools.s3.service;
 
+import it.eng.tools.exception.S3ServerException;
+import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.properties.S3Properties;
-import it.eng.tools.s3.repository.BucketCredentialsRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
-import software.amazon.awssdk.services.s3.presigner.S3Presigner;
-import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
-import java.net.URI;
 import java.time.Duration;
 import java.util.UUID;
 
 @Service
 @Slf4j
-public class S3BucketService {
-    private final S3Client s3Client;
+public class S3BucketProvisionService {
+    private final S3ClientProvider s3ClientProvider;
     private final S3Properties s3Properties;
-    private final BucketCredentialsRepository bucketCredentialsRepository;
+    private final BucketCredentialsService bucketCredentialsService;
+    private final IamUserManagementService iamUserManagementService;
 
-    public S3BucketService(S3Client s3Client, S3Properties s3Properties, BucketCredentialsRepository bucketCredentialsRepository) {
-        this.s3Client = s3Client;
+    public S3BucketProvisionService(S3ClientProvider s3ClientProvider, S3Properties s3Properties,
+                                    BucketCredentialsService bucketCredentialsService,
+                                    IamUserManagementService iamUserManagementService) {
+        this.s3ClientProvider = s3ClientProvider;
         this.s3Properties = s3Properties;
-        this.bucketCredentialsRepository = bucketCredentialsRepository;
+        this.bucketCredentialsService = bucketCredentialsService;
+        this.iamUserManagementService = iamUserManagementService;
     }
 
-    public BucketCredentials createSecureBucket(String bucketName) {
+    public BucketCredentialsEntity createSecureBucket(String bucketName) {
         validateBucketName(bucketName);
+        log.info("Create secure bucket {}", bucketName);
         // Generate temporary credentials
         String accessKey = "GetBucketUser-" + UUID.randomUUID().toString().substring(0, 8);
         String secretKey = UUID.randomUUID().toString();
 
-        // Create bucket
-        CreateBucketRequest createBucketRequest = CreateBucketRequest.builder()
-                .bucket(bucketName)
-                .build();
-        s3Client.createBucket(createBucketRequest);
-
-        // Update bucket policy while preserving existing policies
-        updateBucketPolicy(bucketName, accessKey);
-
-        // Store credentials
-        bucketCredentialsRepository.save(BucketCredentialsEntity.Builder.newInstance()
+        BucketCredentialsEntity bucketCredentials = BucketCredentialsEntity.Builder.newInstance()
                 .bucketName(bucketName)
                 .accessKey(accessKey)
                 .secretKey(secretKey)
-                .build());
+                .build();
 
-        return new BucketCredentials(accessKey, secretKey, bucketName);
+        iamUserManagementService.createUser(bucketCredentials);
+        iamUserManagementService.attachPolicyToUser(bucketCredentials);
+
+        // Create bucket
+        createBucket(bucketName);
+
+        // Attach bucket policy
+        updateBucketPolicy(bucketName, accessKey);
+
+        // Store credentials
+        return bucketCredentialsService.saveBucketCredentials(bucketCredentials);
+    }
+
+    private void createBucket(String bucketName) {
+        try {
+            s3ClientProvider.adminS3Client().createBucket(CreateBucketRequest.builder()
+                    .bucket(bucketName)
+                    .build());
+        } catch (BucketAlreadyExistsException e) {
+            log.warn("Bucket {} already exists", bucketName);
+        }
+    }
+
+    private void attachBucketPolicy(String bucketName, String accessKey) {
+        String policy = String.format("""
+                {
+                    "Version": "2012-10-17",
+                    "Sid": "AllowTemporaryAccess-%s",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "AWS": ["arn:aws:iam::*:user/%s"]
+                            },
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject",
+                                "s3:DeleteObject"
+                            ],
+                            "Resource": ["arn:aws:s3:::%s/*"]
+                        }
+                    ]
+                }
+                """, UUID.randomUUID().toString().substring(0, 8), accessKey, bucketName);
+
+        s3ClientProvider.adminS3Client().putBucketPolicy(PutBucketPolicyRequest.builder()
+                .bucket(bucketName)
+                .policy(policy)
+                .build());
     }
 
     private void updateBucketPolicy(String bucketName, String accessKey) {
         try {
+            S3Client s3ClientAdmin = s3ClientProvider.adminS3Client();
             // Try to get existing policy
             GetBucketPolicyRequest getPolicyRequest = GetBucketPolicyRequest.builder()
                     .bucket(bucketName)
@@ -65,7 +104,7 @@ public class S3BucketService {
 
             String existingPolicy = null;
             try {
-                String policy = s3Client.getBucketPolicy(getPolicyRequest).policy();
+                String policy = s3ClientAdmin.getBucketPolicy(getPolicyRequest).policy();
                 // Treat empty JSON object as no policy for MinIO compatibility
                 if (!policy.equals("{}")) {
                     existingPolicy = policy;
@@ -80,7 +119,7 @@ public class S3BucketService {
                         "Sid": "AllowTemporaryAccess-%s",
                         "Effect": "Allow",
                         "Principal": {
-                            "AWS": ["%s"]
+                            "AWS": ["arn:aws:iam::*:user/%s"]
                         },
                         "Action": [
                             "s3:GetObject",
@@ -129,53 +168,11 @@ public class S3BucketService {
                     .bucket(bucketName)
                     .policy(finalPolicy)
                     .build();
-            s3Client.putBucketPolicy(policyRequest);
-
+            s3ClientAdmin.putBucketPolicy(policyRequest);
+            log.info("Update secure bucket {} whit policy", bucketName);
         } catch (Exception e) {
             log.error("Failed to update bucket policy for bucket: {}", bucketName, e);
-            throw new RuntimeException("Failed to update bucket policy", e);
-        }
-    }
-
-    public String generatePresignedUrl(String bucketName, String objectKey,
-                                       Duration expiration) {
-
-        validatePresignedUrlParams(objectKey, expiration);
-        BucketCredentialsEntity credentials = bucketCredentialsRepository.findByBucketName(bucketName)
-                .orElseThrow(() -> new RuntimeException("No credentials found for bucket: " + bucketName));
-
-        return generatePresignedUrl(bucketName, objectKey,
-                credentials.getAccessKey(),
-                credentials.getSecretKey(),
-                expiration);
-    }
-
-    private String generatePresignedUrl(String bucketName, String objectKey,
-                                        String accessKey, String secretKey,
-                                        Duration expiration) {
-
-        try (S3Presigner presigner = S3Presigner.builder()
-                .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(accessKey, secretKey)))
-                .endpointOverride(URI.create(s3Properties.getEndpoint()))
-                .region(Region.of(s3Properties.getRegion()))
-                .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
-                        .pathStyleAccessEnabled(true)
-                        .build())
-                .build()) {
-            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-                    .bucket(bucketName)
-                    .key(objectKey)
-                    .build();
-
-            GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-                    .signatureDuration(expiration)
-                    .getObjectRequest(getObjectRequest)
-                    .build();
-
-            return presigner.presignGetObject(presignRequest)
-                    .url()
-                    .toString();
+            throw new S3ServerException("Failed to update bucket policy", e);
         }
     }
 
@@ -186,14 +183,16 @@ public class S3BucketService {
                     .bucket(bucketName)
                     .build();
             ListObjectsV2Response listResponse;
+
+            S3Client s3ClientAdmin = s3ClientProvider.adminS3Client();
             do {
-                listResponse = s3Client.listObjectsV2(listRequest);
+                listResponse = s3ClientAdmin.listObjectsV2(listRequest);
                 for (S3Object object : listResponse.contents()) {
                     DeleteObjectRequest deleteRequest = DeleteObjectRequest.builder()
                             .bucket(bucketName)
                             .key(object.key())
                             .build();
-                    s3Client.deleteObject(deleteRequest);
+                    s3ClientAdmin.deleteObject(deleteRequest);
                 }
                 listRequest = ListObjectsV2Request.builder()
                         .bucket(bucketName)
@@ -205,25 +204,48 @@ public class S3BucketService {
             DeleteBucketPolicyRequest deletePolicyRequest = DeleteBucketPolicyRequest.builder()
                     .bucket(bucketName)
                     .build();
-            s3Client.deleteBucketPolicy(deletePolicyRequest);
+            s3ClientAdmin.deleteBucketPolicy(deletePolicyRequest);
 
             // Delete bucket
             DeleteBucketRequest deleteBucketRequest = DeleteBucketRequest.builder()
                     .bucket(bucketName)
                     .build();
-            s3Client.deleteBucket(deleteBucketRequest);
+            s3ClientAdmin.deleteBucket(deleteBucketRequest);
         } catch (Exception e) {
             log.error("Failed to cleanup bucket: {}", bucketName, e);
-            throw new RuntimeException("Failed to cleanup bucket", e);
+            throw new S3ServerException("Failed to cleanup bucket", e);
+        }
+    }
+
+    /**
+     * Checks if a bucket with the specified name exists.
+     *
+     * @param bucketName the name of the bucket to check
+     * @return true if the bucket exists, false otherwise
+     */
+    public boolean bucketExists(String bucketName) {
+        validateBucketName(bucketName);
+        try {
+            S3Client s3Client = s3ClientProvider.adminS3Client();
+            HeadBucketRequest headBucketRequest = HeadBucketRequest.builder()
+                    .bucket(bucketName)
+                    .build();
+            s3Client.headBucket(headBucketRequest);
+            return true;
+        } catch (NoSuchBucketException e) {
+            return false;
+        } catch (Exception e) {
+            log.error("Error checking if bucket {} exists: {}", bucketName, e.getMessage());
+            throw new S3ServerException("Error checking if bucket exists: " + e.getMessage(), e);
         }
     }
 
     private void validateBucketName(String bucketName) {
         if (bucketName == null || bucketName.isEmpty()) {
-            throw new IllegalArgumentException("Bucket name cannot be empty");
+            throw new IllegalArgumentException("Bucket name cannot be null or empty");
         }
         if (!bucketName.matches("^[a-z0-9][a-z0-9.-]*[a-z0-9]$")) {
-            throw new IllegalArgumentException("Invalid bucket name format");
+            throw new IllegalArgumentException("Invalid bucket name format: " + bucketName);
         }
     }
 

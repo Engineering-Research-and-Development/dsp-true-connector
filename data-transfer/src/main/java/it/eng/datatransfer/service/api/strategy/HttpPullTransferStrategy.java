@@ -32,23 +32,18 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
     }
 
     @Override
-    public void transfer(TransferProcess transferProcess) {
+    public CompletableFuture<Void> transfer(TransferProcess transferProcess) {
         log.info("Executing HTTP PULL transfer for process {}", transferProcess.getId());
 
         // get authorization information from Data Address if present
         String authorization = extractAuthorization(transferProcess);
 
-        try {
-            String key = downloadAndUploadToS3(
-                    transferProcess.getDataAddress().getEndpoint(),
-                    authorization,
-                    transferProcess.getId()
-            ).get();
-            log.info("Stored transfer process id - {} data!", key);
-        } catch (Exception e) {
-            log.error("Download failed, {}", e.getLocalizedMessage());
-            throw new DataTransferAPIException("Download failed, " + e.getLocalizedMessage());
-        }
+        return downloadAndUploadToS3(
+                transferProcess.getDataAddress().getEndpoint(),
+                authorization,
+                transferProcess.getId()
+        ).thenAccept(key ->
+                log.info("Stored transfer process id - {} data!", key));
     }
 
     private CompletableFuture<String> downloadAndUploadToS3(String presignedUrl,

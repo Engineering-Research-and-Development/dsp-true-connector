@@ -2,12 +2,85 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.4.3-SNAPSHOT] - 17.07.2025.
+## [0.4.9-SNAPSHOT] - 17.07.2025.
 
 ### Added
 
 - Added HTTP-Push transfer format
 - if HTTP-Push transfer format is used, the DataTransferApiService will create a DataAddress with presigned PUT URL
+
+## [0.4.8-SNAPSHOT] - 16.07.2025.
+
+### Added
+
+- Added new API endpoint to fetch all AuditEventTypes
+- Proper handling for GenericFilter timestamp query parameters
+
+## [0.4.7-SNAPSHOT] - 11.07.2025.
+
+### Added
+
+- AuditEvent document and CRUD classes for storing audit events in MongoDB
+- Covered Contract Negotiation flow with AuditEvent
+- Covered Data Transfer flow with AuditEvent
+
+### Changed
+
+- Added publish AuditEvent for DataTransfer events and PolicyDecision
+- GenericDynamicFilterRepository for repositories that require dynamic filtering
+
+## [0.4.6-SNAPSHOT] - 08.08.2025.
+
+### Added
+
+- TransferProcessRepositoryCustom and TransferProcessRepositoryCustomImpl for custom queries for additional filtering
+- GenericFilterBuilder for building custom filters directly from request
+
+### Changed
+
+- Updated TransferProcessApiController and TransferProcessService to use TransferProcessRepositoryCustom and additional
+  filtering
+- Updated tests and add new ones related to new implementation
+
+## [0.4.5-SNAPSHOT] - 04.07.2025.
+
+### Added
+
+- New event and logic for logging DataTransfer events
+
+### Changed
+
+- DataTransferAPIController.downloadData is now async - response with code 202 is returned and download is done in
+  background
+- Refactored DataTransferStrategy and implementing classes to return CompletableFuture<Void> for transfer method
+- GeneratePresignURL uses BucketCredentials
+- Renamed DataTranferMockObjectUtil to DataTransferMockObjectUtil
+- Updated TransferProcessApiController and TransferProcessService to use TransferProcessRepositoryCustom and additional
+  filtering
+- Updated tests and Postman collection
+
+## [0.4.4-SNAPSHOT] - 03.07.2025.
+
+### Added
+
+- When creating S3 bucket, a policy for restricting access will be created
+- S3 client providers, with caching, for creating clients with different configurations
+- IAM user management for S3 bucket access
+- New dependency - io.minio:minio-admin:8.5.7 for managing IAM users for MiniIO
+- Encrypting secretKey in BucketCredentialsEntity
+- Created S3ServerException
+
+### Changed
+
+- MinIO version minio/minio:RELEASE.2025-04-22T22-12-26Z - has extended UI interface
+- Move deleteBucket to S3BucketProvisionService
+- Updated tests
+
+## [0.4.3-SNAPSHOT] - 20.06.2025.
+
+### Added
+
+- 3 new fields in ApplicationProperty, needed for UI
 
 ## [0.4.2-SNAPSHOT] - 19.06.2025.
 

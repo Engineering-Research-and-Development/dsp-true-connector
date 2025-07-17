@@ -1,5 +1,8 @@
 package it.eng.tools.s3.service;
 
+import it.eng.tools.s3.configuration.S3ClientProvider;
+import it.eng.tools.s3.model.BucketCredentialsEntity;
+import it.eng.tools.s3.model.S3ClientRequest;
 import it.eng.tools.s3.properties.S3Properties;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -38,78 +41,25 @@ import java.util.concurrent.CompletionException;
 @Slf4j
 public class S3ClientServiceImpl implements S3ClientService {
 
-    private final S3Client s3Client;
+    private final S3ClientProvider s3ClientProvider;
     private final S3Properties s3Properties;
-    private final S3AsyncClient s3AsyncClient;
+    private final BucketCredentialsService bucketCredentialsService;
+
     private static final int CHUNK_SIZE = 50 * 1024 * 1024; // 50MB chunks
 
     /**
      * Constructor for S3ClientServiceImpl.
      *
-     * @param s3Client      the S3 client
-     * @param s3Properties  the S3 properties
-     * @param s3AsyncClient the S3 async client
+     * @param s3ClientProvider         provider for S3 client (sync and async)
+     * @param s3Properties             the S3 properties
+     * @param bucketCredentialsService service for managing bucket credentials
      */
-    public S3ClientServiceImpl(S3Client s3Client, S3Properties s3Properties, S3AsyncClient s3AsyncClient) {
-        this.s3Client = s3Client;
+    public S3ClientServiceImpl(S3ClientProvider s3ClientProvider,
+                               S3Properties s3Properties,
+                               BucketCredentialsService bucketCredentialsService) {
+        this.s3ClientProvider = s3ClientProvider;
         this.s3Properties = s3Properties;
-        this.s3AsyncClient = s3AsyncClient;
-    }
-
-    @Override
-    public void createBucket(String bucketName) {
-        validateBucketName(bucketName);
-        try {
-            if (!bucketExists(bucketName)) {
-                CreateBucketRequest createBucketRequest = CreateBucketRequest.builder()
-                        .bucket(bucketName)
-                        .build();
-                s3Client.createBucket(createBucketRequest);
-                log.info("Bucket {} created successfully", bucketName);
-
-            } else {
-                log.info("Bucket {} already exists", bucketName);
-            }
-        } catch (Exception e) {
-            log.error("Error creating bucket {}: {}", bucketName, e.getMessage());
-            throw new RuntimeException("Error creating bucket: " + e.getMessage(), e);
-        }
-    }
-
-    @Override
-    public void deleteBucket(String bucketName) {
-        validateBucketName(bucketName);
-        try {
-            if (bucketExists(bucketName)) {
-                DeleteBucketRequest deleteBucketRequest = DeleteBucketRequest.builder()
-                        .bucket(bucketName)
-                        .build();
-                s3Client.deleteBucket(deleteBucketRequest);
-                log.info("Bucket {} deleted successfully", bucketName);
-            } else {
-                log.info("Bucket {} does not exist", bucketName);
-            }
-        } catch (Exception e) {
-            log.error("Error deleting bucket {}: {}", bucketName, e.getMessage());
-            throw new RuntimeException("Error deleting bucket: " + e.getMessage(), e);
-        }
-    }
-
-    @Override
-    public boolean bucketExists(String bucketName) {
-        validateBucketName(bucketName);
-        try {
-            HeadBucketRequest headBucketRequest = HeadBucketRequest.builder()
-                    .bucket(bucketName)
-                    .build();
-            s3Client.headBucket(headBucketRequest);
-            return true;
-        } catch (NoSuchBucketException e) {
-            return false;
-        } catch (Exception e) {
-            log.error("Error checking if bucket {} exists: {}", bucketName, e.getMessage());
-            throw new RuntimeException("Error checking if bucket exists: " + e.getMessage(), e);
-        }
+        this.bucketCredentialsService = bucketCredentialsService;
     }
 
     @Override
@@ -119,10 +69,11 @@ public class S3ClientServiceImpl implements S3ClientService {
                                                 String contentType,
                                                 String contentDisposition) {
 
-        // Create bucket if it doesn't exist
-        if (!bucketExists(s3Properties.getBucketName())) {
-            createBucket(s3Properties.getBucketName());
-        }
+        BucketCredentialsEntity bucketCredentials = bucketCredentialsService.getBucketCredentials(bucketName);
+        log.info("Uploading file {} to bucket {}", key, bucketName);
+        S3ClientRequest s3ClientRequest = S3ClientRequest.from(s3Properties.getRegion(),
+                null,
+                bucketCredentials);
 
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -135,6 +86,7 @@ public class S3ClientServiceImpl implements S3ClientService {
                         .build();
 
                 log.info("Creating multipart upload for key: {}", key);
+                S3AsyncClient s3AsyncClient = s3ClientProvider.s3AsyncClient(s3ClientRequest);
                 String uploadId = s3AsyncClient.createMultipartUpload(createMultipartUploadRequest)
                         .join()
                         .uploadId();
@@ -154,7 +106,7 @@ public class S3ClientServiceImpl implements S3ClientService {
                     // Upload part when accumulator reaches buffer size or on last part
                     if (accumulator.size() >= CHUNK_SIZE) {
                         byte[] partData = accumulator.toByteArray();
-                        String eTag = uploadPart(bucketName, key, uploadId, partNumber, partData);
+                        String eTag = uploadPart(s3AsyncClient, bucketName, key, uploadId, partNumber, partData);
 
                         completedParts.add(CompletedPart.builder()
                                 .partNumber(partNumber)
@@ -169,7 +121,7 @@ public class S3ClientServiceImpl implements S3ClientService {
                 // Upload any remaining data as the last part
                 if (accumulator.size() > 0) {
                     byte[] partData = accumulator.toByteArray();
-                    String eTag = uploadPart(bucketName, key, uploadId, partNumber, partData);
+                    String eTag = uploadPart(s3AsyncClient, bucketName, key, uploadId, partNumber, partData);
 
                     completedParts.add(CompletedPart.builder()
                             .partNumber(partNumber)
@@ -215,6 +167,8 @@ public class S3ClientServiceImpl implements S3ClientService {
                     .key(objectKey)
                     .build();
 
+            S3Client s3Client = getS3Client(bucketName);
+
             ResponseInputStream<GetObjectResponse> responseInputStream = s3Client.getObject(getObjectRequest);
             byte[] buffer = new byte[8192]; // 8KB buffer
             int bytesRead;
@@ -243,6 +197,7 @@ public class S3ClientServiceImpl implements S3ClientService {
         validateBucketName(bucketName);
         try {
             if (fileExists(bucketName, objectKey)) {
+                S3Client s3Client = getS3Client(bucketName);
                 DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
                         .bucket(bucketName)
                         .key(objectKey)
@@ -262,6 +217,7 @@ public class S3ClientServiceImpl implements S3ClientService {
     public boolean fileExists(String bucketName, String objectKey) {
         validateBucketName(bucketName);
         try {
+            S3Client s3Client = getS3Client(bucketName);
             HeadObjectRequest headObjectRequest = HeadObjectRequest.builder()
                     .bucket(bucketName)
                     .key(objectKey)
@@ -276,21 +232,33 @@ public class S3ClientServiceImpl implements S3ClientService {
         }
     }
 
+    private S3Client getS3Client(String bucketName) {
+        log.info("Getting S3 Client for bucket {}", bucketName);
+        BucketCredentialsEntity bucketCredentials = bucketCredentialsService.getBucketCredentials(bucketName);
+        S3ClientRequest s3ClientRequest = S3ClientRequest.from(s3Properties.getRegion(),
+                s3Properties.getEndpoint(),
+                bucketCredentials);
+        return s3ClientProvider.s3Client(s3ClientRequest);
+    }
+
     @Override
     public String generatePresignedGETUrl(String bucketName, String objectKey, Duration expiration) {
         validateBucketName(bucketName);
         if (objectKey == null || objectKey.isEmpty()) {
             throw new IllegalArgumentException("Object key cannot be null or empty");
         }
+        BucketCredentialsEntity bucketCredentials = bucketCredentialsService.getBucketCredentials(bucketName);
         try (S3Presigner presigner = S3Presigner.builder()
                 .endpointOverride(URI.create(s3Properties.getExternalPresignedEndpoint()))
                 .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(s3Properties.getAccessKey(), s3Properties.getSecretKey())))
+                        AwsBasicCredentials.create(bucketCredentials.getAccessKey(), bucketCredentials.getSecretKey())))
                 .region(Region.of(s3Properties.getRegion()))
                 .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
                         .pathStyleAccessEnabled(true)
                         .build())
                 .build()) {
+
+            S3Client s3Client = getS3Client(bucketName);
 
             // First, get the object's metadata
             HeadObjectRequest headObjectRequest = HeadObjectRequest.builder()
@@ -369,6 +337,8 @@ public class S3ClientServiceImpl implements S3ClientService {
     public List<String> listFiles(String bucketName) {
         validateBucketName(bucketName);
         try {
+            S3Client s3Client = s3ClientProvider.adminS3Client();
+
             ListObjectsV2Request request = ListObjectsV2Request.builder()
                     .bucket(bucketName)
                     .build();
@@ -382,7 +352,7 @@ public class S3ClientServiceImpl implements S3ClientService {
         }
     }
 
-    private String uploadPart(String bucketName, String key, String uploadId,
+    private String uploadPart(S3AsyncClient s3AsyncClient, String bucketName, String key, String uploadId,
                               int partNumber, byte[] partData) {
         UploadPartRequest uploadPartRequest = UploadPartRequest.builder()
                 .bucket(bucketName)

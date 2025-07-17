@@ -2,15 +2,20 @@ package it.eng.connector.configuration;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.tools.event.AuditEvent;
+import it.eng.tools.event.AuditEventType;
 import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.S3BucketProvisionService;
 import it.eng.tools.s3.service.S3ClientService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.bson.Document;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.env.Environment;
 import org.springframework.core.io.ClassPathResource;
@@ -18,7 +23,6 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.MediaType;
 
-import java.io.File;
 import java.io.InputStream;
 
 /**
@@ -32,13 +36,18 @@ public class InitialDataLoader {
     private final MongoTemplate mongoTemplate;
     private final Environment environment;
     private final S3ClientService s3ClientService;
+    private final S3BucketProvisionService s3BucketProvisionService;
     private final S3Properties s3Properties;
-    
-    public InitialDataLoader(MongoTemplate mongoTemplate, Environment environment, S3ClientService s3ClientService, S3Properties s3Properties) {
+    private final ApplicationEventPublisher publisher;
+
+    public InitialDataLoader(MongoTemplate mongoTemplate, Environment environment, S3ClientService s3ClientService,
+                             S3BucketProvisionService s3BucketProvisionService, S3Properties s3Properties, ApplicationEventPublisher publisher) {
         this.mongoTemplate = mongoTemplate;
         this.environment = environment;
         this.s3ClientService = s3ClientService;
+        this.s3BucketProvisionService = s3BucketProvisionService;
         this.s3Properties = s3Properties;
+        this.publisher = publisher;
     }
 
     /**
@@ -53,13 +62,13 @@ public class InitialDataLoader {
             ObjectMapper mapper = new ObjectMapper();
             String filename = null;
             String[] activeProfiles = environment.getActiveProfiles();
-            if(activeProfiles.length == 0) {
-            	log.debug("No active profiles set, using initial_data.json for populating Mongo");
-            	filename = "initial_data.json";
+            if (activeProfiles.length == 0) {
+                log.debug("No active profiles set, using initial_data.json for populating Mongo");
+                filename = "initial_data.json";
             } else {
-            	String activeProfile = activeProfiles[0];
-            	filename = "initial_data-" + activeProfile + ".json";
-            	log.debug("Active profile set {}, using {} for populating Mongo", activeProfile, filename);
+                String activeProfile = activeProfiles[0];
+                filename = "initial_data-" + activeProfile + ".json";
+                log.debug("Active profile set {}, using {} for populating Mongo", activeProfile, filename);
             }
             try (InputStream inputStream = new ClassPathResource(filename).getInputStream()) {
                 JsonNode rootNode = mapper.readTree(inputStream);
@@ -109,13 +118,17 @@ public class InitialDataLoader {
      */
     @EventListener(ApplicationReadyEvent.class)
     public void loadMockData() {
+        publisher.publishEvent(AuditEvent.Builder.newInstance()
+                .description("Application started")
+                .eventType(AuditEventType.APPLICATION_START)
+                .build());
         log.info("Uploading mock data to S3...");
 
         try {
             // Create S3 bucket if it doesn't exist
             String bucketName = s3Properties.getBucketName();
-            if (!s3ClientService.bucketExists(bucketName)) {
-                s3ClientService.createBucket(bucketName);
+            if (!s3BucketProvisionService.bucketExists(bucketName)) {
+                s3BucketProvisionService.createSecureBucket(bucketName);
                 log.info("Created S3 bucket: {}", bucketName);
             }
 
@@ -128,10 +141,20 @@ public class InitialDataLoader {
                         .build()
                         .toString();
 
-                s3ClientService.uploadFile(FileUtils.openInputStream(file.getFile()), bucketName, fileKey, MediaType.APPLICATION_JSON_VALUE, contentDisposition);
+                s3ClientService.uploadFile(FileUtils.openInputStream(file.getFile()), bucketName, fileKey,
+                                MediaType.APPLICATION_JSON_VALUE, contentDisposition)
+                        .get();
             }
         } catch (Exception e) {
             log.error("Error while loading mock data to S3", e);
         }
+    }
+
+    @EventListener(ContextClosedEvent.class)
+    public void onApplicationShutdown(ContextClosedEvent event) {
+        publisher.publishEvent(AuditEvent.Builder.newInstance()
+                .description("Application stopped")
+                .eventType(AuditEventType.APPLICATION_STOP)
+                .build());
     }
 }
