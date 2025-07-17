@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.*;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -25,50 +26,59 @@ public class AuditEventServiceTest {
 
     @Mock
     private AuditEventRepository auditEventRepository;
+    @Mock
+    private Pageable pageable;
 
     @InjectMocks
     private AuditEventService auditEventService;
 
     private Map<String, Object> filters;
-    private List<AuditEvent> expectedEvents;
+    private Page<AuditEvent> expectedEvents;
 
     @BeforeEach
     void setUp() {
         filters = new HashMap<>();
         filters.put("eventType", AuditEventType.APPLICATION_START);
 
-        expectedEvents = List.of(
+        List<AuditEvent> auditEvents = List.of(
                 AuditEvent.Builder.newInstance()
-                        .description("Test event")
+                        .description("Test event 1")
                         .eventType(AuditEventType.APPLICATION_START)
                         .timestamp(LocalDateTime.now())
+                        .build(),
+                AuditEvent.Builder.newInstance()
+                        .description("Test event 2")
+                        .eventType(AuditEventType.APPLICATION_START)
+                        .timestamp(LocalDateTime.now().minusHours(1))
                         .build()
         );
+        pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "timestamp"));
+        expectedEvents = new PageImpl<>(auditEvents, pageable, auditEvents.size());
     }
 
     @Test
     void getAuditEvents_shouldReturnEventsFromRepository() {
-        when(auditEventRepository.findWithDynamicFilters(filters, AuditEvent.class))
+        when(auditEventRepository.findWithDynamicFilters(filters, AuditEvent.class, pageable))
                 .thenReturn(expectedEvents);
 
-        Collection<AuditEvent> actualEvents = auditEventService.getAuditEvents(filters);
+        Page<AuditEvent> actualEvents = auditEventService.getAuditEvents(filters, pageable);
 
         assertNotNull(actualEvents);
         assertEquals(expectedEvents, actualEvents);
-        verify(auditEventRepository).findWithDynamicFilters(filters, AuditEvent.class);
+        verify(auditEventRepository).findWithDynamicFilters(filters, AuditEvent.class, pageable);
     }
 
     @Test
     void getAuditEvents_withEmptyFilters_shouldReturnEventsFromRepository() {
         Map<String, Object> emptyFilters = new HashMap<>();
-        when(auditEventRepository.findWithDynamicFilters(emptyFilters, AuditEvent.class))
+        when(auditEventRepository.findWithDynamicFilters(emptyFilters, AuditEvent.class, pageable))
                 .thenReturn(expectedEvents);
 
-        Collection<AuditEvent> actualEvents = auditEventService.getAuditEvents(emptyFilters);
+        Page<AuditEvent> actualEvents = auditEventService.getAuditEvents(emptyFilters, pageable);
 
         assertNotNull(actualEvents);
         assertEquals(expectedEvents, actualEvents);
-        verify(auditEventRepository).findWithDynamicFilters(emptyFilters, AuditEvent.class);
+        verify(auditEventRepository).findWithDynamicFilters(emptyFilters, AuditEvent.class, pageable);
     }
 
     @Test

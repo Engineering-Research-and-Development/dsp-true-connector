@@ -4,6 +4,8 @@ import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.AuditEventTypeDTO;
 import it.eng.tools.repository.AuditEventRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -19,9 +21,8 @@ public class AuditEventService {
         this.auditEventRepository = auditEventRepository;
     }
 
-    public Collection<AuditEvent> getAuditEvents(Map<String, Object> filters) {
-
-        return auditEventRepository.findWithDynamicFilters(filters, AuditEvent.class);
+    public Page<AuditEvent> getAuditEvents(Map<String, Object> filters, Pageable pageable) {
+        return auditEventRepository.findWithDynamicFilters(filters, AuditEvent.class, pageable);
     }
 
     public Collection<AuditEventTypeDTO> getAuditEventTypes() {

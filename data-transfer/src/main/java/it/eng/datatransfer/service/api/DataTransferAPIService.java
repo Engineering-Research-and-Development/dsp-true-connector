@@ -27,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tomcat.util.codec.binary.Base64;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
@@ -80,10 +81,11 @@ public class DataTransferAPIService {
      * Find dataTransfer based on generic filter criteria.
      * Supports any field with automatic type detection and conversion.
      *
-     * @param filters Map of field names to filter values. All values are pre-validated and converted.
+     * @param filters  Map of field names to filter values. All values are pre-validated and converted.
+     * @param pageable Pageable
      * @return List of JsonNode representations for data transfers
      */
-    public Collection<JsonNode> findDataTransfers(Map<String, Object> filters) {
+    public Collection<JsonNode> findDataTransfers(Map<String, Object> filters, Pageable pageable) {
         if (filters == null || filters.isEmpty()) {
             log.debug("No filters provided, returning all transfer processes");
             return transferProcessRepository.findAll().stream()
@@ -99,7 +101,7 @@ public class DataTransferAPIService {
                     .map(List::of)
                     .orElse(List.of());
         } else {
-            transferProcesses = transferProcessRepository.findWithDynamicFilters(filters, TransferProcess.class);
+            transferProcesses = transferProcessRepository.findWithDynamicFilters(filters, TransferProcess.class, pageable).getContent();
         }
 
         return transferProcesses.stream()

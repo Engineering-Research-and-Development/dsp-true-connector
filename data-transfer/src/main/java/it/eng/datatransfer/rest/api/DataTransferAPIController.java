@@ -11,6 +11,9 @@ import it.eng.tools.service.GenericFilterBuilder;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
@@ -118,14 +121,25 @@ public class DataTransferAPIController {
      *
      * @param transferProcessId optional transfer process id to filter by (path variable)
      * @param request           HttpServletRequest containing all filter parameters
+     * @param page              pagination page number (default 0)
+     * @param size              pagination parameters
+     * @param sort              sorting parameters in the format "field,direction"
      * @return GenericApiResponse with matching transfer processes
      */
     @GetMapping(path = {"", "/{transferProcessId}"})
     public ResponseEntity<GenericApiResponse<Collection<JsonNode>>> getTransfersProcess(
             @PathVariable(required = false) String transferProcessId,
-            HttpServletRequest request) {
+            HttpServletRequest request,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "timestamp,desc") String[] sort) {
 
         log.info("Fetching transfer processes with generic filtering");
+
+        Sort.Direction direction = sort[1].equalsIgnoreCase("desc") ?
+                Sort.Direction.DESC : Sort.Direction.ASC;
+        Sort sorting = Sort.by(direction, sort[0]);
+        Pageable pageable = PageRequest.of(page, size, sorting);
 
         // Build filter map automatically from ALL request parameters
         Map<String, Object> filters = filterBuilder.buildFromRequest(request);
@@ -143,7 +157,7 @@ public class DataTransferAPIController {
 
         log.debug("Generated filters: {}", filters);
 
-        Collection<JsonNode> response = apiService.findDataTransfers(filters);
+        Collection<JsonNode> response = apiService.findDataTransfers(filters, pageable);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(GenericApiResponse.success(response, "Fetched transfer process"));
     }

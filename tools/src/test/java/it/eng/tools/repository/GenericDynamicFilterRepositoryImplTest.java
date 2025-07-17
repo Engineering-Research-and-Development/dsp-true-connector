@@ -11,6 +11,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 
@@ -49,6 +52,9 @@ class GenericDynamicFilterRepositoryImplTest {
     @Mock
     private MongoTemplate mongoTemplate;
 
+    @Mock
+    private Pageable pageable;
+
     @Captor
     private ArgumentCaptor<Query> queryCaptor;
 
@@ -57,6 +63,9 @@ class GenericDynamicFilterRepositoryImplTest {
     @BeforeEach
     void setUp() {
         repository = new GenericDynamicFilterRepositoryImpl<>(mongoTemplate);
+
+        // Configure mock Pageable
+        when(pageable.getSort()).thenReturn(Sort.by(Sort.Direction.DESC, "timestamp"));
     }
 
     @Test
@@ -72,10 +81,10 @@ class GenericDynamicFilterRepositoryImplTest {
         when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
                 .thenReturn(List.of(mockEvent));
 
-        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
+        Page<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class, pageable);
 
         assertNotNull(result);
-        assertEquals(1, result.size());
+        assertEquals(1, result.getNumberOfElements());
 
         verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();
@@ -97,10 +106,10 @@ class GenericDynamicFilterRepositoryImplTest {
         when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
                 .thenReturn(List.of(mockEvent));
 
-        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
+        Page<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class, pageable);
 
         assertNotNull(result);
-        assertEquals(1, result.size());
+        assertEquals(1, result.getNumberOfElements());
 
         verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();
@@ -123,10 +132,10 @@ class GenericDynamicFilterRepositoryImplTest {
         when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
                 .thenReturn(List.of(mockEvent));
 
-        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
+        Page<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class, pageable);
 
         assertNotNull(result);
-        assertEquals(1, result.size());
+        assertEquals(1, result.getNumberOfElements());
 
         verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();
@@ -149,10 +158,10 @@ class GenericDynamicFilterRepositoryImplTest {
         when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
                 .thenReturn(List.of(mockEvent));
 
-        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
+        Page<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class, pageable);
 
         assertNotNull(result);
-        assertEquals(1, result.size());
+        assertEquals(1, result.getNumberOfElements());
 
         verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();
@@ -177,10 +186,10 @@ class GenericDynamicFilterRepositoryImplTest {
                         createMockEntity()
                 ));
 
-        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
+        Page<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class, pageable);
 
         assertNotNull(result);
-        assertEquals(2, result.size());
+        assertEquals(2, result.getNumberOfElements());
 
         verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();
@@ -207,10 +216,10 @@ class GenericDynamicFilterRepositoryImplTest {
         when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
                 .thenReturn(List.of(mockEvent));
 
-        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
+        Page<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class, pageable);
 
         assertNotNull(result);
-        assertEquals(1, result.size());
+        assertEquals(1, result.getNumberOfElements());
 
         verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();
@@ -234,10 +243,10 @@ class GenericDynamicFilterRepositoryImplTest {
         when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
                 .thenReturn(List.of(mockEvent));
 
-        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
+        Page<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class, pageable);
 
         assertNotNull(result);
-        assertEquals(1, result.size());
+        assertEquals(1, result.getNumberOfElements());
 
         verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();
@@ -261,10 +270,10 @@ class GenericDynamicFilterRepositoryImplTest {
                         createMockEntity()
                 ));
 
-        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
+        Page<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class, pageable);
 
         assertNotNull(result);
-        assertEquals(2, result.size());
+        assertEquals(2, result.getNumberOfElements());
 
         verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();
@@ -282,10 +291,10 @@ class GenericDynamicFilterRepositoryImplTest {
         when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
                 .thenReturn(List.of(mockEvent));
 
-        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
+        Page<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class, pageable);
 
         assertNotNull(result);
-        assertEquals(1, result.size());
+        assertEquals(1, result.getNumberOfElements());
 
         verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();
@@ -311,10 +320,10 @@ class GenericDynamicFilterRepositoryImplTest {
         when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
                 .thenReturn(List.of(mockEvent));
 
-        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
+        Page<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class, pageable);
 
         assertNotNull(result);
-        assertEquals(1, result.size());
+        assertEquals(1, result.getNumberOfElements());
 
         verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();
@@ -340,10 +349,10 @@ class GenericDynamicFilterRepositoryImplTest {
         when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
                 .thenReturn(List.of(mockEvent));
 
-        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
+        Page<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class, pageable);
 
         assertNotNull(result);
-        assertEquals(1, result.size());
+        assertEquals(1, result.getNumberOfElements());
 
         verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();
@@ -364,7 +373,7 @@ class GenericDynamicFilterRepositoryImplTest {
         when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
                 .thenReturn(Collections.emptyList());
 
-        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
+        Page<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class, pageable);
 
         assertNotNull(result);
         assertTrue(result.isEmpty());
@@ -392,10 +401,10 @@ class GenericDynamicFilterRepositoryImplTest {
         when(mongoTemplate.find(any(Query.class), eq(TestEntity.class)))
                 .thenReturn(List.of(mockEvent));
 
-        Collection<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class);
+        Page<TestEntity> result = repository.findWithDynamicFilters(filters, TestEntity.class, pageable);
 
         assertNotNull(result);
-        assertEquals(1, result.size());
+        assertEquals(1, result.getNumberOfElements());
 
         verify(mongoTemplate).find(queryCaptor.capture(), eq(TestEntity.class));
         Query capturedQuery = queryCaptor.getValue();

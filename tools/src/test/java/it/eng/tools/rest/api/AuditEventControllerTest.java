@@ -14,6 +14,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.*;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -34,32 +37,44 @@ public class AuditEventControllerTest {
     private AuditEventService auditEventService;
     @Mock
     private HttpServletRequest request;
+    @Mock
+    private Pageable pageable;
 
     @InjectMocks
     private AuditEventController auditEventController;
 
     private Map<String, Object> filters;
-    private List<AuditEvent> auditEvents;
+    private Page<AuditEvent> auditEvents;
 
     @BeforeEach
     void setUp() {
         filters = new HashMap<>();
         filters.put("user", "testUser");
-        auditEvents = List.of(AuditEvent.Builder.newInstance()
-                .description("test description")
-                .eventType(AuditEventType.APPLICATION_START)
-                .timestamp(LocalDateTime.now())
-                .build());
+
+        List<AuditEvent> auditEventsList = List.of(
+                AuditEvent.Builder.newInstance()
+                        .description("Test event 1")
+                        .eventType(AuditEventType.APPLICATION_START)
+                        .timestamp(LocalDateTime.now())
+                        .build(),
+                AuditEvent.Builder.newInstance()
+                        .description("Test event 2")
+                        .eventType(AuditEventType.APPLICATION_START)
+                        .timestamp(LocalDateTime.now().minusHours(1))
+                        .build()
+        );
+        pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "timestamp"));
+        auditEvents = new PageImpl<>(auditEventsList, pageable, auditEventsList.size());
     }
 
     @Test
     @DisplayName("getAuditEvents should return audit events with success response")
     void getAuditEvents_shouldReturnAuditEventsWithSuccessResponse() {
         when(filterBuilder.buildFromRequest(request)).thenReturn(filters);
-        when(auditEventService.getAuditEvents(filters)).thenReturn(auditEvents);
+        when(auditEventService.getAuditEvents(filters, pageable)).thenReturn(auditEvents);
 
-        ResponseEntity<GenericApiResponse<Collection<AuditEvent>>> response =
-                auditEventController.getAuditEvents(request);
+        ResponseEntity<GenericApiResponse<PagedModel<EntityModel<AuditEvent>>>> response =
+                auditEventController.getAuditEvents(request, 0, 20, new String[]{"timestamp", "desc"});
 
         assertEquals(HttpStatusCode.valueOf(200), response.getStatusCode());
         assertEquals(MediaType.APPLICATION_JSON, response.getHeaders().getContentType());
@@ -68,7 +83,7 @@ public class AuditEventControllerTest {
         assertEquals(auditEvents, response.getBody().getData());
         assertTrue(response.getBody().getMessage().contains("user:testUser"));
         verify(filterBuilder).buildFromRequest(request);
-        verify(auditEventService).getAuditEvents(filters);
+        verify(auditEventService).getAuditEvents(filters, pageable);
     }
 
     @Test
