@@ -74,9 +74,10 @@ public class AuditEventControllerTest {
     @Test
     @DisplayName("getAuditEventTypes should return audit event types with success response")
     public void getAuditEventTypes_shouldReturnAuditEventTypesWithSuccessResponse() {
-        when(auditEventService.getAuditEventTypes()).thenReturn(Arrays.stream(AuditEventType.values())
+        List<AuditEventTypeDTO> auditEventTypeDTOS = Arrays.stream(AuditEventType.values())
                 .map(eventType -> new AuditEventTypeDTO(eventType.name(), eventType.toString()))
-                .toList());
+                .toList();
+        when(auditEventService.getAuditEventTypes()).thenReturn(auditEventTypeDTOS);
 
         ResponseEntity<GenericApiResponse<Collection<AuditEventTypeDTO>>> response = auditEventController.getAuditEventTypes();
 
@@ -85,7 +86,7 @@ public class AuditEventControllerTest {
         assertNotNull(response.getBody());
         assertTrue(response.getBody().isSuccess());
         assertEquals("Audit event types", response.getBody().getMessage());
-//        assertEquals(Arrays.asList(AuditEventType.values()), response.getBody().getData());
+        assertEquals(auditEventTypeDTOS, response.getBody().getData());
 
         verify(auditEventService).getAuditEventTypes();
     }
