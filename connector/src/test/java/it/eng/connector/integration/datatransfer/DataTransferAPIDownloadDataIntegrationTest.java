@@ -255,9 +255,6 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 
         policyEnforcementRepository.save(policyEnforcement);
 
-        String consumerPid = createNewId();
-        String providerPid = createNewId();
-
         String artifactURL = s3ClientService.generatePresignedGETUrl(s3Properties.getBucketName(), mockDataset.getId(), Duration.ofSeconds(1));
 
         Thread.sleep(2000); // wait for the presigned URL to expire

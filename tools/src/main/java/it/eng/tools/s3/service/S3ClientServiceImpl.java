@@ -297,17 +297,15 @@ public class S3ClientServiceImpl implements S3ClientService {
 
     @Override
     public String generatePresignedPUTUrl(String bucketName, String objectKey, Duration expiration) {
-        if (!bucketExists(bucketName)) {
-            log.error("Error generating pre-signed PUT URL for file {} : Bucket {} does not exist", objectKey, bucketName);
-            throw new RuntimeException("Error generating pre-signed PUT URL for file " + objectKey + ": Bucket " + bucketName + " does not exist");
-        }
+        validateBucketName(bucketName);
         if (StringUtils.isBlank(objectKey)) {
                 throw new IllegalArgumentException("Object key cannot be null or empty");
         }
+        BucketCredentialsEntity bucketCredentials = bucketCredentialsService.getBucketCredentials(bucketName);
         try (S3Presigner presigner = S3Presigner.builder()
                 .endpointOverride(URI.create(s3Properties.getExternalPresignedEndpoint()))
                 .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(s3Properties.getAccessKey(), s3Properties.getSecretKey())))
+                        AwsBasicCredentials.create(bucketCredentials.getAccessKey(), bucketCredentials.getSecretKey())))
                 .region(Region.of(s3Properties.getRegion()))
                 .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
                         .pathStyleAccessEnabled(true)

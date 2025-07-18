@@ -95,8 +95,6 @@ public class S3ClientServiceImplTest {
         String contentDisposition = "attachment; filename=test-file.txt";
         String expectedETag = "test-etag";
         InputStream inputStream = new ByteArrayInputStream("test content".getBytes());
-        when(s3Properties.getBucketName()).thenReturn(bucketName);
-        when(s3Client.headBucket(any(HeadBucketRequest.class))).thenReturn(HeadBucketResponse.builder().build());
         when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
                 .thenReturn(CompletableFuture.completedFuture(
                         CreateMultipartUploadResponse.builder().uploadId("test-upload-id").build()));
@@ -127,8 +125,6 @@ public class S3ClientServiceImplTest {
         String contentDisposition = "attachment; filename=test-file.txt";
         InputStream inputStream = new ByteArrayInputStream("test content".getBytes());
 
-        when(s3Properties.getBucketName()).thenReturn(bucketName);
-        when(s3Client.headBucket(any(HeadBucketRequest.class))).thenReturn(HeadBucketResponse.builder().build());
         when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
                 .thenReturn(CompletableFuture.failedFuture(
                         S3Exception.builder().message("Upload failed").build()));
@@ -677,8 +673,6 @@ public class S3ClientServiceImplTest {
         String bucketName = "test-bucket";
         String objectKey = "test-file.txt";
         when(s3Properties.getExternalPresignedEndpoint()).thenReturn("https://s3.amazonaws.com");
-        when(s3Properties.getAccessKey()).thenReturn("testAccessKey");
-        when(s3Properties.getSecretKey()).thenReturn("testSecretKey");
         when(s3Properties.getRegion()).thenReturn("us-east-1");
         when(s3Client.headObject(any(HeadObjectRequest.class)))
                 .thenReturn(HeadObjectResponse.builder()
@@ -717,8 +711,6 @@ public class S3ClientServiceImplTest {
         Duration expiration = Duration.ofMinutes(5);
 
         when(s3Properties.getExternalPresignedEndpoint()).thenReturn("https://s3.amazonaws.com");
-        when(s3Properties.getAccessKey()).thenReturn("testAccessKey");
-        when(s3Properties.getSecretKey()).thenReturn("testSecretKey");
         when(s3Properties.getRegion()).thenReturn("us-east-1");
 
         // Act

@@ -47,7 +47,7 @@ class DataTransferAPIControllerTest {
     @InjectMocks
     private DataTransferAPIController controller;
 
-    private final DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
+    private final DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
             DataTransferFormat.HTTP_PULL.format());
 
     @Test

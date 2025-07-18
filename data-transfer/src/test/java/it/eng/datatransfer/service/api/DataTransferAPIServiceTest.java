@@ -34,6 +34,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpMethod;
+import org.springframework.mock.web.MockHttpServletResponse;
 
 import java.time.Duration;
 import java.util.*;
@@ -212,10 +213,10 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("Request transfer process success for http Pull")
     public void requestTransfer_success_httpPull() {
-        DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
+        DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
                 DataTransferFormat.HTTP_PULL.format());
 
-        when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
+        when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.getData()).thenReturn(TransferSerializer.serializeProtocol(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
@@ -237,20 +238,20 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("Request transfer process success for http Push")
     public void requestTransfer_success_httpPush() {
-        DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
+        DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
                 DataTransferFormat.HTTP_PUSH.format());
 
         String presignedUrl = "http://example.com/presigned-url";
 
-        when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
+        when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
         when(s3ClientService.generatePresignedPUTUrl(any(String.class), any(String.class), any(Duration.class))).thenReturn(presignedUrl);
         when(s3Properties.getBucketName()).thenReturn("test-bucket");
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
-        when(apiResponse.getData()).thenReturn(TransferSerializer.serializeProtocol(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+        when(apiResponse.getData()).thenReturn(TransferSerializer.serializeProtocol(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
         when(apiResponse.isSuccess()).thenReturn(true);
-        when(properties.consumerCallbackAddress()).thenReturn(DataTranferMockObjectUtil.CALLBACK_ADDRESS);
-        when(transferProcessRepository.save(any(TransferProcess.class))).thenReturn(DataTranferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER);
+        when(properties.consumerCallbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
+        when(transferProcessRepository.save(any(TransferProcess.class))).thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER);
 
         apiService.requestTransfer(dataTransferRequest);
 
@@ -262,10 +263,10 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("Request transfer process failed")
     public void requestTransfer_failed() {
-        DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
+        DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
                 DataTransferFormat.HTTP_PULL.format());
 
-        when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
+        when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.getData()).thenReturn(TransferSerializer.serializeProtocol(DataTransferMockObjectUtil.TRANSFER_ERROR));
@@ -285,10 +286,10 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("Request transfer process json exception")
     public void requestTransfer_jsonException() {
-        DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
+        DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
                 DataTransferFormat.HTTP_PULL.format());
 
-        when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTranferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
+        when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.getData()).thenReturn("not a JSON");
@@ -629,7 +630,7 @@ class DataTransferAPIServiceTest {
 
         TransferProcess capturedProcess = argCaptorTransferProcess.getValue();
         assertEquals(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(), capturedProcess.getId());
-        assertEquals(DataTransferFormat.HTTP_PULL.name(), capturedProcess.getFormat());
+        assertEquals(DataTransferFormat.HTTP_PULL.format(), capturedProcess.getFormat());
     }
 
     @Test
