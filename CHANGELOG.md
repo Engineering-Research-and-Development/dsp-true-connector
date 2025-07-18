@@ -7,6 +7,9 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Added HTTP-Push transfer format
+
+### Changed
+
 - if HTTP-Push transfer format is used, the DataTransferApiService will create a DataAddress with presigned PUT URL
 
 ## [0.4.8-SNAPSHOT] - 16.07.2025.
