@@ -2,11 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.4.9-SNAPSHOT] - 17.07.2025.
+## [0.4.9-SNAPSHOT] - 21.07.2025.
 
 ### Added
 
 - Added HTTP-Push transfer format
+- Added HTTP-Push transfer diagram
 
 ### Changed
 
