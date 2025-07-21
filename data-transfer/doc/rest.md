@@ -67,7 +67,7 @@ Here the path branches and depending on the data storage solution the DataAddres
  - the data can be stored using another external storage solution, in which case the DataAddress will contain the URL to that file in the external storage
 
 
-![REST pull flow](diagrams/download_artifact.png "REST pull flow").
+![REST pull flow](diagrams/pull_data_transfer.png "REST pull flow").
 
 ## S3 storage
 

@@ -1,6 +1,14 @@
 package it.eng.datatransfer.service;
 
+import java.util.List;
+
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpMethod;
+import org.springframework.stereotype.Service;
+
 import com.fasterxml.jackson.core.type.TypeReference;
+
 import it.eng.datatransfer.event.TransferProcessChangeEvent;
 import it.eng.datatransfer.exceptions.TransferProcessInternalException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidFormatException;
@@ -129,53 +137,6 @@ public class DataTransferService {
                 .build());
         log.info("Requested TransferProcess created");
         return transferProcessRequested;
-    }
-
-    private void checkSupportedFormats(TransferProcess transferProcess, String format) {
-        String response = okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/"
-                        + transferProcess.getDatasetId() + "/formats",
-                HttpMethod.GET,
-                null);
-
-        Map<String, Object> details = new HashMap<>();
-        details.put("role", IConstants.ROLE_PROTOCOL);
-        details.put("transferProcess", transferProcess);
-        if (transferProcess.getConsumerPid() != null) {
-            details.put("consumerPid", transferProcess.getConsumerPid());
-        }
-        if (transferProcess.getProviderPid() != null) {
-            details.put("providerPid", transferProcess.getProviderPid());
-        }
-        if (StringUtils.isBlank(response)) {
-            publisher.publishEvent(AuditEvent.Builder.newInstance()
-                    .eventType(AuditEventType.PROTOCOL_TRANSFER_REQUESTED)
-                    .description("Internal error while checking supported formats for dataset " + transferProcess.getDatasetId())
-                    .details(details)
-                    .build());
-            throw new TransferProcessInternalException("Internal error",
-                    transferProcess.getConsumerPid(), transferProcess.getProviderPid());
-        }
-
-        TypeReference<GenericApiResponse<List<String>>> typeRef = new TypeReference<GenericApiResponse<List<String>>>() {
-        };
-        GenericApiResponse<List<String>> apiResp = TransferSerializer.deserializePlain(response, typeRef);
-        boolean formatValid = apiResp.getData().stream().anyMatch(f -> f.equals(format));
-        publisher.publishEvent(AuditEvent.Builder.newInstance()
-                .eventType(AuditEventType.PROTOCOL_TRANSFER_REQUESTED)
-                .description("Supported format evaluated as " + (formatValid ? "valid" : "invalid"))
-                .details(details)
-                .build());
-        if (formatValid) {
-            log.debug("Found supported format");
-        } else {
-            log.info("{} not found as one of supported distribution formats", format);
-            throw new TransferProcessInvalidFormatException("dct:format '" + format + "' not supported",
-                    transferProcess.getConsumerPid(), transferProcess.getProviderPid());
-        }
-//	    } catch (JsonProcessingException e) {
-//	    	log.error(e.getLocalizedMessage(), e);
-//	        throw new TransferProcessInternalException("Internal error", transferProcess.getConsumerPid(), transferProcess.getProviderPid());
-//	    }
     }
 
 
@@ -393,6 +354,53 @@ public class DataTransferService {
             throw new TransferProcessInvalidStateException("TransferProcess is in invalid state " + transferProcess.getState(),
                     transferProcess.getConsumerPid(), transferProcess.getProviderPid());
         }
+    }
+
+    private void checkSupportedFormats(TransferProcess transferProcess, String format) {
+        String response = okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/"
+                        + transferProcess.getDatasetId() + "/formats",
+                HttpMethod.GET,
+                null);
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("role", IConstants.ROLE_PROTOCOL);
+        details.put("transferProcess", transferProcess);
+        if (transferProcess.getConsumerPid() != null) {
+            details.put("consumerPid", transferProcess.getConsumerPid());
+        }
+        if (transferProcess.getProviderPid() != null) {
+            details.put("providerPid", transferProcess.getProviderPid());
+        }
+        if (StringUtils.isBlank(response)) {
+            publisher.publishEvent(AuditEvent.Builder.newInstance()
+                    .eventType(AuditEventType.PROTOCOL_TRANSFER_REQUESTED)
+                    .description("Internal error while checking supported formats for dataset " + transferProcess.getDatasetId())
+                    .details(details)
+                    .build());
+            throw new TransferProcessInternalException("Internal error",
+                    transferProcess.getConsumerPid(), transferProcess.getProviderPid());
+        }
+
+        TypeReference<GenericApiResponse<List<String>>> typeRef = new TypeReference<GenericApiResponse<List<String>>>() {
+        };
+        GenericApiResponse<List<String>> apiResp = TransferSerializer.deserializePlain(response, typeRef);
+        boolean formatValid = apiResp.getData().stream().anyMatch(f -> f.equals(format));
+        publisher.publishEvent(AuditEvent.Builder.newInstance()
+                .eventType(AuditEventType.PROTOCOL_TRANSFER_REQUESTED)
+                .description("Supported format evaluated as " + (formatValid ? "valid" : "invalid"))
+                .details(details)
+                .build());
+        if (formatValid) {
+            log.debug("Found supported format");
+        } else {
+            log.info("{} not found as one of supported distribution formats", format);
+            throw new TransferProcessInvalidFormatException("dct:format '" + format + "' not supported",
+                    transferProcess.getConsumerPid(), transferProcess.getProviderPid());
+        }
+//	    } catch (JsonProcessingException e) {
+//	    	log.error(e.getLocalizedMessage(), e);
+//	        throw new TransferProcessInternalException("Internal error", transferProcess.getConsumerPid(), transferProcess.getProviderPid());
+//	    }
     }
 
 }

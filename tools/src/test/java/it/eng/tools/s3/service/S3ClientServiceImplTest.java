@@ -8,9 +8,11 @@ import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
@@ -66,6 +68,7 @@ public class S3ClientServiceImplTest {
 
     String bucketName = "test-bucket";
 
+    @InjectMocks
     private S3ClientServiceImpl s3ClientService;
 
     @BeforeEach
@@ -84,7 +87,7 @@ public class S3ClientServiceImplTest {
     // uploadFile tests
     @Test
     @DisplayName("Should successfully upload file")
-    void uploadFile_Success() throws IOException {
+    void uploadFile_Success() {
         // Arrange
         String bucketName = "test-bucket";
         String key = "test-file.txt";
@@ -92,8 +95,6 @@ public class S3ClientServiceImplTest {
         String contentDisposition = "attachment; filename=test-file.txt";
         String expectedETag = "test-etag";
         InputStream inputStream = new ByteArrayInputStream("test content".getBytes());
-//        when(s3Properties.getBucketName()).thenReturn(bucketName);
-//        when(s3Client.headBucket(any(HeadBucketRequest.class))).thenReturn(HeadBucketResponse.builder().build());
         when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
                 .thenReturn(CompletableFuture.completedFuture(
                         CreateMultipartUploadResponse.builder().uploadId("test-upload-id").build()));
@@ -116,7 +117,7 @@ public class S3ClientServiceImplTest {
 
     @Test
     @DisplayName("Should throw exception when upload fails")
-    void uploadFile_UploadFails() throws IOException {
+    void uploadFile_UploadFails() {
         // Arrange
         String bucketName = "test-bucket";
         String key = "test-file.txt";
@@ -124,8 +125,6 @@ public class S3ClientServiceImplTest {
         String contentDisposition = "attachment; filename=test-file.txt";
         InputStream inputStream = new ByteArrayInputStream("test content".getBytes());
 
-//        when(s3Properties.getBucketName()).thenReturn(bucketName);
-//        when(s3Client.headBucket(any(HeadBucketRequest.class))).thenReturn(HeadBucketResponse.builder().build());
         when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
                 .thenReturn(CompletableFuture.failedFuture(
                         S3Exception.builder().message("Upload failed").build()));
@@ -134,7 +133,7 @@ public class S3ClientServiceImplTest {
         CompletableFuture<String> result = s3ClientService.uploadFile(
                 inputStream, bucketName, key, contentType, contentDisposition);
 
-        Exception exception = assertThrows(CompletionException.class, () -> result.join());
+        Exception exception = assertThrows(CompletionException.class, result::join);
         assertTrue(exception.getMessage().contains("Upload failed"));
     }
 
@@ -268,7 +267,7 @@ public class S3ClientServiceImplTest {
         String objectKey = "test-file.txt";
 
         // Act & Assert
-        RuntimeException exception = assertThrows(RuntimeException.class,
+        assertThrows(RuntimeException.class,
                 () -> s3ClientService.downloadFile(bucketName, objectKey, null));
     }
 
@@ -607,12 +606,12 @@ public class S3ClientServiceImplTest {
     //generateGetPresignedUrl tests
     @Test
     @DisplayName("Should successfully generate presigned URL")
-    void generateGetPresignedUrl_Success() {
+    void generatePresignedGETUrl_Success() {
         // Arrange
         String bucketName = "test-bucket";
         String objectKey = "test-file.txt";
         Duration expiration = Duration.ofMinutes(5);
-        String expectedUrl = "https://test-bucket.s3.amazonaws.com/test-file.txt";
+        String expectedUrl = "https://s3.amazonaws.com/test-bucket/test-file.txt";
 
         when(s3Properties.getExternalPresignedEndpoint()).thenReturn("https://s3.amazonaws.com");
         BucketCredentialsEntity bucketCredentials = BucketCredentialsEntity.Builder.newInstance()
@@ -629,16 +628,174 @@ public class S3ClientServiceImplTest {
                         .build());
 
         // Act
-        String result = s3ClientService.generateGetPresignedUrl(bucketName, objectKey, expiration);
+        String result = s3ClientService.generatePresignedGETUrl(bucketName, objectKey, expiration);
 
         // Assert
         assertNotNull(result);
+        assertTrue(StringUtils.startsWith(result,expectedUrl));
         verify(s3Client).headObject(any(HeadObjectRequest.class));
     }
 
     @Test
+    @DisplayName("Should throw IllegalArgumentException when object key is null")
+    void generatePresignedGETUrl_NullObjectKey() {
+        // Arrange
+        String bucketName = "test-bucket";
+        Duration expiration = Duration.ofMinutes(5);
+
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> s3ClientService.generatePresignedGETUrl(bucketName, null, expiration));
+
+        assertEquals("Object key cannot be null or empty", exception.getMessage());
+        verifyNoInteractions(s3Client);
+    }
+
+    @Test
+    @DisplayName("Should throw IllegalArgumentException when object key is empty")
+    void generatePresignedGETUrl_EmptyObjectKey() {
+        // Arrange
+        String bucketName = "test-bucket";
+        Duration expiration = Duration.ofMinutes(5);
+
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> s3ClientService.generatePresignedGETUrl(bucketName, "", expiration));
+
+        assertEquals("Object key cannot be null or empty", exception.getMessage());
+        verifyNoInteractions(s3Client);
+    }
+
+    @Test
+    @DisplayName("Should throw RuntimeException when expiration is null")
+    void generatePresignedGETUrl_NullExpiration() {
+        // Arrange
+        String bucketName = "test-bucket";
+        String objectKey = "test-file.txt";
+        when(s3Properties.getExternalPresignedEndpoint()).thenReturn("https://s3.amazonaws.com");
+        when(s3Properties.getRegion()).thenReturn("us-east-1");
+        when(s3Client.headObject(any(HeadObjectRequest.class)))
+                .thenReturn(HeadObjectResponse.builder()
+                        .contentType("text/plain")
+                        .contentDisposition("attachment; filename=test-file.txt")
+                        .build());
+
+        // Act & Assert
+        assertThrows(RuntimeException.class,
+                () -> s3ClientService.generatePresignedGETUrl(bucketName, objectKey, null));
+    }
+
+    @Test
+    @DisplayName("Should throw IllegalArgumentException when bucket name format is invalid")
+    void generatePresignedGETUrl_InvalidBucketName() {
+        // Arrange
+        String bucketName = "Invalid.Bucket.Name";
+        String objectKey = "test-file.txt";
+        Duration expiration = Duration.ofMinutes(5);
+
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> s3ClientService.generatePresignedGETUrl(bucketName, objectKey, expiration));
+
+        assertEquals("Invalid bucket name format: " + bucketName, exception.getMessage());
+        verifyNoInteractions(s3Client);
+    }
+
+    // generatePresignedPUTUrl tests
+    @Test
+    @DisplayName("Should successfully generate presigned PUT URL")
+    void generatePresignedPUTUrl_Success() {
+        // Arrange
+        String bucketName = "test-bucket";
+        String objectKey = "test-file.txt";
+        Duration expiration = Duration.ofMinutes(5);
+
+        when(s3Properties.getExternalPresignedEndpoint()).thenReturn("https://s3.amazonaws.com");
+        when(s3Properties.getRegion()).thenReturn("us-east-1");
+
+        // Act
+        String result = s3ClientService.generatePresignedPUTUrl(bucketName, objectKey, expiration);
+
+        // Assert
+        assertNotNull(result);
+    }
+
+    @Test
+    @DisplayName("Should throw IllegalArgumentException when bucket name is null for PUT URL")
+    void generatePresignedPUTUrl_NullBucketName() {
+        // Arrange
+        String objectKey = "test-file.txt";
+        Duration expiration = Duration.ofMinutes(5);
+
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> s3ClientService.generatePresignedPUTUrl(null, objectKey, expiration));
+
+        assertEquals("Bucket name cannot be null or empty", exception.getMessage());
+        verifyNoInteractions(s3Client);
+    }
+
+    @Test
+    @DisplayName("Should throw IllegalArgumentException when object key is null for PUT URL")
+    void generatePresignedPUTUrl_NullObjectKey() {
+        // Arrange
+        String bucketName = "test-bucket";
+        Duration expiration = Duration.ofMinutes(5);
+
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> s3ClientService.generatePresignedPUTUrl(bucketName, null, expiration));
+
+        assertEquals("Object key cannot be null or empty", exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("Should throw IllegalArgumentException when object key is empty for PUT URL")
+    void generatePresignedPUTUrl_EmptyObjectKey() {
+        // Arrange
+        String bucketName = "test-bucket";
+        Duration expiration = Duration.ofMinutes(5);
+
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> s3ClientService.generatePresignedPUTUrl(bucketName, "", expiration));
+
+        assertEquals("Object key cannot be null or empty", exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("Should throw RuntimeException when generating PUT URL fails")
+    void generatePresignedPUTUrl_GenerationFails() {
+        // Arrange
+        String bucketName = "test-bucket";
+        String objectKey = "test-file.txt";
+        Duration expiration = Duration.ofMinutes(5);
+
+        // Act & Assert
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> s3ClientService.generatePresignedPUTUrl(bucketName, objectKey, expiration));
+
+        assertTrue(exception.getMessage().contains("Error generating pre-signed PUT URL"));
+    }
+
+    @Test
+    @DisplayName("Should throw IllegalArgumentException when bucket name format is invalid for PUT URL")
+    void generatePresignedPUTUrl_InvalidBucketName() {
+        // Arrange
+        String bucketName = "Invalid.Bucket.Name";
+        String objectKey = "test-file.txt";
+        Duration expiration = Duration.ofMinutes(5);
+
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> s3ClientService.generatePresignedPUTUrl(bucketName, objectKey, expiration));
+
+        assertEquals("Invalid bucket name format: " + bucketName, exception.getMessage());
+        verifyNoInteractions(s3Client);
+    }
+    @Test
     @DisplayName("Should throw RuntimeException when file does not exist")
-    void generateGetPresignedUrl_FileNotFound() {
+    void generatePresignedGETUrl_FileNotFound() {
         // Arrange
         String bucketName = "test-bucket";
         String objectKey = "non-existent-file.txt";
@@ -659,21 +816,21 @@ public class S3ClientServiceImplTest {
 
         // Act & Assert
         RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> s3ClientService.generateGetPresignedUrl(bucketName, objectKey, expiration));
+                () -> s3ClientService.generatePresignedGETUrl(bucketName, objectKey, expiration));
 
         assertTrue(exception.getMessage().contains("Error generating pre-signed URL"));
     }
 
     @Test
     @DisplayName("Should throw IllegalArgumentException when bucket name is null")
-    void generateGetPresignedUrl_NullBucketName() {
+    void generatePresignedGETUrl_NullBucketName() {
         // Arrange
         String objectKey = "test-file.txt";
         Duration expiration = Duration.ofMinutes(5);
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> s3ClientService.generateGetPresignedUrl(null, objectKey, expiration));
+                () -> s3ClientService.generatePresignedGETUrl(null, objectKey, expiration));
 
         assertEquals("Bucket name cannot be null or empty", exception.getMessage());
         verifyNoInteractions(s3Client);
