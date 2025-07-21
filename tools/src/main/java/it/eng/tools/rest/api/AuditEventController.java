@@ -42,23 +42,21 @@ public class AuditEventController {
     }
 
     @GetMapping
-    public ResponseEntity<GenericApiResponse<PagedModel<EntityModel<AuditEvent>>>>
-    getAuditEvents(HttpServletRequest request,
-                   @RequestParam(defaultValue = "0") int page,
-                   @RequestParam(defaultValue = "20") int size,
-                   @RequestParam(defaultValue = "timestamp,desc") String[] sort) {
+    public ResponseEntity<PagedAPIResponse> getAuditEvents(HttpServletRequest request,
+                                                           @RequestParam(defaultValue = "0") int page,
+                                                           @RequestParam(defaultValue = "20") int size,
+                                                           @RequestParam(defaultValue = "timestamp,desc") String[] sort) {
+
         Sort.Direction direction = sort[1].equalsIgnoreCase("desc") ?
                 Sort.Direction.DESC : Sort.Direction.ASC;
         Sort sorting = Sort.by(direction, sort[0]);
-
         Pageable pageable = PageRequest.of(page, size, sorting);
-
         // Build filter map automatically from ALL request parameters
         Map<String, Object> filters = filterBuilder.buildFromRequest(request);
 
-//        Collection<AuditEvent> auditEvents = auditEventService.getAuditEvents(filters);
         Page<AuditEvent> auditEvents = auditEventService.getAuditEvents(filters, pageable);
-        PagedModel<EntityModel<AuditEvent>> pagedModel = pagedResourcesAssembler.toModel(auditEvents);
+//        PagedModel<EntityModel<AuditEvent>> pagedModel = pagedResourcesAssembler.toModel(auditEvents);
+        PagedModel<EntityModel<Object>> pagedModel = (PagedModel<EntityModel<Object>>) (PagedModel<?>) pagedResourcesAssembler.toModel(auditEvents);
 
         String filterString = filters.entrySet().stream()
                 .map(entry -> entry.getKey() + ":" + entry.getValue())
@@ -66,7 +64,7 @@ public class AuditEventController {
 
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(pagedModel,
+                .body(PagedAPIResponse.of(pagedModel,
                         "Audit events - Page " + page + " of " + auditEvents.getTotalPages() + ", Size: " + size +
                                 ", Sort: " + sorting + ", Filters: [" + filterString + "]"));
 

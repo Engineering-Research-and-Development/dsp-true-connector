@@ -94,13 +94,14 @@ class DataTransferAPIServiceTest {
     public void findDataTransfers_byId() {
         Map<String, Object> filters = Map.of("id", "test");
 
-        when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
-        Collection<JsonNode> response = apiService.findDataTransfers(filters, pageable);
+        when(transferProcessRepository.findWithDynamicFilters(eq(filters), eq(TransferProcess.class), eq(pageable)))
+                .thenReturn(new PageImpl<>(Collections.singletonList(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
+        Page<TransferProcess> response = apiService.findDataTransfers(filters, pageable);
         assertNotNull(response);
-        assertEquals(1, response.size());
+        assertEquals(1, response.getTotalElements());
 
         // Verify that dynamic filter method is not called when ID is provided
-        verify(transferProcessRepository, never()).findWithDynamicFilters(anyMap(), eq(TransferProcess.class), any(Pageable.class));
+        verify(transferProcessRepository).findWithDynamicFilters(anyMap(), eq(TransferProcess.class), any(Pageable.class));
     }
 
     @Test
@@ -108,35 +109,33 @@ class DataTransferAPIServiceTest {
     public void findDataTransfers_emptyFilters() {
         Map<String, Object> emptyFilters = new HashMap<>();
 
-        when(transferProcessRepository.findAll())
-                .thenReturn(Arrays.asList(
+        when(transferProcessRepository.findWithDynamicFilters(eq(emptyFilters), eq(TransferProcess.class), eq(pageable)))
+                .thenReturn(new PageImpl<>(Arrays.asList(
                         DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER,
-                        DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED
+                        DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED)
                 ));
 
-        Collection<JsonNode> response = apiService.findDataTransfers(emptyFilters, pageable);
+        Page<TransferProcess> response = apiService.findDataTransfers(emptyFilters, pageable);
 
         assertNotNull(response);
-        assertEquals(2, response.size());
-        verify(transferProcessRepository).findAll();
-        verify(transferProcessRepository, never()).findWithDynamicFilters(anyMap(), eq(TransferProcess.class), any(Pageable.class));
+        assertEquals(2, response.getTotalElements());
+        verify(transferProcessRepository).findWithDynamicFilters(anyMap(), eq(TransferProcess.class), any(Pageable.class));
     }
 
     @Test
     @DisplayName("Find transfer process with null filters returns all")
     public void findDataTransfers_nullFilters() {
-        when(transferProcessRepository.findAll())
-                .thenReturn(Arrays.asList(
+        when(transferProcessRepository.findWithDynamicFilters(isNull(), eq(TransferProcess.class), eq(pageable)))
+                .thenReturn(new PageImpl<>(Arrays.asList(
                         DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER,
-                        DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED
+                        DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED)
                 ));
 
-        Collection<JsonNode> response = apiService.findDataTransfers(null, pageable);
+        Page<TransferProcess> response = apiService.findDataTransfers(null, pageable);
 
         assertNotNull(response);
-        assertEquals(2, response.size());
-        verify(transferProcessRepository).findAll();
-        verify(transferProcessRepository, never()).findWithDynamicFilters(anyMap(), eq(TransferProcess.class), any(Pageable.class));
+        assertEquals(2, response.getTotalElements());
+        verify(transferProcessRepository).findWithDynamicFilters(isNull(), eq(TransferProcess.class), eq(pageable));
     }
 
     @ParameterizedTest
@@ -146,10 +145,10 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.findWithDynamicFilters(anyMap(), eq(TransferProcess.class), any(Pageable.class)))
                 .thenReturn(expectedResults);
 
-        Collection<JsonNode> response = apiService.findDataTransfers(filters, pageable);
+        Page<TransferProcess> response = apiService.findDataTransfers(filters, pageable);
 
         assertNotNull(response);
-        assertEquals(expectedResults.getNumberOfElements(), response.size());
+        assertEquals(expectedResults.getNumberOfElements(), response.getTotalElements());
         verify(transferProcessRepository).findWithDynamicFilters(filters, TransferProcess.class, pageable);
     }
 
@@ -206,10 +205,10 @@ class DataTransferAPIServiceTest {
                         DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER
                 ), pageable, 2));
 
-        Collection<JsonNode> response = apiService.findDataTransfers(filters, pageable);
+        Page<TransferProcess> response = apiService.findDataTransfers(filters, pageable);
 
         assertNotNull(response);
-        assertEquals(2, response.size());
+        assertEquals(2, response.getTotalElements());
         verify(transferProcessRepository).findWithDynamicFilters(filters, TransferProcess.class, pageable);
     }
 

@@ -22,6 +22,8 @@ public interface IConstants {
     public static final String AUTHORIZATION = "authorization";
     public static final String AUTH_BEARER = "Bearer";
     public static final String AUTH_BASIC = "Basic";
+    public static final String CONSUMER_PID = "consumer_pid";
+    public static final String PROVIDER_PID = "provider_pid";
     public static final String TEMPORARY_CONSUMER_PID = "temporary_consumer_pid";
     public static final String TEMPORARY_PROVIDER_PID = "temporary_provider_pid";
 

@@ -84,14 +84,13 @@ public class AuditEventControllerTest {
         when(auditEventService.getAuditEvents(filters, pageable)).thenReturn(auditEvents);
         when(pagedResourcesAssembler.toModel(auditEvents)).thenReturn(pagedModel);
 
-        ResponseEntity<GenericApiResponse<PagedModel<EntityModel<AuditEvent>>>> response =
-                auditEventController.getAuditEvents(request, 0, 20, new String[]{"timestamp", "desc"});
+        ResponseEntity<PagedAPIResponse> response = auditEventController.getAuditEvents(request, 0, 20, new String[]{"timestamp", "desc"});
 
         assertEquals(HttpStatusCode.valueOf(200), response.getStatusCode());
         assertEquals(MediaType.APPLICATION_JSON, response.getHeaders().getContentType());
         assertNotNull(response.getBody());
-        assertTrue(response.getBody().isSuccess());
-        assertEquals(pagedModel, response.getBody().getData());
+        assertTrue(response.getBody().getResponse().isSuccess());
+        assertEquals(pagedModel, response.getBody().getResponse().getData());
 
         verify(filterBuilder).buildFromRequest(request);
         verify(auditEventService).getAuditEvents(filters, pageable);

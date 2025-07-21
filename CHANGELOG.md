@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.9-SNAPSHOT] - 21.07.2025.
+
+### Added
+
+- Added pagination for API endpoints (AuditEvent, ContractNegotiation, TransferProcess)
+
+### Changed
+
+- Updated junit tests
+- Postman collection updated with new endpoints and pagination
+
 ## [0.4.8-SNAPSHOT] - 16.07.2025.
 
 ### Added

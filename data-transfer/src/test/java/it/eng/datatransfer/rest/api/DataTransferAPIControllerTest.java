@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.DataTransferRequest;
+import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
@@ -12,6 +13,7 @@ import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.rest.api.PagedAPIResponse;
 import it.eng.tools.service.GenericFilterBuilder;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.DisplayName;
@@ -22,7 +24,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedResourcesAssembler;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -43,9 +50,17 @@ class DataTransferAPIControllerTest {
     private ApplicationEventPublisher publisher;
     @Mock
     private Pageable pageable;
+    @Mock
+    private PagedResourcesAssembler<TransferProcess> pagedResourcesAssembler;
+    @Mock
+    private PlainTransferProcessAssembler plainAssembler;
 
     @Mock
     private GenericFilterBuilder filterBuilder;
+
+    private Page<TransferProcess> transferProcessPage;
+
+    PagedModel.PageMetadata metadata = new PagedModel.PageMetadata(20, 0, 2, 1);
 
     @InjectMocks
     private DataTransferAPIController controller;
@@ -53,6 +68,7 @@ class DataTransferAPIControllerTest {
     private final DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
             DataTransferFormat.HTTP_PULL.name(),
             null);
+
 
     @Test
     @DisplayName("Find transfer process with generic filters")
@@ -68,18 +84,22 @@ class DataTransferAPIControllerTest {
                 "role", IConstants.ROLE_PROVIDER
         );
 
+        List<EntityModel<TransferProcess>> content = Collections.singletonList(EntityModel.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+        PagedModel<EntityModel<TransferProcess>> pagedModel = PagedModel.of(content, metadata);
+        transferProcessPage = new PageImpl<>(Collections.singletonList(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER), pageable, 1);
+
         when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
                 .thenReturn(expectedFilters);
-        when(apiService.findDataTransfers(anyMap(), any(Pageable.class)))
-                .thenReturn(Collections.singletonList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
+        when(apiService.findDataTransfers(anyMap(), any(Pageable.class))).thenReturn(transferProcessPage);
+        when(pagedResourcesAssembler.toModel(transferProcessPage, plainAssembler)).thenReturn((PagedModel) pagedModel);
 
-        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response =
+        ResponseEntity<PagedAPIResponse> response =
                 controller.getTransfersProcess(null, request, 0, 20, new String[]{"timestamp", "desc"});
 
         assertNotNull(response);
         assertNotNull(response.getBody());
-        assertTrue(response.getBody().isSuccess());
-        assertFalse(response.getBody().getData().isEmpty());
+        assertTrue(response.getBody().getResponse().isSuccess());
+        assertFalse(response.getBody().getResponse().getData().getContent().isEmpty());
 
         verify(filterBuilder).buildFromRequest(request);
         verify(apiService).findDataTransfers(eq(expectedFilters), any(Pageable.class));
@@ -94,18 +114,22 @@ class DataTransferAPIControllerTest {
         Map<String, Object> emptyFilters = new HashMap<>();
         Map<String, Object> expectedFilters = Map.of("id", transferProcessId);
 
+        List<EntityModel<TransferProcess>> content = Collections.singletonList(EntityModel.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+        PagedModel<EntityModel<TransferProcess>> pagedModel = PagedModel.of(content, metadata);
+        transferProcessPage = new PageImpl<>(Collections.singletonList(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER), pageable, 1);
+
         when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
                 .thenReturn(emptyFilters);
-        when(apiService.findDataTransfers(anyMap(), any(Pageable.class)))
-                .thenReturn(Collections.singletonList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
+        when(apiService.findDataTransfers(anyMap(), any(Pageable.class))).thenReturn(transferProcessPage);
+        when(pagedResourcesAssembler.toModel(transferProcessPage, plainAssembler)).thenReturn((PagedModel) pagedModel);
 
-        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response =
+        ResponseEntity<PagedAPIResponse> response =
                 controller.getTransfersProcess(transferProcessId, request, 0, 20, new String[]{"timestamp", "desc"});
 
         assertNotNull(response);
         assertNotNull(response.getBody());
-        assertTrue(response.getBody().isSuccess());
-        assertFalse(response.getBody().getData().isEmpty());
+        assertTrue(response.getBody().getResponse().isSuccess());
+        assertFalse(response.getBody().getResponse().getData().getContent().isEmpty());
 
         verify(filterBuilder).buildFromRequest(request);
         verify(apiService).findDataTransfers(eq(expectedFilters), any(Pageable.class));
@@ -127,18 +151,22 @@ class DataTransferAPIControllerTest {
                 "isDownloaded", true
         );
 
+        List<EntityModel<TransferProcess>> content = Collections.singletonList(EntityModel.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+        PagedModel<EntityModel<TransferProcess>> pagedModel = PagedModel.of(content, metadata);
+        transferProcessPage = new PageImpl<>(Collections.singletonList(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER), pageable, 1);
+
         when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
                 .thenReturn(expectedFilters);
-        when(apiService.findDataTransfers(anyMap(), any(Pageable.class)))
-                .thenReturn(Collections.singletonList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED)));
+        when(apiService.findDataTransfers(anyMap(), any(Pageable.class))).thenReturn(transferProcessPage);
+        when(pagedResourcesAssembler.toModel(transferProcessPage, plainAssembler)).thenReturn((PagedModel) pagedModel);
 
-        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response =
+        ResponseEntity<PagedAPIResponse> response =
                 controller.getTransfersProcess(null, request, 0, 20, new String[]{"timestamp", "desc"});
 
         assertNotNull(response);
         assertNotNull(response.getBody());
-        assertTrue(response.getBody().isSuccess());
-        assertEquals(1, response.getBody().getData().size());
+        assertTrue(response.getBody().getResponse().isSuccess());
+        assertEquals(1, response.getBody().getResponse().getData().getContent().size());
 
         verify(filterBuilder).buildFromRequest(request);
         verify(apiService).findDataTransfers(eq(expectedFilters), any(Pageable.class));
@@ -150,21 +178,31 @@ class DataTransferAPIControllerTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         Map<String, Object> emptyFilters = new HashMap<>();
 
+        List<TransferProcess> transferProcessList = Arrays.asList(
+                DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER,
+                DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED);
+
+        List<EntityModel<TransferProcess>> content = Arrays.asList(
+                EntityModel.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER),
+                EntityModel.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        PagedModel<EntityModel<TransferProcess>> pagedModel = PagedModel.of(content, metadata);
+        transferProcessPage = new PageImpl<>(transferProcessList,
+                pageable,
+                2);
+
         when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
                 .thenReturn(emptyFilters);
-        when(apiService.findDataTransfers(anyMap(), any(Pageable.class)))
-                .thenReturn(Arrays.asList(
-                        TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER),
-                        TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED)
-                ));
+        when(apiService.findDataTransfers(anyMap(), any(Pageable.class))).thenReturn(transferProcessPage);
+        when(pagedResourcesAssembler.toModel(transferProcessPage, plainAssembler)).thenReturn((PagedModel) pagedModel);
 
-        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response =
+        ResponseEntity<PagedAPIResponse> response =
                 controller.getTransfersProcess(null, request, 0, 20, new String[]{"timestamp", "desc"});
 
         assertNotNull(response);
         assertNotNull(response.getBody());
-        assertTrue(response.getBody().isSuccess());
-        assertEquals(2, response.getBody().getData().size());
+        assertTrue(response.getBody().getResponse().isSuccess());
+        assertEquals(2, response.getBody().getResponse().getData().getContent().size());
 
         verify(filterBuilder).buildFromRequest(request);
         verify(apiService).findDataTransfers(eq(emptyFilters), any(Pageable.class));
@@ -182,17 +220,21 @@ class DataTransferAPIControllerTest {
                 "state", TransferState.COMPLETED.name()
         );
 
+        List<EntityModel<TransferProcess>> content = Collections.singletonList(EntityModel.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+        PagedModel<EntityModel<TransferProcess>> pagedModel = PagedModel.of(content, metadata);
+        transferProcessPage = new PageImpl<>(Collections.singletonList(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER), pageable, 1);
+
         when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
                 .thenReturn(expectedFilters);
-        when(apiService.findDataTransfers(anyMap(), any(Pageable.class)))
-                .thenReturn(Collections.singletonList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED)));
+        when(apiService.findDataTransfers(anyMap(), any(Pageable.class))).thenReturn(transferProcessPage);
+        when(pagedResourcesAssembler.toModel(transferProcessPage, plainAssembler)).thenReturn((PagedModel) pagedModel);
 
-        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response =
+        ResponseEntity<PagedAPIResponse> response =
                 controller.getTransfersProcess(null, request, 0, 20, new String[]{"timestamp", "desc"});
 
         assertNotNull(response);
         assertNotNull(response.getBody());
-        assertTrue(response.getBody().isSuccess());
+        assertTrue(response.getBody().getResponse().isSuccess());
 
         verify(filterBuilder).buildFromRequest(request);
         verify(apiService).findDataTransfers(eq(expectedFilters), any(Pageable.class));
@@ -211,17 +253,22 @@ class DataTransferAPIControllerTest {
 
         Map<String, Object> expectedFilters = Map.of("id", pathVariableId); // Path variable wins
 
-        when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
-                .thenReturn(initialFilters);
-        when(apiService.findDataTransfers(anyMap(), any(Pageable.class)))
-                .thenReturn(Collections.singletonList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
+        List<EntityModel<TransferProcess>> content = Collections.singletonList(EntityModel.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+        PagedModel<EntityModel<TransferProcess>> pagedModel = PagedModel.of(content, metadata);
+        transferProcessPage = new PageImpl<>(Collections.singletonList(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER),
+                pageable,
+                1);
 
-        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response =
+        when(filterBuilder.buildFromRequest(any(HttpServletRequest.class))).thenReturn(initialFilters);
+        when(apiService.findDataTransfers(anyMap(), any(Pageable.class))).thenReturn(transferProcessPage);
+        when(pagedResourcesAssembler.toModel(transferProcessPage, plainAssembler)).thenReturn((PagedModel) pagedModel);
+
+        ResponseEntity<PagedAPIResponse> response =
                 controller.getTransfersProcess(pathVariableId, request, 0, 20, new String[]{"timestamp", "desc"});
 
         assertNotNull(response);
         assertNotNull(response.getBody());
-        assertTrue(response.getBody().isSuccess());
+        assertTrue(response.getBody().getResponse().isSuccess());
 
         verify(filterBuilder).buildFromRequest(request);
         verify(apiService).findDataTransfers(eq(expectedFilters), any(Pageable.class));

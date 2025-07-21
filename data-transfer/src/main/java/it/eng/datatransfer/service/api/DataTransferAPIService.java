@@ -27,18 +27,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tomcat.util.codec.binary.Base64;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -83,30 +82,30 @@ public class DataTransferAPIService {
      *
      * @param filters  Map of field names to filter values. All values are pre-validated and converted.
      * @param pageable Pageable
-     * @return List of JsonNode representations for data transfers
+     * @return page of TransferProcess
      */
-    public Collection<JsonNode> findDataTransfers(Map<String, Object> filters, Pageable pageable) {
-        if (filters == null || filters.isEmpty()) {
-            log.debug("No filters provided, returning all transfer processes");
-            return transferProcessRepository.findAll().stream()
-                    .map(TransferSerializer::serializePlainJsonNode)
-                    .collect(Collectors.toList());
-        }
+    public Page<TransferProcess> findDataTransfers(Map<String, Object> filters, Pageable pageable) {
+//        if (filters == null || filters.isEmpty()) {
+//            log.debug("No filters provided, returning all transfer processes");
+//            return transferProcessRepository.findAll().stream()
+//                    .map(TransferSerializer::serializePlainJsonNode)
+//                    .collect(Collectors.toList());
+//        }
 
-        Collection<TransferProcess> transferProcesses;
-
-        if (filters.containsKey("id")) {
-            String id = (String) filters.get("id");
-            transferProcesses = transferProcessRepository.findById(id)
-                    .map(List::of)
-                    .orElse(List.of());
-        } else {
-            transferProcesses = transferProcessRepository.findWithDynamicFilters(filters, TransferProcess.class, pageable).getContent();
-        }
-
-        return transferProcesses.stream()
-                .map(TransferSerializer::serializePlainJsonNode)
-                .collect(Collectors.toList());
+//        Collection<TransferProcess> transferProcesses;
+//
+//        if (filters.containsKey("id")) {
+//            String id = (String) filters.get("id");
+//            transferProcesses = transferProcessRepository.findById(id)
+//                    .map(List::of)
+//                    .orElse(List.of());
+//        } else {
+//           return  transferProcessRepository.findWithDynamicFilters(filters, TransferProcess.class, pageable);
+//        }
+        return transferProcessRepository.findWithDynamicFilters(filters, TransferProcess.class, pageable);
+//        return transferProcesses.stream()
+//                .map(TransferSerializer::serializePlainJsonNode)
+//                .collect(Collectors.toList());
     }
 
     /*###### CONSUMER #########*/

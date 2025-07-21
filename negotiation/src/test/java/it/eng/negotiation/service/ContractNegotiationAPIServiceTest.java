@@ -25,11 +25,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -57,6 +57,8 @@ public class ContractNegotiationAPIServiceTest {
     private CredentialUtils credentialUtils;
     @Mock
     private PolicyAdministrationPoint policyAdministrationPoint;
+    @Mock
+    private Pageable pageable;
 
     @Captor
     private ArgumentCaptor<ContractNegotiation> argCaptorContractNegotiation;
@@ -300,35 +302,40 @@ public class ContractNegotiationAPIServiceTest {
     @Test
     @DisplayName("Find contract negotiations by role")
     public void findContractNegotiationByRole() {
-        when(contractNegotiationRepository.findByRole(IConstants.ROLE_CONSUMER))
-                .thenReturn(Arrays.asList(
+        when(contractNegotiationRepository.findWithDynamicFilters(anyMap(), eq(ContractNegotiation.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(Arrays.asList(
                         NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED,
-                        NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
-        Collection<JsonNode> response = service.findContractNegotiations(null, null, IConstants.ROLE_CONSUMER, null, null);
+                        NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED)));
+        Map<String, Object> filters = new HashMap<>();
+        filters.put("role", IConstants.ROLE_CONSUMER);
+        Page<ContractNegotiation> response = service.findContractNegotiations(filters, pageable);
         assertNotNull(response);
-        assertEquals(2, response.size());
+        assertEquals(2, response.getTotalElements());
     }
 
     @Test
     @DisplayName("Find contract negotiations by id")
     public void findContractNegotiationById() {
-        when(contractNegotiationRepository.findById(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId()))
-                .thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
-        Collection<JsonNode> response = service.findContractNegotiations(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId(), null, null, null, null);
+        when(contractNegotiationRepository.findWithDynamicFilters(anyMap(), eq(ContractNegotiation.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(Collections.singletonList(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED)));
+        Map<String, Object> filters = new HashMap<>();
+        filters.put("id", NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId());
+        Page<ContractNegotiation> response = service.findContractNegotiations(filters, pageable);
         assertNotNull(response);
-        assertEquals(1, response.size());
+        assertEquals(1, response.getTotalElements());
     }
 
     @Test
     @DisplayName("Find contract negotiations by pids")
     public void findContractNegotiationByPids() {
-        when(contractNegotiationRepository.findByProviderPidAndConsumerPid(
-                NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getProviderPid(), NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getConsumerPid()))
-                .thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
-        Collection<JsonNode> response = service.findContractNegotiations(null, null, null,
-                NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getConsumerPid(), NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getProviderPid());
+        when(contractNegotiationRepository.findWithDynamicFilters(anyMap(), eq(ContractNegotiation.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(Collections.singletonList(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED)));
+        Map<String, Object> filters = new HashMap<>();
+        filters.put(IConstants.CONSUMER_PID, NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getConsumerPid());
+        filters.put(IConstants.PROVIDER_PID, NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getProviderPid());
+        Page<ContractNegotiation> response = service.findContractNegotiations(filters, pageable);
         assertNotNull(response);
-        assertEquals(1, response.size());
+        assertEquals(1, response.getTotalElements());
     }
 
     @Test

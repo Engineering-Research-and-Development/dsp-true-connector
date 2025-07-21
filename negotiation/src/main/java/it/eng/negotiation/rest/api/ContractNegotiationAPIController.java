@@ -7,12 +7,25 @@ import it.eng.negotiation.service.ContractNegotiationAPIService;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.rest.api.PagedAPIResponse;
+import it.eng.tools.service.GenericFilterBuilder;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PagedResourcesAssembler;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE,
@@ -21,31 +34,68 @@ import java.util.Collection;
 public class ContractNegotiationAPIController {
 
     private final ContractNegotiationAPIService apiService;
+    private final GenericFilterBuilder filterBuilder;
+    private final PagedResourcesAssembler<ContractNegotiation> pagedResourcesAssembler;
+    private final PlainContractNegotiationAssembler plainAssembler;
 
-    public ContractNegotiationAPIController(ContractNegotiationAPIService apiService) {
+    public ContractNegotiationAPIController(ContractNegotiationAPIService apiService, GenericFilterBuilder filterBuilder, PagedResourcesAssembler<ContractNegotiation> pagedResourcesAssembler, PlainContractNegotiationAssembler plainAssembler) {
         this.apiService = apiService;
+        this.filterBuilder = filterBuilder;
+        this.pagedResourcesAssembler = pagedResourcesAssembler;
+        this.plainAssembler = plainAssembler;
     }
 
     /**
      * Returns only one Contract Negotiation by it's ID or a collection by their state.<br>
      * If none are present then all Contract Negotiations will be returned.
      *
-     * @param contractNegotiationId contract negotiation ID, if provided will return only one contract negotiation
-     * @param state                 state of the contract negotiations, if provided will filter by state
-     * @param role                  role of the contract negotiation, if provided will filter by role (consumer/provider)
-     * @param consumerPid           consumer PID, if provided will filter by consumer PID
-     * @param providerPid           provider PID, if provided will filter by provider PID
+     * @param contractNegotiationId the ID of the transfer process to filter by (optional)
+     * @param request               the HTTP request containing additional parameters for filtering
+     * @param page                  the page number for pagination (default is 0)
+     * @param size                  the size of each page for pagination (default is 20)
+     * @param sort                  the sorting criteria in the format "field,direction" (default is "timestamp,desc")
      * @return ResponseEntity
      */
     @GetMapping(path = {"", "/{contractNegotiationId}"})
-    public ResponseEntity<GenericApiResponse<Collection<JsonNode>>> getContractNegotiations(@PathVariable(required = false) String contractNegotiationId,
-                                                                                            @RequestParam(required = false) String state,
-                                                                                            @RequestParam(required = false) String role,
-                                                                                            @RequestParam(required = false) String consumerPid,
-                                                                                            @RequestParam(required = false) String providerPid) {
-        Collection<JsonNode> contractNegotiations = apiService.findContractNegotiations(contractNegotiationId, state, role, consumerPid, providerPid);
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(contractNegotiations, "Fetching contract negotiations"));
+    public ResponseEntity<PagedAPIResponse> getContractNegotiations(
+            @PathVariable(required = false) String contractNegotiationId,
+            HttpServletRequest request,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "timestamp,desc") String[] sort) {
+
+        Sort.Direction direction = sort[1].equalsIgnoreCase("desc") ?
+                Sort.Direction.DESC : Sort.Direction.ASC;
+        Sort sorting = Sort.by(direction, sort[0]);
+        Pageable pageable = PageRequest.of(page, size, sorting);
+        // Build filter map automatically from ALL request parameters
+        Map<String, Object> filters = filterBuilder.buildFromRequest(request);
+
+        // Handle path variable with proper validation
+        if (StringUtils.hasText(contractNegotiationId)) {
+            // Create mutable copy if needed (defensive programming)
+            try {
+                filters.put("id", contractNegotiationId.trim());
+            } catch (UnsupportedOperationException e) {
+                filters = new HashMap<>(filters);
+                filters.put("id", contractNegotiationId.trim());
+            }
+        }
+
+        log.debug("Generated filters: {}", filters);
+
+        Page<ContractNegotiation> contractNegotiations = apiService.findContractNegotiations(filters, pageable);
+        PagedModel<EntityModel<Object>> pagedModel = pagedResourcesAssembler.toModel(contractNegotiations, plainAssembler);
+
+        String filterString = filters.entrySet().stream()
+                .map(entry -> entry.getKey() + ":" + entry.getValue())
+                .collect(Collectors.joining(", "));
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(PagedAPIResponse.of(pagedModel,
+                        "Contract negotiation - Page " + page + " of " + contractNegotiations.getTotalPages() + ", Size: " + size +
+                                ", Sort: " + sorting + ", Filters: [" + filterString + "]"));
     }
 
     /**

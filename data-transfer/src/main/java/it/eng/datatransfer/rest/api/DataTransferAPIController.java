@@ -2,26 +2,32 @@ package it.eng.datatransfer.rest.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.model.DataTransferRequest;
+import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.rest.api.PagedAPIResponse;
 import it.eng.tools.service.GenericFilterBuilder;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PagedResourcesAssembler;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping(path = ApiEndpoints.TRANSFER_DATATRANSFER_V1)
@@ -31,12 +37,15 @@ public class DataTransferAPIController {
     private final DataTransferAPIService apiService;
     private final GenericFilterBuilder filterBuilder;
     private final ApplicationEventPublisher publisher;
+    private final PagedResourcesAssembler<TransferProcess> pagedResourcesAssembler;
+    private final PlainTransferProcessAssembler plainAssembler;
 
-
-    public DataTransferAPIController(DataTransferAPIService apiService, GenericFilterBuilder filterBuilder, ApplicationEventPublisher publisher) {
+    public DataTransferAPIController(DataTransferAPIService apiService, GenericFilterBuilder filterBuilder, ApplicationEventPublisher publisher, PagedResourcesAssembler<TransferProcess> pagedResourcesAssembler, PlainTransferProcessAssembler plainAssembler) {
         this.apiService = apiService;
         this.filterBuilder = filterBuilder;
         this.publisher = publisher;
+        this.pagedResourcesAssembler = pagedResourcesAssembler;
+        this.plainAssembler = plainAssembler;
     }
 
     /********* CONSUMER ***********/
@@ -127,7 +136,7 @@ public class DataTransferAPIController {
      * @return GenericApiResponse with matching transfer processes
      */
     @GetMapping(path = {"", "/{transferProcessId}"})
-    public ResponseEntity<GenericApiResponse<Collection<JsonNode>>> getTransfersProcess(
+    public ResponseEntity<PagedAPIResponse> getTransfersProcess(
             @PathVariable(required = false) String transferProcessId,
             HttpServletRequest request,
             @RequestParam(defaultValue = "0") int page,
@@ -140,7 +149,6 @@ public class DataTransferAPIController {
                 Sort.Direction.DESC : Sort.Direction.ASC;
         Sort sorting = Sort.by(direction, sort[0]);
         Pageable pageable = PageRequest.of(page, size, sorting);
-
         // Build filter map automatically from ALL request parameters
         Map<String, Object> filters = filterBuilder.buildFromRequest(request);
 
@@ -157,9 +165,19 @@ public class DataTransferAPIController {
 
         log.debug("Generated filters: {}", filters);
 
-        Collection<JsonNode> response = apiService.findDataTransfers(filters, pageable);
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(response, "Fetched transfer process"));
+        Page<TransferProcess> transferProcesses = apiService.findDataTransfers(filters, pageable);
+        PagedModel<EntityModel<Object>> pagedModel = pagedResourcesAssembler.toModel(transferProcesses, plainAssembler);
+
+        String filterString = filters.entrySet().stream()
+                .map(entry -> entry.getKey() + ":" + entry.getValue())
+                .collect(Collectors.joining(", "));
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(PagedAPIResponse.of(pagedModel,
+                        "Transfer process - Page " + page + " of " + transferProcesses.getTotalPages() + ", Size: " + size +
+                                ", Sort: " + sorting + ", Filters: [" + filterString + "]"));
+
     }
 
     /**

@@ -22,15 +22,15 @@ import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -62,27 +62,28 @@ public class ContractNegotiationAPIService {
         this.applicationEventPublisher = applicationEventPublisher;
     }
 
-    public Collection<JsonNode> findContractNegotiations(String contractNegotiationId, String state, String role, String consumerPid, String providerPid) {
-        if (StringUtils.isNotBlank(contractNegotiationId)) {
-            return contractNegotiationRepository.findById(contractNegotiationId)
-                    .stream()
-                    .map(NegotiationSerializer::serializePlainJsonNode)
-                    .collect(Collectors.toList());
-        } else if (StringUtils.isNotBlank(state)) {
-            return contractNegotiationRepository.findByStateAndRole(state, role)
-                    .stream()
-                    .map(NegotiationSerializer::serializePlainJsonNode)
-                    .collect(Collectors.toList());
-        } else if (StringUtils.isNotBlank(consumerPid) && StringUtils.isNotBlank(providerPid)) {
-            return contractNegotiationRepository.findByProviderPidAndConsumerPid(providerPid, consumerPid)
-                    .stream()
-                    .map(NegotiationSerializer::serializePlainJsonNode)
-                    .collect(Collectors.toList());
-        }
-        return contractNegotiationRepository.findByRole(role)
-                .stream()
-                .map(NegotiationSerializer::serializePlainJsonNode)
-                .collect(Collectors.toList());
+    public Page<ContractNegotiation> findContractNegotiations(Map<String, Object> filters, Pageable pageable) {
+//        if (StringUtils.isNotBlank(contractNegotiationId)) {
+//            return contractNegotiationRepository.findById(contractNegotiationId)
+//                    .stream()
+//                    .map(NegotiationSerializer::serializePlainJsonNode)
+//                    .collect(Collectors.toList());
+//        } else if (StringUtils.isNotBlank(state)) {
+//            return contractNegotiationRepository.findByStateAndRole(state, role)
+//                    .stream()
+//                    .map(NegotiationSerializer::serializePlainJsonNode)
+//                    .collect(Collectors.toList());
+//        } else if (StringUtils.isNotBlank(consumerPid) && StringUtils.isNotBlank(providerPid)) {
+//            return contractNegotiationRepository.findByProviderPidAndConsumerPid(providerPid, consumerPid)
+//                    .stream()
+//                    .map(NegotiationSerializer::serializePlainJsonNode)
+//                    .collect(Collectors.toList());
+//        }
+//        return contractNegotiationRepository.findByRole(role)
+//                .stream()
+//                .map(NegotiationSerializer::serializePlainJsonNode)
+//                .collect(Collectors.toList());
+        return contractNegotiationRepository.findWithDynamicFilters(filters, ContractNegotiation.class, pageable);
     }
 
     /**
