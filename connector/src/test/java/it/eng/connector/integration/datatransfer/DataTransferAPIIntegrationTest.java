@@ -218,9 +218,9 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 	}
 
 	@Test
-	@DisplayName("Request transfer process - provider error")
+	@DisplayName("Request transfer process - format not supported")
     @WithUserDetails(TestUtil.API_USER)
-	public void initiateDataTransfer_provider_error() throws Exception { 
+	public void initiateDataTransfer_formatNotSupported() throws Exception {
 		TransferProcess transferProcessInitialized = TransferProcess.Builder.newInstance()
 				.consumerPid(createNewId())
 				.providerPid(createNewId())
@@ -231,7 +231,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 		transferProcessRepository.save(transferProcessInitialized);
 		
 		DataTransferRequest dataTransferRequest = new DataTransferRequest(transferProcessInitialized.getId(), 
-				DataTransferFormat.HTTP_PULL.format());
+				"unsupported_format");
 		
 		// mock provider transfer error response TransferRequestMessage
 		TransferError providerErrorResponse = TransferError.Builder.newInstance()
@@ -273,6 +273,63 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
     	assertEquals(transferProcessInitialized.getConsumerPid(), transferProcessFromDb.getConsumerPid());
     	assertEquals(TransferState.INITIALIZED, transferProcessFromDb.getState());
 	}
+
+    @Test
+    @DisplayName("Request transfer process - provider error")
+    @WithUserDetails(TestUtil.API_USER)
+    public void initiateDataTransfer_provider_error() throws Exception {
+        TransferProcess transferProcessInitialized = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .agreementId(createNewId())
+                .callbackAddress(wiremock.baseUrl())
+                .state(TransferState.INITIALIZED)
+                .build();
+        transferProcessRepository.save(transferProcessInitialized);
+
+        DataTransferRequest dataTransferRequest = new DataTransferRequest(transferProcessInitialized.getId(),
+                DataTransferFormat.HTTP_PULL.format());
+
+        // mock provider transfer error response TransferRequestMessage
+        TransferError providerErrorResponse = TransferError.Builder.newInstance()
+                .consumerPid(transferProcessInitialized.getId())
+                .providerPid(createNewId())
+                .code("TEST")
+                .reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("TEST").build()))
+                .build();
+
+        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/transfers/request")
+                .withBasicAuth("connector@mail.com", "password")
+                .withRequestBody(WireMock.containing("dspace:TransferRequestMessage"))
+                .willReturn(
+                        aResponse().withHeader("Content-Type", "application/json")
+                                .withStatus(400)
+                                .withBody(TransferSerializer.serializeProtocol(providerErrorResponse))));
+
+        final ResultActions result =
+                mockMvc.perform(
+                        post(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
+                                .content(jsonMapper.convertValue(dataTransferRequest, JsonNode.class).toString())
+                                .contentType(MediaType.APPLICATION_JSON));
+
+        result.andExpect(status().is4xxClientError())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
+        String json = result.andReturn().getResponse().getContentAsString();
+        JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, TransferError.class);
+        GenericApiResponse<TransferError> genericApiResponse = jsonMapper.readValue(json, javaType);
+        assertNotNull(genericApiResponse);
+        assertFalse(genericApiResponse.isSuccess());
+        assertNotNull(genericApiResponse.getData());
+        assertEquals(TransferError.class, genericApiResponse.getData().getClass());
+
+        // check if the Transfer Process is unchanged and that consumerPid and providerPid are correct
+        TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessInitialized.getId()).get();
+
+        assertEquals(transferProcessInitialized.getProviderPid(), transferProcessFromDb.getProviderPid());
+        assertEquals(transferProcessInitialized.getConsumerPid(), transferProcessFromDb.getConsumerPid());
+        assertEquals(TransferState.INITIALIZED, transferProcessFromDb.getState());
+    }
 
     @Test
     @DisplayName("Filter by datasetId only")
