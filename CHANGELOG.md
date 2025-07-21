@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Updated junit tests
+- Updated integration tests for pagination
 - Postman collection updated with new endpoints and pagination
 
 ## [0.4.8-SNAPSHOT] - 16.07.2025.

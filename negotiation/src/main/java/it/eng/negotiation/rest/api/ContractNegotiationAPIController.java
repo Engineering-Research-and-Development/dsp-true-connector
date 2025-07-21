@@ -75,6 +75,7 @@ public class ContractNegotiationAPIController {
         if (StringUtils.hasText(contractNegotiationId)) {
             // Create mutable copy if needed (defensive programming)
             try {
+                filters.clear();
                 filters.put("id", contractNegotiationId.trim());
             } catch (UnsupportedOperationException e) {
                 filters = new HashMap<>(filters);
@@ -117,7 +118,7 @@ public class ContractNegotiationAPIController {
     /**
      * Accepts contract negotiation.
      *
-     * @param contractNegotiationId
+     * @param contractNegotiationId the ID of the contract negotiation to accept
      * @return ResponseEntity
      */
     @PutMapping(path = "/{contractNegotiationId}/accept")
@@ -132,7 +133,7 @@ public class ContractNegotiationAPIController {
     /**
      * Terminate contract negotiation.
      *
-     * @param contractNegotiationId
+     * @param contractNegotiationId the ID of the contract negotiation to terminate
      * @return ResponseEntity
      */
     @PutMapping(path = "/{contractNegotiationId}/terminate")
@@ -148,7 +149,7 @@ public class ContractNegotiationAPIController {
     /**
      * Verify contract negotiation.
      *
-     * @param contractNegotiationId
+     * @param contractNegotiationId the ID of the contract negotiation to verify
      * @return ResponseEntity
      */
     @PutMapping(path = "/{contractNegotiationId}/verify")
@@ -164,7 +165,7 @@ public class ContractNegotiationAPIController {
     /**
      * Provider sends offer.
      *
-     * @param contractOfferRequest
+     * @param contractOfferRequest the request containing the target connector and offer details
      * @return ResponseEntity
      */
     @PostMapping(path = "/offers")
@@ -191,7 +192,7 @@ public class ContractNegotiationAPIController {
     /**
      * Provider approve contract negotiation.
      *
-     * @param contractNegotiationId
+     * @param contractNegotiationId the ID of the contract negotiation to approve
      * @return ResponseEntity
      */
     @PutMapping(path = "/{contractNegotiationId}/approve")
@@ -206,7 +207,7 @@ public class ContractNegotiationAPIController {
     /**
      * Provider finalize contract negotiation.
      *
-     * @param contractNegotiationId
+     * @param contractNegotiationId the ID of the contract negotiation to finalize
      * @return ResponseEntity
      */
     @PutMapping(path = "/{contractNegotiationId}/finalize")

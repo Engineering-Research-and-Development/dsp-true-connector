@@ -156,6 +156,7 @@ public class DataTransferAPIController {
         if (StringUtils.hasText(transferProcessId)) {
             // Create mutable copy if needed (defensive programming)
             try {
+                filters.clear();
                 filters.put("id", transferProcessId.trim());
             } catch (UnsupportedOperationException e) {
                 filters = new HashMap<>(filters);

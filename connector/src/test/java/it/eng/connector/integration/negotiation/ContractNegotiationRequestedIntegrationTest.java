@@ -22,8 +22,8 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -74,14 +74,14 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
         //needs to match offer in catalog
         Permission permission = Permission.Builder.newInstance()
                 .action(Action.USE)
-                .constraint(Arrays.asList(NegotiationMockObjectUtil.CONSTRAINT_COUNT_5))
+                .constraint(Collections.singletonList(NegotiationMockObjectUtil.CONSTRAINT_COUNT_5))
                 .build();
         String datasetOfferId = dataset.getHasPolicy().stream().findFirst().get().getId();
         Offer offerRequest = Offer.Builder.newInstance()
                 .id(datasetOfferId)
                 .target(dataset.getId())
                 .assigner(NegotiationMockObjectUtil.ASSIGNER)
-                .permission(Arrays.asList(permission))
+                .permission(Collections.singletonList(permission))
                 .build();
 
         String fileContent = "Hello, World!";
@@ -114,7 +114,7 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
         final ResultActions result =
                 mockMvc.perform(
                         post("/negotiations/request")
-                                .content(NegotiationSerializer.serializeProtocol(contractRequestMessage))
+                                .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(contractRequestMessage)))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isCreated())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -132,7 +132,7 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void createNegotiation_negotiation_exists() throws Exception {
 
-        ContractNegotiation contractNegotiationRequestd = ContractNegotiation.Builder.newInstance()
+        ContractNegotiation contractNegotiationRequested = ContractNegotiation.Builder.newInstance()
                 .consumerPid(createNewId())
                 .providerPid(createNewId())
                 .callbackAddress("callbackAddress.test")
@@ -141,14 +141,14 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
 
         ContractRequestMessage crm = ContractRequestMessage.Builder.newInstance()
                 .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
-                .consumerPid(contractNegotiationRequestd.getConsumerPid())
+                .consumerPid(contractNegotiationRequested.getConsumerPid())
                 .offer(NegotiationMockObjectUtil.OFFER)
                 .build();
 
         final ResultActions result =
                 mockMvc.perform(
                         post("/negotiations/request")
-                                .content(NegotiationSerializer.serializeProtocol(crm))
+                                .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(crm)))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -166,10 +166,10 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
         Offer offer = Offer.Builder.newInstance()
                 .target(NegotiationMockObjectUtil.TARGET)
                 .assigner(NegotiationMockObjectUtil.ASSIGNER)
-                .permission(Arrays.asList(NegotiationMockObjectUtil.PERMISSION_COUNT_5))
+                .permission(Collections.singletonList(NegotiationMockObjectUtil.PERMISSION_COUNT_5))
                 .build();
 
-        ContractNegotiation contractNegotiationRequestd = ContractNegotiation.Builder.newInstance()
+        ContractNegotiation contractNegotiationRequested = ContractNegotiation.Builder.newInstance()
                 .consumerPid(createNewId())
                 .providerPid(createNewId())
                 .callbackAddress("callbackAddress.test")
@@ -178,14 +178,14 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
 
         ContractRequestMessage crm = ContractRequestMessage.Builder.newInstance()
                 .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
-                .consumerPid(contractNegotiationRequestd.getConsumerPid())
+                .consumerPid(contractNegotiationRequested.getConsumerPid())
                 .offer(offer)
                 .build();
 
         final ResultActions result =
                 mockMvc.perform(
                         post("/negotiations/request")
-                                .content(NegotiationSerializer.serializeProtocol(crm))
+                                .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(crm)))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -203,10 +203,10 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
                 .id("TO BE CHANGED")
                 .target(NegotiationMockObjectUtil.TARGET)
                 .assigner(NegotiationMockObjectUtil.ASSIGNER)
-                .permission(Arrays.asList(NegotiationMockObjectUtil.PERMISSION))
+                .permission(Collections.singletonList(NegotiationMockObjectUtil.PERMISSION))
                 .build();
 
-        ContractNegotiation contractNegotiationRequestd = ContractNegotiation.Builder.newInstance()
+        ContractNegotiation contractNegotiationRequested = ContractNegotiation.Builder.newInstance()
                 .consumerPid(createNewId())
                 .providerPid(createNewId())
                 .callbackAddress("callbackAddress.test")
@@ -215,14 +215,14 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
 
         ContractRequestMessage crm = ContractRequestMessage.Builder.newInstance()
                 .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
-                .consumerPid(contractNegotiationRequestd.getConsumerPid())
+                .consumerPid(contractNegotiationRequested.getConsumerPid())
                 .offer(offer)
                 .build();
 
         final ResultActions result =
                 mockMvc.perform(
                         post("/negotiations/request")
-                                .content(NegotiationSerializer.serializeProtocol(crm))
+                                .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(crm)))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
