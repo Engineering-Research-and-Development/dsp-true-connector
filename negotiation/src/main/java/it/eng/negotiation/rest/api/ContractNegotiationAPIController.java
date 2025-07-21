@@ -54,7 +54,7 @@ public class ContractNegotiationAPIController {
         ContractNegotiation contractNegotiation = apiService.findContractNegotiationById(contractNegotiationId);
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(NegotiationSerializer.serializeProtocolJsonNode(contractNegotiation),
+                .body(GenericApiResponse.success(NegotiationSerializer.serializePlainJsonNode(contractNegotiation),
                         String.format("Contract negotiation with id %s found", contractNegotiationId)));
     }
 

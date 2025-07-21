@@ -1,10 +1,9 @@
 {
 	"info": {
-		"_postman_id": "aeb12869-f11c-4b91-995c-2dd9e59bb3f1",
+		"_postman_id": "bb1bb244-e2fd-4e2b-9aff-275373ab15f0",
 		"name": "Negotiation tests",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "21815221",
-		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-aeb12869-f11c-4b91-995c-2dd9e59bb3f1?action=share&source=collection_link&creator=21815221"
+		"_exporter_id": "36278855"
 	},
 	"item": [
 		{
@@ -75,8 +74,9 @@
 									"\r",
 									"pm.test(\"Retrieve contract negotiation id\", function () {\r",
 									"    var jsonData = pm.response.json();\r",
-									"    pm.collectionVariables.set(\"provider_contractNegotiationId\", jsonData[\"data\"][jsonData.data.length-1][\"@id\"])\r",
-									"});"
+									"    pm.collectionVariables.set(\"provider_contractNegotiationId\", jsonData.response.data.content[0][\"@id\"]);\r",
+									"});\r",
+									""
 								],
 								"type": "text/javascript",
 								"packages": {}
@@ -93,7 +93,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{PROVIDER_API_ENDPOINT}}?role=provider",
+							"raw": "{{PROVIDER_API_ENDPOINT}}?role=provider&state=REQUESTED&assigner=urn:uuid:ASSIGNER_PROVIDER",
 							"host": [
 								"{{PROVIDER_API_ENDPOINT}}"
 							],
@@ -101,6 +101,14 @@
 								{
 									"key": "role",
 									"value": "provider"
+								},
+								{
+									"key": "state",
+									"value": "REQUESTED"
+								},
+								{
+									"key": "assigner",
+									"value": "urn:uuid:ASSIGNER_PROVIDER"
 								}
 							]
 						}
@@ -118,12 +126,12 @@
 									"    pm.response.to.have.status(200);\r",
 									"});\r",
 									"\r",
-									"pm.test(\"Your test name\", function () {\r",
+									"pm.test(\"Verify state REQUESTED - consumer\", function () {\r",
 									"    var jsonData = pm.response.json();\r",
 									"    // find out how to get the id from the start negotiation request body\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"REQUESTED\");\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"consumer\");\r",
+									"    pm.expect(jsonData.data[\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData.data[\"state\"]).to.eql(\"REQUESTED\");\r",
+									"    pm.expect(jsonData.data[\"role\"]).to.eql(\"consumer\");\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -151,15 +159,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{CONSUMER_API_ENDPOINT}}?role=consumer",
+							"raw": "{{CONSUMER_API_ENDPOINT}}/{{consumer_contractNegotiationId}}",
 							"host": [
 								"{{CONSUMER_API_ENDPOINT}}"
 							],
-							"query": [
-								{
-									"key": "role",
-									"value": "consumer"
-								}
+							"path": [
+								"{{consumer_contractNegotiationId}}"
 							]
 						}
 					},
@@ -176,12 +181,12 @@
 									"    pm.response.to.have.status(200);\r",
 									"});\r",
 									"\r",
-									"pm.test(\"Check if offer and role are present\", function () {\r",
+									"pm.test(\"Verify state REQUESTED - provider\", function () {\r",
 									"    var jsonData = pm.response.json();\r",
 									"    // find out how to get the id from the start negotiation request body\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"REQUESTED\");\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"provider\");\r",
+									"    pm.expect(jsonData.data[\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData.data[\"state\"]).to.eql(\"REQUESTED\");\r",
+									"    pm.expect(jsonData.data[\"role\"]).to.eql(\"provider\");\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -199,15 +204,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{PROVIDER_API_ENDPOINT}}?role=provider",
+							"raw": "{{PROVIDER_API_ENDPOINT}}/{{provider_contractNegotiationId}}",
 							"host": [
 								"{{PROVIDER_API_ENDPOINT}}"
 							],
-							"query": [
-								{
-									"key": "role",
-									"value": "provider"
-								}
+							"path": [
+								"{{provider_contractNegotiationId}}"
 							]
 						}
 					},
@@ -283,13 +285,13 @@
 									"    pm.response.to.have.status(200);\r",
 									"});\r",
 									"\r",
-									"pm.test(\"Your test name\", function () {\r",
+									"pm.test(\"Verify state AGREED - consumer\", function () {\r",
 									"    var jsonData = pm.response.json();\r",
 									"    // find out how to get the id from the start negotiation request body\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"consumer\");\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"AGREED\");\r",
+									"    pm.expect(jsonData.data[\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData.data[\"role\"]).to.eql(\"consumer\");\r",
+									"    pm.expect(jsonData.data[\"agreement\"]).to.not.equal(null);\r",
+									"    pm.expect(jsonData.data[\"state\"]).to.eql(\"AGREED\");\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -317,15 +319,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{CONSUMER_API_ENDPOINT}}?role=consumer",
+							"raw": "{{CONSUMER_API_ENDPOINT}}/{{consumer_contractNegotiationId}}",
 							"host": [
 								"{{CONSUMER_API_ENDPOINT}}"
 							],
-							"query": [
-								{
-									"key": "role",
-									"value": "consumer"
-								}
+							"path": [
+								"{{consumer_contractNegotiationId}}"
 							]
 						}
 					},
@@ -342,13 +341,13 @@
 									"    pm.response.to.have.status(200);\r",
 									"});\r",
 									"\r",
-									"pm.test(\"Check if offer and role are present\", function () {\r",
+									"pm.test(\"Verify state AGREED - provider\", function () {\r",
 									"    var jsonData = pm.response.json();\r",
 									"    // find out how to get the id from the start negotiation request body\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"provider\");\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"AGREED\");\r",
+									"    pm.expect(jsonData.data[\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData.data[\"role\"]).to.eql(\"provider\");\r",
+									"    pm.expect(jsonData.data[\"agreement\"]).to.not.equal(null);\r",
+									"    pm.expect(jsonData.data[\"state\"]).to.eql(\"AGREED\");\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -366,15 +365,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{PROVIDER_API_ENDPOINT}}?role=provider",
+							"raw": "{{PROVIDER_API_ENDPOINT}}/{{provider_contractNegotiationId}}",
 							"host": [
 								"{{PROVIDER_API_ENDPOINT}}"
 							],
-							"query": [
-								{
-									"key": "role",
-									"value": "provider"
-								}
+							"path": [
+								"{{provider_contractNegotiationId}}"
 							]
 						}
 					},
@@ -437,13 +433,13 @@
 									"    pm.response.to.have.status(200);\r",
 									"});\r",
 									"\r",
-									"pm.test(\"Your test name\", function () {\r",
+									"pm.test(\"Verify state VERIFIED - consumer\", function () {\r",
 									"    var jsonData = pm.response.json();\r",
 									"    // find out how to get the id from the start negotiation request body\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"consumer\");\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"VERIFIED\");\r",
+									"    pm.expect(jsonData.data[\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData.data[\"role\"]).to.eql(\"consumer\");\r",
+									"    pm.expect(jsonData.data[\"agreement\"]).to.not.equal(null);\r",
+									"    pm.expect(jsonData.data[\"state\"]).to.eql(\"VERIFIED\");\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -471,15 +467,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{CONSUMER_API_ENDPOINT}}?role=consumer",
+							"raw": "{{CONSUMER_API_ENDPOINT}}/{{consumer_contractNegotiationId}}",
 							"host": [
 								"{{CONSUMER_API_ENDPOINT}}"
 							],
-							"query": [
-								{
-									"key": "role",
-									"value": "consumer"
-								}
+							"path": [
+								"{{consumer_contractNegotiationId}}"
 							]
 						}
 					},
@@ -496,13 +489,13 @@
 									"    pm.response.to.have.status(200);\r",
 									"});\r",
 									"\r",
-									"pm.test(\"Check if offer and role are present\", function () {\r",
+									"pm.test(\"Verify state VERIFIED - provider\", function () {\r",
 									"    var jsonData = pm.response.json();\r",
 									"    // find out how to get the id from the start negotiation request body\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"provider\");\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"VERIFIED\");\r",
+									"    pm.expect(jsonData.data[\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData.data[\"role\"]).to.eql(\"provider\");\r",
+									"    pm.expect(jsonData.data[\"agreement\"]).to.not.equal(null);\r",
+									"    pm.expect(jsonData.data[\"state\"]).to.eql(\"VERIFIED\");\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -520,15 +513,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{PROVIDER_API_ENDPOINT}}?role=provider",
+							"raw": "{{PROVIDER_API_ENDPOINT}}/{{provider_contractNegotiationId}}",
 							"host": [
 								"{{PROVIDER_API_ENDPOINT}}"
 							],
-							"query": [
-								{
-									"key": "role",
-									"value": "provider"
-								}
+							"path": [
+								"{{provider_contractNegotiationId}}"
 							]
 						}
 					},
@@ -591,13 +581,18 @@
 									"    pm.response.to.have.status(200);\r",
 									"});\r",
 									"\r",
-									"pm.test(\"Your test name\", function () {\r",
+									"pm.test(\"Verify state FINALIZED - consumer\", function () {\r",
 									"    var jsonData = pm.response.json();\r",
 									"    // find out how to get the id from the start negotiation request body\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"consumer\");\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"FINALIZED\");\r",
+									"    pm.expect(jsonData.data[\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData.data[\"role\"]).to.eql(\"consumer\");\r",
+									"    pm.expect(jsonData.data[\"agreement\"]).to.not.equal(null);\r",
+									"    pm.expect(jsonData.data[\"state\"]).to.eql(\"FINALIZED\");\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Retrieve consumer agreementId\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.collectionVariables.set(\"consumer_agreementId\", jsonData[\"data\"][\"agreement\"][\"@id\"])\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -625,15 +620,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{CONSUMER_API_ENDPOINT}}?role=consumer",
+							"raw": "{{CONSUMER_API_ENDPOINT}}/{{consumer_contractNegotiationId}}",
 							"host": [
 								"{{CONSUMER_API_ENDPOINT}}"
 							],
-							"query": [
-								{
-									"key": "role",
-									"value": "consumer"
-								}
+							"path": [
+								"{{consumer_contractNegotiationId}}"
 							]
 						}
 					},
@@ -650,13 +642,18 @@
 									"    pm.response.to.have.status(200);\r",
 									"});\r",
 									"\r",
-									"pm.test(\"Check if offer and role are present\", function () {\r",
+									"pm.test(\"Verify state FINALIZED - provider\", function () {\r",
 									"    var jsonData = pm.response.json();\r",
 									"    // find out how to get the id from the start negotiation request body\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"role\"]).to.eql(\"provider\");\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"agreement\"]).to.not.equal(null);\r",
-									"    pm.expect(jsonData[\"data\"][jsonData.data.length-1][\"state\"]).to.eql(\"FINALIZED\");\r",
+									"    pm.expect(jsonData.data[\"offer\"][\"originalId\"]).to.eql(\"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\");\r",
+									"    pm.expect(jsonData.data[\"role\"]).to.eql(\"provider\");\r",
+									"    pm.expect(jsonData.data[\"agreement\"]).to.not.equal(null);\r",
+									"    pm.expect(jsonData.data[\"state\"]).to.eql(\"FINALIZED\");\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Retrieve provider agreementId\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.collectionVariables.set(\"provider_agreementId\", jsonData[\"data\"][\"agreement\"][\"@id\"])\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -674,15 +671,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{PROVIDER_API_ENDPOINT}}?role=provider",
+							"raw": "{{PROVIDER_API_ENDPOINT}}/{{provider_contractNegotiationId}}",
 							"host": [
 								"{{PROVIDER_API_ENDPOINT}}"
 							],
-							"query": [
-								{
-									"key": "role",
-									"value": "provider"
-								}
+							"path": [
+								"{{provider_contractNegotiationId}}"
 							]
 						}
 					},
@@ -701,7 +695,7 @@
 									"\r",
 									"pm.test(\"Check if transfer process is initialized\", function () {\r",
 									"    var jsonData = pm.response.json();\r",
-									"    var transferProcess = jsonData[\"data\"][jsonData.data.length - 1];\r",
+									"    var transferProcess = jsonData[\"response\"][\"data\"][\"content\"][0];\r",
 									"    pm.expect(transferProcess[\"state\"]).to.eql(\"INITIALIZED\");\r",
 									"    pm.expect(transferProcess[\"role\"]).to.eql(\"consumer\");\r",
 									"    pm.expect(transferProcess[\"agreementId\"]).to.not.eql(null);\r",
@@ -724,7 +718,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{CONSUMER_SERVER_API_TRANSFERS}}?role=consumer",
+							"raw": "{{CONSUMER_SERVER_API_TRANSFERS}}?role=consumer&agreementId={{consumer_agreementId}}",
 							"host": [
 								"{{CONSUMER_SERVER_API_TRANSFERS}}"
 							],
@@ -732,6 +726,10 @@
 								{
 									"key": "role",
 									"value": "consumer"
+								},
+								{
+									"key": "agreementId",
+									"value": "{{consumer_agreementId}}"
 								}
 							]
 						}
@@ -751,7 +749,7 @@
 									"\r",
 									"pm.test(\"Check if transfer process is initialized\", function () {\r",
 									"    var jsonData = pm.response.json();\r",
-									"    var transferProcess = jsonData[\"data\"][jsonData.data.length - 1];\r",
+									"    var transferProcess = jsonData[\"response\"][\"data\"][\"content\"][0];\r",
 									"    pm.expect(transferProcess[\"state\"]).to.eql(\"INITIALIZED\");\r",
 									"    pm.expect(transferProcess[\"role\"]).to.eql(\"provider\");\r",
 									"    pm.expect(transferProcess[\"agreementId\"]).to.not.eql(null);\r",
@@ -774,7 +772,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}?role=provider",
+							"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}?role=provider&agreementId={{provider_agreementId}}",
 							"host": [
 								"{{PROVIDER_SERVER_API_TRANSFERS}}"
 							],
@@ -782,6 +780,10 @@
 								{
 									"key": "role",
 									"value": "provider"
+								},
+								{
+									"key": "agreementId",
+									"value": "{{provider_agreementId}}"
 								}
 							]
 						}

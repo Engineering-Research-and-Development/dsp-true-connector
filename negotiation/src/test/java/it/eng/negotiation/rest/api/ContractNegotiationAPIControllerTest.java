@@ -131,7 +131,7 @@ public class ContractNegotiationAPIControllerTest {
         assertNotNull(response.getBody());
         assertTrue(response.getBody().isSuccess());
         assertNotNull(response.getBody().getData());
-        assertNotNull(NegotiationSerializer.deserializeProtocol(response.getBody().getData(), ContractNegotiation.class));
+        assertNotNull(NegotiationSerializer.deserializePlain(response.getBody().getData().toPrettyString(), ContractNegotiation.class));
     }
 
     @Test
