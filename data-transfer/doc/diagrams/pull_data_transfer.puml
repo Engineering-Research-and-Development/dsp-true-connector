@@ -1,6 +1,6 @@
 @startuml
 
-TITLE Pull
+TITLE Pull data transfer
 
 participant CONSUMER_S3 as cs3
 participant CONSUMER as c

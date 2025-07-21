@@ -1,0 +1,67 @@
+@startuml
+
+TITLE Push data transfer
+
+participant CONSUMER_S3 as cs3
+participant CONSUMER as c
+participant PROVIDER as p
+participant PROVIDER_S3 as ps3
+
+== TransfertRequestMessage ==
+
+note over c
+Presigned PUT URL is used to upload data directly to CONSUMER S3 bucket.
+It is generated from the CONSUMER bucket name and a object key.
+In our case the TransferProcess Id will be used as the object key to ensure unique file names.
+end note
+c->c: Create DataAddress from presigned PUT URL
+c->p : https://provider.com/transfers/request
+
+note over c
+TransferRequestMessage
+{
+  "@context":  "https://w3id.org/dspace/2024/1/context.json",
+  "@type": "dspace:TransferRequestMessage",
+  "dspace:consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+  "dspace:agreementId": "urn:uuid:e8dc8655-44c2-46ef-b701-4cffdc2faa44",
+  "dct:format": "HttpData-PUSH",
+  "dst:dataAddress": {
+    "@type": "dspace:DataAddress",
+    "dspace:endpointType": "https://w3id.org/idsa/v4.1/HTTP",
+    "dspace:endpoint": "http://localhost:9000/dsp-true-connector-consumer-bucket/..."
+  },
+  "dspace:callbackAddress": "https://......"
+}
+end note
+
+p->p: Process received message
+p->p: store message (agreement will be required later)
+p->p: Create TransferProcess with initial consumerPid urn:uuid:PROVIDER_PID_TRANSFER and adds providerPid, state.REQUESTED
+p->c: 200 OK, TransferProcess
+
+== TransferStartMessage ==
+p->p: Create TransferStartMessage
+
+p->c : callbackUrl + transfers/:consumerPid/start
+note right
+{
+  "@context":  "https://w3id.org/dspace/2024/1/context.json",
+  "@type": "dspace:TransferStartMessage",
+  "dspace:providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
+  "dspace:consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+  "dst:dataAddress": {
+      "@type": "dspace:DataAddress",
+      "dspace:endpointType": "https://w3id.org/idsa/v4.1/HTTP",
+      "dspace:endpoint": "http://localhost:9000/dsp-true-connector-consumer-bucket/..."
+    },
+}
+end note
+
+c->c : process TransferStartMessage, update state locally
+c->p : 200 OK
+p->p: after 200OK< update state in TransferProcess to SARTED
+note right
+this will be updated when push transfer is fully implemented
+end note
+p->cs3: start data transfer to CONSUMER S3 bucket
+@enduml
