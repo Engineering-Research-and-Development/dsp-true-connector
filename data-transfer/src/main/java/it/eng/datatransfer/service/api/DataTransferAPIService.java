@@ -615,7 +615,7 @@ public class DataTransferAPIService {
         }
     }
 
-    private TransferProcess findTransferProcessById(String transferProcessId) {
+    public TransferProcess findTransferProcessById(String transferProcessId) {
         return transferProcessRepository.findById(transferProcessId)
                 .orElseThrow(() -> {
                     publisher.publishEvent(AuditEvent.Builder.newInstance()

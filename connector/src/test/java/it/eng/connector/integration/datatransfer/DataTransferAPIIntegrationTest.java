@@ -14,6 +14,7 @@ import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,29 +74,35 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
         MvcResult resultStarted = mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "?state=STARTED").contentType(MediaType.APPLICATION_JSON))
+                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId())
+                                .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
         String json = resultStarted.getResponse().getContentAsString();
-        GenericApiResponse<List<TransferProcess>> genericApiResponse = parseResponse(json);
+        GenericApiResponse<TransferProcess> genericApiResponse = TransferSerializer.deserializePlain(json,
+                new TypeReference<GenericApiResponse<TransferProcess>>() {
+                });
 
+        assertNotNull(genericApiResponse);
         assertTrue(genericApiResponse.isSuccess());
-        TransferProcess transferProcess = genericApiResponse.getData().get(0);
+        TransferProcess transferProcess = genericApiResponse.getData();
         assertNotNull(transferProcess);
         assertEquals(TransferState.STARTED, transferProcess.getState());
 
         MvcResult result = mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessRequested.getId()).contentType(MediaType.APPLICATION_JSON))
+                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessRequested.getId())
+                                .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andReturn();
         json = result.getResponse().getContentAsString();
-        genericApiResponse = parseResponse(json);
+        genericApiResponse = TransferSerializer.deserializePlain(json,
+                new TypeReference<GenericApiResponse<TransferProcess>>() {
+                });
 
         assertNotNull(genericApiResponse);
         assertTrue(genericApiResponse.isSuccess());
-        assertEquals(1, genericApiResponse.getData().size());
-        TransferProcess transferProcessFromDB = genericApiResponse.getData().get(0);
+        TransferProcess transferProcessFromDB = genericApiResponse.getData();
         assertNotNull(transferProcessFromDB);
         assertEquals(transferProcessRequested.getId(), transferProcessFromDB.getId());
     }
@@ -456,6 +463,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
     @Test
     @DisplayName("Transfer process ID takes priority over filters")
     @WithUserDetails(TestUtil.API_USER)
+    @Disabled("Disabled since this test is not applicable to the current API design")
     public void transferProcessIdTakesPriority() throws Exception {
         TransferProcess process = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())
@@ -478,12 +486,13 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
                 .andReturn();
 
         String json = result.getResponse().getContentAsString();
-        GenericApiResponse<List<TransferProcess>> genericApiResponse = parseResponse(json);
+        GenericApiResponse<TransferProcess> genericApiResponse = TransferSerializer.deserializePlain(json,
+                new TypeReference<GenericApiResponse<TransferProcess>>() {
+                });
 
         assertNotNull(genericApiResponse);
         assertTrue(genericApiResponse.isSuccess());
-        assertEquals(1, genericApiResponse.getData().size());
-        TransferProcess returnedProcess = genericApiResponse.getData().get(0);
+        TransferProcess returnedProcess = genericApiResponse.getData();
         assertEquals(process.getId(), returnedProcess.getId());
         // Verify actual values are returned, not filter values
         assertEquals("actual-dataset", returnedProcess.getDatasetId());

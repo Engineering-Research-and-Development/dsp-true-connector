@@ -92,16 +92,14 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("Find transfer process by id - ignores other filters")
     public void findDataTransfers_byId() {
-        Map<String, Object> filters = Map.of("id", "test");
-
-        when(transferProcessRepository.findWithDynamicFilters(eq(filters), eq(TransferProcess.class), eq(pageable)))
-                .thenReturn(new PageImpl<>(Collections.singletonList(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
-        Page<TransferProcess> response = apiService.findDataTransfers(filters, pageable);
+        String id = DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId();
+        when(transferProcessRepository.findById(id))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+        TransferProcess response = apiService.findTransferProcessById(id);
         assertNotNull(response);
-        assertEquals(1, response.getTotalElements());
-
+        assertEquals(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId(), response.getId());
         // Verify that dynamic filter method is not called when ID is provided
-        verify(transferProcessRepository).findWithDynamicFilters(anyMap(), eq(TransferProcess.class), any(Pageable.class));
+        verify(transferProcessRepository).findById(id);
     }
 
     @Test

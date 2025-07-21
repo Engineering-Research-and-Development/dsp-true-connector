@@ -259,7 +259,6 @@ public class ContractNegotiationAPIServiceTest {
     @Test
     @DisplayName("Finalize negotiation failed - wrong negotiation state")
     public void finalizeNegotiation_wrongNegotiationState() {
-
         when(contractNegotiationRepository.findById(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId()))
                 .thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_OFFERED));
 
@@ -316,13 +315,20 @@ public class ContractNegotiationAPIServiceTest {
     @Test
     @DisplayName("Find contract negotiations by id")
     public void findContractNegotiationById() {
-        when(contractNegotiationRepository.findWithDynamicFilters(anyMap(), eq(ContractNegotiation.class), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(Collections.singletonList(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED)));
-        Map<String, Object> filters = new HashMap<>();
-        filters.put("id", NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId());
-        Page<ContractNegotiation> response = service.findContractNegotiations(filters, pageable);
+        when(contractNegotiationRepository.findById(anyString()))
+                .thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+        ContractNegotiation response = service.findContractNegotiationById(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId());
         assertNotNull(response);
-        assertEquals(1, response.getTotalElements());
+    }
+
+    @Test
+    @DisplayName("Find contract negotiations by id - not found")
+    public void findContractNegotiationById_notFound() {
+        when(contractNegotiationRepository.findById(anyString()))
+                .thenReturn(Optional.empty());
+
+        assertThrows(ContractNegotiationAPIException.class, () ->
+                service.findContractNegotiationById(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId()));
     }
 
     @Test

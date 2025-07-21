@@ -94,7 +94,7 @@ class DataTransferAPIControllerTest {
         when(pagedResourcesAssembler.toModel(transferProcessPage, plainAssembler)).thenReturn((PagedModel) pagedModel);
 
         ResponseEntity<PagedAPIResponse> response =
-                controller.getTransfersProcess(null, request, 0, 20, new String[]{"timestamp", "desc"});
+                controller.getTransfersProcess(request, 0, 20, new String[]{"timestamp", "desc"});
 
         assertNotNull(response);
         assertNotNull(response.getBody());
@@ -108,31 +108,18 @@ class DataTransferAPIControllerTest {
     @Test
     @DisplayName("Find transfer process by id with path variable")
     public void getTransfersProcess_byId() {
-        MockHttpServletRequest request = new MockHttpServletRequest();
         String transferProcessId = "test-id";
+        when(apiService.findTransferProcessById(transferProcessId))
+                .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER);
 
-        Map<String, Object> emptyFilters = new HashMap<>();
-        Map<String, Object> expectedFilters = Map.of("id", transferProcessId);
-
-        List<EntityModel<TransferProcess>> content = Collections.singletonList(EntityModel.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
-        PagedModel<EntityModel<TransferProcess>> pagedModel = PagedModel.of(content, metadata);
-        transferProcessPage = new PageImpl<>(Collections.singletonList(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER), pageable, 1);
-
-        when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
-                .thenReturn(emptyFilters);
-        when(apiService.findDataTransfers(anyMap(), any(Pageable.class))).thenReturn(transferProcessPage);
-        when(pagedResourcesAssembler.toModel(transferProcessPage, plainAssembler)).thenReturn((PagedModel) pagedModel);
-
-        ResponseEntity<PagedAPIResponse> response =
-                controller.getTransfersProcess(transferProcessId, request, 0, 20, new String[]{"timestamp", "desc"});
+        ResponseEntity<GenericApiResponse<JsonNode>> response = controller.getTransferProcessById(transferProcessId);
 
         assertNotNull(response);
         assertNotNull(response.getBody());
-        assertTrue(response.getBody().getResponse().isSuccess());
-        assertFalse(response.getBody().getResponse().getData().getContent().isEmpty());
-
-        verify(filterBuilder).buildFromRequest(request);
-        verify(apiService).findDataTransfers(eq(expectedFilters), any(Pageable.class));
+        assertTrue(response.getBody().isSuccess());
+        assertNotNull(response.getBody().getData());
+        assertNotNull(TransferSerializer.deserializePlain(response.getBody().getData(), TransferProcess.class));
+        verify(apiService).findTransferProcessById(eq(transferProcessId));
     }
 
     @Test
@@ -161,7 +148,7 @@ class DataTransferAPIControllerTest {
         when(pagedResourcesAssembler.toModel(transferProcessPage, plainAssembler)).thenReturn((PagedModel) pagedModel);
 
         ResponseEntity<PagedAPIResponse> response =
-                controller.getTransfersProcess(null, request, 0, 20, new String[]{"timestamp", "desc"});
+                controller.getTransfersProcess(request, 0, 20, new String[]{"timestamp", "desc"});
 
         assertNotNull(response);
         assertNotNull(response.getBody());
@@ -197,7 +184,7 @@ class DataTransferAPIControllerTest {
         when(pagedResourcesAssembler.toModel(transferProcessPage, plainAssembler)).thenReturn((PagedModel) pagedModel);
 
         ResponseEntity<PagedAPIResponse> response =
-                controller.getTransfersProcess(null, request, 0, 20, new String[]{"timestamp", "desc"});
+                controller.getTransfersProcess(request, 0, 20, new String[]{"timestamp", "desc"});
 
         assertNotNull(response);
         assertNotNull(response.getBody());
@@ -230,41 +217,7 @@ class DataTransferAPIControllerTest {
         when(pagedResourcesAssembler.toModel(transferProcessPage, plainAssembler)).thenReturn((PagedModel) pagedModel);
 
         ResponseEntity<PagedAPIResponse> response =
-                controller.getTransfersProcess(null, request, 0, 20, new String[]{"timestamp", "desc"});
-
-        assertNotNull(response);
-        assertNotNull(response.getBody());
-        assertTrue(response.getBody().getResponse().isSuccess());
-
-        verify(filterBuilder).buildFromRequest(request);
-        verify(apiService).findDataTransfers(eq(expectedFilters), any(Pageable.class));
-    }
-
-    @Test
-    @DisplayName("Find transfer process with path variable overrides query param id")
-    public void getTransfersProcess_pathVariableOverridesQueryParam() {
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setParameter("id", "query-param-id"); // This should be ignored
-        String pathVariableId = "path-variable-id";
-
-        // Use mutable HashMap instead of immutable Map.of() since controller modifies the map
-        Map<String, Object> initialFilters = new HashMap<>();
-        initialFilters.put("id", "query-param-id");
-
-        Map<String, Object> expectedFilters = Map.of("id", pathVariableId); // Path variable wins
-
-        List<EntityModel<TransferProcess>> content = Collections.singletonList(EntityModel.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
-        PagedModel<EntityModel<TransferProcess>> pagedModel = PagedModel.of(content, metadata);
-        transferProcessPage = new PageImpl<>(Collections.singletonList(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER),
-                pageable,
-                1);
-
-        when(filterBuilder.buildFromRequest(any(HttpServletRequest.class))).thenReturn(initialFilters);
-        when(apiService.findDataTransfers(anyMap(), any(Pageable.class))).thenReturn(transferProcessPage);
-        when(pagedResourcesAssembler.toModel(transferProcessPage, plainAssembler)).thenReturn((PagedModel) pagedModel);
-
-        ResponseEntity<PagedAPIResponse> response =
-                controller.getTransfersProcess(pathVariableId, request, 0, 20, new String[]{"timestamp", "desc"});
+                controller.getTransfersProcess(request, 0, 20, new String[]{"timestamp", "desc"});
 
         assertNotNull(response);
         assertNotNull(response.getBody());

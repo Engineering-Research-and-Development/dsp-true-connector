@@ -20,10 +20,8 @@ import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.PagedModel;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -46,19 +44,32 @@ public class ContractNegotiationAPIController {
     }
 
     /**
+     * Returns a single Contract Negotiation by its ID.
+     *
+     * @param contractNegotiationId the ID of the contract negotiation to retrieve
+     * @return ResponseEntity containing the Contract Negotiation or an error response if not found
+     */
+    @GetMapping(path = "/{contractNegotiationId}")
+    public ResponseEntity<GenericApiResponse<JsonNode>> getContractNegotiationById(@PathVariable String contractNegotiationId) {
+        ContractNegotiation contractNegotiation = apiService.findContractNegotiationById(contractNegotiationId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(GenericApiResponse.success(NegotiationSerializer.serializeProtocolJsonNode(contractNegotiation),
+                        String.format("Contract negotiation with id %s found", contractNegotiationId)));
+    }
+
+    /**
      * Returns only one Contract Negotiation by it's ID or a collection by their state.<br>
      * If none are present then all Contract Negotiations will be returned.
      *
-     * @param contractNegotiationId the ID of the transfer process to filter by (optional)
-     * @param request               the HTTP request containing additional parameters for filtering
-     * @param page                  the page number for pagination (default is 0)
-     * @param size                  the size of each page for pagination (default is 20)
-     * @param sort                  the sorting criteria in the format "field,direction" (default is "timestamp,desc")
+     * @param request the HTTP request containing additional parameters for filtering
+     * @param page    the page number for pagination (default is 0)
+     * @param size    the size of each page for pagination (default is 20)
+     * @param sort    the sorting criteria in the format "field,direction" (default is "timestamp,desc")
      * @return ResponseEntity
      */
-    @GetMapping(path = {"", "/{contractNegotiationId}"})
+    @GetMapping()
     public ResponseEntity<PagedAPIResponse> getContractNegotiations(
-            @PathVariable(required = false) String contractNegotiationId,
             HttpServletRequest request,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -70,18 +81,6 @@ public class ContractNegotiationAPIController {
         Pageable pageable = PageRequest.of(page, size, sorting);
         // Build filter map automatically from ALL request parameters
         Map<String, Object> filters = filterBuilder.buildFromRequest(request);
-
-        // Handle path variable with proper validation
-        if (StringUtils.hasText(contractNegotiationId)) {
-            // Create mutable copy if needed (defensive programming)
-            try {
-                filters.clear();
-                filters.put("id", contractNegotiationId.trim());
-            } catch (UnsupportedOperationException e) {
-                filters = new HashMap<>(filters);
-                filters.put("id", contractNegotiationId.trim());
-            }
-        }
 
         log.debug("Generated filters: {}", filters);
 

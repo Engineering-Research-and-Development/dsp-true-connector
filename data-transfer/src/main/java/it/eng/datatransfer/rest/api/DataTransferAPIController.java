@@ -3,6 +3,7 @@ package it.eng.datatransfer.rest.api;
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.model.DataTransferRequest;
 import it.eng.datatransfer.model.TransferProcess;
+import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEvent;
@@ -22,10 +23,8 @@ import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.PagedModel;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -125,19 +124,34 @@ public class DataTransferAPIController {
     /********* CONSUMER & PROVIDER ***********/
 
     /**
+     * Get transfer process by id.
+     *
+     * @param transferProcessId transfer process id to retrieve.
+     * @return GenericApiResponse response with transfer process details.
+     */
+    @GetMapping(path = "/{transferProcessId}")
+    public ResponseEntity<GenericApiResponse<JsonNode>> getTransferProcessById(
+            @PathVariable String transferProcessId) {
+        log.info("Fetching transfer process details for id {}", transferProcessId);
+        TransferProcess transferProcess = apiService.findTransferProcessById(transferProcessId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(GenericApiResponse.success(TransferSerializer.serializePlainJsonNode(transferProcess),
+                        String.format("Transfer process with id %s fetched", transferProcessId)));
+    }
+
+    /**
      * Generic endpoint for finding transfer processes with automatic filtering.
      * Supports any request parameter with automatic type detection and conversion.
      *
-     * @param transferProcessId optional transfer process id to filter by (path variable)
-     * @param request           HttpServletRequest containing all filter parameters
-     * @param page              pagination page number (default 0)
-     * @param size              pagination parameters
-     * @param sort              sorting parameters in the format "field,direction"
+     * @param request HttpServletRequest containing all filter parameters
+     * @param page    pagination page number (default 0)
+     * @param size    pagination parameters
+     * @param sort    sorting parameters in the format "field,direction"
      * @return GenericApiResponse with matching transfer processes
      */
-    @GetMapping(path = {"", "/{transferProcessId}"})
+    @GetMapping()
     public ResponseEntity<PagedAPIResponse> getTransfersProcess(
-            @PathVariable(required = false) String transferProcessId,
             HttpServletRequest request,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -151,18 +165,6 @@ public class DataTransferAPIController {
         Pageable pageable = PageRequest.of(page, size, sorting);
         // Build filter map automatically from ALL request parameters
         Map<String, Object> filters = filterBuilder.buildFromRequest(request);
-
-        // Handle path variable with proper validation
-        if (StringUtils.hasText(transferProcessId)) {
-            // Create mutable copy if needed (defensive programming)
-            try {
-                filters.clear();
-                filters.put("id", transferProcessId.trim());
-            } catch (UnsupportedOperationException e) {
-                filters = new HashMap<>(filters);
-                filters.put("id", transferProcessId.trim());
-            }
-        }
 
         log.debug("Generated filters: {}", filters);
 

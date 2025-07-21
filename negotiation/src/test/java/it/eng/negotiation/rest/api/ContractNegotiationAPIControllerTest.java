@@ -79,7 +79,7 @@ public class ContractNegotiationAPIControllerTest {
         when(apiService.findContractNegotiations(anyMap(), any(Pageable.class))).thenReturn(contractNegotiationPage);
         when(pagedResourcesAssembler.toModel(contractNegotiationPage, plainAssembler)).thenReturn((PagedModel) pagedModel);
 
-        ResponseEntity<PagedAPIResponse> response = controller.getContractNegotiations(null, request, 0, 20, new String[]{"timestamp", "desc"});
+        ResponseEntity<PagedAPIResponse> response = controller.getContractNegotiations(request, 0, 20, new String[]{"timestamp", "desc"});
 
         assertNotNull(response);
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -108,7 +108,7 @@ public class ContractNegotiationAPIControllerTest {
         when(apiService.findContractNegotiations(anyMap(), any(Pageable.class))).thenReturn(contractNegotiationPage);
         when(pagedResourcesAssembler.toModel(contractNegotiationPage, plainAssembler)).thenReturn((PagedModel) pagedModel);
 
-        ResponseEntity<PagedAPIResponse> response = controller.getContractNegotiations(null, request, 0, 20, new String[]{"timestamp", "desc"});
+        ResponseEntity<PagedAPIResponse> response = controller.getContractNegotiations(request, 0, 20, new String[]{"timestamp", "desc"});
 
         assertNotNull(response);
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -120,29 +120,18 @@ public class ContractNegotiationAPIControllerTest {
     @Test
     @DisplayName("Find contract negotiations by id")
     public void findContractNegotiationById() {
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        String contractNegotiationId = "test-id";
+        when(apiService.findContractNegotiationById(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId()))
+                .thenReturn(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED);
 
-        request.setParameter("state", ContractNegotiationState.ACCEPTED.name());
-        Map<String, Object> expectedFilters = Map.of("id", contractNegotiationId);
-
-        List<EntityModel<ContractNegotiation>> content = Collections.singletonList(
-                EntityModel.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
-        PagedModel<EntityModel<ContractNegotiation>> pagedModel = PagedModel.of(content, metadata);
-        contractNegotiationPage = new PageImpl<>(Collections.singletonList(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED),
-                pageable, 1);
-
-        when(filterBuilder.buildFromRequest(any(HttpServletRequest.class))).thenReturn(expectedFilters);
-        when(apiService.findContractNegotiations(anyMap(), any(Pageable.class))).thenReturn(contractNegotiationPage);
-        when(pagedResourcesAssembler.toModel(contractNegotiationPage, plainAssembler)).thenReturn((PagedModel) pagedModel);
-
-        ResponseEntity<PagedAPIResponse> response = controller.getContractNegotiations(null, request, 0, 20, new String[]{"timestamp", "desc"});
+        ResponseEntity<GenericApiResponse<JsonNode>> response =
+                controller.getContractNegotiationById(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId());
 
         assertNotNull(response);
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertTrue(response.getBody().getResponse().isSuccess());
-        assertFalse(response.getBody().getResponse().getData().getContent().isEmpty());
+        assertTrue(response.getBody().isSuccess());
+        assertNotNull(response.getBody().getData());
+        assertNotNull(NegotiationSerializer.deserializeProtocol(response.getBody().getData(), ContractNegotiation.class));
     }
 
     @Test
@@ -168,7 +157,7 @@ public class ContractNegotiationAPIControllerTest {
         when(apiService.findContractNegotiations(anyMap(), any(Pageable.class))).thenReturn(contractNegotiationPage);
         when(pagedResourcesAssembler.toModel(contractNegotiationPage, plainAssembler)).thenReturn((PagedModel) pagedModel);
 
-        ResponseEntity<PagedAPIResponse> response = controller.getContractNegotiations(null, request, 0, 20, new String[]{"timestamp", "desc"});
+        ResponseEntity<PagedAPIResponse> response = controller.getContractNegotiations(request, 0, 20, new String[]{"timestamp", "desc"});
 
         assertNotNull(response);
         assertEquals(HttpStatus.OK, response.getStatusCode());

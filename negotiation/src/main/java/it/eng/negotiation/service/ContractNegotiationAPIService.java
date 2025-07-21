@@ -661,7 +661,7 @@ public class ContractNegotiationAPIService {
         }
     }
 
-    private ContractNegotiation findContractNegotiationById(String contractNegotiationId) {
+    public ContractNegotiation findContractNegotiationById(String contractNegotiationId) {
         return contractNegotiationRepository.findById(contractNegotiationId)
                 .orElseThrow(() -> {
                     AuditEvent auditEvent = AuditEvent.Builder.newInstance()

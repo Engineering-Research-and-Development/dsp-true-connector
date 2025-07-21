@@ -123,8 +123,7 @@ public class BaseIntegrationTest {
         return jsonMapper.readTree(result.andReturn().getResponse().getContentAsString());
     }
 
-    protected ContractNegotiation getContractNegotiationOverAPI(String consumerPid, String providerPid)
-            throws Exception, JsonProcessingException, JsonMappingException, UnsupportedEncodingException {
+    protected ContractNegotiation getContractNegotiationOverAPI(String consumerPid, String providerPid) throws Exception {
         final ResultActions result =
                 mockMvc.perform(
                         get(ApiEndpoints.NEGOTIATION_V1)
