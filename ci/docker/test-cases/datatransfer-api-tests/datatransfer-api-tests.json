@@ -1,8 +1,8 @@
 {
 	"info": {
-		"_postman_id": "6fa1f6f6-b027-4eb1-9fa1-e7c121eb0cb8",
+		"_postman_id": "2dcdcd3a-f41d-4e9a-914f-1a737997f739",
 		"name": "Data Transfer API test",
-		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "36278855"
 	},
 	"item": [
@@ -25,7 +25,16 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"url": "{{PROVIDER}}/artifacts/{{transactionId}}"
+				"url": {
+					"raw": "{{PROVIDER}}/artifacts/{{transactionId}}",
+					"host": [
+						"{{PROVIDER}}"
+					],
+					"path": [
+						"artifacts",
+						"{{transactionId}}"
+					]
+				}
 			},
 			"response": []
 		},
@@ -69,7 +78,12 @@
 						}
 					}
 				},
-				"url": "{{CONSUMER_API_TRANSFERS}}"
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					]
+				}
 			},
 			"response": []
 		},
@@ -92,7 +106,16 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"url": "{{PROVIDER}}/artifacts/{{transactionId}}"
+				"url": {
+					"raw": "{{PROVIDER}}/artifacts/{{transactionId}}",
+					"host": [
+						"{{PROVIDER}}"
+					],
+					"path": [
+						"artifacts",
+						"{{transactionId}}"
+					]
+				}
 			},
 			"response": []
 		},
@@ -109,7 +132,8 @@
 							"\r",
 							"pm.test(\"Retrieve provider transfer process id\", function () {\r",
 							"    var jsonData = pm.response.json();\r",
-							"    pm.collectionVariables.set(\"provider_transferProcessId\", jsonData[\"data\"][jsonData.data.length-1][\"@id\"])\r",
+							"    pm.collectionVariables.set(\"provider_transferProcessId\", \r",
+							"    jsonData[\"response\"][\"data\"][\"content\"][0][\"@id\"])\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -127,7 +151,7 @@
 					}
 				],
 				"url": {
-					"raw": "{{PROVIDER_API_TRANSFERS}}?state=REQUESTED&role=provider",
+					"raw": "{{PROVIDER_API_TRANSFERS}}?state=REQUESTED&role=provider&datasetId=urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
 					"host": [
 						"{{PROVIDER_API_TRANSFERS}}"
 					],
@@ -139,6 +163,10 @@
 						{
 							"key": "role",
 							"value": "provider"
+						},
+						{
+							"key": "datasetId",
+							"value": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
 						}
 					]
 				}
@@ -181,7 +209,16 @@
 						}
 					}
 				},
-				"url": "{{PROVIDER_API_TRANSFERS}}/{{provider_transferProcessId}}/start"
+				"url": {
+					"raw": "{{PROVIDER_API_TRANSFERS}}/{{provider_transferProcessId}}/start",
+					"host": [
+						"{{PROVIDER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{provider_transferProcessId}}",
+						"start"
+					]
+				}
 			},
 			"response": []
 		},
@@ -210,7 +247,16 @@
 						"type": "text"
 					}
 				],
-				"url": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download"
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"download"
+					]
+				}
 			},
 			"response": []
 		},
@@ -250,7 +296,16 @@
 						"type": "text"
 					}
 				],
-				"url": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view"
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"view"
+					]
+				}
 			},
 			"response": []
 		},
@@ -281,7 +336,12 @@
 						"type": "text"
 					}
 				],
-				"url": "{{presignedURL}}"
+				"url": {
+					"raw": "{{presignedURL}}",
+					"host": [
+						"{{presignedURL}}"
+					]
+				}
 			},
 			"response": []
 		},
@@ -319,7 +379,16 @@
 						}
 					}
 				},
-				"url": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/suspend"
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/suspend",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"suspend"
+					]
+				}
 			},
 			"response": []
 		},
@@ -350,7 +419,16 @@
 						"type": "text"
 					}
 				],
-				"url": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view"
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"view"
+					]
+				}
 			},
 			"response": []
 		},
@@ -381,7 +459,12 @@
 						"type": "text"
 					}
 				],
-				"url": "{{presignedURL}}"
+				"url": {
+					"raw": "{{presignedURL}}",
+					"host": [
+						"{{presignedURL}}"
+					]
+				}
 			},
 			"response": []
 		},
@@ -419,7 +502,16 @@
 						}
 					}
 				},
-				"url": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/start"
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/start",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"start"
+					]
+				}
 			},
 			"response": []
 		},
@@ -462,7 +554,16 @@
 						"type": "text"
 					}
 				],
-				"url": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view"
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"view"
+					]
+				}
 			},
 			"response": []
 		},
@@ -493,7 +594,12 @@
 						"type": "text"
 					}
 				],
-				"url": "{{presignedURL}}"
+				"url": {
+					"raw": "{{presignedURL}}",
+					"host": [
+						"{{presignedURL}}"
+					]
+				}
 			},
 			"response": []
 		},
@@ -531,7 +637,16 @@
 						}
 					}
 				},
-				"url": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/complete"
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/complete",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"complete"
+					]
+				}
 			},
 			"response": []
 		},
@@ -562,7 +677,16 @@
 						"type": "text"
 					}
 				],
-				"url": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view"
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"view"
+					]
+				}
 			},
 			"response": []
 		},
@@ -593,17 +717,30 @@
 						"type": "text"
 					}
 				],
-				"url": "{{presignedURL}}"
+				"url": {
+					"raw": "{{presignedURL}}",
+					"host": [
+						"{{presignedURL}}"
+					]
+				}
 			},
 			"response": []
 		}
 	],
 	"auth": {
 		"type": "basic",
-		"basic": {
-			"password": "password",
-			"username": "admin@mail.com"
-		}
+		"basic": [
+			{
+				"key": "password",
+				"value": "password",
+				"type": "string"
+			},
+			{
+				"key": "username",
+				"value": "admin@mail.com",
+				"type": "string"
+			}
+		]
 	},
 	"event": [
 		{
