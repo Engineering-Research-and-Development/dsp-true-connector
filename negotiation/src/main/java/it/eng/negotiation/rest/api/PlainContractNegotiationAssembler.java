@@ -11,6 +11,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
+
 @Component
 public class PlainContractNegotiationAssembler implements RepresentationModelAssembler<ContractNegotiation, EntityModel<Object>> {
 
@@ -19,6 +22,6 @@ public class PlainContractNegotiationAssembler implements RepresentationModelAss
         ObjectNode plainJson = (ObjectNode) NegotiationSerializer.serializePlainJsonNode(entity);
         Map<String, Object> content = new ObjectMapper().convertValue(plainJson, new TypeReference<Map<String, Object>>() {
         });
-        return EntityModel.of(content);
+        return EntityModel.of(content, linkTo(methodOn(ContractNegotiationAPIController.class).getContractNegotiationById(entity.getId())).withSelfRel());
     }
 }

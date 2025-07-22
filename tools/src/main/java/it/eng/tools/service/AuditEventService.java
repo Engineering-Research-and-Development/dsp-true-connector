@@ -3,6 +3,7 @@ package it.eng.tools.service;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.AuditEventTypeDTO;
+import it.eng.tools.exception.ResourceNotFoundException;
 import it.eng.tools.repository.AuditEventRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -29,5 +30,10 @@ public class AuditEventService {
         return Arrays.stream(AuditEventType.values())
                 .map(eventType -> new AuditEventTypeDTO(eventType.name(), eventType.toString()))
                 .toList();
+    }
+
+    public AuditEvent getAuditEventById(String auditEventId) {
+        return auditEventRepository.findById(auditEventId)
+                .orElseThrow(() -> new ResourceNotFoundException("Audit event with id " + auditEventId + " not found"));
     }
 }

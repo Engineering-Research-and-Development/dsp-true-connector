@@ -3,6 +3,7 @@ package it.eng.tools.service;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.AuditEventTypeDTO;
+import it.eng.tools.exception.ResourceNotFoundException;
 import it.eng.tools.repository.AuditEventRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -16,8 +17,7 @@ import org.springframework.data.domain.*;
 import java.time.LocalDateTime;
 import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -90,5 +90,37 @@ public class AuditEventServiceTest {
         assertEquals(Arrays.stream(AuditEventType.values())
                 .map(eventType -> new AuditEventTypeDTO(eventType.name(), eventType.toString()))
                 .toList(), auditEventTypes);
+    }
+
+    @Test
+    @DisplayName("getAuditEventById should return audit event by ID")
+    public void getAuditEventById_shouldReturnAuditEventById() {
+        String auditEventId = "12345";
+        AuditEvent expectedEvent = AuditEvent.Builder.newInstance()
+                .id(auditEventId)
+                .description("Test event")
+                .eventType(AuditEventType.APPLICATION_START)
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        when(auditEventRepository.findById(auditEventId)).thenReturn(Optional.of(expectedEvent));
+
+        AuditEvent actualEvent = auditEventService.getAuditEventById(auditEventId);
+
+        assertNotNull(actualEvent);
+        assertEquals(expectedEvent, actualEvent);
+        verify(auditEventRepository).findById(auditEventId);
+    }
+
+    @Test
+    @DisplayName("getAuditEventById should throw exception if event not found")
+    public void getAuditEventById_shouldThrowExceptionIfEventNotFound() {
+        String auditEventId = "12345";
+
+        when(auditEventRepository.findById(auditEventId)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> {
+            auditEventService.getAuditEventById(auditEventId);
+        });
     }
 }

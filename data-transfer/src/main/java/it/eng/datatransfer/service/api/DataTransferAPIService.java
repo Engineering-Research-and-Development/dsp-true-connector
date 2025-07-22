@@ -85,27 +85,7 @@ public class DataTransferAPIService {
      * @return page of TransferProcess
      */
     public Page<TransferProcess> findDataTransfers(Map<String, Object> filters, Pageable pageable) {
-//        if (filters == null || filters.isEmpty()) {
-//            log.debug("No filters provided, returning all transfer processes");
-//            return transferProcessRepository.findAll().stream()
-//                    .map(TransferSerializer::serializePlainJsonNode)
-//                    .collect(Collectors.toList());
-//        }
-
-//        Collection<TransferProcess> transferProcesses;
-//
-//        if (filters.containsKey("id")) {
-//            String id = (String) filters.get("id");
-//            transferProcesses = transferProcessRepository.findById(id)
-//                    .map(List::of)
-//                    .orElse(List.of());
-//        } else {
-//           return  transferProcessRepository.findWithDynamicFilters(filters, TransferProcess.class, pageable);
-//        }
         return transferProcessRepository.findWithDynamicFilters(filters, TransferProcess.class, pageable);
-//        return transferProcesses.stream()
-//                .map(TransferSerializer::serializePlainJsonNode)
-//                .collect(Collectors.toList());
     }
 
     /*###### CONSUMER #########*/
@@ -615,6 +595,12 @@ public class DataTransferAPIService {
         }
     }
 
+    /**
+     * Find TransferProcess by id.<br>
+     *
+     * @param transferProcessId transfer process id
+     * @return TransferProcess object
+     */
     public TransferProcess findTransferProcessById(String transferProcessId) {
         return transferProcessRepository.findById(transferProcessId)
                 .orElseThrow(() -> {

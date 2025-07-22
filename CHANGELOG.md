@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.4.9-SNAPSHOT] - 21.07.2025.
+## [0.4.9-SNAPSHOT] - 22.07.2025.
 
 ### Added
 
