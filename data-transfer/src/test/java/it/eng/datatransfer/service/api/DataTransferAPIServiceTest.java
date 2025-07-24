@@ -12,15 +12,16 @@ import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.api.strategy.HttpPullTransferStrategy;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,7 +33,6 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.*;
 import org.springframework.http.HttpMethod;
 
@@ -67,7 +67,7 @@ class DataTransferAPIServiceTest {
     @Mock
     private S3Properties s3Properties;
     @Mock
-    private ApplicationEventPublisher applicationEventPublisher;
+    private AuditEventPublisher publisher;
     @Mock
     private DataTransferStrategyFactory transferStrategyFactory;
     @Mock
@@ -80,7 +80,11 @@ class DataTransferAPIServiceTest {
     @Captor
     private ArgumentCaptor<TransferProcess> argCaptorTransferProcess;
     @Captor
-    private ArgumentCaptor<AuditEvent> argCaptorAuditEvent;
+    private ArgumentCaptor<AuditEventType> eventTypeCaptor;
+    @Captor
+    private ArgumentCaptor<String> descriptionCaptor;
+    @Captor
+    private ArgumentCaptor<Map<String, Object>> argCaptorAuditEventDetails;
 
     @InjectMocks
     private DataTransferAPIService apiService;
@@ -226,10 +230,7 @@ class DataTransferAPIServiceTest {
         verify(transferProcessRepository).save(argCaptorTransferProcess.capture());
         assertEquals(IConstants.ROLE_CONSUMER, argCaptorTransferProcess.getValue().getRole());
 
-        verify(applicationEventPublisher).publishEvent(argCaptorAuditEvent.capture());
-        AuditEvent auditEvent = argCaptorAuditEvent.getValue();
-        assertNotNull(argCaptorAuditEvent.getValue());
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_REQUESTED, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED, null);
     }
 
     @Test
@@ -246,10 +247,7 @@ class DataTransferAPIServiceTest {
 
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verify(applicationEventPublisher).publishEvent(argCaptorAuditEvent.capture());
-        AuditEvent auditEvent = argCaptorAuditEvent.getValue();
-        assertNotNull(argCaptorAuditEvent.getValue());
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_REQUESTED, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED, null);
     }
 
     @Test
@@ -283,10 +281,7 @@ class DataTransferAPIServiceTest {
 
         verify(transferProcessRepository).save(any(TransferProcess.class));
 
-        verify(applicationEventPublisher).publishEvent(argCaptorAuditEvent.capture());
-        AuditEvent auditEvent = argCaptorAuditEvent.getValue();
-        assertNotNull(argCaptorAuditEvent.getValue());
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_STARTED, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED, null);
     }
 
     @Test
@@ -297,10 +292,7 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verify(applicationEventPublisher).publishEvent(argCaptorAuditEvent.capture());
-        AuditEvent auditEvent = argCaptorAuditEvent.getValue();
-        assertNotNull(argCaptorAuditEvent.getValue());
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, null);
     }
 
     @ParameterizedTest
@@ -319,10 +311,7 @@ class DataTransferAPIServiceTest {
         verify(transferProcessRepository).findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verify(applicationEventPublisher).publishEvent(argCaptorAuditEvent.capture());
-        AuditEvent auditEvent = argCaptorAuditEvent.getValue();
-        assertNotNull(argCaptorAuditEvent.getValue());
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, null);
     }
 
     @Test
@@ -342,10 +331,7 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verify(applicationEventPublisher).publishEvent(argCaptorAuditEvent.capture());
-        AuditEvent auditEvent = argCaptorAuditEvent.getValue();
-        assertNotNull(argCaptorAuditEvent.getValue());
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_STARTED, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED, null);
     }
 
     @Test
@@ -361,10 +347,7 @@ class DataTransferAPIServiceTest {
 
         verify(transferProcessRepository).save(any(TransferProcess.class));
 
-        verify(applicationEventPublisher).publishEvent(argCaptorAuditEvent.capture());
-        AuditEvent auditEvent = argCaptorAuditEvent.getValue();
-        assertNotNull(argCaptorAuditEvent.getValue());
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_COMPLETED, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED, null);
     }
 
     @Test
@@ -375,10 +358,7 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verify(applicationEventPublisher).publishEvent(argCaptorAuditEvent.capture());
-        AuditEvent auditEvent = argCaptorAuditEvent.getValue();
-        assertNotNull(argCaptorAuditEvent.getValue());
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, null);
     }
 
     @ParameterizedTest
@@ -395,10 +375,7 @@ class DataTransferAPIServiceTest {
         verify(transferProcessRepository).findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId());
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verify(applicationEventPublisher).publishEvent(argCaptorAuditEvent.capture());
-        AuditEvent auditEvent = argCaptorAuditEvent.getValue();
-        assertNotNull(argCaptorAuditEvent.getValue());
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, null);
     }
 
     @Test
@@ -416,10 +393,7 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verify(applicationEventPublisher).publishEvent(argCaptorAuditEvent.capture());
-        AuditEvent auditEvent = argCaptorAuditEvent.getValue();
-        assertNotNull(argCaptorAuditEvent.getValue());
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_COMPLETED, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED, null);
     }
 
     @Test
@@ -435,10 +409,7 @@ class DataTransferAPIServiceTest {
 
         verify(transferProcessRepository).save(any(TransferProcess.class));
 
-        verify(applicationEventPublisher).publishEvent(argCaptorAuditEvent.capture());
-        AuditEvent auditEvent = argCaptorAuditEvent.getValue();
-        assertNotNull(argCaptorAuditEvent.getValue());
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, null);
     }
 
     @Test
@@ -449,10 +420,7 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verify(applicationEventPublisher).publishEvent(argCaptorAuditEvent.capture());
-        AuditEvent auditEvent = argCaptorAuditEvent.getValue();
-        assertNotNull(argCaptorAuditEvent.getValue());
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, null);
     }
 
     @ParameterizedTest
@@ -469,10 +437,7 @@ class DataTransferAPIServiceTest {
         verify(transferProcessRepository).findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId());
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verify(applicationEventPublisher).publishEvent(argCaptorAuditEvent.capture());
-        AuditEvent auditEvent = argCaptorAuditEvent.getValue();
-        assertNotNull(argCaptorAuditEvent.getValue());
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, null);
     }
 
     @Test
@@ -490,10 +455,7 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verify(applicationEventPublisher).publishEvent(argCaptorAuditEvent.capture());
-        AuditEvent auditEvent = argCaptorAuditEvent.getValue();
-        assertNotNull(argCaptorAuditEvent.getValue());
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, null);
     }
 
     @Test
@@ -509,10 +471,7 @@ class DataTransferAPIServiceTest {
 
         verify(transferProcessRepository).save(any(TransferProcess.class));
 
-        verify(applicationEventPublisher).publishEvent(argCaptorAuditEvent.capture());
-        AuditEvent auditEvent = argCaptorAuditEvent.getValue();
-        assertNotNull(argCaptorAuditEvent.getValue());
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_TERMINATED, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED, null);
     }
 
     @Test
@@ -523,10 +482,7 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verify(applicationEventPublisher).publishEvent(argCaptorAuditEvent.capture());
-        AuditEvent auditEvent = argCaptorAuditEvent.getValue();
-        assertNotNull(argCaptorAuditEvent.getValue());
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, null);
     }
 
     @ParameterizedTest
@@ -543,10 +499,7 @@ class DataTransferAPIServiceTest {
         verify(transferProcessRepository).findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId());
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verify(applicationEventPublisher).publishEvent(argCaptorAuditEvent.capture());
-        AuditEvent auditEvent = argCaptorAuditEvent.getValue();
-        assertNotNull(argCaptorAuditEvent.getValue());
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, null);
     }
 
     @Test
@@ -564,10 +517,7 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verify(applicationEventPublisher).publishEvent(argCaptorAuditEvent.capture());
-        AuditEvent auditEvent = argCaptorAuditEvent.getValue();
-        assertNotNull(argCaptorAuditEvent.getValue());
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_TERMINATED, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED, null);
     }
 
     @Test
@@ -690,8 +640,7 @@ class DataTransferAPIServiceTest {
 
         verify(s3ClientService).fileExists(bucketName, objectKey);
         verify(s3ClientService).generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L));
-        verify(applicationEventPublisher)
-                .publishEvent(any(ArtifactConsumedEvent.class));
+        verify(publisher).publishEvent(any(ArtifactConsumedEvent.class));
     }
 
     @Test
@@ -808,5 +757,14 @@ class DataTransferAPIServiceTest {
                 Arguments.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER),
                 Arguments.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_SUSPENDED_PROVIDER)
         );
+    }
+
+    private void verifyAuditEvent(AuditEventType eventType, String description) {
+        verify(publisher).publishEvent(eventTypeCaptor.capture(), descriptionCaptor.capture(), argCaptorAuditEventDetails.capture());
+        assertEquals(eventType, eventTypeCaptor.getValue());
+        if (StringUtils.isNotBlank(description)) {
+            assertEquals(description, descriptionCaptor.getValue());
+        }
+        assertNotNull(argCaptorAuditEventDetails.getValue());
     }
 }

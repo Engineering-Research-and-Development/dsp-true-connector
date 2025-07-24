@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.4.9-SNAPSHOT] - 22.07.2025.
+## [0.4.9-SNAPSHOT] - 25.07.2025.
 
 ### Added
 
@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Refactored default Spring publisher, using AuditEventPublisher instead
 - Updated junit tests
 - Updated integration tests for pagination
 - Postman collection updated with new endpoints and pagination

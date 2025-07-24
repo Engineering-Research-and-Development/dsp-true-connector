@@ -8,7 +8,6 @@ import it.eng.tools.model.ApplicationProperty;
 import it.eng.tools.repository.ApplicationPropertiesRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.env.*;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -27,7 +26,7 @@ public class ApplicationPropertiesService {
     private Environment env;
 
     private final ApplicationPropertiesRepository repository;
-    private final ApplicationEventPublisher applicationEventPublisher;
+    private final AuditEventPublisher eventPublisher;
     private final AuthenticationFacade authenticationFacade;
 
     private Sort sortByIdAsc() {
@@ -37,16 +36,17 @@ public class ApplicationPropertiesService {
     /**
      * Constructor.
      *
-     * @param repository                ApplicationPropertiesRepository
-     * @param env                       Environment
-     * @param applicationEventPublisher ApplicationEventPublisher
-     * @param authenticationFacade      AuthenticationFacade
+     * @param repository           ApplicationPropertiesRepository
+     * @param env                  Environment
+     * @param eventPublisher       ApplicationEventPublisher
+     * @param authenticationFacade AuthenticationFacade
      */
     public ApplicationPropertiesService(ApplicationPropertiesRepository repository, Environment env,
-                                        ApplicationEventPublisher applicationEventPublisher, AuthenticationFacade authenticationFacade) {
+                                        AuditEventPublisher eventPublisher,
+                                        AuthenticationFacade authenticationFacade) {
         this.repository = repository;
         this.env = env;
-        this.applicationEventPublisher = applicationEventPublisher;
+        this.eventPublisher = eventPublisher;
         this.authenticationFacade = authenticationFacade;
     }
 
@@ -111,7 +111,7 @@ public class ApplicationPropertiesService {
     }
 
     private ApplicationProperty addPropertyOnMongo(ApplicationProperty property) {
-        applicationEventPublisher.publishEvent(property);
+        eventPublisher.publishEvent(property);
         return repository.save(property);
     }
 
@@ -143,7 +143,7 @@ public class ApplicationPropertiesService {
                 updateProperty(updatedProperty, oldOne);
                 addPropertyOnEnv(updatedProperty.getKey(), updatedProperty.getValue(), env);
                 log.debug("Property '{}' changed!", updatedProperty.getKey());
-                applicationEventPublisher.publishEvent(new ApplicationPropertyChangeEvent(oldOne, updatedProperty,
+                eventPublisher.publishEvent(new ApplicationPropertyChangeEvent(oldOne, updatedProperty,
                         authenticationFacade.getAuthentication()));
             }
         });

@@ -11,20 +11,20 @@ import it.eng.negotiation.repository.OfferRepository;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
-import org.springframework.context.ApplicationEventPublisher;
+import it.eng.tools.service.AuditEventPublisher;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public abstract class BaseProtocolService {
 
-    protected final ApplicationEventPublisher publisher;
+    protected final AuditEventPublisher publisher;
     protected final ContractNegotiationRepository contractNegotiationRepository;
     protected final OkHttpRestClient okHttpRestClient;
     protected final ContractNegotiationProperties properties;
     protected final OfferRepository offerRepository;
 
-    public BaseProtocolService(ApplicationEventPublisher publisher,
+    public BaseProtocolService(AuditEventPublisher publisher,
                                ContractNegotiationRepository contractNegotiationRepository, OkHttpRestClient okHttpRestClient,
                                ContractNegotiationProperties properties, OfferRepository offerRepository) {
         super();

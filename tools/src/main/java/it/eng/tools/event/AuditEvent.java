@@ -37,7 +37,7 @@ public class AuditEvent {
     private String ipAddress;
 
     public static class Builder {
-        private AuditEvent event;
+        private final AuditEvent event;
 
         public static Builder newInstance() {
             return new Builder();

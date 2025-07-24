@@ -7,12 +7,12 @@ import it.eng.tools.event.AuditEventType;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3BucketProvisionService;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.service.AuditEventPublisher;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.bson.Document;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ContextClosedEvent;
@@ -38,10 +38,11 @@ public class InitialDataLoader {
     private final S3ClientService s3ClientService;
     private final S3BucketProvisionService s3BucketProvisionService;
     private final S3Properties s3Properties;
-    private final ApplicationEventPublisher publisher;
+    private final AuditEventPublisher publisher;
 
     public InitialDataLoader(MongoTemplate mongoTemplate, Environment environment, S3ClientService s3ClientService,
-                             S3BucketProvisionService s3BucketProvisionService, S3Properties s3Properties, ApplicationEventPublisher publisher) {
+                             S3BucketProvisionService s3BucketProvisionService, S3Properties s3Properties,
+                             AuditEventPublisher publisher) {
         this.mongoTemplate = mongoTemplate;
         this.environment = environment;
         this.s3ClientService = s3ClientService;

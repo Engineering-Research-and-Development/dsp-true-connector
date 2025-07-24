@@ -8,6 +8,7 @@ import it.eng.negotiation.policy.model.PolicyDecision;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
+import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,7 +16,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Map;
 import java.util.Optional;
@@ -36,7 +36,7 @@ class PolicyEnforcementPointTest {
     @Mock
     private ContractNegotiationRepository contractNegotiationRepository;
     @Mock
-    private ApplicationEventPublisher publisher;
+    private AuditEventPublisher publisher;
 
     @InjectMocks
     private PolicyEnforcementPoint policyEnforcementPoint;

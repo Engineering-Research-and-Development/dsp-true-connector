@@ -36,7 +36,9 @@ public class ContractNegotiationAPIController {
     private final PagedResourcesAssembler<ContractNegotiation> pagedResourcesAssembler;
     private final PlainContractNegotiationAssembler plainAssembler;
 
-    public ContractNegotiationAPIController(ContractNegotiationAPIService apiService, GenericFilterBuilder filterBuilder, PagedResourcesAssembler<ContractNegotiation> pagedResourcesAssembler, PlainContractNegotiationAssembler plainAssembler) {
+    public ContractNegotiationAPIController(ContractNegotiationAPIService apiService, GenericFilterBuilder filterBuilder,
+                                            PagedResourcesAssembler<ContractNegotiation> pagedResourcesAssembler,
+                                            PlainContractNegotiationAssembler plainAssembler) {
         this.apiService = apiService;
         this.filterBuilder = filterBuilder;
         this.pagedResourcesAssembler = pagedResourcesAssembler;

@@ -12,7 +12,6 @@ import it.eng.datatransfer.rest.protocol.DataTransferCallback;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
-import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.Artifact;
@@ -21,12 +20,12 @@ import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.serializer.ToolsSerializer;
+import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tomcat.util.codec.binary.Base64;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpMethod;
@@ -49,7 +48,7 @@ public class DataTransferAPIService {
     private final DataTransferProperties dataTransferProperties;
     private final ObjectMapper mapper = new ObjectMapper();
     private final UsageControlProperties usageControlProperties;
-    private final ApplicationEventPublisher publisher;
+    private final AuditEventPublisher publisher;
     private final S3ClientService s3ClientService;
     private final S3Properties s3Properties;
     private final DataTransferStrategyFactory dataTransferStrategyFactory;
@@ -60,7 +59,7 @@ public class DataTransferAPIService {
                                   CredentialUtils credentialUtils,
                                   DataTransferProperties dataTransferProperties,
                                   UsageControlProperties usageControlProperties,
-                                  ApplicationEventPublisher publisher,
+                                  AuditEventPublisher publisher,
                                   S3ClientService s3ClientService,
                                   S3Properties s3Properties, DataTransferStrategyFactory dataTransferStrategyFactory, ArtifactTransferService artifactTransferService) {
         super();
@@ -148,14 +147,12 @@ public class DataTransferAPIService {
 
                 transferProcessRepository.save(transferProcessForDB);
                 log.info("Transfer process {} saved", transferProcessForDB.getId());
-                publisher.publishEvent(AuditEvent.Builder.newInstance()
-                        .eventType(AuditEventType.PROTOCOL_TRANSFER_REQUESTED)
-                        .description("Transfer process requested successfully")
-                        .details(Map.of("transferProcess", transferProcessForDB,
+                publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
+                        "Transfer process requested successfully",
+                        Map.of("transferProcess", transferProcessForDB,
                                 "role", IConstants.ROLE_API,
                                 "consumerPid", transferProcessForDB.getConsumerPid(),
-                                "providerPid", transferProcessForDB.getProviderPid()))
-                        .build());
+                                "providerPid", transferProcessForDB.getProviderPid()));
             } catch (JsonProcessingException e) {
                 log.error("Transfer process from response not valid");
                 throw new DataTransferAPIException(e.getLocalizedMessage(), e);
@@ -177,11 +174,9 @@ public class DataTransferAPIService {
                 if (transferProcessInitialized.getProviderPid() != null) {
                     details.put("providerPid", transferProcessInitialized.getProviderPid());
                 }
-                publisher.publishEvent(AuditEvent.Builder.newInstance()
-                        .eventType(AuditEventType.PROTOCOL_TRANSFER_REQUESTED)
-                        .description("Transfer process request failed")
-                        .details(details)
-                        .build());
+                publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
+                        "Transfer process request failed",
+                        details);
                 throw new DataTransferAPIException(transferError, "Error making request");
             } catch (JsonProcessingException ex) {
                 throw new DataTransferAPIException("Error occurred");
@@ -284,26 +279,22 @@ public class DataTransferAPIService {
                     .build();
             transferProcessRepository.save(transferProcessStarted);
             log.info("Transfer process {} saved", transferProcessStarted.getId());
-            publisher.publishEvent(AuditEvent.Builder.newInstance()
-                    .eventType(AuditEventType.PROTOCOL_TRANSFER_STARTED)
-                    .description("Transfer process started successfully")
-                    .details(Map.of("transferProcess", transferProcessStarted,
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
+                    "Transfer process started successfully",
+                    Map.of("transferProcess", transferProcessStarted,
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcessStarted.getConsumerPid(),
-                            "providerPid", transferProcessStarted.getProviderPid()))
-                    .build());
+                            "providerPid", transferProcessStarted.getProviderPid()));
             return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
         } else {
             log.error("Error response received!");
-            publisher.publishEvent(AuditEvent.Builder.newInstance()
-                    .eventType(AuditEventType.PROTOCOL_TRANSFER_STARTED)
-                    .description("Transfer process start failed")
-                    .details(Map.of("transferProcess", transferProcess,
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
+                    "Transfer process start failed",
+                    Map.of("transferProcess", transferProcess,
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid(),
-                            "errorMessage", response.getMessage()))
-                    .build());
+                            "errorMessage", response.getMessage()));
             throw new DataTransferAPIException(response.getMessage());
         }
     }
@@ -343,26 +334,22 @@ public class DataTransferAPIService {
             TransferProcess transferProcessCompleted = transferProcess.copyWithNewTransferState(TransferState.COMPLETED);
             transferProcessRepository.save(transferProcessCompleted);
             log.info("Transfer process {} saved", transferProcessCompleted.getId());
-            publisher.publishEvent(AuditEvent.Builder.newInstance()
-                    .eventType(AuditEventType.PROTOCOL_TRANSFER_COMPLETED)
-                    .description("Transfer process completed successfully")
-                    .details(Map.of("transferProcess", transferProcessCompleted,
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED,
+                    "Transfer process completed successfully",
+                    Map.of("transferProcess", transferProcessCompleted,
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcessCompleted.getConsumerPid(),
-                            "providerPid", transferProcessCompleted.getProviderPid()))
-                    .build());
+                            "providerPid", transferProcessCompleted.getProviderPid()));
             return TransferSerializer.serializePlainJsonNode(transferProcessCompleted);
         } else {
             log.error("Error response received!");
-            publisher.publishEvent(AuditEvent.Builder.newInstance()
-                    .eventType(AuditEventType.PROTOCOL_TRANSFER_COMPLETED)
-                    .description("Transfer process completion failed")
-                    .details(Map.of("transferProcess", transferProcess,
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED,
+                    "Transfer process completion failed",
+                    Map.of("transferProcess", transferProcess,
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid(),
-                            "errorMessage", response.getMessage()))
-                    .build());
+                            "errorMessage", response.getMessage()));
             throw new DataTransferAPIException(response.getMessage());
         }
     }
@@ -405,26 +392,22 @@ public class DataTransferAPIService {
             TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED);
             transferProcessRepository.save(transferProcessStarted);
             log.info("Transfer process {} saved", transferProcessStarted.getId());
-            publisher.publishEvent(AuditEvent.Builder.newInstance()
-                    .eventType(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED)
-                    .description("Transfer process suspended successfully")
-                    .details(Map.of("transferProcess", transferProcess,
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED,
+                    "Transfer process suspended successfully",
+                    Map.of("transferProcess", transferProcess,
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcess.getConsumerPid(),
-                            "providerPid", transferProcess.getProviderPid()))
-                    .build());
+                            "providerPid", transferProcess.getProviderPid()));
             return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
         } else {
             log.error("Error response received!");
-            publisher.publishEvent(AuditEvent.Builder.newInstance()
-                    .eventType(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED)
-                    .description("Transfer process suspension failed")
-                    .details(Map.of("transferProcess", transferProcess,
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED,
+                    "Transfer process suspension failed",
+                    Map.of("transferProcess", transferProcess,
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid(),
-                            "errorMessage", response.getMessage()))
-                    .build());
+                            "errorMessage", response.getMessage()));
             throw new DataTransferAPIException(response.getMessage());
         }
     }
@@ -467,26 +450,22 @@ public class DataTransferAPIService {
             TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);
             transferProcessRepository.save(transferProcessStarted);
             log.info("Transfer process {} saved", transferProcessStarted.getId());
-            publisher.publishEvent(AuditEvent.Builder.newInstance()
-                    .eventType(AuditEventType.PROTOCOL_TRANSFER_TERMINATED)
-                    .description("Transfer process terminated successfully")
-                    .details(Map.of("transferProcess", transferProcess,
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED,
+                    "Transfer process terminated successfully",
+                    Map.of("transferProcess", transferProcess,
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcess.getConsumerPid(),
-                            "providerPid", transferProcess.getProviderPid()))
-                    .build());
+                            "providerPid", transferProcess.getProviderPid()));
             return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
         } else {
             log.error("Error response received!");
-            publisher.publishEvent(AuditEvent.Builder.newInstance()
-                    .eventType(AuditEventType.PROTOCOL_TRANSFER_TERMINATED)
-                    .description("Transfer process termination failed")
-                    .details(Map.of("transferProcess", transferProcess,
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED,
+                    "Transfer process termination failed",
+                    Map.of("transferProcess", transferProcess,
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid(),
-                            "errorMessage", response.getMessage()))
-                    .build());
+                            "errorMessage", response.getMessage()));
             throw new DataTransferAPIException(response.getMessage());
         }
     }
@@ -571,26 +550,22 @@ public class DataTransferAPIService {
         try {
             String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), transferProcessId, Duration.ofDays(7L));
             publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId()));
-            publisher.publishEvent(AuditEvent.Builder.newInstance()
-                    .eventType(AuditEventType.TRANSFER_VIEW)
-                    .description("Transfer process (view) generated artifact URL")
-                    .details(Map.of("transferProcess", transferProcess,
+            publisher.publishEvent(AuditEventType.TRANSFER_VIEW,
+                    "Transfer process (view) generated artifact URL",
+                    Map.of("transferProcess", transferProcess,
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcess.getConsumerPid(),
-                            "providerPid", transferProcess.getProviderPid()))
-                    .build());
+                            "providerPid", transferProcess.getProviderPid()));
             return artifactURL;
         } catch (Exception e) {
             log.error("Error while accessing data", e);
-            publisher.publishEvent(AuditEvent.Builder.newInstance()
-                    .eventType(AuditEventType.TRANSFER_VIEW)
-                    .description("Transfer process (view) generated artifact URL failed")
-                    .details(Map.of("transferProcess", transferProcess,
+            publisher.publishEvent(AuditEventType.TRANSFER_VIEW,
+                    "Transfer process (view) generated artifact URL failed",
+                    Map.of("transferProcess", transferProcess,
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid(),
-                            "errorMessage", e.getMessage() != null ? e.getMessage() : "Unknown error"))
-                    .build());
+                            "errorMessage", e.getMessage() != null ? e.getMessage() : "Unknown error"));
             throw new DataTransferAPIException("Error while accessing data" + e.getLocalizedMessage());
         }
     }
@@ -604,30 +579,26 @@ public class DataTransferAPIService {
     public TransferProcess findTransferProcessById(String transferProcessId) {
         return transferProcessRepository.findById(transferProcessId)
                 .orElseThrow(() -> {
-                    publisher.publishEvent(AuditEvent.Builder.newInstance()
-                            .description("Transfer process with id " + transferProcessId + " not found")
-                            .eventType(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND)
-                            .details(Map.of("transferProcessId", transferProcessId,
+                    publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND,
+                            "Transfer process with id " + transferProcessId + " not found",
+                            Map.of("transferProcessId", transferProcessId,
                                     "role", IConstants.ROLE_API,
                                     "consumerPid", IConstants.TEMPORARY_CONSUMER_PID,
-                                    "providerPid", IConstants.TEMPORARY_PROVIDER_PID))
-                            .build());
+                                    "providerPid", IConstants.TEMPORARY_PROVIDER_PID));
                     return new DataTransferAPIException("Transfer process with id " + transferProcessId + " not found");
                 });
     }
 
     private void stateTransitionCheck(TransferState newState, TransferProcess transferProcess) {
         if (!transferProcess.getState().canTransitTo(newState)) {
-            publisher.publishEvent(AuditEvent.Builder.newInstance()
-                    .eventType(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR)
-                    .description("Transfer process state transition error")
-                    .details(Map.of("transferProcess", transferProcess,
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR,
+                    "Transfer process state transition error",
+                    Map.of("transferProcess", transferProcess,
                             "currentState", transferProcess.getState(),
                             "newState", newState,
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid(),
-                            "role", IConstants.ROLE_API))
-                    .build());
+                            "role", IConstants.ROLE_API));
             throw new DataTransferAPIException("State transition aborted, " + transferProcess.getState().name()
                     + " state can not transition to " + newState.name());
         }
@@ -653,15 +624,13 @@ public class DataTransferAPIService {
             }
         } else {
             log.warn("!!!!! UsageControl DISABLED - will not check if policy is present or valid !!!!!");
-            publisher.publishEvent(AuditEvent.Builder.newInstance()
-                    .eventType(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DISABLED)
-                    .description("UsageControl is disabled, policy evaluation skipped")
-                    .details(Map.of("transferProcess", transferProcess,
+            publisher.publishEvent(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DISABLED,
+                    "UsageControl is disabled, policy evaluation skipped",
+                    Map.of("transferProcess", transferProcess,
                             "agreementId", transferProcess.getAgreementId(),
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid(),
-                            "role", IConstants.ROLE_API))
-                    .build());
+                            "role", IConstants.ROLE_API));
         }
     }
 }

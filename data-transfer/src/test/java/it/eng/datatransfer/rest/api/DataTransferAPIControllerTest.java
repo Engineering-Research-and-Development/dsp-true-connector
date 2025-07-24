@@ -14,16 +14,17 @@ import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.rest.api.PagedAPIResponse;
+import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.GenericFilterBuilder;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -47,13 +48,19 @@ class DataTransferAPIControllerTest {
     @Mock
     private DataTransferAPIService apiService;
     @Mock
-    private ApplicationEventPublisher publisher;
+    private AuditEventPublisher publisher;
     @Mock
     private Pageable pageable;
     @Mock
     private PagedResourcesAssembler<TransferProcess> pagedResourcesAssembler;
     @Mock
     private PlainTransferProcessAssembler plainAssembler;
+    @Captor
+    private ArgumentCaptor<AuditEventType> eventTypeCaptor;
+    @Captor
+    private ArgumentCaptor<String> descriptionCaptor;
+    @Captor
+    private ArgumentCaptor<Map<String, Object>> argCaptorAuditEventDetails;
 
     @Mock
     private GenericFilterBuilder filterBuilder;
@@ -332,14 +339,8 @@ class DataTransferAPIControllerTest {
 
         assertDoesNotThrow(() -> controller.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
-        verify(publisher).publishEvent(eventCaptor.capture());
-
-        AuditEvent capturedEvent = eventCaptor.getValue();
-        assertEquals(AuditEventType.TRANSFER_COMPLETED, capturedEvent.getEventType());
-        assertEquals(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(),
-                capturedEvent.getDetails().get("transferProcessId"));
-        assertEquals("Download completed successfully for process " + DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(),
-                capturedEvent.getDescription());
+        verifyAuditEvent(AuditEventType.TRANSFER_COMPLETED,
+                "Download completed successfully for process " + DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
     }
 
     @Test
@@ -353,14 +354,8 @@ class DataTransferAPIControllerTest {
 
         controller.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
 
-        verify(publisher).publishEvent(eventCaptor.capture());
-
-        AuditEvent capturedEvent = eventCaptor.getValue();
-        assertEquals(AuditEventType.TRANSFER_FAILED, capturedEvent.getEventType());
-        assertEquals(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(),
-                capturedEvent.getDetails().get("transferProcessId"));
-        assertEquals("Download failed for process " + DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(),
-                capturedEvent.getDescription());
+        verifyAuditEvent(AuditEventType.TRANSFER_FAILED,
+                "Download failed for process " + DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
     }
 
     @Test
@@ -378,5 +373,12 @@ class DataTransferAPIControllerTest {
         doThrow(new DataTransferAPIException("message")).when(apiService).viewData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
 
         assertThrows(DataTransferAPIException.class, () -> controller.viewData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+    }
+
+    private void verifyAuditEvent(AuditEventType eventType, String description) {
+        verify(publisher).publishEvent(eventTypeCaptor.capture(), descriptionCaptor.capture(), argCaptorAuditEventDetails.capture());
+        assertEquals(eventType, eventTypeCaptor.getValue());
+        assertEquals(description, descriptionCaptor.getValue());
+        assertNotNull(argCaptorAuditEventDetails.getValue());
     }
 }

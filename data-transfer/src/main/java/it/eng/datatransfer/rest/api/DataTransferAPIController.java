@@ -6,14 +6,13 @@ import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
 import it.eng.tools.controller.ApiEndpoints;
-import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.rest.api.PagedAPIResponse;
+import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.GenericFilterBuilder;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -35,11 +34,14 @@ public class DataTransferAPIController {
 
     private final DataTransferAPIService apiService;
     private final GenericFilterBuilder filterBuilder;
-    private final ApplicationEventPublisher publisher;
+    private final AuditEventPublisher publisher;
     private final PagedResourcesAssembler<TransferProcess> pagedResourcesAssembler;
     private final PlainTransferProcessAssembler plainAssembler;
 
-    public DataTransferAPIController(DataTransferAPIService apiService, GenericFilterBuilder filterBuilder, ApplicationEventPublisher publisher, PagedResourcesAssembler<TransferProcess> pagedResourcesAssembler, PlainTransferProcessAssembler plainAssembler) {
+    public DataTransferAPIController(DataTransferAPIService apiService, GenericFilterBuilder filterBuilder,
+                                     AuditEventPublisher publisher,
+                                     PagedResourcesAssembler<TransferProcess> pagedResourcesAssembler,
+                                     PlainTransferProcessAssembler plainAssembler) {
         this.apiService = apiService;
         this.filterBuilder = filterBuilder;
         this.publisher = publisher;
@@ -79,22 +81,16 @@ public class DataTransferAPIController {
                         log.error("Download failed for process {}: {}",
                                 transferProcessId, throwable.getMessage(), throwable);
                         publisher.publishEvent(
-                                AuditEvent.Builder.newInstance()
-                                        .description("Download failed for process " + transferProcessId)
-                                        .eventType(AuditEventType.TRANSFER_FAILED)
-                                        .details(Map.of("transferProcessId", transferProcessId,
-                                                "error", throwable.getMessage()))
-                                        .build()
-                        );
+                                AuditEventType.TRANSFER_FAILED,
+                                "Download failed for process " + transferProcessId,
+                                Map.of("transferProcessId", transferProcessId,
+                                        "error", throwable.getMessage()));
                     } else {
                         log.info("Download completed successfully for process {}", transferProcessId);
                         publisher.publishEvent(
-                                AuditEvent.Builder.newInstance()
-                                        .description("Download completed successfully for process " + transferProcessId)
-                                        .eventType(AuditEventType.TRANSFER_COMPLETED)
-                                        .details(Map.of("transferProcessId", transferProcessId))
-                                        .build()
-                        );
+                                AuditEventType.TRANSFER_COMPLETED,
+                                "Download completed successfully for process " + transferProcessId,
+                                Map.of("transferProcessId", transferProcessId));
                     }
                 });
 

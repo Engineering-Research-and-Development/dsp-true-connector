@@ -11,10 +11,10 @@ import it.eng.tools.model.ExternalData;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.service.AuditEventPublisher;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tomcat.util.codec.binary.Base64;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -28,14 +28,14 @@ public class RestArtifactService {
 
     private final DataTransferService dataTransferService;
     private final OkHttpRestClient okHttpRestClient;
-    private final ApplicationEventPublisher publisher;
+    private final AuditEventPublisher publisher;
     private final S3ClientService s3ClientService;
     private final S3Properties s3Properties;
     private final ArtifactTransferService artifactTransferService;
 
     public RestArtifactService(DataTransferService dataTransferService,
                                OkHttpRestClient okHttpRestClient,
-                               ApplicationEventPublisher publisher,
+                               AuditEventPublisher publisher,
                                S3ClientService s3ClientService,
                                S3Properties s3Properties, ArtifactTransferService artifactTransferService) {
         super();
