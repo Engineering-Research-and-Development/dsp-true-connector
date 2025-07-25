@@ -38,7 +38,7 @@ public class ApplicationPropertiesService {
      *
      * @param repository           ApplicationPropertiesRepository
      * @param env                  Environment
-     * @param eventPublisher       ApplicationEventPublisher
+     * @param eventPublisher       AuditEventPublisher
      * @param authenticationFacade AuthenticationFacade
      */
     public ApplicationPropertiesService(ApplicationPropertiesRepository repository, Environment env,

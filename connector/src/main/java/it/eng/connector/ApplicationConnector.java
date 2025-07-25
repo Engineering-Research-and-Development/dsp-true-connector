@@ -13,12 +13,6 @@ public class ApplicationConnector {
         System.setProperty("server.error.include-stacktrace", "never");
         SpringApplication.run(ApplicationConnector.class, args);
     }
-
-    // passing the security context to the async tasks
-//    @PostConstruct
-//    void setGlobalSecurityContext() {
-//        SecurityContextHolder.setStrategyName(SecurityContextHolder.MODE_INHERITABLETHREADLOCAL);
-//    }
 }
 
 
