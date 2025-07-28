@@ -33,6 +33,18 @@ public class S3BucketProvisionService {
     public BucketCredentialsEntity createSecureBucket(String bucketName) {
         validateBucketName(bucketName);
         log.info("Create secure bucket {}", bucketName);
+        
+        // Create bucket
+        createBucket(bucketName);
+
+        // Create and store credentials
+        return createBucketCredentials(bucketName);
+    }
+
+    public BucketCredentialsEntity createBucketCredentials(String bucketName) {
+        validateBucketName(bucketName);
+        log.info("Creating bucket credentials for existing bucket {}", bucketName);
+        
         // Generate temporary credentials
         String accessKey = "GetBucketUser-" + UUID.randomUUID().toString().substring(0, 8);
         String secretKey = UUID.randomUUID().toString();
@@ -46,14 +58,44 @@ public class S3BucketProvisionService {
         iamUserManagementService.createUser(bucketCredentials);
         iamUserManagementService.attachPolicyToUser(bucketCredentials);
 
-        // Create bucket
-        createBucket(bucketName);
-
         // Attach bucket policy
         updateBucketPolicy(bucketName, accessKey);
 
         // Store credentials
         return bucketCredentialsService.saveBucketCredentials(bucketCredentials);
+    }
+
+    /**
+     * Ensures that bucket credentials exist for the given bucket.
+     * If the bucket exists but credentials are missing, creates them.
+     * If the bucket doesn't exist, creates the bucket with credentials.
+     * If both bucket and credentials exist, does nothing.
+     *
+     * @param bucketName the name of the bucket
+     * @return the bucket credentials (existing or newly created)
+     */
+    public BucketCredentialsEntity ensureBucketCredentials(String bucketName) {
+        validateBucketName(bucketName);
+        log.info("Ensuring bucket credentials exist for bucket: {}", bucketName);
+        
+        // Check if credentials already exist
+        if (bucketCredentialsService.bucketCredentialsExist(bucketName)) {
+            log.info("Bucket credentials already exist for bucket: {}", bucketName);
+            return bucketCredentialsService.getBucketCredentials(bucketName);
+        }
+        
+        // Check if bucket exists
+        if (bucketExists(bucketName)) {
+            log.info("Bucket {} exists but credentials are missing. Creating credentials...", bucketName);
+            BucketCredentialsEntity credentials = createBucketCredentials(bucketName);
+            log.info("Created bucket credentials for existing bucket: {}", bucketName);
+            return credentials;
+        } else {
+            log.info("Bucket {} does not exist. Creating secure bucket with credentials...", bucketName);
+            BucketCredentialsEntity credentials = createSecureBucket(bucketName);
+            log.info("Created secure bucket with credentials: {}", bucketName);
+            return credentials;
+        }
     }
 
     private void createBucket(String bucketName) {
