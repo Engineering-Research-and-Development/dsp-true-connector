@@ -9,9 +9,9 @@ import it.eng.negotiation.policy.model.PolicyRequest;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
+import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -33,13 +33,13 @@ public class PolicyEnforcementPoint {
 
     private final ContractNegotiationRepository contractNegotiationRepository;
 
-    private final ApplicationEventPublisher publisher;
+    private final AuditEventPublisher publisher;
 
     public PolicyEnforcementPoint(UsageControlProperties usageControlProperties,
                                   PolicyInformationPoint policyInformationPoint,
                                   PolicyDecisionPoint policyDecisionPoint,
                                   ContractNegotiationRepository contractNegotiationRepository,
-                                  ApplicationEventPublisher publisher) {
+                                  AuditEventPublisher publisher) {
         this.usageControlProperties = usageControlProperties;
         this.policyInformationPoint = policyInformationPoint;
         this.policyDecisionPoint = policyDecisionPoint;

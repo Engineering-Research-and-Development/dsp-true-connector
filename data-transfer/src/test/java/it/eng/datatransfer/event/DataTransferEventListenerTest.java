@@ -2,13 +2,13 @@ package it.eng.datatransfer.event;
 
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
+import it.eng.tools.service.AuditEventPublisher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 
@@ -21,7 +21,7 @@ import static org.mockito.Mockito.*;
 class DataTransferEventListenerTest {
 
     @Mock
-    private ApplicationEventPublisher publisher;
+    private AuditEventPublisher publisher;
     @Mock
     private TransferRequestMessageRepository transferRequestMessageRepository;
 

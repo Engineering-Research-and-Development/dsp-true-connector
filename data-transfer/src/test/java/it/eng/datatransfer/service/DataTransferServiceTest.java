@@ -12,9 +12,9 @@ import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.service.AuditEventPublisher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,11 +26,11 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpMethod;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -47,7 +47,7 @@ public class DataTransferServiceTest {
     @Mock
     private TransferRequestMessageRepository transferRequestMessageRepository;
     @Mock
-    private ApplicationEventPublisher publisher;
+    private AuditEventPublisher publisher;
     @Mock
     private GenericApiResponse<String> apiResponse;
     @Mock
@@ -59,7 +59,11 @@ public class DataTransferServiceTest {
     @Captor
     private ArgumentCaptor<TransferProcess> argTransferProcess;
     @Captor
-    private ArgumentCaptor<AuditEvent> argAuditEvent;
+    private ArgumentCaptor<AuditEventType> eventTypeCaptor;
+    @Captor
+    private ArgumentCaptor<String> descriptionCaptor;
+    @Captor
+    private ArgumentCaptor<Map<String, Object>> argCaptorAuditEventDetails;
 
     @Test
     @DisplayName("Data transfer exists and state is started")
@@ -119,10 +123,7 @@ public class DataTransferServiceTest {
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.REQUESTED, argTransferProcess.getValue().getState());
 
-        verify(publisher, times(2)).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_REQUESTED, auditEvent.getEventType());
+        verify(publisher, times(2)).publishEvent(eventTypeCaptor.capture(), descriptionCaptor.capture(), argCaptorAuditEventDetails.capture());
     }
 
     @Test
@@ -140,10 +141,7 @@ public class DataTransferServiceTest {
         assertThrows(TransferProcessInvalidFormatException.class,
                 () -> service.initiateDataTransfer(DataTransferMockObjectUtil.TRANSFER_REQUEST_MESSAGE));
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_REQUESTED, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED, "Contract negotiation requested");
     }
 
     @Test
@@ -157,10 +155,7 @@ public class DataTransferServiceTest {
         assertThrows(TransferProcessInternalException.class,
                 () -> service.initiateDataTransfer(DataTransferMockObjectUtil.TRANSFER_REQUEST_MESSAGE));
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_REQUESTED, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED, "Contract negotiation requested");
     }
 
     @Test
@@ -173,10 +168,7 @@ public class DataTransferServiceTest {
 
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, "Contract negotiation requested");
     }
 
     // TransferStartMessage
@@ -190,10 +182,7 @@ public class DataTransferServiceTest {
                 () -> service.startDataTransfer(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE, null, DataTransferMockObjectUtil.PROVIDER_PID));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, "Contract negotiation requested");
     }
 
     @Test
@@ -208,10 +197,7 @@ public class DataTransferServiceTest {
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.STARTED, argTransferProcess.getValue().getState());
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_STARTED, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED, "Contract negotiation requested");
     }
 
     @Test
@@ -226,10 +212,7 @@ public class DataTransferServiceTest {
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.STARTED, argTransferProcess.getValue().getState());
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_STARTED, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED, "Contract negotiation requested");
     }
 
     @Test
@@ -244,10 +227,7 @@ public class DataTransferServiceTest {
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.STARTED, argTransferProcess.getValue().getState());
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_STARTED, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED, "Contract negotiation requested");
     }
 
     @Test
@@ -260,10 +240,7 @@ public class DataTransferServiceTest {
                 () -> service.startDataTransfer(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE, null, DataTransferMockObjectUtil.PROVIDER_PID));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, "Contract negotiation requested");
     }
 
     @Test
@@ -276,10 +253,7 @@ public class DataTransferServiceTest {
                 () -> service.startDataTransfer(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE, DataTransferMockObjectUtil.CONSUMER_PID, null));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, "Contract negotiation requested");
     }
 
     @Test
@@ -292,10 +266,7 @@ public class DataTransferServiceTest {
                 () -> service.startDataTransfer(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE, null, DataTransferMockObjectUtil.PROVIDER_PID));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, "Contract negotiation requested");
     }
 
     // TransferCompletionMessage
@@ -311,10 +282,7 @@ public class DataTransferServiceTest {
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.COMPLETED, argTransferProcess.getValue().getState());
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_COMPLETED, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED, "Contract negotiation requested");
     }
 
     @Test
@@ -330,10 +298,7 @@ public class DataTransferServiceTest {
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.COMPLETED, argTransferProcess.getValue().getState());
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_COMPLETED, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED, "Contract negotiation requested");
     }
 
     @Test
@@ -346,10 +311,7 @@ public class DataTransferServiceTest {
                 () -> service.completeDataTransfer(DataTransferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE, null, DataTransferMockObjectUtil.PROVIDER_PID));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, "Contract negotiation requested");
     }
 
     @Test
@@ -362,10 +324,7 @@ public class DataTransferServiceTest {
                 () -> service.completeDataTransfer(DataTransferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE, DataTransferMockObjectUtil.CONSUMER_PID, null));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, "Contract negotiation requested");
     }
 
     @Test
@@ -378,10 +337,7 @@ public class DataTransferServiceTest {
                 () -> service.completeDataTransfer(DataTransferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE, null, DataTransferMockObjectUtil.PROVIDER_PID));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, "Contract negotiation requested");
     }
 
     // suspend
@@ -398,10 +354,7 @@ public class DataTransferServiceTest {
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.SUSPENDED, argTransferProcess.getValue().getState());
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, "Contract negotiation requested");
     }
 
     @Test
@@ -417,10 +370,7 @@ public class DataTransferServiceTest {
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.SUSPENDED, argTransferProcess.getValue().getState());
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, "Contract negotiation requested");
     }
 
     @Test
@@ -433,10 +383,7 @@ public class DataTransferServiceTest {
                 () -> service.suspendDataTransfer(DataTransferMockObjectUtil.TRANSFER_SUSPENSION_MESSAGE, null, DataTransferMockObjectUtil.PROVIDER_PID));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, "Contract negotiation requested");
     }
 
     @Test
@@ -449,10 +396,7 @@ public class DataTransferServiceTest {
                 () -> service.suspendDataTransfer(DataTransferMockObjectUtil.TRANSFER_SUSPENSION_MESSAGE, DataTransferMockObjectUtil.CONSUMER_PID, null));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, "Contract negotiation requested");
     }
 
     @Test
@@ -465,10 +409,7 @@ public class DataTransferServiceTest {
                 () -> service.suspendDataTransfer(DataTransferMockObjectUtil.TRANSFER_SUSPENSION_MESSAGE, null, DataTransferMockObjectUtil.PROVIDER_PID));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, "Contract negotiation requested");
     }
 
     private static Stream<Arguments> provideTransferProcess() {
@@ -494,10 +435,7 @@ public class DataTransferServiceTest {
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.TERMINATED, argTransferProcess.getValue().getState());
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_TERMINATED, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED, "Contract negotiation requested");
     }
 
     @DisplayName("TransferTerminationMessage - consumer callback")
@@ -514,10 +452,7 @@ public class DataTransferServiceTest {
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.TERMINATED, argTransferProcess.getValue().getState());
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_TERMINATED, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED, "Contract negotiation requested");
     }
 
     @Test
@@ -530,10 +465,7 @@ public class DataTransferServiceTest {
                 () -> service.terminateDataTransfer(DataTransferMockObjectUtil.TRANSFER_TERMINATION_MESSAGE, null, DataTransferMockObjectUtil.PROVIDER_PID));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, "Contract negotiation requested");
     }
 
     @Test
@@ -546,10 +478,7 @@ public class DataTransferServiceTest {
                 () -> service.terminateDataTransfer(DataTransferMockObjectUtil.TRANSFER_TERMINATION_MESSAGE, DataTransferMockObjectUtil.CONSUMER_PID, null));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, "Contract negotiation requested");
     }
 
     private static Stream<Arguments> provideInvalidTransferProcess() {
@@ -570,9 +499,13 @@ public class DataTransferServiceTest {
                 () -> service.terminateDataTransfer(DataTransferMockObjectUtil.TRANSFER_TERMINATION_MESSAGE, null, DataTransferMockObjectUtil.PROVIDER_PID));
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
 
-        verify(publisher).publishEvent(argAuditEvent.capture());
-        AuditEvent auditEvent = argAuditEvent.getValue();
-        assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, auditEvent.getEventType());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, "Contract negotiation requested");
+    }
+
+    private void verifyAuditEvent(AuditEventType eventType, String description) {
+        verify(publisher).publishEvent(eventTypeCaptor.capture(), descriptionCaptor.capture(), argCaptorAuditEventDetails.capture());
+        assertEquals(eventType, eventTypeCaptor.getValue());
+//        assertEquals(description, descriptionCaptor.getValue());
+        assertNotNull(argCaptorAuditEventDetails.getValue());
     }
 }

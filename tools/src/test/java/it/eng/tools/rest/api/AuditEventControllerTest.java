@@ -3,6 +3,7 @@ package it.eng.tools.rest.api;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.AuditEventTypeDTO;
+import it.eng.tools.exception.ResourceNotFoundException;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.AuditEventService;
 import it.eng.tools.service.GenericFilterBuilder;
@@ -14,12 +15,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.*;
+import org.springframework.data.web.PagedResourcesAssembler;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.verify;
@@ -34,41 +40,64 @@ public class AuditEventControllerTest {
     private AuditEventService auditEventService;
     @Mock
     private HttpServletRequest request;
+    @Mock
+    private Pageable pageable;
+    @Mock
+    private PagedResourcesAssembler<AuditEvent> pagedResourcesAssembler;
+    @Mock
+    private AuditEventResourceAssembler plainAssembler;
 
     @InjectMocks
     private AuditEventController auditEventController;
 
     private Map<String, Object> filters;
-    private List<AuditEvent> auditEvents;
+    private Page<AuditEvent> auditEventPage;
 
     @BeforeEach
     void setUp() {
         filters = new HashMap<>();
         filters.put("user", "testUser");
-        auditEvents = List.of(AuditEvent.Builder.newInstance()
-                .description("test description")
-                .eventType(AuditEventType.APPLICATION_START)
-                .timestamp(LocalDateTime.now())
-                .build());
+
+        List<AuditEvent> auditEventsList = List.of(
+                AuditEvent.Builder.newInstance()
+                        .description("Test event 1")
+                        .eventType(AuditEventType.APPLICATION_START)
+                        .timestamp(LocalDateTime.now())
+                        .build(),
+                AuditEvent.Builder.newInstance()
+                        .description("Test event 2")
+                        .eventType(AuditEventType.APPLICATION_START)
+                        .timestamp(LocalDateTime.now().minusHours(1))
+                        .build()
+        );
+        pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "timestamp"));
+        auditEventPage = new PageImpl<>(auditEventsList, pageable, auditEventsList.size());
     }
 
     @Test
     @DisplayName("getAuditEvents should return audit events with success response")
     void getAuditEvents_shouldReturnAuditEventsWithSuccessResponse() {
-        when(filterBuilder.buildFromRequest(request)).thenReturn(filters);
-        when(auditEventService.getAuditEvents(filters)).thenReturn(auditEvents);
+        PagedModel.PageMetadata metadata = new PagedModel.PageMetadata(20, 0, 2, 1);
+        List<EntityModel<AuditEvent>> content = auditEventPage.getContent().stream()
+                .map(EntityModel::of)
+                .collect(Collectors.toList());
+        PagedModel<EntityModel<AuditEvent>> pagedModel = PagedModel.of(content, metadata);
 
-        ResponseEntity<GenericApiResponse<Collection<AuditEvent>>> response =
-                auditEventController.getAuditEvents(request);
+        when(filterBuilder.buildFromRequest(request)).thenReturn(filters);
+        when(auditEventService.getAuditEvents(filters, pageable)).thenReturn(auditEventPage);
+        when(pagedResourcesAssembler.toModel(auditEventPage, plainAssembler)).thenReturn((PagedModel) pagedModel);
+
+        ResponseEntity<PagedAPIResponse> response = auditEventController.getAuditEvents(request, 0, 20, new String[]{"timestamp", "desc"});
 
         assertEquals(HttpStatusCode.valueOf(200), response.getStatusCode());
         assertEquals(MediaType.APPLICATION_JSON, response.getHeaders().getContentType());
         assertNotNull(response.getBody());
-        assertTrue(response.getBody().isSuccess());
-        assertEquals(auditEvents, response.getBody().getData());
-        assertTrue(response.getBody().getMessage().contains("user:testUser"));
+        assertTrue(response.getBody().getResponse().isSuccess());
+        assertEquals(pagedModel, response.getBody().getResponse().getData());
+
         verify(filterBuilder).buildFromRequest(request);
-        verify(auditEventService).getAuditEvents(filters);
+        verify(auditEventService).getAuditEvents(filters, pageable);
+        verify(pagedResourcesAssembler).toModel(auditEventPage, plainAssembler);
     }
 
     @Test
@@ -89,5 +118,42 @@ public class AuditEventControllerTest {
         assertEquals(auditEventTypeDTOS, response.getBody().getData());
 
         verify(auditEventService).getAuditEventTypes();
+    }
+
+    @Test
+    @DisplayName("getAuditEventById should return audit event with success response")
+    public void getAuditEventById_shouldReturnAuditEventWithSuccessResponse() {
+        String auditEventId = "12345";
+        AuditEvent auditEvent = AuditEvent.Builder.newInstance()
+                .id(auditEventId)
+                .description("Test event")
+                .eventType(AuditEventType.APPLICATION_START)
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        when(auditEventService.getAuditEventById(auditEventId)).thenReturn(auditEvent);
+
+        ResponseEntity<GenericApiResponse<AuditEvent>> response = auditEventController.getAuditEventById(auditEventId);
+
+        assertEquals(HttpStatusCode.valueOf(200), response.getStatusCode());
+        assertEquals(MediaType.APPLICATION_JSON, response.getHeaders().getContentType());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().isSuccess());
+        assertEquals(auditEvent, response.getBody().getData());
+        assertEquals(String.format("Audit event with id %s fetched", auditEventId), response.getBody().getMessage());
+
+        verify(auditEventService).getAuditEventById(auditEventId);
+    }
+
+    @Test
+    @DisplayName("getAuditEventById should return 404 when audit event not found")
+    public void getAuditEventById_shouldReturn404WhenAuditEventNotFound() {
+        String auditEventId = "12345";
+        when(auditEventService.getAuditEventById(auditEventId)).thenThrow(new ResourceNotFoundException("Test error message"));
+
+        assertThrows(ResourceNotFoundException.class, () ->
+                auditEventController.getAuditEventById(auditEventId));
+
+        verify(auditEventService).getAuditEventById(auditEventId);
     }
 }

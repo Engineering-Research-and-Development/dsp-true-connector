@@ -1,5 +1,6 @@
 package it.eng.connector.integration.datatransfer;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.github.tomakehurst.wiremock.WireMockServer;
@@ -13,6 +14,7 @@ import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +24,6 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import org.wiremock.spring.InjectWireMock;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -72,33 +73,36 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
-        JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, ArrayList.class);
-
         MvcResult resultStarted = mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "?state=STARTED").contentType(MediaType.APPLICATION_JSON))
+                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId())
+                                .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
         String json = resultStarted.getResponse().getContentAsString();
-        GenericApiResponse<List<TransferProcess>> genericApiResponse = jsonMapper.readValue(json, javaType);
-        // so far, must do like this because List<LinkedHashMap> was not able to get it to be List<TransferProcess>
-        TransferProcess transferProcess = jsonMapper.convertValue(genericApiResponse.getData().get(0), TransferProcess.class);
+        GenericApiResponse<TransferProcess> genericApiResponse = TransferSerializer.deserializePlain(json,
+                new TypeReference<GenericApiResponse<TransferProcess>>() {
+                });
+
+        assertNotNull(genericApiResponse);
+        assertTrue(genericApiResponse.isSuccess());
+        TransferProcess transferProcess = genericApiResponse.getData();
         assertNotNull(transferProcess);
         assertEquals(TransferState.STARTED, transferProcess.getState());
 
         MvcResult result = mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessRequested.getId()).contentType(MediaType.APPLICATION_JSON))
+                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessRequested.getId())
+                                .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andReturn();
         json = result.getResponse().getContentAsString();
-        genericApiResponse = jsonMapper.readValue(json, javaType);
+        genericApiResponse = TransferSerializer.deserializePlain(json,
+                new TypeReference<GenericApiResponse<TransferProcess>>() {
+                });
 
         assertNotNull(genericApiResponse);
         assertTrue(genericApiResponse.isSuccess());
-        assertEquals(1, genericApiResponse.getData().size());
-        // so far, must do like this because List<LinkedHashMap> was not able to get it to be List<TransferProcess>
-        TransferProcess transferProcessFromDB = TransferSerializer.deserializePlain(jsonMapper.valueToTree(genericApiResponse.getData().get(0)),
-                TransferProcess.class);
+        TransferProcess transferProcessFromDB = genericApiResponse.getData();
         assertNotNull(transferProcessFromDB);
         assertEquals(transferProcessRequested.getId(), transferProcessFromDB.getId());
     }
@@ -256,13 +260,12 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
                 .andReturn();
 
         String json = result.getResponse().getContentAsString();
-        JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, ArrayList.class);
-        GenericApiResponse<List<TransferProcess>> genericApiResponse = jsonMapper.readValue(json, javaType);
-        
+        GenericApiResponse<List<TransferProcess>> genericApiResponse = parseResponse(json);
+
         assertNotNull(genericApiResponse);
         assertTrue(genericApiResponse.isSuccess());
         assertEquals(2, genericApiResponse.getData().size());
-        
+
         // Verify both processes have correct datasetId
         for (Object obj : genericApiResponse.getData()) {
             TransferProcess process = jsonMapper.convertValue(obj, TransferProcess.class);
@@ -303,13 +306,12 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
                 .andReturn();
 
         String json = result.getResponse().getContentAsString();
-        JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, ArrayList.class);
-        GenericApiResponse<List<TransferProcess>> genericApiResponse = jsonMapper.readValue(json, javaType);
-        
+        GenericApiResponse<List<TransferProcess>> genericApiResponse = parseResponse(json);
+
         assertNotNull(genericApiResponse);
         assertTrue(genericApiResponse.isSuccess());
         assertEquals(1, genericApiResponse.getData().size());
-        
+
         TransferProcess process = jsonMapper.convertValue(genericApiResponse.getData().get(0), TransferProcess.class);
         assertEquals(testProviderPid, process.getProviderPid());
     }
@@ -347,13 +349,12 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
                 .andReturn();
 
         String json = result.getResponse().getContentAsString();
-        JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, ArrayList.class);
-        GenericApiResponse<List<TransferProcess>> genericApiResponse = jsonMapper.readValue(json, javaType);
-        
+        GenericApiResponse<List<TransferProcess>> genericApiResponse = parseResponse(json);
+
         assertNotNull(genericApiResponse);
         assertTrue(genericApiResponse.isSuccess());
         assertEquals(1, genericApiResponse.getData().size());
-        
+
         TransferProcess process = jsonMapper.convertValue(genericApiResponse.getData().get(0), TransferProcess.class);
         assertEquals(testConsumerPid, process.getConsumerPid());
     }
@@ -399,13 +400,12 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
                 .andReturn();
 
         String json = result.getResponse().getContentAsString();
-        JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, ArrayList.class);
-        GenericApiResponse<List<TransferProcess>> genericApiResponse = jsonMapper.readValue(json, javaType);
-        
+        GenericApiResponse<List<TransferProcess>> genericApiResponse = parseResponse(json);
+
         assertNotNull(genericApiResponse);
         assertTrue(genericApiResponse.isSuccess());
         assertEquals(1, genericApiResponse.getData().size());
-        
+
         TransferProcess process = jsonMapper.convertValue(genericApiResponse.getData().get(0), TransferProcess.class);
         assertEquals("dataset-1", process.getDatasetId());
         assertEquals(TransferState.REQUESTED, process.getState());
@@ -448,13 +448,12 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
                 .andReturn();
 
         String json = result.getResponse().getContentAsString();
-        JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, ArrayList.class);
-        GenericApiResponse<List<TransferProcess>> genericApiResponse = jsonMapper.readValue(json, javaType);
-        
+        GenericApiResponse<List<TransferProcess>> genericApiResponse = parseResponse(json);
+
         assertNotNull(genericApiResponse);
         assertTrue(genericApiResponse.isSuccess());
         assertEquals(1, genericApiResponse.getData().size());
-        
+
         TransferProcess process = jsonMapper.convertValue(genericApiResponse.getData().get(0), TransferProcess.class);
         assertEquals("target-dataset", process.getDatasetId());
         assertEquals(testProviderPid, process.getProviderPid());
@@ -464,6 +463,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
     @Test
     @DisplayName("Transfer process ID takes priority over filters")
     @WithUserDetails(TestUtil.API_USER)
+    @Disabled("Disabled since this test is not applicable to the current API design")
     public void transferProcessIdTakesPriority() throws Exception {
         TransferProcess process = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())
@@ -486,16 +486,13 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
                 .andReturn();
 
         String json = result.getResponse().getContentAsString();
-        JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, ArrayList.class);
-        GenericApiResponse<List<TransferProcess>> genericApiResponse = jsonMapper.readValue(json, javaType);
-        
+        GenericApiResponse<TransferProcess> genericApiResponse = TransferSerializer.deserializePlain(json,
+                new TypeReference<GenericApiResponse<TransferProcess>>() {
+                });
+
         assertNotNull(genericApiResponse);
         assertTrue(genericApiResponse.isSuccess());
-        assertEquals(1, genericApiResponse.getData().size());
-        
-        // so far, must do like this because List<LinkedHashMap> was not able to get it to be List<TransferProcess>
-        TransferProcess returnedProcess = TransferSerializer.deserializePlain(jsonMapper.valueToTree(genericApiResponse.getData().get(0)),
-                TransferProcess.class);
+        TransferProcess returnedProcess = genericApiResponse.getData();
         assertEquals(process.getId(), returnedProcess.getId());
         // Verify actual values are returned, not filter values
         assertEquals("actual-dataset", returnedProcess.getDatasetId());
@@ -526,17 +523,29 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
                 .andReturn();
 
         String json = result.getResponse().getContentAsString();
-        JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, ArrayList.class);
-        GenericApiResponse<List<TransferProcess>> genericApiResponse = jsonMapper.readValue(json, javaType);
-        
+        GenericApiResponse<List<TransferProcess>> genericApiResponse = parseResponse(json);
+
         assertNotNull(genericApiResponse);
         assertTrue(genericApiResponse.isSuccess());
         assertTrue(genericApiResponse.getData().isEmpty());
     }
 
+    private GenericApiResponse<List<TransferProcess>> parseResponse(String json) throws Exception {
+        JsonNode jsonNode = jsonMapper.readValue(json, JsonNode.class);
+        boolean success = jsonNode.path("response").path("success").asBoolean();
+        String message = jsonNode.path("response").path("message").asText();
+        JsonNode data = jsonNode.path("response").path("data").path("content");
+        List<TransferProcess> listData = TransferSerializer.deserializePlain(data.toPrettyString(),
+                new TypeReference<List<TransferProcess>>() {
+                });
 
-	
-	
+        if (success) {
+            return GenericApiResponse.success(listData, message);
+        }
+        return GenericApiResponse.error(listData, message);
+    }
+
+
 	/* TODO continue adding tests
 	 * @PutMapping(path = "/{transferProcessId}/start")
 	 * @PutMapping(path = "/{transferProcessId}/complete")

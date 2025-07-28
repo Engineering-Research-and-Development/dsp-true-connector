@@ -1,4 +1,3 @@
-
 package it.eng.catalog.service;
 
 import it.eng.catalog.exceptions.CatalogErrorException;
@@ -11,8 +10,8 @@ import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEven
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.service.AuditEventPublisher;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -25,17 +24,18 @@ import java.util.List;
 public class CatalogService {
 
     private final CatalogRepository repository;
-    private final ApplicationEventPublisher publisher;
+    private final AuditEventPublisher publisher;
     private final S3ClientService s3ClientService;
     private final S3Properties s3Properties;
 
-    public CatalogService(CatalogRepository repository, ApplicationEventPublisher publisher, S3ClientService s3ClientService, S3Properties s3Properties) {
+    public CatalogService(CatalogRepository repository, AuditEventPublisher publisher, S3ClientService s3ClientService,
+                          S3Properties s3Properties) {
         this.repository = repository;
         this.publisher = publisher;
         this.s3ClientService = s3ClientService;
         this.s3Properties = s3Properties;
     }
-    
+
     /********* PROTOCOL ***********/
     /**
      * Retrieves the catalog.
@@ -57,18 +57,18 @@ public class CatalogService {
             return allCatalogs.get(0);
         }
     }
-    
 
-    /********* API ***********/
-    
+
+    /* ******** API ***********/
+
     /**
-	 * Public method for fetching the catalog for further API processing purposes.<br>
-	 * It throws ResourceNotFoundAPIException instead of CatalogErrorException used in protocol requests
-	 * 
-	 * @return Catalog
-	 * @throws ResourceNotFoundAPIException Thrown if the catalog is not found.
-	 */
-	public Catalog getCatalogForApi() {
+     * Public method for fetching the catalog for further API processing purposes.<br>
+     * It throws ResourceNotFoundAPIException instead of CatalogErrorException used in protocol requests
+     *
+     * @return Catalog
+     * @throws ResourceNotFoundAPIException Thrown if the catalog is not found.
+     */
+    public Catalog getCatalogForApi() {
         List<Catalog> allCatalogs = repository.findAll();
 
         if (allCatalogs.isEmpty()) {
@@ -77,7 +77,7 @@ public class CatalogService {
             return allCatalogs.get(0);
         }
     }
-	
+
     private Catalog getCatalogByIdForApi(String id) {
         return repository.findById(id).orElseThrow(() -> new ResourceNotFoundAPIException("Catalog with id: " + id + " not found"));
     }
@@ -92,11 +92,11 @@ public class CatalogService {
         // TODO handle the situation when we insert catalog for the first time, and the object like dataSets, distributions, etc. should be stored into separate documents
         Catalog storedCatalog = null;
         try {
-        	storedCatalog = repository.save(catalog);
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-			throw new InternalServerErrorAPIException("Catalog could not be saved");
-		}
+            storedCatalog = repository.save(catalog);
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+            throw new InternalServerErrorAPIException("Catalog could not be saved");
+        }
         return storedCatalog;
     }
 
@@ -115,28 +115,28 @@ public class CatalogService {
      *
      * @param id The ID of the catalog to delete.
      */
-	public void deleteCatalog(String id) {
-		getCatalogById(id);
-		try {
-			repository.deleteById(id);
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-			throw new InternalServerErrorAPIException("Catalog could not be deleted");
-		}
-	}
-	
-	public Catalog updateCatalog(String id, Catalog cat) {
-		Catalog existingCatalog = getCatalogByIdForApi(id);
-		try {
-			Catalog updatedCatalog= existingCatalog.updateInstance(cat);
-			return repository.save(updatedCatalog);
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-			throw new InternalServerErrorAPIException("Catalog could not be updated");
-		}
-	}
+    public void deleteCatalog(String id) {
+        getCatalogById(id);
+        try {
+            repository.deleteById(id);
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+            throw new InternalServerErrorAPIException("Catalog could not be deleted");
+        }
+    }
 
-	@Deprecated
+    public Catalog updateCatalog(String id, Catalog cat) {
+        Catalog existingCatalog = getCatalogByIdForApi(id);
+        try {
+            Catalog updatedCatalog = existingCatalog.updateInstance(cat);
+            return repository.save(updatedCatalog);
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+            throw new InternalServerErrorAPIException("Catalog could not be updated");
+        }
+    }
+
+    @Deprecated
     public void validateOffer(ContractNegotationOfferRequestEvent offerRequest) {
         log.info("Comparing if offer is valid or not");
         Offer offer = CatalogSerializer.deserializeProtocol(offerRequest.getOffer(), Offer.class);
@@ -226,38 +226,38 @@ public class CatalogService {
     /**
      * Used by the protocol business logic to check if such offer exists.
      * because of that reason it throws CatalogErrorException instead of ResourceNotFoundAPIException
-     * 
+     *
      * @param offer
      * @return boolean
      */
     public boolean validateOffer(Offer offer) {
-    	boolean valid = false;
-		Catalog catalog = getCatalog();
-		Dataset dataset = catalog.getDataset().stream()
-				.filter(ds -> ds.getId().equals(offer.getTarget())).findFirst()
-				.orElse(null);
-		if (dataset == null) {
-			log.warn("Offer.target '{}' does not match with any dataset from catalog", offer.getTarget());
-		} else {
+        boolean valid = false;
+        Catalog catalog = getCatalog();
+        Dataset dataset = catalog.getDataset().stream()
+                .filter(ds -> ds.getId().equals(offer.getTarget())).findFirst()
+                .orElse(null);
+        if (dataset == null) {
+            log.warn("Offer.target '{}' does not match with any dataset from catalog", offer.getTarget());
+        } else {
 
-			Offer existingOffer = dataset.getHasPolicy().stream()
-					.filter(of -> of.getId().equals(offer.getId()))
-					.findFirst()
-					.orElse(null);
+            Offer existingOffer = dataset.getHasPolicy().stream()
+                    .filter(of -> of.getId().equals(offer.getId()))
+                    .findFirst()
+                    .orElse(null);
 
-			log.debug("Offer with id '{}' {}", offer.getId(), existingOffer != null ? " found." : "not found.");
+            log.debug("Offer with id '{}' {}", offer.getId(), existingOffer != null ? " found." : "not found.");
 
-			if (existingOffer == null) {
-				log.warn("Offer with id {} not found in catalog", offer.getId());
-			} else {
-				// check if offers are equals
-				if (offer.equals(existingOffer)) {
-					log.debug("Existing and provided offers are same");
-					valid = true;
-				}
-			}
-		}
-		log.info("Offer evaluated as {}", valid ? "valid" : "invalid");
-		return valid;
-	}
+            if (existingOffer == null) {
+                log.warn("Offer with id {} not found in catalog", offer.getId());
+            } else {
+                // check if offers are equals
+                if (offer.equals(existingOffer)) {
+                    log.debug("Existing and provided offers are same");
+                    valid = true;
+                }
+            }
+        }
+        log.info("Offer evaluated as {}", valid ? "valid" : "invalid");
+        return valid;
+    }
 }

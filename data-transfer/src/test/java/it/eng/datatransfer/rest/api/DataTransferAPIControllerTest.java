@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.DataTransferRequest;
+import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
@@ -12,16 +13,24 @@ import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.rest.api.PagedAPIResponse;
+import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.GenericFilterBuilder;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedResourcesAssembler;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -39,10 +48,26 @@ class DataTransferAPIControllerTest {
     @Mock
     private DataTransferAPIService apiService;
     @Mock
-    private ApplicationEventPublisher publisher;
+    private AuditEventPublisher publisher;
+    @Mock
+    private Pageable pageable;
+    @Mock
+    private PagedResourcesAssembler<TransferProcess> pagedResourcesAssembler;
+    @Mock
+    private PlainTransferProcessAssembler plainAssembler;
+    @Captor
+    private ArgumentCaptor<AuditEventType> eventTypeCaptor;
+    @Captor
+    private ArgumentCaptor<String> descriptionCaptor;
+    @Captor
+    private ArgumentCaptor<Map<String, Object>> argCaptorAuditEventDetails;
 
     @Mock
     private GenericFilterBuilder filterBuilder;
+
+    private Page<TransferProcess> transferProcessPage;
+
+    PagedModel.PageMetadata metadata = new PagedModel.PageMetadata(20, 0, 2, 1);
 
     @InjectMocks
     private DataTransferAPIController controller;
@@ -50,6 +75,7 @@ class DataTransferAPIControllerTest {
     private final DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
             DataTransferFormat.HTTP_PULL.name(),
             null);
+
 
     @Test
     @DisplayName("Find transfer process with generic filters")
@@ -65,45 +91,42 @@ class DataTransferAPIControllerTest {
                 "role", IConstants.ROLE_PROVIDER
         );
 
+        List<EntityModel<TransferProcess>> content = Collections.singletonList(EntityModel.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+        PagedModel<EntityModel<TransferProcess>> pagedModel = PagedModel.of(content, metadata);
+        transferProcessPage = new PageImpl<>(Collections.singletonList(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER), pageable, 1);
+
         when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
                 .thenReturn(expectedFilters);
-        when(apiService.findDataTransfers(any(Map.class)))
-                .thenReturn(Collections.singletonList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
+        when(apiService.findDataTransfers(anyMap(), any(Pageable.class))).thenReturn(transferProcessPage);
+        when(pagedResourcesAssembler.toModel(transferProcessPage, plainAssembler)).thenReturn((PagedModel) pagedModel);
 
-        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(null, request);
+        ResponseEntity<PagedAPIResponse> response =
+                controller.getTransfersProcess(request, 0, 20, new String[]{"timestamp", "desc"});
 
         assertNotNull(response);
         assertNotNull(response.getBody());
-        assertTrue(response.getBody().isSuccess());
-        assertFalse(response.getBody().getData().isEmpty());
+        assertTrue(response.getBody().getResponse().isSuccess());
+        assertFalse(response.getBody().getResponse().getData().getContent().isEmpty());
 
         verify(filterBuilder).buildFromRequest(request);
-        verify(apiService).findDataTransfers(expectedFilters);
+        verify(apiService).findDataTransfers(eq(expectedFilters), any(Pageable.class));
     }
 
     @Test
     @DisplayName("Find transfer process by id with path variable")
     public void getTransfersProcess_byId() {
-        MockHttpServletRequest request = new MockHttpServletRequest();
         String transferProcessId = "test-id";
+        when(apiService.findTransferProcessById(transferProcessId))
+                .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER);
 
-        Map<String, Object> emptyFilters = new HashMap<>();
-        Map<String, Object> expectedFilters = Map.of("id", transferProcessId);
-
-        when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
-                .thenReturn(emptyFilters);
-        when(apiService.findDataTransfers(any(Map.class)))
-                .thenReturn(Collections.singletonList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
-
-        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(transferProcessId, request);
+        ResponseEntity<GenericApiResponse<JsonNode>> response = controller.getTransferProcessById(transferProcessId);
 
         assertNotNull(response);
         assertNotNull(response.getBody());
         assertTrue(response.getBody().isSuccess());
-        assertFalse(response.getBody().getData().isEmpty());
-
-        verify(filterBuilder).buildFromRequest(request);
-        verify(apiService).findDataTransfers(expectedFilters);
+        assertNotNull(response.getBody().getData());
+        assertNotNull(TransferSerializer.deserializePlain(response.getBody().getData(), TransferProcess.class));
+        verify(apiService).findTransferProcessById(eq(transferProcessId));
     }
 
     @Test
@@ -122,20 +145,25 @@ class DataTransferAPIControllerTest {
                 "isDownloaded", true
         );
 
+        List<EntityModel<TransferProcess>> content = Collections.singletonList(EntityModel.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+        PagedModel<EntityModel<TransferProcess>> pagedModel = PagedModel.of(content, metadata);
+        transferProcessPage = new PageImpl<>(Collections.singletonList(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER), pageable, 1);
+
         when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
                 .thenReturn(expectedFilters);
-        when(apiService.findDataTransfers(any(Map.class)))
-                .thenReturn(Collections.singletonList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED)));
+        when(apiService.findDataTransfers(anyMap(), any(Pageable.class))).thenReturn(transferProcessPage);
+        when(pagedResourcesAssembler.toModel(transferProcessPage, plainAssembler)).thenReturn((PagedModel) pagedModel);
 
-        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(null, request);
+        ResponseEntity<PagedAPIResponse> response =
+                controller.getTransfersProcess(request, 0, 20, new String[]{"timestamp", "desc"});
 
         assertNotNull(response);
         assertNotNull(response.getBody());
-        assertTrue(response.getBody().isSuccess());
-        assertEquals(1, response.getBody().getData().size());
+        assertTrue(response.getBody().getResponse().isSuccess());
+        assertEquals(1, response.getBody().getResponse().getData().getContent().size());
 
         verify(filterBuilder).buildFromRequest(request);
-        verify(apiService).findDataTransfers(expectedFilters);
+        verify(apiService).findDataTransfers(eq(expectedFilters), any(Pageable.class));
     }
 
     @Test
@@ -144,23 +172,34 @@ class DataTransferAPIControllerTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         Map<String, Object> emptyFilters = new HashMap<>();
 
+        List<TransferProcess> transferProcessList = Arrays.asList(
+                DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER,
+                DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED);
+
+        List<EntityModel<TransferProcess>> content = Arrays.asList(
+                EntityModel.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER),
+                EntityModel.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        PagedModel<EntityModel<TransferProcess>> pagedModel = PagedModel.of(content, metadata);
+        transferProcessPage = new PageImpl<>(transferProcessList,
+                pageable,
+                2);
+
         when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
                 .thenReturn(emptyFilters);
-        when(apiService.findDataTransfers(any(Map.class)))
-                .thenReturn(Arrays.asList(
-                        TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER),
-                        TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED)
-                ));
+        when(apiService.findDataTransfers(anyMap(), any(Pageable.class))).thenReturn(transferProcessPage);
+        when(pagedResourcesAssembler.toModel(transferProcessPage, plainAssembler)).thenReturn((PagedModel) pagedModel);
 
-        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(null, request);
+        ResponseEntity<PagedAPIResponse> response =
+                controller.getTransfersProcess(request, 0, 20, new String[]{"timestamp", "desc"});
 
         assertNotNull(response);
         assertNotNull(response.getBody());
-        assertTrue(response.getBody().isSuccess());
-        assertEquals(2, response.getBody().getData().size());
+        assertTrue(response.getBody().getResponse().isSuccess());
+        assertEquals(2, response.getBody().getResponse().getData().getContent().size());
 
         verify(filterBuilder).buildFromRequest(request);
-        verify(apiService).findDataTransfers(emptyFilters);
+        verify(apiService).findDataTransfers(eq(emptyFilters), any(Pageable.class));
     }
 
     @Test
@@ -175,47 +214,24 @@ class DataTransferAPIControllerTest {
                 "state", TransferState.COMPLETED.name()
         );
 
+        List<EntityModel<TransferProcess>> content = Collections.singletonList(EntityModel.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+        PagedModel<EntityModel<TransferProcess>> pagedModel = PagedModel.of(content, metadata);
+        transferProcessPage = new PageImpl<>(Collections.singletonList(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER), pageable, 1);
+
         when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
                 .thenReturn(expectedFilters);
-        when(apiService.findDataTransfers(any(Map.class)))
-                .thenReturn(Collections.singletonList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED)));
+        when(apiService.findDataTransfers(anyMap(), any(Pageable.class))).thenReturn(transferProcessPage);
+        when(pagedResourcesAssembler.toModel(transferProcessPage, plainAssembler)).thenReturn((PagedModel) pagedModel);
 
-        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(null, request);
-
-        assertNotNull(response);
-        assertNotNull(response.getBody());
-        assertTrue(response.getBody().isSuccess());
-
-        verify(filterBuilder).buildFromRequest(request);
-        verify(apiService).findDataTransfers(expectedFilters);
-    }
-
-    @Test
-    @DisplayName("Find transfer process with path variable overrides query param id")
-    public void getTransfersProcess_pathVariableOverridesQueryParam() {
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setParameter("id", "query-param-id"); // This should be ignored
-        String pathVariableId = "path-variable-id";
-
-        // Use mutable HashMap instead of immutable Map.of() since controller modifies the map
-        Map<String, Object> initialFilters = new HashMap<>();
-        initialFilters.put("id", "query-param-id");
-
-        Map<String, Object> expectedFilters = Map.of("id", pathVariableId); // Path variable wins
-
-        when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
-                .thenReturn(initialFilters);
-        when(apiService.findDataTransfers(any(Map.class)))
-                .thenReturn(Collections.singletonList(TransferSerializer.serializePlainJsonNode(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER)));
-
-        ResponseEntity<GenericApiResponse<Collection<JsonNode>>> response = controller.getTransfersProcess(pathVariableId, request);
+        ResponseEntity<PagedAPIResponse> response =
+                controller.getTransfersProcess(request, 0, 20, new String[]{"timestamp", "desc"});
 
         assertNotNull(response);
         assertNotNull(response.getBody());
-        assertTrue(response.getBody().isSuccess());
+        assertTrue(response.getBody().getResponse().isSuccess());
 
         verify(filterBuilder).buildFromRequest(request);
-        verify(apiService).findDataTransfers(expectedFilters);
+        verify(apiService).findDataTransfers(eq(expectedFilters), any(Pageable.class));
     }
 
     @Test
@@ -323,14 +339,8 @@ class DataTransferAPIControllerTest {
 
         assertDoesNotThrow(() -> controller.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
-        verify(publisher).publishEvent(eventCaptor.capture());
-
-        AuditEvent capturedEvent = eventCaptor.getValue();
-        assertEquals(AuditEventType.TRANSFER_COMPLETED, capturedEvent.getEventType());
-        assertEquals(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(),
-                capturedEvent.getDetails().get("transferProcessId"));
-        assertEquals("Download completed successfully for process " + DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(),
-                capturedEvent.getDescription());
+        verifyAuditEvent(AuditEventType.TRANSFER_COMPLETED,
+                "Download completed successfully for process " + DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
     }
 
     @Test
@@ -344,14 +354,8 @@ class DataTransferAPIControllerTest {
 
         controller.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
 
-        verify(publisher).publishEvent(eventCaptor.capture());
-
-        AuditEvent capturedEvent = eventCaptor.getValue();
-        assertEquals(AuditEventType.TRANSFER_FAILED, capturedEvent.getEventType());
-        assertEquals(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(),
-                capturedEvent.getDetails().get("transferProcessId"));
-        assertEquals("Download failed for process " + DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(),
-                capturedEvent.getDescription());
+        verifyAuditEvent(AuditEventType.TRANSFER_FAILED,
+                "Download failed for process " + DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
     }
 
     @Test
@@ -369,5 +373,12 @@ class DataTransferAPIControllerTest {
         doThrow(new DataTransferAPIException("message")).when(apiService).viewData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
 
         assertThrows(DataTransferAPIException.class, () -> controller.viewData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+    }
+
+    private void verifyAuditEvent(AuditEventType eventType, String description) {
+        verify(publisher).publishEvent(eventTypeCaptor.capture(), descriptionCaptor.capture(), argCaptorAuditEventDetails.capture());
+        assertEquals(eventType, eventTypeCaptor.getValue());
+        assertEquals(description, descriptionCaptor.getValue());
+        assertNotNull(argCaptorAuditEventDetails.getValue());
     }
 }

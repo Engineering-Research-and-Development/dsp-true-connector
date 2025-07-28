@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.9-SNAPSHOT] - 25.07.2025.
+
+### Added
+
+- Added pagination for API endpoints (AuditEvent, ContractNegotiation, TransferProcess)
+
+### Changed
+
+- Refactored default Spring publisher, using AuditEventPublisher instead
+- Updated junit tests
+- Updated integration tests for pagination
+- Postman collection updated with new endpoints and pagination
+
 ## [0.4.8-SNAPSHOT] - 16.07.2025.
 
 ### Added

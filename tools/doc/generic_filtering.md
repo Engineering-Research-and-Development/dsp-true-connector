@@ -29,5 +29,5 @@ Example API calls with various filters:
 - Filtering by timestamp range:
 
 ```
-/api/v1/audit?from=2025-07-16T10:47:29.304&to=2025-07-16T10:47:31.304
+/api/v1/audit?timestamp.from=2025-07-16T08:20:05.577Z&timestamp.to=2025-07-18T10:47:31.304Z
 ```

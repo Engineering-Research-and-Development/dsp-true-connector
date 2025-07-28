@@ -78,7 +78,7 @@ public class ProviderContractNegotiationController {
         ContractNegotiationEventMessage contractNegotiationEventMessage = NegotiationSerializer.deserializeProtocol(contractNegotiationEventMessageJsonNode, ContractNegotiationEventMessage.class);
         log.info(contractNegotiationEventMessage.toString());
 
-        ContractNegotiation contractNegotiation = providerService.handleContractNegotationEventMessage(contractNegotiationEventMessage);
+        ContractNegotiation contractNegotiation = providerService.handleContractNegotiationEventMessage(contractNegotiationEventMessage);
 
         return ResponseEntity.ok()
                 .body(NegotiationSerializer.serializeProtocolJsonNode(contractNegotiation));

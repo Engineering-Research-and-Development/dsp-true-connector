@@ -1,7 +1,6 @@
 package it.eng.connector.integration;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -14,7 +13,6 @@ import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.IConstants;
-import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.serializer.InstantDeserializer;
 import it.eng.tools.serializer.InstantSerializer;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +33,6 @@ import org.wiremock.spring.EnableWireMock;
 
 import java.io.UnsupportedEncodingException;
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -79,8 +76,8 @@ public class BaseIntegrationTest {
     static void containersProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.data.mongodb.host", mongoDBContainer::getHost);
         registry.add("spring.data.mongodb.port", mongoDBContainer::getFirstMappedPort);
-        registry.add("s3.endpoint", () -> minIOContainer.getS3URL());
-        registry.add("s3.externalPresignedEndpoint", () -> minIOContainer.getS3URL());
+        registry.add("s3.endpoint", minIOContainer::getS3URL);
+        registry.add("s3.externalPresignedEndpoint", minIOContainer::getS3URL);
 
     }
 
@@ -97,8 +94,7 @@ public class BaseIntegrationTest {
                 .build();
     }
 
-    protected JsonNode getContractNegotiationOverAPI()
-            throws Exception, JsonProcessingException, JsonMappingException, UnsupportedEncodingException {
+    protected JsonNode getContractNegotiationOverAPI() throws Exception {
         final ResultActions result =
                 mockMvc.perform(
                         get(ApiEndpoints.NEGOTIATION_V1)
@@ -110,8 +106,7 @@ public class BaseIntegrationTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
         JsonNode jsonNode = jsonMapper.readTree(result.andReturn().getResponse().getContentAsString());
-
-        return jsonNode.findValues("data").get(0).get(jsonNode.findValues("data").get(0).size() - 1);
+        return jsonNode.path("response").path("data").path("content").get(0);
     }
 
     protected JsonNode getContractNegotiationOverAPI(String contractNegotiationId)
@@ -128,8 +123,7 @@ public class BaseIntegrationTest {
         return jsonMapper.readTree(result.andReturn().getResponse().getContentAsString());
     }
 
-    protected ContractNegotiation getContractNegotiationOverAPI(String consumerPid, String providerPid)
-            throws Exception, JsonProcessingException, JsonMappingException, UnsupportedEncodingException {
+    protected ContractNegotiation getContractNegotiationOverAPI(String consumerPid, String providerPid) throws Exception {
         final ResultActions result =
                 mockMvc.perform(
                         get(ApiEndpoints.NEGOTIATION_V1)
@@ -141,12 +135,9 @@ public class BaseIntegrationTest {
         result.andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
         String json = result.andReturn().getResponse().getContentAsString();
-//		GenericApiResponse<List<ContractNegotiation>>
-        TypeReference<GenericApiResponse<List<ContractNegotiation>>> typeRef = new TypeReference<GenericApiResponse<List<ContractNegotiation>>>() {
-        };
-        GenericApiResponse<List<ContractNegotiation>> apiResp = NegotiationSerializer.deserializePlain(json, typeRef);
-        // should be exactly one in list
-        return apiResp.getData().get(0);
+        JsonNode jsonNode = jsonMapper.readTree(json);
+        JsonNode toDeserialize = jsonNode.path("response").path("data").path("content").get(0);
+        return NegotiationSerializer.deserializePlain(toDeserialize.toPrettyString(), ContractNegotiation.class);
     }
 
     protected void offerCheck(ContractNegotiation contractNegotiation, String offerId) {

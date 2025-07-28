@@ -1,6 +1,9 @@
 package it.eng.tools.repository;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -11,6 +14,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 @Repository
@@ -24,7 +28,7 @@ public class GenericDynamicFilterRepositoryImpl<T, ID> implements GenericDynamic
     }
 
     @Override
-    public Collection<T> findWithDynamicFilters(Map<String, Object> filters, Class<T> entityClass) {
+    public Page<T> findWithDynamicFilters(Map<String, Object> filters, Class<T> entityClass, Pageable pageable) {
         Query query = new Query();
 
         // Build criteria based on value types - no null checks needed (filter builder handles this)
@@ -35,7 +39,13 @@ public class GenericDynamicFilterRepositoryImpl<T, ID> implements GenericDynamic
 
         log.debug("Executing MongoDB query: {}", query);
 
-        return mongoTemplate.find(query, entityClass);
+        // Get total count before applying pagination
+        long total = mongoTemplate.count(query, entityClass);
+
+        // Apply pagination and sorting to query
+        query.with(pageable);
+        List<T> content = mongoTemplate.find(query, entityClass);
+        return new PageImpl<>(content, pageable, total);
     }
 
     /**
