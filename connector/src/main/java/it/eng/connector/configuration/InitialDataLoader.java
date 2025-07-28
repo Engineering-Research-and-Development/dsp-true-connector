@@ -126,12 +126,9 @@ public class InitialDataLoader {
         log.info("Uploading mock data to S3...");
 
         try {
-            // Create S3 bucket if it doesn't exist
+            // Ensure S3 bucket and credentials exist
             String bucketName = s3Properties.getBucketName();
-            if (!s3BucketProvisionService.bucketExists(bucketName)) {
-                s3BucketProvisionService.createSecureBucket(bucketName);
-                log.info("Created S3 bucket: {}", bucketName);
-            }
+            s3BucketProvisionService.ensureBucketCredentials(bucketName);
 
             ClassPathResource file = new ClassPathResource("ENG-employee.json");
             if (file.exists()) {
