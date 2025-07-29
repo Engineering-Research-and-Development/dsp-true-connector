@@ -33,7 +33,7 @@ public class S3BucketProvisionService {
     public BucketCredentialsEntity createSecureBucket(String bucketName) {
         validateBucketName(bucketName);
         log.info("Create secure bucket {}", bucketName);
-        
+
         // Create bucket
         createBucket(bucketName);
 
@@ -44,7 +44,7 @@ public class S3BucketProvisionService {
     public BucketCredentialsEntity createBucketCredentials(String bucketName) {
         validateBucketName(bucketName);
         log.info("Creating bucket credentials for existing bucket {}", bucketName);
-        
+
         // Generate temporary credentials
         String accessKey = "GetBucketUser-" + UUID.randomUUID().toString().substring(0, 8);
         String secretKey = UUID.randomUUID().toString();
@@ -62,7 +62,12 @@ public class S3BucketProvisionService {
         updateBucketPolicy(bucketName, accessKey);
 
         // Store credentials
-        return bucketCredentialsService.saveBucketCredentials(bucketCredentials);
+        BucketCredentialsEntity savedCredentials = bucketCredentialsService.saveBucketCredentials(bucketCredentials);
+
+        // Clear S3 client cache to ensure new credentials are used
+        s3ClientProvider.clearBucketCache(bucketName);
+
+        return savedCredentials;
     }
 
     /**
@@ -77,13 +82,13 @@ public class S3BucketProvisionService {
     public BucketCredentialsEntity ensureBucketCredentials(String bucketName) {
         validateBucketName(bucketName);
         log.info("Ensuring bucket credentials exist for bucket: {}", bucketName);
-        
+
         // Check if credentials already exist
         if (bucketCredentialsService.bucketCredentialsExist(bucketName)) {
             log.info("Bucket credentials already exist for bucket: {}", bucketName);
             return bucketCredentialsService.getBucketCredentials(bucketName);
         }
-        
+
         // Check if bucket exists
         if (bucketExists(bucketName)) {
             log.info("Bucket {} exists but credentials are missing. Creating credentials...", bucketName);
