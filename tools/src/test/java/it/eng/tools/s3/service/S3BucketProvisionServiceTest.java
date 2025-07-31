@@ -604,6 +604,7 @@ public class S3BucketProvisionServiceTest {
 
     // ensureBucketCredentials test cases
     @Test
+    @DisplayName("Should return existing credentials when they exist")
     void ensureBucketCredentials_WhenCredentialsExist_ShouldReturnExisting() {
         // Arrange
         String bucketName = "test-bucket";
@@ -612,7 +613,7 @@ public class S3BucketProvisionServiceTest {
                 .accessKey("existing-key")
                 .secretKey("existing-secret")
                 .build();
-                
+
         when(bucketCredentialsService.bucketCredentialsExist(bucketName)).thenReturn(true);
         when(bucketCredentialsService.getBucketCredentials(bucketName)).thenReturn(existingCredentials);
 
@@ -627,6 +628,7 @@ public class S3BucketProvisionServiceTest {
     }
 
     @Test
+    @DisplayName("Should create credentials when bucket exists but credentials are missing")
     void ensureBucketCredentials_WhenBucketExistsButCredentialsMissing_ShouldCreateCredentials() {
         // Arrange
         String bucketName = "test-bucket";
@@ -635,7 +637,7 @@ public class S3BucketProvisionServiceTest {
                 .accessKey("new-key")
                 .secretKey("new-secret")
                 .build();
-                
+
         when(bucketCredentialsService.bucketCredentialsExist(bucketName)).thenReturn(false);
         when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
         when(s3Client.headBucket(any(HeadBucketRequest.class))).thenReturn(HeadBucketResponse.builder().build());
@@ -656,6 +658,7 @@ public class S3BucketProvisionServiceTest {
     }
 
     @Test
+    @DisplayName("Should create secure bucket when bucket does not exist")
     void ensureBucketCredentials_WhenBucketDoesNotExist_ShouldCreateSecureBucket() {
         // Arrange
         String bucketName = "test-bucket";
@@ -664,7 +667,7 @@ public class S3BucketProvisionServiceTest {
                 .accessKey("new-key")
                 .secretKey("new-secret")
                 .build();
-                
+
         when(bucketCredentialsService.bucketCredentialsExist(bucketName)).thenReturn(false);
         when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
         when(s3Client.headBucket(any(HeadBucketRequest.class))).thenThrow(NoSuchBucketException.builder().build());
@@ -687,6 +690,7 @@ public class S3BucketProvisionServiceTest {
     }
 
     @Test
+    @DisplayName("Should throw exception when bucket name is invalid")
     void ensureBucketCredentials_WithInvalidBucketName_ShouldThrowException() {
         // Arrange
         String invalidBucketName = "INVALID-BUCKET-NAME";

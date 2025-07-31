@@ -19,7 +19,7 @@ s3.externalPresignedEndpoint=<EXTERNAL_ENDPOINT>
 
 ### Property Descriptions
 
-- `s3.endpoint`: The S3 service endpoint URL your custom endpoint for MinIO/other S3-compatible services)
+- `s3.endpoint`: The S3 service endpoint URL (your custom endpoint for MinIO/other S3-compatible services)
 - `s3.accessKey`: Your S3 access key ID
 - `s3.secretKey`: Your S3 secret access key
 - `s3.region`: S3 region identifier (e.g., us-east-1)
@@ -70,7 +70,6 @@ Common issues:
 3. Presigned URL issues
     - Verify external endpoint configuration
     - Check URL expiration settings
-    - Confirm proper bucket CORS configuration
     - If using MinIO, ensure the `s3.externalPresignedEndpoint` is set to the MinIO server URL:
         - running locally (from an IDE) the default URL will be http://localhost:9000
         - running in a container (e.g., Docker), set it to the local IP address of the machine (Ethernet adapter - IPv4
