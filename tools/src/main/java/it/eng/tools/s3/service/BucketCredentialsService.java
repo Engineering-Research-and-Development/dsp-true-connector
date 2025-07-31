@@ -42,4 +42,8 @@ public class BucketCredentialsService {
                 .build();
         return bucketCredentialsRepository.save(savedBucketCredentials);
     }
+
+    public boolean bucketCredentialsExist(String bucketName) {
+        return bucketCredentialsRepository.findByBucketName(bucketName).isPresent();
+    }
 }

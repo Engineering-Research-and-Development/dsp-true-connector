@@ -107,6 +107,19 @@ public class S3ClientProvider {
         }
     }
 
+    /**
+     * Clears cached S3 clients for a specific bucket.
+     * This should be called when bucket credentials are updated to ensure
+     * new clients are created with the updated credentials.
+     *
+     * @param bucketName the name of the bucket to clear from cache
+     */
+    public void clearBucketCache(String bucketName) {
+        log.info("Clearing S3 client cache for bucket: {}", bucketName);
+        s3ClientCache.remove(bucketName);
+        asyncS3ClientCache.remove(bucketName);
+    }
+
     private S3Client createS3Client(AwsCredentialsProvider credentialsProvider, String region, String endpointOverride) {
         var builder = S3Client.builder()
                 .credentialsProvider(credentialsProvider)

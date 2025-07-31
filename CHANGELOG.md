@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.10-SNAPSHOT] - 29.07.2025.
+
+### Changed
+
+- Added check if bucket already exists, does have proper credentials, and create ones that are missing
+- Updated junit tests
+
 ## [0.4.9-SNAPSHOT] - 25.07.2025.
 
 ### Added
