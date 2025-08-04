@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * The CatalogService class provides methods to interact with catalog data, including saving, retrieving, and deleting catalogs.
@@ -49,18 +50,17 @@ public class CatalogService {
         List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
 
         List<Catalog> allCatalogs = repository.findAll();
-        allCatalogs.forEach(catalog -> catalog.getDataset().removeIf(dataset -> !files.contains(dataset.getId())));
 
-        if (allCatalogs.isEmpty()) {
-            throw new CatalogErrorException("Catalog not found");
-        } else {
-            return allCatalogs.get(0);
-        }
+        // remove datasets that do not have files in S3
+        allCatalogs.forEach(catalog -> catalog.getDataset().removeIf(
+                dataset -> !files.contains(dataset.getId())));
+
+        validateCatalog(allCatalogs);
+
+        return allCatalogs.get(0);
     }
 
-
     /* ******** API ***********/
-
     /**
      * Public method for fetching the catalog for further API processing purposes.<br>
      * It throws ResourceNotFoundAPIException instead of CatalogErrorException used in protocol requests
@@ -259,5 +259,54 @@ public class CatalogService {
         }
         log.info("Offer evaluated as {}", valid ? "valid" : "invalid");
         return valid;
+    }
+
+    private void validateCatalog(List<Catalog> allCatalogs) {
+        if (allCatalogs == null
+                || allCatalogs.isEmpty()
+                || allCatalogs.get(0) == null) {
+            log.error("Catalog is empty or not complete");
+            throw new CatalogErrorException("Catalog is empty or not complete");
+        }
+
+        Catalog catalog = allCatalogs.get(0);
+
+        if (catalog.getService() == null
+                || catalog.getService().isEmpty()
+                || catalog.getService().stream().anyMatch(
+                        dataService -> dataService == null)) {
+            log.error("Catalog does not contain any data services");
+            throw new CatalogErrorException("Catalog does not contain any data services");
+        }
+
+        validateDatasets(catalog.getDataset());
+
+        validateDistributions(catalog.getDistribution());
+    }
+
+    private static void validateDistributions(Set<Distribution> distributions) {
+        if (distributions == null
+                || distributions.isEmpty()
+                || distributions.stream().anyMatch(
+                        distribution -> distribution == null
+                                || distribution.getAccessService() == null
+                                || distribution.getAccessService().isEmpty())) {
+            log.error("Catalog does not contain any distributions");
+            throw new CatalogErrorException("Catalog does not contain any distributions");
+        }
+    }
+
+    private static void validateDatasets(Set<Dataset> datasets) {
+        if(datasets == null
+                || datasets.isEmpty()
+                || datasets.stream().anyMatch(
+                        dataset -> dataset == null
+                                || dataset.getHasPolicy() == null
+                                || dataset.getHasPolicy().isEmpty()
+                                || dataset.getDistribution() == null
+                                || dataset.getDistribution().isEmpty())) {
+            log.error("Catalog does not contain any datasets");
+            throw new CatalogErrorException("Catalog does not contain any datasets");
+        }
     }
 }

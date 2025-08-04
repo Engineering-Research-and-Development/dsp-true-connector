@@ -155,7 +155,6 @@ public class CatalogMockObjectUtil {
             .modified(MODIFIED)
             .hasPolicy(Arrays.asList(OFFER_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
             .accessService(Arrays.asList(DATA_SERVICE).stream().collect(Collectors.toCollection(HashSet::new)))
-            .version(0L)
             .createdBy("admin@mail.com")
             .lastModifiedBy("admin@mail.com")
             .build();
@@ -204,7 +203,6 @@ public class CatalogMockObjectUtil {
             .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
             .title(TITLE + " update")
             .hasPolicy(Arrays.asList(OFFER_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
-            .version(0L)
             .createdBy("admin@mail.com")
             .lastModifiedBy("admin@mail.com")
             .issued(ISSUED)
@@ -236,22 +234,22 @@ public class CatalogMockObjectUtil {
      *
      * @return A new Catalog instance.
      */
-    public static final Catalog createNewCatalog() {
+    public static Catalog createNewCatalog() {
         return Catalog.Builder.newInstance()
                 .conformsTo(CONFORMSTO)
                 .creator(CREATOR)
-                .description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Catalog description").build()).stream().collect(Collectors.toCollection(HashSet::new)))
+                .description(new HashSet<>(Collections.singletonList(createNewMultilanguage())))
                 .identifier(IDENTIFIER)
                 .issued(ISSUED)
-                .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
+                .keyword(new HashSet<>(Arrays.asList("keyword1", "keyword2")))
                 .modified(MODIFIED)
-                .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
+                .theme(new HashSet<>(Arrays.asList("white", "blue", "aqua")))
                 .title(TITLE)
                 .participantId("urn:example:DataProviderA")
-                .service(Arrays.asList(DATA_SERVICE).stream().collect(Collectors.toCollection(HashSet::new)))
-                .dataset(Arrays.asList(DATASET).stream().collect(Collectors.toCollection(HashSet::new)))
-                .distribution(Arrays.asList(DISTRIBUTION).stream().collect(Collectors.toCollection(HashSet::new)))
-                .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
+                .service(new HashSet<>(Collections.singletonList(createNewDataService())))
+                .dataset(new HashSet<>(Collections.singletonList(createNewDataset())))
+                .distribution(new HashSet<>(Collections.singletonList(createNewDistribution())))
+                .hasPolicy(new HashSet<>(Collections.singletonList(createNewOffer())))
                 .homepage(ENDPOINT_URL)
                 .build();
     }
@@ -305,6 +303,100 @@ public class CatalogMockObjectUtil {
                 getAllKeysUsingJsonNodeFieldNames(node, keys);
             });
         }
+    }
+
+    /**
+     * Creates a new Multilanguage instance for catalog description.
+     *
+     * @return A new Multilanguage instance.
+     */
+    public static final Multilanguage createNewMultilanguage() {
+        return Multilanguage.Builder.newInstance()
+                .language("en")
+                .value("Catalog description")
+                .build();
+    }
+
+    /**
+     * Creates a new DataService instance.
+     *
+     * @return A new DataService instance.
+     */
+    public static final DataService createNewDataService() {
+        return DataService.Builder.newInstance()
+                .keyword(Arrays.asList("DataService keyword1", "DataService keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
+                .theme(Arrays.asList("DataService theme1", "DataService theme2").stream().collect(Collectors.toCollection(HashSet::new)))
+                .conformsTo(CONFORMSTO)
+                .creator(CREATOR)
+                .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
+                .identifier(IDENTIFIER)
+                .issued(ISSUED)
+                .modified(MODIFIED)
+                .title(TITLE)
+                .endpointURL("http://dataservice.com")
+                .endpointDescription("endpoint description")
+                .build();
+    }
+
+    /**
+     * Creates a new Distribution instance.
+     *
+     * @return A new Distribution instance.
+     */
+    public static final Distribution createNewDistribution() {
+        return Distribution.Builder.newInstance()
+                .title(TITLE)
+                .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
+                .issued(ISSUED)
+                .modified(MODIFIED)
+                .format(Reference.Builder.newInstance().id("HTTP:PULL").build())
+                .hasPolicy(Arrays.asList(createNewOffer()).stream().collect(Collectors.toCollection(HashSet::new)))
+                .accessService(Arrays.asList(createNewDataService()).stream().collect(Collectors.toCollection(HashSet::new)))
+                .build();
+    }
+
+    /**
+     * Creates a new Permission instance.
+     *
+     * @return A new Permission instance.
+     */
+    public static final Permission createNewPermission() {
+        return Permission.Builder.newInstance()
+                .action(Action.USE)
+                .constraint(Arrays.asList(CONSTRAINT).stream().collect(Collectors.toCollection(HashSet::new)))
+                .build();
+    }
+
+    /**
+     * Creates a new Offer instance.
+     *
+     * @return A new Offer instance.
+     */
+    public static final Offer createNewOffer() {
+        return Offer.Builder.newInstance()
+                .permission(Arrays.asList(createNewPermission()).stream().collect(Collectors.toCollection(HashSet::new)))
+                .build();
+    }
+
+    /**
+     * Creates a new Dataset instance.
+     *
+     * @return A new Dataset instance.
+     */
+    public static final Dataset createNewDataset() {
+        return Dataset.Builder.newInstance()
+                .conformsTo(CONFORMSTO)
+                .creator(CREATOR)
+                .distribution(Arrays.asList(createNewDistribution()).stream().collect(Collectors.toCollection(HashSet::new)))
+                .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
+                .issued(ISSUED)
+                .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
+                .identifier(IDENTIFIER)
+                .modified(MODIFIED)
+                .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
+                .title(TITLE)
+                .hasPolicy(Arrays.asList(createNewOffer()).stream().collect(Collectors.toCollection(HashSet::new)))
+                .build();
     }
 
 }

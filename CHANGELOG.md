@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.11-SNAPSHOT] - 04.08.2025.
+
+### Added
+
+- Added additional checks for Catalog protocol endpoint to ensure that all required properties are set
+
 ## [0.4.10-SNAPSHOT] - 29.07.2025.
 
 ### Changed

@@ -3,7 +3,9 @@ package it.eng.connector.integration.negotiation;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.repository.CatalogRepository;
+import it.eng.catalog.repository.DataServiceRepository;
 import it.eng.catalog.repository.DatasetRepository;
+import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
@@ -40,6 +42,10 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
     @Autowired
     private DatasetRepository datasetRepository;
     @Autowired
+    private DataServiceRepository dataServiceRepository;
+    @Autowired
+    private DistributionRepository distributionRepository;
+    @Autowired
     private BucketCredentialsRepository bucketCredentialsRepository;
     @Autowired
     private S3ClientService s3ClientService;
@@ -51,21 +57,21 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
 
     @BeforeEach
     public void populateCatalog() {
-        dataset = Dataset.Builder.newInstance()
-                .hasPolicy(Collections.singleton(CatalogMockObjectUtil.OFFER))
-                .build();
-        catalog = Catalog.Builder.newInstance()
-                .dataset(Collections.singleton(dataset))
-                .build();
+        catalog = CatalogMockObjectUtil.createNewCatalog();
+        dataset = catalog.getDataset().stream().findFirst().get();
 
         datasetRepository.save(dataset);
         catalogRepository.save(catalog);
+        dataServiceRepository.saveAll(catalog.getService());
+        distributionRepository.saveAll(catalog.getDistribution());
     }
 
     @AfterEach
     public void cleanup() {
         datasetRepository.deleteAll();
         catalogRepository.deleteAll();
+        dataServiceRepository.deleteAll();
+        distributionRepository.deleteAll();
     }
 
     @Test
@@ -125,7 +131,7 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
         assertEquals(ContractNegotiationState.REQUESTED, contractNegotiationRequested.getState());
 
         offerCheck(getContractNegotiationOverAPI(contractNegotiationRequested.getConsumerPid(),
-                contractNegotiationRequested.getProviderPid()), CatalogMockObjectUtil.OFFER.getId());
+                contractNegotiationRequested.getProviderPid()), dataset.getHasPolicy().stream().findFirst().get().getId());
     }
 
     @Test

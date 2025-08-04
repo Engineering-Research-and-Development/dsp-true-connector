@@ -4,7 +4,9 @@ import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.CatalogError;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.repository.CatalogRepository;
+import it.eng.catalog.repository.DataServiceRepository;
 import it.eng.catalog.repository.DatasetRepository;
+import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
@@ -16,17 +18,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.repository.support.SimpleMongoRepository;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 
-import java.util.Collections;
 import java.util.List;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.*;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -42,6 +43,12 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
     private DatasetRepository datasetRepository;
 
     @Autowired
+    private DataServiceRepository dataServiceRepository;
+
+    @Autowired
+    private DistributionRepository distributionRepository;
+
+    @Autowired
     private S3ClientService s3ClientService;
 
     @Autowired
@@ -52,21 +59,21 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
 
     @BeforeEach
     public void populateCatalog() {
-        dataset = Dataset.Builder.newInstance()
-                .hasPolicy(Collections.singleton(CatalogMockObjectUtil.OFFER))
-                .build();
-        catalog = Catalog.Builder.newInstance()
-                .dataset(Collections.singleton(dataset))
-                .build();
+        catalog = CatalogMockObjectUtil.createNewCatalog();
+        dataset = catalog.getDataset().stream().findFirst().get();
 
         datasetRepository.save(dataset);
         catalogRepository.save(catalog);
+        dataServiceRepository.saveAll(catalog.getService());
+        distributionRepository.saveAll(catalog.getDistribution());
     }
 
     @AfterEach
     public void cleanup() {
         datasetRepository.deleteAll();
         catalogRepository.deleteAll();
+        dataServiceRepository.deleteAll();
+        distributionRepository.deleteAll();
     }
 
     @Test
@@ -74,29 +81,7 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void getCatalogSuccessfulTest() throws Exception {
 
-        String fileContent = "Hello, World!";
-
-        MockMultipartFile file
-                = new MockMultipartFile(
-                "file",
-                "hello.txt",
-                MediaType.TEXT_PLAIN_VALUE,
-                fileContent.getBytes()
-        );
-
-        ContentDisposition contentDisposition = ContentDisposition.attachment()
-                .filename(file.getOriginalFilename())
-                .build();
-
-        try {
-            s3ClientService.uploadFile(file.getInputStream(), s3Properties.getBucketName(), dataset.getId(),
-                            file.getContentType(), contentDisposition.toString())
-                    .get();
-        } catch (Exception e) {
-            throw new Exception("File storing aborted, " + e.getLocalizedMessage());
-        }
-
-        Thread.sleep(2000); // wait for the file to be uploaded to S3
+        uploadFile();
 
         String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.CATALOG_REQUEST_MESSAGE);
 
@@ -114,12 +99,7 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
         assertFalse(catalogResponse.getDataset().isEmpty());
 
 //		remove the file from S3 after the test
-        List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
-        if (files != null) {
-            for (String s3File : files) {
-                s3ClientService.deleteFile(s3Properties.getBucketName(), s3File);
-            }
-        }
+        removeFiles();
     }
 
     @Test
@@ -127,28 +107,29 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void getCatalogWithoutDatasetsThatHaveNoFilesTest() throws Exception {
 
-        String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.CATALOG_REQUEST_MESSAGE);
+        uploadFile();
 
-        // Ensure the S3 bucket is empty before the test
-        List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
-        if (files != null) {
-            for (String file : files) {
-                s3ClientService.deleteFile(s3Properties.getBucketName(), file);
-            }
-        }
+//      check if catalog and dataset are in the database and that the dataset is linked to the file in S3
+        assertTrue(catalogRepository.findById(catalog.getId()).isPresent());
+        assertTrue(datasetRepository.findById(dataset.getId()).isPresent());
+        assertTrue(s3ClientService.listFiles(s3Properties.getBucketName()).stream()
+                .anyMatch(file -> file.equals(dataset.getId())));
+
+        removeFiles();
+
+        String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.CATALOG_REQUEST_MESSAGE);
 
         final ResultActions result =
                 mockMvc.perform(
                         post("/catalog/request")
                                 .content(body)
                                 .contentType(MediaType.APPLICATION_JSON));
-        result.andExpect(status().isOk())
+        result.andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
         String response = result.andReturn().getResponse().getContentAsString();
-        Catalog catalogResponse = CatalogSerializer.deserializeProtocol(response, Catalog.class);
-        assertNotNull(catalogResponse);
-        assertNull(catalogResponse.getDataset());
+        CatalogError catalogError = CatalogSerializer.deserializeProtocol(response, CatalogError.class);
+        assertNotNull(catalogError);
     }
 
     @Test
@@ -260,5 +241,41 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
                 .filter(reason -> reason.getValue().contains("Dataset with id: 1 not found"))
                 .findFirst()
                 .get());
+    }
+
+    private void uploadFile() throws Exception {
+        String fileContent = "Hello, World!";
+
+        MockMultipartFile file
+                = new MockMultipartFile(
+                "file",
+                "hello.txt",
+                MediaType.TEXT_PLAIN_VALUE,
+                fileContent.getBytes()
+        );
+
+        ContentDisposition contentDisposition = ContentDisposition.attachment()
+                .filename(file.getOriginalFilename())
+                .build();
+
+        try {
+            s3ClientService.uploadFile(file.getInputStream(), s3Properties.getBucketName(), dataset.getId(),
+                            file.getContentType(), contentDisposition.toString())
+                    .get();
+        } catch (Exception e) {
+            throw new Exception("File storing aborted, " + e.getLocalizedMessage());
+        }
+
+        Thread.sleep(2000); // wait for the file to be uploaded to S3
+    }
+
+    private void removeFiles() {
+        // Ensure the S3 bucket is empty before the test
+        List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
+        if (files != null) {
+            for (String file : files) {
+                s3ClientService.deleteFile(s3Properties.getBucketName(), file);
+            }
+        }
     }
 }
