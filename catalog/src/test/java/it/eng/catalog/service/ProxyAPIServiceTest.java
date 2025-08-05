@@ -56,12 +56,14 @@ class ProxyAPIServiceTest {
 	}
 	
 	@Test
-	@DisplayName("Get formats success")
+	@DisplayName("Get formats fail")
 	void getFormatsFromDataset_fail() {
 		when(credentialUtils.getConnectorCredentials()).thenReturn("ABC");
 		when(okHttpClient.sendRequestProtocol(anyString(), any(JsonNode.class), anyString()))
 				.thenReturn(genericApiResponse);
 		when(genericApiResponse.isSuccess()).thenReturn(false);
+		when(genericApiResponse.getData())
+				.thenReturn(CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.CATALOG_ERROR));
 		
 		assertThrows(CatalogErrorAPIException.class, 
 				() -> service.getFormatsFromDataset(CatalogMockObjectUtil.DATASET_ID, FORWARD_TO));

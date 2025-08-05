@@ -1,22 +1,26 @@
 package it.eng.catalog.service;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-
+import it.eng.catalog.exceptions.CatalogErrorException;
+import it.eng.catalog.exceptions.InternalServerErrorAPIException;
+import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
+import it.eng.catalog.model.DataService;
+import it.eng.catalog.model.Dataset;
+import it.eng.catalog.model.Distribution;
+import it.eng.catalog.repository.DatasetRepository;
+import it.eng.tools.event.AuditEventType;
+import it.eng.tools.model.Artifact;
+import it.eng.tools.model.ArtifactType;
+import it.eng.tools.model.IConstants;
+import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.service.AuditEventPublisher;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import it.eng.catalog.exceptions.CatalogErrorException;
-import it.eng.catalog.exceptions.InternalServerErrorAPIException;
-import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
-import it.eng.catalog.model.Dataset;
-import it.eng.catalog.model.Distribution;
-import it.eng.catalog.repository.DatasetRepository;
-import it.eng.tools.model.Artifact;
-import lombok.extern.slf4j.Slf4j;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * The DataSetService class provides methods to interact with Dataset data, including saving, retrieving, and deleting datasets.
@@ -28,12 +32,19 @@ public class DatasetService {
     private final DatasetRepository repository;
     private final CatalogService catalogService;
     private final ArtifactService artifactService;
+	private final S3ClientService s3ClientService;
+	private final S3Properties s3Properties;
+	private final AuditEventPublisher publisher;
 
 
-    public DatasetService(DatasetRepository repository, CatalogService catalogService, ArtifactService artifactService) {
+    public DatasetService(DatasetRepository repository, CatalogService catalogService, ArtifactService artifactService,
+                          S3ClientService s3ClientService, S3Properties s3Properties, AuditEventPublisher publisher) {
         this.repository = repository;
         this.catalogService = catalogService;
 		this.artifactService = artifactService;
+        this.s3ClientService = s3ClientService;
+        this.s3Properties = s3Properties;
+        this.publisher = publisher;
     }
 
     /********* PROTOCOL ***********/
@@ -45,8 +56,17 @@ public class DatasetService {
      * @throws CatalogErrorException if no dataset is found with the provided ID
      */
     public Dataset getDatasetById(String id) {
-        return repository.findById(id).orElseThrow(() -> new CatalogErrorException("Dataset with id: " + id + " not found"));
-
+        return repository.findById(id).filter(this::validateDataset)
+				.orElseThrow(() ->
+				{
+					log.error("Dataset is empty or not complete");
+					String errorMessage = "Dataset with id: " + id + " not found";
+					publisher.publishEvent(AuditEventType.PROTOCOL_CATALOG_DATASET_NOT_FOUND,
+							"Dataset is empty or not complete",
+							Map.of("role", IConstants.ROLE_PROTOCOL,
+									"errorMessage", errorMessage));
+					return new CatalogErrorException(errorMessage);
+                });
     }
     
     /********* API ***********/
@@ -205,5 +225,58 @@ public class DatasetService {
 				.version(dataset.getVersion())
 				.build();
 		return datasetWithArtifact;
+	}
+
+	private boolean validateDataset(Dataset dataset) {
+		if (dataset == null
+				|| dataset.getHasPolicy() == null
+				|| dataset.getHasPolicy().isEmpty()
+				|| dataset.getHasPolicy().stream().anyMatch(Objects::isNull)
+				|| !validateDistributions(dataset.getDistribution())
+				|| !checkIfDatasetHasFile(dataset)){
+			log.error("Dataset with id: {} is not valid", dataset != null ? dataset.getId() : "null");
+			return false;
+		}
+		return true;
+	}
+
+	private boolean checkIfDatasetHasFile(Dataset dataset) {
+		if (dataset.getArtifact().getArtifactType() == ArtifactType.EXTERNAL) {
+//			this can not be checked at the time of writing and will be automatically allowed
+			log.info("Dataset with id: {} has external file, and validity check is skipped", dataset.getId());
+			return true;
+		}
+		// TODO: remove the filtering of datasets by files in S3, after the file upload and dataset insert are separated
+		//  (choose artifact from files list instead of uploading when making a new dataset)
+		List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
+
+		if (!files.contains(dataset.getId())) {
+			log.error("Dataset with id: {} has no file uploaded to S3", dataset.getId());
+			return false;
+		}
+		return true;
+	}
+
+	private boolean validateDistributions(Set<Distribution> distributions) {
+		if (distributions == null
+				|| distributions.isEmpty()
+				|| distributions.stream().anyMatch(
+				distribution -> distribution == null
+						|| !validateDataServices(distribution.getAccessService()))) {
+			log.error("Dataset does not contain any distributions");
+			return false;
+		}
+		return true;
+	}
+
+	private boolean validateDataServices(Set<DataService> dataServices) {
+		if (dataServices == null
+				|| dataServices.isEmpty()
+				|| dataServices.stream().anyMatch(
+                Objects::isNull)) {
+			log.error("Dataset does not contain any data services");
+			return false;
+		}
+		return true;
 	}
 }

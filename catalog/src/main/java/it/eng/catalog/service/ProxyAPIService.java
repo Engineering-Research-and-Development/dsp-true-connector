@@ -3,6 +3,7 @@ package it.eng.catalog.service;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import it.eng.catalog.model.CatalogError;
 import org.springframework.stereotype.Service;
 
 import it.eng.catalog.exceptions.CatalogErrorAPIException;
@@ -45,8 +46,10 @@ public class ProxyAPIService {
 			Catalog catalog = CatalogSerializer.deserializeProtocol(catalogResponse.getData(), Catalog.class);
 			return catalog;
 		} else {
-			log.error("Catalog response not received from  {}", forwardTo);
-			throw new CatalogErrorAPIException("Catalog response not received from  " + forwardTo);
+			CatalogError catalogError = CatalogSerializer.deserializeProtocol(catalogResponse.getData(), CatalogError.class);
+			log.error("No valid Catalog response received from  {}, : {} ", forwardTo, catalogError.getReason());
+			throw new CatalogErrorAPIException("Catalog response not received from  " + forwardTo
+					+ " : " + catalogError.getReason());
 		}
 	}
 

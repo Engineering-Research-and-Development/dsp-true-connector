@@ -3,6 +3,7 @@ package it.eng.connector.integration.catalog;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.CatalogError;
 import it.eng.catalog.model.Dataset;
+import it.eng.catalog.model.Distribution;
 import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.repository.DataServiceRepository;
 import it.eng.catalog.repository.DatasetRepository;
@@ -11,6 +12,7 @@ import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
+import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import org.junit.jupiter.api.AfterEach;
@@ -18,16 +20,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.mongodb.repository.support.SimpleMongoRepository;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -49,6 +53,9 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
     private DistributionRepository distributionRepository;
 
     @Autowired
+    private ArtifactRepository artifactRepository;
+
+    @Autowired
     private S3ClientService s3ClientService;
 
     @Autowired
@@ -56,16 +63,18 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
 
     private Catalog catalog;
     private Dataset dataset;
+//    private Artifact artifact;
 
     @BeforeEach
     public void populateCatalog() {
         catalog = CatalogMockObjectUtil.createNewCatalog();
         dataset = catalog.getDataset().stream().findFirst().get();
 
-        datasetRepository.save(dataset);
         catalogRepository.save(catalog);
+        datasetRepository.saveAll(catalog.getDataset());
         dataServiceRepository.saveAll(catalog.getService());
         distributionRepository.saveAll(catalog.getDistribution());
+        artifactRepository.save(dataset.getArtifact());
     }
 
     @AfterEach
@@ -74,6 +83,7 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
         catalogRepository.deleteAll();
         dataServiceRepository.deleteAll();
         distributionRepository.deleteAll();
+        artifactRepository.deleteAll();
     }
 
     @Test
@@ -180,6 +190,7 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
     @DisplayName("Get dataset - success")
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void getDatasetSuccessfulTest() throws Exception {
+        uploadFile();
         String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
 
         final ResultActions result =
@@ -191,8 +202,10 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
         String response = result.andReturn().getResponse().getContentAsString();
-        Dataset error = CatalogSerializer.deserializeProtocol(response, Dataset.class);
-        assertNotNull(error);
+        Dataset datasetResponse = CatalogSerializer.deserializeProtocol(response, Dataset.class);
+        assertNotNull(datasetResponse);
+
+        removeFiles();
     }
 
     @Test
@@ -239,6 +252,194 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
         assertNotNull(error);
         assertNotNull(error.getReason().stream()
                 .filter(reason -> reason.getValue().contains("Dataset with id: 1 not found"))
+                .findFirst()
+                .get());
+    }
+
+    @Test
+    @DisplayName("Get dataset - no valid dataset found")
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    public void noValidDatasetFoundTest() throws Exception {
+
+        String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
+
+        final ResultActions result =
+                mockMvc.perform(
+                        get("/catalog/datasets/" + dataset.getId())
+                                .content(body)
+                                .contentType(MediaType.APPLICATION_JSON));
+        result.andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
+        String response = result.andReturn().getResponse().getContentAsString();
+        CatalogError error = CatalogSerializer.deserializeProtocol(response, CatalogError.class);
+        assertNotNull(error);
+    }
+
+    @Test
+    @DisplayName("Get dataset - dataset with null policies")
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    public void getDatasetWithNullPoliciesTest() throws Exception {
+        // given
+        Dataset datasetNullPolicies = Dataset.Builder.newInstance()
+                .id("null-policies-dataset")
+                .hasPolicy(new HashSet<>())
+                .distribution(new HashSet<>(Arrays.asList(CatalogMockObjectUtil.DISTRIBUTION)))
+                .build();
+        datasetRepository.save(datasetNullPolicies);
+
+        String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
+
+        // when
+        final ResultActions result = mockMvc.perform(
+                get("/catalog/datasets/" + datasetNullPolicies.getId())
+                        .content(body)
+                        .contentType(MediaType.APPLICATION_JSON));
+
+        // then
+        result.andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
+        String response = result.andReturn().getResponse().getContentAsString();
+        CatalogError error = CatalogSerializer.deserializeProtocol(response, CatalogError.class);
+        assertNotNull(error);
+        assertNotNull(error.getReason().stream()
+                .filter(reason -> reason.getValue().contains("Dataset with id: " + datasetNullPolicies.getId() + " not found"))
+                .findFirst()
+                .get());
+    }
+
+    @Test
+    @DisplayName("Get dataset - dataset without distributions")
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    public void getDatasetWithoutDistributionsTest() throws Exception {
+        // given
+        Dataset datasetNoDistributions = Dataset.Builder.newInstance()
+                .id("no-distributions-dataset")
+                .hasPolicy(new HashSet<>(Arrays.asList(CatalogMockObjectUtil.OFFER)))
+                .build();
+        datasetRepository.save(datasetNoDistributions);
+
+        String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
+
+        // when
+        final ResultActions result = mockMvc.perform(
+                get("/catalog/datasets/" + datasetNoDistributions.getId())
+                        .content(body)
+                        .contentType(MediaType.APPLICATION_JSON));
+
+        // then
+        result.andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
+        String response = result.andReturn().getResponse().getContentAsString();
+        CatalogError error = CatalogSerializer.deserializeProtocol(response, CatalogError.class);
+        assertNotNull(error);
+        assertNotNull(error.getReason().stream()
+                .filter(reason -> reason.getValue().contains("Dataset with id: " + datasetNoDistributions.getId() + " not found"))
+                .findFirst()
+                .get());
+    }
+
+    @Test
+    @DisplayName("Get dataset - dataset with null distributions")
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    public void getDatasetWithNullDistributionsTest() throws Exception {
+        // given
+        Dataset datasetNullDistributions = Dataset.Builder.newInstance()
+                .id("null-distributions-dataset")
+                .hasPolicy(new HashSet<>(Arrays.asList(CatalogMockObjectUtil.OFFER)))
+                .distribution(new HashSet<>())
+                .build();
+        datasetRepository.save(datasetNullDistributions);
+
+        String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
+
+        // when
+        final ResultActions result = mockMvc.perform(
+                get("/catalog/datasets/" + datasetNullDistributions.getId())
+                        .content(body)
+                        .contentType(MediaType.APPLICATION_JSON));
+
+        // then
+        result.andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
+        String response = result.andReturn().getResponse().getContentAsString();
+        CatalogError error = CatalogSerializer.deserializeProtocol(response, CatalogError.class);
+        assertNotNull(error);
+        assertNotNull(error.getReason().stream()
+                .filter(reason -> reason.getValue().contains("Dataset with id: " + datasetNullDistributions.getId() + " not found"))
+                .findFirst()
+                .get());
+    }
+
+    @Test
+    @DisplayName("Get dataset - dataset with null data services")
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    public void getDatasetWithNullDataServicesTest() throws Exception {
+        // given
+        Distribution distributionNullServices = Distribution.Builder.newInstance()
+                .accessService(new HashSet<>())
+                .build();
+        Dataset datasetNullServices = Dataset.Builder.newInstance()
+                .id("null-services-dataset")
+                .hasPolicy(new HashSet<>(Arrays.asList(CatalogMockObjectUtil.OFFER)))
+                .distribution(new HashSet<>(Arrays.asList(distributionNullServices)))
+                .build();
+        datasetRepository.save(datasetNullServices);
+
+        String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
+
+        // when
+        final ResultActions result = mockMvc.perform(
+                get("/catalog/datasets/" + datasetNullServices.getId())
+                        .content(body)
+                        .contentType(MediaType.APPLICATION_JSON));
+
+        // then
+        result.andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
+        String response = result.andReturn().getResponse().getContentAsString();
+        CatalogError error = CatalogSerializer.deserializeProtocol(response, CatalogError.class);
+        assertNotNull(error);
+        assertNotNull(error.getReason().stream()
+                .filter(reason -> reason.getValue().contains("Dataset with id: " + datasetNullServices.getId() + " not found"))
+                .findFirst()
+                .get());
+    }
+
+    @Test
+    @DisplayName("Get dataset - dataset without file in S3")
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    public void getDatasetWithoutFileInS3Test() throws Exception {
+        // given
+        Dataset datasetNoFile = Dataset.Builder.newInstance()
+                .id("no-file-dataset")
+                .hasPolicy(new HashSet<>(Arrays.asList(CatalogMockObjectUtil.OFFER)))
+                .distribution(new HashSet<>(Arrays.asList(CatalogMockObjectUtil.DISTRIBUTION)))
+                .artifact(CatalogMockObjectUtil.ARTIFACT_FILE)  // Using local artifact type
+                .build();
+        datasetRepository.save(datasetNoFile);
+
+        String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
+
+        // when
+        final ResultActions result = mockMvc.perform(
+                get("/catalog/datasets/" + datasetNoFile.getId())
+                        .content(body)
+                        .contentType(MediaType.APPLICATION_JSON));
+
+        // then
+        result.andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
+        String response = result.andReturn().getResponse().getContentAsString();
+        CatalogError error = CatalogSerializer.deserializeProtocol(response, CatalogError.class);
+        assertNotNull(error);
+        assertNotNull(error.getReason().stream()
+                .filter(reason -> reason.getValue().contains("Dataset with id: " + datasetNoFile.getId() + " not found"))
                 .findFirst()
                 .get());
     }

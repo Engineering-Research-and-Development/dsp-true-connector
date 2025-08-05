@@ -8,6 +8,9 @@ import it.eng.catalog.model.Dataset;
 import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.model.Artifact;
+import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.service.AuditEventPublisher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,6 +42,15 @@ public class DatasetServiceTest {
     @Mock
     private ArtifactService artifactService;
 
+    @Mock
+    private S3Properties s3Properties;
+
+    @Mock
+    private S3ClientService s3ClientService;
+
+    @Mock
+    private AuditEventPublisher auditEventPublisher;
+
     @Captor
     private ArgumentCaptor<Dataset> argCaptorDataset;
 
@@ -57,12 +69,18 @@ public class DatasetServiceTest {
     @Test
     @DisplayName("Get dataset by id - success")
     public void getDatasetById_success() {
-        when(repository.findById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId())).thenReturn(Optional.of(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT));
+        String bucketName = "test-bucket";
+        when(s3Properties.getBucketName()).thenReturn(bucketName);
+        when(s3ClientService.listFiles(bucketName))
+                .thenReturn(List.of(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId()));
+        when(repository.findById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId()))
+                .thenReturn(Optional.of(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT));
 
         Dataset result = datasetService.getDatasetById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
 
         assertEquals(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), result.getId());
         verify(repository).findById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
+        verify(s3ClientService).listFiles(bucketName);
     }
 
     @Test

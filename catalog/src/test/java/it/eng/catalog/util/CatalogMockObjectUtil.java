@@ -6,6 +6,8 @@ import it.eng.catalog.model.*;
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
+import it.eng.tools.util.ToolsUtil;
+import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
 import org.springframework.http.MediaType;
 
@@ -235,10 +237,13 @@ public class CatalogMockObjectUtil {
      * @return A new Catalog instance.
      */
     public static Catalog createNewCatalog() {
+//        the Dataset has all the necessary data, and with this we unsure that all nested fields are the same, with createNewMethods some fields would not match
+//        e.g. catalog.getDistribution and catalog.getDataset.getDistribution are equal since the same Distribution is set in both places
+        Dataset dataset = createNewDataset();
         return Catalog.Builder.newInstance()
                 .conformsTo(CONFORMSTO)
                 .creator(CREATOR)
-                .description(new HashSet<>(Collections.singletonList(createNewMultilanguage())))
+                .description(dataset.getDescription())
                 .identifier(IDENTIFIER)
                 .issued(ISSUED)
                 .keyword(new HashSet<>(Arrays.asList("keyword1", "keyword2")))
@@ -246,10 +251,10 @@ public class CatalogMockObjectUtil {
                 .theme(new HashSet<>(Arrays.asList("white", "blue", "aqua")))
                 .title(TITLE)
                 .participantId("urn:example:DataProviderA")
-                .service(new HashSet<>(Collections.singletonList(createNewDataService())))
-                .dataset(new HashSet<>(Collections.singletonList(createNewDataset())))
-                .distribution(new HashSet<>(Collections.singletonList(createNewDistribution())))
-                .hasPolicy(new HashSet<>(Collections.singletonList(createNewOffer())))
+                .service(dataset.getDistribution().stream().findFirst().get().getAccessService())
+                .dataset(new HashSet<>(Collections.singletonList(dataset)))
+                .distribution(dataset.getDistribution())
+                .hasPolicy(dataset.getHasPolicy())
                 .homepage(ENDPOINT_URL)
                 .build();
     }
@@ -384,11 +389,13 @@ public class CatalogMockObjectUtil {
      * @return A new Dataset instance.
      */
     public static final Dataset createNewDataset() {
+        String datasetId = ToolsUtil.generateUniqueId();
         return Dataset.Builder.newInstance()
+                .id(datasetId)
                 .conformsTo(CONFORMSTO)
                 .creator(CREATOR)
                 .distribution(Arrays.asList(createNewDistribution()).stream().collect(Collectors.toCollection(HashSet::new)))
-                .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
+                .description(Arrays.asList(createNewMultilanguage()).stream().collect(Collectors.toCollection(HashSet::new)))
                 .issued(ISSUED)
                 .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
                 .identifier(IDENTIFIER)
@@ -396,6 +403,26 @@ public class CatalogMockObjectUtil {
                 .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
                 .title(TITLE)
                 .hasPolicy(Arrays.asList(createNewOffer()).stream().collect(Collectors.toCollection(HashSet::new)))
+                .artifact(createNewArtifact(datasetId))
+                .build();
+    }
+
+    /**
+     * Creates a new Artifact instance.
+     *
+     * @param datasetId The ID of the dataset associated with the artifact.
+     * @return A new Artifact instance.
+     */
+    private static Artifact createNewArtifact(String datasetId) {
+        return Artifact.Builder.newInstance()
+                .artifactType(ArtifactType.FILE)
+                .contentType(MediaType.APPLICATION_JSON.getType())
+                .createdBy(CREATOR)
+                .created(NOW)
+                .lastModifiedDate(NOW)
+                .filename("Employees.txt")
+                .lastModifiedBy(CREATOR)
+                .value(StringUtils.isNotBlank(datasetId) ? datasetId :DATASET_ID)
                 .build();
     }
 

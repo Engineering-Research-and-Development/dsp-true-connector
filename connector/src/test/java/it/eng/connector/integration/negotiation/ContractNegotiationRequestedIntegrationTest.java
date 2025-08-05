@@ -11,6 +11,7 @@ import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.negotiation.model.*;
 import it.eng.negotiation.serializer.NegotiationSerializer;
+import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.repository.BucketCredentialsRepository;
 import it.eng.tools.s3.service.S3ClientService;
@@ -46,6 +47,8 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
     @Autowired
     private DistributionRepository distributionRepository;
     @Autowired
+    private ArtifactRepository artifactRepository;
+    @Autowired
     private BucketCredentialsRepository bucketCredentialsRepository;
     @Autowired
     private S3ClientService s3ClientService;
@@ -60,10 +63,11 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
         catalog = CatalogMockObjectUtil.createNewCatalog();
         dataset = catalog.getDataset().stream().findFirst().get();
 
-        datasetRepository.save(dataset);
         catalogRepository.save(catalog);
+        datasetRepository.saveAll(catalog.getDataset());
         dataServiceRepository.saveAll(catalog.getService());
         distributionRepository.saveAll(catalog.getDistribution());
+        artifactRepository.save(dataset.getArtifact());
     }
 
     @AfterEach
@@ -72,6 +76,7 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
         catalogRepository.deleteAll();
         dataServiceRepository.deleteAll();
         distributionRepository.deleteAll();
+        artifactRepository.deleteAll();
     }
 
     @Test
