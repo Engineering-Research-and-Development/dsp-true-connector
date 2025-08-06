@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Created validateProtocol methods for Catalog model classes
 - Added additional checks for Catalog protocol endpoint to ensure that all required properties are set
 
 ## [0.4.10-SNAPSHOT] - 29.07.2025.

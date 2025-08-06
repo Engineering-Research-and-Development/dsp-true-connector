@@ -1,29 +1,9 @@
 package it.eng.catalog.model;
 
-import java.io.Serializable;
-import java.time.Instant;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import org.springframework.data.annotation.CreatedBy;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.LastModifiedBy;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.annotation.Version;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.*;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -31,6 +11,15 @@ import jakarta.validation.ValidationException;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.*;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
+import java.io.Serializable;
+import java.time.Instant;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -39,9 +28,9 @@ import lombok.NoArgsConstructor;
 @Document(collection = "dataservices")
 public class DataService implements Serializable {
 
-	private static final long serialVersionUID = -7490596351222880611L;
+    private static final long serialVersionUID = -7490596351222880611L;
 
-	@JsonProperty(DSpaceConstants.ID)
+    @JsonProperty(DSpaceConstants.ID)
     @Id
     private String id;
     // Resource
@@ -65,12 +54,12 @@ public class DataService implements Serializable {
     private Instant modified;
     @JsonProperty(DSpaceConstants.DCT_TITLE)
     private String title;
-    
+
     @JsonProperty(DSpaceConstants.DCAT_ENDPOINT_DESCRIPTION)
     private String endpointDescription;
     @JsonProperty(DSpaceConstants.DCAT_ENDPOINT_URL)
     private String endpointURL;
-    
+
     @JsonIgnore
     @CreatedBy
     private String createdBy;
@@ -207,28 +196,35 @@ public class DataService implements Serializable {
     public String getType() {
         return DSpaceConstants.DCAT + DataService.class.getSimpleName();
     }
-    
+
     /**
      * Create new updated instance with new values from passed DataService parameter.<br>
      * If fields are not present in updatedDataService, existing values will remain
+     *
      * @param updatedDataService
      * @return new updated dataService instance
      */
     public DataService updateInstance(DataService updatedDataService) {
-		return DataService.Builder.newInstance()
-         .id(this.id)
-         .version(this.version)
-         .issued(this.issued)
-         .createdBy(this.createdBy)
-         .keyword(updatedDataService.getKeyword() != null ? updatedDataService.getKeyword() : this.keyword)
-         .theme(updatedDataService.getTheme() != null ? updatedDataService.getTheme() : this.theme)
-         .conformsTo(updatedDataService.getConformsTo() != null ? updatedDataService.getConformsTo() : this.conformsTo)
-         .creator(updatedDataService.getCreator() != null ? updatedDataService.getCreator() : this.creator)
-         .description(updatedDataService.getDescription() != null ? updatedDataService.getDescription() : this.description)
-         .identifier(updatedDataService.getIdentifier() != null ? updatedDataService.getIdentifier() : this.identifier)
-         .title(updatedDataService.getTitle() != null ? updatedDataService.getTitle() : this.title)
-         .endpointDescription(updatedDataService.getEndpointDescription() != null ? updatedDataService.getEndpointDescription() : this.endpointDescription)
-         .endpointURL(updatedDataService.getEndpointURL() != null ? updatedDataService.getEndpointURL() : this.endpointURL)
-         .build();
-  }
+        return DataService.Builder.newInstance()
+                .id(this.id)
+                .version(this.version)
+                .issued(this.issued)
+                .createdBy(this.createdBy)
+                .keyword(updatedDataService.getKeyword() != null ? updatedDataService.getKeyword() : this.keyword)
+                .theme(updatedDataService.getTheme() != null ? updatedDataService.getTheme() : this.theme)
+                .conformsTo(updatedDataService.getConformsTo() != null ? updatedDataService.getConformsTo() : this.conformsTo)
+                .creator(updatedDataService.getCreator() != null ? updatedDataService.getCreator() : this.creator)
+                .description(updatedDataService.getDescription() != null ? updatedDataService.getDescription() : this.description)
+                .identifier(updatedDataService.getIdentifier() != null ? updatedDataService.getIdentifier() : this.identifier)
+                .title(updatedDataService.getTitle() != null ? updatedDataService.getTitle() : this.title)
+                .endpointDescription(updatedDataService.getEndpointDescription() != null ? updatedDataService.getEndpointDescription() : this.endpointDescription)
+                .endpointURL(updatedDataService.getEndpointURL() != null ? updatedDataService.getEndpointURL() : this.endpointURL)
+                .build();
+    }
+
+    public void validateProtocol() {
+        if (this.id == null && this.endpointURL == null) {
+            throw new ValidationException("DataService not valid according to protocol");
+        }
+    }
 }

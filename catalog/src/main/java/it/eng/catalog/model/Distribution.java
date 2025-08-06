@@ -1,32 +1,10 @@
-
 package it.eng.catalog.model;
 
-import java.io.Serializable;
-import java.time.Instant;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import org.springframework.data.annotation.CreatedBy;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.LastModifiedBy;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.annotation.Version;
-import org.springframework.data.mongodb.core.mapping.DBRef;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.*;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -35,6 +13,17 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.*;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
+import java.io.Serializable;
+import java.time.Instant;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -44,9 +33,9 @@ import lombok.NoArgsConstructor;
 @Document(collection = "distributions")
 public class Distribution implements Serializable {
 
-	private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
-	@Id
+    @Id
     @JsonProperty(DSpaceConstants.ID)
     private String id;
 
@@ -60,12 +49,12 @@ public class Distribution implements Serializable {
     @JsonProperty(DSpaceConstants.DCT_MODIFIED)
     @LastModifiedDate
     private Instant modified;
-    
+
     @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
     private Set<Offer> hasPolicy;
 
-	@JsonProperty(DSpaceConstants.DCT_FORMAT)
-	private Reference format;
+    @JsonProperty(DSpaceConstants.DCT_FORMAT)
+    private Reference format;
 
     @JsonIgnore
     @CreatedBy
@@ -135,12 +124,12 @@ public class Distribution implements Serializable {
             return this;
         }
 
-		@JsonProperty(DSpaceConstants.DCT_FORMAT)
-		@JsonDeserialize(as = Reference.class)
-		public Builder format(Reference format) {
-			distribution.format = format;
-			return this;
-		}
+        @JsonProperty(DSpaceConstants.DCT_FORMAT)
+        @JsonDeserialize(as = Reference.class)
+        public Builder format(Reference format) {
+            distribution.format = format;
+            return this;
+        }
 
         @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
         @JsonDeserialize(as = Set.class)
@@ -189,26 +178,48 @@ public class Distribution implements Serializable {
     public String getType() {
         return DSpaceConstants.DSPACE + Distribution.class.getSimpleName();
     }
-    
+
     /**
      * Create new updated instance with new values from passed Distribution parameter.<br>
      * If fields are not present in updatedDistribution, existing values will remain
+     *
      * @param updatedDistribution
      * @return new updated distribution instance
      */
     public Distribution updateInstance(Distribution updatedDistribution) {
         return Distribution.Builder.newInstance()
-        		.id(this.id)
-        		.version(this.version)
-        		.issued(this.issued)
-        		.createdBy(this.createdBy)
-        		.modified(updatedDistribution.getModified() != null ? updatedDistribution.getModified() : this.modified)
-        		.title(updatedDistribution.getTitle() != null ? updatedDistribution.getTitle() : this.title)
-        		.description(updatedDistribution.getDescription() != null ? updatedDistribution.getDescription() : this.description)
-        		.accessService(updatedDistribution.getAccessService() != null ? updatedDistribution.getAccessService() : this.accessService)
-        		.hasPolicy(updatedDistribution.getHasPolicy() != null ? updatedDistribution.getHasPolicy() : this.hasPolicy)
-        		.format(updatedDistribution.getFormat() != null ? updatedDistribution.getFormat() : this.format)
-        		.build();
+                .id(this.id)
+                .version(this.version)
+                .issued(this.issued)
+                .createdBy(this.createdBy)
+                .modified(updatedDistribution.getModified() != null ? updatedDistribution.getModified() : this.modified)
+                .title(updatedDistribution.getTitle() != null ? updatedDistribution.getTitle() : this.title)
+                .description(updatedDistribution.getDescription() != null ? updatedDistribution.getDescription() : this.description)
+                .accessService(updatedDistribution.getAccessService() != null ? updatedDistribution.getAccessService() : this.accessService)
+                .hasPolicy(updatedDistribution.getHasPolicy() != null ? updatedDistribution.getHasPolicy() : this.hasPolicy)
+                .format(updatedDistribution.getFormat() != null ? updatedDistribution.getFormat() : this.format)
+                .build();
 
+    }
+
+    public void validateProtocol() {
+        // Validate accessService collection
+        if (this.getAccessService() == null || this.getAccessService().isEmpty()) {
+            throw new ValidationException("Distribution must have at least one accessService");
+        }
+
+        // Check if there's at least one non-null accessService
+        if (this.getAccessService().stream().noneMatch(Objects::nonNull)) {
+            throw new ValidationException("Distribution must have at least one non-null accessService");
+        }
+
+        // Validate each offer in hasPolicy
+        for (DataService dataService : this.getAccessService()) {
+            try {
+                dataService.validateProtocol();
+            } catch (ValidationException e) {
+                throw new ValidationException("Invalid DataService in Distribution: " + e.getMessage());
+            }
+        }
     }
 }

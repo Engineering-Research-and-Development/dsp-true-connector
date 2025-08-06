@@ -14,13 +14,13 @@ import it.eng.tools.model.IConstants;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.service.AuditEventPublisher;
+import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * The CatalogService class provides methods to interact with catalog data, including saving, retrieving, and deleting catalogs.
@@ -28,6 +28,8 @@ import java.util.Set;
 @Service
 @Slf4j
 public class CatalogService {
+
+    private static final String ERROR_MESSAGE_CATALOG_NOT_AVAILABLE = "Catalog not available at the moment";
 
     private final CatalogRepository repository;
     private final AuditEventPublisher publisher;
@@ -62,12 +64,22 @@ public class CatalogService {
                 dataset -> dataset.getArtifact().getArtifactType() == ArtifactType.FILE
                         && !files.contains(dataset.getId())));
 
-        validateCatalog(allCatalogs);
+        try {
+            validateCatalog(allCatalogs);
+        } catch (ValidationException e) {
+            log.error("Catalog failed on protocol validation: {}", e.getMessage());
+            publisher.publishEvent(AuditEventType.PROTOCOL_CATALOG_CATALOG_NOT_FOUND,
+                    "Catalog protocol validation failed",
+                    Map.of("role", IConstants.ROLE_PROTOCOL,
+                            "errorMessage", e.getMessage()));
+            throw new CatalogErrorException(ERROR_MESSAGE_CATALOG_NOT_AVAILABLE);
 
+        }
         return allCatalogs.get(0);
     }
 
     /* ******** API ***********/
+
     /**
      * Public method for fetching the catalog for further API processing purposes.<br>
      * It throws ResourceNotFoundAPIException instead of CatalogErrorException used in protocol requests
@@ -269,57 +281,15 @@ public class CatalogService {
     }
 
     private void validateCatalog(List<Catalog> allCatalogs) {
-        if (allCatalogs == null
-                || allCatalogs.isEmpty()
-                || allCatalogs.get(0) == null
-                || !validateDataServices(allCatalogs.get(0).getService())
-                || !validateDatasets(allCatalogs.get(0).getDataset())
-                || !validateDistributions(allCatalogs.get(0).getDistribution())) {
-            log.error("Catalog is empty or not complete");
-            String errorMessage = "Catalog not available at the moment";
-            publisher.publishEvent(AuditEventType.PROTOCOL_CATALOG_CATALOG_NOT_FOUND,
-                    "Catalog is empty or not complete",
-                    Map.of("role", IConstants.ROLE_PROTOCOL,
-                            "errorMessage", errorMessage));
-            throw new CatalogErrorException(errorMessage);
+        // Validate catalog collection
+        if (allCatalogs == null || allCatalogs.isEmpty()) {
+            throw new ValidationException("Catalog must have at least one element");
         }
-    }
+        // Check if there's at least one non-null dataset
+        if (allCatalogs.stream().noneMatch(Objects::nonNull)) {
+            throw new ValidationException("Catalog must have at least one non-null element");
+        }
 
-    private boolean validateDataServices(Set<DataService> dataServices) {
-        if (dataServices == null
-                || dataServices.isEmpty()
-                || dataServices.stream().anyMatch(
-                Objects::isNull)) {
-            log.error("Catalog does not contain any data services");
-            return false;
-        }
-        return true;
-    }
-
-    private boolean validateDistributions(Set<Distribution> distributions) {
-        if (distributions == null
-                || distributions.isEmpty()
-                || distributions.stream().anyMatch(
-                        distribution -> distribution == null
-                                || !validateDataServices(distribution.getAccessService()))) {
-            log.error("Catalog does not contain any distributions");
-            return false;
-        }
-        return true;
-    }
-
-    private boolean validateDatasets(Set<Dataset> datasets) {
-        if(datasets == null
-                || datasets.isEmpty()
-                || datasets.stream().anyMatch(
-                        dataset -> dataset == null
-                                || dataset.getHasPolicy() == null
-                                || dataset.getHasPolicy().isEmpty()
-                                || dataset.getHasPolicy().stream().anyMatch(Objects::isNull)
-                                || !validateDistributions(dataset.getDistribution()))) {
-            log.error("Catalog does not contain any datasets");
-            return false;
-        }
-        return true;
+        allCatalogs.forEach(Catalog::validateProtocol);
     }
 }
