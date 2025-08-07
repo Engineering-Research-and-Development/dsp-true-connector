@@ -222,7 +222,7 @@ public class Dataset extends AbstractCatalogObject {
      * Create new updated instance with new values from passed Dataset parameter.<br>
      * If fields are not present in updatedDataset, existing values will remain
      *
-     * @param updatedDataset
+     * @param updatedDataset the dataset with updated values
      * @return new updated dataset instance
      */
     public Dataset updateInstance(Dataset updatedDataset) {
@@ -245,41 +245,42 @@ public class Dataset extends AbstractCatalogObject {
     }
 
     public void validateProtocol() {
-        // Validate hasPolicy collection
+        // Validate hasPolicy - Offer collection
         if (this.getHasPolicy() == null || this.getHasPolicy().isEmpty()) {
-            throw new ValidationException("Dataset must have at least one policy");
+            throw new ValidationException("Dataset must have at least one Offer");
         }
 
-        // Check if there's at least one non-null policy
+        // Check if there's at least one non-null Offer
         if (this.getHasPolicy().stream().noneMatch(Objects::nonNull)) {
-            throw new ValidationException("Dataset must have at least one non-null policy");
+            throw new ValidationException("Dataset must have at least one non-null Offer");
         }
 
-        // Validate each offer in hasPolicy
+        // Validate each Offer in hasPolicy
         for (Offer offer : this.getHasPolicy()) {
             try {
                 offer.validateProtocol();
             } catch (ValidationException e) {
-                throw new ValidationException("Invalid policy in Dataset: " + e.getMessage());
+                throw new ValidationException("Invalid Offer in Dataset: " + e.getMessage());
             }
         }
 
+        // Validate Distribution collection
         if (this.getDistribution() == null || this.getDistribution().isEmpty()) {
-            throw new ValidationException("Dataset must have at least one distribution");
+            throw new ValidationException("Dataset must have at least one Distribution");
         }
 
-        // Check if there's at least one non-null policy
+        // Check if there's at least one non-null Distribution
         if (this.getDistribution().stream().noneMatch(Objects::nonNull)) {
-            throw new ValidationException("Dataset must have at least one non-null distribution");
+            throw new ValidationException("Dataset must have at least one non-null Distribution");
         }
 
-        // Validate distribution collection if it exists
+        // Validate Distribution collection if it exists
         for (Distribution distribution : this.getDistribution()) {
             if (distribution != null) {
                 try {
                     distribution.validateProtocol();
                 } catch (ValidationException e) {
-                    throw new ValidationException("Invalid distribution in Dataset: " + e.getMessage());
+                    throw new ValidationException("Invalid Distribution in Dataset: " + e.getMessage());
                 }
             }
         }

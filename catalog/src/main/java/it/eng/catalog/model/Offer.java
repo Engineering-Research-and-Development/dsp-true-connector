@@ -148,21 +148,22 @@ public class Offer implements Serializable {
     }
 
     public void validateProtocol() {
+        // Validate Permissions collection
         if (this.getPermission() == null || this.getPermission().isEmpty()) {
-            throw new ValidationException("Offer must have at least one permission defined");
+            throw new ValidationException("Offer must have at least one Permission defined");
         }
 
         // Check if there's at least one non-null accessService
         if (this.getPermission().stream().noneMatch(Objects::nonNull)) {
-            throw new ValidationException("Offer must have at least one non-null permission");
+            throw new ValidationException("Offer must have at least one non-null Permission");
         }
 
-        // Validate each offer in hasPolicy
+        // Validate each Permission in collection
         for (Permission permission : this.getPermission()) {
             try {
                 permission.validateProtocol();
             } catch (ValidationException e) {
-                throw new ValidationException("Invalid DataService in Distribution: " + e.getMessage());
+                throw new ValidationException("Invalid Permission in Offer: " + e.getMessage());
             }
         }
     }

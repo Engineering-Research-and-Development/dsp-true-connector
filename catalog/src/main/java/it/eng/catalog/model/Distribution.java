@@ -203,22 +203,22 @@ public class Distribution implements Serializable {
     }
 
     public void validateProtocol() {
-        // Validate accessService collection
+        // Validate AccessService collection
         if (this.getAccessService() == null || this.getAccessService().isEmpty()) {
-            throw new ValidationException("Distribution must have at least one accessService");
+            throw new ValidationException("Distribution must have at least one AccessService");
         }
 
-        // Check if there's at least one non-null accessService
+        // Check if there's at least one non-null AccessService
         if (this.getAccessService().stream().noneMatch(Objects::nonNull)) {
-            throw new ValidationException("Distribution must have at least one non-null accessService");
+            throw new ValidationException("Distribution must have at least one non-null AccessService");
         }
 
-        // Validate each offer in hasPolicy
+        // Validate each AccessService in collection
         for (DataService dataService : this.getAccessService()) {
             try {
                 dataService.validateProtocol();
             } catch (ValidationException e) {
-                throw new ValidationException("Invalid DataService in Distribution: " + e.getMessage());
+                throw new ValidationException("Invalid AccessService in Distribution: " + e.getMessage());
             }
         }
     }

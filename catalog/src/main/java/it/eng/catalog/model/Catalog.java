@@ -258,7 +258,7 @@ public class Catalog extends AbstractCatalogObject {
      * Create new updated instance with new values from passed Catalog parameter.<br>
      * If fields are not present in updatedCatalogData, existing values will remain
      *
-     * @param updatedCatalogData
+     * @param updatedCatalogData catalog for updating with new values
      * @return New catalog instance with updated values
      */
     public Catalog updateInstance(Catalog updatedCatalogData) {
@@ -291,33 +291,33 @@ public class Catalog extends AbstractCatalogObject {
     }
 
     private void validateDatasets() {
-        // Validate dataset collection
+        // Validate Dataset collection
         if (this.getDataset() == null || this.getDataset().isEmpty()) {
-            throw new ValidationException("Catalog must have at least one dataset");
+            throw new ValidationException("Catalog must have at least one Dataset");
         }
         // Check if there's at least one non-null dataset
         if (this.getDataset().stream().noneMatch(Objects::nonNull)) {
-            throw new ValidationException("Catalog must have at least one non-null dataset");
+            throw new ValidationException("Catalog must have at least one non-null Dataset");
         }
 
-        // Validate each Dataset in hasPolicy
+        // Validate each Dataset in Catalog
         for (Dataset dataset : this.getDataset()) {
             try {
                 dataset.validateProtocol();
             } catch (ValidationException e) {
-                throw new ValidationException("Invalid Dataset in catalog: " + e.getMessage());
+                throw new ValidationException("Invalid Dataset in Catalog: " + e.getMessage());
             }
         }
     }
 
     private void validateDistribution() {
-        // Validate distribution collection
+        // Validate Distribution collection
         if (this.getDistribution() == null || this.getDistribution().isEmpty()) {
-            throw new ValidationException("Catalog must have at least one distribution");
+            throw new ValidationException("Catalog must have at least one Distribution");
         }
-        // Check if there's at least one non-null distribution
+        // Check if there's at least one non-null Distribution
         if (this.getDistribution().stream().noneMatch(Objects::nonNull)) {
-            throw new ValidationException("Catalog must have at least one non-null distribution");
+            throw new ValidationException("Catalog must have at least one non-null Distribution");
         }
 
         // Validate each Distribution in Catalog
@@ -325,27 +325,27 @@ public class Catalog extends AbstractCatalogObject {
             try {
                 distribution.validateProtocol();
             } catch (ValidationException e) {
-                throw new ValidationException("Invalid Distribution in catalog: " + e.getMessage());
+                throw new ValidationException("Invalid Distribution in Catalog: " + e.getMessage());
             }
         }
     }
 
     private void validateDataService() {
-        // Validate data service collection
+        // Validate DataService collection
         if (this.getService() == null || this.getService().isEmpty()) {
-            throw new ValidationException("Catalog must have at least one data service");
+            throw new ValidationException("Catalog must have at least one DataService");
         }
-        // Check if there's at least one non-null data service
+        // Check if there's at least one non-null DataService
         if (this.getService().stream().noneMatch(Objects::nonNull)) {
-            throw new ValidationException("Catalog must have at least one non-null data service");
+            throw new ValidationException("Catalog must have at least one non-null DataService");
         }
 
-        // Validate each Distribution in Catalog
+        // Validate each DataService in Catalog
         for (DataService dataService : this.getService()) {
             try {
                 dataService.validateProtocol();
             } catch (ValidationException e) {
-                throw new ValidationException("Invalid data service in catalog: " + e.getMessage());
+                throw new ValidationException("Invalid DataService in Catalog: " + e.getMessage());
             }
         }
     }

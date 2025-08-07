@@ -283,11 +283,11 @@ public class CatalogService {
     private void validateCatalog(List<Catalog> allCatalogs) {
         // Validate catalog collection
         if (allCatalogs == null || allCatalogs.isEmpty()) {
-            throw new ValidationException("Catalog must have at least one element");
+            throw new ValidationException("Catalog not found");
         }
         // Check if there's at least one non-null dataset
         if (allCatalogs.stream().noneMatch(Objects::nonNull)) {
-            throw new ValidationException("Catalog must have at least one non-null element");
+            throw new ValidationException("Catalog not found");
         }
 
         allCatalogs.forEach(Catalog::validateProtocol);

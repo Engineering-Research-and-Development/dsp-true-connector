@@ -223,7 +223,7 @@ public class DataService implements Serializable {
     }
 
     public void validateProtocol() {
-        if (this.id == null && this.endpointURL == null) {
+        if (this.endpointURL == null) {
             throw new ValidationException("DataService not valid according to protocol");
         }
     }
