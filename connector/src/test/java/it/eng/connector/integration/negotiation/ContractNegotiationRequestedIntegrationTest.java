@@ -3,12 +3,15 @@ package it.eng.connector.integration.negotiation;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.repository.CatalogRepository;
+import it.eng.catalog.repository.DataServiceRepository;
 import it.eng.catalog.repository.DatasetRepository;
+import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.negotiation.model.*;
 import it.eng.negotiation.serializer.NegotiationSerializer;
+import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.repository.BucketCredentialsRepository;
 import it.eng.tools.s3.service.S3ClientService;
@@ -40,6 +43,12 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
     @Autowired
     private DatasetRepository datasetRepository;
     @Autowired
+    private DataServiceRepository dataServiceRepository;
+    @Autowired
+    private DistributionRepository distributionRepository;
+    @Autowired
+    private ArtifactRepository artifactRepository;
+    @Autowired
     private BucketCredentialsRepository bucketCredentialsRepository;
     @Autowired
     private S3ClientService s3ClientService;
@@ -51,21 +60,23 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
 
     @BeforeEach
     public void populateCatalog() {
-        dataset = Dataset.Builder.newInstance()
-                .hasPolicy(Collections.singleton(CatalogMockObjectUtil.OFFER))
-                .build();
-        catalog = Catalog.Builder.newInstance()
-                .dataset(Collections.singleton(dataset))
-                .build();
+        catalog = CatalogMockObjectUtil.createNewCatalog();
+        dataset = catalog.getDataset().stream().findFirst().get();
 
-        datasetRepository.save(dataset);
         catalogRepository.save(catalog);
+        datasetRepository.saveAll(catalog.getDataset());
+        dataServiceRepository.saveAll(catalog.getService());
+        distributionRepository.saveAll(catalog.getDistribution());
+        artifactRepository.save(dataset.getArtifact());
     }
 
     @AfterEach
     public void cleanup() {
         datasetRepository.deleteAll();
         catalogRepository.deleteAll();
+        dataServiceRepository.deleteAll();
+        distributionRepository.deleteAll();
+        artifactRepository.deleteAll();
     }
 
     @Test
@@ -125,7 +136,7 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
         assertEquals(ContractNegotiationState.REQUESTED, contractNegotiationRequested.getState());
 
         offerCheck(getContractNegotiationOverAPI(contractNegotiationRequested.getConsumerPid(),
-                contractNegotiationRequested.getProviderPid()), CatalogMockObjectUtil.OFFER.getId());
+                contractNegotiationRequested.getProviderPid()), dataset.getHasPolicy().stream().findFirst().get().getId());
     }
 
     @Test

@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-import java.util.Arrays;
+import java.util.Collections;
 
 @RestControllerAdvice(basePackageClasses = CatalogController.class)
 public class CatalogExceptionAdvice extends ResponseEntityExceptionHandler {
@@ -22,7 +22,7 @@ public class CatalogExceptionAdvice extends ResponseEntityExceptionHandler {
     protected ResponseEntity<Object> handleCatalogErrorException(CatalogErrorException ex, WebRequest request) {
         CatalogError catalogError = CatalogError.Builder.newInstance()
                 .code(HttpStatus.NOT_FOUND.getReasonPhrase())
-                .reason(Arrays.asList(Reason.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()))
+                .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()))
                 .build();
 
         return handleExceptionInternal(ex, CatalogSerializer.serializeProtocolJsonNode(catalogError), new HttpHeaders(), HttpStatus.NOT_FOUND, request);
@@ -32,7 +32,7 @@ public class CatalogExceptionAdvice extends ResponseEntityExceptionHandler {
     protected ResponseEntity<Object> handleValidationException(ValidationException ex, WebRequest request) {
         CatalogError catalogError = CatalogError.Builder.newInstance()
                 .code(HttpStatus.BAD_REQUEST.getReasonPhrase())
-                .reason(Arrays.asList(Reason.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()))
+                .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()))
                 .build();
 
         return handleExceptionInternal(ex, CatalogSerializer.serializeProtocolJsonNode(catalogError), new HttpHeaders(), HttpStatus.BAD_REQUEST, request);

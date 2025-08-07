@@ -1,19 +1,5 @@
 package it.eng.catalog.model;
 
-import java.time.Instant;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import org.springframework.data.annotation.CreatedBy;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.LastModifiedBy;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.annotation.Version;
-import org.springframework.data.mongodb.core.mapping.DBRef;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -21,7 +7,6 @@ import com.fasterxml.jackson.annotation.JsonProperty.Access;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -29,6 +14,15 @@ import jakarta.validation.ValidationException;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.*;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
+import java.time.Instant;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 
 @Getter
@@ -40,9 +34,9 @@ import lombok.NoArgsConstructor;
 @Document(collection = "catalogs")
 public class Catalog extends AbstractCatalogObject {
 
-	private static final long serialVersionUID = -7550855731500209188L;
+    private static final long serialVersionUID = -7550855731500209188L;
 
-	@JsonProperty(DSpaceConstants.ID)
+    @JsonProperty(DSpaceConstants.ID)
     @Id
     private String id;
 
@@ -259,33 +253,100 @@ public class Catalog extends AbstractCatalogObject {
     public String getType() {
         return DSpaceConstants.DCAT + Catalog.class.getSimpleName();
     }
-    
+
     /**
      * Create new updated instance with new values from passed Catalog parameter.<br>
      * If fields are not present in updatedCatalogData, existing values will remain
-     * @param updatedCatalogData
+     *
+     * @param updatedCatalogData catalog for updating with new values
      * @return New catalog instance with updated values
      */
     public Catalog updateInstance(Catalog updatedCatalogData) {
-			return Catalog.Builder.newInstance()
-					.id(this.id)
-			        .version(this.version)
-			        .issued(this.issued)
-			        .createdBy(this.createdBy)
-			        .keyword(updatedCatalogData.getKeyword() != null ? updatedCatalogData.getKeyword() : this.keyword)
-			        .theme(updatedCatalogData.getTheme() != null ? updatedCatalogData.getTheme() : this.theme)
-			        .conformsTo(updatedCatalogData.getConformsTo() != null ? updatedCatalogData.getConformsTo() : this.conformsTo)
-			        .creator(updatedCatalogData.getCreator() != null ? updatedCatalogData.getCreator() : this.creator)
-			        .description(updatedCatalogData.getDescription() != null ? updatedCatalogData.getDescription() : this.description)
-			        .identifier(updatedCatalogData.getIdentifier() != null ? updatedCatalogData.getIdentifier() : this.identifier)
-			        .title(updatedCatalogData.getTitle() != null ? updatedCatalogData.getTitle() : this.title)
-			        .distribution(updatedCatalogData.getDistribution() != null ? updatedCatalogData.getDistribution() : this.distribution)
-			        .hasPolicy(updatedCatalogData.getHasPolicy() != null ? updatedCatalogData.getHasPolicy() : this.hasPolicy)
-			        .dataset(updatedCatalogData.getDataset() != null ? updatedCatalogData.getDataset() : this.dataset)
-			        .service(updatedCatalogData.getService() != null ? updatedCatalogData.getService() : this.service)
-			        .participantId(updatedCatalogData.getParticipantId() != null ? updatedCatalogData.getParticipantId() : this.participantId)
-			        .creator(updatedCatalogData.getCreator() != null ? updatedCatalogData.getCreator() : this.creator)
-			        .homepage(updatedCatalogData.getHomepage() != null ? updatedCatalogData.getHomepage() : this.homepage)
-			        .build();
+        return Catalog.Builder.newInstance()
+                .id(this.id)
+                .version(this.version)
+                .issued(this.issued)
+                .createdBy(this.createdBy)
+                .keyword(updatedCatalogData.getKeyword() != null ? updatedCatalogData.getKeyword() : this.keyword)
+                .theme(updatedCatalogData.getTheme() != null ? updatedCatalogData.getTheme() : this.theme)
+                .conformsTo(updatedCatalogData.getConformsTo() != null ? updatedCatalogData.getConformsTo() : this.conformsTo)
+                .creator(updatedCatalogData.getCreator() != null ? updatedCatalogData.getCreator() : this.creator)
+                .description(updatedCatalogData.getDescription() != null ? updatedCatalogData.getDescription() : this.description)
+                .identifier(updatedCatalogData.getIdentifier() != null ? updatedCatalogData.getIdentifier() : this.identifier)
+                .title(updatedCatalogData.getTitle() != null ? updatedCatalogData.getTitle() : this.title)
+                .distribution(updatedCatalogData.getDistribution() != null ? updatedCatalogData.getDistribution() : this.distribution)
+                .hasPolicy(updatedCatalogData.getHasPolicy() != null ? updatedCatalogData.getHasPolicy() : this.hasPolicy)
+                .dataset(updatedCatalogData.getDataset() != null ? updatedCatalogData.getDataset() : this.dataset)
+                .service(updatedCatalogData.getService() != null ? updatedCatalogData.getService() : this.service)
+                .participantId(updatedCatalogData.getParticipantId() != null ? updatedCatalogData.getParticipantId() : this.participantId)
+                .creator(updatedCatalogData.getCreator() != null ? updatedCatalogData.getCreator() : this.creator)
+                .homepage(updatedCatalogData.getHomepage() != null ? updatedCatalogData.getHomepage() : this.homepage)
+                .build();
+    }
+
+    public void validateProtocol() {
+        validateDatasets();
+        validateDistribution();
+        validateDataService();
+    }
+
+    private void validateDatasets() {
+        // Validate Dataset collection
+        if (this.getDataset() == null || this.getDataset().isEmpty()) {
+            throw new ValidationException("Catalog must have at least one Dataset");
+        }
+        // Check if there's at least one non-null dataset
+        if (this.getDataset().stream().noneMatch(Objects::nonNull)) {
+            throw new ValidationException("Catalog must have at least one non-null Dataset");
+        }
+
+        // Validate each Dataset in Catalog
+        for (Dataset dataset : this.getDataset()) {
+            try {
+                dataset.validateProtocol();
+            } catch (ValidationException e) {
+                throw new ValidationException("Invalid Dataset in Catalog: " + e.getMessage());
+            }
+        }
+    }
+
+    private void validateDistribution() {
+        // Validate Distribution collection
+        if (this.getDistribution() == null || this.getDistribution().isEmpty()) {
+            throw new ValidationException("Catalog must have at least one Distribution");
+        }
+        // Check if there's at least one non-null Distribution
+        if (this.getDistribution().stream().noneMatch(Objects::nonNull)) {
+            throw new ValidationException("Catalog must have at least one non-null Distribution");
+        }
+
+        // Validate each Distribution in Catalog
+        for (Distribution distribution : this.getDistribution()) {
+            try {
+                distribution.validateProtocol();
+            } catch (ValidationException e) {
+                throw new ValidationException("Invalid Distribution in Catalog: " + e.getMessage());
+            }
+        }
+    }
+
+    private void validateDataService() {
+        // Validate DataService collection
+        if (this.getService() == null || this.getService().isEmpty()) {
+            throw new ValidationException("Catalog must have at least one DataService");
+        }
+        // Check if there's at least one non-null DataService
+        if (this.getService().stream().noneMatch(Objects::nonNull)) {
+            throw new ValidationException("Catalog must have at least one non-null DataService");
+        }
+
+        // Validate each DataService in Catalog
+        for (DataService dataService : this.getService()) {
+            try {
+                dataService.validateProtocol();
+            } catch (ValidationException e) {
+                throw new ValidationException("Invalid DataService in Catalog: " + e.getMessage());
+            }
+        }
     }
 }

@@ -17,6 +17,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -49,101 +50,122 @@ Offer -> allOf  /definitions/MessageOffer
 @EqualsAndHashCode(exclude = {"target", "assigner", "assignee"}) // requires for offer check in negotiation flow
 @JsonDeserialize(builder = Offer.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-@JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true) 
+@JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic = true)
 public class Offer implements Serializable {
 
-	private static final long serialVersionUID = 4003295986049329564L;
+    private static final long serialVersionUID = 4003295986049329564L;
 
-	//	@NotNull (if new offer from consumer Id of offer is null)
-	@JsonProperty(DSpaceConstants.ID)
-	private String id;
-	
-	// Different to a Catalog or Dataset, the Offer inside a Contract Request Message must have an odrl:target attribute.
-	// not mandatory for Catalog or Dataset offer to have target field - different from the Offer in negotiation module
-	@JsonProperty(DSpaceConstants.ODRL_TARGET)
-	private String target;
-	
-	// required in catalog???
-	@JsonProperty(DSpaceConstants.ODRL_ASSIGNER)
-	private String assigner;
+    //	@NotNull (if new offer from consumer Id of offer is null)
+    @JsonProperty(DSpaceConstants.ID)
+    private String id;
 
-	// required in catalog???
-	@JsonProperty(DSpaceConstants.ODRL_ASSIGNEE)
-	private String assignee;
-	
-	@NotNull
-	@JsonProperty(DSpaceConstants.ODRL_PERMISSION)
-	private Set<Permission> permission;
-	
-	@JsonIgnoreProperties(value={ "type" }) //, allowGetters=true
-	@JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
-	private String getType() {
-		return DSpaceConstants.ODRL + Offer.class.getSimpleName();
-	}
-	
-	@JsonPOJOBuilder(withPrefix = "")
-	@JsonIgnoreProperties(ignoreUnknown = true)
-	public static class Builder {
-		
-		private Offer offer;
+    // Different to a Catalog or Dataset, the Offer inside a Contract Request Message must have an odrl:target attribute.
+    // not mandatory for Catalog or Dataset offer to have target field - different from the Offer in negotiation module
+    @JsonProperty(DSpaceConstants.ODRL_TARGET)
+    private String target;
 
-		private Builder() {
-			offer = new Offer();
-		}
+    // required in catalog???
+    @JsonProperty(DSpaceConstants.ODRL_ASSIGNER)
+    private String assigner;
 
-		public static Builder newInstance() {
-			return new Builder();
-		}
+    // required in catalog???
+    @JsonProperty(DSpaceConstants.ODRL_ASSIGNEE)
+    private String assignee;
 
-//		@JsonSetter(DSpaceConstants.ID)
-		@JsonProperty(DSpaceConstants.ID)
-		public Builder id(String id) {
-			offer.id = id;
-			return this;
-		}
-		
-//		@JsonSetter(DSpaceConstants.ODRL_TARGET)
-		@JsonProperty(DSpaceConstants.ODRL_TARGET)
-		public Builder target(String target) {
-			offer.target = target;
-			return this;
-		}
+    @NotNull
+    @JsonProperty(DSpaceConstants.ODRL_PERMISSION)
+    private Set<Permission> permission;
 
-		@JsonProperty(DSpaceConstants.ODRL_ASSIGNER)
-		public Builder assigner(String assigner) {
-			offer.assigner = assigner;
-			return this;
-		}
-		
-		@JsonProperty(DSpaceConstants.ODRL_ASSIGNEE)
-		public Builder assignee(String assignee) {
-			offer.assignee = assignee;
-			return this;
-		}
-		
-//		@JsonSetter(DSpaceConstants.ODRL_PERMISSION)
-		@JsonProperty(DSpaceConstants.ODRL_PERMISSION)
-		@JsonDeserialize(as = Set.class)
-		public Builder permission(Set<Permission> permission) {
-			offer.permission = permission;
-			return this;
-		}
-		
-		public Offer build() {
-			if (offer.id == null) {
-				offer.id = "urn:uuid:" + UUID.randomUUID().toString();
-			}
-			Set<ConstraintViolation<Offer>> violations 
-				= Validation.buildDefaultValidatorFactory().getValidator().validate(offer);
-			if(violations.isEmpty()) {
-				return offer;
-			}
-			throw new ValidationException("Offer - " + 
-					violations
-						.stream()
-						.map(v -> v.getPropertyPath() + " " + v.getMessage())
-						.collect(Collectors.joining(", ")));
-			}
-	}
-	
+    @JsonIgnoreProperties(value = {"type"}) //, allowGetters=true
+    @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
+    private String getType() {
+        return DSpaceConstants.ODRL + Offer.class.getSimpleName();
+    }
+
+    @JsonPOJOBuilder(withPrefix = "")
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Builder {
+
+        private Offer offer;
+
+        private Builder() {
+            offer = new Offer();
+        }
+
+        public static Builder newInstance() {
+            return new Builder();
+        }
+
+        //		@JsonSetter(DSpaceConstants.ID)
+        @JsonProperty(DSpaceConstants.ID)
+        public Builder id(String id) {
+            offer.id = id;
+            return this;
+        }
+
+        //		@JsonSetter(DSpaceConstants.ODRL_TARGET)
+        @JsonProperty(DSpaceConstants.ODRL_TARGET)
+        public Builder target(String target) {
+            offer.target = target;
+            return this;
+        }
+
+        @JsonProperty(DSpaceConstants.ODRL_ASSIGNER)
+        public Builder assigner(String assigner) {
+            offer.assigner = assigner;
+            return this;
+        }
+
+        @JsonProperty(DSpaceConstants.ODRL_ASSIGNEE)
+        public Builder assignee(String assignee) {
+            offer.assignee = assignee;
+            return this;
+        }
+
+        //		@JsonSetter(DSpaceConstants.ODRL_PERMISSION)
+        @JsonProperty(DSpaceConstants.ODRL_PERMISSION)
+        @JsonDeserialize(as = Set.class)
+        public Builder permission(Set<Permission> permission) {
+            offer.permission = permission;
+            return this;
+        }
+
+        public Offer build() {
+            if (offer.id == null) {
+                offer.id = "urn:uuid:" + UUID.randomUUID().toString();
+            }
+            Set<ConstraintViolation<Offer>> violations
+                    = Validation.buildDefaultValidatorFactory().getValidator().validate(offer);
+            if (violations.isEmpty()) {
+                return offer;
+            }
+            throw new ValidationException("Offer - " +
+                    violations
+                            .stream()
+                            .map(v -> v.getPropertyPath() + " " + v.getMessage())
+                            .collect(Collectors.joining(", ")));
+        }
+    }
+
+    public void validateProtocol() {
+        // Validate Permissions collection
+        if (this.getPermission() == null || this.getPermission().isEmpty()) {
+            throw new ValidationException("Offer must have at least one Permission defined");
+        }
+
+        // Check if there's at least one non-null accessService
+        if (this.getPermission().stream().noneMatch(Objects::nonNull)) {
+            throw new ValidationException("Offer must have at least one non-null Permission");
+        }
+
+        // Validate each Permission in collection
+        for (Permission permission : this.getPermission()) {
+            try {
+                permission.validateProtocol();
+            } catch (ValidationException e) {
+                throw new ValidationException("Invalid Permission in Offer: " + e.getMessage());
+            }
+        }
+    }
+
 }

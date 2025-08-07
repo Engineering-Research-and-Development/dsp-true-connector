@@ -12,6 +12,8 @@ public enum AuditEventType {
     APPLICATION_STOP("Application stop"),
     APPLICATION_LOGIN("Login"),
     APPLICATION_LOGOUT("Logout"),
+    PROTOCOL_CATALOG_CATALOG_NOT_FOUND("Catalog not found"),
+    PROTOCOL_CATALOG_DATASET_NOT_FOUND("Dataset not found"),
     PROTOCOL_NEGOTIATION_CONTRACT_NEGOTIATION("Contract negotiation"),
     PROTOCOL_NEGOTIATION_NOT_FOUND("Contract negotiation not found"),
     PROTOCOL_NEGOTIATION_STATE_TRANSITION_ERROR("State transition invalid"),
