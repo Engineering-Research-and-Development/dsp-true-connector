@@ -2,142 +2,237 @@ package it.eng.datatransfer.rest.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.model.DataTransferRequest;
+import it.eng.datatransfer.model.TransferProcess;
+import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
 import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.event.AuditEventType;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.rest.api.PagedAPIResponse;
+import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.GenericFilterBuilder;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PagedResourcesAssembler;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collection;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping(path = ApiEndpoints.TRANSFER_DATATRANSFER_V1)
 @Slf4j
 public class DataTransferAPIController {
 
-	private final DataTransferAPIService apiService;
+    private final DataTransferAPIService apiService;
+    private final GenericFilterBuilder filterBuilder;
+    private final AuditEventPublisher publisher;
+    private final PagedResourcesAssembler<TransferProcess> pagedResourcesAssembler;
+    private final PlainTransferProcessAssembler plainAssembler;
 
-	public DataTransferAPIController(DataTransferAPIService apiService) {
-		this.apiService = apiService;
-	}
+    public DataTransferAPIController(DataTransferAPIService apiService, GenericFilterBuilder filterBuilder,
+                                     AuditEventPublisher publisher,
+                                     PagedResourcesAssembler<TransferProcess> pagedResourcesAssembler,
+                                     PlainTransferProcessAssembler plainAssembler) {
+        this.apiService = apiService;
+        this.filterBuilder = filterBuilder;
+        this.publisher = publisher;
+        this.pagedResourcesAssembler = pagedResourcesAssembler;
+        this.plainAssembler = plainAssembler;
+    }
 
-	/********* CONSUMER ***********/
-	
-	/**
-	 * Consumer requests (initiates) data transfer.
-	 * @param dataTransferRequest specifying transfer process id and other parameters.
-	 * @return GenericApiResponse response with transfer process details.
-	 */
-	@PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-	public ResponseEntity<GenericApiResponse<JsonNode>> requestTransfer(@RequestBody DataTransferRequest dataTransferRequest) {
-		log.info("Consumer sends transfer request {}", dataTransferRequest.getTransferProcessId());
-		JsonNode response = apiService.requestTransfer(dataTransferRequest);
-		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-				.body(GenericApiResponse.success(response, "Data transfer requested"));
-	}
-	
-	/**
-	 * Consumer download artifact.
-	 * @param transferProcessId transfer process id to download data for.
-	 * @return GenericApiResponse response with success message.
-	 */
-	@GetMapping(path = { "/{transferProcessId}/download" })
-	public ResponseEntity<GenericApiResponse<Void>> downloadData(
-			@PathVariable String transferProcessId) {
-		log.info("Downloading transfer process id - {} data", transferProcessId);
-		apiService.downloadData(transferProcessId);
-		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-				.body(GenericApiResponse.success(null, "Data successfully downloaded"));
-	}
-	
-	/**
-	 * Consumer view downloaded artifact.<br>
-	 * Before "viewing" artifact, policy will be enforced to check if agreement is still valid.
-	 *
-	 * @param transferProcessId transfer process id to view data for.
-	 * @return GenericApiResponse response with artifact URL
-	 */
-	@GetMapping(path = { "/{transferProcessId}/view" })
-	public ResponseEntity<String> viewData (
-			@PathVariable String transferProcessId) {
-		log.info("Accessing transfer process id - {} data", transferProcessId);
-		String artifactURL = apiService.viewData(transferProcessId);
-		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-				.body(artifactURL);
-	}
-	
-	/********* CONSUMER & PROVIDER ***********/
-	
-	/**
-	 * Find by id if present, next by state and get all.
-	 * @param transferProcessId transfer process id to filter by, if present.
-	 * @param state optional state to filter transfer processes by.
-	 * @param role optional role to filter transfer processes by (e.g., CONSUMER or PROVIDER).
-	 * @return GenericApiResponse
-	 */
-	@GetMapping(path = { "", "/{transferProcessId}" })
-	public ResponseEntity<GenericApiResponse<Collection<JsonNode>>> getTransfersProcess(
-			@PathVariable(required = false) String transferProcessId,
-			@RequestParam(required = false) String state,
-			@RequestParam(required = false) String role) {
-		log.info("Fetching transfer process id - {}, state {}", transferProcessId, state);
-		Collection<JsonNode> response = apiService.findDataTransfers(transferProcessId, state, role);
-		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-				.body(GenericApiResponse.success(response, "Fetched transfer process"));
-	}
-	
-	/**
-	 * Start transfer process.
-	 * @param transferProcessId transfer process id to start.
-	 * @return GenericApiResponse response with success message.
-	 */
-	@PutMapping(path = "/{transferProcessId}/start")
+    /********* CONSUMER ***********/
+
+    /**
+     * Consumer requests (initiates) data transfer.
+     *
+     * @param dataTransferRequest specifying transfer process id and other parameters.
+     * @return GenericApiResponse response with transfer process details.
+     */
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<GenericApiResponse<JsonNode>> requestTransfer(@RequestBody DataTransferRequest dataTransferRequest) {
+        log.info("Consumer sends transfer request {}", dataTransferRequest.getTransferProcessId());
+        JsonNode response = apiService.requestTransfer(dataTransferRequest);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(GenericApiResponse.success(response, "Data transfer requested"));
+    }
+
+    /**
+     * Consumer download artifact.
+     *
+     * @param transferProcessId transfer process id to download data for.
+     * @return GenericApiResponse response with success message.
+     */
+    @GetMapping(path = {"/{transferProcessId}/download"})
+    public ResponseEntity<GenericApiResponse<String>> downloadData(
+            @PathVariable String transferProcessId) {
+        log.info("Downloading transfer process id - {} data", transferProcessId);
+        apiService.downloadData(transferProcessId)
+                .whenComplete((result, throwable) -> {
+                    if (throwable != null) {
+                        log.error("Download failed for process {}: {}",
+                                transferProcessId, throwable.getMessage(), throwable);
+                        publisher.publishEvent(
+                                AuditEventType.TRANSFER_FAILED,
+                                "Download failed for process " + transferProcessId,
+                                Map.of("transferProcessId", transferProcessId,
+                                        "error", throwable.getMessage()));
+                    } else {
+                        log.info("Download completed successfully for process {}", transferProcessId);
+                        publisher.publishEvent(
+                                AuditEventType.TRANSFER_COMPLETED,
+                                "Download completed successfully for process " + transferProcessId,
+                                Map.of("transferProcessId", transferProcessId));
+                    }
+                });
+
+        return ResponseEntity.accepted()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(GenericApiResponse.success(
+                        "Download started for transfer process " + transferProcessId,
+                        "Request accepted"));
+    }
+
+    /**
+     * Consumer view downloaded artifact.<br>
+     * Before "viewing" artifact, policy will be enforced to check if agreement is still valid.
+     *
+     * @param transferProcessId transfer process id to view data for.
+     * @return GenericApiResponse response with artifact URL
+     */
+    @GetMapping(path = {"/{transferProcessId}/view"})
+    public ResponseEntity<String> viewData(
+            @PathVariable String transferProcessId) {
+        log.info("Accessing transfer process id - {} data", transferProcessId);
+        String artifactURL = apiService.viewData(transferProcessId);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(artifactURL);
+    }
+
+    /********* CONSUMER & PROVIDER ***********/
+
+    /**
+     * Get transfer process by id.
+     *
+     * @param transferProcessId transfer process id to retrieve.
+     * @return GenericApiResponse response with transfer process details.
+     */
+    @GetMapping(path = "/{transferProcessId}")
+    public ResponseEntity<GenericApiResponse<JsonNode>> getTransferProcessById(
+            @PathVariable String transferProcessId) {
+        log.info("Fetching transfer process details for id {}", transferProcessId);
+        TransferProcess transferProcess = apiService.findTransferProcessById(transferProcessId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(GenericApiResponse.success(TransferSerializer.serializePlainJsonNode(transferProcess),
+                        String.format("Transfer process with id %s fetched", transferProcessId)));
+    }
+
+    /**
+     * Generic endpoint for finding transfer processes with automatic filtering.
+     * Supports any request parameter with automatic type detection and conversion.
+     *
+     * @param request HttpServletRequest containing all filter parameters
+     * @param page    pagination page number (default 0)
+     * @param size    pagination parameters
+     * @param sort    sorting parameters in the format "field,direction"
+     * @return GenericApiResponse with matching transfer processes
+     */
+    @GetMapping()
+    public ResponseEntity<PagedAPIResponse> getTransfersProcess(
+            HttpServletRequest request,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "timestamp,desc") String[] sort) {
+
+        log.info("Fetching transfer processes with generic filtering");
+
+        Sort.Direction direction = sort[1].equalsIgnoreCase("desc") ?
+                Sort.Direction.DESC : Sort.Direction.ASC;
+        Sort sorting = Sort.by(direction, sort[0]);
+        Pageable pageable = PageRequest.of(page, size, sorting);
+        // Build filter map automatically from ALL request parameters
+        Map<String, Object> filters = filterBuilder.buildFromRequest(request);
+
+        log.debug("Generated filters: {}", filters);
+
+        Page<TransferProcess> transferProcesses = apiService.findDataTransfers(filters, pageable);
+        PagedModel<EntityModel<Object>> pagedModel = pagedResourcesAssembler.toModel(transferProcesses, plainAssembler);
+
+        String filterString = filters.entrySet().stream()
+                .map(entry -> entry.getKey() + ":" + entry.getValue())
+                .collect(Collectors.joining(", "));
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(PagedAPIResponse.of(pagedModel,
+                        "Transfer process - Page " + page + " of " + transferProcesses.getTotalPages() + ", Size: " + size +
+                                ", Sort: " + sorting + ", Filters: [" + filterString + "]"));
+
+    }
+
+    /**
+     * Start transfer process.
+     *
+     * @param transferProcessId transfer process id to start.
+     * @return GenericApiResponse response with success message.
+     */
+    @PutMapping(path = "/{transferProcessId}/start")
     public ResponseEntity<GenericApiResponse<JsonNode>> startTransfer(@PathVariable String transferProcessId) {
-		log.info("Starting data transfer {}", transferProcessId);
-    	JsonNode response = apiService.startTransfer(transferProcessId);
-    	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-    			.body(GenericApiResponse.success(response, "Data transfer started"));
+        log.info("Starting data transfer {}", transferProcessId);
+        JsonNode response = apiService.startTransfer(transferProcessId);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(GenericApiResponse.success(response, "Data transfer started"));
     }
-	
-	/**
-	 * Complete transfer process.
-	 * @param transferProcessId transfer process id to complete.
-	 * @return GenericApiResponse response with success message.
-	 */
-	@PutMapping(path = "/{transferProcessId}/complete")
+
+    /**
+     * Complete transfer process.
+     *
+     * @param transferProcessId transfer process id to complete.
+     * @return GenericApiResponse response with success message.
+     */
+    @PutMapping(path = "/{transferProcessId}/complete")
     public ResponseEntity<GenericApiResponse<JsonNode>> completeTransfer(@PathVariable String transferProcessId) {
-		log.info("Completing data transfer {}", transferProcessId);
-    	JsonNode response = apiService.completeTransfer(transferProcessId);
-    	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-    			.body(GenericApiResponse.success(response, "Data transfer completed"));
+        log.info("Completing data transfer {}", transferProcessId);
+        JsonNode response = apiService.completeTransfer(transferProcessId);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(GenericApiResponse.success(response, "Data transfer completed"));
     }
-	
-	/**
-	 * Suspend transfer process.
-	 * @param transferProcessId transfer process id to suspend.
-	 * @return GenericApiResponse response with success message.
-	 */
-	@PutMapping(path = "/{transferProcessId}/suspend")
+
+    /**
+     * Suspend transfer process.
+     *
+     * @param transferProcessId transfer process id to suspend.
+     * @return GenericApiResponse response with success message.
+     */
+    @PutMapping(path = "/{transferProcessId}/suspend")
     public ResponseEntity<GenericApiResponse<JsonNode>> suspendTransfer(@PathVariable String transferProcessId) {
-		log.info("Suspending data transfer {}", transferProcessId);
-    	JsonNode response = apiService.suspendTransfer(transferProcessId);
-    	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-    			.body(GenericApiResponse.success(response, "Data transfer suspended"));
+        log.info("Suspending data transfer {}", transferProcessId);
+        JsonNode response = apiService.suspendTransfer(transferProcessId);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(GenericApiResponse.success(response, "Data transfer suspended"));
     }
-	
-	/**
-	 * Terminate transfer process.
-	 * @param transferProcessId transfer process id to terminate.
-	 * @return GenericApiResponse response with success message.
-	 */
-	@PutMapping(path = "/{transferProcessId}/terminate")
+
+    /**
+     * Terminate transfer process.
+     *
+     * @param transferProcessId transfer process id to terminate.
+     * @return GenericApiResponse response with success message.
+     */
+    @PutMapping(path = "/{transferProcessId}/terminate")
     public ResponseEntity<GenericApiResponse<JsonNode>> terminateTransfer(@PathVariable String transferProcessId) {
-		log.info("Terminating data transfer {}", transferProcessId);
-    	JsonNode response = apiService.terminateTransfer(transferProcessId);
-    	return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-    			.body(GenericApiResponse.success(response, "Data transfer terminated"));
+        log.info("Terminating data transfer {}", transferProcessId);
+        JsonNode response = apiService.terminateTransfer(transferProcessId);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(GenericApiResponse.success(response, "Data transfer terminated"));
     }
 
 }

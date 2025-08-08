@@ -1,19 +1,16 @@
 package it.eng.catalog.service;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
-
+import it.eng.catalog.exceptions.CatalogErrorException;
+import it.eng.catalog.model.*;
+import it.eng.catalog.repository.CatalogRepository;
+import it.eng.catalog.serializer.CatalogSerializer;
+import it.eng.catalog.util.CatalogMockObjectUtil;
+import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
+import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
+import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.service.AuditEventPublisher;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,200 +19,253 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 
-import it.eng.catalog.exceptions.CatalogErrorException;
-import it.eng.catalog.model.Action;
-import it.eng.catalog.model.Catalog;
-import it.eng.catalog.model.Constraint;
-import it.eng.catalog.model.DataService;
-import it.eng.catalog.model.LeftOperand;
-import it.eng.catalog.model.Offer;
-import it.eng.catalog.model.Operator;
-import it.eng.catalog.model.Permission;
-import it.eng.catalog.repository.CatalogRepository;
-import it.eng.catalog.serializer.CatalogSerializer;
-import it.eng.catalog.util.CatalogMockObjectUtil;
-import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
-import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class CatalogServiceTest {
 
+    private static final String BUCKET_NAME = "bucket-name";
+
+    private Catalog catalog;
+    
     @Mock
     private CatalogRepository repository;
     @Mock
-    private ApplicationEventPublisher publisher;
-    
+    private AuditEventPublisher publisher;
+    @Mock
+    private S3Properties s3Properties;
+    @Mock
+    private S3ClientService s3ClientService;
+
     @Captor
-	private ArgumentCaptor<ContractNegotiationOfferResponseEvent> argCaptorContractNegotiationOfferResponse;
-    
-	@Captor
-	private ArgumentCaptor<Catalog> argCaptorCatalog;
+    private ArgumentCaptor<ContractNegotiationOfferResponseEvent> argCaptorContractNegotiationOfferResponse;
+
+    @Captor
+    private ArgumentCaptor<Catalog> argCaptorCatalog;
 
     @InjectMocks
     private CatalogService service;
+    
+    @BeforeEach
+    public void setUp() {
+        catalog = CatalogMockObjectUtil.createNewCatalog();
+    }
 
     @Test
     @DisplayName("Save catalog successfully")
-    void saveCatalog_success() {
-        when(repository.save(any(Catalog.class))).thenReturn(CatalogMockObjectUtil.CATALOG);
-        Catalog savedCatalog = service.saveCatalog(CatalogMockObjectUtil.CATALOG);
+    public void saveCatalog_success() {
+        when(repository.save(any(Catalog.class))).thenReturn(catalog);
+        Catalog savedCatalog = service.saveCatalog(catalog);
         assertNotNull(savedCatalog);
-        verify(repository).save(CatalogMockObjectUtil.CATALOG);
+        verify(repository).save(catalog);
     }
 
     @Test
     @DisplayName("Get catalog successfully")
-    void getCatalog_success() {
-        when(repository.findAll()).thenReturn(Collections.singletonList(CatalogMockObjectUtil.CATALOG));
+    public void getCatalog_success() {
+        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
+        when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
+        when(s3ClientService.listFiles(BUCKET_NAME))
+                .thenReturn(catalog.getDataset().stream()
+                        .map(Dataset::getId).collect(Collectors.toList()));
         Catalog retrievedCatalog = service.getCatalog();
         assertNotNull(retrievedCatalog);
         verify(repository).findAll();
     }
 
     @Test
+    @DisplayName("Get catalog check if uploading dataset is removed")
+    public void getCatalog_checkIfUploadingDatasetIsRemoved() {
+        assertFalse(catalog.getDataset().isEmpty());
+        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
+        when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
+        when(s3ClientService.listFiles(BUCKET_NAME))
+                .thenReturn(Collections.emptyList());
+        assertThrows(CatalogErrorException.class, () -> service.getCatalog());
+    }
+
+    @Test
     @DisplayName("Get catalog throws exception when not found")
-    void getCatalog_notFound() {
+    public void getCatalog_notFound() {
         when(repository.findAll()).thenReturn(Collections.emptyList());
         assertThrows(CatalogErrorException.class, () -> service.getCatalog());
     }
 
     @Test
     @DisplayName("Get catalog by ID successfully")
-    void getCatalogById_success() {
-        when(repository.findById(anyString())).thenReturn(Optional.of(CatalogMockObjectUtil.CATALOG));
-        Catalog retrievedCatalog = service.getCatalogById(CatalogMockObjectUtil.CATALOG.getId());
+    public void getCatalogById_success() {
+        when(repository.findById(anyString())).thenReturn(Optional.of(catalog));
+        Catalog retrievedCatalog = service.getCatalogById(catalog.getId());
         assertNotNull(retrievedCatalog);
-        verify(repository).findById(CatalogMockObjectUtil.CATALOG.getId());
+        verify(repository).findById(catalog.getId());
     }
 
     @Test
     @DisplayName("Delete catalog successfully")
-    void deleteCatalog_success() {
-        when(repository.findById(anyString())).thenReturn(Optional.of(CatalogMockObjectUtil.CATALOG));
-        service.deleteCatalog(CatalogMockObjectUtil.CATALOG.getId());
-        verify(repository).deleteById(CatalogMockObjectUtil.CATALOG.getId());
+    public void deleteCatalog_success() {
+        when(repository.findById(anyString())).thenReturn(Optional.of(catalog));
+        service.deleteCatalog(catalog.getId());
+        verify(repository).deleteById(catalog.getId());
     }
 
     @Test
     @DisplayName("Update catalog successfully")
-    void updateCatalog_success() {
-        when(repository.findById(anyString())).thenReturn(Optional.of(CatalogMockObjectUtil.CATALOG));
+    public void updateCatalog_success() {
+        when(repository.findById(anyString())).thenReturn(Optional.of(catalog));
         when(repository.save(any(Catalog.class))).thenReturn(CatalogMockObjectUtil.CATALOG_FOR_UPDATE);
 
         Catalog updatedCatalogData = CatalogMockObjectUtil.CATALOG_FOR_UPDATE;
-        
-        Catalog updatedCatalog = service.updateCatalog(CatalogMockObjectUtil.CATALOG.getId(), updatedCatalogData);
+
+        Catalog updatedCatalog = service.updateCatalog(catalog.getId(), updatedCatalogData);
         assertNotNull(updatedCatalog);
-        verify(repository).findById(CatalogMockObjectUtil.CATALOG.getId());
+        verify(repository).findById(catalog.getId());
         verify(repository).save(argCaptorCatalog.capture());
-        assertTrue(argCaptorCatalog.getValue().getDescription().stream().filter(d -> d.getValue().contains("update")).findFirst().isPresent());
-        assertTrue(argCaptorCatalog.getValue().getDistribution().stream().filter(d -> d.getTitle().contains("update")).findFirst().isPresent());
+        assertTrue(argCaptorCatalog.getValue().getDescription().stream().anyMatch(d -> d.getValue().contains("update")));
+        assertTrue(argCaptorCatalog.getValue().getDistribution().stream().anyMatch(d -> d.getTitle().contains("update")));
 
         assertTrue(argCaptorCatalog.getValue().getDistribution().stream().findFirst().get().getHasPolicy()
-        		.stream()
-        		.filter(p -> p.getId().equals("urn:offer_id_update"))
-        		.findFirst().isPresent());
+                .stream()
+                .anyMatch(p -> p.getId().equals("urn:offer_id_update")));
 
 
         assertTrue(argCaptorCatalog.getValue().getService().stream()
-                .filter(s -> s.getCreator().contains("update")
+                .anyMatch(s -> s.getCreator().contains("update")
                         && s.getEndpointURL().contains("update")
-                        && s.getEndpointDescription().contains("update"))
-                .findFirst().isPresent());
+                        && s.getEndpointDescription().contains("update")));
     }
 
     @Test
     @DisplayName("Update catalog data service after delete successfully")
-    void updateCatalogDataServiceAfterDelete_success() {
-    	
+    public void updateCatalogDataServiceAfterDelete_success() {
+
         DataService dataService = CatalogMockObjectUtil.DATA_SERVICE;
-        when(repository.findAll()).thenReturn(Collections.singletonList(CatalogMockObjectUtil.CATALOG));
-        when(repository.save(any(Catalog.class))).thenReturn(CatalogMockObjectUtil.CATALOG);
+        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
+        when(repository.save(any(Catalog.class))).thenReturn(catalog);
 
         service.updateCatalogDataServiceAfterDelete(dataService);
 
         verify(repository).save(any(Catalog.class));
     }
-    
+
     @Test
     public void providedOfferExists() {
-    	when(repository.findAll()).thenReturn(new ArrayList<>(CatalogMockObjectUtil.CATALOGS));
-    	ContractNegotationOfferRequestEvent offerRequest = new ContractNegotationOfferRequestEvent(CatalogMockObjectUtil.CONSUMER_PID,
-    			CatalogMockObjectUtil.PROVIDER_PID, CatalogSerializer.serializeProtocolJsonNode(CatalogMockObjectUtil.OFFER_WITH_TARGET));
-    	service.validateOffer(offerRequest);
-    	
-    	verify(publisher).publishEvent(argCaptorContractNegotiationOfferResponse.capture());
-    	assertTrue(argCaptorContractNegotiationOfferResponse.getValue().isOfferAccepted());
+        Offer offer = Offer.Builder.newInstance()
+                .id(catalog.getDataset().stream().findFirst().get().getHasPolicy().stream().findFirst().get().getId())
+                .target(catalog.getDataset().stream().findFirst().get().getId())
+                .permission(catalog.getDataset().stream().findFirst().get().getHasPolicy().stream().findFirst().get().getPermission())
+                .build();
+
+        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
+        when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
+        when(s3ClientService.listFiles(BUCKET_NAME))
+                .thenReturn(catalog.getDataset().stream()
+                        .map(Dataset::getId).collect(Collectors.toList()));
+        ContractNegotationOfferRequestEvent offerRequest = new ContractNegotationOfferRequestEvent(CatalogMockObjectUtil.CONSUMER_PID,
+                CatalogMockObjectUtil.PROVIDER_PID,
+                CatalogSerializer.serializeProtocolJsonNode(offer));
+        service.validateOffer(offerRequest);
+
+        verify(publisher).publishEvent(argCaptorContractNegotiationOfferResponse.capture());
+        assertTrue(argCaptorContractNegotiationOfferResponse.getValue().isOfferAccepted());
     }
 
     @Test
     public void providedOfferNotFound() {
-	  Offer differentOffer = Offer.Builder.newInstance()
-	    		.id("urn:offer_id")
-	            .target(CatalogMockObjectUtil.TARGET)
-	            .permission(Set.of(CatalogMockObjectUtil.PERMISSION_ANONYMIZE))
-	            .build();
-	
-    	when(repository.findAll()).thenReturn(new ArrayList<>(CatalogMockObjectUtil.CATALOGS));
-    	ContractNegotationOfferRequestEvent offerRequest = new ContractNegotationOfferRequestEvent(CatalogMockObjectUtil.CONSUMER_PID,
-    			CatalogMockObjectUtil.PROVIDER_PID, CatalogSerializer.serializeProtocolJsonNode(differentOffer));
-    	service.validateOffer(offerRequest);
-    	
-    	verify(publisher).publishEvent(argCaptorContractNegotiationOfferResponse.capture());
-    	assertFalse(argCaptorContractNegotiationOfferResponse.getValue().isOfferAccepted());
+        Offer differentOffer = Offer.Builder.newInstance()
+                .id("urn:offer_id")
+                .target(CatalogMockObjectUtil.TARGET)
+                .permission(Set.of(CatalogMockObjectUtil.PERMISSION_ANONYMIZE))
+                .build();
+
+        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
+        when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
+        when(s3ClientService.listFiles(BUCKET_NAME))
+                .thenReturn(catalog.getDataset().stream()
+                        .map(Dataset::getId).collect(Collectors.toList()));
+
+        ContractNegotationOfferRequestEvent offerRequest = new ContractNegotationOfferRequestEvent(CatalogMockObjectUtil.CONSUMER_PID,
+                CatalogMockObjectUtil.PROVIDER_PID, CatalogSerializer.serializeProtocolJsonNode(differentOffer));
+        service.validateOffer(offerRequest);
+
+        verify(publisher).publishEvent(argCaptorContractNegotiationOfferResponse.capture());
+        assertFalse(argCaptorContractNegotiationOfferResponse.getValue().isOfferAccepted());
     }
-    
+
     @Test
     @DisplayName("Offer valid")
-    public void valiadateOffer( ) {
-    	when(repository.findAll()).thenReturn(new ArrayList<>(CatalogMockObjectUtil.CATALOGS));
-    	
-    	boolean offerValid = service.validateOffer(CatalogMockObjectUtil.OFFER_WITH_TARGET);
-    
-    	assertTrue(offerValid);
+    public void validateOffer() {
+        Offer offer = Offer.Builder.newInstance()
+                .id(catalog.getDataset().stream().findFirst().get().getHasPolicy().stream().findFirst().get().getId())
+                .target(catalog.getDataset().stream().findFirst().get().getId())
+                .permission(catalog.getDataset().stream().findFirst().get().getHasPolicy().stream().findFirst().get().getPermission())
+                .build();
+
+        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
+        when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
+        when(s3ClientService.listFiles(BUCKET_NAME))
+                .thenReturn(catalog.getDataset().stream()
+                        .map(Dataset::getId).collect(Collectors.toList()));
+
+        boolean offerValid = service.validateOffer(offer);
+
+        assertTrue(offerValid);
     }
-    
+
     @Test
     @DisplayName("Offer invalid - target not equal to datasetId")
-    public void valiadateOffer_dataset( ) {
+    public void validateOffer_dataset() {
         Offer offer = Offer.Builder.newInstance()
-        		.id("urn:offer_id")
+                .id("urn:offer_id")
                 .target("invalid_dataset_id")
-                .permission(Arrays.asList(CatalogMockObjectUtil.PERMISSION).stream().collect(Collectors.toCollection(HashSet::new)))
+                .permission(new HashSet<>(Collections.singletonList(CatalogMockObjectUtil.PERMISSION)))
                 .build();
-        
-    	when(repository.findAll()).thenReturn(new ArrayList<>(CatalogMockObjectUtil.CATALOGS));
-    	
-    	boolean offerValid = service.validateOffer(offer);
-    
-    	assertFalse(offerValid);
+
+        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
+        when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
+        when(s3ClientService.listFiles(BUCKET_NAME))
+                .thenReturn(catalog.getDataset().stream()
+                        .map(Dataset::getId).collect(Collectors.toList()));
+
+        boolean offerValid = service.validateOffer(offer);
+
+        assertFalse(offerValid);
     }
-    
+
     @Test
     @DisplayName("Offer invalid - offer not equal")
-    public void valiadateOffer_offer( ) {
-    	
-    	Constraint constraintDatetime = Constraint.Builder.newInstance()
+    public void validateOffer_offer() {
+
+        Constraint constraintDatetime = Constraint.Builder.newInstance()
                 .leftOperand(LeftOperand.DATE_TIME)
                 .operator(Operator.GTEQ)
                 .rightOperand("5")
                 .build();
-    	Permission permission = Permission.Builder.newInstance()
+        Permission permission = Permission.Builder.newInstance()
                 .action(Action.USE)
-                .constraint(Arrays.asList(constraintDatetime).stream().collect(Collectors.toCollection(HashSet::new)))
+                .constraint(new HashSet<>(Collections.singletonList(constraintDatetime)))
                 .build();
         Offer offer = Offer.Builder.newInstance()
-        		.id("urn:offer_id")
+                .id("urn:offer_id")
                 .target(CatalogMockObjectUtil.DATASET_ID)
-                .permission(Arrays.asList(permission).stream().collect(Collectors.toCollection(HashSet::new)))
+                .permission(new HashSet<>(Collections.singletonList(permission)))
                 .build();
-        
-    	when(repository.findAll()).thenReturn(new ArrayList<>(CatalogMockObjectUtil.CATALOGS));
-    	
-    	boolean offerValid = service.validateOffer(offer);
-    
-    	assertFalse(offerValid);
+
+        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
+        when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
+        when(s3ClientService.listFiles(BUCKET_NAME))
+                .thenReturn(catalog.getDataset().stream()
+                        .map(Dataset::getId).collect(Collectors.toList()));
+
+        boolean offerValid = service.validateOffer(offer);
+
+        assertFalse(offerValid);
     }
 }

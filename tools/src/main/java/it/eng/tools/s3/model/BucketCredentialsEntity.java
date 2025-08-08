@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import it.eng.tools.s3.encrypt.Encrypted;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,6 +27,7 @@ public class BucketCredentialsEntity {
     private String accessKey;
 
     @JsonProperty("secret_key")
+    @Encrypted
     private String secretKey;
 
     @CreatedDate

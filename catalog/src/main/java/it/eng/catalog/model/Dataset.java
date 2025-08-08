@@ -1,28 +1,9 @@
 package it.eng.catalog.model;
 
-import java.time.Instant;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import org.springframework.data.annotation.CreatedBy;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.LastModifiedBy;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.annotation.Version;
-import org.springframework.data.mongodb.core.mapping.DBRef;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.*;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
@@ -32,6 +13,15 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.*;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
+import java.time.Instant;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -42,9 +32,9 @@ import lombok.NoArgsConstructor;
 @Document(collection = "datasets")
 public class Dataset extends AbstractCatalogObject {
 
-	private static final long serialVersionUID = 8927419074799593178L;
+    private static final long serialVersionUID = 8927419074799593178L;
 
-	@Id
+    @Id
     @JsonProperty(DSpaceConstants.ID)
     private String id;
 
@@ -75,11 +65,11 @@ public class Dataset extends AbstractCatalogObject {
     @JsonProperty(DSpaceConstants.DCAT_DISTRIBUTION)
     @DBRef
     private Set<Distribution> distribution;
-    
+
     @JsonIgnore
     @DBRef
     private Artifact artifact;
-    
+
     @JsonIgnore
     @CreatedBy
     private String createdBy;
@@ -187,7 +177,7 @@ public class Dataset extends AbstractCatalogObject {
             dataset.artifact = artifact;
             return this;
         }
-        
+
         @JsonProperty("createdBy")
         public Builder createdBy(String createdBy) {
             dataset.createdBy = createdBy;
@@ -227,29 +217,72 @@ public class Dataset extends AbstractCatalogObject {
     public String getType() {
         return DSpaceConstants.DCAT + Dataset.class.getSimpleName();
     }
-    
+
     /**
      * Create new updated instance with new values from passed Dataset parameter.<br>
      * If fields are not present in updatedDataset, existing values will remain
-     * @param updatedDataset
+     *
+     * @param updatedDataset the dataset with updated values
      * @return new updated dataset instance
      */
     public Dataset updateInstance(Dataset updatedDataset) {
-		return Dataset.Builder.newInstance()
-         .id(this.id)
-         .version(this.version)
-         .issued(this.issued)
-         .createdBy(this.createdBy)
-         .keyword(updatedDataset.getKeyword() != null ? updatedDataset.getKeyword() : this.keyword)
-         .theme(updatedDataset.getTheme() != null ? updatedDataset.getTheme() : this.theme)
-         .conformsTo(updatedDataset.getConformsTo() != null ? updatedDataset.getConformsTo() : this.conformsTo)
-         .creator(updatedDataset.getCreator() != null ? updatedDataset.getCreator() : this.creator)
-         .description(updatedDataset.getDescription() != null ? updatedDataset.getDescription() : this.description)
-         .identifier(updatedDataset.getIdentifier() != null ? updatedDataset.getIdentifier() : this.identifier)
-         .title(updatedDataset.getTitle() != null ? updatedDataset.getTitle() : this.title)
-         .distribution(updatedDataset.getDistribution() != null ? updatedDataset.getDistribution() : this.distribution)
-         .hasPolicy(updatedDataset.getHasPolicy() != null ? updatedDataset.getHasPolicy() : this.hasPolicy)
-         .artifact(updatedDataset.getArtifact() != null ? updatedDataset.getArtifact() : this.artifact)
-         .build();
-  }
+        return Dataset.Builder.newInstance()
+                .id(this.id)
+                .version(this.version)
+                .issued(this.issued)
+                .createdBy(this.createdBy)
+                .keyword(updatedDataset.getKeyword() != null ? updatedDataset.getKeyword() : this.keyword)
+                .theme(updatedDataset.getTheme() != null ? updatedDataset.getTheme() : this.theme)
+                .conformsTo(updatedDataset.getConformsTo() != null ? updatedDataset.getConformsTo() : this.conformsTo)
+                .creator(updatedDataset.getCreator() != null ? updatedDataset.getCreator() : this.creator)
+                .description(updatedDataset.getDescription() != null ? updatedDataset.getDescription() : this.description)
+                .identifier(updatedDataset.getIdentifier() != null ? updatedDataset.getIdentifier() : this.identifier)
+                .title(updatedDataset.getTitle() != null ? updatedDataset.getTitle() : this.title)
+                .distribution(updatedDataset.getDistribution() != null ? updatedDataset.getDistribution() : this.distribution)
+                .hasPolicy(updatedDataset.getHasPolicy() != null ? updatedDataset.getHasPolicy() : this.hasPolicy)
+                .artifact(updatedDataset.getArtifact() != null ? updatedDataset.getArtifact() : this.artifact)
+                .build();
+    }
+
+    public void validateProtocol() {
+        // Validate hasPolicy - Offer collection
+        if (this.getHasPolicy() == null || this.getHasPolicy().isEmpty()) {
+            throw new ValidationException("Dataset must have at least one Offer");
+        }
+
+        // Check if there's at least one non-null Offer
+        if (this.getHasPolicy().stream().noneMatch(Objects::nonNull)) {
+            throw new ValidationException("Dataset must have at least one non-null Offer");
+        }
+
+        // Validate each Offer in hasPolicy
+        for (Offer offer : this.getHasPolicy()) {
+            try {
+                offer.validateProtocol();
+            } catch (ValidationException e) {
+                throw new ValidationException("Invalid Offer in Dataset: " + e.getMessage());
+            }
+        }
+
+        // Validate Distribution collection
+        if (this.getDistribution() == null || this.getDistribution().isEmpty()) {
+            throw new ValidationException("Dataset must have at least one Distribution");
+        }
+
+        // Check if there's at least one non-null Distribution
+        if (this.getDistribution().stream().noneMatch(Objects::nonNull)) {
+            throw new ValidationException("Dataset must have at least one non-null Distribution");
+        }
+
+        // Validate Distribution collection if it exists
+        for (Distribution distribution : this.getDistribution()) {
+            if (distribution != null) {
+                try {
+                    distribution.validateProtocol();
+                } catch (ValidationException e) {
+                    throw new ValidationException("Invalid Distribution in Dataset: " + e.getMessage());
+                }
+            }
+        }
+    }
 }

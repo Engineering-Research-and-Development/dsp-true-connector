@@ -1,8 +1,9 @@
 {
 	"info": {
-		"_postman_id": "b1d0623d-e1ea-4b12-82a7-cd53811193db",
+		"_postman_id": "39470e70-d3e3-4530-a0dc-73e12c447a43",
 		"name": "True_connector_DSP",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "36278855"
 	},
 	"item": [
 		{
@@ -13,6 +14,43 @@
 					"item": [
 						{
 							"name": "Get All Application Properties",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/",
+									"host": [
+										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
+									],
+									"path": [
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get All Application Properties Copy",
 							"event": [
 								{
 									"listen": "test",
@@ -1627,6 +1665,104 @@
 									"raw": "{{PROVIDER_SERVER_API_ARTIFACTS}}",
 									"host": [
 										"{{PROVIDER_SERVER_API_ARTIFACTS}}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Audit",
+					"item": [
+						{
+							"name": "Get all audit events",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Response status is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "urlencoded",
+									"urlencoded": []
+								},
+								"url": {
+									"raw": "{{CONSUMER}}/api/v1/audit?details.contractNegotiation.state=FINALIZED",
+									"host": [
+										"{{CONSUMER}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"audit"
+									],
+									"query": [
+										{
+											"key": "details.contractNegotiation.state",
+											"value": "FINALIZED"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get all audit event types",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Response status is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER}}/api/v1/audit/types",
+									"host": [
+										"{{CONSUMER}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"audit",
+										"types"
 									]
 								}
 							},

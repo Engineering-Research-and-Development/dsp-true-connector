@@ -5,7 +5,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
-import it.eng.datatransfer.exceptions.DownloadException;
 import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
@@ -13,6 +12,7 @@ import it.eng.datatransfer.rest.protocol.DataTransferCallback;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.IConstants;
@@ -20,21 +20,23 @@ import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.serializer.ToolsSerializer;
+import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tomcat.util.codec.binary.Base64;
-import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @Slf4j
@@ -46,7 +48,7 @@ public class DataTransferAPIService {
     private final DataTransferProperties dataTransferProperties;
     private final ObjectMapper mapper = new ObjectMapper();
     private final UsageControlProperties usageControlProperties;
-    private final ApplicationEventPublisher publisher;
+    private final AuditEventPublisher publisher;
     private final S3ClientService s3ClientService;
     private final S3Properties s3Properties;
     private final DataTransferStrategyFactory dataTransferStrategyFactory;
@@ -57,7 +59,7 @@ public class DataTransferAPIService {
                                   CredentialUtils credentialUtils,
                                   DataTransferProperties dataTransferProperties,
                                   UsageControlProperties usageControlProperties,
-                                  ApplicationEventPublisher publisher,
+                                  AuditEventPublisher publisher,
                                   S3ClientService s3ClientService,
                                   S3Properties s3Properties, DataTransferStrategyFactory dataTransferStrategyFactory, ArtifactTransferService artifactTransferService) {
         super();
@@ -74,30 +76,15 @@ public class DataTransferAPIService {
     }
 
     /**
-     * Find dataTransfer based on criteria.<br>
-     * Find by transferProcessId, filter by state, filter by role or find all
+     * Find dataTransfer based on generic filter criteria.
+     * Supports any field with automatic type detection and conversion.
      *
-     * @param transferProcessId used for a single result
-     * @param state             state of the transfer process (REQUESTED, STARTED, COMPLETED, SUSPENDED, TERMINATED)
-     * @param role              role of the transfer process (CONSUMER, PROVIDER)
-     * @return List of JsonNode representations for data transfers
+     * @param filters  Map of field names to filter values. All values are pre-validated and converted.
+     * @param pageable Pageable
+     * @return page of TransferProcess
      */
-    public Collection<JsonNode> findDataTransfers(String transferProcessId, String state, String role) {
-        if (StringUtils.isNotBlank(transferProcessId)) {
-            return transferProcessRepository.findById(transferProcessId)
-                    .stream()
-                    .map(TransferSerializer::serializePlainJsonNode)
-                    .collect(Collectors.toList());
-        } else if (StringUtils.isNotBlank(state)) {
-            return transferProcessRepository.findByStateAndRole(state, role)
-                    .stream()
-                    .map(TransferSerializer::serializePlainJsonNode)
-                    .collect(Collectors.toList());
-        }
-        return transferProcessRepository.findByRole(role)
-                .stream()
-                .map(TransferSerializer::serializePlainJsonNode)
-                .collect(Collectors.toList());
+    public Page<TransferProcess> findDataTransfers(Map<String, Object> filters, Pageable pageable) {
+        return transferProcessRepository.findWithDynamicFilters(filters, TransferProcess.class, pageable);
     }
 
     /*###### CONSUMER #########*/
@@ -112,7 +99,7 @@ public class DataTransferAPIService {
     public JsonNode requestTransfer(DataTransferRequest dataTransferRequest) {
         TransferProcess transferProcessInitialized = findTransferProcessById(dataTransferRequest.getTransferProcessId());
 
-        stateTransitionCheck(TransferState.REQUESTED, transferProcessInitialized.getState());
+        stateTransitionCheck(TransferState.REQUESTED, transferProcessInitialized);
         DataAddress dataAddressForMessage = null;
         if (StringUtils.isNotBlank(dataTransferRequest.getFormat()) && dataTransferRequest.getDataAddress() != null && !dataTransferRequest.getDataAddress().isEmpty()) {
             dataAddressForMessage = TransferSerializer.deserializePlain(dataTransferRequest.getDataAddress().toPrettyString(), DataAddress.class);
@@ -160,6 +147,12 @@ public class DataTransferAPIService {
 
                 transferProcessRepository.save(transferProcessForDB);
                 log.info("Transfer process {} saved", transferProcessForDB.getId());
+                publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
+                        "Transfer process requested successfully",
+                        Map.of("transferProcess", transferProcessForDB,
+                                "role", IConstants.ROLE_API,
+                                "consumerPid", transferProcessForDB.getConsumerPid(),
+                                "providerPid", transferProcessForDB.getProviderPid()));
             } catch (JsonProcessingException e) {
                 log.error("Transfer process from response not valid");
                 throw new DataTransferAPIException(e.getLocalizedMessage(), e);
@@ -171,6 +164,19 @@ public class DataTransferAPIService {
             try {
                 jsonNode = mapper.readTree(response.getData());
                 TransferError transferError = TransferSerializer.deserializeProtocol(jsonNode, TransferError.class);
+                Map<String, Object> details = new HashMap<>();
+                details.put("transferProcess", transferProcessInitialized);
+                details.put("role", IConstants.ROLE_API);
+                details.put("errorMessage", transferError);
+                if (transferProcessInitialized.getConsumerPid() != null) {
+                    details.put("consumerPid", transferProcessInitialized.getConsumerPid());
+                }
+                if (transferProcessInitialized.getProviderPid() != null) {
+                    details.put("providerPid", transferProcessInitialized.getProviderPid());
+                }
+                publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
+                        "Transfer process request failed",
+                        details);
                 throw new DataTransferAPIException(transferError, "Error making request");
             } catch (JsonProcessingException ex) {
                 throw new DataTransferAPIException("Error occurred");
@@ -195,7 +201,7 @@ public class DataTransferAPIService {
                     + " to " + TransferState.STARTED.name());
         }
 
-        stateTransitionCheck(TransferState.STARTED, transferProcess.getState());
+        stateTransitionCheck(TransferState.STARTED, transferProcess);
 
         log.info("Sending TransferStartMessage to {}", transferProcess.getCallbackAddress());
         String address = null;
@@ -209,15 +215,17 @@ public class DataTransferAPIService {
             if (transferProcess.getDataAddress() == null) {
                 String artifactURL = switch (artifact.getArtifactType()) {
                     case FILE ->
-                        // Generate a presigned URL for S3 with 7 days duration, which will be used as the endpoint for the data transfer
-                            s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), transferProcess.getDatasetId(), Duration.ofDays(7L));
+                    // Generate a presigned URL for S3 with 7 days duration, which will be used as the endpoint for the data transfer
+                    {
+                        try {
+                            yield s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), transferProcess.getDatasetId(), Duration.ofDays(7L));
+                        } catch (Exception e) {
+                            throw new DataTransferAPIException("The requested artifact is currently not available. Please try again later.");
+                        }
+                    }
                     case EXTERNAL -> {
                         String transactionId = Base64.encodeBase64URLSafeString((transferProcess.getConsumerPid() + "|" + transferProcess.getProviderPid()).getBytes(StandardCharsets.UTF_8));
                         yield DataTransferCallback.getValidCallback(dataTransferProperties.providerCallbackAddress()) + "/artifacts/" + transactionId;
-                    }
-                    default -> {
-                        log.error("Wrong artifact type: {}", artifact.getArtifactType());
-                        throw new DownloadException("Error while downloading data", HttpStatus.INTERNAL_SERVER_ERROR);
                     }
                 };
 
@@ -271,9 +279,22 @@ public class DataTransferAPIService {
                     .build();
             transferProcessRepository.save(transferProcessStarted);
             log.info("Transfer process {} saved", transferProcessStarted.getId());
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
+                    "Transfer process started successfully",
+                    Map.of("transferProcess", transferProcessStarted,
+                            "role", IConstants.ROLE_API,
+                            "consumerPid", transferProcessStarted.getConsumerPid(),
+                            "providerPid", transferProcessStarted.getProviderPid()));
             return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
         } else {
             log.error("Error response received!");
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
+                    "Transfer process start failed",
+                    Map.of("transferProcess", transferProcess,
+                            "role", IConstants.ROLE_API,
+                            "consumerPid", transferProcess.getConsumerPid(),
+                            "providerPid", transferProcess.getProviderPid(),
+                            "errorMessage", response.getMessage()));
             throw new DataTransferAPIException(response.getMessage());
         }
     }
@@ -288,7 +309,7 @@ public class DataTransferAPIService {
     public JsonNode completeTransfer(String transferProcessId) {
         TransferProcess transferProcess = findTransferProcessById(transferProcessId);
 
-        stateTransitionCheck(TransferState.COMPLETED, transferProcess.getState());
+        stateTransitionCheck(TransferState.COMPLETED, transferProcess);
 
         TransferCompletionMessage transferCompletionMessage = TransferCompletionMessage.Builder.newInstance()
                 .consumerPid(transferProcess.getConsumerPid())
@@ -310,12 +331,25 @@ public class DataTransferAPIService {
                         credentialUtils.getConnectorCredentials());
         log.info("Response received {}", response);
         if (response.isSuccess()) {
-            TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.COMPLETED);
-            transferProcessRepository.save(transferProcessStarted);
-            log.info("Transfer process {} saved", transferProcessStarted.getId());
-            return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
+            TransferProcess transferProcessCompleted = transferProcess.copyWithNewTransferState(TransferState.COMPLETED);
+            transferProcessRepository.save(transferProcessCompleted);
+            log.info("Transfer process {} saved", transferProcessCompleted.getId());
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED,
+                    "Transfer process completed successfully",
+                    Map.of("transferProcess", transferProcessCompleted,
+                            "role", IConstants.ROLE_API,
+                            "consumerPid", transferProcessCompleted.getConsumerPid(),
+                            "providerPid", transferProcessCompleted.getProviderPid()));
+            return TransferSerializer.serializePlainJsonNode(transferProcessCompleted);
         } else {
             log.error("Error response received!");
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED,
+                    "Transfer process completion failed",
+                    Map.of("transferProcess", transferProcess,
+                            "role", IConstants.ROLE_API,
+                            "consumerPid", transferProcess.getConsumerPid(),
+                            "providerPid", transferProcess.getProviderPid(),
+                            "errorMessage", response.getMessage()));
             throw new DataTransferAPIException(response.getMessage());
         }
     }
@@ -330,7 +364,7 @@ public class DataTransferAPIService {
     public JsonNode suspendTransfer(String transferProcessId) {
         TransferProcess transferProcess = findTransferProcessById(transferProcessId);
 
-        stateTransitionCheck(TransferState.SUSPENDED, transferProcess.getState());
+        stateTransitionCheck(TransferState.SUSPENDED, transferProcess);
 
         TransferSuspensionMessage transferSuspensionMessage = TransferSuspensionMessage.Builder.newInstance()
                 .consumerPid(transferProcess.getConsumerPid())
@@ -358,9 +392,22 @@ public class DataTransferAPIService {
             TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED);
             transferProcessRepository.save(transferProcessStarted);
             log.info("Transfer process {} saved", transferProcessStarted.getId());
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED,
+                    "Transfer process suspended successfully",
+                    Map.of("transferProcess", transferProcess,
+                            "role", IConstants.ROLE_API,
+                            "consumerPid", transferProcess.getConsumerPid(),
+                            "providerPid", transferProcess.getProviderPid()));
             return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
         } else {
             log.error("Error response received!");
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED,
+                    "Transfer process suspension failed",
+                    Map.of("transferProcess", transferProcess,
+                            "role", IConstants.ROLE_API,
+                            "consumerPid", transferProcess.getConsumerPid(),
+                            "providerPid", transferProcess.getProviderPid(),
+                            "errorMessage", response.getMessage()));
             throw new DataTransferAPIException(response.getMessage());
         }
     }
@@ -375,7 +422,7 @@ public class DataTransferAPIService {
     public JsonNode terminateTransfer(String transferProcessId) {
         TransferProcess transferProcess = findTransferProcessById(transferProcessId);
 
-        stateTransitionCheck(TransferState.TERMINATED, transferProcess.getState());
+        stateTransitionCheck(TransferState.TERMINATED, transferProcess);
 
         TransferTerminationMessage transferTerminationMessage = TransferTerminationMessage.Builder.newInstance()
                 .consumerPid(transferProcess.getConsumerPid())
@@ -403,9 +450,22 @@ public class DataTransferAPIService {
             TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);
             transferProcessRepository.save(transferProcessStarted);
             log.info("Transfer process {} saved", transferProcessStarted.getId());
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED,
+                    "Transfer process terminated successfully",
+                    Map.of("transferProcess", transferProcess,
+                            "role", IConstants.ROLE_API,
+                            "consumerPid", transferProcess.getConsumerPid(),
+                            "providerPid", transferProcess.getProviderPid()));
             return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
         } else {
             log.error("Error response received!");
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED,
+                    "Transfer process termination failed",
+                    Map.of("transferProcess", transferProcess,
+                            "role", IConstants.ROLE_API,
+                            "consumerPid", transferProcess.getConsumerPid(),
+                            "providerPid", transferProcess.getProviderPid(),
+                            "errorMessage", response.getMessage()));
             throw new DataTransferAPIException(response.getMessage());
         }
     }
@@ -416,45 +476,52 @@ public class DataTransferAPIService {
      * store artifact in S3; update Transfer Process downloaded to true
      *
      * @param transferProcessId transfer process id
+     * @return CompletableFuture<Void> that completes when the download is finished
      */
-    public void downloadData(String transferProcessId) {
+    public CompletableFuture<Void> downloadData(String transferProcessId) {
         TransferProcess transferProcess = findTransferProcessById(transferProcessId);
 
         if (!transferProcess.getState().equals(TransferState.STARTED)) {
             log.error("Download aborted, Transfer Process is not in STARTED state");
-            throw new DataTransferAPIException("Download aborted, Transfer Process is not in STARTED state");
+            return CompletableFuture.failedFuture(
+                    new DataTransferAPIException("Download aborted, Transfer Process is not in STARTED state"));
         }
 
-        policyCheck(transferProcess);
-
+        try {
+            policyCheck(transferProcess);
+        } catch (DataTransferAPIException e) {
+            return CompletableFuture.failedFuture(
+                    new DataTransferAPIException(e.getLocalizedMessage()));
+        }
         log.info("Starting download transfer process id - {} data...", transferProcessId);
 
         // Get appropriate strategy and execute transfer
         DataTransferStrategy strategy = dataTransferStrategyFactory.getStrategy(transferProcess.getFormat());
 
-        strategy.transfer(transferProcess);
+        return strategy.transfer(transferProcess)
+                .thenAccept(transfer -> {
+                    TransferProcess transferProcessWithData = TransferProcess.Builder.newInstance()
+                            .id(transferProcess.getId())
+                            .agreementId(transferProcess.getAgreementId())
+                            .consumerPid(transferProcess.getConsumerPid())
+                            .providerPid(transferProcess.getProviderPid())
+                            .callbackAddress(transferProcess.getCallbackAddress())
+                            .dataAddress(transferProcess.getDataAddress())
+                            .isDownloaded(true)
+                            .dataId(transferProcessId)
+                            .format(transferProcess.getFormat())
+                            .state(transferProcess.getState())
+                            .role(transferProcess.getRole())
+                            .datasetId(transferProcess.getDatasetId())
+                            .created(transferProcess.getCreated())
+                            .createdBy(transferProcess.getCreatedBy())
+                            .modified(transferProcess.getModified())
+                            .lastModifiedBy(transferProcess.getLastModifiedBy())
+                            .version(transferProcess.getVersion())
+                            .build();
 
-        TransferProcess transferProcessWithData = TransferProcess.Builder.newInstance()
-                .id(transferProcess.getId())
-                .agreementId(transferProcess.getAgreementId())
-                .consumerPid(transferProcess.getConsumerPid())
-                .providerPid(transferProcess.getProviderPid())
-                .callbackAddress(transferProcess.getCallbackAddress())
-                .dataAddress(transferProcess.getDataAddress())
-                .isDownloaded(true)
-                .dataId(transferProcessId)
-                .format(transferProcess.getFormat())
-                .state(transferProcess.getState())
-                .role(transferProcess.getRole())
-                .datasetId(transferProcess.getDatasetId())
-                .created(transferProcess.getCreated())
-                .createdBy(transferProcess.getCreatedBy())
-                .modified(transferProcess.getModified())
-                .lastModifiedBy(transferProcess.getLastModifiedBy())
-                .version(transferProcess.getVersion())
-                .build();
-
-        transferProcessRepository.save(transferProcessWithData);
+                    transferProcessRepository.save(transferProcessWithData);
+                });
     }
 
     /**
@@ -483,22 +550,56 @@ public class DataTransferAPIService {
         try {
             String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), transferProcessId, Duration.ofDays(7L));
             publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId()));
+            publisher.publishEvent(AuditEventType.TRANSFER_VIEW,
+                    "Transfer process (view) generated artifact URL",
+                    Map.of("transferProcess", transferProcess,
+                            "role", IConstants.ROLE_API,
+                            "consumerPid", transferProcess.getConsumerPid(),
+                            "providerPid", transferProcess.getProviderPid()));
             return artifactURL;
         } catch (Exception e) {
             log.error("Error while accessing data", e);
+            publisher.publishEvent(AuditEventType.TRANSFER_VIEW,
+                    "Transfer process (view) generated artifact URL failed",
+                    Map.of("transferProcess", transferProcess,
+                            "role", IConstants.ROLE_API,
+                            "consumerPid", transferProcess.getConsumerPid(),
+                            "providerPid", transferProcess.getProviderPid(),
+                            "errorMessage", e.getMessage() != null ? e.getMessage() : "Unknown error"));
             throw new DataTransferAPIException("Error while accessing data" + e.getLocalizedMessage());
         }
     }
 
-    private TransferProcess findTransferProcessById(String transferProcessId) {
+    /**
+     * Find TransferProcess by id.<br>
+     *
+     * @param transferProcessId transfer process id
+     * @return TransferProcess object
+     */
+    public TransferProcess findTransferProcessById(String transferProcessId) {
         return transferProcessRepository.findById(transferProcessId)
-                .orElseThrow(() ->
-                        new DataTransferAPIException("Transfer process with id " + transferProcessId + " not found"));
+                .orElseThrow(() -> {
+                    publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND,
+                            "Transfer process with id " + transferProcessId + " not found",
+                            Map.of("transferProcessId", transferProcessId,
+                                    "role", IConstants.ROLE_API,
+                                    "consumerPid", IConstants.TEMPORARY_CONSUMER_PID,
+                                    "providerPid", IConstants.TEMPORARY_PROVIDER_PID));
+                    return new DataTransferAPIException("Transfer process with id " + transferProcessId + " not found");
+                });
     }
 
-    private void stateTransitionCheck(TransferState newState, TransferState currentState) {
-        if (!currentState.canTransitTo(newState)) {
-            throw new DataTransferAPIException("State transition aborted, " + currentState.name()
+    private void stateTransitionCheck(TransferState newState, TransferProcess transferProcess) {
+        if (!transferProcess.getState().canTransitTo(newState)) {
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR,
+                    "Transfer process state transition error",
+                    Map.of("transferProcess", transferProcess,
+                            "currentState", transferProcess.getState(),
+                            "newState", newState,
+                            "consumerPid", transferProcess.getConsumerPid(),
+                            "providerPid", transferProcess.getProviderPid(),
+                            "role", IConstants.ROLE_API));
+            throw new DataTransferAPIException("State transition aborted, " + transferProcess.getState().name()
                     + " state can not transition to " + newState.name());
         }
     }
@@ -516,12 +617,20 @@ public class DataTransferAPIService {
             TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {
             };
             GenericApiResponse<String> internalResponse = ToolsSerializer.deserializePlain(response, typeRef);
+            assert internalResponse != null;
             if (!internalResponse.isSuccess()) {
                 log.error("Download aborted, Policy is not valid anymore");
                 throw new DataTransferAPIException("Download aborted, Policy is not valid anymore");
             }
         } else {
             log.warn("!!!!! UsageControl DISABLED - will not check if policy is present or valid !!!!!");
+            publisher.publishEvent(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DISABLED,
+                    "UsageControl is disabled, policy evaluation skipped",
+                    Map.of("transferProcess", transferProcess,
+                            "agreementId", transferProcess.getAgreementId(),
+                            "consumerPid", transferProcess.getConsumerPid(),
+                            "providerPid", transferProcess.getProviderPid(),
+                            "role", IConstants.ROLE_API));
         }
     }
 }
