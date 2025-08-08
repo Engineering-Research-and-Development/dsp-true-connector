@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.1-SNAPSHOT] - 08.08.2025.
+
+### Changed
+
+- Updated release GitHub action to use new versioning scheme
+
 ## [0.4.11-SNAPSHOT] - 04.08.2025.
 
 ### Added
