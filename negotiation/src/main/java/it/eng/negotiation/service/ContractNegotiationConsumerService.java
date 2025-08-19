@@ -16,8 +16,8 @@ import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.datatransfer.InitializeTransferProcess;
 import it.eng.tools.model.IConstants;
+import it.eng.tools.service.AuditEventPublisher;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -30,7 +30,7 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
     private final AgreementRepository agreementRepository;
     private final PolicyAdministrationPoint policyAdministrationPoint;
 
-    public ContractNegotiationConsumerService(ApplicationEventPublisher publisher,
+    public ContractNegotiationConsumerService(AuditEventPublisher publisher,
                                               ContractNegotiationRepository contractNegotiationRepository, OkHttpRestClient okHttpRestClient,
                                               ContractNegotiationProperties properties, OfferRepository offerRepository,
                                               AgreementRepository agreementRepository, PolicyAdministrationPoint policyAdministrationPoint) {

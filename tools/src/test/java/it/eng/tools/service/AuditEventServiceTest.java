@@ -3,6 +3,7 @@ package it.eng.tools.service;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.AuditEventTypeDTO;
+import it.eng.tools.exception.ResourceNotFoundException;
 import it.eng.tools.repository.AuditEventRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -11,12 +12,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.*;
 
 import java.time.LocalDateTime;
 import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -25,50 +26,59 @@ public class AuditEventServiceTest {
 
     @Mock
     private AuditEventRepository auditEventRepository;
+    @Mock
+    private Pageable pageable;
 
     @InjectMocks
     private AuditEventService auditEventService;
 
     private Map<String, Object> filters;
-    private List<AuditEvent> expectedEvents;
+    private Page<AuditEvent> expectedEvents;
 
     @BeforeEach
     void setUp() {
         filters = new HashMap<>();
         filters.put("eventType", AuditEventType.APPLICATION_START);
 
-        expectedEvents = List.of(
+        List<AuditEvent> auditEvents = List.of(
                 AuditEvent.Builder.newInstance()
-                        .description("Test event")
+                        .description("Test event 1")
                         .eventType(AuditEventType.APPLICATION_START)
                         .timestamp(LocalDateTime.now())
+                        .build(),
+                AuditEvent.Builder.newInstance()
+                        .description("Test event 2")
+                        .eventType(AuditEventType.APPLICATION_START)
+                        .timestamp(LocalDateTime.now().minusHours(1))
                         .build()
         );
+        pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "timestamp"));
+        expectedEvents = new PageImpl<>(auditEvents, pageable, auditEvents.size());
     }
 
     @Test
     void getAuditEvents_shouldReturnEventsFromRepository() {
-        when(auditEventRepository.findWithDynamicFilters(filters, AuditEvent.class))
+        when(auditEventRepository.findWithDynamicFilters(filters, AuditEvent.class, pageable))
                 .thenReturn(expectedEvents);
 
-        Collection<AuditEvent> actualEvents = auditEventService.getAuditEvents(filters);
+        Page<AuditEvent> actualEvents = auditEventService.getAuditEvents(filters, pageable);
 
         assertNotNull(actualEvents);
         assertEquals(expectedEvents, actualEvents);
-        verify(auditEventRepository).findWithDynamicFilters(filters, AuditEvent.class);
+        verify(auditEventRepository).findWithDynamicFilters(filters, AuditEvent.class, pageable);
     }
 
     @Test
     void getAuditEvents_withEmptyFilters_shouldReturnEventsFromRepository() {
         Map<String, Object> emptyFilters = new HashMap<>();
-        when(auditEventRepository.findWithDynamicFilters(emptyFilters, AuditEvent.class))
+        when(auditEventRepository.findWithDynamicFilters(emptyFilters, AuditEvent.class, pageable))
                 .thenReturn(expectedEvents);
 
-        Collection<AuditEvent> actualEvents = auditEventService.getAuditEvents(emptyFilters);
+        Page<AuditEvent> actualEvents = auditEventService.getAuditEvents(emptyFilters, pageable);
 
         assertNotNull(actualEvents);
         assertEquals(expectedEvents, actualEvents);
-        verify(auditEventRepository).findWithDynamicFilters(emptyFilters, AuditEvent.class);
+        verify(auditEventRepository).findWithDynamicFilters(emptyFilters, AuditEvent.class, pageable);
     }
 
     @Test
@@ -80,5 +90,37 @@ public class AuditEventServiceTest {
         assertEquals(Arrays.stream(AuditEventType.values())
                 .map(eventType -> new AuditEventTypeDTO(eventType.name(), eventType.toString()))
                 .toList(), auditEventTypes);
+    }
+
+    @Test
+    @DisplayName("getAuditEventById should return audit event by ID")
+    public void getAuditEventById_shouldReturnAuditEventById() {
+        String auditEventId = "12345";
+        AuditEvent expectedEvent = AuditEvent.Builder.newInstance()
+                .id(auditEventId)
+                .description("Test event")
+                .eventType(AuditEventType.APPLICATION_START)
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        when(auditEventRepository.findById(auditEventId)).thenReturn(Optional.of(expectedEvent));
+
+        AuditEvent actualEvent = auditEventService.getAuditEventById(auditEventId);
+
+        assertNotNull(actualEvent);
+        assertEquals(expectedEvent, actualEvent);
+        verify(auditEventRepository).findById(auditEventId);
+    }
+
+    @Test
+    @DisplayName("getAuditEventById should throw exception if event not found")
+    public void getAuditEventById_shouldThrowExceptionIfEventNotFound() {
+        String auditEventId = "12345";
+
+        when(auditEventRepository.findById(auditEventId)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> {
+            auditEventService.getAuditEventById(auditEventId);
+        });
     }
 }

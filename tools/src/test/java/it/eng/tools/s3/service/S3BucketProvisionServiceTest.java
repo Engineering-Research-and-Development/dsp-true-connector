@@ -602,5 +602,103 @@ public class S3BucketProvisionServiceTest {
         verify(s3Client, never()).headBucket(any(HeadBucketRequest.class));
     }
 
+    // ensureBucketCredentials test cases
+    @Test
+    @DisplayName("Should return existing credentials when they exist")
+    void ensureBucketCredentials_WhenCredentialsExist_ShouldReturnExisting() {
+        // Arrange
+        String bucketName = "test-bucket";
+        BucketCredentialsEntity existingCredentials = BucketCredentialsEntity.Builder.newInstance()
+                .bucketName(bucketName)
+                .accessKey("existing-key")
+                .secretKey("existing-secret")
+                .build();
+
+        when(bucketCredentialsService.bucketCredentialsExist(bucketName)).thenReturn(true);
+        when(bucketCredentialsService.getBucketCredentials(bucketName)).thenReturn(existingCredentials);
+
+        // Act
+        BucketCredentialsEntity result = s3BucketProvisionService.ensureBucketCredentials(bucketName);
+
+        // Assert
+        assertEquals(existingCredentials, result);
+        verify(bucketCredentialsService).bucketCredentialsExist(bucketName);
+        verify(bucketCredentialsService).getBucketCredentials(bucketName);
+        verify(s3ClientProvider, never()).adminS3Client();
+    }
+
+    @Test
+    @DisplayName("Should create credentials when bucket exists but credentials are missing")
+    void ensureBucketCredentials_WhenBucketExistsButCredentialsMissing_ShouldCreateCredentials() {
+        // Arrange
+        String bucketName = "test-bucket";
+        BucketCredentialsEntity newCredentials = BucketCredentialsEntity.Builder.newInstance()
+                .bucketName(bucketName)
+                .accessKey("new-key")
+                .secretKey("new-secret")
+                .build();
+
+        when(bucketCredentialsService.bucketCredentialsExist(bucketName)).thenReturn(false);
+        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
+        when(s3Client.headBucket(any(HeadBucketRequest.class))).thenReturn(HeadBucketResponse.builder().build());
+        when(s3Client.getBucketPolicy(any(GetBucketPolicyRequest.class))).thenReturn(GetBucketPolicyResponse.builder().policy("{}").build());
+        when(s3Client.putBucketPolicy(any(PutBucketPolicyRequest.class))).thenReturn(PutBucketPolicyResponse.builder().build());
+        when(bucketCredentialsService.saveBucketCredentials(any(BucketCredentialsEntity.class))).thenReturn(newCredentials);
+
+        // Act
+        BucketCredentialsEntity result = s3BucketProvisionService.ensureBucketCredentials(bucketName);
+
+        // Assert
+        assertEquals(newCredentials, result);
+        verify(bucketCredentialsService).bucketCredentialsExist(bucketName);
+        verify(s3Client).headBucket(any(HeadBucketRequest.class));
+        verify(iamUserManagementService).createUser(any(BucketCredentialsEntity.class));
+        verify(iamUserManagementService).attachPolicyToUser(any(BucketCredentialsEntity.class));
+        verify(bucketCredentialsService).saveBucketCredentials(any(BucketCredentialsEntity.class));
+    }
+
+    @Test
+    @DisplayName("Should create secure bucket when bucket does not exist")
+    void ensureBucketCredentials_WhenBucketDoesNotExist_ShouldCreateSecureBucket() {
+        // Arrange
+        String bucketName = "test-bucket";
+        BucketCredentialsEntity newCredentials = BucketCredentialsEntity.Builder.newInstance()
+                .bucketName(bucketName)
+                .accessKey("new-key")
+                .secretKey("new-secret")
+                .build();
+
+        when(bucketCredentialsService.bucketCredentialsExist(bucketName)).thenReturn(false);
+        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
+        when(s3Client.headBucket(any(HeadBucketRequest.class))).thenThrow(NoSuchBucketException.builder().build());
+        when(s3Client.createBucket(any(CreateBucketRequest.class))).thenReturn(CreateBucketResponse.builder().build());
+        when(s3Client.getBucketPolicy(any(GetBucketPolicyRequest.class))).thenReturn(GetBucketPolicyResponse.builder().policy("{}").build());
+        when(s3Client.putBucketPolicy(any(PutBucketPolicyRequest.class))).thenReturn(PutBucketPolicyResponse.builder().build());
+        when(bucketCredentialsService.saveBucketCredentials(any(BucketCredentialsEntity.class))).thenReturn(newCredentials);
+
+        // Act
+        BucketCredentialsEntity result = s3BucketProvisionService.ensureBucketCredentials(bucketName);
+
+        // Assert
+        assertEquals(newCredentials, result);
+        verify(bucketCredentialsService).bucketCredentialsExist(bucketName);
+        verify(s3Client).headBucket(any(HeadBucketRequest.class));
+        verify(s3Client).createBucket(any(CreateBucketRequest.class));
+        verify(iamUserManagementService).createUser(any(BucketCredentialsEntity.class));
+        verify(iamUserManagementService).attachPolicyToUser(any(BucketCredentialsEntity.class));
+        verify(bucketCredentialsService).saveBucketCredentials(any(BucketCredentialsEntity.class));
+    }
+
+    @Test
+    @DisplayName("Should throw exception when bucket name is invalid")
+    void ensureBucketCredentials_WithInvalidBucketName_ShouldThrowException() {
+        // Arrange
+        String invalidBucketName = "INVALID-BUCKET-NAME";
+
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class,
+                () -> s3BucketProvisionService.ensureBucketCredentials(invalidBucketName));
+    }
+
 
 }

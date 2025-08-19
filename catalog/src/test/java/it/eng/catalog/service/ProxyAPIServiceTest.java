@@ -8,6 +8,7 @@ import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,6 +28,8 @@ class ProxyAPIServiceTest {
 
 	private static final String FORWARD_TO = "http://forward.to/test";
 
+	private Catalog catalog;
+
 	@Mock
 	private OkHttpRestClient okHttpClient;
 	@Mock
@@ -37,23 +40,30 @@ class ProxyAPIServiceTest {
 	@InjectMocks
 	private ProxyAPIService service;
 
+	@BeforeEach
+	public void setUp() {
+		catalog = CatalogMockObjectUtil.createNewCatalog();
+	}
+
 	@Test
 	@DisplayName("Get formats success")
 	void getFormatsFromDataset() {
 
 		mockCatalogCall();
-		List<String> formats = service.getFormatsFromDataset(CatalogMockObjectUtil.DATASET_ID, FORWARD_TO);
+		List<String> formats = service.getFormatsFromDataset(catalog.getDataset().stream().findFirst().get().getId(), FORWARD_TO);
 		assertNotNull(formats);
 		assertEquals(1, formats.size());
 	}
 	
 	@Test
-	@DisplayName("Get formats success")
+	@DisplayName("Get formats fail")
 	void getFormatsFromDataset_fail() {
 		when(credentialUtils.getConnectorCredentials()).thenReturn("ABC");
 		when(okHttpClient.sendRequestProtocol(anyString(), any(JsonNode.class), anyString()))
 				.thenReturn(genericApiResponse);
 		when(genericApiResponse.isSuccess()).thenReturn(false);
+		when(genericApiResponse.getData())
+				.thenReturn(CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.CATALOG_ERROR));
 		
 		assertThrows(CatalogErrorAPIException.class, 
 				() -> service.getFormatsFromDataset(CatalogMockObjectUtil.DATASET_ID, FORWARD_TO));
@@ -68,7 +78,6 @@ class ProxyAPIServiceTest {
 	}
 
 	private void mockCatalogCall() {
-		Catalog catalog = CatalogMockObjectUtil.createNewCatalog();
 		when(credentialUtils.getConnectorCredentials()).thenReturn("ABC");
 		when(okHttpClient.sendRequestProtocol(anyString(), any(JsonNode.class), anyString()))
 				.thenReturn(genericApiResponse);

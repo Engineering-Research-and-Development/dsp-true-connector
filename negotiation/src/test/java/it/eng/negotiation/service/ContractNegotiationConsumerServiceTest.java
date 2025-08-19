@@ -11,6 +11,7 @@ import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.tools.event.datatransfer.InitializeTransferProcess;
+import it.eng.tools.service.AuditEventPublisher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,7 +20,6 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 
@@ -34,7 +34,7 @@ public class ContractNegotiationConsumerServiceTest {
     @Mock
     private ContractNegotiationProperties properties;
     @Mock
-    private ApplicationEventPublisher publisher;
+    private AuditEventPublisher publisher;
     @Mock
     private ContractNegotiationRepository contractNegotiationRepository;
     @Mock

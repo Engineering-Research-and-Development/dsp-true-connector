@@ -1,6 +1,8 @@
 package it.eng.tools.repository;
 
-import java.util.Collection;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.Map;
 
 public interface GenericDynamicFilterRepository<T, ID> {
@@ -10,8 +12,9 @@ public interface GenericDynamicFilterRepository<T, ID> {
      *
      * @param filters     Map of field names to filter values
      * @param entityClass Class of the entity to filter
+     * @param pageable    Pagination information
      * @return Collection of entities matching the provided criteria
      */
-    Collection<T> findWithDynamicFilters(Map<String, Object> filters, Class<T> entityClass);
+    Page<T> findWithDynamicFilters(Map<String, Object> filters, Class<T> entityClass, Pageable pageable);
 
 }

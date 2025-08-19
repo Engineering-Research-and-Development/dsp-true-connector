@@ -1,14 +1,6 @@
 package it.eng.datatransfer.service;
 
-import java.util.List;
-
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.http.HttpMethod;
-import org.springframework.stereotype.Service;
-
 import com.fasterxml.jackson.core.type.TypeReference;
-
 import it.eng.datatransfer.event.TransferProcessChangeEvent;
 import it.eng.datatransfer.exceptions.TransferProcessInternalException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidFormatException;
@@ -20,13 +12,12 @@ import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
-import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.service.AuditEventPublisher;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
@@ -40,13 +31,13 @@ public class DataTransferService {
 
     private final TransferProcessRepository transferProcessRepository;
     private final TransferRequestMessageRepository transferRequestMessageRepository;
-    private final ApplicationEventPublisher publisher;
+    private final AuditEventPublisher publisher;
 
     private final OkHttpRestClient okHttpRestClient;
 
     public DataTransferService(TransferProcessRepository transferProcessRepository,
                                TransferRequestMessageRepository transferRequestMessageRepository,
-                               ApplicationEventPublisher publisher,
+                               AuditEventPublisher publisher,
                                OkHttpRestClient okHttpRestClient) {
         super();
         this.transferProcessRepository = transferProcessRepository;
@@ -92,13 +83,11 @@ public class DataTransferService {
                 {
                     String errorMessage = "No agreement with id " + transferRequestMessage.getAgreementId() +
                             " exists or Contract Negotiation not finalized";
-                    publisher.publishEvent(AuditEvent.Builder.newInstance()
-                            .eventType(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND)
-                            .description("Transfer process not found for agreementId " + transferRequestMessage.getAgreementId())
-                            .details(Map.of("role", IConstants.ROLE_PROTOCOL,
+                    publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND,
+                            "Transfer process not found for agreementId " + transferRequestMessage.getAgreementId(),
+                            Map.of("role", IConstants.ROLE_PROTOCOL,
                                     "transferRequestMessage", transferRequestMessage,
-                                    "errorMessage", errorMessage))
-                            .build());
+                                    "errorMessage", errorMessage));
                     return new TransferProcessNotFoundException(errorMessage);
                 });
 
@@ -127,14 +116,12 @@ public class DataTransferService {
                 .version(transferProcessInitialized.getVersion())
                 .build();
         transferProcessRepository.save(transferProcessRequested);
-        publisher.publishEvent(AuditEvent.Builder.newInstance()
-                .eventType(AuditEventType.PROTOCOL_TRANSFER_REQUESTED)
-                .description("Transfer process requested")
-                .details(Map.of("role", IConstants.ROLE_PROTOCOL,
+        publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
+                "Transfer process requested",
+                Map.of("role", IConstants.ROLE_PROTOCOL,
                         "transferProcess", transferProcessRequested,
                         "consumerPid", transferProcessRequested.getConsumerPid(),
-                        "providerPid", transferProcessRequested.getProviderPid()))
-                .build());
+                        "providerPid", transferProcessRequested.getProviderPid()));
         log.info("Requested TransferProcess created");
         return transferProcessRequested;
     }
@@ -159,17 +146,15 @@ public class DataTransferService {
             // Only consumer can transit from REQUESTED to STARTED state
             String errorMessage = "State transition aborted, consumer can not transit from " + TransferState.REQUESTED.name()
                     + " to " + TransferState.STARTED.name();
-            publisher.publishEvent(AuditEvent.Builder.newInstance()
-                    .eventType(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR)
-                    .description("Transfer process state transition error")
-                    .details(Map.of("transferProcess", transferProcessRequested,
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR,
+                    "Transfer process state transition error",
+                    Map.of("transferProcess", transferProcessRequested,
                             "currentState", transferProcessRequested.getState(),
                             "newState", TransferState.STARTED,
                             "consumerPid", transferProcessRequested.getConsumerPid(),
                             "providerPid", transferProcessRequested.getProviderPid(),
                             "role", IConstants.ROLE_PROTOCOL,
-                            "errorMessage", errorMessage))
-                    .build());
+                            "errorMessage", errorMessage));
             throw new TransferProcessInvalidStateException(errorMessage, transferProcessRequested.getConsumerPid(), transferProcessRequested.getProviderPid());
         }
 
@@ -199,14 +184,12 @@ public class DataTransferService {
                 .build());
         // TODO check how to handle this on consumer side!!!
         publisher.publishEvent(transferStartMessage);
-        publisher.publishEvent(AuditEvent.Builder.newInstance()
-                .eventType(AuditEventType.PROTOCOL_TRANSFER_STARTED)
-                .description("Transfer process started")
-                .details(Map.of("role", IConstants.ROLE_PROTOCOL,
+        publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
+                "Transfer process started",
+                Map.of("role", IConstants.ROLE_PROTOCOL,
                         "transferProcess", transferProcessStarted,
                         "consumerPid", transferProcessStarted.getConsumerPid(),
-                        "providerPid", transferProcessStarted.getProviderPid()))
-                .build());
+                        "providerPid", transferProcessStarted.getProviderPid()));
         return transferProcessStarted;
     }
 
@@ -234,14 +217,12 @@ public class DataTransferService {
                 .newTransferProcess(transferProcessCompleted)
                 .build());
         publisher.publishEvent(transferCompletionMessage);
-        publisher.publishEvent(AuditEvent.Builder.newInstance()
-                .eventType(AuditEventType.PROTOCOL_TRANSFER_COMPLETED)
-                .description("Transfer process completed")
-                .details(Map.of("role", IConstants.ROLE_PROTOCOL,
+        publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED,
+                "Transfer process completed",
+                Map.of("role", IConstants.ROLE_PROTOCOL,
                         "transferProcess", transferProcessCompleted,
                         "consumerPid", transferProcessCompleted.getConsumerPid(),
-                        "providerPid", transferProcessCompleted.getProviderPid()))
-                .build());
+                        "providerPid", transferProcessCompleted.getProviderPid()));
         return transferProcessCompleted;
     }
 
@@ -269,14 +250,12 @@ public class DataTransferService {
                 .newTransferProcess(transferProcessSuspended)
                 .build());
         publisher.publishEvent(transferSuspensionMessage);
-        publisher.publishEvent(AuditEvent.Builder.newInstance()
-                .eventType(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED)
-                .description("Transfer process completed")
-                .details(Map.of("role", IConstants.ROLE_PROTOCOL,
+        publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED,
+                "Transfer process completed",
+                Map.of("role", IConstants.ROLE_PROTOCOL,
                         "transferProcess", transferProcessSuspended,
                         "consumerPid", transferProcessSuspended.getConsumerPid(),
-                        "providerPid", transferProcessSuspended.getProviderPid()))
-                .build());
+                        "providerPid", transferProcessSuspended.getProviderPid()));
         return transferProcessSuspended;
     }
 
@@ -305,14 +284,12 @@ public class DataTransferService {
                 .newTransferProcess(transferProcessTerminated)
                 .build());
         publisher.publishEvent(transferTerminationMessage);
-        publisher.publishEvent(AuditEvent.Builder.newInstance()
-                .eventType(AuditEventType.PROTOCOL_TRANSFER_TERMINATED)
-                .description("Transfer process completed")
-                .details(Map.of("role", IConstants.ROLE_PROTOCOL,
+        publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED,
+                "Transfer process completed",
+                Map.of("role", IConstants.ROLE_PROTOCOL,
                         "transferProcess", transferProcessTerminated,
                         "consumerPid", transferProcessTerminated.getConsumerPid(),
-                        "providerPid", transferProcessTerminated.getProviderPid()))
-                .build());
+                        "providerPid", transferProcessTerminated.getProviderPid()));
         return transferProcessTerminated;
     }
 
@@ -327,13 +304,12 @@ public class DataTransferService {
         return transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid)
                 .orElseThrow(() ->
                 {
-                    publisher.publishEvent(AuditEvent.Builder.newInstance()
-                            .description("Transfer process with consumerPid " + consumerPid + " and providerPid " + providerPid + " not found")
-                            .eventType(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND)
-                            .details(Map.of("role", IConstants.ROLE_PROTOCOL,
+                    publisher.publishEvent(
+                            AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND,
+                            "Transfer process with consumerPid " + consumerPid + " and providerPid " + providerPid + " not found",
+                            Map.of("role", IConstants.ROLE_PROTOCOL,
                                     "consumerPid", IConstants.TEMPORARY_CONSUMER_PID,
-                                    "providerPid", IConstants.TEMPORARY_PROVIDER_PID))
-                            .build());
+                                    "providerPid", IConstants.TEMPORARY_PROVIDER_PID));
                     return new TransferProcessNotFoundException("Transfer process for consumerPid " + consumerPid
                             + " and providerPid " + providerPid + " not found");
                 });
@@ -341,16 +317,14 @@ public class DataTransferService {
 
     private void stateTransitionCheck(TransferProcess transferProcess, TransferState stateToTransit) {
         if (!transferProcess.getState().canTransitTo(stateToTransit)) {
-            publisher.publishEvent(AuditEvent.Builder.newInstance()
-                    .eventType(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR)
-                    .description("Transfer process state transition error")
-                    .details(Map.of("transferProcess", transferProcess,
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR,
+                    "Transfer process state transition error",
+                    Map.of("transferProcess", transferProcess,
                             "currentState", transferProcess.getState(),
                             "newState", stateToTransit,
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid(),
-                            "role", IConstants.ROLE_PROTOCOL))
-                    .build());
+                            "role", IConstants.ROLE_PROTOCOL));
             throw new TransferProcessInvalidStateException("TransferProcess is in invalid state " + transferProcess.getState(),
                     transferProcess.getConsumerPid(), transferProcess.getProviderPid());
         }
@@ -372,11 +346,9 @@ public class DataTransferService {
             details.put("providerPid", transferProcess.getProviderPid());
         }
         if (StringUtils.isBlank(response)) {
-            publisher.publishEvent(AuditEvent.Builder.newInstance()
-                    .eventType(AuditEventType.PROTOCOL_TRANSFER_REQUESTED)
-                    .description("Internal error while checking supported formats for dataset " + transferProcess.getDatasetId())
-                    .details(details)
-                    .build());
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
+                    "Internal error while checking supported formats for dataset " + transferProcess.getDatasetId(),
+                    details);
             throw new TransferProcessInternalException("Internal error",
                     transferProcess.getConsumerPid(), transferProcess.getProviderPid());
         }
@@ -385,11 +357,9 @@ public class DataTransferService {
         };
         GenericApiResponse<List<String>> apiResp = TransferSerializer.deserializePlain(response, typeRef);
         boolean formatValid = apiResp.getData().stream().anyMatch(f -> f.equals(format));
-        publisher.publishEvent(AuditEvent.Builder.newInstance()
-                .eventType(AuditEventType.PROTOCOL_TRANSFER_REQUESTED)
-                .description("Supported format evaluated as " + (formatValid ? "valid" : "invalid"))
-                .details(details)
-                .build());
+        publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
+                "Supported format evaluated as " + (formatValid ? "valid" : "invalid"),
+                details);
         if (formatValid) {
             log.debug("Found supported format");
         } else {

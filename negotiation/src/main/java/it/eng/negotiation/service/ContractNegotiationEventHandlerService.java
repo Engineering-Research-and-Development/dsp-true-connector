@@ -13,14 +13,14 @@ import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.UUID;
 
 @Service
@@ -33,7 +33,7 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
     protected final CredentialUtils credentialUtils;
     private final PolicyAdministrationPoint policyAdministrationPoint;
 
-    public ContractNegotiationEventHandlerService(ApplicationEventPublisher publisher,
+    public ContractNegotiationEventHandlerService(AuditEventPublisher publisher,
                                                   ContractNegotiationRepository contractNegotiationRepository, OkHttpRestClient okHttpRestClient,
                                                   ContractNegotiationProperties properties, OfferRepository offerRepository,
                                                   AgreementRepository agreementRepository, CredentialUtils credentialUtils,
@@ -47,11 +47,11 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
     @Deprecated
     public void handleContractNegotiationOfferResponse(ContractNegotiationOfferResponseEvent offerResponse) {
         String result = offerResponse.isOfferAccepted() ? "accepted" : "declined";
-        log.info("Contract offer " + result);
+        log.info("Contract offer {}", result);
         // TODO get callbackAddress and send Agreement message
-        log.info("ConsumerPid - " + offerResponse.getConsumerPid() + ", providerPid - " + offerResponse.getProviderPid());
+        log.info("ConsumerPid - {}, providerPid - {}", offerResponse.getConsumerPid(), offerResponse.getProviderPid());
         ContractNegotiation contractNegotiation = findContractNegotiationByPids(offerResponse.getConsumerPid(), offerResponse.getProviderPid());
-        log.info("Found intial negotiation" + " - CallbackAddress " + contractNegotiation.getCallbackAddress());
+        log.info("Found initial negotiation  - CallbackAddress {}", contractNegotiation.getCallbackAddress());
         if (offerResponse.isOfferAccepted()) {
             ContractAgreementMessage agreementMessage = ContractAgreementMessage.Builder.newInstance()
                     .consumerPid(contractNegotiation.getConsumerPid())
@@ -66,7 +66,7 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
                     credentialUtils.getConnectorCredentials());
             if (response.isSuccess()) {
                 log.info("Updating status for negotiation {} to agreed", contractNegotiation.getId());
-                ContractNegotiation contractNegtiationUpdate = ContractNegotiation.Builder.newInstance()
+                ContractNegotiation contractNegotiationUpdate = ContractNegotiation.Builder.newInstance()
                         .id(contractNegotiation.getId())
                         .callbackAddress(contractNegotiation.getCallbackAddress())
                         .consumerPid(contractNegotiation.getConsumerPid())
@@ -79,7 +79,7 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
                         .lastModifiedBy(contractNegotiation.getLastModifiedBy())
                         .version(contractNegotiation.getVersion())
                         .build();
-                contractNegotiationRepository.save(contractNegtiationUpdate);
+                contractNegotiationRepository.save(contractNegotiationUpdate);
                 log.info("Saving agreement..." + agreementMessage.getAgreement().getId());
                 agreementRepository.save(agreementMessage.getAgreement());
             } else {
@@ -91,13 +91,13 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
 
     public ContractNegotiation handleContractNegotiationTerminated(String contractNegotiationId) {
         ContractNegotiation contractNegotiation = findContractNegotiationById(contractNegotiationId);
-        // for now just log it; maybe we can publish event?
+        // for now, log it; maybe we can publish event?
         log.info("Contract negotiation with consumerPid {} and providerPid {} declined", contractNegotiation.getConsumerPid(), contractNegotiation.getProviderPid());
         ContractNegotiationTerminationMessage negotiationTerminatedEventMessage = ContractNegotiationTerminationMessage.Builder.newInstance()
                 .consumerPid(contractNegotiation.getConsumerPid())
                 .providerPid(contractNegotiation.getProviderPid())
                 .code(contractNegotiationId)
-                .reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("Contract negotiation terminated by provider").build()))
+                .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value("Contract negotiation terminated by provider").build()))
                 .build();
 
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
@@ -106,9 +106,9 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
                 credentialUtils.getConnectorCredentials());
         if (response.isSuccess()) {
             log.info("Updating status for negotiation {} to terminated", contractNegotiation.getId());
-            ContractNegotiation contractNegtiationTerminated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.TERMINATED);
-            contractNegotiationRepository.save(contractNegtiationTerminated);
-            return contractNegtiationTerminated;
+            ContractNegotiation contractNegotiationTerminated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.TERMINATED);
+            contractNegotiationRepository.save(contractNegotiationTerminated);
+            return contractNegotiationTerminated;
         } else {
             log.error("Response status not 200 - consumer did not process AgreementMessage correct");
             throw new ContractNegotiationAPIException("consumer did not process AgreementMessage correct");
@@ -127,7 +127,7 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
     }
 
     public void verifyNegotiation(String consumerPid, String providerPid) {
-        log.info("ConsumerPid - " + consumerPid + ", providerPid - " + providerPid);
+        log.info("ConsumerPid - {} , providerPid - {}", consumerPid, providerPid);
         ContractNegotiation contractNegotiation = findContractNegotiationByPids(consumerPid, providerPid);
 
         stateTransitionCheck(ContractNegotiationState.VERIFIED, contractNegotiation);
@@ -137,7 +137,7 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
                 .providerPid(providerPid)
                 .build();
 
-        log.info("Found intial negotiation" + " - CallbackAddress " + contractNegotiation.getCallbackAddress());
+        log.info("Found initial negotiation - CallbackAddress {}", contractNegotiation.getCallbackAddress());
 
         String callbackAddress = ContractNegotiationCallback.getProviderAgreementVerificationCallback(contractNegotiation.getCallbackAddress(), providerPid);
         log.info("Sending verification message to provider to {}", callbackAddress);
@@ -147,14 +147,14 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
 
         if (response.isSuccess()) {
             log.info("Updating status for negotiation {} to verified", contractNegotiation.getId());
-            ContractNegotiation contractNegtiationUpdate = ContractNegotiation.Builder.newInstance()
+            ContractNegotiation contractNegotiationUpdate = ContractNegotiation.Builder.newInstance()
                     .id(contractNegotiation.getId())
                     .callbackAddress(contractNegotiation.getCallbackAddress())
                     .consumerPid(contractNegotiation.getConsumerPid())
                     .providerPid(contractNegotiation.getProviderPid())
                     .state(ContractNegotiationState.VERIFIED)
                     .build();
-            contractNegotiationRepository.save(contractNegtiationUpdate);
+            contractNegotiationRepository.save(contractNegotiationUpdate);
         } else {
             log.error("Response status not 200 - provider did not process Verification message correct");
             throw new ContractNegotiationAPIException("provider did not process Verification message correct");

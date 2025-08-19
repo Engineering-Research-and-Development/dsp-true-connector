@@ -11,6 +11,7 @@ import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEven
 import it.eng.tools.model.IConstants;
 import it.eng.tools.property.ConnectorProperties;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.util.CredentialUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,7 +21,6 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 
@@ -32,7 +32,7 @@ import static org.mockito.Mockito.*;
 public class ContractNegotiationProviderServiceTest {
 
     @Mock
-    private ApplicationEventPublisher publisher;
+    private AuditEventPublisher publisher;
     @Mock
     private ContractNegotiationRepository repository;
     @Mock

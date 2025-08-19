@@ -5,10 +5,12 @@ import it.eng.datatransfer.exceptions.DownloadException;
 import it.eng.datatransfer.service.DataTransferService;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.ExternalData;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.service.AuditEventPublisher;
 import org.apache.tomcat.util.codec.binary.Base64;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,7 +19,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -28,8 +29,7 @@ import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class RestArtifactServiceTest {
@@ -48,7 +48,7 @@ public class RestArtifactServiceTest {
     @Mock
     private DataTransferService dataTransferService;
     @Mock
-    private ApplicationEventPublisher publisher;
+    private AuditEventPublisher publisher;
     @Mock
     private OkHttpRestClient okHttpRestClient;
     @Mock
@@ -99,6 +99,8 @@ public class RestArtifactServiceTest {
                 .thenReturn(externalResponse);
 
         assertDoesNotThrow(() -> restArtifactService.getArtifact(TRANSACTION_ID, mockHttpServletResponse));
+
+        verify(publisher).publishEvent(any(ArtifactConsumedEvent.class));
     }
 
     @Test
@@ -134,11 +136,10 @@ public class RestArtifactServiceTest {
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .contentDisposition(CONTENT_DISPOSITION)
                 .build();
-//	    when(s3Response.response()).thenReturn(objectResponse);
-//	    when(s3Response.asByteArray()).thenReturn("test data".getBytes());
-//	    doNothing().when(s3ClientService).downloadFile(TEST_BUCKET, DataTranferMockObjectUtil.ARTIFACT_FILE.getValue(), mockHttpServletResponse);
 
         assertDoesNotThrow(() -> restArtifactService.getArtifact(TRANSACTION_ID, mockHttpServletResponse));
+
+        verify(publisher).publishEvent(any(ArtifactConsumedEvent.class));
     }
 
     @Test

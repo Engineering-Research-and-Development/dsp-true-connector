@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.4.9-SNAPSHOT] - 21.07.2025.
+## [0.4.12-SNAPSHOT] - 18.08.2025.
 
 ### Added
 
@@ -12,6 +12,33 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - if HTTP-Push transfer format is used, the DataTransferApiService will create a DataAddress with presigned PUT URL
+
+## [0.4.11-SNAPSHOT] - 04.08.2025.
+
+### Added
+
+- Created validateProtocol methods for Catalog model classes
+- Added additional checks for Catalog protocol endpoint to ensure that all required properties are set
+
+## [0.4.10-SNAPSHOT] - 29.07.2025.
+
+### Changed
+
+- Added check if bucket already exists, does have proper credentials, and create ones that are missing
+- Updated junit tests
+
+## [0.4.9-SNAPSHOT] - 25.07.2025.
+
+### Added
+
+- Added pagination for API endpoints (AuditEvent, ContractNegotiation, TransferProcess)
+
+### Changed
+
+- Refactored default Spring publisher, using AuditEventPublisher instead
+- Updated junit tests
+- Updated integration tests for pagination
+- Postman collection updated with new endpoints and pagination
 
 ## [0.4.8-SNAPSHOT] - 16.07.2025.
 
@@ -93,7 +120,6 @@ All notable changes to this project will be documented in this file.
 - added try-catch block to handle exceptions in DataTransferApiService, when creating DataAddress with presigned URL
 - On Catalog request, filter out datasets serving files still uploading
 
-
 ## [0.4.1-SNAPSHOT] - 18.06.2025.
 
 ### Changed
@@ -108,12 +134,12 @@ All notable changes to this project will be documented in this file.
 
 - Support for MinIO as an external storage for artifacts
 - New properties for S3 storage configuration:
-  - `s3.endpoint=http://localhost:9000`
-  - `s3.accessKey=minioadmin`
-  - `s3.secretKey=minioadmin`
-  - `s3.region=us-east-1`
-  - `s3.bucketName=dsp-true-connector-provider`
-  - `s3.externalPresignedEndpoint=http://localhost:9000`
+    - `s3.endpoint=http://localhost:9000`
+    - `s3.accessKey=minioadmin`
+    - `s3.secretKey=minioadmin`
+    - `s3.region=us-east-1`
+    - `s3.bucketName=dsp-true-connector-provider`
+    - `s3.externalPresignedEndpoint=http://localhost:9000`
 - Service for S3 storage operations
 - Artifact as files are uploaded into S3 bucket and dataset points to the S3 file
 - DataAddress contains S3 presigned URL for download

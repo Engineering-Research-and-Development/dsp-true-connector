@@ -18,10 +18,10 @@ import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEven
 import it.eng.tools.model.IConstants;
 import it.eng.tools.property.ConnectorProperties;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -34,7 +34,7 @@ public class ContractNegotiationProviderService extends BaseProtocolService {
 
     protected final CredentialUtils credentialUtils;
 
-    public ContractNegotiationProviderService(ApplicationEventPublisher publisher, ConnectorProperties connectorProperties,
+    public ContractNegotiationProviderService(AuditEventPublisher publisher, ConnectorProperties connectorProperties,
                                               ContractNegotiationRepository contractNegotiationRepository, OkHttpRestClient okHttpRestClient,
                                               ContractNegotiationProperties properties, OfferRepository offerRepository,
                                               CredentialUtils credentialUtils) {
@@ -64,7 +64,7 @@ public class ContractNegotiationProviderService extends BaseProtocolService {
      * @throws ContractNegotiationNotFoundException if no contract negotiation is found with the specified provider pid.
      */
     public ContractNegotiation getNegotiationByProviderPid(String providerPid) {
-        log.info("Getting contract negotiation by provider pid: " + providerPid);
+        log.info("Getting contract negotiation by provider pid: {}", providerPid);
         publisher.publishEvent(ContractNegotiationEvent.builder().action("Find by provider pid").description("Searching with provider pid ").build());
         publisher.publishEvent(AuditEvent.Builder.newInstance()
                 .eventType(AuditEventType.PROTOCOL_NEGOTIATION_CONTRACT_NEGOTIATION)
@@ -174,7 +174,7 @@ public class ContractNegotiationProviderService extends BaseProtocolService {
         log.info("Contract negotiation with providerPid {} and consumerPid {} changed state to VERIFIED and saved", cavm.getProviderPid(), cavm.getConsumerPid());
     }
 
-    public ContractNegotiation handleContractNegotationEventMessage(
+    public ContractNegotiation handleContractNegotiationEventMessage(
             ContractNegotiationEventMessage contractNegotiationEventMessage) {
         return switch (contractNegotiationEventMessage.getEventType()) {
             case ACCEPTED -> processAccepted(contractNegotiationEventMessage);

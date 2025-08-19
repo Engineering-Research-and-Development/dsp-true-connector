@@ -5,8 +5,8 @@ import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.tools.event.datatransfer.InitializeTransferProcess;
 import it.eng.tools.model.IConstants;
+import it.eng.tools.service.AuditEventPublisher;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -17,11 +17,11 @@ import java.util.Optional;
 @Slf4j
 public class DataTransferEventListener {
 
-    private final ApplicationEventPublisher publisher;
+    private final AuditEventPublisher publisher;
     private final TransferRequestMessageRepository transferRequestMessageRepository;
     private final TransferProcessRepository transferProcessRepository;
 
-    public DataTransferEventListener(ApplicationEventPublisher publisher, TransferRequestMessageRepository transferRequestMessageRepository, TransferProcessRepository transferProcessRepository) {
+    public DataTransferEventListener(AuditEventPublisher publisher, TransferRequestMessageRepository transferRequestMessageRepository, TransferProcessRepository transferProcessRepository) {
         super();
         this.publisher = publisher;
         this.transferRequestMessageRepository = transferRequestMessageRepository;
