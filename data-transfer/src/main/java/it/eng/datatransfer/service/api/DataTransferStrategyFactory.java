@@ -21,8 +21,8 @@ public class DataTransferStrategyFactory {
             HttpPushTransferStrategy httpPushStrategy,
             S3TransferStrategy s3Strategy) {
         strategies = Map.of(
-                DataTransferFormat.HTTP_PULL, httpPullStrategy
-                //DataTransferFormat.HTTP_PUSH, httpPushStrategy;
+                DataTransferFormat.HTTP_PULL, httpPullStrategy,
+                DataTransferFormat.HTTP_PUSH, httpPushStrategy
                 //DataTransferFormat.S3, s3Strategy
         );
     }

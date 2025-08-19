@@ -73,8 +73,7 @@ class DataTransferAPIControllerTest {
     private DataTransferAPIController controller;
 
     private final DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
-            DataTransferFormat.HTTP_PULL.name(),
-            null);
+            DataTransferFormat.HTTP_PULL.format());
 
 
     @Test
