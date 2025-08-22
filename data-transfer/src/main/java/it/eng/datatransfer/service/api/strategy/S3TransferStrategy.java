@@ -10,7 +10,7 @@ import java.util.concurrent.CompletableFuture;
 
 @Service
 @Slf4j
-public class S3TransferStrategy implements DataTransferStrategy {
+public class S3TransferStrategy extends DataTransferStrategy {
 
     private S3ClientService s3ClientService;
 //    String bucketName

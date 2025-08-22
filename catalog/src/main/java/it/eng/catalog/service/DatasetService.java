@@ -125,10 +125,6 @@ public class DatasetService {
 			if (file != null || StringUtils.isNotBlank(externalURL)) {
 				Artifact newArtifact = artifactService.uploadArtifact(existingDataset.getId(), file, externalURL, authorization);
 				updatedDataset = addArtifactToDataset(updatedDataset, newArtifact);
-				// remove old artifact
-				if (oldArtifact != null) {
-					artifactService.deleteOldArtifact(oldArtifact);
-				}
 			}
 			storedDataset = repository.save(updatedDataset);
 		} catch (Exception e) {

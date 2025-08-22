@@ -71,7 +71,7 @@ class TransferProcessRepositoryImplTest {
     @DisplayName("Find with dynamic filters - boolean values")
     void findWithDynamicFilters_booleanValues() {
         Map<String, Object> filters = Map.of(
-                "isDownloaded", true,
+                "isTransferred", true,
                 "role", IConstants.ROLE_CONSUMER
         );
 
@@ -87,7 +87,7 @@ class TransferProcessRepositoryImplTest {
         Query capturedQuery = queryCaptor.getValue();
 
         String queryString = capturedQuery.toString();
-        assertTrue(queryString.contains("isDownloaded"));
+        assertTrue(queryString.contains("isTransferred"));
         assertTrue(queryString.contains("role"));
     }
 
@@ -203,7 +203,7 @@ class TransferProcessRepositoryImplTest {
     void findWithDynamicFilters_mixedTypes() {
         Map<String, Object> filters = Map.of(
                 "state", TransferState.STARTED.name(), // String
-                "isDownloaded", true, // Boolean
+                "isTransferred", true, // Boolean
                 "version", 123L, // Number
                 "created", Instant.parse("2024-01-01T10:00:00Z") // Instant
         );
@@ -222,7 +222,7 @@ class TransferProcessRepositoryImplTest {
         // Verify all criteria were added
         String queryString = capturedQuery.toString();
         assertTrue(queryString.contains("state"));
-        assertTrue(queryString.contains("isDownloaded"));
+        assertTrue(queryString.contains("isTransferred"));
         assertTrue(queryString.contains("version"));
         assertTrue(queryString.contains("created"));
     }
@@ -356,7 +356,7 @@ class TransferProcessRepositoryImplTest {
         Map<String, Object> filters = Map.of(
                 "state", Arrays.asList(TransferState.STARTED.name(), TransferState.COMPLETED.name()),
                 "role", IConstants.ROLE_CONSUMER,
-                "isDownloaded", true,
+                "isTransferred", true,
                 "created", dateRange,
                 "datasetId", DataTransferMockObjectUtil.DATASET_ID
         );
@@ -376,7 +376,7 @@ class TransferProcessRepositoryImplTest {
         String queryString = capturedQuery.toString();
         assertTrue(queryString.contains("state"));
         assertTrue(queryString.contains("role"));
-        assertTrue(queryString.contains("isDownloaded"));
+        assertTrue(queryString.contains("isTransferred"));
         assertTrue(queryString.contains("created"));
         assertTrue(queryString.contains("datasetId"));
     }

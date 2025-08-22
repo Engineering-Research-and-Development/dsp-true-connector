@@ -100,14 +100,14 @@ public class FTPClientTest {
 	public void downloadFile_ConnectionFailed(@TempDir Path tempDir) {
 		when(ftpConfiguration.getDownloadFolder()).thenReturn(tempDir.toString());
 		assertThrows(NullPointerException.class, () -> ftpClient.downloadArtifact("test1.csv", "localhost", 5555));
-		assertFalse(checkIfFileIsDownloaded(tempDir + "/test1.csv"));
+		assertFalse(checkIfFileIsTransferred(tempDir + "/test1.csv"));
 	}
     
 	@Test
 	public void downloadFile_Successfull(@TempDir Path tempDir) {
 		when(ftpConfiguration.getDownloadFolder()).thenReturn(tempDir.toString());
 		ftpClient.downloadArtifact("test1.csv", "localhost", 2222);
-		assertTrue(checkIfFileIsDownloaded(tempDir + "/test1.csv"));
+		assertTrue(checkIfFileIsTransferred(tempDir + "/test1.csv"));
 	}
 	
 	private void configureClient() throws KeyStoreException, NoSuchSslBundleException, UnrecoverableKeyException, NoSuchAlgorithmException {
@@ -132,7 +132,7 @@ public class FTPClientTest {
 
 	}
 	
-	private boolean checkIfFileIsDownloaded(String file) {
+	private boolean checkIfFileIsTransferred(String file) {
 		File f = new File(file);
 		if (f.exists() && !f.isDirectory()) {
 			return true;

@@ -49,7 +49,7 @@ class GenericFilterBuilderTest {
     @DisplayName("Build filters from request with boolean and numeric parameters")
     void buildFromRequest_booleanParameters() {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setParameter("isDownloaded", "true");
+        request.setParameter("isTransferred", "true");
         request.setParameter("isActive", "false");
         request.setParameter("flag1", "1");
         request.setParameter("flag2", "0");
@@ -59,7 +59,7 @@ class GenericFilterBuilderTest {
         Map<String, Object> filters = filterBuilder.buildFromRequest(request);
 
         assertEquals(6, filters.size());
-        assertEquals(true, filters.get("isDownloaded"));  // "true" → boolean
+        assertEquals(true, filters.get("isTransferred"));  // "true" → boolean
         assertEquals(false, filters.get("isActive"));     // "false" → boolean
         assertEquals(1L, filters.get("flag1"));           // "1" → number (not boolean)
         assertEquals(0L, filters.get("flag2"));           // "0" → number (not boolean)

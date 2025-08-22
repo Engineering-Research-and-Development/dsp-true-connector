@@ -20,7 +20,7 @@ import java.util.concurrent.CompletableFuture;
 
 @Service
 @Slf4j
-public class HttpPullTransferStrategy implements DataTransferStrategy {
+public class HttpPullTransferStrategy extends DataTransferStrategy {
 
     private final S3Properties s3Properties;
     private final S3ClientService s3ClientService;
@@ -31,7 +31,6 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
         this.s3ClientService = s3ClientService;
     }
 
-    @Override
     public CompletableFuture<Void> transfer(TransferProcess transferProcess) {
         log.info("Executing HTTP PULL transfer for process {}", transferProcess.getId());
 
@@ -86,26 +85,5 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
             log.error("Failed to download stream", e);
             throw new DataTransferAPIException(e.getMessage());
         }
-    }
-
-    private String extractAuthorization(TransferProcess transferProcess) {
-        if (transferProcess.getDataAddress().getEndpointProperties() != null) {
-            List<EndpointProperty> properties = transferProcess.getDataAddress().getEndpointProperties();
-            String authType = properties.stream()
-                    .filter(prop -> StringUtils.equals(prop.getName(), IConstants.AUTH_TYPE))
-                    .findFirst()
-                    .map(EndpointProperty::getValue)
-                    .orElse(null);
-            String token = properties.stream()
-                    .filter(prop -> StringUtils.equals(prop.getName(), IConstants.AUTHORIZATION))
-                    .findFirst()
-                    .map(EndpointProperty::getValue)
-                    .orElse(null);
-
-            if (authType != null && token != null) {
-                return authType + " " + token;
-            }
-        }
-        return null;
     }
 }

@@ -112,13 +112,13 @@ class DataTransferAPIControllerTest {
         request.setParameter("state", TransferState.STARTED.name());
         request.setParameter("role", IConstants.ROLE_CONSUMER);
         request.setParameter("datasetId", DataTransferMockObjectUtil.DATASET_ID);
-        request.setParameter("isDownloaded", "true");
+        request.setParameter("isTransferred", "true");
 
         Map<String, Object> expectedFilters = Map.of(
                 "state", TransferState.STARTED.name(),
                 "role", IConstants.ROLE_CONSUMER,
                 "datasetId", DataTransferMockObjectUtil.DATASET_ID,
-                "isDownloaded", true
+                "isTransferred", true
         );
 
         when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
@@ -317,7 +317,7 @@ class DataTransferAPIControllerTest {
     @DisplayName("Download data - success")
     public void downloadData_success() throws IllegalStateException {
         ArgumentCaptor<AuditEvent> eventCaptor = ArgumentCaptor.forClass(AuditEvent.class);
-        when(apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
+        when(apiService.transferData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(CompletableFuture.completedFuture(null));
 
         assertDoesNotThrow(() -> controller.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
@@ -338,7 +338,7 @@ class DataTransferAPIControllerTest {
         ArgumentCaptor<AuditEvent> eventCaptor = ArgumentCaptor.forClass(AuditEvent.class);
         DataTransferAPIException exception = new DataTransferAPIException("message");
 
-        when(apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
+        when(apiService.transferData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(CompletableFuture.failedFuture(exception));
 
         controller.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());

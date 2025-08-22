@@ -186,7 +186,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         // check if the TransferProcess is inserted in the database
         TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessStarted.getId()).get();
 
-        // this one should be skipped since we cannot guarantee that download will be done - transferProcessFromDb.isDownloaded() equal true
+        // this one should be skipped since we cannot guarantee that download will be done - transferProcessFromDb.isTransferred() equal true
 //        assertNotNull(transferProcessFromDb.getDataId());
         assertEquals(transferProcessStarted.getConsumerPid(), transferProcessFromDb.getConsumerPid());
         assertEquals(transferProcessStarted.getProviderPid(), transferProcessFromDb.getProviderPid());
@@ -306,7 +306,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         // check if the TransferProcess is inserted in the database
         TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessStarted.getId()).get();
 
-        assertFalse(transferProcessFromDb.isDownloaded());
+        assertFalse(transferProcessFromDb.isTransferred());
         assertNull(transferProcessFromDb.getDataId());
         assertEquals(transferProcessStarted.getConsumerPid(), transferProcessFromDb.getConsumerPid());
         assertEquals(transferProcessStarted.getProviderPid(), transferProcessFromDb.getProviderPid());

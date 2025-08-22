@@ -606,7 +606,7 @@ class DataTransferAPIServiceTest {
 
     @Test
     @DisplayName("Download data - success")
-    public void downloadData_success() {
+    public void transferData_success() {
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
 
@@ -622,7 +622,7 @@ class DataTransferAPIServiceTest {
         when(httpPullTransferStrategy.transfer(isA(TransferProcess.class)))
                 .thenReturn(CompletableFuture.completedFuture(null));
 
-        assertDoesNotThrow(() -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+        assertDoesNotThrow(() -> apiService.transferData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
         verify(transferStrategyFactory, times(1)).getStrategy(any(String.class));
         verify(httpPullTransferStrategy).transfer(argCaptorTransferProcess.capture());
@@ -635,7 +635,7 @@ class DataTransferAPIServiceTest {
 
     @Test
     @DisplayName("Download data - fail - can not store data")
-    public void downloadData_transferFail() {
+    public void transferData_transferFail() {
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
 
@@ -648,12 +648,12 @@ class DataTransferAPIServiceTest {
         doThrow(DataTransferAPIException.class).when(httpPullTransferStrategy).transfer(isA(TransferProcess.class));
 
         assertThrows(DataTransferAPIException.class,
-                () -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+                () -> apiService.transferData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
     }
 
     @Test
     @DisplayName("Download data - fail - strategy not found")
-    public void downloadData_fail_strategyNotFound() {
+    public void transferData_fail_strategyNotFound() {
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
 
@@ -666,12 +666,12 @@ class DataTransferAPIServiceTest {
                 .thenThrow(DataTransferAPIException.class);
 
         assertThrows(DataTransferAPIException.class,
-                () -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+                () -> apiService.transferData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
     }
 
     @Test
     @DisplayName("Download data - fail - policy not valid")
-    public void downloadData_fail_policyNotValid() {
+    public void transferData_fail_policyNotValid() {
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
 
@@ -680,7 +680,7 @@ class DataTransferAPIServiceTest {
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
 
-        CompletableFuture<Void> future = apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+        CompletableFuture<Void> future = apiService.transferData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
 
         assertTrue(future.isCompletedExceptionally());
         ExecutionException ex = assertThrows(ExecutionException.class, future::get);
@@ -690,11 +690,11 @@ class DataTransferAPIServiceTest {
     @ParameterizedTest
     @DisplayName("Download data - fail - wrong state")
     @MethodSource("download_wrongStates")
-    public void downloadData_fail_wrongState(TransferProcess input) {
+    public void transferData_fail_wrongState(TransferProcess input) {
         when(transferProcessRepository.findById(input.getId()))
                 .thenReturn(Optional.of(input));
 
-        CompletableFuture<Void> future = apiService.downloadData(input.getId());
+        CompletableFuture<Void> future = apiService.transferData(input.getId());
 
         assertTrue(future.isCompletedExceptionally());
         ExecutionException ex = assertThrows(ExecutionException.class, future::get);

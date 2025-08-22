@@ -58,9 +58,9 @@ public interface TransferProcessRepository extends MongoRepository<TransferProce
     /**
      * Finds all transfer processes by download status.
      *
-     * @param isDownloaded the download status to filter by
+     * @param isTransferred the download status to filter by
      * @return a list of transfer processes with the specified download status
      */
-    List<TransferProcess> findByIsDownloaded(boolean isDownloaded);
+    List<TransferProcess> findByIsTransferred(boolean isTransferred);
 
 }

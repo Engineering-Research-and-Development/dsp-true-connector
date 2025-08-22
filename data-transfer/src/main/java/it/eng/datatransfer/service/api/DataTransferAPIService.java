@@ -166,7 +166,7 @@ public class DataTransferAPIService {
                         .providerPid(transferProcessFromResponse.getProviderPid())
                         .format(dataTransferRequest.getFormat())
                         .dataAddress(dataAddressForMessage)
-                        .isDownloaded(transferProcessInitialized.isDownloaded())
+                        .isTransferred(transferProcessInitialized.isTransferred())
                         .dataId(transferProcessInitialized.getDataId())
                         .callbackAddress(transferProcessInitialized.getCallbackAddress())
                         .role(IConstants.ROLE_CONSUMER)
@@ -251,7 +251,7 @@ public class DataTransferAPIService {
         }
         if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
             address = DataTransferCallback.getConsumerDataTransferStart(transferProcess.getCallbackAddress(), transferProcess.getConsumerPid());
-            if (transferProcess.getDataAddress() == null) {
+            if ( DataTransferFormat.HTTP_PULL.format().equals(transferProcess.getFormat())) {
                 String artifactURL = switch (artifact.getArtifactType()) {
                     case FILE ->
                     // Generate a presigned URL for S3 with 7 days duration, which will be used as the endpoint for the data transfer
@@ -304,7 +304,7 @@ public class DataTransferAPIService {
                     .providerPid(transferProcess.getProviderPid())
                     .callbackAddress(transferProcess.getCallbackAddress())
                     .dataAddress(transferStartMessage.getDataAddress())
-                    .isDownloaded(transferProcess.isDownloaded())
+                    .isTransferred(transferProcess.isTransferred())
                     .dataId(transferProcess.getDataId())
                     .format(transferProcess.getFormat())
                     .state(TransferState.STARTED)
@@ -526,14 +526,15 @@ public class DataTransferAPIService {
     }
 
     /**
-     * Download data.<br>
-     * Checks if TransferProcess state is STARTED; enforce policy (validate agreement); download data from provider;
-     * store artifact in S3; update Transfer Process downloaded to true
+     * Transfer data.<br>
+     * Checks if TransferProcess state is STARTED; enforce policy (validate agreement); start data transfer from provider;
+     * store artifact in S3; update Transfer Process transferred to true.<br>
+     * The transfer will be PULL or PUSH, based on the format specified in the TransferProcess.<br>
      *
      * @param transferProcessId transfer process id
-     * @return CompletableFuture<Void> that completes when the download is finished
+     * @return CompletableFuture<Void> that completes when the transfer is finished
      */
-    public CompletableFuture<Void> downloadData(String transferProcessId) {
+    public CompletableFuture<Void> transferData(String transferProcessId) {
         TransferProcess transferProcess = findTransferProcessById(transferProcessId);
 
         if (!transferProcess.getState().equals(TransferState.STARTED)) {
@@ -562,7 +563,7 @@ public class DataTransferAPIService {
                             .providerPid(transferProcess.getProviderPid())
                             .callbackAddress(transferProcess.getCallbackAddress())
                             .dataAddress(transferProcess.getDataAddress())
-                            .isDownloaded(true)
+                            .isTransferred(true)
                             .dataId(transferProcessId)
                             .format(transferProcess.getFormat())
                             .state(transferProcess.getState())
@@ -589,7 +590,7 @@ public class DataTransferAPIService {
     public String viewData(String transferProcessId) {
         TransferProcess transferProcess = findTransferProcessById(transferProcessId);
 
-        if (!transferProcess.isDownloaded()) {
+        if (!transferProcess.isTransferred()) {
             log.error("Data not yet downloaded");
             throw new DataTransferAPIException("Data not yet downloaded");
         }

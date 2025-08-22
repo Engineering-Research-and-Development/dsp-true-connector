@@ -111,7 +111,7 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
                 .providerPid(providerPid)
                 .agreementId(agreement.getId())
                 .callbackAddress(wiremock.baseUrl())
-                .isDownloaded(true)
+                .isTransferred(true)
                 .state(TransferState.STARTED)
                 .build();
         transferProcessRepository.save(transferProcessStarted);
@@ -144,7 +144,7 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
         // check if the TransferProcess is inserted in the database
         TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessStarted.getId()).get();
 
-        assertTrue(transferProcessFromDb.isDownloaded());
+        assertTrue(transferProcessFromDb.isTransferred());
         assertEquals(transferProcessStarted.getConsumerPid(), transferProcessFromDb.getConsumerPid());
         assertEquals(transferProcessStarted.getProviderPid(), transferProcessFromDb.getProviderPid());
         assertEquals(transferProcessStarted.getAgreementId(), transferProcessFromDb.getAgreementId());
@@ -175,7 +175,7 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
                 .providerPid(providerPid)
                 .agreementId(agreement.getId())
                 .callbackAddress(wiremock.baseUrl())
-                .isDownloaded(true)
+                .isTransferred(true)
                 .state(TransferState.STARTED)
                 .build();
         transferProcessRepository.save(transferProcessStarted);

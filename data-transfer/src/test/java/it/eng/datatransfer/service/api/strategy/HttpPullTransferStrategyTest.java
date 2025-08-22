@@ -236,7 +236,7 @@ public class HttpPullTransferStrategyTest {
                 .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
                 .dataAddress(dataAddress)
                 .datasetId(DataTransferMockObjectUtil.DATASET_ID)
-                .isDownloaded(true)
+                .isTransferred(true)
                 .dataId(new ObjectId().toHexString())
                 .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
                 .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)

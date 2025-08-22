@@ -89,7 +89,7 @@ class GenericDynamicFilterRepositoryImplTest {
     @DisplayName("Find with dynamic filters - boolean values")
     void findWithDynamicFilters_booleanValues() {
         Map<String, Object> filters = Map.of(
-                "isDownloaded", true,
+                "isTransferred", true,
                 "role", IConstants.ROLE_CONSUMER
         );
 
@@ -106,7 +106,7 @@ class GenericDynamicFilterRepositoryImplTest {
         Query capturedQuery = queryCaptor.getValue();
 
         String queryString = capturedQuery.toString();
-        assertTrue(queryString.contains("isDownloaded"));
+        assertTrue(queryString.contains("isTransferred"));
         assertTrue(queryString.contains("role"));
     }
 
@@ -225,7 +225,7 @@ class GenericDynamicFilterRepositoryImplTest {
     void findWithDynamicFilters_mixedTypes() {
         Map<String, Object> filters = Map.of(
                 "state", TestEnum.VALUE_2, // String
-                "isDownloaded", true, // Boolean
+                "isTransferred", true, // Boolean
                 "version", 123L, // Number
                 "created", Instant.parse("2024-01-01T10:00:00Z") // Instant
         );
@@ -245,7 +245,7 @@ class GenericDynamicFilterRepositoryImplTest {
         // Verify all criteria were added
         String queryString = capturedQuery.toString();
         assertTrue(queryString.contains("state"));
-        assertTrue(queryString.contains("isDownloaded"));
+        assertTrue(queryString.contains("isTransferred"));
         assertTrue(queryString.contains("version"));
         assertTrue(queryString.contains("created"));
     }
@@ -383,7 +383,7 @@ class GenericDynamicFilterRepositoryImplTest {
         Map<String, Object> filters = Map.of(
                 "state", Arrays.asList(TestEnum.VALUE_1, TestEnum.VALUE_2),
                 "role", IConstants.ROLE_CONSUMER,
-                "isDownloaded", true,
+                "isTransferred", true,
                 "created", dateRange,
                 "datasetId", UUID.randomUUID().toString()
         );
@@ -404,7 +404,7 @@ class GenericDynamicFilterRepositoryImplTest {
         String queryString = capturedQuery.toString();
         assertTrue(queryString.contains("state"));
         assertTrue(queryString.contains("role"));
-        assertTrue(queryString.contains("isDownloaded"));
+        assertTrue(queryString.contains("isTransferred"));
         assertTrue(queryString.contains("created"));
         assertTrue(queryString.contains("datasetId"));
     }

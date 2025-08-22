@@ -45,6 +45,7 @@ public class DataTransferPushIntegrationTest extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.API_USER)
     public void pushTransferProcess_success() throws Exception {
 
+        Thread.sleep(5000);
 //        temporary test to verify that the presigned PUT URL generation works
         int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
 
@@ -65,6 +66,7 @@ public class DataTransferPushIntegrationTest extends BaseIntegrationTest {
         connection.getOutputStream().write(content);
         connection.getOutputStream().flush();
 
+        System.out.println(" message:" + connection.getResponseMessage());
         assertEquals(HttpURLConnection.HTTP_OK, connection.getResponseCode());
 
         Thread.sleep(2000); // Wait for S3 to process the upload

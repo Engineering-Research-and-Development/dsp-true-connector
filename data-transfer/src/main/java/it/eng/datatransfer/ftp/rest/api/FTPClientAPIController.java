@@ -24,9 +24,9 @@ public class FTPClientAPIController {
 	@PostMapping
 	public ResponseEntity<String> downloadArtifact(@RequestBody JsonNode request) {
 		log.info("Received download request");
-		boolean isDownloaded = ftpClient.downloadArtifact(request.get("artifact").asText(), request.get("host").asText(), request.get("port").asInt());
+		boolean isTransferred = ftpClient.downloadArtifact(request.get("artifact").asText(), request.get("host").asText(), request.get("port").asInt());
 
-		if (isDownloaded) {
+		if (isTransferred) {
 			log.info("downloaded artifact " + request.get("artifact").asText());
 			return ResponseEntity.ok().body("downloaded artifact " + request.get("artifact").asText());
 		}

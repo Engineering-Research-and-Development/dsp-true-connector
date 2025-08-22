@@ -150,7 +150,7 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
                 .providerPid(createNewId())
                 .agreementId(agreement.getId())
                 .state(TransferState.STARTED)
-                .isDownloaded(true)
+                .isTransferred(true)
                 .datasetId(datasetId)
                 .build();
         transferProcessRepository.save(transferProcessStarted);

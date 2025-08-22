@@ -70,7 +70,7 @@ public class TransferProcess extends AbstractTransferMessage {
 	private String datasetId;
 	
 	/**
-	 * Determins which role the connector is for that contract negotiation (consumer or provider).
+	 * Determines which role the connector is for that contract negotiation (consumer or provider).
 	 */
     @JsonIgnore
     private String role;
@@ -79,10 +79,10 @@ public class TransferProcess extends AbstractTransferMessage {
     private DataAddress dataAddress;
     
     /**
-     * Flag to check if the data is downloaded on consumer side.
+     * Flag to check if the data is transferred to consumer.
      */
     @JsonIgnore
-    private boolean isDownloaded;
+    private boolean isTransferred;
     
     /**
      * Id of the downloaded and stored data on consumer side.
@@ -116,10 +116,10 @@ public class TransferProcess extends AbstractTransferMessage {
 	@JsonIgnoreProperties(ignoreUnknown = true)
 	public static class Builder {
 		
-		private TransferProcess message;
+		private TransferProcess transferProcess;
 		
 		private Builder() {
-			message = new TransferProcess();
+			transferProcess = new TransferProcess();
 		}
 		
 		public static Builder newInstance() {
@@ -128,114 +128,114 @@ public class TransferProcess extends AbstractTransferMessage {
 		
 		@JsonProperty(DSpaceConstants.ID)
 		public Builder id(String id) {
-        	message.id = id;
+        	transferProcess.id = id;
         	return this;
         }
 		
 		@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
 		public Builder consumerPid(String consumerPid) {
-			message.consumerPid = consumerPid;
+			transferProcess.consumerPid = consumerPid;
 			return this;
 		}
 
 		@JsonProperty(DSpaceConstants.DSPACE_PROVIDER_PID)
 		public Builder providerPid(String providerPid) {
-			message.providerPid = providerPid;
+			transferProcess.providerPid = providerPid;
 			return this;
 		}
 		
 		@JsonProperty(DSpaceConstants.DSPACE_STATE)
 		public Builder state(TransferState state) {
-			message.state = state;
+			transferProcess.state = state;
 			return this;
 		}
 		
 		public Builder role(String role) {
-        	message.role = role;
+        	transferProcess.role = role;
         	return this;
         }
 		
 		public Builder dataAddress(DataAddress dataAddress) {
-        	message.dataAddress = dataAddress;
+        	transferProcess.dataAddress = dataAddress;
         	return this;
         }
 		
-		public Builder isDownloaded(boolean isDownloaded) {
-        	message.isDownloaded = isDownloaded;
+		public Builder isTransferred(boolean isTransferred) {
+        	transferProcess.isTransferred = isTransferred;
         	return this;
         }
 		
 		public Builder dataId(String dataId) {
-        	message.dataId = dataId;
+        	transferProcess.dataId = dataId;
         	return this;
         }
 		
 		public Builder format(String format) {
-        	message.format = format;
+        	transferProcess.format = format;
         	return this;
         }
 		
 		@JsonProperty(DSpaceConstants.AGREEMENT_ID)
 		public Builder agreementId(String agreementId) {
-			message.agreementId = agreementId;
+			transferProcess.agreementId = agreementId;
 			return this;
 		}
 		
 		@JsonProperty(DSpaceConstants.CALLBACK_ADDRESS)
 		public Builder callbackAddress(String callbackAddress) {
-			message.callbackAddress = callbackAddress;
+			transferProcess.callbackAddress = callbackAddress;
 			return this;
 		}
 		
 		@JsonProperty("datasetId")
 		public Builder datasetId(String datasetId) {
-			message.datasetId = datasetId;
+			transferProcess.datasetId = datasetId;
 			return this;
 		}
 		
 		 // Auditable fields
         @JsonProperty("version")
         public Builder version(Long version) {
-            message.version = version;
+            transferProcess.version = version;
             return this;
         }
         
         @JsonProperty("createdBy")
         public Builder createdBy(String createdBy) {
-        	message.createdBy = createdBy;
+        	transferProcess.createdBy = createdBy;
             return this;
         }
         @JsonProperty("created")
         public Builder created(Instant created) {
-        	message.created = created;
+        	transferProcess.created = created;
             return this;
         }
 
         @JsonProperty("modified")
         public Builder modified(Instant modified) {
-        	message.modified = modified;
+        	transferProcess.modified = modified;
             return this;
         }
         @JsonProperty("lastModifiedBy")
         public Builder lastModifiedBy(String lastModifiedBy) {
-        	message.lastModifiedBy = lastModifiedBy;
+        	transferProcess.lastModifiedBy = lastModifiedBy;
             return this;
         }
 
 		public TransferProcess build() {
-			if (message.id == null) {
-				message.id = message.createNewPid();
+			if (transferProcess.id == null) {
+				transferProcess.id = transferProcess.createNewPid();
 			}
-			if (message.consumerPid == null) {
-				message.consumerPid = message.createNewPid();
+			if (transferProcess.consumerPid == null) {
+				transferProcess.consumerPid = transferProcess.createNewPid();
 			}
-			if (message.providerPid == null) {
-				message.providerPid = message.createNewPid();
+			if (transferProcess.providerPid == null) {
+				transferProcess.providerPid = transferProcess.createNewPid();
 			}
 			Set<ConstraintViolation<TransferProcess>> violations 
-				= Validation.buildDefaultValidatorFactory().getValidator().validate(message);
+				= Validation.buildDefaultValidatorFactory().getValidator().validate(transferProcess);
 			if(violations.isEmpty()) {
-				return message;
+				return transferProcess;
 			}
 			throw new ValidationException("TransferProcess - " +
 					violations
@@ -253,7 +253,7 @@ public class TransferProcess extends AbstractTransferMessage {
 	/**
 	 * Create new TransferProcess from origin, with new TransferState.<br>
 	 * Used to update state when transition happens.
-	 * @param newTransferState
+	 * @param newTransferState new TransferState to set
 	 * @return new TransferProcess object from initial, with new state
 	 */
 	public TransferProcess copyWithNewTransferState(TransferState newTransferState) {
@@ -264,7 +264,7 @@ public class TransferProcess extends AbstractTransferMessage {
 				.providerPid(this.providerPid)
 				.callbackAddress(this.callbackAddress)
 				.dataAddress(this.dataAddress)
-				.isDownloaded(this.isDownloaded)
+				.isTransferred(this.isTransferred)
 				.dataId(this.dataId)
 				.format(this.format)
 				.state(newTransferState)

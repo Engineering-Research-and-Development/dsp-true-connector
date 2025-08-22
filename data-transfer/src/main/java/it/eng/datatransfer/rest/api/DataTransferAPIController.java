@@ -62,7 +62,7 @@ public class DataTransferAPIController {
     public ResponseEntity<GenericApiResponse<String>> downloadData(
             @PathVariable String transferProcessId) {
         log.info("Downloading transfer process id - {} data", transferProcessId);
-        apiService.downloadData(transferProcessId)
+        apiService.transferData(transferProcessId)
                 .whenComplete((result, throwable) -> {
                     if (throwable != null) {
                         log.error("Download failed for process {}: {}",
