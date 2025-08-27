@@ -6,15 +6,21 @@ import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.*;
 import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.serializer.CatalogSerializer;
+import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
 import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
+import it.eng.tools.model.ArtifactType;
+import it.eng.tools.model.IConstants;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.service.AuditEventPublisher;
+import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * The CatalogService class provides methods to interact with catalog data, including saving, retrieving, and deleting catalogs.
@@ -22,6 +28,8 @@ import java.util.List;
 @Service
 @Slf4j
 public class CatalogService {
+
+    private static final String ERROR_MESSAGE_CATALOG_NOT_AVAILABLE = "Catalog not available at the moment";
 
     private final CatalogRepository repository;
     private final AuditEventPublisher publisher;
@@ -49,15 +57,26 @@ public class CatalogService {
         List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
 
         List<Catalog> allCatalogs = repository.findAll();
-        allCatalogs.forEach(catalog -> catalog.getDataset().removeIf(dataset -> !files.contains(dataset.getId())));
 
-        if (allCatalogs.isEmpty()) {
-            throw new CatalogErrorException("Catalog not found");
-        } else {
-            return allCatalogs.get(0);
+        // remove datasets that do not have files in S3
+        // external files can not be checked at the time of writing and will be automatically allowed
+        allCatalogs.forEach(catalog -> catalog.getDataset().removeIf(
+                dataset -> dataset.getArtifact().getArtifactType() == ArtifactType.FILE
+                        && !files.contains(dataset.getId())));
+
+        try {
+            validateCatalog(allCatalogs);
+        } catch (ValidationException e) {
+            log.error("Catalog failed on protocol validation: {}", e.getMessage());
+            publisher.publishEvent(AuditEventType.PROTOCOL_CATALOG_CATALOG_NOT_FOUND,
+                    "Catalog protocol validation failed",
+                    Map.of("role", IConstants.ROLE_PROTOCOL,
+                            "errorMessage", e.getMessage()));
+            throw new CatalogErrorException(ERROR_MESSAGE_CATALOG_NOT_AVAILABLE);
+
         }
+        return allCatalogs.get(0);
     }
-
 
     /* ******** API ***********/
 
@@ -227,7 +246,7 @@ public class CatalogService {
      * Used by the protocol business logic to check if such offer exists.
      * because of that reason it throws CatalogErrorException instead of ResourceNotFoundAPIException
      *
-     * @param offer
+     * @param offer The offer to validate.
      * @return boolean
      */
     public boolean validateOffer(Offer offer) {
@@ -259,5 +278,18 @@ public class CatalogService {
         }
         log.info("Offer evaluated as {}", valid ? "valid" : "invalid");
         return valid;
+    }
+
+    private void validateCatalog(List<Catalog> allCatalogs) {
+        // Validate catalog collection
+        if (allCatalogs == null || allCatalogs.isEmpty()) {
+            throw new ValidationException("Catalog not found");
+        }
+        // Check if there's at least one non-null dataset
+        if (allCatalogs.stream().noneMatch(Objects::nonNull)) {
+            throw new ValidationException("Catalog not found");
+        }
+
+        allCatalogs.forEach(Catalog::validateProtocol);
     }
 }

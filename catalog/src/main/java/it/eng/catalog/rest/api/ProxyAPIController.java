@@ -44,9 +44,9 @@ public class ProxyAPIController {
 	}
 	
 	@PostMapping(path = "/catalogs")
-	public ResponseEntity<GenericApiResponse<JsonNode>> getCatalog(@RequestBody JsonNode formatsRequest) {
+	public ResponseEntity<GenericApiResponse<JsonNode>> getCatalog(@RequestBody JsonNode catalogRequest) {
 		log.info("Fetching proxy catalog");
-		String forwardTo = formatsRequest.get("Forward-To").asText();
+		String forwardTo = catalogRequest.get("Forward-To").asText();
 		Catalog catalog = proxyApiService.getCatalog(forwardTo);
 
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
