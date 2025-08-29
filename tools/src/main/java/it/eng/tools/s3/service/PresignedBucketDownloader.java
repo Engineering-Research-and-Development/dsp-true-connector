@@ -203,12 +203,12 @@ public class PresignedBucketDownloader implements Runnable {
         return state;
     }
 
-    private List<CompletedPart> createPartsList(List<String> etags) {
+    private List<CompletedPart> createPartsList(List<String> eTags) {
         List<CompletedPart> parts = new ArrayList<>();
-        for (int i = 0; i < etags.size(); i++) {
+        for (int i = 0; i < eTags.size(); i++) {
             parts.add(CompletedPart.builder()
                     .partNumber(i + 1)
-                    .eTag(etags.get(i))
+                    .eTag(eTags.get(i))
                     .build());
         }
         return parts;
