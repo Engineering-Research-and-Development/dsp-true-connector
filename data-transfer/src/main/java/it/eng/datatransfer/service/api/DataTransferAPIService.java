@@ -279,6 +279,10 @@ public class DataTransferAPIService {
                     .build();
             transferProcessRepository.save(transferProcessStarted);
             log.info("Transfer process {} saved", transferProcessStarted.getId());
+            if (TransferState.SUSPENDED.equals(transferProcess.getState())) {
+                // was in suspended state -> started -> publish event for resume logic
+                publisher.publishEvent(transferStartMessage);
+            }
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
                     "Transfer process started successfully",
                     Map.of("transferProcess", transferProcessStarted,
@@ -392,6 +396,7 @@ public class DataTransferAPIService {
             TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED);
             transferProcessRepository.save(transferProcessStarted);
             log.info("Transfer process {} saved", transferProcessStarted.getId());
+            publisher.publishEvent(transferSuspensionMessage);
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED,
                     "Transfer process suspended successfully",
                     Map.of("transferProcess", transferProcess,

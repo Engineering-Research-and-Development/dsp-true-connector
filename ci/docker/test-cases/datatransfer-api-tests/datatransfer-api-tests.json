@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "2dcdcd3a-f41d-4e9a-914f-1a737997f739",
+		"_postman_id": "235f36d5-3757-4de9-982b-26e184e634e4",
 		"name": "Data Transfer API test",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "36278855"
@@ -352,8 +352,8 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test(\"Check if status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
+							"pm.test(\"Check if status code is 400\", function () {\r",
+							"    pm.response.to.have.status(400);\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -475,8 +475,8 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test(\"Check if status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
+							"pm.test(\"Check if status code is 400\", function () {\r",
+							"    pm.response.to.have.status(400);\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -610,8 +610,8 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test(\"Check if status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
+							"pm.test(\"Check if status code is 400\", function () {\r",
+							"    pm.response.to.have.status(400);\r",
 							"});"
 						],
 						"type": "text/javascript",

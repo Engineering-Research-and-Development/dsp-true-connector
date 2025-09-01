@@ -1,11 +1,13 @@
 package it.eng.datatransfer.service.api.strategy;
 
+import it.eng.datatransfer.exceptions.DataTransferAPIException;
+import it.eng.datatransfer.model.TransferCompletionMessage;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
+import it.eng.datatransfer.model.TransferSuspensionMessage;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.datatransfer.ResumeDataTransfer;
-import it.eng.tools.event.datatransfer.SuspendDataTransfer;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
@@ -82,7 +84,7 @@ public class HttpPullSuspendResumeTransferService {
         PresignedBucketDownloader downloader = new PresignedBucketDownloader(stateRepository,
                 s3AsyncClient,
                 httpClient,
-                transferProcess.getDataId(),
+                transferProcess.getId(),
                 transferProcess.getDataAddress().getEndpoint(),
                 destinationBucketCredentialsEntity.getBucketName(),
                 transferProcess.getId(),
@@ -97,28 +99,60 @@ public class HttpPullSuspendResumeTransferService {
 
 
     @EventListener
-    public void onSuspendTransfer(SuspendDataTransfer suspendDataTransfer) {
-        log.info("Suspending transfer process {}", suspendDataTransfer.getTransferProcessId());
-        PresignedBucketDownloader downloader = downloaders.get(suspendDataTransfer.getTransferProcessId());
-        // TODO check if transfer process is in STARTED state and create one
-        // TransferProcessState exists and TransferProcessState == STARTED
-        if (downloader != null) {
-            downloader.pause();
+    public void onSuspendTransfer(TransferSuspensionMessage transferSuspensionMessage) {
+        TransferProcess transferProcess = transferProcessRepository.findByConsumerPidAndProviderPid(transferSuspensionMessage.getConsumerPid(), transferSuspensionMessage.getProviderPid())
+                .orElseThrow(() -> new DataTransferAPIException("Transfer process not found for consumerPid: " + transferSuspensionMessage.getConsumerPid()
+                        + " and providerPid: " + transferSuspensionMessage.getProviderPid()));
+        log.info("Suspending transfer process {}", transferProcess.getId());
+        if (transferProcess.getState().equals(TransferState.STARTED)
+                && transferProcess.getRole().equals(IConstants.ROLE_CONSUMER)
+                && !transferProcess.isDownloaded()) {
+            PresignedBucketDownloader downloader = downloaders.get(transferProcess.getId());
+            if (downloader != null) {
+                downloader.pause();
+            } else {
+                log.warn("No downloader found for transfer process {}", transferProcess.getId());
+            }
         } else {
-            log.warn("No downloader found for transfer process {}", suspendDataTransfer.getTransferProcessId());
+            log.warn("Transfer process {} is not in STARTED state or not a CONSUMER, cannot suspend", transferProcess.getId());
         }
+
     }
 
     @EventListener
     public void onResume(ResumeDataTransfer resumeDataTransfer) {
         log.info("Resuming transfer process {}", resumeDataTransfer.getTransferProcessId());
-        PresignedBucketDownloader downloader = downloaders.get(resumeDataTransfer.getTransferProcessId());
-        // TODO check if transfer process is in STARTED state and create one
-        // TransferProcessState exists and TransferProcessState == SUSPENDED
-        if (downloader != null) {
-            downloader.resume();
+        TransferProcess transferProcess = transferProcessRepository.findById(resumeDataTransfer.getTransferProcessId())
+                .orElseThrow(() -> new DataTransferAPIException("Transfer process not found for id: " + resumeDataTransfer.getTransferProcessId()));
+        if (transferProcess.getState().equals(TransferState.SUSPENDED)
+                && transferProcess.getRole().equals(IConstants.ROLE_CONSUMER)
+                && !transferProcess.isDownloaded()) {
+            PresignedBucketDownloader downloader = downloaders.get(resumeDataTransfer.getTransferProcessId());
+            if (downloader != null) {
+                downloader.resume();
+            } else {
+                log.warn("No downloader found for transfer process {}", resumeDataTransfer.getTransferProcessId());
+            }
         } else {
-            log.warn("No downloader found for transfer process {}", resumeDataTransfer.getTransferProcessId());
+            log.warn("Transfer process {} is not in SUSPENDED state or not a CONSUMER, cannot resume", transferProcess.getId());
+            return;
+        }
+    }
+
+    @EventListener
+    public void onTransferComplete(TransferCompletionMessage transferCompletionMessage) {
+        TransferProcess transferProcess = transferProcessRepository.findByConsumerPidAndProviderPid(transferCompletionMessage.getConsumerPid(), transferCompletionMessage.getProviderPid())
+                .orElseThrow(() -> new DataTransferAPIException("Transfer process not found for consumerPid: " + transferCompletionMessage.getConsumerPid()
+                        + " and providerPid: " + transferCompletionMessage.getProviderPid()));
+        log.info("Cleaning up transfer process {}", transferProcess.getId());
+        if (transferProcess.getRole().equals(IConstants.ROLE_CONSUMER)) {
+            PresignedBucketDownloader downloader = downloaders.get(transferProcess.getId());
+            if (downloader != null) {
+                downloader.stop();
+                downloaders.remove(transferProcess.getId());
+            } else {
+                log.warn("No downloader found for transfer process {}", transferProcess.getId());
+            }
         }
     }
 }
