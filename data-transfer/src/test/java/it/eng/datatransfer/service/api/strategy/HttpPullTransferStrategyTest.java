@@ -19,7 +19,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -62,7 +62,7 @@ public class HttpPullTransferStrategyTest {
         when(call.execute()).thenReturn(response);
         when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
         when(response.isSuccessful()).thenReturn(true);
-        when(response.code()).thenReturn(206); // Simulate 206 Partial Content
+        when(response.header("Accept-Ranges")).thenReturn("bytes"); // Simulate 206 Partial Content
 
         when(httpPullSuspendResumeTransferService.transfer(transferProcess))
                 .thenReturn(CompletableFuture.completedFuture(null));
@@ -94,9 +94,9 @@ public class HttpPullTransferStrategyTest {
             when(response.code()).thenReturn(404); // Simulate failure
 
             // Act & Assert
-            DataTransferAPIException ex = org.junit.jupiter.api.Assertions.assertThrows(DataTransferAPIException.class,
+            DataTransferAPIException ex = assertThrows(DataTransferAPIException.class,
                     () -> strategy.transfer(transferProcess));
-            org.junit.jupiter.api.Assertions.assertTrue(ex.getMessage().contains("Failed to fetch data from endpoint"));
+            assertTrue(ex.getMessage().contains("Failed to fetch data from endpoint"));
 
             verifyNoInteractions(httpPullTransferService);
             verifyNoInteractions(httpPullSuspendResumeTransferService);
@@ -114,7 +114,6 @@ public class HttpPullTransferStrategyTest {
             when(call.execute()).thenReturn(response);
             when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
             when(response.isSuccessful()).thenReturn(true);
-            when(response.code()).thenReturn(200); // Simulate 200 OK
 
             when(httpPullTransferService.transfer(transferProcess))
                     .thenReturn(CompletableFuture.completedFuture(null));
@@ -141,9 +140,9 @@ public class HttpPullTransferStrategyTest {
             when(response.code()).thenReturn(404); // Simulate failure
 
             // Act & Assert
-            DataTransferAPIException ex = org.junit.jupiter.api.Assertions.assertThrows(DataTransferAPIException.class,
+            DataTransferAPIException ex = assertThrows(DataTransferAPIException.class,
                     () -> strategy.transfer(transferProcess));
-            org.junit.jupiter.api.Assertions.assertTrue(ex.getMessage().contains("Failed to fetch data from endpoint"));
+            assertTrue(ex.getMessage().contains("Failed to fetch data from endpoint"));
 
             verifyNoInteractions(httpPullTransferService);
             verifyNoInteractions(httpPullSuspendResumeTransferService);
@@ -160,13 +159,12 @@ public class HttpPullTransferStrategyTest {
         try {
             when(call.execute()).thenReturn(response);
             when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
-            when(response.isSuccessful()).thenReturn(true);
-            when(response.code()).thenReturn(500); // Simulate 500 Server Error
+            when(response.isSuccessful()).thenReturn(false);
 
             // Act & Assert
-            DataTransferAPIException ex = org.junit.jupiter.api.Assertions.assertThrows(DataTransferAPIException.class,
+            DataTransferAPIException ex = assertThrows(DataTransferAPIException.class,
                     () -> strategy.transfer(transferProcess));
-            org.junit.jupiter.api.Assertions.assertTrue(ex.getMessage().contains("Unexpected response code"));
+            assertTrue(ex.getMessage().contains("Failed to fetch data from endpoint"));
 
             verifyNoInteractions(httpPullTransferService);
             verifyNoInteractions(httpPullSuspendResumeTransferService);

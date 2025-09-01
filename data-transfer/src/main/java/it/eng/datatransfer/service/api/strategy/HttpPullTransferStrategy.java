@@ -10,6 +10,7 @@ import okhttp3.Response;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 @Service
@@ -33,18 +34,18 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
     public CompletableFuture<Void> transfer(TransferProcess transferProcess) {
         log.info("Executing HTTP PULL transfer for process {}", transferProcess.getId());
 
-        Request request = new Request.Builder().url(transferProcess.getDataAddress().getEndpoint()).build();
+        Request request = new Request.Builder()
+                .url(transferProcess.getDataAddress().getEndpoint())
+//                .head() // we only need headers to check for Accept-Ranges
+                .build();
         try (Response response = okHttpClient.newCall(request).execute()) {
             if (response.isSuccessful()) {
-                if (response.code() == 206) {
+                if (Objects.equals(response.header("Accept-Ranges"), "bytes")) {
                     // Handle suspend/resume transfer
                     return httpPullSuspendResumeTransferService.transfer(transferProcess);
-                } else if (response.code() == 200) {
+                } else {
                     // Handle standard transfer
                     return httpPullTransferService.transfer(transferProcess);
-                } else {
-                    log.error("Unexpected response code: {}", response.code());
-                    throw new DataTransferAPIException("Unexpected response code: " + response.code());
                 }
             } else {
                 log.error("Failed to fetch data from endpoint: {}. Response code: {}", transferProcess.getDataAddress().getEndpoint(), response.code());

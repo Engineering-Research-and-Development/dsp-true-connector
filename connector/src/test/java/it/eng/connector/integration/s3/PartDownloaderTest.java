@@ -1,12 +1,15 @@
 package it.eng.connector.integration.s3;
 
+import it.eng.datatransfer.model.DataAddress;
+import it.eng.datatransfer.model.TransferProcess;
+import it.eng.datatransfer.model.TransferState;
+import it.eng.datatransfer.service.api.strategy.HttpPullTransferStrategy;
+import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
-import it.eng.tools.s3.model.S3ClientRequest;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.repository.TransferStateRepository;
 import it.eng.tools.s3.service.BucketCredentialsService;
-import it.eng.tools.s3.service.PresignedBucketDownloader;
 import it.eng.tools.s3.service.S3BucketProvisionService;
 import it.eng.tools.s3.service.S3ClientService;
 import okhttp3.OkHttpClient;
@@ -16,7 +19,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.MediaType;
-import software.amazon.awssdk.services.s3.S3AsyncClient;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -47,6 +49,9 @@ public class PartDownloaderTest {
 
     @Autowired
     private S3BucketProvisionService s3BucketProvisionService;
+
+    @Autowired
+    private HttpPullTransferStrategy httpPullTransferStrategy;
 
     String sourceFileName = "s3.md";
     String destinationFileName = "bigFile.zip";
@@ -83,23 +88,39 @@ public class PartDownloaderTest {
                 "minikube-installer.exe", Duration.ofDays(1));
 
         System.out.println(presignURL);
+        DataAddress dataAddress = DataAddress.Builder.newInstance()
+                .endpoint(presignURL)
+                .endpointType(DataTransferMockObjectUtil.ENDPOINT_TYPE)
+                .endpointType("")
+                .build();
 
-        S3ClientRequest s3ClientRequest = S3ClientRequest.from(s3Properties.getRegion(),
-                null,
-                destinationBucketCredentialsEntity);
-        S3AsyncClient s3AsyncClient = s3ClientProvider.s3AsyncClient(s3ClientRequest);
+        TransferProcess tp = TransferProcess.Builder.newInstance()
+                .isDownloaded(false)
+                .id(UUID.randomUUID().toString())
+                .dataId(UUID.randomUUID().toString())
+                .datasetId("integration-test-dataset-1")
+                .dataAddress(dataAddress)
+                .state(TransferState.STARTED)
+                .build();
+        s3Properties.setBucketName("dsp-true-connector-destination");
+        httpPullTransferStrategy.transfer(tp).join();
 
-        PresignedBucketDownloader downloader = new PresignedBucketDownloader(stateRepository,
-                s3AsyncClient,
-                httpClient,
-                "test-transfer-id-big_file.zip",
-                presignURL,
-                destinationBucketCredentialsEntity.getBucketName(),
-                destinationFileName,
-                destinationFileName);
-
-        System.out.println("Starting download...");
-        downloader.run();
+//        S3ClientRequest s3ClientRequest = S3ClientRequest.from(s3Properties.getRegion(),
+//                null,
+//                destinationBucketCredentialsEntity);
+//        S3AsyncClient s3AsyncClient = s3ClientProvider.s3AsyncClient(s3ClientRequest);
+//
+//        PresignedBucketDownloader downloader = new PresignedBucketDownloader(stateRepository,
+//                s3AsyncClient,
+//                httpClient,
+//                "test-transfer-id-big_file.zip",
+//                presignURL,
+//                destinationBucketCredentialsEntity.getBucketName(),
+//                destinationFileName,
+//                destinationFileName);
+//
+//        System.out.println("Starting download...");
+//        downloader.run();
     }
 
     private String bucketEntityToString(BucketCredentialsEntity entity) {
