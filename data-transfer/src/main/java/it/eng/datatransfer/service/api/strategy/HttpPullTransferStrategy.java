@@ -56,4 +56,9 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
             throw new DataTransferAPIException("Error while executing HTTP PULL transfer for process " + transferProcess.getId(), e);
         }
     }
+
+    @Override
+    public CompletableFuture<Void> terminateTransfer(TransferProcess transferProcess) {
+        return null;
+    }
 }

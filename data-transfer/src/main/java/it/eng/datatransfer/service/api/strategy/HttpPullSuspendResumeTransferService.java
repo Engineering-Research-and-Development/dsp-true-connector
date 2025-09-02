@@ -6,7 +6,9 @@ import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.model.TransferSuspensionMessage;
 import it.eng.datatransfer.repository.TransferProcessRepository;
+import it.eng.datatransfer.service.api.DataTransferStrategy;
 import it.eng.tools.event.AuditEventType;
+import it.eng.tools.event.datatransfer.CompletedDataTransfer;
 import it.eng.tools.event.datatransfer.ResumeDataTransfer;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.s3.configuration.S3ClientProvider;
@@ -22,14 +24,16 @@ import okhttp3.OkHttpClient;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @Slf4j
-public class HttpPullSuspendResumeTransferService {
+public class HttpPullSuspendResumeTransferService implements DataTransferStrategy {
 
     private final ConcurrentHashMap<String, PresignedBucketDownloader> downloaders = new ConcurrentHashMap<>();
 
@@ -56,20 +60,74 @@ public class HttpPullSuspendResumeTransferService {
         this.transferProcessRepository = transferProcessRepository;
     }
 
+    @Override
     public CompletableFuture<Void> transfer(TransferProcess transferProcess) {
         log.info("Executing HTTP PULL Suspend/Resume transfer for process {}", transferProcess.getId());
 
         return downloadAndUploadToS3(transferProcess)
                 .thenAccept(key -> {
                     log.info("Stored transfer process id - {} data!", key);
-                    transferProcessRepository.save(transferProcess.copyWithNewTransferState(TransferState.COMPLETED));
+                    transferProcessRepository.save(withNewDownloaded(transferProcess, true));
                     auditEventPublisher.publishEvent(AuditEventType.TRANSFER_COMPLETED,
                             "Data transfer completed for process " + transferProcess.getId(),
                             Map.of("role", IConstants.ROLE_PROTOCOL,
                                     "transferProcess", transferProcess,
                                     "consumerPid", transferProcess.getConsumerPid(),
                                     "providerPid", transferProcess.getProviderPid()));
+                    // after successful transfer, publish CompletedDataTransfer event (state transition to COMPLETED)
+                    auditEventPublisher.publishEvent(new CompletedDataTransfer(transferProcess.getId()));
                 });
+    }
+
+    @Override
+    public CompletableFuture<Void> terminateTransfer(TransferProcess transferProcess) {
+        PresignedBucketDownloader downloader = downloaders.get(transferProcess.getId());
+        if (downloader != null) {
+            downloader.stop();
+
+            it.eng.tools.s3.model.TransferState transferState = stateRepository.findById(transferProcess.getId())
+                    .orElseThrow(() -> new DataTransferAPIException("Transfer state not found for id: " + transferProcess.getId()));
+
+            List<String> eTags = transferState.getEtags();
+            if (eTags != null && !eTags.isEmpty()) {
+                // abort multipart upload
+                BucketCredentialsEntity destinationBucketCredentialsEntity =
+                        bucketCredentialsService.getBucketCredentials(s3Properties.getBucketName());
+
+                S3ClientRequest s3ClientRequest = S3ClientRequest.from(s3Properties.getRegion(),
+                        null,
+                        destinationBucketCredentialsEntity);
+                S3AsyncClient s3AsyncClient = s3ClientProvider.s3AsyncClient(s3ClientRequest);
+
+                AbortMultipartUploadRequest abortMultipartUploadRequest = AbortMultipartUploadRequest.builder()
+                        .bucket(destinationBucketCredentialsEntity.getBucketName())
+                        .key(transferProcess.getId())
+                        .uploadId(transferState.getUploadId())
+                        .build();
+
+                s3AsyncClient.abortMultipartUpload(abortMultipartUploadRequest)
+                        .whenComplete((resp, err) -> {
+                            if (err != null) {
+                                log.error("Failed to abort multipart upload for transfer process {}: {}", transferProcess.getId(), err.getMessage());
+                            } else {
+                                log.info("Aborted multipart upload for transfer process {}", transferProcess.getId());
+                            }
+                        });
+            }
+            downloaders.remove(transferProcess.getId());
+            stateRepository.deleteById(transferProcess.getId());
+
+            log.info("Terminated transfer process {}", transferProcess.getId());
+            auditEventPublisher.publishEvent(AuditEventType.PROTOCOL_NEGOTIATION_TERMINATED,
+                    "Data transfer terminated for process " + transferProcess.getId(),
+                    Map.of("role", IConstants.ROLE_PROTOCOL,
+                            "transferProcess", transferProcess,
+                            "consumerPid", transferProcess.getConsumerPid(),
+                            "providerPid", transferProcess.getProviderPid()));
+        } else {
+            log.warn("No downloader found for transfer process {}", transferProcess.getId());
+        }
+        return CompletableFuture.completedFuture(null);
     }
 
     private CompletableFuture<String> downloadAndUploadToS3(TransferProcess transferProcess) {
@@ -154,5 +212,28 @@ public class HttpPullSuspendResumeTransferService {
                 log.warn("No downloader found for transfer process {}", transferProcess.getId());
             }
         }
+    }
+
+    private TransferProcess withNewDownloaded(TransferProcess oldTransferProcess, boolean isDownloaded) {
+        return TransferProcess.Builder.newInstance()
+                .id(oldTransferProcess.getId())
+                .agreementId(oldTransferProcess.getAgreementId())
+                .consumerPid(oldTransferProcess.getConsumerPid())
+                .providerPid(oldTransferProcess.getProviderPid())
+                .callbackAddress(oldTransferProcess.getCallbackAddress())
+                .dataAddress(oldTransferProcess.getDataAddress())
+                .isDownloaded(isDownloaded)
+                .dataId(oldTransferProcess.getDataId())
+                .format(oldTransferProcess.getFormat())
+                .state(oldTransferProcess.getState())
+                .role(oldTransferProcess.getRole())
+                .datasetId(oldTransferProcess.getDatasetId())
+                // auditable fields
+                .createdBy(oldTransferProcess.getCreatedBy())
+                .created(oldTransferProcess.getCreated())
+                .lastModifiedBy(oldTransferProcess.getLastModifiedBy())
+                .modified(oldTransferProcess.getModified())
+                .version(oldTransferProcess.getVersion())
+                .build();
     }
 }

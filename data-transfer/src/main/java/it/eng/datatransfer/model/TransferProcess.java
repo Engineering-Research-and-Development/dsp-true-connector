@@ -260,7 +260,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .providerPid(this.providerPid)
                 .callbackAddress(this.callbackAddress)
                 .dataAddress(this.dataAddress)
-                .isDownloaded(newTransferState.equals(TransferState.COMPLETED) || this.isDownloaded)
+                .isDownloaded(this.isDownloaded)
                 .dataId(this.dataId)
                 .format(this.format)
                 .state(newTransferState)

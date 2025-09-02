@@ -461,6 +461,10 @@ public class DataTransferAPIService {
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid()));
+
+            DataTransferStrategy strategy = dataTransferStrategyFactory.getStrategy(transferProcess.getFormat());
+            strategy.terminateTransfer(transferProcess).join();
+
             return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
         } else {
             log.error("Error response received!");

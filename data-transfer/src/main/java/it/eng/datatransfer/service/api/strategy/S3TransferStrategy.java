@@ -21,4 +21,9 @@ public class S3TransferStrategy implements DataTransferStrategy {
         // Implementation will go here
         return CompletableFuture.failedFuture(new UnsupportedOperationException("S3 transfer not implemented"));
     }
+
+    @Override
+    public CompletableFuture<Void> terminateTransfer(TransferProcess transferProcess) {
+        return null;
+    }
 }
