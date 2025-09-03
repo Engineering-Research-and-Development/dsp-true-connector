@@ -1,6 +1,6 @@
 package it.eng.tools.s3.service;
 
-import it.eng.tools.s3.model.TransferState;
+import it.eng.tools.s3.model.TransferArtifactState;
 import it.eng.tools.s3.repository.TransferStateRepository;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
@@ -49,7 +49,7 @@ public class PresignedBucketDownloader implements Runnable {
 
     @Override
     public void run() {
-        TransferState state = getOrCreateState();
+        TransferArtifactState state = getOrCreateState();
         int retryCount = 0;
 
         Request.Builder builder = new Request.Builder().url(presignedUrl);
@@ -184,12 +184,12 @@ public class PresignedBucketDownloader implements Runnable {
         resume(); // Wake up if paused
     }
 
-    private TransferState getOrCreateState() {
-        TransferState state = stateRepository.findById(transferId)
+    private TransferArtifactState getOrCreateState() {
+        TransferArtifactState state = stateRepository.findById(transferId)
                 .orElse(null);
         if (state == null) {
 
-            state = TransferState.Builder.newInstance()
+            state = TransferArtifactState.Builder.newInstance()
                     .id(transferId)
                     .presignURL(presignedUrl)
                     .destBucket(destBucket)

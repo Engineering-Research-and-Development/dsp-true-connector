@@ -19,9 +19,9 @@ import java.util.List;
 @Document(collection = "transfer_states")
 @Getter
 @Setter
-@JsonDeserialize(builder = TransferState.Builder.class)
+@JsonDeserialize(builder = TransferArtifactState.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class TransferState {
+public class TransferArtifactState {
 
     @Id
     private String id;
@@ -59,10 +59,10 @@ public class TransferState {
 
     @JsonPOJOBuilder(withPrefix = "")
     public static class Builder {
-        private final TransferState transferState;
+        private final TransferArtifactState transferArtifactState;
 
         private Builder() {
-            transferState = new TransferState();
+            transferArtifactState = new TransferArtifactState();
         }
 
         public static Builder newInstance() {
@@ -70,73 +70,73 @@ public class TransferState {
         }
 
         public Builder id(String id) {
-            transferState.id = id;
+            transferArtifactState.id = id;
             return this;
         }
 
         public Builder uploadId(String uploadId) {
-            transferState.uploadId = uploadId;
+            transferArtifactState.uploadId = uploadId;
             return this;
         }
 
         public Builder downloadedBytes(long downloadedBytes) {
-            transferState.downloadedBytes = downloadedBytes;
+            transferArtifactState.downloadedBytes = downloadedBytes;
             return this;
         }
 
         public Builder partNumber(int partNumber) {
-            transferState.partNumber = partNumber;
+            transferArtifactState.partNumber = partNumber;
             return this;
         }
 
         public Builder etags(List<String> etags) {
-            transferState.etags = etags;
+            transferArtifactState.etags = etags;
             return this;
         }
 
         public Builder presignURL(String presignURL) {
-            transferState.presignURL = presignURL;
+            transferArtifactState.presignURL = presignURL;
             return this;
         }
 
         public Builder destBucket(String destBucket) {
-            transferState.destBucket = destBucket;
+            transferArtifactState.destBucket = destBucket;
             return this;
         }
 
         public Builder destObject(String destObject) {
-            transferState.destObject = destObject;
+            transferArtifactState.destObject = destObject;
             return this;
         }
 
         public Builder issued(Instant issued) {
-            transferState.issued = issued;
+            transferArtifactState.issued = issued;
             return this;
         }
 
         public Builder modified(Instant modified) {
-            transferState.modified = modified;
+            transferArtifactState.modified = modified;
             return this;
         }
 
         public Builder createdBy(String createdBy) {
-            transferState.createdBy = createdBy;
+            transferArtifactState.createdBy = createdBy;
             return this;
         }
 
         public Builder lastModifiedBy(String lastModifiedBy) {
-            transferState.lastModifiedBy = lastModifiedBy;
+            transferArtifactState.lastModifiedBy = lastModifiedBy;
             return this;
         }
 
         @JsonProperty("version")
         public Builder version(Long version) {
-            transferState.version = version;
+            transferArtifactState.version = version;
             return this;
         }
 
-        public TransferState build() {
-            return transferState;
+        public TransferArtifactState build() {
+            return transferArtifactState;
         }
     }
 }

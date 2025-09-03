@@ -14,6 +14,7 @@ import it.eng.tools.model.IConstants;
 import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.model.S3ClientRequest;
+import it.eng.tools.s3.model.TransferArtifactState;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.repository.TransferStateRepository;
 import it.eng.tools.s3.service.BucketCredentialsService;
@@ -85,10 +86,10 @@ public class HttpPullSuspendResumeTransferService implements DataTransferStrateg
         if (downloader != null) {
             downloader.stop();
 
-            it.eng.tools.s3.model.TransferState transferState = stateRepository.findById(transferProcess.getId())
+            TransferArtifactState transferArtifactState = stateRepository.findById(transferProcess.getId())
                     .orElseThrow(() -> new DataTransferAPIException("Transfer state not found for id: " + transferProcess.getId()));
 
-            List<String> eTags = transferState.getEtags();
+            List<String> eTags = transferArtifactState.getEtags();
             if (eTags != null && !eTags.isEmpty()) {
                 // abort multipart upload
                 BucketCredentialsEntity destinationBucketCredentialsEntity =
@@ -102,7 +103,7 @@ public class HttpPullSuspendResumeTransferService implements DataTransferStrateg
                 AbortMultipartUploadRequest abortMultipartUploadRequest = AbortMultipartUploadRequest.builder()
                         .bucket(destinationBucketCredentialsEntity.getBucketName())
                         .key(transferProcess.getId())
-                        .uploadId(transferState.getUploadId())
+                        .uploadId(transferArtifactState.getUploadId())
                         .build();
 
                 s3AsyncClient.abortMultipartUpload(abortMultipartUploadRequest)

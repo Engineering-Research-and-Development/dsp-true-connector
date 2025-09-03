@@ -31,7 +31,6 @@ public class HttpPullTransferService {
         this.s3ClientService = s3ClientService;
     }
 
-
     public CompletableFuture<Void> transfer(TransferProcess transferProcess) {
         log.info("Executing HTTP PULL transfer for process {}", transferProcess.getId());
 

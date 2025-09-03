@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.2-SNAPSHOT] - 03.09.2025.
+
+### Added
+
+- Support for Suspend/Resume transfer for PULL Http Rest transfer; if server does not support Range header, transfer
+  will be done in whole
+
+### Changed
+
+- When PULL transfer is completed, TransferCompletionMessage is sent to provider
+
 ## [0.5.1-SNAPSHOT] - 08.08.2025.
 
 ### Changed

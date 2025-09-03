@@ -20,7 +20,6 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
     private final HttpPullTransferService httpPullTransferService;
     private final HttpPullSuspendResumeTransferService httpPullSuspendResumeTransferService;
     private final OkHttpClient okHttpClient;
-    private static final int DEFAULT_TIMEOUT = 10000; // 10 seconds
 
     public HttpPullTransferStrategy(HttpPullTransferService httpPullTransferService,
                                     HttpPullSuspendResumeTransferService httpPullSuspendResumeTransferService, OkHttpClient okHttpClient) {
@@ -36,7 +35,6 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
 
         Request request = new Request.Builder()
                 .url(transferProcess.getDataAddress().getEndpoint())
-//                .head() // we only need headers to check for Accept-Ranges
                 .build();
         try (Response response = okHttpClient.newCall(request).execute()) {
             if (response.isSuccessful()) {
@@ -59,6 +57,7 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
 
     @Override
     public CompletableFuture<Void> terminateTransfer(TransferProcess transferProcess) {
-        return null;
+        // for now just delegate to the suspend/resume service
+        return httpPullSuspendResumeTransferService.terminateTransfer(transferProcess);
     }
 }
