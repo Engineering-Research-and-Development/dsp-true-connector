@@ -4,11 +4,9 @@ import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.model.TransferCompletionMessage;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
-import it.eng.datatransfer.model.TransferSuspensionMessage;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.service.api.DataTransferStrategy;
 import it.eng.tools.event.AuditEventType;
-import it.eng.tools.event.datatransfer.CompletedDataTransfer;
 import it.eng.tools.event.datatransfer.ResumeDataTransfer;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.s3.configuration.S3ClientProvider;
@@ -62,26 +60,55 @@ public class HttpPullSuspendResumeTransferService implements DataTransferStrateg
     }
 
     @Override
-    public CompletableFuture<Void> transfer(TransferProcess transferProcess) {
+    public CompletableFuture<String> transfer(TransferProcess transferProcess) {
         log.info("Executing HTTP PULL Suspend/Resume transfer for process {}", transferProcess.getId());
 
         return downloadAndUploadToS3(transferProcess)
-                .thenAccept(key -> {
-                    log.info("Stored transfer process id - {} data!", key);
-                    transferProcessRepository.save(withNewDownloaded(transferProcess, true));
-                    auditEventPublisher.publishEvent(AuditEventType.TRANSFER_COMPLETED,
-                            "Data transfer completed for process " + transferProcess.getId(),
-                            Map.of("role", IConstants.ROLE_PROTOCOL,
-                                    "transferProcess", transferProcess,
-                                    "consumerPid", transferProcess.getConsumerPid(),
-                                    "providerPid", transferProcess.getProviderPid()));
-                    // after successful transfer, publish CompletedDataTransfer event (state transition to COMPLETED)
-                    auditEventPublisher.publishEvent(new CompletedDataTransfer(transferProcess.getId()));
+                .whenComplete((transferProcessId, throwable) -> {
+                    if (throwable == null) {
+                        log.info("-------------- Stored transfer process id - {} data!", transferProcessId);
+                        auditEventPublisher.publishEvent(AuditEventType.TRANSFER_COMPLETED,
+                                "Data transfer completed for process " + transferProcess.getId(),
+                                Map.of("role", IConstants.ROLE_PROTOCOL,
+                                        "transferProcess", transferProcess,
+                                        "consumerPid", transferProcess.getConsumerPid(),
+                                        "providerPid", transferProcess.getProviderPid()));
+                    } else {
+                        log.error("-------------- Error during transfer process id - {} data: {}", transferProcessId, throwable.getMessage());
+                        auditEventPublisher.publishEvent(AuditEventType.TRANSFER_FAILED,
+                                "Data transfer failed for process " + transferProcess.getId() + ": " + throwable.getMessage(),
+                                Map.of("role", IConstants.ROLE_PROTOCOL,
+                                        "transferProcess", transferProcess,
+                                        "consumerPid", transferProcess.getConsumerPid(),
+                                        "providerPid", transferProcess.getProviderPid()));
+                    }
                 });
     }
 
     @Override
-    public CompletableFuture<Void> terminateTransfer(TransferProcess transferProcess) {
+    public CompletableFuture<String> suspendTransfer(TransferProcess transferProcess) {
+//        TransferProcess transferProcess = transferProcessRepository.findByConsumerPidAndProviderPid(transferSuspensionMessage.getConsumerPid(), transferSuspensionMessage.getProviderPid())
+//                .orElseThrow(() -> new DataTransferAPIException("Transfer process not found for consumerPid: " + transferSuspensionMessage.getConsumerPid()
+//                        + " and providerPid: " + transferSuspensionMessage.getProviderPid()));
+        log.info("Suspending transfer process {}", transferProcess.getId());
+        if (transferProcess.getState().equals(TransferState.STARTED)
+                && transferProcess.getRole().equals(IConstants.ROLE_CONSUMER)
+                && !transferProcess.isDownloaded()) {
+            PresignedBucketDownloader downloader = downloaders.get(transferProcess.getId());
+            if (downloader != null) {
+                downloader.pause();
+            } else {
+                log.warn("No downloader found for transfer process {}", transferProcess.getId());
+            }
+        } else {
+            log.warn("Transfer process {} is not in STARTED state or not a CONSUMER, cannot suspend", transferProcess.getId());
+            return CompletableFuture.failedFuture(new DataTransferAPIException("Transfer process " + transferProcess.getId() + " is not in STARTED state"));
+        }
+        return CompletableFuture.completedFuture(transferProcess.getId());
+    }
+
+    @Override
+    public CompletableFuture<String> terminateTransfer(TransferProcess transferProcess) {
         PresignedBucketDownloader downloader = downloaders.get(transferProcess.getId());
         if (downloader != null) {
             downloader.stop();
@@ -128,7 +155,7 @@ public class HttpPullSuspendResumeTransferService implements DataTransferStrateg
         } else {
             log.warn("No downloader found for transfer process {}", transferProcess.getId());
         }
-        return CompletableFuture.completedFuture(null);
+        return CompletableFuture.completedFuture(transferProcess.getId());
     }
 
     private CompletableFuture<String> downloadAndUploadToS3(TransferProcess transferProcess) {
@@ -153,30 +180,9 @@ public class HttpPullSuspendResumeTransferService implements DataTransferStrateg
         downloader.run();
         downloaders.put(transferProcess.getId(), downloader);
 
-        return CompletableFuture.completedFuture("Download started");
+        return CompletableFuture.completedFuture(transferProcess.getId());
     }
 
-
-    @EventListener
-    public void onSuspendTransfer(TransferSuspensionMessage transferSuspensionMessage) {
-        TransferProcess transferProcess = transferProcessRepository.findByConsumerPidAndProviderPid(transferSuspensionMessage.getConsumerPid(), transferSuspensionMessage.getProviderPid())
-                .orElseThrow(() -> new DataTransferAPIException("Transfer process not found for consumerPid: " + transferSuspensionMessage.getConsumerPid()
-                        + " and providerPid: " + transferSuspensionMessage.getProviderPid()));
-        log.info("Suspending transfer process {}", transferProcess.getId());
-        if (transferProcess.getState().equals(TransferState.STARTED)
-                && transferProcess.getRole().equals(IConstants.ROLE_CONSUMER)
-                && !transferProcess.isDownloaded()) {
-            PresignedBucketDownloader downloader = downloaders.get(transferProcess.getId());
-            if (downloader != null) {
-                downloader.pause();
-            } else {
-                log.warn("No downloader found for transfer process {}", transferProcess.getId());
-            }
-        } else {
-            log.warn("Transfer process {} is not in STARTED state or not a CONSUMER, cannot suspend", transferProcess.getId());
-        }
-
-    }
 
     @EventListener
     public void onResume(ResumeDataTransfer resumeDataTransfer) {

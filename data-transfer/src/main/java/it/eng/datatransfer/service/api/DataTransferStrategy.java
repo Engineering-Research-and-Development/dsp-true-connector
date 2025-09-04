@@ -10,9 +10,11 @@ import java.util.concurrent.CompletableFuture;
 
 public interface DataTransferStrategy {
 
-    CompletableFuture<Void> transfer(TransferProcess transferProcess);
+    CompletableFuture<String> transfer(TransferProcess transferProcess);
 
-    CompletableFuture<Void> terminateTransfer(TransferProcess transferProcess);
+    CompletableFuture<String> suspendTransfer(TransferProcess transferProcess);
+
+    CompletableFuture<String> terminateTransfer(TransferProcess transferProcess);
 
     default String extractAuthorization(TransferProcess transferProcess) {
         if (transferProcess.getDataAddress().getEndpointProperties() != null) {

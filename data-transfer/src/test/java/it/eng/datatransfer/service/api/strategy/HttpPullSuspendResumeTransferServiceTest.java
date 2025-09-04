@@ -103,7 +103,7 @@ public class HttpPullSuspendResumeTransferServiceTest {
         when(transferProcessRepository.findByConsumerPidAndProviderPid(anyString(), anyString()))
                 .thenReturn(Optional.of(transferProcess));
 
-        assertDoesNotThrow(() -> httpPullSuspendResumeTransferService.onSuspendTransfer(transferSuspensionMessage));
+        assertDoesNotThrow(() -> httpPullSuspendResumeTransferService.suspendTransfer(transferProcess));
         verify(downloaderMock).pause();
     }
 

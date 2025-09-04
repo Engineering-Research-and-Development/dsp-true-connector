@@ -13,6 +13,7 @@ import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEventType;
+import it.eng.tools.event.datatransfer.ResumeDataTransfer;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.IConstants;
@@ -37,6 +38,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 @Service
 @Slf4j
@@ -281,7 +283,7 @@ public class DataTransferAPIService {
             log.info("Transfer process {} saved", transferProcessStarted.getId());
             if (TransferState.SUSPENDED.equals(transferProcess.getState())) {
                 // was in suspended state -> started -> publish event for resume logic
-                publisher.publishEvent(transferStartMessage);
+                publisher.publishEvent(new ResumeDataTransfer(transferProcess.getId()));
             }
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
                     "Transfer process started successfully",
@@ -387,6 +389,18 @@ public class DataTransferAPIService {
         if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
             address = DataTransferCallback.getConsumerDataTransferSuspension(transferProcess.getCallbackAddress(), transferProcess.getConsumerPid());
         }
+
+        // suspend transfer if supported by strategy
+        DataTransferStrategy strategy = dataTransferStrategyFactory.getStrategy(transferProcess.getFormat());
+        try {
+            log.info("Suspending transfer process id - {} data...", transferProcessId);
+            strategy.suspendTransfer(transferProcess).get();
+            log.info("Transfer process id - {} data suspended", transferProcessId);
+        } catch (InterruptedException | ExecutionException e) {
+            throw new DataTransferAPIException(e.getMessage());
+        }
+
+        log.info("Updating provider to change state to SUSPENDED");
         GenericApiResponse<String> response = okHttpRestClient
                 .sendRequestProtocol(address,
                         TransferSerializer.serializeProtocolJsonNode(transferSuspensionMessage),
@@ -446,6 +460,17 @@ public class DataTransferAPIService {
         if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
             address = DataTransferCallback.getConsumerDataTransferTermination(transferProcess.getCallbackAddress(), transferProcess.getConsumerPid());
         }
+
+        // terminate transfer if supported by strategy
+        DataTransferStrategy strategy = dataTransferStrategyFactory.getStrategy(transferProcess.getFormat());
+        try {
+            log.info("Terminating transfer process id - {} data...", transferProcessId);
+            strategy.terminateTransfer(transferProcess).get();
+            log.info("Transfer process id - {} data terminated", transferProcessId);
+        } catch (InterruptedException | ExecutionException e) {
+            throw new DataTransferAPIException(e.getMessage());
+        }
+
         GenericApiResponse<String> response = okHttpRestClient
                 .sendRequestProtocol(address,
                         TransferSerializer.serializeProtocolJsonNode(transferTerminationMessage),
@@ -461,10 +486,6 @@ public class DataTransferAPIService {
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid()));
-
-            DataTransferStrategy strategy = dataTransferStrategyFactory.getStrategy(transferProcess.getFormat());
-            strategy.terminateTransfer(transferProcess).join();
-
             return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
         } else {
             log.error("Error response received!");

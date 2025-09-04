@@ -24,6 +24,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.time.Duration;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -60,7 +61,7 @@ public class PartDownloaderTest extends BaseIntegrationTest {
     private TransferProcessRepository transferProcessRepository;
 
     @Test
-    public void testPartDownloader() throws InterruptedException {
+    public void testPartDownloader() throws InterruptedException, ExecutionException {
 
         BucketCredentialsEntity sourceBucketCredentialsEntity = s3BucketProvisionService.createSecureBucket("dsp-true-connector-source");
         BucketCredentialsEntity destinationBucketCredentialsEntity = s3BucketProvisionService.createSecureBucket("dsp-true-connector-destination");
@@ -99,13 +100,13 @@ public class PartDownloaderTest extends BaseIntegrationTest {
                 .state(TransferState.STARTED)
                 .build();
         s3Properties.setBucketName("dsp-true-connector-destination");
-        httpPullTransferStrategy.transfer(tp).join();
+        httpPullTransferStrategy.transfer(tp).whenComplete((transferProcessId, throwable) -> {
+            assertNotNull(transferProcessId);
 
-        Thread.sleep(2000);
-
-        String presignURLDestination = s3ClientService.generateGetPresignedUrl(destinationBucketCredentialsEntity.getBucketName(),
-                tp.getId(),
-                Duration.ofDays(1));
-        assertNotNull(presignURLDestination);
+            String presignURLDestination = s3ClientService.generateGetPresignedUrl(destinationBucketCredentialsEntity.getBucketName(),
+                    tp.getId(),
+                    Duration.ofDays(1));
+            assertNotNull(presignURLDestination);
+        });
     }
 }

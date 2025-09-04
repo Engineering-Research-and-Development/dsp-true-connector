@@ -30,7 +30,7 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
 
 
     @Override
-    public CompletableFuture<Void> transfer(TransferProcess transferProcess) {
+    public CompletableFuture<String> transfer(TransferProcess transferProcess) {
         log.info("Executing HTTP PULL transfer for process {}", transferProcess.getId());
 
         Request request = new Request.Builder()
@@ -56,7 +56,12 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
     }
 
     @Override
-    public CompletableFuture<Void> terminateTransfer(TransferProcess transferProcess) {
+    public CompletableFuture<String> suspendTransfer(TransferProcess transferProcess) {
+        return CompletableFuture.failedFuture(new DataTransferAPIException("Not supported operation"));
+    }
+
+    @Override
+    public CompletableFuture<String> terminateTransfer(TransferProcess transferProcess) {
         // for now just delegate to the suspend/resume service
         return httpPullSuspendResumeTransferService.terminateTransfer(transferProcess);
     }
