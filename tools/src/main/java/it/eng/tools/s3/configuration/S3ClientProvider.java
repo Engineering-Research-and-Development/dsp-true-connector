@@ -91,6 +91,7 @@ public class S3ClientProvider {
      */
     public S3AsyncClient s3AsyncClient(S3ClientRequest s3ClientRequest) {
         String bucketName = s3ClientRequest.bucketCredentials().getBucketName();
+        log.info("Creating S3AsyncClient for bucket: {}", bucketName);
         return asyncS3ClientCache.computeIfAbsent(bucketName, bn -> createS3AsyncClient(s3ClientRequest));
     }
 

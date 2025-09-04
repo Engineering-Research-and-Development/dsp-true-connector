@@ -3,6 +3,8 @@ package it.eng.datatransfer.event;
 import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
+import it.eng.datatransfer.service.api.DataTransferAPIService;
+import it.eng.tools.event.datatransfer.CompletedDataTransfer;
 import it.eng.tools.event.datatransfer.InitializeTransferProcess;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.service.AuditEventPublisher;
@@ -20,12 +22,14 @@ public class DataTransferEventListener {
     private final AuditEventPublisher publisher;
     private final TransferRequestMessageRepository transferRequestMessageRepository;
     private final TransferProcessRepository transferProcessRepository;
+    private final DataTransferAPIService dataTransferAPIService;
 
-    public DataTransferEventListener(AuditEventPublisher publisher, TransferRequestMessageRepository transferRequestMessageRepository, TransferProcessRepository transferProcessRepository) {
+    public DataTransferEventListener(AuditEventPublisher publisher, TransferRequestMessageRepository transferRequestMessageRepository, TransferProcessRepository transferProcessRepository, DataTransferAPIService dataTransferAPIService) {
         super();
         this.publisher = publisher;
         this.transferRequestMessageRepository = transferRequestMessageRepository;
         this.transferProcessRepository = transferProcessRepository;
+        this.dataTransferAPIService = dataTransferAPIService;
     }
 
     @EventListener
@@ -88,6 +92,12 @@ public class DataTransferEventListener {
     @EventListener
     public void handleTransferTerminationMessage(TransferTerminationMessage transferTerminationMessage) {
         log.info("Terminating transfer with consumerPid {} and providerPid {}", transferTerminationMessage.getConsumerPid(), transferTerminationMessage.getProviderPid());
+    }
+
+    @EventListener
+    public void handleCompletedDataTransfer(CompletedDataTransfer completedDataTransfer) {
+        log.info("Completed data transfer event received for transferProcessId: {}", completedDataTransfer.getTransferProcessId());
+        dataTransferAPIService.completeTransfer(completedDataTransfer.getTransferProcessId());
     }
 
 }

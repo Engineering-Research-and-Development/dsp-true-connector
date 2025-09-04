@@ -466,12 +466,15 @@ class DataTransferAPIServiceTest {
         when(apiResponse.isSuccess()).thenReturn(true);
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+        when(transferStrategyFactory.getStrategy(anyString())).thenReturn(httpPullTransferStrategy);
+        when(httpPullTransferStrategy.terminateTransfer(any(TransferProcess.class))).thenReturn(CompletableFuture.completedFuture(null));
 
         apiService.terminateTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
 
         verify(transferProcessRepository).save(any(TransferProcess.class));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED, null);
+        verify(httpPullTransferStrategy).terminateTransfer(eq(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
     }
 
     @Test

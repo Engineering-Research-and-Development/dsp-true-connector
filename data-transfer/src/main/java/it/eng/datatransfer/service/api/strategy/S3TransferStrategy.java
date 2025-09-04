@@ -16,9 +16,19 @@ public class S3TransferStrategy implements DataTransferStrategy {
 //    String bucketName
 
     @Override
-    public CompletableFuture<Void> transfer(TransferProcess transferProcess) {
+    public CompletableFuture<String> transfer(TransferProcess transferProcess) {
         log.info("Executing S3 to S3 transfer for process {}", transferProcess.getId());
         // Implementation will go here
+        return CompletableFuture.failedFuture(new UnsupportedOperationException("S3 transfer not implemented"));
+    }
+
+    @Override
+    public CompletableFuture<String> suspendTransfer(TransferProcess transferProcess) {
+        return CompletableFuture.failedFuture(new UnsupportedOperationException("S3 transfer not implemented"));
+    }
+
+    @Override
+    public CompletableFuture<String> terminateTransfer(TransferProcess transferProcess) {
         return CompletableFuture.failedFuture(new UnsupportedOperationException("S3 transfer not implemented"));
     }
 }

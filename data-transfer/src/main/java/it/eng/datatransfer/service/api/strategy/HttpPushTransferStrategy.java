@@ -12,9 +12,19 @@ import java.util.concurrent.CompletableFuture;
 public class HttpPushTransferStrategy implements DataTransferStrategy {
 
     @Override
-    public CompletableFuture<Void> transfer(TransferProcess transferProcess) {
+    public CompletableFuture<String> transfer(TransferProcess transferProcess) {
         log.info("Executing HTTP PUSH transfer for process {}", transferProcess.getId());
         // Implementation will go here
-        return CompletableFuture.failedFuture(new UnsupportedOperationException("S3 transfer not implemented"));
+        return CompletableFuture.failedFuture(new UnsupportedOperationException("HTTP PUSH transfer not implemented"));
+    }
+
+    @Override
+    public CompletableFuture<String> suspendTransfer(TransferProcess transferProcess) {
+        return CompletableFuture.failedFuture(new UnsupportedOperationException("HTTP PUSH transfer not implemented"));
+    }
+
+    @Override
+    public CompletableFuture<String> terminateTransfer(TransferProcess transferProcess) {
+        return CompletableFuture.failedFuture(new UnsupportedOperationException("HTTP PUSH transfer not implemented"));
     }
 }
