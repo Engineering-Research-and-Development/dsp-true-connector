@@ -2,8 +2,8 @@ name: Feature or hotfix build
 
 on:
   push:
-    branches: [ "feature/*", "hotfix/*"]
-  
+    branches: [ "feature/*", "hotfix/*" ]
+
 jobs:
   build-and-push-image:
     runs-on: ubuntu-latest
@@ -13,7 +13,7 @@ jobs:
       packages: write
       attestations: write
       id-token: write
-      
+
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: engineering-research-and-development/dsp-true-connector
@@ -21,7 +21,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -30,20 +30,20 @@ jobs:
 
       - name: Build with Maven
         run: mvn -B clean verify --file pom.xml
-    
+
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-        
+
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-      
+
       - name: Build and push Docker image
         id: push
         uses: docker/build-push-action@v6
@@ -54,7 +54,7 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:test
           labels: ${{ steps.meta.outputs.labels }}
-      
+
   negotiation-api-tests:
     needs: build-and-push-image
     runs-on: ubuntu-latest
@@ -62,10 +62,10 @@ jobs:
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
-        
+
       - name: Run docker container for negotiation-api-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
-        
+
       - name: Wait for container starting
         run: sleep 30
 
@@ -75,7 +75,7 @@ jobs:
       - uses: matt-ball/newman-action@v2.0.0
         with:
           collection: ./ci/docker/test-cases/negotiation-api-tests/negotiation-api-tests.json
-          
+
       - name: Dump docker negotiation-api-tests
         if: failure()
         uses: jwalton/gh-docker-logs@v2
@@ -90,10 +90,10 @@ jobs:
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
-        
+
       - name: Run docker container for datatransfer-api-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
-        
+
       - name: Wait for container starting
         run: sleep 30
 
@@ -103,14 +103,14 @@ jobs:
       - uses: matt-ball/newman-action@v2.0.0
         with:
           collection: ./ci/docker/test-cases/datatransfer-api-tests/datatransfer-api-tests.json
-          
+
       - name: Dump docker datatransfer-api-tests
         if: failure()
         uses: jwalton/gh-docker-logs@v2
 
       - name: Stop docker container datatransfer-api-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
-        
+
   api-endpoints-tests:
     needs: build-and-push-image
     runs-on: ubuntu-latest
@@ -118,10 +118,10 @@ jobs:
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
-        
+
       - name: Run docker container for api-endpoints-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
-        
+
       - name: Wait for container starting
         run: sleep 30
 
@@ -131,14 +131,15 @@ jobs:
       - uses: matt-ball/newman-action@v2.0.0
         with:
           collection: ./ci/docker/test-cases/api-tests/api-endpoints-tests.json
-          
+
       - name: Dump docker api-endpoints-tests
         if: failure()
         uses: jwalton/gh-docker-logs@v2
 
       - name: Stop docker container api-endpoints-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
-        
+
+
   dataset-api-tests:
     needs: build-and-push-image
     runs-on: ubuntu-latest
@@ -146,10 +147,10 @@ jobs:
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
-        
+
       - name: Run docker container for dataset-api-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
-        
+
       - name: Wait for container starting
         run: sleep 30
 
@@ -159,7 +160,7 @@ jobs:
       - uses: matt-ball/newman-action@v2.0.0
         with:
           collection: ./ci/docker/test-cases/dataset-api-tests/dataset-api-tests.json
-          
+
       - name: Dump docker dataset-api-tests
         if: failure()
         uses: jwalton/gh-docker-logs@v2
@@ -167,4 +168,30 @@ jobs:
       - name: Stop docker container dataset-api-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
 
+  connector-tests:
+    needs: build-and-push-image
+    runs-on: ubuntu-latest
 
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Run docker container for connector-tests
+        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
+
+      - name: Wait for container starting
+        run: sleep 30
+
+      - name: Check if the container is up and running
+        run: docker ps -a
+
+      - uses: matt-ball/newman-action@v2.0.0
+        with:
+          collection: ./ci/docker/test-cases/connector-tests/connector-tests.json
+
+      - name: Dump docker connector-tests
+        if: failure()
+        uses: jwalton/gh-docker-logs@v2
+
+      - name: Stop docker container connector-tests
+        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v

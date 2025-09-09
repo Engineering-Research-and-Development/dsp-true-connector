@@ -1,0 +1,47 @@
+{
+	"info": {
+		"_postman_id": "3db15143-1c71-49b8-8518-117b9ec48bd4",
+		"name": "Connector tests",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "36278855"
+	},
+	"item": [
+		{
+			"name": "well known",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "CONSUMER",
+			"value": "http://localhost:8080",
+			"type": "string"
+		}
+	]
+}
