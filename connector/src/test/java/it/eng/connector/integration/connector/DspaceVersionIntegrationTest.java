@@ -18,7 +18,6 @@ public class DspaceVersionIntegrationTest extends BaseIntegrationTest {
     @DisplayName("Verify version response is correct")
     public void verifyVersionsResponse() {
         var response = versionController.getVersion();
-        System.out.println(response);
         assert response != null;
         assert response.getProtocolVersions() != null;
         assert !response.getProtocolVersions().isEmpty();
