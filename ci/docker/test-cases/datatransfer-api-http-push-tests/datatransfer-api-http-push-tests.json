@@ -470,53 +470,6 @@
 			"response": []
 		},
 		{
-			"name": "[C] Start transfer",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Check if status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "PUT",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/start",
-					"host": [
-						"{{CONSUMER_API_TRANSFERS}}"
-					],
-					"path": [
-						"{{consumer_transferProcessId}}",
-						"start"
-					]
-				}
-			},
-			"response": []
-		},
-		{
 			"name": "[C] View data",
 			"event": [
 				{
@@ -612,7 +565,7 @@
 					"script": {
 						"exec": [
 							"pm.test(\"Check if status code is 400, means that transfer is completed as it shoud be\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
+							"    pm.response.to.have.status(400);\r",
 							"});"
 						],
 						"type": "text/javascript",
