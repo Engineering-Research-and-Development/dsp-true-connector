@@ -47,15 +47,13 @@ public class HttpPullTransferStrategyTest {
 
     @Test
     @DisplayName("Should execute transfer successfully")
-    void transfer_success() throws Exception {
+    void transfer_success() {
         TransferProcess transferProcess = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED;
 
-        when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
-
         when(s3ClientService.uploadFile(
-                any(InputStream.class),
-                eq(TEST_BUCKET),
+                eq(null),
                 eq(transferProcess.getId()),
+                any(InputStream.class),
                 eq(TEST_CONTENT_TYPE),
                 eq(TEST_CONTENT_DISPOSITION)
         )).thenReturn(CompletableFuture.completedFuture("test-etag"));
@@ -94,9 +92,9 @@ public class HttpPullTransferStrategyTest {
             assertDoesNotThrow(() -> strategy.transfer(transferProcess));
 
             verify(s3ClientService).uploadFile(
-                    any(InputStream.class),
-                    eq(TEST_BUCKET),
+                    eq(null),
                     eq(transferProcess.getId()),
+                    any(InputStream.class),
                     eq(TEST_CONTENT_TYPE),
                     eq(TEST_CONTENT_DISPOSITION)
             );
@@ -140,12 +138,10 @@ public class HttpPullTransferStrategyTest {
                 .build();
         TransferProcess transferProcess = mockTransferProcess("http://test", List.of(authType, token));
 
-        when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
-
         when(s3ClientService.uploadFile(
-                any(InputStream.class),
-                eq(TEST_BUCKET),
+                eq(null),
                 eq(transferProcess.getId()),
+                any(InputStream.class),
                 eq(TEST_CONTENT_TYPE),
                 eq(TEST_CONTENT_DISPOSITION)
         )).thenReturn(CompletableFuture.completedFuture("test-etag"));
@@ -172,9 +168,9 @@ public class HttpPullTransferStrategyTest {
                     eq("Bearer token123")
             );
             verify(s3ClientService).uploadFile(
-                    any(InputStream.class),
-                    eq(TEST_BUCKET),
+                    eq(null),
                     eq(transferProcess.getId()),
+                    any(InputStream.class),
                     eq(TEST_CONTENT_TYPE),
                     anyString()
             );
@@ -187,12 +183,10 @@ public class HttpPullTransferStrategyTest {
         // Arrange
         TransferProcess transferProcess = mockTransferProcess("http://test", List.of());
 
-        when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
-
         when(s3ClientService.uploadFile(
-                any(InputStream.class),
-                eq(TEST_BUCKET),
+                eq(null),
                 eq(transferProcess.getId()),
+                any(InputStream.class),
                 eq(TEST_CONTENT_TYPE),
                 eq(TEST_CONTENT_DISPOSITION)
         )).thenReturn(CompletableFuture.completedFuture("test-etag"));
@@ -214,9 +208,9 @@ public class HttpPullTransferStrategyTest {
             assertDoesNotThrow(() -> strategy.transfer(transferProcess));
 
             verify(s3ClientService).uploadFile(
-                    any(InputStream.class),
-                    eq(TEST_BUCKET),
+                    eq(null),
                     eq(transferProcess.getId()),
+                    any(InputStream.class),
                     eq(TEST_CONTENT_TYPE),
                     eq(TEST_CONTENT_DISPOSITION)
             );

@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.12-SNAPSHOT] - 01.09.2025.
+
+### Added
+
+- Added HTTP-Push transfer format
+- Added HTTP-Push transfer diagram
+
+### Changed
+
+- Since the consumer won't know when the data will be uploaded, the COMPLETED state will be used as the indicator.
+After successfully finishing the upload, the provider will send a TransferProcessCompleted message.
+The isDownloaded flag will remain in the code for the moment but might be removed in the future.
+- Changed HTTP-Pull transfer diagram
+
 ## [0.4.11-SNAPSHOT] - 04.08.2025.
 
 ### Added

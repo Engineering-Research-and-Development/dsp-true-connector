@@ -6,10 +6,8 @@ import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
 import it.eng.tools.controller.ApiEndpoints;
-import it.eng.tools.event.AuditEventType;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.rest.api.PagedAPIResponse;
-import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.GenericFilterBuilder;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -34,17 +32,15 @@ public class DataTransferAPIController {
 
     private final DataTransferAPIService apiService;
     private final GenericFilterBuilder filterBuilder;
-    private final AuditEventPublisher publisher;
     private final PagedResourcesAssembler<TransferProcess> pagedResourcesAssembler;
     private final PlainTransferProcessAssembler plainAssembler;
 
-    public DataTransferAPIController(DataTransferAPIService apiService, GenericFilterBuilder filterBuilder,
-                                     AuditEventPublisher publisher,
+    public DataTransferAPIController(DataTransferAPIService apiService,
+                                     GenericFilterBuilder filterBuilder,
                                      PagedResourcesAssembler<TransferProcess> pagedResourcesAssembler,
                                      PlainTransferProcessAssembler plainAssembler) {
         this.apiService = apiService;
         this.filterBuilder = filterBuilder;
-        this.publisher = publisher;
         this.pagedResourcesAssembler = pagedResourcesAssembler;
         this.plainAssembler = plainAssembler;
     }
@@ -75,24 +71,7 @@ public class DataTransferAPIController {
     public ResponseEntity<GenericApiResponse<String>> downloadData(
             @PathVariable String transferProcessId) {
         log.info("Downloading transfer process id - {} data", transferProcessId);
-        apiService.downloadData(transferProcessId)
-                .whenComplete((result, throwable) -> {
-                    if (throwable != null) {
-                        log.error("Download failed for process {}: {}",
-                                transferProcessId, throwable.getMessage(), throwable);
-                        publisher.publishEvent(
-                                AuditEventType.TRANSFER_FAILED,
-                                "Download failed for process " + transferProcessId,
-                                Map.of("transferProcessId", transferProcessId,
-                                        "error", throwable.getMessage()));
-                    } else {
-                        log.info("Download completed successfully for process {}", transferProcessId);
-                        publisher.publishEvent(
-                                AuditEventType.TRANSFER_COMPLETED,
-                                "Download completed successfully for process " + transferProcessId,
-                                Map.of("transferProcessId", transferProcessId));
-                    }
-                });
+        apiService.downloadData(transferProcessId).join();
 
         return ResponseEntity.accepted()
                 .contentType(MediaType.APPLICATION_JSON)

@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
@@ -66,17 +67,17 @@ public class S3ClientServiceImplTest {
 
     String bucketName = "test-bucket";
 
+    @InjectMocks
     private S3ClientServiceImpl s3ClientService;
 
     @BeforeEach
     void setUp() {
-        s3ClientService = new S3ClientServiceImpl(s3ClientProvider, s3Properties, bucketCredentialsService);
         BucketCredentialsEntity bucketCredentials = BucketCredentialsEntity.Builder.newInstance()
                 .accessKey("accessKey")
                 .secretKey("secretKey")
                 .bucketName(bucketName)
                 .build();
-        lenient().when(bucketCredentialsService.getBucketCredentials(anyString())).thenReturn(bucketCredentials);
+        lenient().when(bucketCredentialsService.getBucketCredentials(any())).thenReturn(bucketCredentials);
         lenient().when(s3ClientProvider.s3Client(any(S3ClientRequest.class))).thenReturn(s3Client);
         lenient().when(s3ClientProvider.s3AsyncClient(any(S3ClientRequest.class))).thenReturn(s3AsyncClient);
     }
@@ -84,16 +85,13 @@ public class S3ClientServiceImplTest {
     // uploadFile tests
     @Test
     @DisplayName("Should successfully upload file")
-    void uploadFile_Success() throws IOException {
+    void uploadFile_Success(){
         // Arrange
-        String bucketName = "test-bucket";
         String key = "test-file.txt";
         String contentType = "text/plain";
         String contentDisposition = "attachment; filename=test-file.txt";
         String expectedETag = "test-etag";
         InputStream inputStream = new ByteArrayInputStream("test content".getBytes());
-//        when(s3Properties.getBucketName()).thenReturn(bucketName);
-//        when(s3Client.headBucket(any(HeadBucketRequest.class))).thenReturn(HeadBucketResponse.builder().build());
         when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
                 .thenReturn(CompletableFuture.completedFuture(
                         CreateMultipartUploadResponse.builder().uploadId("test-upload-id").build()));
@@ -106,7 +104,7 @@ public class S3ClientServiceImplTest {
 
         // Act
         CompletableFuture<String> result = s3ClientService.uploadFile(
-                inputStream, bucketName, key, contentType, contentDisposition);
+                null, key, inputStream, contentType, contentDisposition);
 
         // Assert
         assertEquals(expectedETag, result.join());
@@ -116,9 +114,8 @@ public class S3ClientServiceImplTest {
 
     @Test
     @DisplayName("Should throw exception when upload fails")
-    void uploadFile_UploadFails() throws IOException {
+    void uploadFile_UploadFails() {
         // Arrange
-        String bucketName = "test-bucket";
         String key = "test-file.txt";
         String contentType = "text/plain";
         String contentDisposition = "attachment; filename=test-file.txt";
@@ -132,7 +129,7 @@ public class S3ClientServiceImplTest {
 
         // Act & Assert
         CompletableFuture<String> result = s3ClientService.uploadFile(
-                inputStream, bucketName, key, contentType, contentDisposition);
+                null, key, inputStream, contentType, contentDisposition);
 
         Exception exception = assertThrows(CompletionException.class, () -> result.join());
         assertTrue(exception.getMessage().contains("Upload failed"));
@@ -150,7 +147,7 @@ public class S3ClientServiceImplTest {
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> s3ClientService.uploadFile(inputStream, null, key, contentType, contentDisposition));
+                () -> s3ClientService.uploadFile(null, key, inputStream, contentType, contentDisposition));
 
         assertEquals("Bucket name cannot be null or empty", exception.getMessage());
         verifyNoInteractions(s3AsyncClient);

@@ -5,7 +5,6 @@ import it.eng.datatransfer.model.EndpointProperty;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.service.api.DataTransferStrategy;
 import it.eng.tools.model.IConstants;
-import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -22,12 +21,10 @@ import java.util.concurrent.CompletableFuture;
 @Slf4j
 public class HttpPullTransferStrategy implements DataTransferStrategy {
 
-    private final S3Properties s3Properties;
     private final S3ClientService s3ClientService;
     private static final int DEFAULT_TIMEOUT = 10000; // 10 seconds
 
-    public HttpPullTransferStrategy(S3Properties s3Properties, S3ClientService s3ClientService) {
-        this.s3Properties = s3Properties;
+    public HttpPullTransferStrategy(S3ClientService s3ClientService) {
         this.s3ClientService = s3ClientService;
     }
 
@@ -49,7 +46,7 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
     private CompletableFuture<String> downloadAndUploadToS3(String presignedUrl,
                                                             String authorization,
                                                             String key) {
-        HttpURLConnection connection = null;
+        HttpURLConnection connection;
         try {
             URL url = new URL(presignedUrl);
             connection = (HttpURLConnection) url.openConnection();
@@ -73,12 +70,11 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
 
             String contentType = connection.getContentType();
             String contentDisposition = connection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION);
-            String bucketName = s3Properties.getBucketName();
             // Use S3ClientService's uploadFile method
             return s3ClientService.uploadFile(
-                    connection.getInputStream(),
-                    bucketName,
+                    null,
                     key,
+                    connection.getInputStream(),
                     contentType,
                     contentDisposition
             );

@@ -139,8 +139,12 @@ public class InitialDataLoader {
                         .build()
                         .toString();
 
-                s3ClientService.uploadFile(FileUtils.openInputStream(file.getFile()), bucketName, fileKey,
-                                MediaType.APPLICATION_JSON_VALUE, contentDisposition)
+                s3ClientService.uploadFile(
+                                null,
+                                fileKey,
+                                FileUtils.openInputStream(file.getFile()),
+                                MediaType.APPLICATION_JSON_VALUE,
+                                contentDisposition)
                         .get();
             }
         } catch (Exception e) {

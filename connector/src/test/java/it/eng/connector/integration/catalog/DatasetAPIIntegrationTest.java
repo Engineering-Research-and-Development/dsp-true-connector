@@ -433,6 +433,8 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
             }
         });
 
+        Thread.sleep(2000); // wait for S3 finishing any pending operations
+
         int initialDatasetSize = datasetRepository.findAll().size();
         int initialArtifactSize = artifactRepository.findAll().size();
         int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
@@ -512,7 +514,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         try {
-            s3ClientService.uploadFile(file.getInputStream(), s3Properties.getBucketName(), dataset.getId(),
+            s3ClientService.uploadFile(null, dataset.getId(), file.getInputStream(),
                     file.getContentType(), contentDisposition.toString());
         } catch (Exception e) {
             throw new Exception("File storing aborted, " + e.getLocalizedMessage());
@@ -547,6 +549,8 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
         TypeReference<GenericApiResponse<Dataset>> typeRef = new TypeReference<GenericApiResponse<Dataset>>() {
         };
+
+        Thread.sleep(2000); // wait for S3 finishing any pending operations
 
         int initialDatasetSize = datasetRepository.findAll().size();
         int initialArtifactSize = artifactRepository.findAll().size();
@@ -626,7 +630,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         try {
-            s3ClientService.uploadFile(file.getInputStream(), s3Properties.getBucketName(), dataset.getId(),
+            s3ClientService.uploadFile(null, dataset.getId(), file.getInputStream(),
                     file.getContentType(), contentDisposition.toString());
         } catch (Exception e) {
             throw new Exception("File storing aborted, " + e.getLocalizedMessage());
@@ -652,6 +656,8 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         artifactRepository.save(artifactFile);
         datasetRepository.save(datasetWithFile);
         catalogRepository.save(catalog);
+
+        Thread.sleep(2000); // wait for file to be stored
 
         int initialDatasetSize = datasetRepository.findAll().size();
         int initialArtifactSize = artifactRepository.findAll().size();

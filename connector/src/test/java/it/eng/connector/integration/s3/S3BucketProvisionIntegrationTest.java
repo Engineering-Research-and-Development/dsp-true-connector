@@ -53,9 +53,10 @@ public class S3BucketProvisionIntegrationTest extends BaseIntegrationTest {
                     .filename("test.txt")
                     .build();
             try (InputStream inputStream = new ByteArrayInputStream(fileContent.getBytes())) {
-                s3ClientService.uploadFile(inputStream,
-                                s3Properties.getBucketName(),
+                s3ClientService.uploadFile(
+                                null,
                                 "datasetId",
+                                inputStream,
                                 MediaType.TEXT_PLAIN_VALUE,
                                 contentDisposition.toString())
                         .get();

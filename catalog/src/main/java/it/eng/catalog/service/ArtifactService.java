@@ -68,7 +68,27 @@ public class ArtifactService {
         return artifact;
     }
 
-    public void deleteOldArtifact(Artifact artifact) {
+    public void deleteArtifactAfterDatasetUpdate(Artifact oldArtifact, Artifact newArtifact) {
+        log.info("Deleting artifact {}", oldArtifact.getId());
+        switch (newArtifact.getArtifactType()) {
+            case EXTERNAL: {
+                try {
+                    s3ClientService.deleteFile(s3Properties.getBucketName(), oldArtifact.getValue());
+                } catch (Exception e) {
+                    log.warn("Error while deleting file from S3: {}", e.getMessage());
+                }
+                break;
+            }
+            case FILE: {
+                break;
+            }
+            default:
+                break;
+        }
+        artifactRepository.delete(oldArtifact);
+    }
+
+    public void deleteArtifact(Artifact artifact) {
         log.info("Deleting artifact {}", artifact.getId());
         switch (artifact.getArtifactType()) {
             case EXTERNAL: {
@@ -96,13 +116,12 @@ public class ArtifactService {
         // Upload file to S3
         try {
             s3ClientService.uploadFile(
-                    file.getInputStream(),
-                    s3Properties.getBucketName(),
+                    null,
                     fileId,
+                    file.getInputStream(),
                     file.getContentType(),
                     contentDisposition.toString()
             ).get();
-            //TODO make also uploading async
         } catch (Exception e) {
             log.error("File storing aborted", e);
             throw new CatalogErrorAPIException("File storing aborted, " + e.getLocalizedMessage());

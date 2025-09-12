@@ -126,50 +126,6 @@ public class DataTransferService {
         return transferProcessRequested;
     }
 
-    private void checkSupportedFormats(TransferProcess transferProcess, String format) {
-        String response = okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/"
-                        + transferProcess.getDatasetId() + "/formats",
-                HttpMethod.GET,
-                null);
-
-        Map<String, Object> details = new HashMap<>();
-        details.put("role", IConstants.ROLE_PROTOCOL);
-        details.put("transferProcess", transferProcess);
-        if (transferProcess.getConsumerPid() != null) {
-            details.put("consumerPid", transferProcess.getConsumerPid());
-        }
-        if (transferProcess.getProviderPid() != null) {
-            details.put("providerPid", transferProcess.getProviderPid());
-        }
-        if (StringUtils.isBlank(response)) {
-            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
-                    "Internal error while checking supported formats for dataset " + transferProcess.getDatasetId(),
-                    details);
-            throw new TransferProcessInternalException("Internal error",
-                    transferProcess.getConsumerPid(), transferProcess.getProviderPid());
-        }
-
-        TypeReference<GenericApiResponse<List<String>>> typeRef = new TypeReference<GenericApiResponse<List<String>>>() {
-        };
-        GenericApiResponse<List<String>> apiResp = TransferSerializer.deserializePlain(response, typeRef);
-        boolean formatValid = apiResp.getData().stream().anyMatch(f -> f.equals(format));
-        publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
-                "Supported format evaluated as " + (formatValid ? "valid" : "invalid"),
-                details);
-        if (formatValid) {
-            log.debug("Found supported format");
-        } else {
-            log.info("{} not found as one of supported distribution formats", format);
-            throw new TransferProcessInvalidFormatException("dct:format '" + format + "' not supported",
-                    transferProcess.getConsumerPid(), transferProcess.getProviderPid());
-        }
-//	    } catch (JsonProcessingException e) {
-//	    	log.error(e.getLocalizedMessage(), e);
-//	        throw new TransferProcessInternalException("Internal error", transferProcess.getConsumerPid(), transferProcess.getProviderPid());
-//	    }
-    }
-
-
     /**
      * Transfer from REQUESTED or SUSPENDED to STARTED state.
      *
@@ -253,7 +209,26 @@ public class DataTransferService {
         TransferProcess transferProcessStarted = findTransferProcess(consumerPidFinal, providerPidFinal);
         stateTransitionCheck(transferProcessStarted, TransferState.COMPLETED);
 
-        TransferProcess transferProcessCompleted = transferProcessStarted.copyWithNewTransferState(TransferState.COMPLETED);
+        TransferProcess transferProcessCompleted = TransferProcess.Builder.newInstance()
+                .id(transferProcessStarted.getId())
+                .agreementId(transferProcessStarted.getAgreementId())
+                .consumerPid(transferProcessStarted.getConsumerPid())
+                .providerPid(transferProcessStarted.getProviderPid())
+                .callbackAddress(transferProcessStarted.getCallbackAddress())
+                .dataAddress(transferProcessStarted.getDataAddress())
+                .isDownloaded(true)
+                .dataId(transferProcessStarted.getId())
+                .format(transferProcessStarted.getFormat())
+                .state(TransferState.COMPLETED)
+                .role(transferProcessStarted.getRole())
+                .datasetId(transferProcessStarted.getDatasetId())
+                .created(transferProcessStarted.getCreated())
+                .createdBy(transferProcessStarted.getCreatedBy())
+                .modified(transferProcessStarted.getModified())
+                .lastModifiedBy(transferProcessStarted.getLastModifiedBy())
+                .version(transferProcessStarted.getVersion())
+                .build();
+
         transferProcessRepository.save(transferProcessCompleted);
         publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()
                 .oldTransferProcess(transferProcessStarted)
@@ -371,6 +346,49 @@ public class DataTransferService {
             throw new TransferProcessInvalidStateException("TransferProcess is in invalid state " + transferProcess.getState(),
                     transferProcess.getConsumerPid(), transferProcess.getProviderPid());
         }
+    }
+
+    private void checkSupportedFormats(TransferProcess transferProcess, String format) {
+        String response = okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/"
+                        + transferProcess.getDatasetId() + "/formats",
+                HttpMethod.GET,
+                null);
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("role", IConstants.ROLE_PROTOCOL);
+        details.put("transferProcess", transferProcess);
+        if (transferProcess.getConsumerPid() != null) {
+            details.put("consumerPid", transferProcess.getConsumerPid());
+        }
+        if (transferProcess.getProviderPid() != null) {
+            details.put("providerPid", transferProcess.getProviderPid());
+        }
+        if (StringUtils.isBlank(response)) {
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
+                    "Internal error while checking supported formats for dataset " + transferProcess.getDatasetId(),
+                    details);
+            throw new TransferProcessInternalException("Internal error",
+                    transferProcess.getConsumerPid(), transferProcess.getProviderPid());
+        }
+
+        TypeReference<GenericApiResponse<List<String>>> typeRef = new TypeReference<GenericApiResponse<List<String>>>() {
+        };
+        GenericApiResponse<List<String>> apiResp = TransferSerializer.deserializePlain(response, typeRef);
+        boolean formatValid = apiResp.getData().stream().anyMatch(f -> f.equals(format));
+        publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
+                "Supported format evaluated as " + (formatValid ? "valid" : "invalid"),
+                details);
+        if (formatValid) {
+            log.debug("Found supported format");
+        } else {
+            log.info("{} not found as one of supported distribution formats", format);
+            throw new TransferProcessInvalidFormatException("dct:format '" + format + "' not supported",
+                    transferProcess.getConsumerPid(), transferProcess.getProviderPid());
+        }
+//	    } catch (JsonProcessingException e) {
+//	    	log.error(e.getLocalizedMessage(), e);
+//	        throw new TransferProcessInternalException("Internal error", transferProcess.getConsumerPid(), transferProcess.getProviderPid());
+//	    }
     }
 
 }

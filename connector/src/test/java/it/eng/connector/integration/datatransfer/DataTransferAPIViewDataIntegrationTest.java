@@ -112,7 +112,7 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
                 .agreementId(agreement.getId())
                 .callbackAddress(wiremock.baseUrl())
                 .isDownloaded(true)
-                .state(TransferState.STARTED)
+                .state(TransferState.COMPLETED)
                 .build();
         transferProcessRepository.save(transferProcessStarted);
 
@@ -121,7 +121,7 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
                 .build();
 
         try (InputStream inputStream = new ByteArrayInputStream(fileContent.getBytes())) {
-            s3ClientService.uploadFile(inputStream, s3Properties.getBucketName(), transferProcessStarted.getId(),
+            s3ClientService.uploadFile(null, transferProcessStarted.getId(), inputStream,
                     MediaType.TEXT_PLAIN_VALUE, contentDisposition.toString()).get();
         } catch (Exception e) {
             throw new Exception("File storing aborted, " + e.getLocalizedMessage());

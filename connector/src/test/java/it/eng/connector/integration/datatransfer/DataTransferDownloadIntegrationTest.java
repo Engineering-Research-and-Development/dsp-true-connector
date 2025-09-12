@@ -159,9 +159,10 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
                 .filename(FILE_NAME)
                 .build();
         try (InputStream inputStream = new ByteArrayInputStream(fileContent.getBytes())) {
-            s3ClientService.uploadFile(inputStream,
-                            s3Properties.getBucketName(),
+            s3ClientService.uploadFile(
+                            null,
                             datasetId,
+                            inputStream,
                             MediaType.TEXT_PLAIN_VALUE,
                             contentDisposition.toString())
                     .get();

@@ -471,7 +471,7 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         try {
-            s3ClientService.uploadFile(file.getInputStream(), s3Properties.getBucketName(), dataset.getId(),
+            s3ClientService.uploadFile(null, dataset.getId(), file.getInputStream(),
                             file.getContentType(), contentDisposition.toString())
                     .get();
         } catch (Exception e) {

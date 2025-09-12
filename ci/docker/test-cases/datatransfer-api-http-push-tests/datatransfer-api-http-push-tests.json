@@ -1,9 +1,10 @@
 {
 	"info": {
-		"_postman_id": "2dcdcd3a-f41d-4e9a-914f-1a737997f739",
-		"name": "Data Transfer API test",
+		"_postman_id": "4f875831-0c74-401d-909c-5dd465303982",
+		"name": "Data Transfer API - http-push test",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "36278855"
+		"_exporter_id": "21815221",
+		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-4f875831-0c74-401d-909c-5dd465303982?action=share&source=collection_link&creator=21815221"
 	},
 	"item": [
 		{
@@ -71,7 +72,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"transferProcessId\": \"{{consumer_transferProcessId}}\",\r\n    \"format\": \"HttpData-PULL\"\r\n}",
+					"raw": "{\r\n    \"transferProcessId\": \"{{consumer_transferProcessId}}\",\r\n    \"format\": \"HttpData-PUSH\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -223,7 +224,7 @@
 			"response": []
 		},
 		{
-			"name": "[C] Download data",
+			"name": "[P] Push data",
 			"event": [
 				{
 					"listen": "test",
@@ -248,12 +249,12 @@
 					}
 				],
 				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
+					"raw": "{{PROVIDER_API_TRANSFERS}}/{{provider_transferProcessId}}/download",
 					"host": [
-						"{{CONSUMER_API_TRANSFERS}}"
+						"{{PROVIDER_API_TRANSFERS}}"
 					],
 					"path": [
-						"{{consumer_transferProcessId}}",
+						"{{provider_transferProcessId}}",
 						"download"
 					]
 				}
@@ -610,7 +611,7 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test(\"Check if status code is 200\", function () {\r",
+							"pm.test(\"Check if status code is 400, means that transfer is completed as it shoud be\", function () {\r",
 							"    pm.response.to.have.status(200);\r",
 							"});"
 						],

@@ -110,7 +110,7 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
                 .build();
 
         try {
-            s3ClientService.uploadFile(file.getInputStream(), s3Properties.getBucketName(), dataset.getId(),
+            s3ClientService.uploadFile(null, dataset.getId(), file.getInputStream(),
                     file.getContentType(), contentDisposition.toString());
         } catch (Exception e) {
             throw new Exception("File storing aborted, " + e.getLocalizedMessage());
