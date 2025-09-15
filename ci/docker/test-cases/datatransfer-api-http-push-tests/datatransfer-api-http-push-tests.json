@@ -119,8 +119,6 @@
 						"exec": [
 							"pm.test(\"Check if status code is 200\", function () {\r",
 							"    pm.response.to.have.status(200);\r",
-							"    var jsonData = pm.response.json();\r",
-							"    pm.collectionVariables.set(\"presignedURL\", jsonData[\"data\"][\"dataAddress\"][\"endpoint\"])\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -380,6 +378,7 @@
 							"    pm.response.to.have.status(200);\r",
 							"    var response = pm.response.text();\r",
 							"    pm.expect(response).to.include(\"http://172.17.0.1:9000/dsp-true-connector-a\");\r",
+							"    pm.collectionVariables.set(\"presignedURL\", response)\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -515,6 +514,7 @@
 							"    pm.response.to.have.status(200);\r",
 							"    var response = pm.response.text();\r",
 							"    pm.expect(response).to.include(\"http://172.17.0.1:9000/dsp-true-connector-a\");\r",
+							"    pm.collectionVariables.set(\"presignedURL\", response)\r",
 							"});"
 						],
 						"type": "text/javascript",
