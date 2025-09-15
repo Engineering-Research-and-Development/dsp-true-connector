@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.5.1-SNAPSHOT] - 15.09.2025.
+## [0.5.2-SNAPSHOT] - 15.09.2025.
 
 ### Added
 
@@ -12,9 +12,15 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Since the consumer won't know when the data will be uploaded, the COMPLETED state will be used as the indicator.
-After successfully finishing the upload, the provider will send a TransferProcessCompleted message.
-The isDownloaded flag will remain in the code for the moment but might be removed in the future.
+  After successfully finishing the upload, the provider will send a TransferProcessCompleted message.
+  The isDownloaded flag will remain in the code for the moment but might be removed in the future.
 - Changed HTTP-Pull transfer diagram
+
+## [0.5.1-SNAPSHOT] - 08.08.2025.
+
+### Changed
+
+- Updated release GitHub action to use new versioning scheme
 
 ## [0.4.11-SNAPSHOT] - 04.08.2025.
 
