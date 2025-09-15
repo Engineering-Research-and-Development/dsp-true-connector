@@ -11,7 +11,13 @@ import lombok.NoArgsConstructor;
 public class Version {
 
     private String binding = "HTTPS";
+    /**
+     * Path where context is deployed - <root> + path.
+     */
     private String path;
+    /**
+     * Version of the protocol supported 2025-01, 2024-01, etc.
+     */
     private String version;
     private Auth auth;
     private String identifierType;
