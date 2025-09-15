@@ -49,7 +49,10 @@
             "title": "Testcatalog - TRUEConnector team information",
             "distribution": [{
                     "$ref": "distributions",
-                    "$id": "urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5"
+                    "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+                }, {
+                    "$ref": "distributions",
+                    "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
                 }
             ],
             "dataset": [{
