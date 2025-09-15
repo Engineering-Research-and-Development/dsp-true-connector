@@ -224,129 +224,6 @@
 			"response": []
 		},
 		{
-			"name": "[P] Push data",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 202\", function () {\r",
-							"    pm.response.to.have.status(202);\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{PROVIDER_API_TRANSFERS}}/{{provider_transferProcessId}}/download",
-					"host": [
-						"{{PROVIDER_API_TRANSFERS}}"
-					],
-					"path": [
-						"{{provider_transferProcessId}}",
-						"download"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "[C] View data",
-			"event": [
-				{
-					"listen": "prerequest",
-					"script": {
-						"exec": [
-							"setTimeout(() => {}, 5000);"
-						],
-						"type": "text/javascript"
-					}
-				},
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Check expected response\", () => {\r",
-							"    pm.response.to.have.status(200);\r",
-							"    var response = pm.response.text();\r",
-							"    pm.expect(response).to.include(\"http://172.17.0.1:9000/dsp-true-connector-a\");\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view",
-					"host": [
-						"{{CONSUMER_API_TRANSFERS}}"
-					],
-					"path": [
-						"{{consumer_transferProcessId}}",
-						"view"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "[C] Use presignedURL to download actual data",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Check expected response\", ()=> {\r",
-							"    pm.response.to.have.status(200);\r",
-							"    var jsonData = pm.response.json();\r",
-							"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{presignedURL}}",
-					"host": [
-						"{{presignedURL}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
 			"name": "[C] Suspend transfer",
 			"event": [
 				{
@@ -394,16 +271,52 @@
 			"response": []
 		},
 		{
-			"name": "[C] View data",
+			"name": "[C] Download data fail",
 			"event": [
 				{
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test(\"Check expected response\", ()=> {\r",
-							"    pm.response.to.have.status(200);\r",
-							"    var response = pm.response.text();\r",
-							"    pm.expect(response).to.include(\"http://172.17.0.1:9000/dsp-true-connector-a\");\r",
+							"pm.test(\"Status code is 400\", function () {\r",
+							"    pm.response.to.have.status(400);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"download"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[C] View data fail",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 400\", function () {\r",
+							"    pm.response.to.have.status(400);\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -434,16 +347,63 @@
 			"response": []
 		},
 		{
-			"name": "[C] Use presignedURL to download actual data",
+			"name": "[P] Start transfer",
 			"event": [
 				{
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test(\"Check expected response\", ()=> {\r",
+							"pm.test(\"Check if status code is 200\", function () {\r",
 							"    pm.response.to.have.status(200);\r",
 							"    var jsonData = pm.response.json();\r",
-							"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
+							"    pm.collectionVariables.set(\"presignedURL\", jsonData[\"data\"][\"dataAddress\"][\"endpoint\"])\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{PROVIDER_API_TRANSFERS}}/{{provider_transferProcessId}}/start",
+					"host": [
+						"{{PROVIDER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{provider_transferProcessId}}",
+						"start"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[P] Push data",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 202\", function () {\r",
+							"    pm.response.to.have.status(202);\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -461,9 +421,13 @@
 					}
 				],
 				"url": {
-					"raw": "{{presignedURL}}",
+					"raw": "{{PROVIDER_API_TRANSFERS}}/{{provider_transferProcessId}}/download",
 					"host": [
-						"{{presignedURL}}"
+						"{{PROVIDER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{provider_transferProcessId}}",
+						"download"
 					]
 				}
 			},
@@ -721,23 +685,15 @@
 	"variable": [
 		{
 			"key": "PROVIDER",
-			"value": "http://172.17.0.1:8090",
-			"type": "string"
+			"value": "http://172.17.0.1:8090"
 		},
 		{
 			"key": "CONSUMER_API_TRANSFERS",
-			"value": "http://localhost:8080/api/v1/transfers",
-			"type": "default"
+			"value": "http://localhost:8080/api/v1/transfers"
 		},
 		{
 			"key": "PROVIDER_API_TRANSFERS",
-			"value": "http://localhost:8090/api/v1/transfers",
-			"type": "default"
-		},
-		{
-			"key": "consumer_transferProcessId",
-			"value": "urn:uuid:abc45798-1434-4932-8baf-ab7fd66ql4d5",
-			"type": "string"
+			"value": "http://localhost:8090/api/v1/transfers"
 		},
 		{
 			"key": "transactionId",
