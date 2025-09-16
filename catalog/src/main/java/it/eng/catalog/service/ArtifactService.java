@@ -7,6 +7,7 @@ import it.eng.tools.model.ArtifactType;
 import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.s3.util.S3Utils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.ContentDisposition;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -44,7 +46,7 @@ public class ArtifactService {
     }
 
     public Artifact uploadArtifact(String fileId, MultipartFile file, String externalURL, String authorization) {
-        Artifact artifact = null;
+        Artifact artifact;
         if (file != null) {
             storeFile(fileId, file);
             artifact = Artifact.Builder.newInstance()
@@ -108,17 +110,24 @@ public class ArtifactService {
         artifactRepository.delete(artifact);
     }
 
-    private String storeFile(String fileId, MultipartFile file) {
+    private void storeFile(String fileId, MultipartFile file) {
         ContentDisposition contentDisposition = ContentDisposition.attachment()
                 .filename(file.getOriginalFilename())
                 .build();
 
         // Upload file to S3
+        Map<String, String> destinationS3Properties = Map.of(
+                S3Utils.OBJECT_KEY, fileId,
+                S3Utils.BUCKET_NAME, s3Properties.getBucketName(),
+                S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
+                S3Utils.REGION, s3Properties.getRegion(),
+                S3Utils.ACCESS_KEY, s3Properties.getAccessKey(),
+                S3Utils.SECRET_KEY, s3Properties.getSecretKey()
+        );
         try {
             s3ClientService.uploadFile(
-                    null,
-                    fileId,
                     file.getInputStream(),
+                    destinationS3Properties,
                     file.getContentType(),
                     contentDisposition.toString()
             ).get();
@@ -127,7 +136,5 @@ public class ArtifactService {
             throw new CatalogErrorAPIException("File storing aborted, " + e.getLocalizedMessage());
         }
         log.info("Stored file {} under id {}", file.getOriginalFilename(), fileId);
-
-        return fileId;
     }
 }

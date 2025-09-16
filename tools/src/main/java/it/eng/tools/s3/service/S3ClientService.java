@@ -18,16 +18,14 @@ public interface S3ClientService {
      * <p>
      * After stream is processed, it will be closed automatically.
      *
-     * @param destinationS3Properties the properties of the destination S3 bucket
-     * @param objectKey          the key of the object to upload
      * @param inputStream        the input stream of the file to upload
+     * @param destinationS3Properties the properties of the destination S3 bucket
      * @param contentType        the content type of the file
      * @param contentDisposition the content disposition of the file
      * @return a CompletableFuture that completes with the ETag of the uploaded object
      */
-    CompletableFuture<String> uploadFile(Map<String, String> destinationS3Properties,
-                                         String objectKey,
-                                         InputStream inputStream,
+    CompletableFuture<String> uploadFile(InputStream inputStream,
+                                         Map<String, String> destinationS3Properties,
                                          String contentType,
                                          String contentDisposition);
 

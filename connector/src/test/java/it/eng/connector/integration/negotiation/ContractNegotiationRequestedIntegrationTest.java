@@ -12,8 +12,6 @@ import it.eng.connector.util.TestUtil;
 import it.eng.negotiation.model.*;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.repository.ArtifactRepository;
-import it.eng.tools.s3.properties.S3Properties;
-import it.eng.tools.s3.repository.BucketCredentialsRepository;
 import it.eng.tools.s3.service.S3ClientService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,6 +24,7 @@ import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Collections;
+import java.util.Map;
 import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -49,11 +48,7 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
     @Autowired
     private ArtifactRepository artifactRepository;
     @Autowired
-    private BucketCredentialsRepository bucketCredentialsRepository;
-    @Autowired
     private S3ClientService s3ClientService;
-    @Autowired
-    private S3Properties s3Properties;
 
     private Catalog catalog;
     private Dataset dataset;
@@ -109,9 +104,12 @@ public class ContractNegotiationRequestedIntegrationTest extends BaseIntegration
                 .filename(file.getOriginalFilename())
                 .build();
 
+        Map<String, String> destinationS3Properties = createS3EndpointProperties(dataset.getId());
+
         try {
-            s3ClientService.uploadFile(null, dataset.getId(), file.getInputStream(),
-                    file.getContentType(), contentDisposition.toString());
+            s3ClientService.uploadFile(file.getInputStream(), destinationS3Properties,
+                            file.getContentType(), contentDisposition.toString())
+                    .get();
         } catch (Exception e) {
             throw new Exception("File storing aborted, " + e.getLocalizedMessage());
         }

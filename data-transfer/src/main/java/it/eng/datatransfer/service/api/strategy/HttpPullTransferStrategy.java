@@ -5,7 +5,9 @@ import it.eng.datatransfer.model.EndpointProperty;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.service.api.DataTransferStrategy;
 import it.eng.tools.model.IConstants;
+import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.s3.util.S3Utils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpHeaders;
@@ -15,6 +17,7 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 @Service
@@ -22,10 +25,12 @@ import java.util.concurrent.CompletableFuture;
 public class HttpPullTransferStrategy implements DataTransferStrategy {
 
     private final S3ClientService s3ClientService;
+    private final S3Properties s3Properties;
     private static final int DEFAULT_TIMEOUT = 10000; // 10 seconds
 
-    public HttpPullTransferStrategy(S3ClientService s3ClientService) {
+    public HttpPullTransferStrategy(S3ClientService s3ClientService, S3Properties s3Properties) {
         this.s3ClientService = s3ClientService;
+        this.s3Properties = s3Properties;
     }
 
     @Override
@@ -70,11 +75,19 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
 
             String contentType = connection.getContentType();
             String contentDisposition = connection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION);
+
+            Map<String, String> destinationS3Properties = Map.of(
+                    S3Utils.OBJECT_KEY, key,
+                    S3Utils.BUCKET_NAME, s3Properties.getBucketName(),
+                    S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
+                    S3Utils.REGION, s3Properties.getRegion(),
+                    S3Utils.ACCESS_KEY, s3Properties.getAccessKey(),
+                    S3Utils.SECRET_KEY, s3Properties.getSecretKey()
+            );
             // Use S3ClientService's uploadFile method
             return s3ClientService.uploadFile(
-                    null,
-                    key,
                     connection.getInputStream(),
+                    destinationS3Properties,
                     contentType,
                     contentDisposition
             );

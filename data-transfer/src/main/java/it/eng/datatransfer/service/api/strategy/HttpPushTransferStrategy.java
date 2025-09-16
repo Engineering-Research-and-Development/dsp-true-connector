@@ -67,9 +67,8 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
 
             // Use S3ClientService's uploadFile method
             return s3ClientService.uploadFile(
-                    destinationS3Properties,
-                    destinationS3Properties.get(S3Utils.OBJECT_KEY),
                     connection.getInputStream(),
+                    destinationS3Properties,
                     connection.getContentType(),
                     connection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION));
         } catch (IOException e) {

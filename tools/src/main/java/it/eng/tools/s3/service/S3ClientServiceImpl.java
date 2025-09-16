@@ -62,53 +62,41 @@ public class S3ClientServiceImpl implements S3ClientService {
     }
 
     @Override
-    public CompletableFuture<String> uploadFile(Map<String, String> destinationS3Properties,
-                                                String objectKey,
-                                                InputStream inputStream,
+    public CompletableFuture<String> uploadFile(InputStream inputStream,
+                                                Map<String, String> destinationS3Properties,
                                                 String contentType,
                                                 String contentDisposition) {
 
-        BucketCredentialsEntity bucketCredentials;
-        String endpoint;
-        String region;
-        if (destinationS3Properties == null) {
-//            if no destination properties are provided, use default from configuration
-            bucketCredentials = bucketCredentialsService.getBucketCredentials(s3Properties.getBucketName());
-            region = s3Properties.getRegion();
-            endpoint = s3Properties.getEndpoint();
-        } else {
-            bucketCredentials = BucketCredentialsEntity.Builder.newInstance()
+
+        BucketCredentialsEntity bucketCredentials = BucketCredentialsEntity.Builder.newInstance()
                     .bucketName(destinationS3Properties.get(S3Utils.BUCKET_NAME))
                     .accessKey(destinationS3Properties.get(S3Utils.ACCESS_KEY))
                     .secretKey(destinationS3Properties.get(S3Utils.SECRET_KEY))
                     .build();
-            region = destinationS3Properties.get(S3Utils.REGION);
-            endpoint = destinationS3Properties.get(S3Utils.ENDPOINT_OVERRIDE);
-        }
 
-        log.info("Uploading file {} to bucket {}", objectKey, bucketCredentials.getBucketName());
+        log.info("Uploading file {} to bucket {}", destinationS3Properties.get(S3Utils.OBJECT_KEY), destinationS3Properties.get(S3Utils.BUCKET_NAME));
 
-        S3ClientRequest s3ClientRequest = S3ClientRequest.from(region,
-                endpoint,
+        S3ClientRequest s3ClientRequest = S3ClientRequest.from(destinationS3Properties.get(S3Utils.REGION),
+                destinationS3Properties.get(S3Utils.ENDPOINT_OVERRIDE),
                 bucketCredentials);
 
         return CompletableFuture.supplyAsync(() -> {
             try {
-                log.info("Starting multipart upload for key: {}", objectKey);
+                log.info("Starting multipart upload for key: {}", destinationS3Properties.get(S3Utils.OBJECT_KEY));
                 CreateMultipartUploadRequest createMultipartUploadRequest = CreateMultipartUploadRequest.builder()
-                        .bucket(bucketCredentials.getBucketName())
+                        .bucket(destinationS3Properties.get(S3Utils.BUCKET_NAME))
                         .contentType(contentType)
                         .contentDisposition(contentDisposition)
-                        .key(objectKey)
+                        .key(destinationS3Properties.get(S3Utils.OBJECT_KEY))
                         .build();
 
-                log.info("Creating multipart upload for key: {}", objectKey);
+                log.info("Creating multipart upload for key: {}", destinationS3Properties.get(S3Utils.OBJECT_KEY));
                 S3AsyncClient s3AsyncClient = s3ClientProvider.s3AsyncClient(s3ClientRequest);
                 String uploadId = s3AsyncClient.createMultipartUpload(createMultipartUploadRequest)
                         .join()
                         .uploadId();
 
-                log.info("Created multipart upload for key: {} with uploadId: {}", objectKey, uploadId);
+                log.info("Created multipart upload for key: {} with uploadId: {}", destinationS3Properties.get(S3Utils.OBJECT_KEY), uploadId);
                 List<CompletedPart> completedParts = new ArrayList<>();
                 int partNumber = 1;
                 byte[] buffer = new byte[CHUNK_SIZE];
@@ -123,7 +111,7 @@ public class S3ClientServiceImpl implements S3ClientService {
                     // Upload part when accumulator reaches buffer size or on last part
                     if (accumulator.size() >= CHUNK_SIZE) {
                         byte[] partData = accumulator.toByteArray();
-                        String eTag = uploadPart(s3AsyncClient, bucketCredentials.getBucketName(), objectKey, uploadId, partNumber, partData);
+                        String eTag = uploadPart(s3AsyncClient, destinationS3Properties.get(S3Utils.BUCKET_NAME), destinationS3Properties.get(S3Utils.OBJECT_KEY), uploadId, partNumber, partData);
 
                         completedParts.add(CompletedPart.builder()
                                 .partNumber(partNumber)
@@ -138,7 +126,7 @@ public class S3ClientServiceImpl implements S3ClientService {
                 // Upload any remaining data as the last part
                 if (accumulator.size() > 0) {
                     byte[] partData = accumulator.toByteArray();
-                    String eTag = uploadPart(s3AsyncClient, bucketCredentials.getBucketName(), objectKey, uploadId, partNumber, partData);
+                    String eTag = uploadPart(s3AsyncClient, destinationS3Properties.get(S3Utils.BUCKET_NAME), destinationS3Properties.get(S3Utils.OBJECT_KEY), uploadId, partNumber, partData);
 
                     completedParts.add(CompletedPart.builder()
                             .partNumber(partNumber)
@@ -152,13 +140,13 @@ public class S3ClientServiceImpl implements S3ClientService {
 
                 CompleteMultipartUploadRequest completeMultipartUploadRequest =
                         CompleteMultipartUploadRequest.builder()
-                                .bucket(bucketCredentials.getBucketName())
-                                .key(objectKey)
+                                .bucket(destinationS3Properties.get(S3Utils.BUCKET_NAME))
+                                .key(destinationS3Properties.get(S3Utils.OBJECT_KEY))
                                 .uploadId(uploadId)
                                 .multipartUpload(completedMultipartUpload)
                                 .build();
 
-                log.info("Completing multipart upload for key: {} with uploadId: {}", objectKey, uploadId);
+                log.info("Completing multipart upload for key: {} with uploadId: {}", destinationS3Properties.get(S3Utils.OBJECT_KEY), uploadId);
                 return s3AsyncClient.completeMultipartUpload(completeMultipartUploadRequest)
                         .join()
                         .eTag();

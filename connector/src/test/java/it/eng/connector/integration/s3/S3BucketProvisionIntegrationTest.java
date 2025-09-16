@@ -4,7 +4,6 @@ import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.model.S3ClientRequest;
-import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3BucketProvisionService;
 import it.eng.tools.s3.service.S3ClientService;
 import lombok.extern.slf4j.Slf4j;
@@ -18,13 +17,13 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @Slf4j
 public class S3BucketProvisionIntegrationTest extends BaseIntegrationTest {
 
-    private S3Client s3Client;
     private final String bucketName = "test-bucket-test";
 
     @Autowired
@@ -35,9 +34,6 @@ public class S3BucketProvisionIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private S3ClientService s3ClientService;
-
-    @Autowired
-    private S3Properties s3Properties;
 
     @Test
     public void testS3BucketProvision() {
@@ -52,11 +48,13 @@ public class S3BucketProvisionIntegrationTest extends BaseIntegrationTest {
             ContentDisposition contentDisposition = ContentDisposition.attachment()
                     .filename("test.txt")
                     .build();
+
+            Map<String, String> destinationS3Properties = createS3EndpointProperties("datasetId");
+
             try (InputStream inputStream = new ByteArrayInputStream(fileContent.getBytes())) {
                 s3ClientService.uploadFile(
-                                null,
-                                "datasetId",
                                 inputStream,
+                                destinationS3Properties,
                                 MediaType.TEXT_PLAIN_VALUE,
                                 contentDisposition.toString())
                         .get();

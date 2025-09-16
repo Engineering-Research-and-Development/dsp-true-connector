@@ -34,6 +34,7 @@ import java.net.URL;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
@@ -120,8 +121,10 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
                 .filename(FILE_NAME)
                 .build();
 
+        Map<String, String> destinationS3Properties = createS3EndpointProperties(transferProcessStarted.getId());
+
         try (InputStream inputStream = new ByteArrayInputStream(fileContent.getBytes())) {
-            s3ClientService.uploadFile(null, transferProcessStarted.getId(), inputStream,
+            s3ClientService.uploadFile(inputStream, destinationS3Properties,
                     MediaType.TEXT_PLAIN_VALUE, contentDisposition.toString()).get();
         } catch (Exception e) {
             throw new Exception("File storing aborted, " + e.getLocalizedMessage());

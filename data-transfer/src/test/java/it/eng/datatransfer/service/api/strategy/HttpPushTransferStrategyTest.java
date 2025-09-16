@@ -118,9 +118,8 @@ public class HttpPushTransferStrategyTest {
                 .thenReturn("http://presigned-url");
 
         when(s3ClientService.uploadFile(
-                eq(endpointPropertiesMap),
-                eq(TEST_OBJECT_KEY),
                 any(InputStream.class),
+                eq(endpointPropertiesMap),
                 eq(TEST_CONTENT_TYPE),
                 eq(TEST_CONTENT_DISPOSITION)
         )).thenReturn(CompletableFuture.completedFuture("test-etag"));
@@ -159,9 +158,8 @@ public class HttpPushTransferStrategyTest {
             assertDoesNotThrow(() -> strategy.transfer(transferProcess));
 
             verify(s3ClientService).uploadFile(
-                    eq(endpointPropertiesMap),
-                    eq(TEST_OBJECT_KEY),
                     any(InputStream.class),
+                    eq(endpointPropertiesMap),
                     eq(TEST_CONTENT_TYPE),
                     eq(TEST_CONTENT_DISPOSITION)
             );
