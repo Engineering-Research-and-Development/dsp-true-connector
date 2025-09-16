@@ -23,9 +23,10 @@ public class DspaceVersionIntegrationTest extends BaseIntegrationTest {
         assert !response.getProtocolVersions().isEmpty();
         var version = response.getProtocolVersions().get(0);
         assert "2024-01".equals(version.getVersion());
-        assert "/path/to/api".equals(version.getPath());
+        assert "/".equals(version.getPath());
+        assert "HTTPS".equalsIgnoreCase(version.getBinding());  // hardcoded in Version.Builder; must be HTTPS
         assert version.getAuth() != null;
-        assert "https".equals(version.getAuth().getProtocol());
+        assert "https".equalsIgnoreCase(version.getAuth().getProtocol());
         assert "2024-01".equals(version.getAuth().getVersion());
     }
 
@@ -38,7 +39,8 @@ public class DspaceVersionIntegrationTest extends BaseIntegrationTest {
                     .andExpect(content().contentType("application/json"))
                     .andExpect(jsonPath("$.protocolVersions").isArray())
                     .andExpect(jsonPath("$.protocolVersions[0].version").value("2024-01"))
-                    .andExpect(jsonPath("$.protocolVersions[0].path").value("/path/to/api"))
+                    .andExpect(jsonPath("$.protocolVersions[0].path").value("/"))
+                    .andExpect(jsonPath("$.protocolVersions[0].binding").value("HTTPS"))
                     .andExpect(jsonPath("$.protocolVersions[0].auth.protocol").value("https"))
                     .andExpect(jsonPath("$.protocolVersions[0].auth.version").value("2024-01"));
         } catch (Exception e) {
