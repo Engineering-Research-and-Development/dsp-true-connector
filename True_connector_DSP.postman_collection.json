@@ -2,10 +2,1078 @@
 	"info": {
 		"_postman_id": "39470e70-d3e3-4530-a0dc-73e12c447a43",
 		"name": "True_connector_DSP",
+		"description": "Comprehensive Postman collection for testing the True Connector DSP (Data Space Protocol) implementation. This collection includes:\n\n## Collection Structure\n- **Authentication**: User login, registration, token refresh, logout, and current user info\n- **Admin API**: User management and application properties administration\n- **User Profile**: Current user profile management and password changes\n- **API_FE**: Frontend API endpoints for catalog operations, negotiations, data transfers, audit, agreements, and proxy\n- **Protocol**: DSP protocol endpoints for catalog requests, negotiations, and data transfers\n- **DataTransfer**: Additional data transfer testing scenarios\n\n## Prerequisites\n1. Import the environment file: `True_connector_DSP.environment.json`\n2. Update environment variables with your local server URLs\n3. Run the authentication requests first to get access tokens\n\n## Key Features\n- Complete CRUD operations for all major entities\n- Comprehensive test scripts with validation\n- Support for both Consumer and Provider roles\n- Protocol-level DSP communication testing\n- Audit and monitoring capabilities\n- Dedicated authentication and user management workflows\n\n## Usage\n1. Start with **Authentication → User Login** to get access tokens\n2. Use **Admin API** for user management and system configuration\n3. Use **User Profile** for personal account management\n4. Use **API_FE → Catalog** operations to manage data catalogs\n5. Test **Negotiation** workflows for contract agreements\n6. Perform **Data Transfer** operations\n7. Monitor activities through **Audit** endpoints\n8. Test **Agreements** enforcement\n9. Use **Proxy** endpoints for cross-connector communication",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "36278855"
 	},
 	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "User Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response contains access token\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData.data).to.have.property('accessToken');\r",
+									"    pm.expect(jsonData.data).to.have.property('refreshToken');\r",
+									"    pm.collectionVariables.set(\"accessToken\", jsonData.data.accessToken);\r",
+									"    pm.collectionVariables.set(\"refreshToken\", jsonData.data.refreshToken);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{CONSUMER_SERVER_API_AUTH}}/login",
+							"host": [
+								"{{CONSUMER_SERVER_API_AUTH}}"
+							],
+							"path": [
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "User Registration",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response contains user profile\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData.data).to.have.property('userId');\r",
+									"    pm.expect(jsonData.data).to.have.property('email');\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"firstName\": \"John\",\r\n    \"lastName\": \"Doe\",\r\n    \"email\": \"john.doe@example.com\",\r\n    \"password\": \"SecurePassword123!\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{CONSUMER_SERVER_API_AUTH}}/register",
+							"host": [
+								"{{CONSUMER_SERVER_API_AUTH}}"
+							],
+							"path": [
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response contains new tokens\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData.data).to.have.property('accessToken');\r",
+									"    pm.expect(jsonData.data).to.have.property('refreshToken');\r",
+									"    pm.collectionVariables.set(\"accessToken\", jsonData.data.accessToken);\r",
+									"    pm.collectionVariables.set(\"refreshToken\", jsonData.data.refreshToken);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"refreshToken\": \"{{refreshToken}}\",\r\n    \"accessToken\": \"{{accessToken}}\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{CONSUMER_SERVER_API_AUTH}}/refresh",
+							"host": [
+								"{{CONSUMER_SERVER_API_AUTH}}"
+							],
+							"path": [
+								"refresh"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "User Logout",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"refreshToken\": \"{{refreshToken}}\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{CONSUMER_SERVER_API_AUTH}}/logout",
+							"host": [
+								"{{CONSUMER_SERVER_API_AUTH}}"
+							],
+							"path": [
+								"logout"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response contains user info\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData.data).to.have.property('userId');\r",
+									"    pm.expect(jsonData.data).to.have.property('email');\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{CONSUMER_SERVER_API_AUTH}}/me",
+							"host": [
+								"{{CONSUMER_SERVER_API_AUTH}}"
+							],
+							"path": [
+								"me"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Admin API",
+			"item": [
+				{
+					"name": "User Management",
+					"item": [
+						{
+							"name": "Get All Users",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response contains users data\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.expect(jsonData).to.have.property('data');\r",
+											"    pm.expect(jsonData.data).to.be.an('array');\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_USERS}}?page=0&size=20&sort=email,asc",
+									"host": [
+										"{{CONSUMER_SERVER_API_USERS}}"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "0"
+										},
+										{
+											"key": "size",
+											"value": "20"
+										},
+										{
+											"key": "sort",
+											"value": "email,asc"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get User by ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response contains user data\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.expect(jsonData.data).to.have.property('userId');\r",
+											"    pm.expect(jsonData.data).to.have.property('email');\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_USERS}}/{{USER_ID}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_USERS}}"
+									],
+									"path": [
+										"{{USER_ID}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create User",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200 or 201\", function () {\r",
+											"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response contains created user\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.expect(jsonData.data).to.have.property('userId');\r",
+											"    pm.expect(jsonData.data).to.have.property('email');\r",
+											"    pm.collectionVariables.set(\"USER_ID\", jsonData.data.userId);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"firstName\": \"Jane\",\r\n    \"lastName\": \"Smith\",\r\n    \"email\": \"jane.smith@example.com\",\r\n    \"password\": \"SecurePassword123!\",\r\n    \"role\": \"USER\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_USERS}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_USERS}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update User",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response contains updated user\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.expect(jsonData.data).to.have.property('userId');\r",
+											"    pm.expect(jsonData.data).to.have.property('email');\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"firstName\": \"Jane Updated\",\r\n    \"lastName\": \"Smith Updated\",\r\n    \"email\": \"jane.smith.updated@example.com\",\r\n    \"role\": \"ADMIN\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_USERS}}/{{USER_ID}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_USERS}}"
+									],
+									"path": [
+										"{{USER_ID}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update User Status",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_USERS}}/{{USER_ID}}/status?enabled=false",
+									"host": [
+										"{{CONSUMER_SERVER_API_USERS}}"
+									],
+									"path": [
+										"{{USER_ID}}",
+										"status"
+									],
+									"query": [
+										{
+											"key": "enabled",
+											"value": "false"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Change User Password",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"currentPassword\": \"password\",\r\n    \"newPassword\": \"NewSecurePassword123!\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_USERS}}/{{USER_ID}}/password",
+									"host": [
+										"{{CONSUMER_SERVER_API_USERS}}"
+									],
+									"path": [
+										"{{USER_ID}}",
+										"password"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Reset User Password",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_USERS}}/{{USER_ID}}/reset-password?newPassword=ResetPassword123!",
+									"host": [
+										"{{CONSUMER_SERVER_API_USERS}}"
+									],
+									"path": [
+										"{{USER_ID}}",
+										"reset-password"
+									],
+									"query": [
+										{
+											"key": "newPassword",
+											"value": "ResetPassword123!"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete User",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200 or 204\", function () {\r",
+											"    pm.expect(pm.response.code).to.be.oneOf([200, 204]);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_USERS}}/{{USER_ID}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_USERS}}"
+									],
+									"path": [
+										"{{USER_ID}}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Application Properties",
+					"item": [
+						{
+							"name": "Get All Application Properties",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response contains properties\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.expect(jsonData).to.have.property('data');\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/",
+									"host": [
+										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
+									],
+									"path": [
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Application Properties with Prefix",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/?key_prefix={{KEY_PREFIX}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
+									],
+									"path": [
+										""
+									],
+									"query": [
+										{
+											"key": "key_prefix",
+											"value": "{{KEY_PREFIX}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Application Property By Key",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/application.daps.dapsJWKSUrl",
+									"host": [
+										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
+									],
+									"path": [
+										"application.daps.dapsJWKSUrl"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Application Property",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"key\": \"application.daps.enabledDapsInteraction\",\r\n    \"value\": \"true\",\r\n    \"mandatory\": false,\r\n    \"issued\": 1719246360.000000000,\r\n    \"modified\": 1719246360.000000000,\r\n    \"type\": \"ApplicationProperty\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/",
+									"host": [
+										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
+									],
+									"path": [
+										""
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "User Profile",
+			"item": [
+				{
+					"name": "Get Current User Profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response contains user profile\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData.data).to.have.property('userId');\r",
+									"    pm.expect(jsonData.data).to.have.property('email');\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{CONSUMER_SERVER_API_PROFILE}}",
+							"host": [
+								"{{CONSUMER_SERVER_API_PROFILE}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Current User Profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response contains updated profile\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData.data).to.have.property('userId');\r",
+									"    pm.expect(jsonData.data).to.have.property('email');\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"firstName\": \"John Updated\",\r\n    \"lastName\": \"Doe Updated\",\r\n    \"email\": \"john.doe.updated@example.com\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{CONSUMER_SERVER_API_PROFILE}}",
+							"host": [
+								"{{CONSUMER_SERVER_API_PROFILE}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Change Current User Password",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"currentPassword\": \"password\",\r\n    \"newPassword\": \"NewSecurePassword123!\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{CONSUMER_SERVER_API_PROFILE}}/password",
+							"host": [
+								"{{CONSUMER_SERVER_API_PROFILE}}"
+							],
+							"path": [
+								"password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Current User Account",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Check if status code is 200 or 204\", function () {\r",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 204]);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{CONSUMER_SERVER_API_PROFILE}}",
+							"host": [
+								"{{CONSUMER_SERVER_API_PROFILE}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
 		{
 			"name": "API_FE",
 			"item": [
@@ -211,6 +1279,875 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "Get Application Property By Key",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/application.daps.dapsJWKSUrl",
+									"host": [
+										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
+									],
+									"path": [
+										"application.daps.dapsJWKSUrl"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Authentication",
+					"item": [
+						{
+							"name": "User Login",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response contains access token\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.expect(jsonData.data).to.have.property('accessToken');\r",
+											"    pm.expect(jsonData.data).to.have.property('refreshToken');\r",
+											"    pm.collectionVariables.set(\"accessToken\", jsonData.data.accessToken);\r",
+											"    pm.collectionVariables.set(\"refreshToken\", jsonData.data.refreshToken);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_AUTH}}/login",
+									"host": [
+										"{{CONSUMER_SERVER_API_AUTH}}"
+									],
+									"path": [
+										"login"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "User Registration",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response contains user profile\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.expect(jsonData.data).to.have.property('userId');\r",
+											"    pm.expect(jsonData.data).to.have.property('email');\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"firstName\": \"John\",\r\n    \"lastName\": \"Doe\",\r\n    \"email\": \"john.doe@example.com\",\r\n    \"password\": \"SecurePassword123!\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_AUTH}}/register",
+									"host": [
+										"{{CONSUMER_SERVER_API_AUTH}}"
+									],
+									"path": [
+										"register"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Refresh Token",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response contains new tokens\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.expect(jsonData.data).to.have.property('accessToken');\r",
+											"    pm.expect(jsonData.data).to.have.property('refreshToken');\r",
+											"    pm.collectionVariables.set(\"accessToken\", jsonData.data.accessToken);\r",
+											"    pm.collectionVariables.set(\"refreshToken\", jsonData.data.refreshToken);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"refreshToken\": \"{{refreshToken}}\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_AUTH}}/refresh",
+									"host": [
+										"{{CONSUMER_SERVER_API_AUTH}}"
+									],
+									"path": [
+										"refresh"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "User Logout",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"refreshToken\": \"{{refreshToken}}\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_AUTH}}/logout",
+									"host": [
+										"{{CONSUMER_SERVER_API_AUTH}}"
+									],
+									"path": [
+										"logout"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Current User",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response contains user info\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.expect(jsonData.data).to.have.property('userId');\r",
+											"    pm.expect(jsonData.data).to.have.property('email');\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_AUTH}}/me",
+									"host": [
+										"{{CONSUMER_SERVER_API_AUTH}}"
+									],
+									"path": [
+										"me"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "User Management",
+					"item": [
+						{
+							"name": "Get All Users",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_USERS}}?page=0&size=20&sort=email,asc",
+									"host": [
+										"{{CONSUMER_SERVER_API_USERS}}"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "0"
+										},
+										{
+											"key": "size",
+											"value": "20"
+										},
+										{
+											"key": "sort",
+											"value": "email,asc"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get User by ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_USERS}}/{$USER_ID}",
+									"host": [
+										"{{CONSUMER_SERVER_API_USERS}}"
+									],
+									"path": [
+										"{$USER_ID}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create User",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"firstName\": \"Jane\",\r\n    \"lastName\": \"Smith\",\r\n    \"email\": \"jane.smith@example.com\",\r\n    \"password\": \"SecurePassword123!\",\r\n    \"role\": \"USER\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_USERS}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_USERS}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update User",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"firstName\": \"Jane Updated\",\r\n    \"lastName\": \"Smith Updated\",\r\n    \"email\": \"jane.smith.updated@example.com\",\r\n    \"role\": \"ADMIN\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_USERS}}/{$USER_ID}",
+									"host": [
+										"{{CONSUMER_SERVER_API_USERS}}"
+									],
+									"path": [
+										"{$USER_ID}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update User Status",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_USERS}}/{$USER_ID}/status?enabled=false",
+									"host": [
+										"{{CONSUMER_SERVER_API_USERS}}"
+									],
+									"path": [
+										"{$USER_ID}",
+										"status"
+									],
+									"query": [
+										{
+											"key": "enabled",
+											"value": "false"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Change User Password",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"currentPassword\": \"password\",\r\n    \"newPassword\": \"NewSecurePassword123!\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_USERS}}/{$USER_ID}/password",
+									"host": [
+										"{{CONSUMER_SERVER_API_USERS}}"
+									],
+									"path": [
+										"{$USER_ID}",
+										"password"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Reset User Password",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_USERS}}/{$USER_ID}/reset-password?newPassword=ResetPassword123!",
+									"host": [
+										"{{CONSUMER_SERVER_API_USERS}}"
+									],
+									"path": [
+										"{$USER_ID}",
+										"reset-password"
+									],
+									"query": [
+										{
+											"key": "newPassword",
+											"value": "ResetPassword123!"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete User",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_USERS}}/{$USER_ID}",
+									"host": [
+										"{{CONSUMER_SERVER_API_USERS}}"
+									],
+									"path": [
+										"{$USER_ID}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "User Profile",
+					"item": [
+						{
+							"name": "Get Current User Profile",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_PROFILE}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_PROFILE}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Current User Profile",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"firstName\": \"John Updated\",\r\n    \"lastName\": \"Doe Updated\",\r\n    \"email\": \"john.doe.updated@example.com\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_PROFILE}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_PROFILE}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Change Current User Password",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"currentPassword\": \"password\",\r\n    \"newPassword\": \"NewSecurePassword123!\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_PROFILE}}/password",
+									"host": [
+										"{{CONSUMER_SERVER_API_PROFILE}}"
+									],
+									"path": [
+										"password"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Current User Account",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_PROFILE}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_PROFILE}}"
+									]
+								}
+							},
+							"response": []
 						}
 					]
 				},
@@ -219,6 +2156,26 @@
 					"item": [
 						{
 							"name": "Get All Catalogs",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response contains catalog data\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.expect(jsonData).to.have.property('data');\r",
+											"    pm.expect(jsonData.data).to.be.an('array');\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
 							"request": {
 								"method": "GET",
 								"header": [
@@ -238,6 +2195,26 @@
 						},
 						{
 							"name": "Get Catalog by ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response contains catalog data\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.expect(jsonData).to.have.property('data');\r",
+											"    pm.expect(jsonData.data).to.have.property('@id');\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
 							"request": {
 								"method": "GET",
 								"header": [
@@ -247,12 +2224,12 @@
 									}
 								],
 								"url": {
-									"raw": "{{CONSUMER_SERVER_API_CATALOG}}/{$ID}",
+									"raw": "{{CONSUMER_SERVER_API_CATALOG}}/{{ID}}",
 									"host": [
 										"{{CONSUMER_SERVER_API_CATALOG}}"
 									],
 									"path": [
-										"{$ID}"
+										"{{ID}}"
 									]
 								}
 							},
@@ -260,6 +2237,27 @@
 						},
 						{
 							"name": "Add Catalog",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200 or 201\", function () {\r",
+											"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response contains catalog data\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.expect(jsonData).to.have.property('data');\r",
+											"    pm.expect(jsonData.data).to.have.property('@id');\r",
+											"    pm.collectionVariables.set(\"ID\", jsonData.data[\"@id\"]);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
 							"request": {
 								"method": "POST",
 								"header": [
@@ -288,6 +2286,26 @@
 						},
 						{
 							"name": "Update Catalog",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response contains updated catalog data\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.expect(jsonData).to.have.property('data');\r",
+											"    pm.expect(jsonData.data).to.have.property('@id');\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
 							"request": {
 								"method": "PUT",
 								"header": [
@@ -306,12 +2324,12 @@
 									}
 								},
 								"url": {
-									"raw": "{{CONSUMER_SERVER_API_CATALOG}}/{$ID}",
+									"raw": "{{CONSUMER_SERVER_API_CATALOG}}/{{ID}}",
 									"host": [
 										"{{CONSUMER_SERVER_API_CATALOG}}"
 									],
 									"path": [
-										"{$ID}"
+										"{{ID}}"
 									]
 								}
 							},
@@ -319,6 +2337,20 @@
 						},
 						{
 							"name": "Delete Catalog",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200 or 204\", function () {\r",
+											"    pm.expect(pm.response.code).to.be.oneOf([200, 204]);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
 							"request": {
 								"method": "DELETE",
 								"header": [
@@ -328,12 +2360,12 @@
 									}
 								],
 								"url": {
-									"raw": "{{CONSUMER_SERVER_API_CATALOG}}/{$ID}",
+									"raw": "{{CONSUMER_SERVER_API_CATALOG}}/{{ID}}",
 									"host": [
 										"{{CONSUMER_SERVER_API_CATALOG}}"
 									],
 									"path": [
-										"{$ID}"
+										"{{ID}}"
 									]
 								}
 							},
@@ -366,12 +2398,37 @@
 					"item": [
 						{
 							"name": "Get All DataServices",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response contains data services\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.expect(jsonData).to.have.property('data');\r",
+											"    pm.expect(jsonData.data).to.be.an('array');\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
 							"request": {
 								"method": "GET",
 								"header": [
 									{
 										"key": "Content-Type",
 										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
 									}
 								],
 								"url": {
@@ -407,12 +2464,37 @@
 						},
 						{
 							"name": "Add DataService to Catalog",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200 or 201\", function () {\r",
+											"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response contains data service\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.expect(jsonData).to.have.property('data');\r",
+											"    pm.expect(jsonData.data).to.have.property('@id');\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
 							"request": {
 								"method": "POST",
 								"header": [
 									{
 										"key": "Content-Type",
 										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
 									}
 								],
 								"body": {
@@ -1003,6 +3085,136 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "[C] Accept Contract Negotiation",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/{{consumer_contractNegotiationId}}/accept",
+									"host": [
+										"{{CONSUMER_SERVER_API_NEGOTIATION}}"
+									],
+									"path": [
+										"{{consumer_contractNegotiationId}}",
+										"accept"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Send Contract Offer",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"Forward-To\": \"{{CONSUMER}}\",\r\n    \"offer\": {\r\n        \"@id\": \"{{provider_offerId}}\",\r\n        \"target\": \"{{provider_datasetId}}\",\r\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"LTEQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/offers",
+									"host": [
+										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
+									],
+									"path": [
+										"offers"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Send Agreement (Deprecated)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"agreement\": {\r\n        \"@id\": \"{{agreementId}}\",\r\n        \"target\": \"{{provider_datasetId}}\",\r\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n        \"assignee\": \"urn:uuid:ASSIGNEE_CONSUMER\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"LTEQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    },\r\n    \"consumerPid\": \"{{consumerPid}}\",\r\n    \"providerPid\": \"{{providerPid}}\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}/agreements",
+									"host": [
+										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
+									],
+									"path": [
+										"agreements"
+									]
+								}
+							},
+							"response": []
 						}
 					]
 				},
@@ -1121,6 +3333,57 @@
 									],
 									"path": [
 										"{$ID}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Offers",
+					"item": [
+						{
+							"name": "Validate Offer",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"@id\": \"urn:offer_id\",\r\n    \"target\": \"urn:uuid:dataset_id\",\r\n    \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n    \"assignee\": \"urn:uuid:ASSIGNEE_CONSUMER\",\r\n    \"permission\": [\r\n        {\r\n            \"action\": \"USE\",\r\n            \"constraint\": [\r\n                {\r\n                    \"leftOperand\": \"COUNT\",\r\n                    \"operator\": \"LTEQ\",\r\n                    \"rightOperand\": \"5\"\r\n                }\r\n            ]\r\n        }\r\n    ]\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_OFFERS}}/validate",
+									"host": [
+										"{{CONSUMER_SERVER_API_OFFERS}}"
+									],
+									"path": [
+										"validate"
 									]
 								}
 							},
@@ -1542,7 +3805,26 @@
 					"name": "Proxy",
 					"item": [
 						{
-							"name": "Dataset formats",
+							"name": "Get remote catalog",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Response status is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response contains catalog data\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.expect(jsonData).to.have.property('data');\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
 							"request": {
 								"auth": {
 									"type": "basic",
@@ -1569,7 +3851,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n    \"Forward-To\" : \"http://localhost:8090\"\r\n}",
+									"raw": "{\r\n    \"Forward-To\" : \"{{PROVIDER}}\"\r\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -1577,7 +3859,7 @@
 									}
 								},
 								"url": {
-									"raw": "{{CONSUMER}}/api/v1/proxy/datasets/urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5/formats",
+									"raw": "{{CONSUMER}}/api/v1/proxy/catalogs",
 									"host": [
 										"{{CONSUMER}}"
 									],
@@ -1585,16 +3867,28 @@
 										"api",
 										"v1",
 										"proxy",
-										"datasets",
-										"urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
-										"formats"
+										"catalogs"
 									]
 								}
 							},
 							"response": []
 						},
 						{
-							"name": "Get remote catalog",
+							"name": "Get remote dataset",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Response status is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
 							"request": {
 								"auth": {
 									"type": "basic",
@@ -1612,10 +3906,16 @@
 									]
 								},
 								"method": "POST",
-								"header": [],
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n    \"Forward-To\" : \"http://localhost:8090\"\r\n}",
+									"raw": "{\r\n    \"Forward-To\" : \"{{PROVIDER}}\"\r\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -1623,7 +3923,7 @@
 									}
 								},
 								"url": {
-									"raw": "{{CONSUMER}}/api/v1/proxy/catalogs",
+									"raw": "{{CONSUMER}}/api/v1/proxy/datasets/{{provider_datasetId}}",
 									"host": [
 										"{{CONSUMER}}"
 									],
@@ -1631,7 +3931,138 @@
 										"api",
 										"v1",
 										"proxy",
-										"catalogs"
+										"datasets",
+										"{{provider_datasetId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get dataset formats",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Response status is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "admin@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"Forward-To\" : \"{{PROVIDER}}\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER}}/api/v1/proxy/datasets/{{provider_datasetId}}/formats",
+									"host": [
+										"{{CONSUMER}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"proxy",
+										"datasets",
+										"{{provider_datasetId}}",
+										"formats"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get remote data services",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Response status is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "admin@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"Forward-To\" : \"{{PROVIDER}}\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER}}/api/v1/proxy/dataservices",
+									"host": [
+										"{{CONSUMER}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"proxy",
+										"dataservices"
 									]
 								}
 							},
@@ -1669,6 +4100,149 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "Get specific artifact",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_ARTIFACTS}}/{$ARTIFACT_ID}",
+									"host": [
+										"{{PROVIDER_SERVER_API_ARTIFACTS}}"
+									],
+									"path": [
+										"{$ARTIFACT_ID}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List all artifacts (Consumer)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_ARTIFACTS}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_ARTIFACTS}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get specific artifact (Consumer)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_ARTIFACTS}}/{$ARTIFACT_ID}",
+									"host": [
+										"{{CONSUMER_SERVER_API_ARTIFACTS}}"
+									],
+									"path": [
+										"{$ARTIFACT_ID}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Agreements",
+					"item": [
+						{
+							"name": "Enforce Agreement",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response contains success message\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.expect(jsonData.data).to.equal(\"Agreement enforcement is valid\");\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_AGREEMENTS}}/{{agreementId}}/enforce",
+									"host": [
+										"{{CONSUMER_SERVER_API_AGREEMENTS}}"
+									],
+									"path": [
+										"{{agreementId}}",
+										"enforce"
+									]
+								}
+							},
+							"response": []
 						}
 					]
 				},
@@ -1684,6 +4258,11 @@
 										"exec": [
 											"pm.test(\"Response status is 200\", function () {\r",
 											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response contains audit events\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.expect(jsonData).to.have.property('data');\r",
 											"});"
 										],
 										"type": "text/javascript",
@@ -1708,6 +4287,45 @@
 									"urlencoded": []
 								},
 								"url": {
+									"raw": "{{CONSUMER}}/api/v1/audit",
+									"host": [
+										"{{CONSUMER}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"audit"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get audit events with contract negotiation filter",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Response status is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
 									"raw": "{{CONSUMER}}/api/v1/audit?details.contractNegotiation.state=FINALIZED",
 									"host": [
 										"{{CONSUMER}}"
@@ -1721,6 +4339,104 @@
 										{
 											"key": "details.contractNegotiation.state",
 											"value": "FINALIZED"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get audit events with timestamp range",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Response status is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER}}/api/v1/audit?timestamp.from=2024-01-01T00:00:00Z&timestamp.to=2024-12-31T23:59:59Z",
+									"host": [
+										"{{CONSUMER}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"audit"
+									],
+									"query": [
+										{
+											"key": "timestamp.from",
+											"value": "2024-01-01T00:00:00Z"
+										},
+										{
+											"key": "timestamp.to",
+											"value": "2024-12-31T23:59:59Z"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get audit events with multiple event types",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Response status is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER}}/api/v1/audit?eventType=PROTOCOL_NEGOTIATION_AGREED&eventType=APPLICATION_START",
+									"host": [
+										"{{CONSUMER}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"audit"
+									],
+									"query": [
+										{
+											"key": "eventType",
+											"value": "PROTOCOL_NEGOTIATION_AGREED"
+										},
+										{
+											"key": "eventType",
+											"value": "APPLICATION_START"
 										}
 									]
 								}
@@ -1767,21 +4483,53 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "Get Audit Event by ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Response status is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_AUDIT}}/{$AUDIT_EVENT_ID}",
+									"host": [
+										"{{CONSUMER_SERVER_API_AUDIT}}"
+									],
+									"path": [
+										"{$AUDIT_EVENT_ID}"
+									]
+								}
+							},
+							"response": []
 						}
 					]
 				}
 			],
 			"auth": {
-				"type": "basic",
-				"basic": [
+				"type": "bearer",
+				"bearer": [
 					{
-						"key": "username",
-						"value": "admin@mail.com",
-						"type": "string"
-					},
-					{
-						"key": "password",
-						"value": "password",
+						"key": "token",
+						"value": "{{accessToken}}",
 						"type": "string"
 					}
 				]
@@ -2623,6 +5371,34 @@
 		},
 		{
 			"key": "provider_offerId",
+			"value": ""
+		},
+		{
+			"key": "accessToken",
+			"value": ""
+		},
+		{
+			"key": "refreshToken",
+			"value": ""
+		},
+		{
+			"key": "USER_ID",
+			"value": ""
+		},
+		{
+			"key": "AUDIT_EVENT_ID",
+			"value": ""
+		},
+		{
+			"key": "ARTIFACT_ID",
+			"value": ""
+		},
+		{
+			"key": "ID",
+			"value": ""
+		},
+		{
+			"key": "agreementID_from_contract_negotiation_API_REPLACE",
 			"value": ""
 		}
 	]

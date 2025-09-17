@@ -23,6 +23,18 @@
       "expired": false,
       "locked": false,
       "role": "ROLE_CONNECTOR"
+    },
+    {
+      "_class": "it.eng.connector.model.User",
+      "_id": "f9e8d7c6-b5a4-4321-9876-543210abcdef",
+      "firstName": "User",
+      "lastName": "Role",
+      "email": "user@mail.com",
+      "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
+      "enabled": true,
+      "expired": false,
+      "locked": false,
+      "role": "ROLE_USER"
     }
   ],
   "catalogs": [

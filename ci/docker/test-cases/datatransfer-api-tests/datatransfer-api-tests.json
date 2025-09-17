@@ -7,6 +7,78 @@
 	},
 	"item": [
 		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login to get JWT token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response contains access token\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData.data.accessToken).to.exist;\r",
+									"    pm.collectionVariables.set(\"accessToken\", jsonData.data.accessToken);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response contains refresh token\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData.data.refreshToken).to.exist;\r",
+									"    pm.collectionVariables.set(\"refreshToken\", jsonData.data.refreshToken);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response contains user info\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData.data.email).to.eql(\"admin@mail.com\");\r",
+									"    pm.expect(jsonData.data.role).to.exist;\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{CONSUMER}}/api/v1/auth/login",
+							"host": [
+								"{{CONSUMER}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
 			"name": "[P] Download data fail",
 			"event": [
 				{
@@ -68,7 +140,18 @@
 			],
 			"request": {
 				"method": "POST",
-				"header": [],
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
 				"body": {
 					"mode": "raw",
 					"raw": "{\r\n    \"transferProcessId\": \"{{consumer_transferProcessId}}\",\r\n    \"format\": \"HttpData-PULL\"\r\n}",
@@ -145,6 +228,11 @@
 				"method": "GET",
 				"header": [
 					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
+					{
 						"key": "Content-Type",
 						"value": "application/json",
 						"type": "text"
@@ -195,6 +283,11 @@
 				"method": "PUT",
 				"header": [
 					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
+					{
 						"key": "Content-Type",
 						"value": "application/json",
 						"type": "text"
@@ -241,6 +334,11 @@
 			"request": {
 				"method": "GET",
 				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
 					{
 						"key": "Content-Type",
 						"value": "application/json",
@@ -291,6 +389,11 @@
 				"method": "GET",
 				"header": [
 					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
+					{
 						"key": "Content-Type",
 						"value": "application/json",
 						"type": "text"
@@ -331,6 +434,11 @@
 				"method": "GET",
 				"header": [
 					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
+					{
 						"key": "Content-Type",
 						"value": "application/json",
 						"type": "text"
@@ -364,6 +472,11 @@
 			"request": {
 				"method": "PUT",
 				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
 					{
 						"key": "Content-Type",
 						"value": "application/json",
@@ -414,6 +527,11 @@
 				"method": "GET",
 				"header": [
 					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
+					{
 						"key": "Content-Type",
 						"value": "application/json",
 						"type": "text"
@@ -454,6 +572,11 @@
 				"method": "GET",
 				"header": [
 					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
+					{
 						"key": "Content-Type",
 						"value": "application/json",
 						"type": "text"
@@ -487,6 +610,11 @@
 			"request": {
 				"method": "PUT",
 				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
 					{
 						"key": "Content-Type",
 						"value": "application/json",
@@ -549,6 +677,11 @@
 				"method": "GET",
 				"header": [
 					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
+					{
 						"key": "Content-Type",
 						"value": "application/json",
 						"type": "text"
@@ -589,6 +722,11 @@
 				"method": "GET",
 				"header": [
 					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
+					{
 						"key": "Content-Type",
 						"value": "application/json",
 						"type": "text"
@@ -622,6 +760,11 @@
 			"request": {
 				"method": "PUT",
 				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
 					{
 						"key": "Content-Type",
 						"value": "application/json",
@@ -672,6 +815,11 @@
 				"method": "GET",
 				"header": [
 					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
+					{
 						"key": "Content-Type",
 						"value": "application/json",
 						"type": "text"
@@ -712,6 +860,11 @@
 				"method": "GET",
 				"header": [
 					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
+					{
 						"key": "Content-Type",
 						"value": "application/json",
 						"type": "text"
@@ -727,21 +880,6 @@
 			"response": []
 		}
 	],
-	"auth": {
-		"type": "basic",
-		"basic": [
-			{
-				"key": "password",
-				"value": "password",
-				"type": "string"
-			},
-			{
-				"key": "username",
-				"value": "admin@mail.com",
-				"type": "string"
-			}
-		]
-	},
 	"event": [
 		{
 			"listen": "prerequest",
@@ -766,19 +904,24 @@
 	],
 	"variable": [
 		{
+			"key": "CONSUMER",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
 			"key": "PROVIDER",
 			"value": "http://172.17.0.1:8090",
 			"type": "string"
 		},
 		{
 			"key": "CONSUMER_API_TRANSFERS",
-			"value": "http://localhost:8080/api/v1/transfers",
-			"type": "default"
+			"value": "{{CONSUMER}}/api/v1/transfers",
+			"type": "string"
 		},
 		{
 			"key": "PROVIDER_API_TRANSFERS",
 			"value": "http://localhost:8090/api/v1/transfers",
-			"type": "default"
+			"type": "string"
 		},
 		{
 			"key": "consumer_transferProcessId",
@@ -795,6 +938,14 @@
 		},
 		{
 			"key": "presignedURL",
+			"value": ""
+		},
+		{
+			"key": "accessToken",
+			"value": ""
+		},
+		{
+			"key": "refreshToken",
 			"value": ""
 		}
 	]
