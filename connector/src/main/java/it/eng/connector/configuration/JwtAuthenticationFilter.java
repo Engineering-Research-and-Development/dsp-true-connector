@@ -29,16 +29,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        // Completely skip API endpoints - they are handled by ApiJwtAuthenticationFilter
+        String requestUri = request.getRequestURI();
+        return requestUri != null && requestUri.startsWith("/api/");
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        // Only process non-API endpoints (protocol endpoints)
-        // API endpoints are handled by ApiJwtAuthenticationFilter
-        String requestUri = request.getRequestURI();
-        if (requestUri != null && requestUri.startsWith("/api/")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+        // Process protocol endpoints (non-API endpoints)
+        // API endpoints are completely skipped by shouldNotFilter method
 
         String token = JwtTokenExtractor.extractTokenFromHeader(request);
         if (token == null) {

@@ -107,14 +107,14 @@ public class JwtProcessingService {
         try {
             Claims claims = validateToken(token);
             
-            if (SecurityContextHolder.getContext().getAuthentication() == null) {
-                UsernamePasswordAuthenticationToken authToken = createAuthenticationFromClaims(claims, request);
-                setAuthenticationInContext(authToken);
-                
-                String email = claims.get("email", String.class);
-                log.debug("Set Authentication in SecurityContext for user: {}", email);
-                return true;
-            }
+            // Always set authentication for valid tokens, regardless of existing context
+            // This ensures that API requests with valid JWT tokens are properly authenticated
+            UsernamePasswordAuthenticationToken authToken = createAuthenticationFromClaims(claims, request);
+            setAuthenticationInContext(authToken);
+            
+            String email = claims.get("email", String.class);
+            log.debug("Set Authentication in SecurityContext for user: {}", email);
+            return true;
         } catch (Exception ex) {
             log.debug("Could not set user authentication in security context: {}", ex.getMessage());
         }
