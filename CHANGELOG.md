@@ -2,6 +2,61 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.2-SNAPSHOT] - 09.08.2025.
+
+### Added
+
+- **Complete JWT-based Authentication System**
+  - User registration endpoint (`/api/v1/auth/register`) with configurable auto-approval
+  - User login endpoint (`/api/v1/auth/login`) with JWT token generation
+  - Token refresh endpoint (`/api/v1/auth/refresh`) for extending session validity
+  - User logout endpoint (`/api/v1/auth/logout`) with token revocation
+  - Current user profile endpoint (`/api/v1/auth/me`)
+
+- **Comprehensive User Management API**
+  - User CRUD operations with role-based access control
+  - Admin user creation and management endpoints
+  - User profile updates and password management
+  - User status management (enable/disable accounts)
+  - Password reset functionality for administrators
+  - Soft delete functionality for user accounts
+  - Pending user approval system for manual registration approval
+
+- **Advanced Security Features**
+  - JWT token blacklisting and revocation system
+  - Refresh token rotation for enhanced security
+  - Role-based access control (ROLE_USER, ROLE_ADMIN)
+  - Password complexity validation with configurable rules
+  - Account status tracking (enabled/disabled, locked, expired)
+  - Last login timestamp tracking
+
+- **Authentication Infrastructure**
+  - Separate JWT authentication filters for API and protocol endpoints
+  - Centralized JWT processing service
+  - Token extraction and validation utilities
+  - Custom authentication entry points and error handlers
+  - HATEOAS support for user management endpoints
+
+- **Configuration and Properties**
+  - Registration auto-approval settings (`app.registration.auto`)
+  - Default role configuration (`app.registration.default-role`)
+  - JWT token expiration settings (access and refresh tokens)
+  - Password policy configuration
+  - Comprehensive user management documentation
+
+### Changed
+
+- Refactored authentication system to support both DAPS protocol authentication and JWT API authentication
+- Updated security configuration to handle multiple authentication mechanisms
+- Enhanced user model with additional metadata fields (lastLoginDate, createdDate)
+- Improved error handling and response formatting for authentication endpoints
+- Updated integration tests to support new authentication system
+
+### Removed
+
+- Removed old UserApiController in favor of new UserManagementAPIController
+- Removed legacy user service test files replaced with new comprehensive test suite
+
 ## [0.5.1-SNAPSHOT] - 08.08.2025.
 
 ### Changed
