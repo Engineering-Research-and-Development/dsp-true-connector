@@ -31,7 +31,7 @@ public class DistributionService {
      *
      * @param id the unique ID of the distribution
      * @return the distribution corresponding to the provided ID
-     * @throws DistributionNotFoundAPIException if no distribution is found with the provided ID
+     * @throws ResourceNotFoundAPIException if no distribution is found with the provided ID
      */
     public Distribution getDistributionById(String id) {
         return repository.findById(id).orElseThrow(() -> new ResourceNotFoundAPIException("Distribution with id: " + id + " not found"));

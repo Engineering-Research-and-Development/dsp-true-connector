@@ -15,6 +15,7 @@ import it.eng.connector.util.TestUtil;
 import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.s3.util.S3Utils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +30,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -470,8 +472,10 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
                 .filename(file.getOriginalFilename())
                 .build();
 
+        Map<String, String> destinationS3Properties = createS3EndpointProperties(dataset.getId());
+
         try {
-            s3ClientService.uploadFile(file.getInputStream(), s3Properties.getBucketName(), dataset.getId(),
+            s3ClientService.uploadFile(file.getInputStream(), destinationS3Properties,
                             file.getContentType(), contentDisposition.toString())
                     .get();
         } catch (Exception e) {

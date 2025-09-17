@@ -17,8 +17,12 @@ import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.BucketCredentialsService;
+import it.eng.tools.s3.service.S3BucketProvisionService;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.serializer.ToolsSerializer;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.usagecontrol.UsageControlProperties;
@@ -53,6 +57,7 @@ public class DataTransferAPIService {
     private final S3Properties s3Properties;
     private final DataTransferStrategyFactory dataTransferStrategyFactory;
     private final ArtifactTransferService artifactTransferService;
+    private final BucketCredentialsService bucketCredentialsService;
 
     public DataTransferAPIService(TransferProcessRepository transferProcessRepository,
                                   OkHttpRestClient okHttpRestClient,
@@ -61,7 +66,10 @@ public class DataTransferAPIService {
                                   UsageControlProperties usageControlProperties,
                                   AuditEventPublisher publisher,
                                   S3ClientService s3ClientService,
-                                  S3Properties s3Properties, DataTransferStrategyFactory dataTransferStrategyFactory, ArtifactTransferService artifactTransferService) {
+                                  S3Properties s3Properties,
+                                  DataTransferStrategyFactory dataTransferStrategyFactory,
+                                  ArtifactTransferService artifactTransferService,
+                                  BucketCredentialsService bucketCredentialsService) {
         super();
         this.transferProcessRepository = transferProcessRepository;
         this.okHttpRestClient = okHttpRestClient;
@@ -73,6 +81,7 @@ public class DataTransferAPIService {
         this.s3Properties = s3Properties;
         this.dataTransferStrategyFactory = dataTransferStrategyFactory;
         this.artifactTransferService = artifactTransferService;
+        this.bucketCredentialsService = bucketCredentialsService;
     }
 
     /**
@@ -101,9 +110,42 @@ public class DataTransferAPIService {
 
         stateTransitionCheck(TransferState.REQUESTED, transferProcessInitialized);
         DataAddress dataAddressForMessage = null;
-        if (StringUtils.isNotBlank(dataTransferRequest.getFormat()) && dataTransferRequest.getDataAddress() != null && !dataTransferRequest.getDataAddress().isEmpty()) {
-            dataAddressForMessage = TransferSerializer.deserializePlain(dataTransferRequest.getDataAddress().toPrettyString(), DataAddress.class);
+        if (DataTransferFormat.HTTP_PUSH.format().equals(dataTransferRequest.getFormat())) {
+
+            BucketCredentialsEntity bucketCredentials = bucketCredentialsService.getBucketCredentials(s3Properties.getBucketName());
+
+            List<EndpointProperty> endpointProperties = List.of(
+                    EndpointProperty.Builder.newInstance()
+                            .name(S3Utils.BUCKET_NAME)
+                            .value(s3Properties.getBucketName())
+                            .build(),
+                    EndpointProperty.Builder.newInstance()
+                            .name(S3Utils.REGION)
+                            .value(s3Properties.getRegion())
+                            .build(),
+                    EndpointProperty.Builder.newInstance()
+                            .name(S3Utils.OBJECT_KEY)
+                            .value(transferProcessInitialized.getId())
+                            .build(),
+                    EndpointProperty.Builder.newInstance()
+                            .name(S3Utils.ACCESS_KEY)
+                            .value(bucketCredentials.getAccessKey())
+                            .build(),
+                    EndpointProperty.Builder.newInstance()
+                            .name(S3Utils.SECRET_KEY)
+                            .value(bucketCredentials.getSecretKey())
+                            .build(),
+                    EndpointProperty.Builder.newInstance()
+                            .name(S3Utils.ENDPOINT_OVERRIDE)
+                            .value(s3Properties.getExternalPresignedEndpoint())
+                            .build()
+            );
+
+            dataAddressForMessage = DataAddress.Builder.newInstance()
+                    .endpointProperties(endpointProperties)
+                    .build();
         }
+
         TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
                 .agreementId(transferProcessInitialized.getAgreementId())
                 .callbackAddress(dataTransferProperties.consumerCallbackAddress())
@@ -212,7 +254,7 @@ public class DataTransferAPIService {
         }
         if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
             address = DataTransferCallback.getConsumerDataTransferStart(transferProcess.getCallbackAddress(), transferProcess.getConsumerPid());
-            if (transferProcess.getDataAddress() == null) {
+            if ( DataTransferFormat.HTTP_PULL.format().equals(transferProcess.getFormat())) {
                 String artifactURL = switch (artifact.getArtifactType()) {
                     case FILE ->
                     // Generate a presigned URL for S3 with 7 days duration, which will be used as the endpoint for the data transfer
@@ -316,15 +358,15 @@ public class DataTransferAPIService {
                 .providerPid(transferProcess.getProviderPid())
                 .build();
 
-        log.info("Sending TransferCompletionMessage to {}", transferProcess.getCallbackAddress());
         String address = null;
-
         if (StringUtils.equals(IConstants.ROLE_CONSUMER, transferProcess.getRole())) {
             address = DataTransferCallback.getProviderDataTransferCompletion(transferProcess.getCallbackAddress(), transferProcess.getProviderPid());
         }
         if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
             address = DataTransferCallback.getConsumerDataTransferCompletion(transferProcess.getCallbackAddress(), transferProcess.getConsumerPid());
         }
+        log.info("Sending TransferCompletionMessage to {}", address);
+
         GenericApiResponse<String> response = okHttpRestClient
                 .sendRequestProtocol(address,
                         TransferSerializer.serializeProtocolJsonNode(transferCompletionMessage),
@@ -499,28 +541,50 @@ public class DataTransferAPIService {
         DataTransferStrategy strategy = dataTransferStrategyFactory.getStrategy(transferProcess.getFormat());
 
         return strategy.transfer(transferProcess)
-                .thenAccept(transfer -> {
-                    TransferProcess transferProcessWithData = TransferProcess.Builder.newInstance()
-                            .id(transferProcess.getId())
-                            .agreementId(transferProcess.getAgreementId())
-                            .consumerPid(transferProcess.getConsumerPid())
-                            .providerPid(transferProcess.getProviderPid())
-                            .callbackAddress(transferProcess.getCallbackAddress())
-                            .dataAddress(transferProcess.getDataAddress())
-                            .isDownloaded(true)
-                            .dataId(transferProcessId)
-                            .format(transferProcess.getFormat())
-                            .state(transferProcess.getState())
-                            .role(transferProcess.getRole())
-                            .datasetId(transferProcess.getDatasetId())
-                            .created(transferProcess.getCreated())
-                            .createdBy(transferProcess.getCreatedBy())
-                            .modified(transferProcess.getModified())
-                            .lastModifiedBy(transferProcess.getLastModifiedBy())
-                            .version(transferProcess.getVersion())
-                            .build();
+                .whenComplete((transfer, throwable) -> {
+                    if (throwable == null) {
+                        log.info("Download completed successfully for process {}", transferProcessId);
 
-                    transferProcessRepository.save(transferProcessWithData);
+                        publisher.publishEvent(
+                                AuditEventType.TRANSFER_COMPLETED,
+                                "Download completed successfully for process " + transferProcessId,
+                                Map.of("transferProcessId", transferProcessId));
+
+                        TransferProcess transferProcessWithData = TransferProcess.Builder.newInstance()
+                                .id(transferProcess.getId())
+                                .agreementId(transferProcess.getAgreementId())
+                                .consumerPid(transferProcess.getConsumerPid())
+                                .providerPid(transferProcess.getProviderPid())
+                                .callbackAddress(transferProcess.getCallbackAddress())
+                                .dataAddress(transferProcess.getDataAddress())
+                                .isDownloaded(true)
+                                .dataId(transferProcess.getId())
+                                .format(transferProcess.getFormat())
+                                .state(transferProcess.getState())
+                                .role(transferProcess.getRole())
+                                .datasetId(transferProcess.getDatasetId())
+                                .created(transferProcess.getCreated())
+                                .createdBy(transferProcess.getCreatedBy())
+                                .modified(transferProcess.getModified())
+                                .lastModifiedBy(transferProcess.getLastModifiedBy())
+                                .version(transferProcess.getVersion())
+                                .build();
+
+                        transferProcessRepository.save(transferProcessWithData);
+                    } else {
+                        log.error("Transfer process id - {} data transmission interrupted : {}", transferProcessId, throwable.getMessage());
+                        publisher.publishEvent(AuditEventType.TRANSFER_FAILED,
+                                "Data transfer failed for process " + transferProcess.getId(),
+                                Map.of("role", IConstants.ROLE_PROTOCOL,
+                                        "transferProcess", transferProcess,
+                                        "consumerPid", transferProcess.getConsumerPid(),
+                                        "providerPid", transferProcess.getProviderPid(),
+                                        "errorMessage", throwable.getMessage()));
+                    }
+                }).thenAccept(transfer -> {
+                    // since the download is completed successfully, we can send the TransferCompletionMessage
+                    log.info("Data downloaded successfully for transfer process id - {}. Now sending TransferCompletionMessage.", transferProcessId);
+                    completeTransfer(transferProcessId);
                 });
     }
 
@@ -534,9 +598,9 @@ public class DataTransferAPIService {
     public String viewData(String transferProcessId) {
         TransferProcess transferProcess = findTransferProcessById(transferProcessId);
 
-        if (!transferProcess.isDownloaded()) {
-            log.error("Data not yet downloaded");
-            throw new DataTransferAPIException("Data not yet downloaded");
+        if (!transferProcess.getState().equals(TransferState.COMPLETED)) {
+            log.error("Transfer process is not in COMPLETED state");
+            throw new DataTransferAPIException("Transfer process is not in COMPLETED state");
         }
 
         policyCheck(transferProcess);
@@ -548,6 +612,7 @@ public class DataTransferAPIService {
         }
 
         try {
+//            TODO verify Duration does not exceed EndDateTime, if it is present
             String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), transferProcessId, Duration.ofDays(7L));
             publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId()));
             publisher.publishEvent(AuditEventType.TRANSFER_VIEW,

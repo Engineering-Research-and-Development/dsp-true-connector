@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.InputStream;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -18,15 +19,13 @@ public interface S3ClientService {
      * After stream is processed, it will be closed automatically.
      *
      * @param inputStream        the input stream of the file to upload
-     * @param bucketName         the name of the bucket to upload to
-     * @param objectKey          the key of the object to upload
+     * @param destinationS3Properties the properties of the destination S3 bucket
      * @param contentType        the content type of the file
      * @param contentDisposition the content disposition of the file
      * @return a CompletableFuture that completes with the ETag of the uploaded object
      */
     CompletableFuture<String> uploadFile(InputStream inputStream,
-                                         String bucketName,
-                                         String objectKey,
+                                         Map<String, String> destinationS3Properties,
                                          String contentType,
                                          String contentDisposition);
 

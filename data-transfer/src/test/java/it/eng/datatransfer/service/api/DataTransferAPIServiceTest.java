@@ -621,10 +621,10 @@ class DataTransferAPIServiceTest {
     @DisplayName("View data - success")
     public void viewData_success() {
         String bucketName = "test-bucket";
-        String objectKey = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId();
+        String objectKey = DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId();
 
-        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId()))
-                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED));
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED));
         when(usageControlProperties.usageControlEnabled()).thenReturn(true);
         GenericApiResponse<String> internalResponse = GenericApiResponse.success(null, "successful response");
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
@@ -647,10 +647,10 @@ class DataTransferAPIServiceTest {
     @DisplayName("View data - fail - generate presignURL exception")
     public void viewData_fail_canNotAccessData() {
         String bucketName = "test-bucket";
-        String objectKey = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId();
+        String objectKey = DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId();
 
         when(transferProcessRepository.findById(objectKey))
-                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED));
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED));
         when(usageControlProperties.usageControlEnabled()).thenReturn(true);
         GenericApiResponse<String> internalResponse = GenericApiResponse.success(null, "successful response");
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
@@ -668,10 +668,10 @@ class DataTransferAPIServiceTest {
     @DisplayName("View data - fail - file not found")
     public void viewData_fail_fileNotFound() {
         String bucketName = "test-bucket";
-        String objectKey = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId();
+        String objectKey = DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId();
 
         when(transferProcessRepository.findById(objectKey))
-                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED));
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED));
         when(usageControlProperties.usageControlEnabled()).thenReturn(true);
         GenericApiResponse<String> internalResponse = GenericApiResponse.success(null, "successful response");
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
@@ -692,14 +692,14 @@ class DataTransferAPIServiceTest {
     public void viewData_fail_policyNotValid() {
         GenericApiResponse<String> internalResponse = GenericApiResponse.error("Policy not valid");
 
-        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId()))
-                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED));
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED));
         when(usageControlProperties.usageControlEnabled()).thenReturn(true);
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
 
         assertThrows(DataTransferAPIException.class,
-                () -> apiService.viewData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId()));
+                () -> apiService.viewData(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId()));
 
         verify(s3ClientService, times(0)).fileExists(anyString(), anyString());
         verify(s3ClientService, times(0)).generateGetPresignedUrl(anyString(), anyString(), any(Duration.class));

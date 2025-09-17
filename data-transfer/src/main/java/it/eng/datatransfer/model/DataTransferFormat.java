@@ -3,6 +3,7 @@ package it.eng.datatransfer.model;
 public enum DataTransferFormat {
 
     HTTP_PULL("HttpData-PULL"),
+    HTTP_PUSH("HttpData-PUSH"),
     SFTP("SFTP");
 
     private final String format;
