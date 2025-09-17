@@ -83,7 +83,7 @@ jobs:
       - name: Stop docker container negotiation-api-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
 
-  datatransfer-api-tests:
+  datatransfer-api-http-pull-tests:
     needs: build-and-push-image
     runs-on: ubuntu-latest
     
@@ -91,7 +91,7 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v4
         
-      - name: Run docker container for datatransfer-api-tests
+      - name: Run docker container for datatransfer-api-http-pull-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
         
       - name: Wait for container starting
@@ -102,13 +102,41 @@ jobs:
 
       - uses: matt-ball/newman-action@v2.0.0
         with:
-          collection: ./ci/docker/test-cases/datatransfer-api-tests/datatransfer-api-tests.json
+          collection: ./ci/docker/test-cases/datatransfer-api-http-pull-tests/datatransfer-api-http-pull-tests.json
           
-      - name: Dump docker datatransfer-api-tests
+      - name: Dump docker datatransfer-api-http-pull-tests
         if: failure()
         uses: jwalton/gh-docker-logs@v2
 
-      - name: Stop docker container datatransfer-api-tests
+      - name: Stop docker container datatransfer-api-http-pull-tests
+        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
+        
+  datatransfer-api-http-push-tests:
+    needs: build-and-push-image
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+        
+      - name: Run docker container for datatransfer-api-http-push-tests
+        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
+        
+      - name: Wait for container starting
+        run: sleep 30
+
+      - name: Check if the container is up and running
+        run: docker ps -a
+
+      - uses: matt-ball/newman-action@v2.0.0
+        with:
+          collection: ./ci/docker/test-cases/datatransfer-api-http-push-tests/datatransfer-api-http-push-tests.json
+          
+      - name: Dump docker datatransfer-api-http-push-tests
+        if: failure()
+        uses: jwalton/gh-docker-logs@v2
+
+      - name: Stop docker container datatransfer-api-http-push-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
         
   api-endpoints-tests:

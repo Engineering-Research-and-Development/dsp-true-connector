@@ -42,6 +42,12 @@ public class ArtifactServiceTest {
     @InjectMocks
     private ArtifactService artifactService;
 
+    private static final String TEST_BUCKET = "test-bucket";
+    private static final String TEST_ENDPOINT = "http://s3-endpoint";
+    private static final String TEST_REGION = "us-east-1";
+    private static final String TEST_ACCESS_KEY = "access-key";
+    private static final String TEST_SECRET_KEY = "secret-key";
+
     @Test
     @DisplayName("Get artifacts by id - success")
     public void getArtifactById_success() {
@@ -70,27 +76,36 @@ public class ArtifactServiceTest {
     @Test
     @DisplayName("Upload file - success")
     public void uploadFile_success() throws IOException {
+        when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
+        when(s3Properties.getEndpoint()).thenReturn(TEST_ENDPOINT);
+        when(s3Properties.getRegion()).thenReturn(TEST_REGION);
+        when(s3Properties.getAccessKey()).thenReturn(TEST_ACCESS_KEY);
+        when(s3Properties.getSecretKey()).thenReturn(TEST_SECRET_KEY);
         when(file.getContentType()).thenReturn(MediaType.APPLICATION_JSON_VALUE);
         when(file.getOriginalFilename()).thenReturn(CatalogMockObjectUtil.ARTIFACT_FILE.getFilename());
-        when(s3Properties.getBucketName()).thenReturn("test-bucket");
         when(file.getInputStream()).thenReturn(inputStream);
-        when(s3ClientService.uploadFile(any(InputStream.class), anyString(), anyString(), anyString(), anyString()))
+        when(s3ClientService.uploadFile(any(InputStream.class), anyMap(), anyString(), anyString()))
                 .thenReturn(CompletableFuture.completedFuture("etag"));
         when(artifactRepository.save(any(Artifact.class))).thenReturn(CatalogMockObjectUtil.ARTIFACT_FILE);
 
         Artifact artifact = artifactService.uploadArtifact(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), file, null, null);
 
         assertEquals(CatalogMockObjectUtil.ARTIFACT_FILE, artifact);
-        verify(s3ClientService).uploadFile(eq(inputStream), eq("test-bucket"), anyString(), eq(MediaType.APPLICATION_JSON_VALUE), anyString());
+        verify(s3ClientService).uploadFile(eq(inputStream), anyMap(), eq(MediaType.APPLICATION_JSON_VALUE), anyString());
     }
 
     @Test
     @DisplayName("Upload file - fail")
     public void uploadFile_fail() throws IOException {
+        when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
+        when(s3Properties.getEndpoint()).thenReturn(TEST_ENDPOINT);
+        when(s3Properties.getRegion()).thenReturn(TEST_REGION);
+        when(s3Properties.getAccessKey()).thenReturn(TEST_ACCESS_KEY);
+        when(s3Properties.getSecretKey()).thenReturn(TEST_SECRET_KEY);
+
         when(file.getContentType()).thenReturn(MediaType.APPLICATION_JSON_VALUE);
         when(file.getInputStream()).thenReturn(inputStream);
-        doThrow(RuntimeException.class).when(s3ClientService).uploadFile(any(InputStream.class), anyString(), anyString(), anyString(), anyString());
-        when(s3Properties.getBucketName()).thenReturn("test-bucket");
+        doThrow(RuntimeException.class).when(s3ClientService).uploadFile(any(InputStream.class), anyMap(), anyString(), anyString());
 
         assertThrows(CatalogErrorAPIException.class, () -> artifactService.uploadArtifact(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), file, null, null));
     }
@@ -118,23 +133,19 @@ public class ArtifactServiceTest {
         doNothing().when(s3ClientService).deleteFile(anyString(), anyString());
         doNothing().when(artifactRepository).delete(any(Artifact.class));
 
-        assertDoesNotThrow(() -> artifactService.deleteOldArtifact(CatalogMockObjectUtil.ARTIFACT_FILE));
+        assertDoesNotThrow(() -> artifactService.deleteArtifactAfterDatasetUpdate(CatalogMockObjectUtil.ARTIFACT_FILE, CatalogMockObjectUtil.ARTIFACT_EXTERNAL));
 
         verify(s3ClientService).deleteFile("test-bucket", CatalogMockObjectUtil.ARTIFACT_FILE.getValue());
         verify(artifactRepository).delete(CatalogMockObjectUtil.ARTIFACT_FILE);
     }
 
     @Test
-    @DisplayName("Delete artifact without file - success")
-    public void deleteArtifactWithoutFile_success() {
-        assertDoesNotThrow(() -> artifactService.deleteOldArtifact(CatalogMockObjectUtil.ARTIFACT_FILE));
-    }
-
-    @Test
     @DisplayName("Delete artifact external - success")
     public void deleteArtifactExternal_success() {
         doNothing().when(artifactRepository).delete(CatalogMockObjectUtil.ARTIFACT_EXTERNAL);
-        assertDoesNotThrow(() -> artifactService.deleteOldArtifact(CatalogMockObjectUtil.ARTIFACT_EXTERNAL));
+        assertDoesNotThrow(() -> artifactService.deleteArtifactAfterDatasetUpdate(CatalogMockObjectUtil.ARTIFACT_EXTERNAL, CatalogMockObjectUtil.ARTIFACT_FILE));
+
+        verify(artifactRepository).delete(CatalogMockObjectUtil.ARTIFACT_EXTERNAL);
     }
 
 }

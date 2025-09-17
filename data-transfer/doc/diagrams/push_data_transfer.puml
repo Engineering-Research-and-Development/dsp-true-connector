@@ -1,0 +1,92 @@
+@startuml
+
+TITLE Push data transfer
+
+participant CONSUMER_S3 as cs3
+participant CONSUMER as c
+participant PROVIDER as p
+participant PROVIDER_S3 as ps3
+
+== TransfertRequestMessage ==
+
+note over c
+Consumer creates a temporary S3 user with strict rules that allow only uploading of the file.
+The S3 properties will be stored and sent in the DataAddress object.
+In our case the TransferProcess Id will be used as the object key to ensure unique file names.
+end note
+c->c: Create DataAddress from temporary S3 user
+c->p : https://provider.com/transfers/request
+
+note over c
+TransferRequestMessage
+{
+  "@context":  "https://w3id.org/dspace/2024/1/context.json",
+  "@type": "dspace:TransferRequestMessage",
+  "dspace:consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+  "dspace:agreementId": "urn:uuid:e8dc8655-44c2-46ef-b701-4cffdc2faa44",
+  "dct:format": "HttpData-PUSH",
+  "dst:dataAddress": {
+    "@type": "dspace:DataAddress",
+    "dspace:endpointType": "https://w3id.org/idsa/v4.1/HTTP",
+    "dspace:endpoint": "http://localhost:9000/dsp-true-connector-consumer-bucket/..."
+  },
+  "dspace:callbackAddress": "https://......"
+}
+end note
+
+p->p: Process received message
+p->p: store message (agreement will be required later)
+p->p: Create TransferProcess with initial consumerPid urn:uuid:PROVIDER_PID_TRANSFER and adds providerPid, state.REQUESTED
+p->c: 200 OK, TransferProcess
+
+== TransferStartMessage ==
+p->p: Create TransferStartMessage
+
+p->c : callbackUrl + transfers/:consumerPid/start
+note right
+{
+  "@context":  "https://w3id.org/dspace/2024/1/context.json",
+  "@type": "dspace:TransferStartMessage",
+  "dspace:providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
+  "dspace:consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+  "dst:dataAddress": {
+      "@type": "dspace:DataAddress",
+      "dspace:endpointType": "https://w3id.org/idsa/v4.1/HTTP",
+      "dspace:endpoint": "http://localhost:9000/dsp-true-connector-consumer-bucket/..."
+    },
+}
+end note
+
+c->c : process TransferStartMessage, update state locally
+c->p : 200 OK
+p->p: after 200OK< update state in TransferProcess to SARTED
+note right
+this will be updated when push transfer is fully implemented
+end note
+p->cs3: start data transfer to CONSUMER S3 bucket
+
+== Provider sends data ==
+
+  p->p: provider initiates data push
+group Provider pre-send checks
+  p->p: checks TransferProcess if state is STARTED
+  p->p: for consumerPid and providerPid get agreementId (TransferRequestMessage)
+  p->p: validate if agreement is valid
+end group
+
+p->ps3: Request presigned URL for source object (createPresignedUrl)
+ps3->p: Return presignedUrl
+note right of p
+Provider uses the presignedUrl to download the source bytes
+(this is the critical step for PUSH transfers)
+end note
+  p->p: create S3AsyncClient from DataAddress which contains the temporary S3 user credentials created by the consumer
+ps3->p: Download object using presignedUrl (HTTP GET)
+p->cs3: Upload object to consumer S3 bucket (PUT/Multipart) using S3AsyncClient
+
+== TransferCompletionMessage ==
+
+p->c: after successful upload the provider sends TransferCompletionMessage automatically
+p->c: 200 OK, TransferProcess
+
+@enduml
