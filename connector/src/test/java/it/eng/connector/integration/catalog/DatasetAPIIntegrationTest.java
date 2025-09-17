@@ -31,7 +31,6 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.mock.web.MockPart;
-import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -91,7 +90,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Dataset API - get by id")
-    @WithUserDetails(TestUtil.API_USER)
     public void getDatasetById() throws Exception {
         Artifact artifactExternal = Artifact.Builder.newInstance()
                 .artifactType(ArtifactType.EXTERNAL)
@@ -130,7 +128,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         };
 
         MvcResult resultList = mockMvc.perform(
-                        get(ApiEndpoints.CATALOG_DATASETS_V1).contentType(MediaType.APPLICATION_JSON))
+                        authenticatedGet(ApiEndpoints.CATALOG_DATASETS_V1, TestUtil.API_USER).contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -146,7 +144,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Dataset API - get all")
-    @WithUserDetails(TestUtil.API_USER)
     public void getAllDatasets() throws Exception {
         Artifact artifactExternal = Artifact.Builder.newInstance()
                 .artifactType(ArtifactType.EXTERNAL)
@@ -168,7 +165,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         };
 
         MvcResult resultSingle = mockMvc.perform(
-                        get(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + datasetExternal.getId()))
+                        authenticatedGet(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + datasetExternal.getId(), TestUtil.API_USER))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -184,10 +181,9 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Dataset API - get fail")
-    @WithUserDetails(TestUtil.API_USER)
     public void getDataset_fail() throws Exception {
         MvcResult resultFail = mockMvc.perform(
-                        get(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + "1"))
+                        authenticatedGet(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + "1", TestUtil.API_USER))
                 .andExpect(status().isNotFound())
                 .andReturn();
 
@@ -206,7 +202,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Dataset API - upload external")
-    @WithUserDetails(TestUtil.API_USER)
     public void uploadArtifactExternal() throws Exception {
         int initialDatasetSize = datasetRepository.findAll().size();
         int initialArtifactSize = artifactRepository.findAll().size();
@@ -231,7 +226,8 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
         MvcResult result = mockMvc.perform(
                         multipart(ApiEndpoints.CATALOG_DATASETS_V1)
-                                .part(datasetPart).part(urlPart))
+                                .part(datasetPart).part(urlPart)
+                                .headers(createJwtHeaders(TestUtil.API_USER)))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -266,7 +262,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Dataset API - upload file")
-    @WithUserDetails(TestUtil.API_USER)
     public void uploadArtifactFile() throws Exception {
         int initialDatasetSize = datasetRepository.findAll().size();
         int initialArtifactSize = artifactRepository.findAll().size();
@@ -302,7 +297,8 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
         MvcResult result = mockMvc.perform(
                         multipart(ApiEndpoints.CATALOG_DATASETS_V1)
-                                .file(filePart).part(datasetPart))
+                                .file(filePart).part(datasetPart)
+                                .headers(createJwtHeaders(TestUtil.API_USER)))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -355,7 +351,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Dataset API - fail, no URL nor File")
-    @WithUserDetails(TestUtil.API_USER)
     public void uploadArtifactFail() throws Exception {
         Dataset dataset = Dataset.Builder.newInstance()
                 .hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
@@ -369,7 +364,8 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
         MvcResult result = mockMvc.perform(
                         multipart(ApiEndpoints.CATALOG_DATASETS_V1)
-                                .part(datasetPart))
+                                .part(datasetPart)
+                                .headers(createJwtHeaders(TestUtil.API_USER)))
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -386,7 +382,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Dataset API - update from external to file")
-    @WithUserDetails(TestUtil.API_USER)
     public void updateArtifactExternalToFile() throws Exception {
         Artifact artifactExternal = Artifact.Builder.newInstance()
                 .artifactType(ArtifactType.EXTERNAL)
@@ -438,7 +433,8 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
 
         MvcResult result = mockMvc.perform(
-                        builder.file(filePart))
+                        builder.file(filePart)
+                                .headers(createJwtHeaders(TestUtil.API_USER)))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -490,7 +486,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Dataset API - update from file to external")
-    @WithUserDetails(TestUtil.API_USER)
     public void updateArtifactFileToExternal() throws Exception {
 
         Dataset dataset = Dataset.Builder.newInstance()
@@ -563,7 +558,8 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         });
 
         MvcResult result = mockMvc.perform(
-                        builder.part(urlPart))
+                        builder.part(urlPart)
+                                .headers(createJwtHeaders(TestUtil.API_USER)))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -600,7 +596,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Dataset API - delete dataset with file")
-    @WithUserDetails(TestUtil.API_USER)
     public void deleteDatasetWithFile() throws Exception {
 
         Dataset dataset = Dataset.Builder.newInstance()
@@ -661,7 +656,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         };
 
         MvcResult result = mockMvc.perform(
-                        delete(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + datasetWithFile.getId()))
+                        authenticatedDelete(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + datasetWithFile.getId(), TestUtil.API_USER))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -690,7 +685,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Dataset API - delete dataset with external")
-    @WithUserDetails(TestUtil.API_USER)
     public void deleteDatasetWithExternal() throws Exception {
 
         Artifact artifactExternal = Artifact.Builder.newInstance()
@@ -722,7 +716,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         };
 
         MvcResult result = mockMvc.perform(
-                        delete(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + dataset.getId()))
+                        authenticatedDelete(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + dataset.getId(), TestUtil.API_USER))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -748,7 +742,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Dataset API - delete fail")
-    @WithUserDetails(TestUtil.API_USER)
     public void deleteDatasetFail() throws Exception {
 
         int initialDatasetSize = datasetRepository.findAll().size();
@@ -759,7 +752,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         };
 
         MvcResult result = mockMvc.perform(
-                        delete(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + 1))
+                        authenticatedDelete(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + 1, TestUtil.API_USER))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();

@@ -19,7 +19,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import org.wiremock.spring.InjectWireMock;
@@ -29,8 +28,6 @@ import java.util.List;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -52,7 +49,6 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("TransferProcess API - get")
-    @WithUserDetails(TestUtil.API_USER)
     public void getTransferProcess() throws Exception {
         TransferProcess transferProcessRequested = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())
@@ -69,12 +65,12 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
         transferProcessRepository.save(transferProcessStarted);
 
         mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1).contentType(MediaType.APPLICATION_JSON))
+                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1, TestUtil.API_USER).contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
         MvcResult resultStarted = mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId())
+                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId(), TestUtil.API_USER)
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -91,7 +87,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
         assertEquals(TransferState.STARTED, transferProcess.getState());
 
         MvcResult result = mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessRequested.getId())
+                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessRequested.getId(), TestUtil.API_USER)
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -109,7 +105,6 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Request transfer process - success")
-    @WithUserDetails(TestUtil.API_USER)
     public void initiateDataTransfer() throws Exception {
         TransferProcess transferProcessInitialized = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())
@@ -140,7 +135,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
+                        authenticatedPost(ApiEndpoints.TRANSFER_DATATRANSFER_V1, TestUtil.API_USER)
                                 .content(jsonMapper.convertValue(dataTransferRequest, JsonNode.class).toString())
                                 .contentType(MediaType.APPLICATION_JSON));
 
@@ -165,7 +160,6 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Request transfer process - provider error")
-    @WithUserDetails(TestUtil.API_USER)
     public void initiateDataTransfer_provider_error() throws Exception {
         TransferProcess transferProcessInitialized = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())
@@ -197,7 +191,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
+                        authenticatedPost(ApiEndpoints.TRANSFER_DATATRANSFER_V1, TestUtil.API_USER)
                                 .content(jsonMapper.convertValue(dataTransferRequest, JsonNode.class).toString())
                                 .contentType(MediaType.APPLICATION_JSON));
 
@@ -222,7 +216,6 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Filter by datasetId only")
-    @WithUserDetails(TestUtil.API_USER)
     public void filterByDatasetId() throws Exception {
         // Setup test data with diverse values
         TransferProcess process1 = TransferProcess.Builder.newInstance()
@@ -252,7 +245,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
         transferProcessRepository.saveAll(List.of(process1, process2, process3));
 
         MvcResult result = mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
+                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1, TestUtil.API_USER)
                                 .param("datasetId", "dataset-1")
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -275,7 +268,6 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Filter by providerPid only")
-    @WithUserDetails(TestUtil.API_USER)
     public void filterByProviderPid() throws Exception {
         String testProviderPid = createNewId();
 
@@ -298,7 +290,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
         transferProcessRepository.saveAll(List.of(process1, process2));
 
         MvcResult result = mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
+                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1, TestUtil.API_USER)
                                 .param("providerPid", testProviderPid)
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -318,7 +310,6 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Filter by consumerPid only")
-    @WithUserDetails(TestUtil.API_USER)
     public void filterByConsumerPid() throws Exception {
         String testConsumerPid = createNewId();
 
@@ -341,7 +332,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
         transferProcessRepository.saveAll(List.of(process1, process2));
 
         MvcResult result = mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
+                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1, TestUtil.API_USER)
                                 .param("consumerPid", testConsumerPid)
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -361,7 +352,6 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Filter by multiple parameters (datasetId, state, role)")
-    @WithUserDetails(TestUtil.API_USER)
     public void filterByMultipleParameters() throws Exception {
         TransferProcess process1 = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())
@@ -390,7 +380,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
         transferProcessRepository.saveAll(List.of(process1, process2, process3));
 
         MvcResult result = mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
+                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1, TestUtil.API_USER)
                                 .param("datasetId", "dataset-1")
                                 .param("state", TransferState.REQUESTED.name())
                                 .param("role", IConstants.ROLE_CONSUMER)
@@ -414,7 +404,6 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Filter with all new parameters")
-    @WithUserDetails(TestUtil.API_USER)
     public void filterWithAllNewParameters() throws Exception {
         String testConsumerPid = createNewId();
         String testProviderPid = createNewId();
@@ -438,7 +427,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
         transferProcessRepository.saveAll(List.of(matchingProcess, nonMatchingProcess));
 
         MvcResult result = mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
+                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1, TestUtil.API_USER)
                                 .param("datasetId", "target-dataset")
                                 .param("providerPid", testProviderPid)
                                 .param("consumerPid", testConsumerPid)
@@ -462,7 +451,6 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Transfer process ID takes priority over filters")
-    @WithUserDetails(TestUtil.API_USER)
     @Disabled("Disabled since this test is not applicable to the current API design")
     public void transferProcessIdTakesPriority() throws Exception {
         TransferProcess process = TransferProcess.Builder.newInstance()
@@ -476,7 +464,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
         transferProcessRepository.save(process);
 
         MvcResult result = mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + process.getId())
+                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + process.getId(), TestUtil.API_USER)
                                 .param("datasetId", "different-dataset")  // Should be ignored
                                 .param("state", TransferState.COMPLETED.name())  // Should be ignored
                                 .param("role", IConstants.ROLE_PROVIDER)         // Should be ignored
@@ -502,7 +490,6 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Filter returns empty result when no matches")
-    @WithUserDetails(TestUtil.API_USER)
     public void filterReturnsEmptyWhenNoMatches() throws Exception {
         TransferProcess process = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())
@@ -515,7 +502,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
         transferProcessRepository.save(process);
 
         MvcResult result = mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
+                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1, TestUtil.API_USER)
                                 .param("datasetId", "non-existent-dataset")
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -553,13 +540,12 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 	 * @PutMapping(path = "/{transferProcessId}/terminate")
 	@Test
 	@DisplayName("Start transfer process - from requested")
-	@WithUserDetails(TestUtil.API_USER)
 	public void startTransferProcess_requested() throws Exception {
 		// from init_data.json
 		String transferProcessId = "urn:uuid:abc45798-5555-4932-8baf-ab7fd66ql4d5";
-	      
+
     	ResultActions transferProcessStarted = mockMvc.perform(
-    			put(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessId + "/start").contentType(MediaType.APPLICATION_JSON));
+    			authenticatedPut(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessId + "/start", TestUtil.API_USER).contentType(MediaType.APPLICATION_JSON));
     	// check if status is STARTED
     	transferProcessStarted.andExpect(status().isOk())
     	.andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -567,9 +553,9 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
     	.andExpect(jsonPath("$.data.role").value(IConstants.ROLE_CONSUMER))
     	.andExpect(jsonPath("$.data.format").isNotEmpty())
     	.andExpect(jsonPath("$.data.dataAddress").isNotEmpty());
-    	
+
     	ResultActions transferProcessError= mockMvc.perform(
-    			put(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessId + "/start").contentType(MediaType.APPLICATION_JSON));
+    			authenticatedPut(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessId + "/start", TestUtil.API_USER).contentType(MediaType.APPLICATION_JSON));
     	// try again to start - error
     	transferProcessError.andExpect(err -> assertTrue(err.getResolvedException() instanceof TransferProcessInvalidStateException))
 			.andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -582,8 +568,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 			throws Exception, JsonProcessingException, JsonMappingException, UnsupportedEncodingException {
 		final ResultActions result =
 				mockMvc.perform(
-						get(ApiEndpoints.NEGOTIATION_V1)
-						.with(user(TestUtil.CONNECTOR_USER).password("password").roles("ADMIN"))
+						authenticatedGet(ApiEndpoints.NEGOTIATION_V1, TestUtil.CONNECTOR_USER)
 						.contentType(MediaType.APPLICATION_JSON));
 		
 		result.andExpect(status().isOk())

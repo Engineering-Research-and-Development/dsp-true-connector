@@ -24,7 +24,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 import org.wiremock.spring.InjectWireMock;
 
@@ -89,7 +88,6 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
     @ParameterizedTest
     @MethodSource("getValidConstraints")
     @DisplayName("View data - success")
-    @WithUserDetails(TestUtil.API_USER)
     public void viewData_success(Constraint constraint) throws Exception {
         String fileContent = "Hello, World!";
 
@@ -129,7 +127,7 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
         // send request
         final ResultActions result =
                 mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/view")
+                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/view", TestUtil.API_USER)
                                 .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isOk())
@@ -152,8 +150,8 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
         assertEquals(transferProcessStarted.getState(), transferProcessFromDb.getState());
 
         // check if the PolicyEnforcement count is increased
-        // waiting for 1 second to give time to the publisher to increase the policy access count
-        TimeUnit.SECONDS.sleep(1);
+        // waiting for 3 seconds to give time to the publisher to increase the policy access count
+        TimeUnit.SECONDS.sleep(3);
         PolicyEnforcement enforcementFromDb = policyEnforcementRepository.findByAgreementId(agreement.getId()).get();
         // increase count from initial 0 to 1
         assertEquals(1, enforcementFromDb.getCount());
@@ -163,7 +161,6 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
     @ParameterizedTest
     @MethodSource("getInvalidConstraints")
     @DisplayName("View data - fail policy invalid")
-    @WithUserDetails(TestUtil.API_USER)
     public void viewData_fail_policyInvalid(Constraint constraint) throws Exception {
         Agreement agreement = insertAgreement(constraint, 6);
 
@@ -183,7 +180,7 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
         // send request
         final ResultActions result =
                 mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/view")
+                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/view", TestUtil.API_USER)
                                 .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isBadRequest())

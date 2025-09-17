@@ -28,7 +28,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 import org.wiremock.spring.InjectWireMock;
 
@@ -42,7 +41,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -107,7 +105,6 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 
     @Test
     @DisplayName("Download data - success")
-    @WithUserDetails(TestUtil.API_USER)
     public void downloadData_success() throws Exception {
         int startingTransferProcessCollectionSize = transferProcessRepository.findAll().size();
 
@@ -166,7 +163,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         // send request
         final ResultActions result =
                 mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/download")
+                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/download", TestUtil.API_USER)
                                 .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isAccepted())
@@ -217,7 +214,6 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 
     @Test
     @DisplayName("Download data - fail")
-    @WithUserDetails(TestUtil.API_USER)
     public void downloadData_fail() throws Exception {
         int startingTransferProcessCollectionSize = transferProcessRepository.findAll().size();
 
@@ -287,7 +283,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         // send request
         final ResultActions result =
                 mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/download")
+                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/download", TestUtil.API_USER)
                                 .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isBadRequest());
@@ -319,7 +315,6 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 
     @Test
     @DisplayName("Download data - purpose policy - allowed")
-    @WithUserDetails(TestUtil.API_USER)
     public void downloadData_PurposePolicy_allowed() throws Exception {
         int startingTransferProcessCollectionSize = transferProcessRepository.findAll().size();
 
@@ -364,7 +359,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         // send request
         final ResultActions result =
                 mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/download")
+                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/download", TestUtil.API_USER)
                                 .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isAccepted())
@@ -387,7 +382,6 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 
     @Test
     @DisplayName("Download data - location policy - allowed")
-    @WithUserDetails(TestUtil.API_USER)
     public void downloadData_LocationPolicy_allowed() throws Exception {
         int startingTransferProcessCollectionSize = transferProcessRepository.findAll().size();
 
@@ -432,7 +426,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         // send request
         final ResultActions result =
                 mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/download")
+                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/download", TestUtil.API_USER)
                                 .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isAccepted())
