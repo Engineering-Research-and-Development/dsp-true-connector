@@ -3,6 +3,7 @@ package it.eng.connector.configuration;
 import it.eng.connector.repository.UserRepository;
 import it.eng.connector.service.JwtProcessingService;
 import it.eng.tools.service.ApplicationPropertiesService;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.StringUtils;
@@ -89,7 +90,14 @@ public class WebSecurityConfig {
 
     @Bean
     BasicAuthenticationFilter basicAuthenticationFilter() {
-        return new BasicAuthenticationFilter(authenticationManager());
+        return new BasicAuthenticationFilter(authenticationManager()) {
+            @Override
+            protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+                // Skip API endpoints - basic auth should not be allowed for API endpoints
+                String requestUri = request.getRequestURI();
+                return requestUri != null && requestUri.startsWith("/api/");
+            }
+        };
     }
 
     @Bean
