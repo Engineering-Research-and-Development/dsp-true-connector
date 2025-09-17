@@ -4,10 +4,12 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -29,12 +31,17 @@ public class User implements UserDetails {
 	
 	private String firstName;
 	private String lastName;
+	@Indexed(unique = true)
 	private String email;
 	@JsonIgnore
 	private String password;
 	private boolean enabled;
 	private boolean expired;
 	private boolean locked;
+	
+	// Account metadata fields
+	private LocalDateTime lastLoginDate;
+	private LocalDateTime createdDate;
 
 	private Role role;
 
@@ -75,5 +82,6 @@ public class User implements UserDetails {
 	public boolean isEnabled() {
 		return enabled;
 	}
+	
 
 }
