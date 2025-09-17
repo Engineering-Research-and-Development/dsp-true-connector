@@ -35,6 +35,10 @@ public class JwtAuthenticationIntegrationTest extends BaseIntegrationTest {
     private static final String TEST_PASSWORD = "JwtTestPassword123!";
     private static final String TEST_FIRST_NAME = "JWT";
     private static final String TEST_LAST_NAME = "Test";
+    
+    // Initial data users for testing
+    private static final String INITIAL_ADMIN_EMAIL = "admin@mail.com";
+    private static final String INITIAL_ADMIN_PASSWORD = "password";
 
     @BeforeEach
     void setUp() {
@@ -112,9 +116,8 @@ public class JwtAuthenticationIntegrationTest extends BaseIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isForbidden());
 
-        // Test with ADMIN role
-        User admin = createTestUser("admin@example.com", Role.ROLE_ADMIN);
-        String adminToken = getAccessTokenForUser(admin);
+        // Test with ADMIN role using existing user from initial data
+        String adminToken = getAccessTokenForExistingUser(INITIAL_ADMIN_EMAIL, INITIAL_ADMIN_PASSWORD);
 
         // ADMIN should be able to access admin endpoints
         mockMvc.perform(get(ApiEndpoints.USERS_V1)
@@ -294,6 +297,38 @@ public class JwtAuthenticationIntegrationTest extends BaseIntegrationTest {
         JsonNode accessTokenNode = dataNode.get("accessToken");
         if (accessTokenNode == null || accessTokenNode.isNull()) {
             throw new RuntimeException("Login response missing accessToken for user " + user.getEmail());
+        }
+        
+        return accessTokenNode.asText();
+    }
+
+    private String getAccessTokenForExistingUser(String email, String password) throws Exception {
+        LoginRequest loginRequest = new LoginRequest();
+        loginRequest.setEmail(email);
+        loginRequest.setPassword(password);
+
+        ResultActions loginResult = mockMvc.perform(post(ApiEndpoints.AUTH_V1 + "/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginRequest)));
+
+        String loginResponse = loginResult.andReturn().getResponse().getContentAsString();
+        JsonNode loginJson = objectMapper.readTree(loginResponse);
+        
+        // Check if login was successful
+        if (!loginJson.get("success").asBoolean()) {
+            String errorMessage = loginJson.has("message") ? loginJson.get("message").asText() : "Login failed";
+            throw new RuntimeException("Login failed for user " + email + ": " + errorMessage);
+        }
+        
+        // Check if data field exists and contains accessToken
+        JsonNode dataNode = loginJson.get("data");
+        if (dataNode == null || dataNode.isNull()) {
+            throw new RuntimeException("Login response missing data field for user " + email);
+        }
+        
+        JsonNode accessTokenNode = dataNode.get("accessToken");
+        if (accessTokenNode == null || accessTokenNode.isNull()) {
+            throw new RuntimeException("Login response missing accessToken for user " + email);
         }
         
         return accessTokenNode.asText();
