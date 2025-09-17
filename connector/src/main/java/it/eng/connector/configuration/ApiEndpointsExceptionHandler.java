@@ -6,20 +6,24 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
+/**
+ * Exception handler for API endpoints.
+ * Handles authentication exceptions for /api/** endpoints with proper JSON responses.
+ */
 @ControllerAdvice
 @Slf4j
-public class DataspaceProtocolEndpointsExceptionHandler extends BaseAuthenticationExceptionHandler {
+public class ApiEndpointsExceptionHandler extends BaseAuthenticationExceptionHandler {
 
-    private final ProtocolErrorResponseFormatter errorResponseFormatter;
+    private final ApiErrorResponseFormatter errorResponseFormatter;
 
-    public DataspaceProtocolEndpointsExceptionHandler() {
-        this.errorResponseFormatter = new ProtocolErrorResponseFormatter();
+    public ApiEndpointsExceptionHandler() {
+        this.errorResponseFormatter = new ApiErrorResponseFormatter();
     }
 
     @Override
     protected JsonNode createErrorResponse(AuthenticationException ex, WebRequest request, String uri) {
-        // Skip API endpoints - they should be handled by API exception handler
-        if (uri.contains("api/")) {
+        // Only handle API endpoints
+        if (!uri.contains("api/")) {
             return null;
         }
         
