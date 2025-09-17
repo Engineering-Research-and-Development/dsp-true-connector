@@ -107,7 +107,7 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
                 .build();
         contractNegotiationRepository.save(contractNegotiation);
 
-        TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
+        TransferProcess transferProcessCompleted = TransferProcess.Builder.newInstance()
                 .consumerPid(consumerPid)
                 .providerPid(providerPid)
                 .agreementId(agreement.getId())
@@ -115,13 +115,13 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
                 .isDownloaded(true)
                 .state(TransferState.COMPLETED)
                 .build();
-        transferProcessRepository.save(transferProcessStarted);
+        transferProcessRepository.save(transferProcessCompleted);
 
         ContentDisposition contentDisposition = ContentDisposition.attachment()
                 .filename(FILE_NAME)
                 .build();
 
-        Map<String, String> destinationS3Properties = createS3EndpointProperties(transferProcessStarted.getId());
+        Map<String, String> destinationS3Properties = createS3EndpointProperties(transferProcessCompleted.getId());
 
         try (InputStream inputStream = new ByteArrayInputStream(fileContent.getBytes())) {
             s3ClientService.uploadFile(inputStream, destinationS3Properties,
@@ -132,7 +132,7 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
         // send request
         final ResultActions result =
                 mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/view")
+                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessCompleted.getId() + "/view")
                                 .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isOk())
@@ -145,14 +145,14 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
         new URL(response).toURI();
 
         // check if the TransferProcess is inserted in the database
-        TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessStarted.getId()).get();
+        TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessCompleted.getId()).get();
 
         assertTrue(transferProcessFromDb.isDownloaded());
-        assertEquals(transferProcessStarted.getConsumerPid(), transferProcessFromDb.getConsumerPid());
-        assertEquals(transferProcessStarted.getProviderPid(), transferProcessFromDb.getProviderPid());
-        assertEquals(transferProcessStarted.getAgreementId(), transferProcessFromDb.getAgreementId());
-        assertEquals(transferProcessStarted.getCallbackAddress(), transferProcessFromDb.getCallbackAddress());
-        assertEquals(transferProcessStarted.getState(), transferProcessFromDb.getState());
+        assertEquals(transferProcessCompleted.getConsumerPid(), transferProcessFromDb.getConsumerPid());
+        assertEquals(transferProcessCompleted.getProviderPid(), transferProcessFromDb.getProviderPid());
+        assertEquals(transferProcessCompleted.getAgreementId(), transferProcessFromDb.getAgreementId());
+        assertEquals(transferProcessCompleted.getCallbackAddress(), transferProcessFromDb.getCallbackAddress());
+        assertEquals(transferProcessCompleted.getState(), transferProcessFromDb.getState());
 
         // check if the PolicyEnforcement count is increased
         // waiting for 1 second to give time to the publisher to increase the policy access count
@@ -173,20 +173,20 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
         String consumerPid = createNewId();
         String providerPid = createNewId();
 
-        TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
+        TransferProcess transferProcessCompleted = TransferProcess.Builder.newInstance()
                 .consumerPid(consumerPid)
                 .providerPid(providerPid)
                 .agreementId(agreement.getId())
                 .callbackAddress(wiremock.baseUrl())
                 .isDownloaded(true)
-                .state(TransferState.STARTED)
+                .state(TransferState.COMPLETED)
                 .build();
-        transferProcessRepository.save(transferProcessStarted);
+        transferProcessRepository.save(transferProcessCompleted);
 
         // send request
         final ResultActions result =
                 mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/view")
+                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessCompleted.getId() + "/view")
                                 .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isBadRequest())

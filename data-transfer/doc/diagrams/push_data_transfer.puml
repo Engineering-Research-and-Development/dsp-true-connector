@@ -67,14 +67,22 @@ p->cs3: start data transfer to CONSUMER S3 bucket
 
 == Provider sends data ==
 
-p->p: provider initiates data push
-p->p: checks TransferProcess if state is STARTED
-p->p: for consumerPid and providerPid get agreementId (TransferRequestMessage)
-p->p: validate if agreement is valid
-p->p: create S3AsyncClient from DataAddress
-p->ps3: creates presignedURL to download the data from S3 bucket
-ps3->p: download data using presignedURL
-p->cs3: upload data to consumer S3 bucket
+  p->p: provider initiates data push
+group Provider pre-send checks
+  p->p: checks TransferProcess if state is STARTED
+  p->p: for consumerPid and providerPid get agreementId (TransferRequestMessage)
+  p->p: validate if agreement is valid
+end group
+
+p->ps3: Request presigned URL for source object (createPresignedUrl)
+ps3->p: Return presignedUrl
+note right of p
+Provider uses the presignedUrl to download the source bytes
+(this is the critical step for PUSH transfers)
+end note
+  p->p: create S3AsyncClient from DataAddress which contains the temporary S3 user credentials created by the consumer
+ps3->p: Download object using presignedUrl (HTTP GET)
+p->cs3: Upload object to consumer S3 bucket (PUT/Multipart) using S3AsyncClient
 
 == TransferCompletionMessage ==
 
