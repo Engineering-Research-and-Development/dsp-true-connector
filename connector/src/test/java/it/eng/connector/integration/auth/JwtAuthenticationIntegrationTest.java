@@ -16,8 +16,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.ResultActions;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -178,7 +176,7 @@ public class JwtAuthenticationIntegrationTest extends BaseIntegrationTest {
     void testJwtTokenRefreshFlow() throws Exception {
         // Create a test user
         User user = createTestUser(TEST_EMAIL, Role.ROLE_USER);
-        String accessToken = getAccessTokenForUser(user);
+        getAccessTokenForUser(user);
 
         // Get refresh token by logging in
         LoginRequest loginRequest = new LoginRequest();
@@ -280,6 +278,24 @@ public class JwtAuthenticationIntegrationTest extends BaseIntegrationTest {
 
         String loginResponse = loginResult.andReturn().getResponse().getContentAsString();
         JsonNode loginJson = objectMapper.readTree(loginResponse);
-        return loginJson.get("data").get("accessToken").asText();
+        
+        // Check if login was successful
+        if (!loginJson.get("success").asBoolean()) {
+            String errorMessage = loginJson.has("message") ? loginJson.get("message").asText() : "Login failed";
+            throw new RuntimeException("Login failed for user " + user.getEmail() + ": " + errorMessage);
+        }
+        
+        // Check if data field exists and contains accessToken
+        JsonNode dataNode = loginJson.get("data");
+        if (dataNode == null || dataNode.isNull()) {
+            throw new RuntimeException("Login response missing data field for user " + user.getEmail());
+        }
+        
+        JsonNode accessTokenNode = dataNode.get("accessToken");
+        if (accessTokenNode == null || accessTokenNode.isNull()) {
+            throw new RuntimeException("Login response missing accessToken for user " + user.getEmail());
+        }
+        
+        return accessTokenNode.asText();
     }
 }

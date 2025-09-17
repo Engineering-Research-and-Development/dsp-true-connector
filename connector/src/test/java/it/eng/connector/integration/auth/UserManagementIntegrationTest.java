@@ -191,9 +191,8 @@ public class UserManagementIntegrationTest extends BaseIntegrationTest {
     @Test
     @DisplayName("User cannot access other users' profiles")
     void testUserCannotAccessOtherUsersProfiles() throws Exception {
-        // Create two users
+        // Create a user
         User user1 = createTestUser(USER_EMAIL, Role.ROLE_USER);
-        User user2 = createTestUser("user2@example.com", Role.ROLE_USER);
         String user1Token = getAccessTokenForUser(user1);
 
         // User1 tries to access user2's profile (this should not be possible through the API)
@@ -275,6 +274,24 @@ public class UserManagementIntegrationTest extends BaseIntegrationTest {
 
         String loginResponse = loginResult.andReturn().getResponse().getContentAsString();
         JsonNode loginJson = objectMapper.readTree(loginResponse);
-        return loginJson.get("data").get("accessToken").asText();
+        
+        // Check if login was successful
+        if (!loginJson.get("success").asBoolean()) {
+            String errorMessage = loginJson.has("message") ? loginJson.get("message").asText() : "Login failed";
+            throw new RuntimeException("Login failed for user " + user.getEmail() + ": " + errorMessage);
+        }
+        
+        // Check if data field exists and contains accessToken
+        JsonNode dataNode = loginJson.get("data");
+        if (dataNode == null || dataNode.isNull()) {
+            throw new RuntimeException("Login response missing data field for user " + user.getEmail());
+        }
+        
+        JsonNode accessTokenNode = dataNode.get("accessToken");
+        if (accessTokenNode == null || accessTokenNode.isNull()) {
+            throw new RuntimeException("Login response missing accessToken for user " + user.getEmail());
+        }
+        
+        return accessTokenNode.asText();
     }
 }
