@@ -1026,7 +1026,16 @@
 		}
 	],
 	"variable": [
-
+		{
+			"key": "CONSUMER",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "PROVIDER",
+			"value": "http://localhost:8090",
+			"type": "string"
+		},
 		{
 			"key": "CONSUMER_API_ENDPOINT",
 			"value": "http://localhost:8080/api/v1/negotiations",
