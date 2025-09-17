@@ -83,7 +83,7 @@ public class WebSecurityConfig {
     }
 
     @Bean
-    ApiJwtAuthenticationFilter apiJwtAuthenticationFilter(JwtProcessingService jwtProcessingService) {
+    ApiJwtAuthenticationFilter apiJwtAuthenticationFilter() {
         return new ApiJwtAuthenticationFilter(jwtProcessingService);
     }
 
@@ -184,7 +184,7 @@ public class WebSecurityConfig {
                             .anyRequest().authenticated();
                 })
                 .addFilterBefore(protocolEndpointsAuthenticationFilter(applicationPropertiesService), UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(apiJwtAuthenticationFilter(jwtProcessingService), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(apiJwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter(http), UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(basicAuthenticationFilter(), JwtAuthenticationFilter.class)
                 // Configure different authentication entry points for API vs Protocol endpoints
