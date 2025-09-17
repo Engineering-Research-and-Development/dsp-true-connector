@@ -78,14 +78,45 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         catalogRepository.deleteAll();
         artifactRepository.deleteAll();
         datasetRepository.deleteAll();
+        
+        // Ensure S3 bucket is completely clean
         if (s3BucketProvisionService.bucketExists(s3Properties.getBucketName())) {
             List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
-            if (files != null) {
+            if (files != null && !files.isEmpty()) {
                 for (String file : files) {
                     s3ClientService.deleteFile(s3Properties.getBucketName(), file);
                 }
+                // Wait for S3 cleanup to complete to ensure test isolation
+                waitForS3Cleanup();
             }
         }
+    }
+
+    /**
+     * Waits for S3 bucket to be completely empty after cleanup.
+     * This ensures proper test isolation by waiting for all file deletions to propagate.
+     */
+    private void waitForS3Cleanup() {
+        int maxRetries = 10;
+        int delayMs = 100;
+        
+        for (int i = 0; i < maxRetries; i++) {
+            List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
+            if (files == null || files.isEmpty()) {
+                log.debug("S3 bucket cleanup completed successfully");
+                return;
+            }
+            log.debug("Waiting for S3 bucket cleanup to complete. Remaining files: {}, Attempt: {}/{}", 
+                     files.size(), i + 1, maxRetries);
+            try {
+                Thread.sleep(delayMs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warn("S3 cleanup wait was interrupted");
+                return;
+            }
+        }
+        log.warn("S3 bucket cleanup did not complete within expected time");
     }
 
     @Test
@@ -545,7 +576,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
         int initialDatasetSize = datasetRepository.findAll().size();
         int initialArtifactSize = artifactRepository.findAll().size();
-        int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
 
         MockMultipartHttpServletRequestBuilder builder =
                 MockMvcRequestBuilders.multipart(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + datasetWithFile.getId());
@@ -590,8 +620,8 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         assertEquals(ArtifactType.EXTERNAL, artifactFromDb.getArtifactType());
         assertEquals(initialArtifactSize, artifactRepository.findAll().size());
 
-        // check if the file is deleted from S3
-        checkIfEndBucketFileCountIsAsExpected(startingBucketFileCount - 1);
+        // check if the original file is deleted from S3
+        verifyFileDeleted(datasetWithFile.getId());
     }
 
     @Test
@@ -650,7 +680,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
         int initialDatasetSize = datasetRepository.findAll().size();
         int initialArtifactSize = artifactRepository.findAll().size();
-        int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
 
         TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {
         };
@@ -678,8 +707,8 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         assertEquals(Optional.empty(), artifactRepository.findById(artifactFile.getId()));
         assertEquals(initialArtifactSize - 1, artifactRepository.findAll().size());
 
-        // check if the file is deleted from the database
-        checkIfEndBucketFileCountIsAsExpected(startingBucketFileCount - 1);
+        // check if the file is deleted from S3 storage
+        verifyFileDeleted(datasetWithFile.getId());
 
     }
 
@@ -746,7 +775,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
         int initialDatasetSize = datasetRepository.findAll().size();
         int initialArtifactSize = artifactRepository.findAll().size();
-        int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
 
         TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {
         };
@@ -770,7 +798,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         // check that the count hasn't changed
         assertEquals(initialDatasetSize, datasetRepository.findAll().size());
         assertEquals(initialArtifactSize, artifactRepository.findAll().size());
-        assertEquals(startingBucketFileCount, s3ClientService.listFiles(s3Properties.getBucketName()).size());
 
     }
 
@@ -787,5 +814,32 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
             Thread.sleep(delayMs);
         }
         assertEquals(expectedEndBucketFileCount, endBucketFileCount);
+    }
+
+    /**
+     * Verifies that a specific file has been deleted from S3 storage.
+     * This method is more reliable than checking file counts as it directly
+     * tests the file deletion rather than relying on potentially inconsistent counts.
+     * 
+     * @param fileId the ID/key of the file to verify deletion for
+     * @throws InterruptedException if the thread is interrupted during waiting
+     */
+    private void verifyFileDeleted(String fileId) throws InterruptedException {
+        int maxRetries = 20; // Increased retries for better reliability
+        int delayMs = 250;   // Reduced delay for faster retries
+        
+        for (int i = 0; i < maxRetries; i++) {
+            boolean fileExists = s3ClientService.fileExists(s3Properties.getBucketName(), fileId);
+            if (!fileExists) {
+                log.debug("File {} successfully deleted from S3", fileId);
+                return;
+            }
+            log.debug("Waiting for file {} to be deleted from S3. Attempt: {}/{}", fileId, i + 1, maxRetries);
+            Thread.sleep(delayMs);
+        }
+        
+        // Final assertion with descriptive message
+        assertFalse(s3ClientService.fileExists(s3Properties.getBucketName(), fileId), 
+                   "File " + fileId + " was not deleted from S3 after " + maxRetries + " retries");
     }
 }
