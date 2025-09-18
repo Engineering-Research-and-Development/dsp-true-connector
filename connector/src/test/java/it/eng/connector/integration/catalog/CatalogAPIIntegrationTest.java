@@ -10,7 +10,6 @@ import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
 import org.junit.jupiter.api.AfterEach;
@@ -153,7 +152,7 @@ public class CatalogAPIIntegrationTest extends BaseIntegrationTest {
     @DisplayName("Get catalog by ID - success")
     public void getCatalogById_success() throws Exception {
         final ResultActions result = mockMvc.perform(
-                authenticatedGet(ApiEndpoints.CATALOG_CATALOGS_V1 + "/" + catalog.getId(), TestUtil.API_USER)
+                adminGet(ApiEndpoints.CATALOG_CATALOGS_V1 + "/" + catalog.getId())
                         .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isOk())
@@ -174,7 +173,7 @@ public class CatalogAPIIntegrationTest extends BaseIntegrationTest {
     @DisplayName("Get API catalog - success")
     public void getAllCatalogs_success() throws Exception {
         final ResultActions result = mockMvc.perform(
-                authenticatedGet(ApiEndpoints.CATALOG_CATALOGS_V1, TestUtil.API_USER)
+                adminGet(ApiEndpoints.CATALOG_CATALOGS_V1)
                         .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isOk())
@@ -197,7 +196,7 @@ public class CatalogAPIIntegrationTest extends BaseIntegrationTest {
         String catalogJson = CatalogSerializer.serializePlain(newCatalog);
 
         final ResultActions result = mockMvc.perform(
-                authenticatedPost(ApiEndpoints.CATALOG_CATALOGS_V1, TestUtil.API_USER)
+                adminPost(ApiEndpoints.CATALOG_CATALOGS_V1)
                         .content(catalogJson)
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -221,7 +220,7 @@ public class CatalogAPIIntegrationTest extends BaseIntegrationTest {
         String catalogJson = CatalogSerializer.serializePlain(newCatalog);
 
         final ResultActions result = mockMvc.perform(
-                authenticatedPut(ApiEndpoints.CATALOG_CATALOGS_V1 + "/" + catalog.getId(), TestUtil.API_USER)
+                adminPut(ApiEndpoints.CATALOG_CATALOGS_V1 + "/" + catalog.getId())
                         .content(catalogJson)
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -243,7 +242,7 @@ public class CatalogAPIIntegrationTest extends BaseIntegrationTest {
     @DisplayName("Delete catalog - success")
     public void deleteCatalog_success() throws Exception {
         final ResultActions result = mockMvc.perform(
-                authenticatedDelete(ApiEndpoints.CATALOG_CATALOGS_V1 + "/" + catalog.getId(), TestUtil.API_USER)
+                adminDelete(ApiEndpoints.CATALOG_CATALOGS_V1 + "/" + catalog.getId())
                         .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isOk())

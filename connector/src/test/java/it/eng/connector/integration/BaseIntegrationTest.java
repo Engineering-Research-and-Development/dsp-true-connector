@@ -49,7 +49,6 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -327,7 +326,7 @@ public class BaseIntegrationTest {
                 mockMvc.perform(
                         get(ApiEndpoints.NEGOTIATION_V1)
                                 .param("role", IConstants.ROLE_CONSUMER)
-                                .with(user(TestUtil.CONNECTOR_USER).password("password").roles("ADMIN"))
+                                .headers(adminHeaders())
                                 .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isOk())
@@ -342,7 +341,7 @@ public class BaseIntegrationTest {
         final ResultActions result =
                 mockMvc.perform(
                         get(ApiEndpoints.NEGOTIATION_V1 + "/" + contractNegotiationId)
-                                .with(user(TestUtil.CONNECTOR_USER).password("password").roles("ADMIN"))
+                                .headers(adminHeaders())
                                 .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isOk())
@@ -355,7 +354,7 @@ public class BaseIntegrationTest {
         final ResultActions result =
                 mockMvc.perform(
                         get(ApiEndpoints.NEGOTIATION_V1)
-                                .with(user(TestUtil.CONNECTOR_USER).password("password").roles("ADMIN"))
+                                .headers(adminHeaders())
                                 .param("consumerPid", consumerPid)
                                 .param("providerPid", providerPid)
                                 .contentType(MediaType.APPLICATION_JSON));

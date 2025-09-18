@@ -10,7 +10,6 @@ import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.service.DatasetService;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.negotiation.model.*;
@@ -163,7 +162,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         // send request
         final ResultActions result =
                 mockMvc.perform(
-                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/download", TestUtil.API_USER)
+                        adminGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/download")
                                 .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isAccepted())
@@ -283,7 +282,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         // send request
         final ResultActions result =
                 mockMvc.perform(
-                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/download", TestUtil.API_USER)
+                        adminGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/download")
                                 .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isBadRequest());
@@ -359,7 +358,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         // send request
         final ResultActions result =
                 mockMvc.perform(
-                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/download", TestUtil.API_USER)
+                        adminGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/download")
                                 .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isAccepted())
@@ -426,7 +425,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         // send request
         final ResultActions result =
                 mockMvc.perform(
-                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/download", TestUtil.API_USER)
+                        adminGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/download")
                                 .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isAccepted())

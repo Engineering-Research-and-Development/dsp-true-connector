@@ -30,21 +30,7 @@ public class TestUtil {
 	public static final String PROVIDER_PID = "urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aab";
 	public static final String CONSUMER_PID = "urn:uuid:32541fe6-c580-409e-85a8-8e9a32fbe833";
 	
-	// === BACKWARD COMPATIBILITY ===
-	public static final String API_USER = ADMIN_USER;
-	
-	// Legacy User object for backward compatibility
-	public static final User USER = User.builder()
-			.id(ADMIN_USER_ID)
-			.firstName("Admin")
-			.lastName("Role")
-			.email(ADMIN_USER)
-			.password("$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q")
-			.enabled(true)
-			.expired(false)
-			.locked(false)
-			.role(Role.ROLE_ADMIN)
-			.build();
+	// (removed legacy backward-compatibility constants and User object)
 
 	// === USER CREATION METHODS ===
 	

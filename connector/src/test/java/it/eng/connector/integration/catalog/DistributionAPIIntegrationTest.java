@@ -31,7 +31,6 @@ import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
 
@@ -121,7 +120,7 @@ public class DistributionAPIIntegrationTest extends BaseIntegrationTest {
     public void getDistributionById_success() throws Exception {
         // Test getting a distribution by ID
         final ResultActions result = mockMvc.perform(
-                authenticatedGet(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1 + "/" + distribution.getId(), TestUtil.API_USER)
+                adminGet(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1 + "/" + distribution.getId())
                         .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isOk())
@@ -146,7 +145,7 @@ public class DistributionAPIIntegrationTest extends BaseIntegrationTest {
     public void getDistributionById_notFound() throws Exception {
         // Test getting a non-existent distribution
         final ResultActions result = mockMvc.perform(
-                authenticatedGet(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1 + "/non-existent-id", TestUtil.API_USER)
+                adminGet(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1 + "/non-existent-id")
                         .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isNotFound())
@@ -163,7 +162,7 @@ public class DistributionAPIIntegrationTest extends BaseIntegrationTest {
     public void getAllDistributions_success() throws Exception {
         // Test getting all distributions
         final ResultActions result = mockMvc.perform(
-                authenticatedGet(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1, TestUtil.API_USER)
+                adminGet(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1)
                         .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isOk())
@@ -202,7 +201,7 @@ public class DistributionAPIIntegrationTest extends BaseIntegrationTest {
         String distributionJson = CatalogSerializer.serializePlain(newDistribution);
 
         final ResultActions result = mockMvc.perform(
-                authenticatedPost(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1, TestUtil.API_USER)
+                adminPost(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1)
                         .content(distributionJson)
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -230,7 +229,7 @@ public class DistributionAPIIntegrationTest extends BaseIntegrationTest {
         String invalidJson = "{\"invalid\": \"data\"}";
 
         final ResultActions result = mockMvc.perform(
-                authenticatedPost(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1, TestUtil.API_USER)
+                adminPost(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1)
                         .content(invalidJson)
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -251,7 +250,7 @@ public class DistributionAPIIntegrationTest extends BaseIntegrationTest {
         String distributionJson = CatalogSerializer.serializePlain(CatalogMockObjectUtil.DISTRIBUTION_FOR_UPDATE);
 
         final ResultActions result = mockMvc.perform(
-                authenticatedPut(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1 + "/" + distribution.getId(), TestUtil.API_USER)
+                adminPut(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1 + "/" + distribution.getId())
                         .content(distributionJson)
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -280,7 +279,7 @@ public class DistributionAPIIntegrationTest extends BaseIntegrationTest {
         String distributionJson = CatalogSerializer.serializePlain(updatedDistribution);
 
         final ResultActions result = mockMvc.perform(
-                authenticatedPut(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1 + "/non-existent-id", TestUtil.API_USER)
+                adminPut(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1 + "/non-existent-id")
                         .content(distributionJson)
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -298,7 +297,7 @@ public class DistributionAPIIntegrationTest extends BaseIntegrationTest {
     public void deleteDistribution_success() throws Exception {
         // Test deleting an existing distribution
         final ResultActions result = mockMvc.perform(
-                authenticatedDelete(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1 + "/" + distribution.getId(), TestUtil.API_USER)
+                adminDelete(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1 + "/" + distribution.getId())
                         .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isOk())
@@ -321,7 +320,7 @@ public class DistributionAPIIntegrationTest extends BaseIntegrationTest {
     public void deleteDistribution_notFound() throws Exception {
         // Test deleting a non-existent distribution
         final ResultActions result = mockMvc.perform(
-                authenticatedDelete(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1 + "/non-existent-id", TestUtil.API_USER)
+                adminDelete(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1 + "/non-existent-id")
                         .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isNotFound())

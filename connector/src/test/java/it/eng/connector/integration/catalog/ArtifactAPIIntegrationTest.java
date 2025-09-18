@@ -23,7 +23,6 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
@@ -68,7 +67,7 @@ public class ArtifactAPIIntegrationTest extends BaseIntegrationTest {
         TypeReference<GenericApiResponse<List<Artifact>>> typeRef = new TypeReference<GenericApiResponse<List<Artifact>>>() {};
 
         MvcResult resultList = mockMvc.perform(
-                        authenticatedGet(ApiEndpoints.CATALOG_ARTIFACT_V1, TestUtil.API_USER))
+                        adminGet(ApiEndpoints.CATALOG_ARTIFACT_V1))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -80,7 +79,7 @@ public class ArtifactAPIIntegrationTest extends BaseIntegrationTest {
         assertTrue(apiRespList.getData().size() == 2);
 
         MvcResult resultSingle = mockMvc.perform(
-                        authenticatedGet(ApiEndpoints.CATALOG_ARTIFACT_V1 + "/" + artifactFile.getId(), TestUtil.API_USER).contentType(MediaType.APPLICATION_JSON))
+                        adminGet(ApiEndpoints.CATALOG_ARTIFACT_V1 + "/" + artifactFile.getId()).contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -96,7 +95,7 @@ public class ArtifactAPIIntegrationTest extends BaseIntegrationTest {
         //fail scenario
 
         MvcResult resultFail = mockMvc.perform(
-                        authenticatedGet(ApiEndpoints.CATALOG_ARTIFACT_V1 + "/" + "1", TestUtil.API_USER).contentType(MediaType.APPLICATION_JSON))
+                        adminGet(ApiEndpoints.CATALOG_ARTIFACT_V1 + "/" + "1").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andReturn();
 

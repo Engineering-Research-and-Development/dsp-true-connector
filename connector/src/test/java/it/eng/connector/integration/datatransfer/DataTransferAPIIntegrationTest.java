@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
@@ -65,12 +64,12 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
         transferProcessRepository.save(transferProcessStarted);
 
         mockMvc.perform(
-                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1, TestUtil.API_USER).contentType(MediaType.APPLICATION_JSON))
+                        adminGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1).contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
         MvcResult resultStarted = mockMvc.perform(
-                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId(), TestUtil.API_USER)
+                        adminGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId())
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -87,7 +86,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
         assertEquals(TransferState.STARTED, transferProcess.getState());
 
         MvcResult result = mockMvc.perform(
-                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessRequested.getId(), TestUtil.API_USER)
+                        adminGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessRequested.getId())
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -135,7 +134,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        authenticatedPost(ApiEndpoints.TRANSFER_DATATRANSFER_V1, TestUtil.API_USER)
+                        adminPost(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
                                 .content(jsonMapper.convertValue(dataTransferRequest, JsonNode.class).toString())
                                 .contentType(MediaType.APPLICATION_JSON));
 
@@ -191,7 +190,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        authenticatedPost(ApiEndpoints.TRANSFER_DATATRANSFER_V1, TestUtil.API_USER)
+                        adminPost(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
                                 .content(jsonMapper.convertValue(dataTransferRequest, JsonNode.class).toString())
                                 .contentType(MediaType.APPLICATION_JSON));
 
@@ -245,7 +244,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
         transferProcessRepository.saveAll(List.of(process1, process2, process3));
 
         MvcResult result = mockMvc.perform(
-                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1, TestUtil.API_USER)
+                        adminGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
                                 .param("datasetId", "dataset-1")
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -290,7 +289,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
         transferProcessRepository.saveAll(List.of(process1, process2));
 
         MvcResult result = mockMvc.perform(
-                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1, TestUtil.API_USER)
+                        adminGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
                                 .param("providerPid", testProviderPid)
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -332,7 +331,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
         transferProcessRepository.saveAll(List.of(process1, process2));
 
         MvcResult result = mockMvc.perform(
-                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1, TestUtil.API_USER)
+                        adminGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
                                 .param("consumerPid", testConsumerPid)
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -380,7 +379,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
         transferProcessRepository.saveAll(List.of(process1, process2, process3));
 
         MvcResult result = mockMvc.perform(
-                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1, TestUtil.API_USER)
+                        adminGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
                                 .param("datasetId", "dataset-1")
                                 .param("state", TransferState.REQUESTED.name())
                                 .param("role", IConstants.ROLE_CONSUMER)
@@ -427,7 +426,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
         transferProcessRepository.saveAll(List.of(matchingProcess, nonMatchingProcess));
 
         MvcResult result = mockMvc.perform(
-                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1, TestUtil.API_USER)
+                        adminGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
                                 .param("datasetId", "target-dataset")
                                 .param("providerPid", testProviderPid)
                                 .param("consumerPid", testConsumerPid)
@@ -464,7 +463,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
         transferProcessRepository.save(process);
 
         MvcResult result = mockMvc.perform(
-                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + process.getId(), TestUtil.API_USER)
+                        adminGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + process.getId())
                                 .param("datasetId", "different-dataset")  // Should be ignored
                                 .param("state", TransferState.COMPLETED.name())  // Should be ignored
                                 .param("role", IConstants.ROLE_PROVIDER)         // Should be ignored
@@ -502,7 +501,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
         transferProcessRepository.save(process);
 
         MvcResult result = mockMvc.perform(
-                        authenticatedGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1, TestUtil.API_USER)
+                        adminGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
                                 .param("datasetId", "non-existent-dataset")
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())

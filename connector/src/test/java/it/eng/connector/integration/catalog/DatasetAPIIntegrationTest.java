@@ -9,7 +9,6 @@ import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
@@ -159,7 +158,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         };
 
         MvcResult resultList = mockMvc.perform(
-                        authenticatedGet(ApiEndpoints.CATALOG_DATASETS_V1, TestUtil.API_USER).contentType(MediaType.APPLICATION_JSON))
+                        adminGet(ApiEndpoints.CATALOG_DATASETS_V1).contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -196,7 +195,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         };
 
         MvcResult resultSingle = mockMvc.perform(
-                        authenticatedGet(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + datasetExternal.getId(), TestUtil.API_USER))
+                        adminGet(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + datasetExternal.getId()))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -214,7 +213,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
     @DisplayName("Dataset API - get fail")
     public void getDataset_fail() throws Exception {
         MvcResult resultFail = mockMvc.perform(
-                        authenticatedGet(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + "1", TestUtil.API_USER))
+                        adminGet(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + "1"))
                 .andExpect(status().isNotFound())
                 .andReturn();
 
@@ -255,10 +254,10 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
                 Objects.requireNonNull(CatalogSerializer.serializePlain(dataset)).getBytes());
         MockPart urlPart = new MockPart("url", CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue().getBytes());
 
-        MvcResult result = mockMvc.perform(
+                MvcResult result = mockMvc.perform(
                         multipart(ApiEndpoints.CATALOG_DATASETS_V1)
                                 .part(datasetPart).part(urlPart)
-                                .headers(createJwtHeaders(TestUtil.API_USER)))
+                                .headers(adminHeaders()))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -329,7 +328,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         MvcResult result = mockMvc.perform(
                         multipart(ApiEndpoints.CATALOG_DATASETS_V1)
                                 .file(filePart).part(datasetPart)
-                                .headers(createJwtHeaders(TestUtil.API_USER)))
+                                .headers(adminHeaders()))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -396,7 +395,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         MvcResult result = mockMvc.perform(
                         multipart(ApiEndpoints.CATALOG_DATASETS_V1)
                                 .part(datasetPart)
-                                .headers(createJwtHeaders(TestUtil.API_USER)))
+                                .headers(adminHeaders()))
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -465,7 +464,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
         MvcResult result = mockMvc.perform(
                         builder.file(filePart)
-                                .headers(createJwtHeaders(TestUtil.API_USER)))
+                                .headers(adminHeaders()))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -589,7 +588,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
         MvcResult result = mockMvc.perform(
                         builder.part(urlPart)
-                                .headers(createJwtHeaders(TestUtil.API_USER)))
+                                .headers(adminHeaders()))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -685,7 +684,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         };
 
         MvcResult result = mockMvc.perform(
-                        authenticatedDelete(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + datasetWithFile.getId(), TestUtil.API_USER))
+                        adminDelete(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + datasetWithFile.getId()))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -745,7 +744,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         };
 
         MvcResult result = mockMvc.perform(
-                        authenticatedDelete(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + dataset.getId(), TestUtil.API_USER))
+                        adminDelete(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + dataset.getId()))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -780,7 +779,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         };
 
         MvcResult result = mockMvc.perform(
-                        authenticatedDelete(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + 1, TestUtil.API_USER))
+                        adminDelete(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + 1))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();

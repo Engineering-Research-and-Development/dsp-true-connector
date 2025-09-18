@@ -8,7 +8,6 @@ import it.eng.catalog.repository.DataServiceRepository;
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
 import org.junit.jupiter.api.*;
@@ -88,7 +87,7 @@ public class DataServiceAPIIntegrationTest extends BaseIntegrationTest {
     public void getDataServiceById_success() throws Exception {
         // Test getting a data service by ID
         final ResultActions result = mockMvc.perform(
-                authenticatedGet(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/" + dataService.getId(), TestUtil.API_USER)
+                adminGet(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/" + dataService.getId())
                         .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isOk())
@@ -112,7 +111,7 @@ public class DataServiceAPIIntegrationTest extends BaseIntegrationTest {
     public void getDataServiceById_notFound() throws Exception {
         // Test getting a non-existent data service
         final ResultActions result = mockMvc.perform(
-                authenticatedGet(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/non-existent-id", TestUtil.API_USER)
+                adminGet(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/non-existent-id")
                         .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isNotFound())
@@ -129,7 +128,7 @@ public class DataServiceAPIIntegrationTest extends BaseIntegrationTest {
     public void getAllDataServices_success() throws Exception {
         // Test getting all data services
         final ResultActions result = mockMvc.perform(
-                authenticatedGet(ApiEndpoints.CATALOG_DATA_SERVICES_V1, TestUtil.API_USER)
+                adminGet(ApiEndpoints.CATALOG_DATA_SERVICES_V1)
                         .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isOk())
@@ -158,7 +157,7 @@ public class DataServiceAPIIntegrationTest extends BaseIntegrationTest {
         String dataServiceJson = CatalogSerializer.serializePlain(newDataService);
 
         final ResultActions result = mockMvc.perform(
-                authenticatedPost(ApiEndpoints.CATALOG_DATA_SERVICES_V1, TestUtil.API_USER)
+                adminPost(ApiEndpoints.CATALOG_DATA_SERVICES_V1)
                         .content(dataServiceJson)
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -189,7 +188,7 @@ public class DataServiceAPIIntegrationTest extends BaseIntegrationTest {
         String invalidJson = "{\"invalid\": \"data\"}";
 
         final ResultActions result = mockMvc.perform(
-                authenticatedPost(ApiEndpoints.CATALOG_DATA_SERVICES_V1, TestUtil.API_USER)
+                adminPost(ApiEndpoints.CATALOG_DATA_SERVICES_V1)
                         .content(invalidJson)
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -210,7 +209,7 @@ public class DataServiceAPIIntegrationTest extends BaseIntegrationTest {
         String dataServiceJson = CatalogSerializer.serializePlain(CatalogMockObjectUtil.DATA_SERVICE_FOR_UPDATE);
 
         final ResultActions result = mockMvc.perform(
-                authenticatedPut(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/" + dataService.getId(), TestUtil.API_USER)
+                adminPut(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/" + dataService.getId())
                         .content(dataServiceJson)
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -241,7 +240,7 @@ public class DataServiceAPIIntegrationTest extends BaseIntegrationTest {
         String dataServiceJson = CatalogSerializer.serializePlain(updatedDataService);
 
         final ResultActions result = mockMvc.perform(
-                authenticatedPut(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/non-existent-id", TestUtil.API_USER)
+                adminPut(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/non-existent-id")
                         .content(dataServiceJson)
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -259,7 +258,7 @@ public class DataServiceAPIIntegrationTest extends BaseIntegrationTest {
     public void deleteDataService_success() throws Exception {
         // Test deleting an existing data service
         final ResultActions result = mockMvc.perform(
-                authenticatedDelete(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/" + dataService.getId(), TestUtil.API_USER)
+                adminDelete(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/" + dataService.getId())
                         .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isOk())
@@ -284,7 +283,7 @@ public class DataServiceAPIIntegrationTest extends BaseIntegrationTest {
     public void deleteDataService_notFound() throws Exception {
         // Test deleting a non-existent data service
         final ResultActions result = mockMvc.perform(
-                authenticatedDelete(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/non-existent-id", TestUtil.API_USER)
+                adminDelete(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/non-existent-id")
                         .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isNotFound())
