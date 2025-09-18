@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.3-SNAPSHOT] - 18.09.2025.
+
+### Added
+
+- Logic for static serving /.well-known/dspace-version document
+- New properties for DSpace version document; stored in database; logic for retrieving and parsing properties
+- New set of GitHub Action that will be used to test Connector related features
+
 ## [0.5.2-SNAPSHOT] - 17.09.2025.
 
 ### Added

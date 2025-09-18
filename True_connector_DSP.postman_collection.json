@@ -1,10 +1,9 @@
 {
 	"info": {
-		"_postman_id": "b1d0623d-e1ea-4b12-82a7-cd53811193db",
+		"_postman_id": "307af2b9-83c8-4d4c-adb2-7deb397fd747",
 		"name": "True_connector_DSP",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "21815221",
-		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-b1d0623d-e1ea-4b12-82a7-cd53811193db?action=share&source=collection_link&creator=21815221"
+		"_exporter_id": "36278855"
 	},
 	"item": [
 		{
@@ -558,7 +557,7 @@
 											"key": "file",
 											"description": "File for upload",
 											"type": "file",
-											"src": "/C:/Users/davjovanov/OneDrive - Engineering Ingegneria Informatica S.p.A/D partition/E partition.7z",
+											"src": [],
 											"disabled": true
 										},
 										{
@@ -2905,6 +2904,66 @@
 							""
 						]
 					}
+				}
+			]
+		},
+		{
+			"name": "Connector",
+			"item": [
+				{
+					"name": "well.known",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {\r",
+									"    pm.expect(pm.response.code).to.equal(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response is JSON\", function () {\r",
+									"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response contains expected version and bindings\", function () {\r",
+									"    const jsonResponse = pm.response.json();\r",
+									"    pm.expect(jsonResponse).to.have.property(\"protocolVersions\").that.is.an('array').and.is.not.empty;\r",
+									"\r",
+									"    jsonResponse.protocolVersions.forEach(version => {\r",
+									"        pm.expect(version).to.have.property(\"version\", \"2024-01\");\r",
+									"        pm.expect(version).to.have.property(\"binding\").that.equals(\"HTTPS\");\r",
+									"        pm.expect(version).to.have.property(\"path\", \"/\");\r",
+									"        \r",
+									"        pm.expect(version).to.have.property(\"auth\");\r",
+									"        pm.expect(version.auth).to.have.property(\"protocol\", \"https\");\r",
+									"        pm.expect(version.auth).to.have.property(\"version\", \"2024-01\");\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{CONSUMER}}/.well-known/dspace-version",
+							"host": [
+								"{{CONSUMER}}"
+							],
+							"path": [
+								".well-known",
+								"dspace-version"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		}
