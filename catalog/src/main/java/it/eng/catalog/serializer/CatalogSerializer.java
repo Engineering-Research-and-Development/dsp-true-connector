@@ -1,11 +1,5 @@
 package it.eng.catalog.serializer;
 
-import java.lang.annotation.Annotation;
-import java.time.Instant;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -24,12 +18,7 @@ import com.fasterxml.jackson.databind.jsontype.TypeResolverBuilder;
 import com.fasterxml.jackson.databind.jsontype.impl.StdTypeResolverBuilder;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-
-import it.eng.catalog.model.Catalog;
-import it.eng.catalog.model.DataService;
-import it.eng.catalog.model.Dataset;
-import it.eng.catalog.model.Distribution;
-import it.eng.catalog.model.Offer;
+import it.eng.catalog.model.*;
 import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.serializer.InstantDeserializer;
 import it.eng.tools.serializer.InstantSerializer;
@@ -38,6 +27,12 @@ import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
 import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
+
+import java.lang.annotation.Annotation;
+import java.time.Instant;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class CatalogSerializer {
@@ -53,31 +48,31 @@ public class CatalogSerializer {
         instantConverterModule.addDeserializer(Instant.class, new InstantDeserializer());
 
         JacksonAnnotationIntrospector ignoreJsonPropertyIntrospector = new JacksonAnnotationIntrospector() {
-			private static final long serialVersionUID = 1L;
+            private static final long serialVersionUID = 1L;
 
-			@Override
+            @Override
             protected TypeResolverBuilder<?> _findTypeResolver(MapperConfig<?> config, Annotated ann, JavaType baseType) {
-				 if (!ann.hasAnnotation(JsonProperty.class)) {  // || !ann.hasAnnotation(JsonValue.class)
-	                    return super._findTypeResolver(config, ann, baseType);
-	                } else if(ann.hasAnnotation(JsonProperty.class) && ann.getName().equals("getId")) {
-	                	return super._findTypeResolver(config, ann, baseType);
-	                }
+                if (!ann.hasAnnotation(JsonProperty.class)) {  // || !ann.hasAnnotation(JsonValue.class)
+                    return super._findTypeResolver(config, ann, baseType);
+                } else if (ann.hasAnnotation(JsonProperty.class) && ann.getName().equals("getId")) {
+                    return super._findTypeResolver(config, ann, baseType);
+                }
                 return StdTypeResolverBuilder.noTypeInfoBuilder();
             }
-			
-			@Override
-			// used when converting from Java to String; must exclude JsonIgnore for ContractNegotiation.id
-			protected <A extends Annotation> A _findAnnotation(Annotated ann, Class<A> annoClass) {
-				//  annoClass == JsonValue.class - enum returned without prefix for plain
-				if ((annoClass == JsonProperty.class && !ann.getName().equals("id")) || annoClass == JsonIgnore.class 
-						|| annoClass == JsonValue.class) {
-					return null;
-				}
-				return super._findAnnotation(ann, annoClass);
-			}
-			
+
+            @Override
+            // used when converting from Java to String; must exclude JsonIgnore for ContractNegotiation.id
+            protected <A extends Annotation> A _findAnnotation(Annotated ann, Class<A> annoClass) {
+                //  annoClass == JsonValue.class - enum returned without prefix for plain
+                if ((annoClass == JsonProperty.class && !ann.getName().equals("id")) || annoClass == JsonIgnore.class
+                        || annoClass == JsonValue.class) {
+                    return null;
+                }
+                return super._findAnnotation(ann, annoClass);
+            }
+
         };
-        
+
         jsonMapperPlain = JsonMapper.builder()
                 .configure(SerializationFeature.INDENT_OUTPUT, true)
                 .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
@@ -150,17 +145,31 @@ public class CatalogSerializer {
         }
         return null;
     }
-    
+
     /**
      * Converts json string (plain) to java object.
      *
-     * @param <T>             Type of class
+     * @param <T>      Type of class
      * @param jsonNode jsonNode
      * @param clazz
      * @return Java object converted from json
      */
     public static <T> T deserializePlain(JsonNode jsonNode, Class<T> clazz) {
-            T obj = jsonMapperPlain.convertValue(jsonNode, clazz);
+        T obj = jsonMapperPlain.convertValue(jsonNode, clazz);
+        Set<ConstraintViolation<T>> violations = validator.validate(obj);
+        if (violations.isEmpty()) {
+            return obj;
+        }
+        throw new ValidationException(
+                violations
+                        .stream()
+                        .map(v -> v.getPropertyPath() + " " + v.getMessage())
+                        .collect(Collectors.joining(",")));
+    }
+
+    public static <T> T deserializePlain(String jsonStringPlain, TypeReference<T> typeRef) {
+        try {
+            T obj = jsonMapperPlain.readValue(jsonStringPlain, typeRef);
             Set<ConstraintViolation<T>> violations = validator.validate(obj);
             if (violations.isEmpty()) {
                 return obj;
@@ -170,25 +179,11 @@ public class CatalogSerializer {
                             .stream()
                             .map(v -> v.getPropertyPath() + " " + v.getMessage())
                             .collect(Collectors.joining(",")));
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
-    
-    public static <T> T deserializePlain(String jsonStringPlain, TypeReference<T> typeRef) {
-		try {
-			T obj = jsonMapperPlain.readValue(jsonStringPlain, typeRef);
-			Set<ConstraintViolation<T>> violations = validator.validate(obj);
-			if(violations.isEmpty()) {
-				return obj;
-			}
-			throw new ValidationException(
-					violations
-					.stream()
-					.map(v -> v.getPropertyPath() + " " + v.getMessage())
-					.collect(Collectors.joining(",")));
-		} catch (JsonProcessingException e) {
-			e.printStackTrace();
-		}
-		return null;
-	}
 
     /**
      * Serialize java object to json compliant with Dataspace protocol (contains prefixes for json fields).
@@ -221,9 +216,9 @@ public class CatalogSerializer {
      * Performs validation for @context and @type before converting to java
      * Enforce validation for mandatory fields
      *
-     * @param <T> Type of class to deserialize
+     * @param <T>      Type of class to deserialize
      * @param jsonNode JsonNode to deserialize
-     * @param clazz Class to deserialzie
+     * @param clazz    Class to deserialzie
      * @return Java object
      */
     public static <T> T deserializeProtocol(JsonNode jsonNode, Class<T> clazz) {
@@ -239,7 +234,7 @@ public class CatalogSerializer {
                         .map(v -> v.getPropertyPath() + " " + v.getMessage())
                         .collect(Collectors.joining(",")));
     }
-    
+
     public static <T> T deserializeProtocol(String jsonStringPlain, Class<T> clazz) {
         try {
             T obj = jsonMapper.readValue(jsonStringPlain, clazz);
@@ -261,28 +256,28 @@ public class CatalogSerializer {
     /**
      * Checks for @context and @type if present and if values are correct.
      *
-     * @param <T> typed class
+     * @param <T>      typed class
      * @param jsonNode JsonNode
-     * @param clazz Class to check
+     * @param clazz    Class to check
      */
     private static <T> void validateProtocol(JsonNode jsonNode, Class<T> clazz) {
         try {
             Objects.requireNonNull(jsonNode.get(DSpaceConstants.TYPE));
-            if(clazz.equals(Offer.class)) {
-				if(!Objects.equals(DSpaceConstants.ODRL + clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
-					throw new ValidationException("@type field not correct, expected "+ DSpaceConstants.ODRL + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
-				}
-			}  else {
-				if (clazz.equals(Catalog.class) || clazz.equals(Dataset.class) || clazz.equals(DataService.class)) {
-					if (!Objects.equals(DSpaceConstants.DCAT + clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
-						throw new ValidationException("@type field not correct, expected " + DSpaceConstants.DSPACE + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
-					}
-				} else {
-					if (!Objects.equals(DSpaceConstants.DSPACE + clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
-						throw new ValidationException("@type field not correct, expected " + DSpaceConstants.DSPACE + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
-					}
-				}
-			}
+            if (clazz.equals(Offer.class)) {
+                if (!Objects.equals(DSpaceConstants.ODRL + clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
+                    throw new ValidationException("@type field not correct, expected " + DSpaceConstants.ODRL + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
+                }
+            } else {
+                if (clazz.equals(Catalog.class) || clazz.equals(Dataset.class) || clazz.equals(DataService.class)) {
+                    if (!Objects.equals(DSpaceConstants.DCAT + clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
+                        throw new ValidationException("@type field not correct, expected " + DSpaceConstants.DCAT + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
+                    }
+                } else {
+                    if (!Objects.equals(DSpaceConstants.DSPACE + clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
+                        throw new ValidationException("@type field not correct, expected " + DSpaceConstants.DSPACE + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
+                    }
+                }
+            }
             //if(!(Distribution.class.isInstance(clazz) || DataService.class.isInstance(clazz))) {
             //if(!(clazz.isInstance(Distribution.class) || clazz.isInstance(DataService.class))) {
             // skip context check if not one of following
