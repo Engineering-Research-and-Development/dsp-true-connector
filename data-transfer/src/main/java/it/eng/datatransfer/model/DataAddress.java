@@ -1,24 +1,22 @@
 package it.eng.datatransfer.model;
 
-import java.io.Serializable;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
-import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.io.Serializable;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Getter
 @JsonDeserialize(builder = DataAddress.Builder.class)
@@ -27,11 +25,9 @@ public class DataAddress implements Serializable {
 
 	private static final long serialVersionUID = -2851504722128056767L;
 
-	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_ENDPOINT_TYPE)
 	private String endpointType;
 	
-	@NotNull
 	@JsonProperty(DSpaceConstants.DSPACE_ENDPOINT)
 	private String endpoint;
 	

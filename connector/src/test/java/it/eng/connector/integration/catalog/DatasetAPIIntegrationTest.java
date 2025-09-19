@@ -38,10 +38,7 @@ import org.wiremock.spring.InjectWireMock;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -458,6 +455,8 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
             }
         });
 
+        Thread.sleep(2000); // wait for S3 finishing any pending operations
+
         int initialDatasetSize = datasetRepository.findAll().size();
         int initialArtifactSize = artifactRepository.findAll().size();
         int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
@@ -536,9 +535,12 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
                 .filename(file.getOriginalFilename())
                 .build();
 
+        Map<String, String> destinationS3Properties = createS3EndpointProperties(dataset.getId());
+
         try {
-            s3ClientService.uploadFile(file.getInputStream(), s3Properties.getBucketName(), dataset.getId(),
-                    file.getContentType(), contentDisposition.toString());
+            s3ClientService.uploadFile(file.getInputStream(), destinationS3Properties,
+                            file.getContentType(), contentDisposition.toString())
+                    .get();
         } catch (Exception e) {
             throw new Exception("File storing aborted, " + e.getLocalizedMessage());
         }
@@ -572,6 +574,8 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
         TypeReference<GenericApiResponse<Dataset>> typeRef = new TypeReference<GenericApiResponse<Dataset>>() {
         };
+
+        Thread.sleep(2000); // wait for S3 finishing any pending operations
 
         int initialDatasetSize = datasetRepository.findAll().size();
         int initialArtifactSize = artifactRepository.findAll().size();
@@ -649,9 +653,12 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
                 .filename(file.getOriginalFilename())
                 .build();
 
+        Map<String, String> destinationS3Properties = createS3EndpointProperties(dataset.getId());
+
         try {
-            s3ClientService.uploadFile(file.getInputStream(), s3Properties.getBucketName(), dataset.getId(),
-                    file.getContentType(), contentDisposition.toString());
+            s3ClientService.uploadFile(file.getInputStream(), destinationS3Properties,
+                            file.getContentType(), contentDisposition.toString())
+                    .get();
         } catch (Exception e) {
             throw new Exception("File storing aborted, " + e.getLocalizedMessage());
         }
@@ -676,6 +683,8 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         artifactRepository.save(artifactFile);
         datasetRepository.save(datasetWithFile);
         catalogRepository.save(catalog);
+
+        Thread.sleep(2000); // wait for file to be stored
 
         int initialDatasetSize = datasetRepository.findAll().size();
         int initialArtifactSize = artifactRepository.findAll().size();

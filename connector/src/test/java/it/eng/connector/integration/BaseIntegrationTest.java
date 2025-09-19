@@ -19,6 +19,8 @@ import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.IConstants;
+import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.serializer.InstantDeserializer;
 import it.eng.tools.serializer.InstantSerializer;
 import lombok.extern.slf4j.Slf4j;
@@ -70,27 +72,30 @@ public class BaseIntegrationTest {
 
     @Autowired
     protected MockMvc mockMvc;
-    
+
+    @Autowired
+    protected S3Properties s3Properties;
+
     @Autowired
     protected JwtTokenService jwtTokenService;
-    
+
     @Autowired
     protected UserRepository userRepository;
-    
+
     @Autowired
     protected PasswordEncoder passwordEncoder;
-    
+
     protected JsonMapper jsonMapper;
-    
+
     // Cache for JWT tokens to avoid repeated generation
     private final Map<String, String> tokenCache = new HashMap<>();
 
     protected String createNewId() {
         return "urn:uuid:" + UUID.randomUUID().toString();
     }
-    
+
     // ===== INTEGRATION TEST DATA SETUP =====
-    
+
     /**
      * Common test data constants for integration tests
      */
@@ -98,20 +103,20 @@ public class BaseIntegrationTest {
     protected static final String TEST_PASSWORD = "Test123!";
     protected static final String TEST_FIRST_NAME = "Integration";
     protected static final String TEST_LAST_NAME = "Test";
-    
+
     /**
      * Create and save a test user with the specified role
-     * 
+     *
      * @param role the role for the user
      * @return the created and saved User
      */
     protected User createAndSaveTestUser(Role role) {
         return createAndSaveTestUser(role, TEST_EMAIL, TEST_PASSWORD);
     }
-    
+
     /**
      * Create and save a test user with the specified role and credentials
-     * 
+     *
      * @param role the role for the user
      * @param email the email for the user
      * @param password the password for the user
@@ -122,43 +127,43 @@ public class BaseIntegrationTest {
         user.setPassword(passwordEncoder.encode(password));
         return userRepository.save(user);
     }
-    
+
     /**
      * Create and save an admin test user
-     * 
+     *
      * @return the created and saved admin User
      */
     protected User createAndSaveAdminUser() {
         return createAndSaveTestUser(Role.ROLE_ADMIN);
     }
-    
+
     /**
      * Create and save a regular test user
-     * 
+     *
      * @return the created and saved regular User
      */
     protected User createAndSaveRegularUser() {
         return createAndSaveTestUser(Role.ROLE_USER);
     }
-    
+
     /**
      * Create and save a connector test user
-     * 
+     *
      * @return the created and saved connector User
      */
     protected User createAndSaveConnectorUser() {
         return createAndSaveTestUser(Role.ROLE_CONNECTOR);
     }
-    
+
     /**
      * Clean up test users by email
-     * 
+     *
      * @param email the email of the user to delete
      */
     protected void cleanupTestUser(String email) {
         userRepository.findByEmail(email).ifPresent(userRepository::delete);
     }
-    
+
     /**
      * Clean up all test users created during integration tests
      */
@@ -167,13 +172,13 @@ public class BaseIntegrationTest {
         userRepository.findByEmail(TestUtil.TEST_EMAIL).ifPresent(userRepository::delete);
         // Add any other test emails that might be used
     }
-    
+
     // ===== JWT Authentication Utilities =====
-    
+
     /**
      * Generate JWT token for the given user email.
      * Uses caching to avoid repeated token generation for the same user.
-     * 
+     *
      * @param userEmail the email of the user to generate token for
      * @return JWT token string
      * @throws RuntimeException if user not found
@@ -185,20 +190,20 @@ public class BaseIntegrationTest {
             List<User> users = userRepository.findAll().stream()
                     .filter(u -> email.equals(u.getEmail()) && u.isEnabled())
                     .collect(Collectors.toList());
-            
+
             if (users.isEmpty()) {
                 throw new RuntimeException("Test user not found: " + email);
             }
-            
+
             // Use the first enabled user found
             User user = users.get(0);
             return jwtTokenService.generateAccessToken(user);
         });
     }
-    
+
     /**
      * Create HTTP headers with JWT authentication for the given user email.
-     * 
+     *
      * @param userEmail the email of the user to authenticate as
      * @return HttpHeaders with Authorization header set
      */
@@ -207,39 +212,39 @@ public class BaseIntegrationTest {
         headers.set(HttpHeaders.AUTHORIZATION, "Bearer " + getJwtToken(userEmail));
         return headers;
     }
-    
+
     /**
      * Convenience method to get JWT headers for admin user.
-     * 
+     *
      * @return HttpHeaders for admin authentication
      */
     protected HttpHeaders adminHeaders() {
         return createJwtHeaders(TestUtil.ADMIN_USER);
     }
-    
+
     /**
      * Convenience method to get JWT headers for regular user.
-     * 
+     *
      * @return HttpHeaders for user authentication
      */
     protected HttpHeaders userHeaders() {
         return createJwtHeaders("user@mail.com");
     }
-    
+
     /**
      * Convenience method to get JWT headers for connector user.
-     * 
+     *
      * @return HttpHeaders for connector authentication
      */
     protected HttpHeaders connectorHeaders() {
         return createJwtHeaders(TestUtil.CONNECTOR_USER);
     }
-    
+
     // ===== Authenticated Request Builders =====
-    
+
     /**
      * Create an authenticated GET request with JWT headers.
-     * 
+     *
      * @param uri the request URI
      * @param userEmail the email of the user to authenticate as
      * @return MockHttpServletRequestBuilder configured with JWT authentication
@@ -247,10 +252,10 @@ public class BaseIntegrationTest {
     protected MockHttpServletRequestBuilder authenticatedGet(String uri, String userEmail) {
         return get(uri).headers(createJwtHeaders(userEmail));
     }
-    
+
     /**
      * Create an authenticated POST request with JWT headers.
-     * 
+     *
      * @param uri the request URI
      * @param userEmail the email of the user to authenticate as
      * @return MockHttpServletRequestBuilder configured with JWT authentication
@@ -258,10 +263,10 @@ public class BaseIntegrationTest {
     protected MockHttpServletRequestBuilder authenticatedPost(String uri, String userEmail) {
         return post(uri).headers(createJwtHeaders(userEmail));
     }
-    
+
     /**
      * Create an authenticated PUT request with JWT headers.
-     * 
+     *
      * @param uri the request URI
      * @param userEmail the email of the user to authenticate as
      * @return MockHttpServletRequestBuilder configured with JWT authentication
@@ -269,10 +274,10 @@ public class BaseIntegrationTest {
     protected MockHttpServletRequestBuilder authenticatedPut(String uri, String userEmail) {
         return put(uri).headers(createJwtHeaders(userEmail));
     }
-    
+
     /**
      * Create an authenticated DELETE request with JWT headers.
-     * 
+     *
      * @param uri the request URI
      * @param userEmail the email of the user to authenticate as
      * @return MockHttpServletRequestBuilder configured with JWT authentication
@@ -280,10 +285,10 @@ public class BaseIntegrationTest {
     protected MockHttpServletRequestBuilder authenticatedDelete(String uri, String userEmail) {
         return delete(uri).headers(createJwtHeaders(userEmail));
     }
-    
+
     /**
      * Create an authenticated PATCH request with JWT headers.
-     * 
+     *
      * @param uri the request URI
      * @param userEmail the email of the user to authenticate as
      * @return MockHttpServletRequestBuilder configured with JWT authentication
@@ -374,7 +379,7 @@ public class BaseIntegrationTest {
     protected void agreementCheck(ContractNegotiation contractNegotiation) {
         assertNotNull(contractNegotiation.getAgreement());
     }
-    
+
     /**
      * Clear the JWT token cache to ensure test isolation.
      * This method should be called between tests to prevent token reuse.
@@ -382,21 +387,21 @@ public class BaseIntegrationTest {
     protected void clearTokenCache() {
         tokenCache.clear();
     }
-    
+
     // ===== INTEGRATION TEST DTO CREATION =====
-    
+
     /**
      * Create a LoginRequest for integration tests
-     * 
+     *
      * @return LoginRequest with default test credentials
      */
     protected LoginRequest createLoginRequest() {
         return TestUtil.createLoginRequest(TEST_EMAIL, TEST_PASSWORD);
     }
-    
+
     /**
      * Create a LoginRequest with custom credentials
-     * 
+     *
      * @param email the email for login
      * @param password the password for login
      * @return LoginRequest with custom credentials
@@ -404,19 +409,19 @@ public class BaseIntegrationTest {
     protected LoginRequest createLoginRequest(String email, String password) {
         return TestUtil.createLoginRequest(email, password);
     }
-    
+
     /**
      * Create a RegisterRequest for integration tests
-     * 
+     *
      * @return RegisterRequest with default test data
      */
     protected RegisterRequest createRegisterRequest() {
         return TestUtil.createRegisterRequest(TEST_FIRST_NAME, TEST_LAST_NAME, TEST_EMAIL, TEST_PASSWORD);
     }
-    
+
     /**
      * Create a RegisterRequest with custom data
-     * 
+     *
      * @param firstName the first name
      * @param lastName the last name
      * @param email the email
@@ -426,20 +431,20 @@ public class BaseIntegrationTest {
     protected RegisterRequest createRegisterRequest(String firstName, String lastName, String email, String password) {
         return TestUtil.createRegisterRequest(firstName, lastName, email, password);
     }
-    
+
     /**
      * Create a RefreshTokenRequest for integration tests
-     * 
+     *
      * @param refreshToken the refresh token
      * @return RefreshTokenRequest
      */
     protected RefreshTokenRequest createRefreshTokenRequest(String refreshToken) {
         return TestUtil.createRefreshTokenRequest(refreshToken);
     }
-    
+
     /**
      * Create a LogoutRequest for integration tests
-     * 
+     *
      * @param accessToken the access token
      * @param refreshToken the refresh token
      * @return LogoutRequest
@@ -447,12 +452,12 @@ public class BaseIntegrationTest {
     protected LogoutRequest createLogoutRequest(String accessToken, String refreshToken) {
         return TestUtil.createLogoutRequest(accessToken, refreshToken);
     }
-    
+
     // ===== ENHANCED AUTHENTICATED REQUEST BUILDERS =====
-    
+
     /**
      * Create an authenticated GET request with JSON content type
-     * 
+     *
      * @param uri the request URI
      * @param userEmail the email of the user to authenticate as
      * @return MockHttpServletRequestBuilder configured with JWT authentication and JSON content type
@@ -460,10 +465,10 @@ public class BaseIntegrationTest {
     protected MockHttpServletRequestBuilder authenticatedGetJson(String uri, String userEmail) {
         return authenticatedGet(uri, userEmail).contentType(MediaType.APPLICATION_JSON);
     }
-    
+
     /**
      * Create an authenticated POST request with JSON content type
-     * 
+     *
      * @param uri the request URI
      * @param userEmail the email of the user to authenticate as
      * @return MockHttpServletRequestBuilder configured with JWT authentication and JSON content type
@@ -471,10 +476,10 @@ public class BaseIntegrationTest {
     protected MockHttpServletRequestBuilder authenticatedPostJson(String uri, String userEmail) {
         return authenticatedPost(uri, userEmail).contentType(MediaType.APPLICATION_JSON);
     }
-    
+
     /**
      * Create an authenticated PUT request with JSON content type
-     * 
+     *
      * @param uri the request URI
      * @param userEmail the email of the user to authenticate as
      * @return MockHttpServletRequestBuilder configured with JWT authentication and JSON content type
@@ -482,10 +487,10 @@ public class BaseIntegrationTest {
     protected MockHttpServletRequestBuilder authenticatedPutJson(String uri, String userEmail) {
         return authenticatedPut(uri, userEmail).contentType(MediaType.APPLICATION_JSON);
     }
-    
+
     /**
      * Create an authenticated DELETE request with JSON content type
-     * 
+     *
      * @param uri the request URI
      * @param userEmail the email of the user to authenticate as
      * @return MockHttpServletRequestBuilder configured with JWT authentication and JSON content type
@@ -493,94 +498,94 @@ public class BaseIntegrationTest {
     protected MockHttpServletRequestBuilder authenticatedDeleteJson(String uri, String userEmail) {
         return authenticatedDelete(uri, userEmail).contentType(MediaType.APPLICATION_JSON);
     }
-    
+
     // ===== CONVENIENCE METHODS FOR COMMON USER TYPES =====
-    
+
     /**
      * Create an authenticated GET request for admin user
-     * 
+     *
      * @param uri the request URI
      * @return MockHttpServletRequestBuilder configured with admin JWT authentication
      */
     protected MockHttpServletRequestBuilder adminGet(String uri) {
         return authenticatedGetJson(uri, TestUtil.ADMIN_USER);
     }
-    
+
     /**
      * Create an authenticated POST request for admin user
-     * 
+     *
      * @param uri the request URI
      * @return MockHttpServletRequestBuilder configured with admin JWT authentication
      */
     protected MockHttpServletRequestBuilder adminPost(String uri) {
         return authenticatedPostJson(uri, TestUtil.ADMIN_USER);
     }
-    
+
     /**
      * Create an authenticated PUT request for admin user
-     * 
+     *
      * @param uri the request URI
      * @return MockHttpServletRequestBuilder configured with admin JWT authentication
      */
     protected MockHttpServletRequestBuilder adminPut(String uri) {
         return authenticatedPutJson(uri, TestUtil.ADMIN_USER);
     }
-    
+
     /**
      * Create an authenticated DELETE request for admin user
-     * 
+     *
      * @param uri the request URI
      * @return MockHttpServletRequestBuilder configured with admin JWT authentication
      */
     protected MockHttpServletRequestBuilder adminDelete(String uri) {
         return authenticatedDeleteJson(uri, TestUtil.ADMIN_USER);
     }
-    
+
     /**
      * Create an authenticated GET request for regular user
-     * 
+     *
      * @param uri the request URI
      * @return MockHttpServletRequestBuilder configured with user JWT authentication
      */
     protected MockHttpServletRequestBuilder userGet(String uri) {
         return authenticatedGetJson(uri, TestUtil.REGULAR_USER);
     }
-    
+
     /**
      * Create an authenticated POST request for regular user
-     * 
+     *
      * @param uri the request URI
      * @return MockHttpServletRequestBuilder configured with user JWT authentication
      */
     protected MockHttpServletRequestBuilder userPost(String uri) {
         return authenticatedPostJson(uri, TestUtil.REGULAR_USER);
     }
-    
+
     /**
      * Create an authenticated GET request for connector user
-     * 
+     *
      * @param uri the request URI
      * @return MockHttpServletRequestBuilder configured with connector JWT authentication
      */
     protected MockHttpServletRequestBuilder connectorGet(String uri) {
         return authenticatedGetJson(uri, TestUtil.CONNECTOR_USER);
     }
-    
+
     /**
      * Create an authenticated POST request for connector user
-     * 
+     *
      * @param uri the request URI
      * @return MockHttpServletRequestBuilder configured with connector JWT authentication
      */
     protected MockHttpServletRequestBuilder connectorPost(String uri) {
         return authenticatedPostJson(uri, TestUtil.CONNECTOR_USER);
     }
-    
+
     // ===== COMMON ASSERTION HELPERS =====
-    
+
     /**
      * Assert that a response contains a successful JSON response
-     * 
+     *
      * @param result the ResultActions to assert on
      * @throws Exception if assertion fails
      */
@@ -589,10 +594,10 @@ public class BaseIntegrationTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(content().json("{\"success\": true}"));
     }
-    
+
     /**
      * Assert that a response contains an error JSON response
-     * 
+     *
      * @param result the ResultActions to assert on
      * @param expectedStatus the expected HTTP status code
      * @throws Exception if assertion fails
@@ -602,24 +607,35 @@ public class BaseIntegrationTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(content().json("{\"success\": false}"));
     }
-    
+
     /**
      * Assert that a response contains an unauthorized JSON response
-     * 
+     *
      * @param result the ResultActions to assert on
      * @throws Exception if assertion fails
      */
     protected void assertUnauthorizedResponse(ResultActions result) throws Exception {
         assertErrorResponse(result, 401);
     }
-    
+
     /**
      * Assert that a response contains a bad request JSON response
-     * 
+     *
      * @param result the ResultActions to assert on
      * @throws Exception if assertion fails
      */
     protected void assertBadRequestResponse(ResultActions result) throws Exception {
         assertErrorResponse(result, 400);
+    }
+
+    protected Map<String, String> createS3EndpointProperties(String objectKey) {
+        return Map.of(
+                S3Utils.OBJECT_KEY, objectKey,
+                S3Utils.BUCKET_NAME, s3Properties.getBucketName(),
+                S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
+                S3Utils.REGION, s3Properties.getRegion(),
+                S3Utils.ACCESS_KEY, s3Properties.getAccessKey(),
+                S3Utils.SECRET_KEY, s3Properties.getSecretKey()
+        );
     }
 }

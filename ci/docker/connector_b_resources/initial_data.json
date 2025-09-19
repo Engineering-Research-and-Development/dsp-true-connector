@@ -66,7 +66,11 @@
       "distribution": [
         {
           "$ref": "distributions",
-          "$id": "urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5"
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
         }
       ],
       "dataset": [
@@ -134,7 +138,11 @@
       "distribution": [
         {
           "$ref": "distributions",
-          "$id": "urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5"
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
         }
       ],
       "artifact": {
@@ -178,11 +186,30 @@
   ],
   "distributions": [
     {
-      "_id": "urn:uuid:1dc45797-pdff-4932-8baf-ab7fd66ql4d5",
+      "_id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5",
       "_class": "it.eng.catalog.model.Distribution",
       "title": "HTTP Data PULL",
       "format": {
         "_id": "HttpData-PULL"
+      },
+      "accessService": [
+        {
+          "$ref": "dataservices",
+          "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
+        }
+      ],
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5",
+      "_class": "it.eng.catalog.model.Distribution",
+      "title": "HTTP Data PUSH",
+      "format": {
+        "_id": "HttpData-PUSH"
       },
       "accessService": [
         {
@@ -295,9 +322,90 @@
       "issued": "2024-06-24T16:26:00.000Z",
       "modified": "2024-06-24T16:26:00.000Z",
       "version": 0
+    },
+    {
+      "_id": "application.dspace.version.path",
+      "value": "/",
+      "label": "Dspace Version path",
+      "group": "DspaceVersion",
+      "tooltip": "Dspace Version path",
+      "mandatory": false,
+      "issued": "2025-09-15T16:26:00.000Z",
+      "modified": "2025-09-15T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "application.dspace.version.identifierType",
+      "value": "",
+      "label": "Dspace Version identifierType",
+      "group": "DspaceVersion",
+      "tooltip": "Dspace Version identifierType",
+      "mandatory": false,
+      "issued": "2025-09-15T16:26:00.000Z",
+      "modified": "2025-09-15T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "application.dspace.version.serviceId",
+      "value": "",
+      "label": "Dspace Version serviceId",
+      "group": "DspaceVersion",
+      "tooltip": "Dspace Version serviceId",
+      "mandatory": false,
+      "issued": "2025-09-15T16:26:00.000Z",
+      "modified": "2025-09-15T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "application.dspace.version.auth.protocol",
+      "value": "https",
+      "label": "Dspace Version Auth protocol",
+      "group": "DspaceVersion",
+      "tooltip": "Dspace Version Authentication protocol",
+      "mandatory": false,
+      "issued": "2025-09-15T16:26:00.000Z",
+      "modified": "2025-09-15T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "application.dspace.version.auth.version",
+      "value": "2024-01",
+      "label": "Dspace Version Auth version",
+      "group": "DspaceVersion",
+      "tooltip": "Dspace Version Authentication version",
+      "mandatory": false,
+      "issued": "2025-09-15T16:26:00.000Z",
+      "modified": "2025-09-15T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "application.dspace.version.auth.profile",
+      "value": "authorization_code,refresh_token",
+      "label": "Dspace Version Auth profile",
+      "group": "DspaceVersion",
+      "tooltip": "Dspace Version Authentication profile, comma separated list of strings",
+      "mandatory": false,
+      "issued": "2025-09-15T16:26:00.000Z",
+      "modified": "2025-09-15T16:26:00.000Z",
+      "version": 0
     }
   ],
-  "contract_negotiations": [],
+  "contract_negotiations": [
+    {
+      "_id": "urn:uuid:CONTRACT_NEGOTIATION_ID_INITIALIZED_API_GHA",
+      "callbackAddress": "http://localhost:8080/consumer",
+      "assigner": "urn:uuid:ASSIGNER_PROVIDER",
+      "role": "provider",
+      "agreement": {
+        "$ref": "agreements",
+        "$id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA"
+      },
+      "consumerPid": "urn:uuid:be8c0f63-1350-4288-9bf7-5f5495da48b8",
+      "state": "FINALIZED",
+      "providerPid": "urn:uuid:3e370869-48ec-4475-bf51-ea0c37860d07",
+      "_class": "it.eng.negotiation.model.ContractNegotiation"
+    }
+  ],
   "agreements": [
     {
       "_id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",

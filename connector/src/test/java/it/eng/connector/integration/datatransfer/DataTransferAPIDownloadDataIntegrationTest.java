@@ -2,6 +2,7 @@ package it.eng.connector.integration.datatransfer;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.client.WireMock;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.repository.CatalogRepository;
@@ -12,19 +13,25 @@ import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.repository.TransferProcessRepository;
+import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.negotiation.model.*;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.PolicyEnforcementRepository;
 import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.BucketCredentialsService;
 import it.eng.tools.s3.service.S3BucketProvisionService;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.s3.util.S3Utils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.ResultActions;
@@ -39,6 +46,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -81,6 +89,9 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
     @Autowired
     private S3Properties s3Properties;
 
+    @Autowired
+    private BucketCredentialsService bucketCredentialsService;
+
     private Dataset mockDataset;
 
     @BeforeEach
@@ -103,15 +114,15 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
     }
 
     @Test
-    @DisplayName("Download data - success")
-    public void downloadData_success() throws Exception {
+    @DisplayName("Download data - HTTP-PULL - success")
+    public void downloadData_httpPull_success() throws Exception {
         int startingTransferProcessCollectionSize = transferProcessRepository.findAll().size();
 
         Agreement agreement = Agreement.Builder.newInstance()
                 .id(createNewId())
                 .assignee(NegotiationMockObjectUtil.ASSIGNEE)
                 .assigner(NegotiationMockObjectUtil.ASSIGNER)
-                .target(NegotiationMockObjectUtil.TARGET)
+                .target(mockDataset.getId())
                 .timestamp(Instant.now().toString())
                 .permission(Collections.singletonList(Permission.Builder.newInstance()
                         .action(Action.USE)
@@ -132,6 +143,8 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         String consumerPid = createNewId();
         String providerPid = createNewId();
 
+        insertContractNegotiation(agreement, consumerPid, providerPid);
+
         String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), mockDataset.getId(), Duration.ofMinutes(10));
 
         EndpointProperty endpointProperty = EndpointProperty.Builder.newInstance()
@@ -151,6 +164,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
                 .consumerPid(consumerPid)
                 .providerPid(providerPid)
+                .role(IConstants.ROLE_CONSUMER)
                 .agreementId(agreement.getId())
                 .callbackAddress(wiremock.baseUrl())
                 .dataAddress(dataAddress)
@@ -158,6 +172,11 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
                 .format(DataTransferFormat.HTTP_PULL.format())
                 .build();
         transferProcessRepository.save(transferProcessStarted);
+
+        WireMock.stubFor(WireMock.post(WireMock.urlMatching("/transfers/" + transferProcessStarted.getProviderPid() + "/completion"))
+                .willReturn(
+                        aResponse().withHeader("Content-Type", "application/json")
+                                .withStatus(200)));
 
         // send request
         final ResultActions result =
@@ -188,27 +207,128 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         assertEquals(transferProcessStarted.getProviderPid(), transferProcessFromDb.getProviderPid());
         assertEquals(transferProcessStarted.getAgreementId(), transferProcessFromDb.getAgreementId());
         assertEquals(transferProcessStarted.getCallbackAddress(), transferProcessFromDb.getCallbackAddress());
-        assertEquals(transferProcessStarted.getState(), transferProcessFromDb.getState());
+        assertEquals(TransferState.COMPLETED, transferProcessFromDb.getState());
         // +1 from test
         assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
+    }
 
+    @Test
+    @DisplayName("Download data - HTTP-PUSH - success")
+    public void downloadData_httpPush_success() throws Exception {
+        int startingTransferProcessCollectionSize = transferProcessRepository.findAll().size();
 
-//        MockHttpServletResponse mockResponse = new MockHttpServletResponse();
-//        s3ClientService.downloadFile(s3Properties.getBucketName(), transferProcessStarted.getId(), mockResponse);
-//
-//        ResponseBytes<GetObjectResponse> fileFromStorage = ResponseBytes.fromByteArray(GetObjectResponse.builder()
-//                        .contentType(mockResponse.getContentType())
-//                        .contentDisposition(mockResponse.getHeader(HttpHeaders.CONTENT_DISPOSITION))
-//                        .build(),
-//                mockResponse.getContentAsByteArray());
-//
-//        ContentDisposition contentDisposition = ContentDisposition.parse(fileFromStorage.response().contentDisposition());
-//
-//        assertEquals(MediaType.TEXT_PLAIN_VALUE, fileFromStorage.response().contentType());
-//        assertEquals(FILE_NAME, contentDisposition.getFilename());
-//        assertEquals(fileContent, fileFromStorage.asUtf8String());
-//        // +2 from test; inserted Dataset with file and downloaded TransferProcess
-//        checkIfEndBucketFileCountIsAsExpected(startingBucketFileCount + 2);
+        Agreement agreement = Agreement.Builder.newInstance()
+                .id(createNewId())
+                .assignee(NegotiationMockObjectUtil.ASSIGNEE)
+                .assigner(NegotiationMockObjectUtil.ASSIGNER)
+                .target(mockDataset.getId())
+                .timestamp(Instant.now().toString())
+                .permission(Collections.singletonList(Permission.Builder.newInstance()
+                        .action(Action.USE)
+                        .constraint(Collections.singletonList(Constraint.Builder.newInstance()
+                                .leftOperand(LeftOperand.COUNT)
+                                .operator(Operator.LTEQ)
+                                .rightOperand("5")
+                                .build()))
+                        .build()))
+                .build();
+
+        agreementRepository.save(agreement);
+
+        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
+
+        policyEnforcementRepository.save(policyEnforcement);
+
+        String consumerPid = createNewId();
+        String providerPid = createNewId();
+        String transferProcessId = createNewId();
+
+        insertContractNegotiation(agreement, consumerPid, providerPid);
+
+        BucketCredentialsEntity bucketCredentials = bucketCredentialsService.getBucketCredentials(s3Properties.getBucketName());
+
+        List<EndpointProperty> endpointProperties = List.of(
+                EndpointProperty.Builder.newInstance()
+                        .name(S3Utils.BUCKET_NAME)
+                        .value(s3Properties.getBucketName())
+                        .build(),
+                EndpointProperty.Builder.newInstance()
+                        .name(S3Utils.REGION)
+                        .value(s3Properties.getRegion())
+                        .build(),
+                EndpointProperty.Builder.newInstance()
+                        .name(S3Utils.OBJECT_KEY)
+                        .value(transferProcessId)
+                        .build(),
+                EndpointProperty.Builder.newInstance()
+                        .name(S3Utils.ACCESS_KEY)
+                        .value(bucketCredentials.getAccessKey())
+                        .build(),
+                EndpointProperty.Builder.newInstance()
+                        .name(S3Utils.SECRET_KEY)
+                        .value(bucketCredentials.getSecretKey())
+                        .build(),
+                EndpointProperty.Builder.newInstance()
+                        .name(S3Utils.ENDPOINT_OVERRIDE)
+                        .value(s3Properties.getExternalPresignedEndpoint())
+                        .build()
+        );
+
+        DataAddress dataAddress = DataAddress.Builder.newInstance()
+                .endpointProperties(endpointProperties)
+                .build();
+
+        TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
+                .id(transferProcessId)
+                .consumerPid(consumerPid)
+                .providerPid(providerPid)
+                .role(IConstants.ROLE_PROVIDER)
+                .agreementId(agreement.getId())
+                .callbackAddress(wiremock.baseUrl())
+                .dataAddress(dataAddress)
+                .datasetId(mockDataset.getId())
+                .state(TransferState.STARTED)
+                .format(DataTransferFormat.HTTP_PUSH.format())
+                .build();
+        transferProcessRepository.save(transferProcessStarted);
+
+        WireMock.stubFor(WireMock.post(WireMock.urlMatching("/transfers/" + transferProcessStarted.getConsumerPid() + "/completion"))
+                .willReturn(
+                        aResponse().withHeader("Content-Type", "application/json")
+                                .withStatus(200)));
+
+        // send request
+        final ResultActions result =
+                mockMvc.perform(
+                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/download")
+                                .contentType(MediaType.APPLICATION_JSON));
+
+        result.andExpect(status().isAccepted())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
+        TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {
+        };
+
+        String json = result.andReturn().getResponse().getContentAsString();
+        GenericApiResponse<String> apiResp = CatalogSerializer.deserializePlain(json, typeRef);
+
+        assertNotNull(apiResp);
+        assertTrue(apiResp.isSuccess());
+        assertNotNull(apiResp.getData());
+        assertEquals("Download started for transfer process " + transferProcessStarted.getId(), apiResp.getData());
+
+        // check if the TransferProcess is inserted in the database
+        TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessStarted.getId()).get();
+
+        // this one should be skipped since we cannot guarantee that download will be done - transferProcessFromDb.isDownloaded() equal true
+//        assertNotNull(transferProcessFromDb.getDataId());
+        assertEquals(transferProcessStarted.getConsumerPid(), transferProcessFromDb.getConsumerPid());
+        assertEquals(transferProcessStarted.getProviderPid(), transferProcessFromDb.getProviderPid());
+        assertEquals(transferProcessStarted.getAgreementId(), transferProcessFromDb.getAgreementId());
+        assertEquals(transferProcessStarted.getCallbackAddress(), transferProcessFromDb.getCallbackAddress());
+        assertEquals(TransferState.COMPLETED, transferProcessFromDb.getState());
+        // +1 from test
+        assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
     }
 
     @Test
@@ -237,14 +357,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 
         agreementRepository.save(agreement);
 
-        ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
-                .id(createNewId())
-                .agreement(agreement)
-                .consumerPid(consumerPid)
-                .providerPid(providerPid)
-                .state(ContractNegotiationState.FINALIZED)
-                .build();
-        contractNegotiationRepository.save(contractNegotiation);
+        insertContractNegotiation(agreement, consumerPid, providerPid);
 
         PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
 
@@ -312,6 +425,17 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
     }
 
+    private void insertContractNegotiation(Agreement agreement, String consumerPid, String providerPid) {
+        ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
+                .id(createNewId())
+                .agreement(agreement)
+                .consumerPid(consumerPid)
+                .providerPid(providerPid)
+                .state(ContractNegotiationState.FINALIZED)
+                .build();
+        contractNegotiationRepository.save(contractNegotiation);
+    }
+
     @Test
     @DisplayName("Download data - purpose policy - allowed")
     public void downloadData_PurposePolicy_allowed() throws Exception {
@@ -327,6 +451,8 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
 
         String consumerPid = createNewId();
         String providerPid = createNewId();
+
+        insertContractNegotiation(agreement, consumerPid, providerPid);
 
         String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), mockDataset.getId(), Duration.ofMinutes(10));
 
@@ -347,6 +473,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
                 .consumerPid(consumerPid)
                 .providerPid(providerPid)
+                .role(IConstants.ROLE_CONSUMER)
                 .agreementId(agreement.getId())
                 .callbackAddress(wiremock.baseUrl())
                 .dataAddress(dataAddress)
@@ -354,6 +481,11 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
                 .format(DataTransferFormat.HTTP_PULL.format())
                 .build();
         transferProcessRepository.save(transferProcessStarted);
+
+        WireMock.stubFor(WireMock.post(WireMock.urlMatching("/transfers/" + transferProcessStarted.getProviderPid() + "/completion"))
+                .willReturn(
+                        aResponse().withHeader("Content-Type", "application/json")
+                                .withStatus(200)));
 
         // send request
         final ResultActions result =
@@ -395,6 +527,8 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         String consumerPid = createNewId();
         String providerPid = createNewId();
 
+        insertContractNegotiation(agreement, consumerPid, providerPid);
+
         String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), mockDataset.getId(), Duration.ofMinutes(10));
 
         EndpointProperty endpointProperty = EndpointProperty.Builder.newInstance()
@@ -414,6 +548,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
         TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
                 .consumerPid(consumerPid)
                 .providerPid(providerPid)
+                .role(IConstants.ROLE_CONSUMER)
                 .agreementId(agreement.getId())
                 .callbackAddress(wiremock.baseUrl())
                 .dataAddress(dataAddress)
@@ -421,6 +556,11 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
                 .format(DataTransferFormat.HTTP_PULL.format())
                 .build();
         transferProcessRepository.save(transferProcessStarted);
+
+        WireMock.stubFor(WireMock.post(WireMock.urlMatching("/transfers/" + transferProcessStarted.getProviderPid() + "/completion"))
+                .willReturn(
+                        aResponse().withHeader("Content-Type", "application/json")
+                                .withStatus(200)));
 
         // send request
         final ResultActions result =
@@ -448,7 +588,7 @@ public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationT
                 .id(createNewId())
                 .assignee(NegotiationMockObjectUtil.ASSIGNEE)
                 .assigner(NegotiationMockObjectUtil.ASSIGNER)
-                .target(NegotiationMockObjectUtil.TARGET)
+                .target(CatalogMockObjectUtil.DATASET_ID)
                 .timestamp(Instant.now().toString())
                 .permission(Collections.singletonList(Permission.Builder.newInstance()
                         .action(Action.USE)

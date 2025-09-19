@@ -1,0 +1,83 @@
+{
+	"info": {
+		"_postman_id": "3db15143-1c71-49b8-8518-117b9ec48bd4",
+		"name": "Connector tests",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "36278855"
+	},
+	"item": [
+		{
+			"name": "well known",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.expect(pm.response.code).to.equal(200);\r",
+							"});\r",
+							"\r",
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Protocol versions structure is valid\", function () {\r",
+							"    pm.expect(response.protocolVersions).to.be.an('array').that.is.not.empty;\r",
+							"\r",
+							"    response.protocolVersions.forEach(protocol => {\r",
+							"        pm.expect(protocol).to.have.property('version').that.equals('2024-01');\r",
+							"        pm.expect(protocol).to.have.property('binding').that.equals('HTTPS');\r",
+							"    });\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{CONSUMER}}/.well-known/dspace-version",
+					"host": [
+						"{{CONSUMER}}"
+					],
+					"path": [
+						".well-known",
+						"dspace-version"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "CONSUMER",
+			"value": "http://localhost:8080",
+			"type": "string"
+		}
+	]
+}
