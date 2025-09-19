@@ -284,7 +284,7 @@ public class CatalogSerializer {
             if (!(clazz.equals(Distribution.class) || clazz.equals(DataService.class) || clazz.equals(Offer.class))) {
                 Objects.requireNonNull(jsonNode.get(DSpaceConstants.CONTEXT));
                 if (!Objects.equals(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE, jsonNode.get(DSpaceConstants.CONTEXT).asText())) {
-                    throw new ValidationException("@contexxt field not valid - was " + jsonNode.get(DSpaceConstants.CONTEXT).asText());
+                    throw new ValidationException("@context field not valid - was " + jsonNode.get(DSpaceConstants.CONTEXT).asText());
                 }
             }
         } catch (NullPointerException npe) {
