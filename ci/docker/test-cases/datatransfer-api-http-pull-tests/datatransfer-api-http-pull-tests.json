@@ -1,10 +1,10 @@
 {
 	"info": {
-		"_postman_id": "499f59ee-d954-46d5-9825-4ec1ba8fbb40",
+		"_postman_id": "2244d29d-7144-4638-a213-652e6b584cb0",
 		"name": "Data Transfer API - http-pull test",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "21815221",
-		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-499f59ee-d954-46d5-9825-4ec1ba8fbb40?action=share&source=collection_link&creator=21815221"
+		"_exporter_id": "2326106",
+		"_collection_link": "https://martian-water-684810.postman.co/workspace/TC-DSP-Latest-version~20059300-c6f3-4b67-b264-1de862e5d947/collection/2326106-2244d29d-7144-4638-a213-652e6b584cb0?action=share&source=collection_link&creator=2326106"
 	},
 	"item": [
 		{
@@ -351,6 +351,9 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "noauth"
+				},
 				"method": "GET",
 				"header": [
 					{
@@ -399,6 +402,11 @@
 					{
 						"key": "Content-Type",
 						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
 						"type": "text"
 					}
 				],
@@ -455,7 +463,7 @@
 					}
 				},
 				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/start",
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/suspend",
 					"host": [
 						"{{CONSUMER_API_TRANSFERS}}"
 					],
@@ -500,7 +508,7 @@
 					}
 				],
 				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view",
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/start",
 					"host": [
 						"{{CONSUMER_API_TRANSFERS}}"
 					],
@@ -529,6 +537,9 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "noauth"
+				},
 				"method": "GET",
 				"header": [
 					{
@@ -538,7 +549,7 @@
 					}
 				],
 				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
+					"raw": "{{presignedURL}}",
 					"host": [
 						"{{presignedURL}}"
 					]
@@ -586,7 +597,7 @@
 					}
 				},
 				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/start",
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
 					"host": [
 						"{{CONSUMER_API_TRANSFERS}}"
 					],
@@ -675,6 +686,9 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "noauth"
+				},
 				"method": "GET",
 				"header": [
 					{
@@ -809,6 +823,9 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "noauth"
+				},
 				"method": "GET",
 				"header": [
 					{

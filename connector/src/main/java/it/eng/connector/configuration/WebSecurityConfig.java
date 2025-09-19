@@ -166,7 +166,8 @@ public class WebSecurityConfig {
                             // Allow authentication endpoints without authentication
                             .requestMatchers(new AntPathRequestMatcher("/api/v1/auth/login"),
                                     new AntPathRequestMatcher("/api/v1/auth/register"),
-                                    new AntPathRequestMatcher("/api/v1/auth/refresh")).permitAll()
+                                    new AntPathRequestMatcher("/api/v1/auth/refresh"),
+                                    new AntPathRequestMatcher("/.well-known/dspace-version")).permitAll()
                             // User profile management - requires authentication (USER or ADMIN)
                             .requestMatchers(new AntPathRequestMatcher("/api/v1/profile/**"),
                                     new AntPathRequestMatcher("/api/v1/auth/me"),
