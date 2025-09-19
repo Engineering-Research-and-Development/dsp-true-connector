@@ -1,9 +1,10 @@
 {
 	"info": {
-		"_postman_id": "2dcdcd3a-f41d-4e9a-914f-1a737997f739",
-		"name": "Data Transfer API test",
+		"_postman_id": "dedc3b0a-ef7f-4702-9353-d4da229e7b95",
+		"name": "Data Transfer API test Copy 4",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "36278855"
+		"_exporter_id": "2326106",
+		"_collection_link": "https://martian-water-684810.postman.co/workspace/TC-DSP-Latest-version~20059300-c6f3-4b67-b264-1de862e5d947/collection/2326106-dedc3b0a-ef7f-4702-9353-d4da229e7b95?action=share&source=collection_link&creator=2326106"
 	},
 	"item": [
 		{
@@ -434,11 +435,6 @@
 				"method": "GET",
 				"header": [
 					{
-						"key": "Authorization",
-						"value": "Bearer {{accessToken}}",
-						"type": "text"
-					},
-					{
 						"key": "Content-Type",
 						"value": "application/json",
 						"type": "text"
@@ -571,11 +567,6 @@
 			"request": {
 				"method": "GET",
 				"header": [
-					{
-						"key": "Authorization",
-						"value": "Bearer {{accessToken}}",
-						"type": "text"
-					},
 					{
 						"key": "Content-Type",
 						"value": "application/json",
@@ -722,11 +713,6 @@
 				"method": "GET",
 				"header": [
 					{
-						"key": "Authorization",
-						"value": "Bearer {{accessToken}}",
-						"type": "text"
-					},
-					{
 						"key": "Content-Type",
 						"value": "application/json",
 						"type": "text"
@@ -859,11 +845,6 @@
 			"request": {
 				"method": "GET",
 				"header": [
-					{
-						"key": "Authorization",
-						"value": "Bearer {{accessToken}}",
-						"type": "text"
-					},
 					{
 						"key": "Content-Type",
 						"value": "application/json",
