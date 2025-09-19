@@ -118,14 +118,18 @@ public class OfferTest {
                 + "                    \"constraint\": [\r\n"
                 + "                        {\r\n"
                 + "                            \"leftOperand\": \"COUNT\",\r\n"
-                + "                            \"operator\": \"EQ\",\r\n"
+                + "                            \"operator\": \"eq\",\r\n"
                 + "                            \"rightOperand\": \"5\"\r\n"
                 + "                        }\r\n"
                 + "                    ]\r\n"
                 + "                }";
         Permission p = CatalogSerializer.deserializePlain(oString, Permission.class);
         assertNotNull(p);
-        p.getConstraint().add(Constraint.Builder.newInstance().leftOperand(LeftOperand.COUNT).operator(Operator.GT).rightOperand("5").build());
+        p.getConstraint().add(Constraint.Builder.newInstance()
+                .leftOperand(LeftOperand.COUNT)
+                .operator(Operator.GT)
+                .rightOperand("5")
+                .build());
     }
 
     @Test

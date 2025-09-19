@@ -18,6 +18,7 @@ import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+import java.io.Serial;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Set;
@@ -26,12 +27,13 @@ import java.util.stream.Collectors;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = Dataset.Builder.class)
-@JsonPropertyOrder(value = {DSpaceConstants.CONTEXT, DSpaceConstants.ID, DSpaceConstants.TYPE, DSpaceConstants.DCT_TITLE,
-        DSpaceConstants.DCT_DESCRIPTION, DSpaceConstants.DCAT_KEYWORD, DSpaceConstants.ODRL_HAS_POLICY,
-        DSpaceConstants.DCAT_DISTRIBUTION}, alphabetic = true)
+@JsonPropertyOrder(value = {DSpaceConstants.CONTEXT, DSpaceConstants.ID, DSpaceConstants.TYPE, DSpaceConstants.TITLE,
+        DSpaceConstants.DESCRIPTION, DSpaceConstants.KEYWORD, DSpaceConstants.HAS_POLICY,
+        DSpaceConstants.DISTRIBUTION}, alphabetic = true)
 @Document(collection = "datasets")
 public class Dataset extends AbstractCatalogObject {
 
+    @Serial
     private static final long serialVersionUID = 8927419074799593178L;
 
     @Id
@@ -39,30 +41,19 @@ public class Dataset extends AbstractCatalogObject {
     private String id;
 
     // Resource
-    @JsonProperty(DSpaceConstants.DCAT_KEYWORD)
     private Set<String> keyword;
-    @JsonProperty(DSpaceConstants.DCAT_THEME)
     private Set<String> theme;
-    @JsonProperty(DSpaceConstants.DCT_CONFORMSTO)
     private String conformsTo;
-    @JsonProperty(DSpaceConstants.DCT_CREATOR)
     private String creator;
-    @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
     private Set<Multilanguage> description;
-    @JsonProperty(DSpaceConstants.DCT_IDENTIFIER)
     private String identifier;
-    @JsonProperty(DSpaceConstants.DCT_ISSUED)
     @CreatedDate
     private Instant issued;
-    @JsonProperty(DSpaceConstants.DCT_MODIFIED)
     @LastModifiedDate
     private Instant modified;
-    @JsonProperty(DSpaceConstants.DCT_TITLE)
     private String title;
     @NotNull
-    @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
     private Set<Offer> hasPolicy;
-    @JsonProperty(DSpaceConstants.DCAT_DISTRIBUTION)
     @DBRef
     private Set<Distribution> distribution;
 
@@ -101,96 +92,81 @@ public class Dataset extends AbstractCatalogObject {
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCAT_KEYWORD)
         @JsonDeserialize(as = Set.class)
         public Builder keyword(Set<String> keyword) {
             dataset.keyword = keyword;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCAT_THEME)
         @JsonDeserialize(as = Set.class)
         public Builder theme(Set<String> theme) {
             dataset.theme = theme;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCT_CONFORMSTO)
         public Builder conformsTo(String conformsTo) {
             dataset.conformsTo = conformsTo;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCT_CREATOR)
         public Builder creator(String creator) {
             dataset.creator = creator;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
         @JsonDeserialize(as = Set.class)
         public Builder description(Set<Multilanguage> description) {
             dataset.description = description;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCT_IDENTIFIER)
         public Builder identifier(String identifier) {
             dataset.identifier = identifier;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCT_ISSUED)
         public Builder issued(Instant issued) {
             dataset.issued = issued;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCT_MODIFIED)
         public Builder modified(Instant modified) {
             dataset.modified = modified;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCT_TITLE)
         public Builder title(String title) {
             dataset.title = title;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
         @JsonDeserialize(as = Set.class)
         public Builder hasPolicy(Set<Offer> policies) {
             dataset.hasPolicy = policies;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCAT_DISTRIBUTION)
         @JsonDeserialize(as = Set.class)
         public Builder distribution(Set<Distribution> distribution) {
             dataset.distribution = distribution;
             return this;
         }
 
-        @JsonProperty("artifact")
         public Builder artifact(Artifact artifact) {
             dataset.artifact = artifact;
             return this;
         }
 
-        @JsonProperty("createdBy")
         public Builder createdBy(String createdBy) {
             dataset.createdBy = createdBy;
             return this;
         }
 
-        @JsonProperty("lastModifiedBy")
         public Builder lastModifiedBy(String lastModifiedBy) {
             dataset.lastModifiedBy = lastModifiedBy;
             return this;
         }
 
-        @JsonProperty("version")
         public Builder version(Long version) {
             dataset.version = version;
             return this;
@@ -215,7 +191,7 @@ public class Dataset extends AbstractCatalogObject {
 
     @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
     public String getType() {
-        return DSpaceConstants.DCAT + Dataset.class.getSimpleName();
+        return Dataset.class.getSimpleName();
     }
 
     /**

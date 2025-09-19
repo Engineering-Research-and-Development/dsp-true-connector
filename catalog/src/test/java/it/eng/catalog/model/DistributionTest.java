@@ -8,9 +8,6 @@ import jakarta.validation.ValidationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.util.Collections;
-import java.util.Set;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -41,12 +38,12 @@ public class DistributionTest {
         JsonNode result = CatalogSerializer.serializeProtocolJsonNode(CatalogMockObjectUtil.DISTRIBUTION);
         assertNull(result.get(DSpaceConstants.CONTEXT), "Not root element to have context");
         assertNotNull(result.get(DSpaceConstants.TYPE).asText());
-        assertNotNull(result.get(DSpaceConstants.DCT_TITLE).asText());
-        assertNotNull(result.get(DSpaceConstants.DCT_DESCRIPTION).asText());
-        assertNotNull(result.get(DSpaceConstants.DCT_MODIFIED).asText());
-        assertNotNull(result.get(DSpaceConstants.DCT_ISSUED).asText());
-        assertNotNull(result.get(DSpaceConstants.DCT_FORMAT));
-        assertNotNull(result.get(DSpaceConstants.DCAT_ACCESS_SERVICE).asText());
+        assertNotNull(result.get(DSpaceConstants.TITLE).asText());
+        assertNotNull(result.get(DSpaceConstants.DESCRIPTION).asText());
+        assertNotNull(result.get(DSpaceConstants.MODIFIED).asText());
+        assertNotNull(result.get(DSpaceConstants.ISSUED).asText());
+        assertNotNull(result.get(DSpaceConstants.FORMAT));
+        assertNotNull(result.get(DSpaceConstants.ACCESS_SERVICE).asText());
 
         Distribution javaObj = CatalogSerializer.deserializeProtocol(result, Distribution.class);
         validateDistribution(javaObj);
@@ -92,7 +89,7 @@ public class DistributionTest {
         assertNotNull(distribution.getHasPolicy());
         assertNotNull(distribution.getIssued());
         assertNotNull(distribution.getModified());
-        assertNotNull(distribution.getFormat().getId());
+        assertNotNull(distribution.getFormat());
     }
 
     @Test
@@ -120,41 +117,18 @@ public class DistributionTest {
     }
 
     @Test
-    @DisplayName("Validate protocol - empty accessService")
-    public void validateProtocolEmptyAccessService() {
-        Distribution distribution = Distribution.Builder.newInstance()
-                .title(CatalogMockObjectUtil.TITLE)
-                .description(CatalogMockObjectUtil.DISTRIBUTION.getDescription())
-                .issued(CatalogMockObjectUtil.ISSUED)
-                .modified(CatalogMockObjectUtil.MODIFIED)
-                .format(CatalogMockObjectUtil.DISTRIBUTION.getFormat())
-                .hasPolicy(CatalogMockObjectUtil.DISTRIBUTION.getHasPolicy())
-                .accessService(Collections.emptySet()) // Empty accessService
-                .build();
-
-        ValidationException exception = assertThrows(ValidationException.class,
-                distribution::validateProtocol);
-        assertEquals("Distribution must have at least one AccessService", exception.getMessage());
-    }
-
-    @Test
     @DisplayName("Validate protocol - null AccessService in accessService")
     public void validateProtocolNullAccessService() {
-        // Create a set with a single null element
-        Set<DataService> accessServices = Collections.singleton(null);
-
-        Distribution distribution = Distribution.Builder.newInstance()
-                .title(CatalogMockObjectUtil.TITLE)
-                .description(CatalogMockObjectUtil.DISTRIBUTION.getDescription())
-                .issued(CatalogMockObjectUtil.ISSUED)
-                .modified(CatalogMockObjectUtil.MODIFIED)
-                .format(CatalogMockObjectUtil.DISTRIBUTION.getFormat())
-                .hasPolicy(CatalogMockObjectUtil.DISTRIBUTION.getHasPolicy())
-                .accessService(accessServices) // Contains null AccessService
-                .build();
-
         ValidationException exception = assertThrows(ValidationException.class,
-                distribution::validateProtocol);
-        assertEquals("Distribution must have at least one non-null AccessService", exception.getMessage());
+                () -> Distribution.Builder.newInstance()
+                        .title(CatalogMockObjectUtil.TITLE)
+                        .description(CatalogMockObjectUtil.DISTRIBUTION.getDescription())
+                        .issued(CatalogMockObjectUtil.ISSUED)
+                        .modified(CatalogMockObjectUtil.MODIFIED)
+                        .format(CatalogMockObjectUtil.DISTRIBUTION.getFormat())
+                        .hasPolicy(CatalogMockObjectUtil.DISTRIBUTION.getHasPolicy())
+                        .accessService(null) // Contains null AccessService
+                        .build());
+        assertEquals("Distribution - accessService must not be null", exception.getMessage());
     }
 }

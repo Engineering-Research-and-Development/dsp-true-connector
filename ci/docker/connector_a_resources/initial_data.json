@@ -74,7 +74,6 @@
         }
       ],
       "participantId": "urn:example:DataProviderA",
-      "homepage": "https://www.homepage.com/test",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": 0
@@ -111,11 +110,11 @@
           "_class": "it.eng.catalog.model.Offer",
           "permission": [
             {
-              "action": "USE",
+              "action": "use",
               "constraint": [
                 {
-                  "leftOperand": "COUNT",
-                  "operator": "LTEQ",
+                  "leftOperand": "count",
+                  "operator": "lteq",
                   "rightOperand": "5"
                 }
               ]
@@ -177,15 +176,11 @@
       "_id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5",
       "_class": "it.eng.catalog.model.Distribution",
       "title": "HTTP Data PULL",
-      "format": {
-        "_id": "HttpData-PULL"
+      "format": "HttpData-PULL",
+      "accessService": {
+        "$ref": "dataservices",
+        "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
       },
-      "accessService": [
-        {
-          "$ref": "dataservices",
-          "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
-        }
-      ],
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "issued": "2024-04-23T16:26:00.000Z",
@@ -196,15 +191,11 @@
       "_id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5",
       "_class": "it.eng.catalog.model.Distribution",
       "title": "HTTP Data PUSH",
-      "format": {
-        "_id": "HttpData-PUSH"
+      "format": "HttpData-PUSH",
+      "accessService": {
+        "$ref": "dataservices",
+        "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
       },
-      "accessService": [
-        {
-          "$ref": "dataservices",
-          "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
-        }
-      ],
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "issued": "2024-04-23T16:26:00.000Z",
@@ -357,7 +348,7 @@
     },
     {
       "_id": "application.dspace.version.auth.version",
-      "value": "2024-01",
+      "value": "2025-1",
       "label": "Dspace Version Auth version",
       "group": "DspaceVersion",
       "tooltip": "Dspace Version Authentication version",

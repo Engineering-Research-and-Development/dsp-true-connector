@@ -58,14 +58,6 @@ public class CatalogAPIIntegrationTest extends BaseIntegrationTest {
 
     @BeforeEach
     public void setup() {
-        distribution = Distribution.Builder.newInstance()
-                .description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Distribution description").build())
-                        .stream().collect(Collectors.toCollection(HashSet::new)))
-                .issued(CatalogMockObjectUtil.ISSUED)
-                .modified(CatalogMockObjectUtil.MODIFIED)
-                .title(CatalogMockObjectUtil.TITLE)
-                .accessService(Collections.singleton(CatalogMockObjectUtil.DATA_SERVICE))
-                .build();
 
         dataService = DataService.Builder.newInstance()
                 .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
@@ -80,6 +72,15 @@ public class CatalogAPIIntegrationTest extends BaseIntegrationTest {
                 .title(CatalogMockObjectUtil.TITLE)
                 .endpointDescription("Description for test")
                 .endpointURL(CatalogMockObjectUtil.ENDPOINT_URL)
+                .build();
+
+        distribution = Distribution.Builder.newInstance()
+                .description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Distribution description").build())
+                        .stream().collect(Collectors.toCollection(HashSet::new)))
+                .issued(CatalogMockObjectUtil.ISSUED)
+                .modified(CatalogMockObjectUtil.MODIFIED)
+                .title(CatalogMockObjectUtil.TITLE)
+                .accessService(dataService)
                 .build();
 
         dataset = Dataset.Builder.newInstance()
@@ -108,7 +109,6 @@ public class CatalogAPIIntegrationTest extends BaseIntegrationTest {
                 .dataset(Collections.singleton(dataset))
                 .distribution(Collections.singleton(distribution))
                 .hasPolicy(Arrays.asList(CatalogMockObjectUtil.OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
-                .homepage(CatalogMockObjectUtil.ENDPOINT_URL)
                 .createdBy("admin@mail.com")
                 .lastModifiedBy("admin@mail.com")
                 .issued(CatalogMockObjectUtil.ISSUED)
@@ -129,7 +129,6 @@ public class CatalogAPIIntegrationTest extends BaseIntegrationTest {
                 .dataset(Arrays.asList(CatalogMockObjectUtil.DATASET).stream().collect(Collectors.toCollection(HashSet::new)))
                 .distribution(Arrays.asList(CatalogMockObjectUtil.DISTRIBUTION_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
                 .hasPolicy(Arrays.asList(CatalogMockObjectUtil.OFFER_WITH_TARGET).stream().collect(Collectors.toCollection(HashSet::new)))
-                .homepage(CatalogMockObjectUtil.ENDPOINT_URL)
                 .createdBy("admin@mail.com")
                 .lastModifiedBy("admin@mail.com")
                 .issued(CatalogMockObjectUtil.ISSUED)
@@ -163,12 +162,13 @@ public class CatalogAPIIntegrationTest extends BaseIntegrationTest {
 
         String response = result.andReturn().getResponse().getContentAsString();
         GenericApiResponse<Catalog> apiResponse = CatalogSerializer.deserializePlain(response,
-                new TypeReference<GenericApiResponse<Catalog>>() {});
+                new TypeReference<GenericApiResponse<Catalog>>() {
+                });
 
         assertNotNull(apiResponse);
         assertTrue(apiResponse.isSuccess());
         assertNotNull(apiResponse.getData());
-        assertEquals(apiResponse.getData().getId(),catalog.getId());
+        assertEquals(apiResponse.getData().getId(), catalog.getId());
         assertCatalogFields(apiResponse.getData(), catalog);
     }
 
@@ -185,12 +185,13 @@ public class CatalogAPIIntegrationTest extends BaseIntegrationTest {
 
         String response = result.andReturn().getResponse().getContentAsString();
         GenericApiResponse<Catalog> apiResponse = CatalogSerializer.deserializePlain(response,
-                new TypeReference<GenericApiResponse<Catalog>>() {});
+                new TypeReference<GenericApiResponse<Catalog>>() {
+                });
 
         assertNotNull(apiResponse);
         assertTrue(apiResponse.isSuccess());
         assertNotNull(apiResponse.getData());
-        assertEquals(apiResponse.getData().getId(),catalog.getId());
+        assertEquals(apiResponse.getData().getId(), catalog.getId());
         assertCatalogFields(apiResponse.getData(), catalog);
     }
 
@@ -210,12 +211,13 @@ public class CatalogAPIIntegrationTest extends BaseIntegrationTest {
 
         String response = result.andReturn().getResponse().getContentAsString();
         GenericApiResponse<Catalog> apiResponse = CatalogSerializer.deserializePlain(response,
-                new TypeReference<GenericApiResponse<Catalog>>() {});
+                new TypeReference<GenericApiResponse<Catalog>>() {
+                });
 
         assertNotNull(apiResponse);
         assertTrue(apiResponse.isSuccess());
         assertNotNull(apiResponse.getData());
-        assertEquals(apiResponse.getData().getId(),newCatalog.getId());
+        assertEquals(apiResponse.getData().getId(), newCatalog.getId());
         assertCatalogFields(apiResponse.getData(), newCatalog);
     }
 
@@ -235,12 +237,13 @@ public class CatalogAPIIntegrationTest extends BaseIntegrationTest {
 
         String response = result.andReturn().getResponse().getContentAsString();
         GenericApiResponse<Catalog> apiResponse = CatalogSerializer.deserializePlain(response,
-                new TypeReference<GenericApiResponse<Catalog>>() {});
+                new TypeReference<GenericApiResponse<Catalog>>() {
+                });
 
         assertNotNull(apiResponse);
         assertTrue(apiResponse.isSuccess());
         assertNotNull(apiResponse.getData());
-        assertEquals(apiResponse.getData().getId(),catalog.getId());
+        assertEquals(apiResponse.getData().getId(), catalog.getId());
         assertCatalogFields(apiResponse.getData(), newCatalog);
     }
 
@@ -257,7 +260,8 @@ public class CatalogAPIIntegrationTest extends BaseIntegrationTest {
 
         String response = result.andReturn().getResponse().getContentAsString();
         GenericApiResponse<Void> apiResponse = CatalogSerializer.deserializePlain(response,
-                new TypeReference<GenericApiResponse<Void>>() {});
+                new TypeReference<GenericApiResponse<Void>>() {
+                });
 
         assertNotNull(apiResponse);
         assertTrue(apiResponse.isSuccess());
@@ -282,7 +286,6 @@ public class CatalogAPIIntegrationTest extends BaseIntegrationTest {
         assertTrue(responseCatalog.getIdentifier().equals(expectedCatalog.getIdentifier()));
         assertTrue(responseCatalog.getTitle().equals(expectedCatalog.getTitle()));
         assertTrue(responseCatalog.getParticipantId().equals(expectedCatalog.getParticipantId()));
-        assertTrue(responseCatalog.getHomepage().equals(expectedCatalog.getHomepage()));
 
         // Check description
         assertNotNull(responseCatalog.getDescription());

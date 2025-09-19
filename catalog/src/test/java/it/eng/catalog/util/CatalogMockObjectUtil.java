@@ -18,9 +18,9 @@ import java.util.stream.Collectors;
 
 public class CatalogMockObjectUtil {
 
-	public static final String CONSUMER_PID = "urn:uuid:CONSUMER_PID";
-	public static final String PROVIDER_PID = "urn:uuid:PROVIDER_PID";
-	public static final String DATASET_ID = "dataset_uuid_test";
+    public static final String CONSUMER_PID = "urn:uuid:CONSUMER_PID";
+    public static final String PROVIDER_PID = "urn:uuid:PROVIDER_PID";
+    public static final String DATASET_ID = "dataset_uuid_test";
     public static final String RIGHT_EXPRESSION_COUNT = "5";
     public static final String USE = "use";
     public static final String INCLUDED_IN = "includedInAction";
@@ -80,7 +80,7 @@ public class CatalogMockObjectUtil {
             .operator(Operator.LTEQ)
             .rightOperand(RIGHT_EXPRESSION_COUNT)
             .build();
-    
+
     public static final Constraint CONSTRAINT_COUNT_5_TIMES = Constraint.Builder.newInstance()
             .leftOperand(LeftOperand.COUNT)
             .rightOperand("5")
@@ -88,54 +88,54 @@ public class CatalogMockObjectUtil {
             .build();
 
     public static final Artifact ARTIFACT_FILE = Artifact.Builder.newInstance()
-			.artifactType(ArtifactType.FILE)
-			.contentType(MediaType.APPLICATION_JSON.getType())
-			.createdBy(CREATOR)
-			.created(NOW)
-			.lastModifiedDate(NOW)
-			.filename("Employees.txt")
-			.lastModifiedBy(CREATOR)
-			.value(new ObjectId().toHexString())
-			.build();
-    
-	public static final Artifact ARTIFACT_EXTERNAL = Artifact.Builder.newInstance()
-			.artifactType(ArtifactType.EXTERNAL)
-			.createdBy(CREATOR)
-			.created(NOW)
-			.lastModifiedDate(NOW)
-			.lastModifiedBy(CREATOR)
-			.value("https://example.com/employees")
-			.build();
-	
-	public static final Permission PERMISSION = Permission.Builder.newInstance()
+            .artifactType(ArtifactType.FILE)
+            .contentType(MediaType.APPLICATION_JSON.getType())
+            .createdBy(CREATOR)
+            .created(NOW)
+            .lastModifiedDate(NOW)
+            .filename("Employees.txt")
+            .lastModifiedBy(CREATOR)
+            .value(new ObjectId().toHexString())
+            .build();
+
+    public static final Artifact ARTIFACT_EXTERNAL = Artifact.Builder.newInstance()
+            .artifactType(ArtifactType.EXTERNAL)
+            .createdBy(CREATOR)
+            .created(NOW)
+            .lastModifiedDate(NOW)
+            .lastModifiedBy(CREATOR)
+            .value("https://example.com/employees")
+            .build();
+
+    public static final Permission PERMISSION = Permission.Builder.newInstance()
             .action(Action.USE)
             .constraint(Arrays.asList(CONSTRAINT).stream().collect(Collectors.toCollection(HashSet::new)))
             .build();
-    
+
     public static final Permission PERMISSION_UPDATE = Permission.Builder.newInstance()
             .action(Action.USE)
             .constraint(Arrays.asList(CONSTRAINT_COUNT_5_TIMES).stream().collect(Collectors.toCollection(HashSet::new)))
             .build();
-    
+
     public static final Permission PERMISSION_ANONYMIZE = Permission.Builder.newInstance()
             .action(Action.ANONYMIZE)
             .constraint(Arrays.asList(CONSTRAINT_COUNT_5_TIMES).stream().collect(Collectors.toCollection(HashSet::new)))
             .build();
 
     public static final Offer OFFER = Offer.Builder.newInstance()
-    		.id("urn:offer_id")
+            .id("urn:offer_id")
 //            .target(TARGET)
             .permission(Arrays.asList(PERMISSION).stream().collect(Collectors.toCollection(HashSet::new)))
             .build();
-    
+
     public static final Offer OFFER_WITH_TARGET = Offer.Builder.newInstance()
-    		.id("urn:offer_id")
+            .id("urn:offer_id")
             .target(DATASET_ID)
             .permission(Arrays.asList(PERMISSION).stream().collect(Collectors.toCollection(HashSet::new)))
             .build();
-    
+
     public static final Offer OFFER_UPDATE = Offer.Builder.newInstance()
-    		.id("urn:offer_id_update")
+            .id("urn:offer_id_update")
             .target(TARGET)
             .permission(Arrays.asList(PERMISSION_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
             .build();
@@ -145,9 +145,9 @@ public class CatalogMockObjectUtil {
             .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
             .issued(ISSUED)
             .modified(MODIFIED)
-            .format(Reference.Builder.newInstance().id("HTTP:PULL").build())
+            .format("HTTP:PULL")
             .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
-            .accessService(Arrays.asList(DATA_SERVICE).stream().collect(Collectors.toCollection(HashSet::new)))
+            .accessService(DATA_SERVICE)
             .build();
 
     public static final Distribution DISTRIBUTION_FOR_UPDATE = Distribution.Builder.newInstance()
@@ -156,14 +156,14 @@ public class CatalogMockObjectUtil {
             .issued(ISSUED)
             .modified(MODIFIED)
             .hasPolicy(Arrays.asList(OFFER_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
-            .accessService(Arrays.asList(DATA_SERVICE).stream().collect(Collectors.toCollection(HashSet::new)))
+            .accessService(DATA_SERVICE)
             .createdBy("admin@mail.com")
             .lastModifiedBy("admin@mail.com")
             .build();
 
     public static final Collection<Distribution> DISTRIBUTIONS = Arrays.asList(DISTRIBUTION);
     public static final Dataset DATASET = Dataset.Builder.newInstance()
-    		.id(DATASET_ID)
+            .id(DATASET_ID)
             .conformsTo(CONFORMSTO)
             .creator(CREATOR)
             .distribution(Arrays.asList(DISTRIBUTION).stream().collect(Collectors.toCollection(HashSet::new)))
@@ -176,9 +176,9 @@ public class CatalogMockObjectUtil {
             .title(TITLE)
             .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
             .build();
-    
+
     public static final Dataset DATASET_WITH_ARTIFACT = Dataset.Builder.newInstance()
-    		.id(DATASET_ID)
+            .id(DATASET_ID)
             .conformsTo(CONFORMSTO)
             .creator(CREATOR)
             .artifact(ARTIFACT_FILE)
@@ -212,7 +212,7 @@ public class CatalogMockObjectUtil {
             .build();
 
     public static final Set<Dataset> DATASETS = Arrays.asList(DATASET).stream().collect(Collectors.toCollection(HashSet::new));
-    
+
     public static final Catalog CATALOG = Catalog.Builder.newInstance()
             .conformsTo(CONFORMSTO)
             .creator(CREATOR)
@@ -228,7 +228,6 @@ public class CatalogMockObjectUtil {
             .dataset(Arrays.asList(DATASET).stream().collect(Collectors.toCollection(HashSet::new)))
             .distribution(Arrays.asList(DISTRIBUTION).stream().collect(Collectors.toCollection(HashSet::new)))
             .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
-            .homepage(ENDPOINT_URL)
             .build();
 
     /**
@@ -251,11 +250,11 @@ public class CatalogMockObjectUtil {
                 .theme(new HashSet<>(Arrays.asList("white", "blue", "aqua")))
                 .title(TITLE)
                 .participantId("urn:example:DataProviderA")
-                .service(dataset.getDistribution().stream().findFirst().get().getAccessService())
+                // needs to be modifiable set
+                .service(new HashSet<>(Collections.singletonList(dataset.getDistribution().stream().findFirst().get().getAccessService())))
                 .dataset(new HashSet<>(Collections.singletonList(dataset)))
                 .distribution(dataset.getDistribution())
                 .hasPolicy(dataset.getHasPolicy())
-                .homepage(ENDPOINT_URL)
                 .build();
     }
 
@@ -263,7 +262,7 @@ public class CatalogMockObjectUtil {
             .conformsTo(CONFORMSTO)
             .creator(CREATOR)
             .description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Catalog description update").build())
-            		.stream().collect(Collectors.toCollection(HashSet::new)))
+                    .stream().collect(Collectors.toCollection(HashSet::new)))
             .identifier(IDENTIFIER)
             .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
             .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
@@ -273,7 +272,6 @@ public class CatalogMockObjectUtil {
             .dataset(Arrays.asList(DATASET_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
             .distribution(Arrays.asList(DISTRIBUTION_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
             .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
-            .homepage(ENDPOINT_URL)
             .issued(ISSUED)
             .modified(MODIFIED)
             .build();
@@ -289,9 +287,9 @@ public class CatalogMockObjectUtil {
     public static final DatasetRequestMessage DATASET_REQUEST_MESSAGE = DatasetRequestMessage.Builder.newInstance()
             .dataset(CatalogSerializer.serializeProtocol(DATASET))
             .build();
-    
+
     public static final Collection<DataService> DATA_SERVICES = Arrays.asList(DATA_SERVICE);
-    
+
     public static void getAllKeysUsingJsonNodeFieldNames(JsonNode jsonNode, Set<String> keys) {
         if (jsonNode.isObject()) {
             Iterator<Entry<String, JsonNode>> fields = jsonNode.fields();
@@ -315,7 +313,7 @@ public class CatalogMockObjectUtil {
      *
      * @return A new Multilanguage instance.
      */
-    public static final Multilanguage createNewMultilanguage() {
+    public static Multilanguage createNewMultilanguage() {
         return Multilanguage.Builder.newInstance()
                 .language("en")
                 .value("Catalog description")
@@ -327,7 +325,7 @@ public class CatalogMockObjectUtil {
      *
      * @return A new DataService instance.
      */
-    public static final DataService createNewDataService() {
+    public static DataService createNewDataService() {
         return DataService.Builder.newInstance()
                 .keyword(Arrays.asList("DataService keyword1", "DataService keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
                 .theme(Arrays.asList("DataService theme1", "DataService theme2").stream().collect(Collectors.toCollection(HashSet::new)))
@@ -348,15 +346,15 @@ public class CatalogMockObjectUtil {
      *
      * @return A new Distribution instance.
      */
-    public static final Distribution createNewDistribution() {
+    public static Distribution createNewDistribution() {
         return Distribution.Builder.newInstance()
                 .title(TITLE)
                 .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
                 .issued(ISSUED)
                 .modified(MODIFIED)
-                .format(Reference.Builder.newInstance().id("HTTP:PULL").build())
+                .format("HTTP:PULL")
                 .hasPolicy(Arrays.asList(createNewOffer()).stream().collect(Collectors.toCollection(HashSet::new)))
-                .accessService(Arrays.asList(createNewDataService()).stream().collect(Collectors.toCollection(HashSet::new)))
+                .accessService(createNewDataService())
                 .build();
     }
 
@@ -365,7 +363,7 @@ public class CatalogMockObjectUtil {
      *
      * @return A new Permission instance.
      */
-    public static final Permission createNewPermission() {
+    public static Permission createNewPermission() {
         return Permission.Builder.newInstance()
                 .action(Action.USE)
                 .constraint(Arrays.asList(CONSTRAINT).stream().collect(Collectors.toCollection(HashSet::new)))
@@ -377,7 +375,7 @@ public class CatalogMockObjectUtil {
      *
      * @return A new Offer instance.
      */
-    public static final Offer createNewOffer() {
+    public static Offer createNewOffer() {
         return Offer.Builder.newInstance()
                 .permission(Arrays.asList(createNewPermission()).stream().collect(Collectors.toCollection(HashSet::new)))
                 .build();
@@ -388,7 +386,7 @@ public class CatalogMockObjectUtil {
      *
      * @return A new Dataset instance.
      */
-    public static final Dataset createNewDataset() {
+    public static Dataset createNewDataset() {
         String datasetId = ToolsUtil.generateUniqueId();
         return Dataset.Builder.newInstance()
                 .id(datasetId)
@@ -422,7 +420,7 @@ public class CatalogMockObjectUtil {
                 .lastModifiedDate(NOW)
                 .filename("Employees.txt")
                 .lastModifiedBy(CREATOR)
-                .value(StringUtils.isNotBlank(datasetId) ? datasetId :DATASET_ID)
+                .value(StringUtils.isNotBlank(datasetId) ? datasetId : DATASET_ID)
                 .build();
     }
 

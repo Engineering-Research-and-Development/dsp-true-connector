@@ -3,7 +3,6 @@ package it.eng.connector.integration.datatransfer;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.Distribution;
-import it.eng.catalog.model.Reference;
 import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.repository.DistributionRepository;
@@ -59,8 +58,8 @@ public class DataTransferProcessRequestedIntegrationTest extends BaseIntegration
     @BeforeEach
     public void populateCatalog() {
         distribution = Distribution.Builder.newInstance()
-                .format(Reference.Builder.newInstance().id(DataTransferFormat.HTTP_PULL.format()).build())
-                .accessService(Collections.singleton(CatalogMockObjectUtil.DATA_SERVICE))
+                .format(DataTransferFormat.HTTP_PULL.format())
+                .accessService(CatalogMockObjectUtil.DATA_SERVICE)
                 .build();
         dataset = Dataset.Builder.newInstance()
                 .hasPolicy(Collections.singleton(CatalogMockObjectUtil.OFFER))

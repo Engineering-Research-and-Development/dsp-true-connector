@@ -1,6 +1,7 @@
 package it.eng.catalog.model;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
@@ -44,19 +45,25 @@ public class DatasetTest {
     @DisplayName("Verify valid protocol object serialization")
     public void testProtocol() {
         JsonNode result = CatalogSerializer.serializeProtocolJsonNode(CatalogMockObjectUtil.DATASET);
-        assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
+        JsonNode context = result.get(DSpaceConstants.CONTEXT);
+        assertNotNull(context);
+        if (context.isArray()) {
+            ArrayNode arrayNode = (ArrayNode) context;
+            assertFalse(arrayNode.isEmpty());
+            assertEquals(DSpaceConstants.DSPACE_2025_01_CONTEXT, arrayNode.get(0).asText());
+        }
         assertNotNull(result.get(DSpaceConstants.TYPE).asText());
-        assertNotNull(result.get(DSpaceConstants.DCAT_KEYWORD).asText());
-        assertNotNull(result.get(DSpaceConstants.DCAT_THEME).asText());
-        assertNotNull(result.get(DSpaceConstants.DCT_CONFORMSTO).asText());
+        assertNotNull(result.get(DSpaceConstants.KEYWORD).asText());
+        assertNotNull(result.get(DSpaceConstants.THEME).asText());
+        assertNotNull(result.get(DSpaceConstants.CONFORMSTO).asText());
 
-        assertNotNull(result.get(DSpaceConstants.DCT_CREATOR).asText());
-        assertNotNull(result.get(DSpaceConstants.DCT_DESCRIPTION).asText());
-        assertNotNull(result.get(DSpaceConstants.DCT_IDENTIFIER).asText());
-        assertNotNull(result.get(DSpaceConstants.DCT_ISSUED).asText());
-        assertNotNull(result.get(DSpaceConstants.DCT_MODIFIED).asText());
-        assertNotNull(result.get(DSpaceConstants.DCT_MODIFIED).asText());
-        assertNotNull(result.get(DSpaceConstants.DCAT_DISTRIBUTION).asText());
+        assertNotNull(result.get(DSpaceConstants.CREATOR).asText());
+        assertNotNull(result.get(DSpaceConstants.DESCRIPTION).asText());
+        assertNotNull(result.get(DSpaceConstants.IDENTIFIER).asText());
+        assertNotNull(result.get(DSpaceConstants.ISSUED).asText());
+        assertNotNull(result.get(DSpaceConstants.MODIFIED).asText());
+        assertNotNull(result.get(DSpaceConstants.MODIFIED).asText());
+        assertNotNull(result.get(DSpaceConstants.DISTRIBUTION).asText());
 
         Dataset javaObj = CatalogSerializer.deserializeProtocol(result, Dataset.class);
         validateDataset(javaObj);
