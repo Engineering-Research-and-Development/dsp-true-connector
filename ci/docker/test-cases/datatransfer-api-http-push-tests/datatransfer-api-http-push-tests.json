@@ -1,12 +1,84 @@
 {
 	"info": {
-		"_postman_id": "4f875831-0c74-401d-909c-5dd465303982",
+		"_postman_id": "0cc2e4ee-3811-4bb5-8b6c-6a7f18d8b005",
 		"name": "Data Transfer API - http-push test",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "21815221",
-		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-4f875831-0c74-401d-909c-5dd465303982?action=share&source=collection_link&creator=21815221"
+		"_exporter_id": "2326106",
+		"_collection_link": "https://martian-water-684810.postman.co/workspace/TC-DSP-Latest-version~20059300-c6f3-4b67-b264-1de862e5d947/collection/2326106-0cc2e4ee-3811-4bb5-8b6c-6a7f18d8b005?action=share&source=collection_link&creator=2326106"
 	},
 	"item": [
+		{
+			"name": "Login to get JWT token",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Response contains access token\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData.data.accessToken).to.exist;\r",
+							"    pm.collectionVariables.set(\"accessToken\", jsonData.data.accessToken);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Response contains refresh token\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData.data.refreshToken).to.exist;\r",
+							"    pm.collectionVariables.set(\"refreshToken\", jsonData.data.refreshToken);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Response contains user info\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData.data.email).to.eql(\"admin@mail.com\");\r",
+							"    pm.expect(jsonData.data.role).to.exist;\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/v1/auth/login",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"v1",
+						"auth",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
 		{
 			"name": "[C] Request transfer",
 			"event": [
@@ -439,6 +511,9 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "noauth"
+				},
 				"method": "GET",
 				"header": [
 					{
@@ -563,6 +638,9 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "noauth"
+				},
 				"method": "GET",
 				"header": [
 					{
@@ -582,16 +660,11 @@
 		}
 	],
 	"auth": {
-		"type": "basic",
-		"basic": [
+		"type": "bearer",
+		"bearer": [
 			{
-				"key": "password",
-				"value": "password",
-				"type": "string"
-			},
-			{
-				"key": "username",
-				"value": "admin@mail.com",
+				"key": "token",
+				"value": "{accessToken}}",
 				"type": "string"
 			}
 		]
