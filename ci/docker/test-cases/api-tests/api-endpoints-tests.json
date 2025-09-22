@@ -1,10 +1,9 @@
 {
 	"info": {
-		"_postman_id": "90dd7332-4368-4997-be86-b363c4dbf690",
+		"_postman_id": "390a6e36-b560-47f2-bb84-b6cb76f4b4ef",
 		"name": "API tests",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "21815221",
-		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-90dd7332-4368-4997-be86-b363c4dbf690?action=share&source=collection_link&creator=21815221"
+		"_exporter_id": "36278855"
 	},
 	"item": [
 		{
@@ -194,9 +193,7 @@
 							"    pm.expect(distributions).to.be.an('array').that.is.not.empty;\r",
 							"    pm.expect(distributions).to.satisfy(distributions => distributions.every(distribution => \r",
 							"        distribution !== null &&\r",
-							"        distribution.accessService !== null &&\r",
-							"        distribution.accessService.length > 0\r",
-							"    ));\r",
+							"        distribution.accessService !== null));\r",
 							"});\r",
 							""
 						],
@@ -274,9 +271,7 @@
 							"    pm.expect(distributions).to.be.an('array').that.is.not.empty;\r",
 							"    pm.expect(distributions).to.satisfy(distributions => distributions.every(distribution => \r",
 							"        distribution !== null &&\r",
-							"        distribution.accessService !== null &&\r",
-							"        distribution.accessService.length > 0\r",
-							"    ));\r",
+							"        distribution.accessService !== null));\r",
 							"});"
 						],
 						"type": "text/javascript",

@@ -254,7 +254,8 @@ public class CatalogMockObjectUtil {
                 .service(new HashSet<>(Collections.singletonList(dataset.getDistribution().stream().findFirst().get().getAccessService())))
                 .dataset(new HashSet<>(Collections.singletonList(dataset)))
                 .distribution(dataset.getDistribution())
-                .hasPolicy(dataset.getHasPolicy())
+                // Let's not set the policies at Catalog level
+//                .hasPolicy(dataset.getHasPolicy())
                 .build();
     }
 
