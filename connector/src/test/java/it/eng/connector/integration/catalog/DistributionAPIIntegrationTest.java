@@ -238,7 +238,7 @@ public class DistributionAPIIntegrationTest extends BaseIntegrationTest {
                         .content(invalidJson)
                         .contentType(MediaType.APPLICATION_JSON));
 
-        result.andExpect(status().isInternalServerError())
+        result.andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
     }
 
