@@ -1,28 +1,25 @@
 package it.eng.connector.integration.auth;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import it.eng.connector.dto.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.connector.dto.ChangePasswordRequest;
+import it.eng.connector.dto.LoginRequest;
+import it.eng.connector.dto.UpdateProfileRequest;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.model.Role;
 import it.eng.connector.util.TestUtil;
 import it.eng.tools.controller.ApiEndpoints;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.ResultActions;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -31,7 +28,7 @@ public class ProfileAPIIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
-    
+
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -47,7 +44,7 @@ public class ProfileAPIIntegrationTest extends BaseIntegrationTest {
     void testUpdateUserProfile() throws Exception {
         // First create a user for this test
         createAndSaveTestUser(Role.ROLE_USER);
-        
+
         // Login to get access token
         LoginRequest loginRequest = createLoginRequest();
         ResultActions loginResult = mockMvc.perform(post(ApiEndpoints.AUTH_V1 + "/login")
@@ -83,7 +80,7 @@ public class ProfileAPIIntegrationTest extends BaseIntegrationTest {
     void testChangeUserPassword() throws Exception {
         // First create a user for this test
         createAndSaveTestUser(Role.ROLE_USER);
-        
+
         // Login to get access token
         LoginRequest loginRequest = createLoginRequest();
         ResultActions loginResult = mockMvc.perform(post(ApiEndpoints.AUTH_V1 + "/login")
@@ -117,7 +114,7 @@ public class ProfileAPIIntegrationTest extends BaseIntegrationTest {
     void testLoginWithNewPassword() throws Exception {
         // First create a user and change their password
         createAndSaveTestUser(Role.ROLE_USER);
-        
+
         // Login to get access token
         LoginRequest loginRequest = createLoginRequest();
         ResultActions loginResult = mockMvc.perform(post(ApiEndpoints.AUTH_V1 + "/login")
@@ -134,9 +131,9 @@ public class ProfileAPIIntegrationTest extends BaseIntegrationTest {
         changePasswordRequest.setNewPassword("NewPassword123!");
 
         mockMvc.perform(put(ApiEndpoints.PROFILE_V1 + "/password")
-                .header("Authorization", "Bearer " + accessToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(changePasswordRequest)))
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(changePasswordRequest)))
                 .andExpect(status().isOk());
 
         // Now login with new password
@@ -156,40 +153,40 @@ public class ProfileAPIIntegrationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @Order(10)
+    @Order(4)
     @DisplayName("Error case: Update profile without authentication")
     void testUpdateProfileWithoutAuth() throws Exception {
         UpdateProfileRequest updateRequest = TestUtil.createUpdateProfileRequest();
 
         mockMvc.perform(put(ApiEndpoints.PROFILE_V1)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(updateRequest)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(false));
     }
 
     @Test
-    @Order(11)
+    @Order(5)
     @DisplayName("Error case: Change password without authentication")
     void testChangePasswordWithoutAuth() throws Exception {
         ChangePasswordRequest changePasswordRequest = TestUtil.createChangePasswordRequest();
 
         mockMvc.perform(put(ApiEndpoints.PROFILE_V1 + "/password")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(changePasswordRequest)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(changePasswordRequest)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(false));
     }
 
     @Test
-    @Order(12)
+    @Order(6)
     @DisplayName("Error case: Change password with wrong current password")
     void testChangePasswordWithWrongCurrentPassword() throws Exception {
         // First create a user
         createAndSaveTestUser(Role.ROLE_USER);
-        
+
         // Login to get access token
         LoginRequest loginRequest = createLoginRequest();
         ResultActions loginResult = mockMvc.perform(post(ApiEndpoints.AUTH_V1 + "/login")
@@ -206,21 +203,21 @@ public class ProfileAPIIntegrationTest extends BaseIntegrationTest {
         changePasswordRequest.setNewPassword("NewPassword123!");
 
         mockMvc.perform(put(ApiEndpoints.PROFILE_V1 + "/password")
-                .header("Authorization", "Bearer " + accessToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(changePasswordRequest)))
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(changePasswordRequest)))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(false));
     }
 
     @Test
-    @Order(13)
+    @Order(7)
     @DisplayName("Error case: Update profile with invalid data")
     void testUpdateProfileWithInvalidData() throws Exception {
         // First create a user
         createAndSaveTestUser(Role.ROLE_USER);
-        
+
         // Login to get access token
         LoginRequest loginRequest = createLoginRequest();
         ResultActions loginResult = mockMvc.perform(post(ApiEndpoints.AUTH_V1 + "/login")
@@ -238,9 +235,9 @@ public class ProfileAPIIntegrationTest extends BaseIntegrationTest {
         updateRequest.setEmail("invalid-email"); // Invalid email format
 
         mockMvc.perform(put(ApiEndpoints.PROFILE_V1)
-                .header("Authorization", "Bearer " + accessToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(updateRequest)))
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
                 .andExpect(status().isBadRequest());
     }
 }
