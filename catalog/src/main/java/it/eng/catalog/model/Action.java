@@ -2,17 +2,18 @@ package it.eng.catalog.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
-import it.eng.tools.model.DSpaceConstants;
 
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public enum Action {
+    USE("use"),
+    ANONYMIZE("anonymize");
+    /*
     DELETE("delete"),
     EXECUTE("execute"),
     SOURCE_CODE("cc:SourceCode"),
-    ANONYMIZE("anonymize"),
     EXTRACT("extract"),
     READ("read"),
     INDEX("index"),
@@ -57,8 +58,9 @@ public enum Action {
     SHARE_ALIKE_CC("cc:ShareAlike"),
     ACCEPT_TRACKING(DSpaceConstants.ODRL + "acceptTracking"),
     COMMERCIAL_USE_CC("cc:CommercialUse"),
-    PRESENT(DSpaceConstants.ODRL + "present"),
-    USE("use");
+    PRESENT(DSpaceConstants.ODRL + "present");
+     */
+
 
     private final String action;
     private static final Map<String, Action> BY_LABEL;

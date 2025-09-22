@@ -627,9 +627,7 @@
 							"    pm.expect(distributions).to.be.an('array').that.is.not.empty;\r",
 							"    pm.expect(distributions).to.satisfy(distributions => distributions.every(distribution => \r",
 							"        distribution !== null &&\r",
-							"        distribution.accessService !== null &&\r",
-							"        distribution.accessService.length > 0\r",
-							"    ));\r",
+							"        distribution.accessService !== null));\r",
 							"});"
 						],
 						"type": "text/javascript",

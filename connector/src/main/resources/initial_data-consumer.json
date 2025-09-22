@@ -110,11 +110,11 @@
           "_class": "it.eng.catalog.model.Offer",
           "permission": [
             {
-              "action": "USE",
+              "action": "use",
               "constraint": [
                 {
-                  "leftOperand": "COUNT",
-                  "operator": "LTEQ",
+                  "leftOperand": "count",
+                  "operator": "lteq",
                   "rightOperand": "5"
                 }
               ]
@@ -395,11 +395,11 @@
       "assignee": "urn:jashd766",
       "permission": [
         {
-          "action": "USE",
+          "action": "use",
           "constraint": [
             {
-              "leftOperand": "DATE_TIME",
-              "operator": "GT",
+              "leftOperand": "dateTime",
+              "operator": "gt",
               "rightOperand": "2024-10-01T14:48:22.605323600Z"
             }
           ]
