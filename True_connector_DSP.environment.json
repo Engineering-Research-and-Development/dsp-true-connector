@@ -133,6 +133,90 @@
 			"value": "{{PROVIDER}}/api/v1/artifacts",
 			"type": "default",
 			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_API_AUTH",
+			"value": "{{CONSUMER}}/api/v1/auth",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_API_USERS",
+			"value": "{{CONSUMER}}/api/v1/users",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_API_PROFILE",
+			"value": "{{CONSUMER}}/api/v1/profile",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_API_OFFERS",
+			"value": "{{CONSUMER}}/api/v1/offers",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_API_AUDIT",
+			"value": "{{CONSUMER}}/api/v1/audit",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_API_ARTIFACTS",
+			"value": "{{CONSUMER}}/api/v1/artifacts",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "PROVIDER_SERVER_API_OFFERS",
+			"value": "{{PROVIDER}}/api/v1/offers",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "PROVIDER_SERVER_API_AUDIT",
+			"value": "{{PROVIDER}}/api/v1/audit",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_API_AGREEMENTS",
+			"value": "{{CONSUMER}}/api/v1/agreements",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "PROVIDER_SERVER_API_AGREEMENTS",
+			"value": "{{PROVIDER}}/api/v1/agreements",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_API_PROXY",
+			"value": "{{CONSUMER}}/api/v1/proxy",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "PROVIDER_SERVER_API_PROXY",
+			"value": "{{PROVIDER}}/api/v1/proxy",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "KEY_PREFIX",
+			"value": "application.daps",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "USER_ID",
+			"value": "",
+			"type": "default",
+			"enabled": true
 		}
 	],
 	"_postman_variable_scope": "environment",

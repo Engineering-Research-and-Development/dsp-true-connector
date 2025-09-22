@@ -7,6 +7,139 @@
 	},
 	"item": [
 		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login to get JWT token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response contains access token\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData.data.accessToken).to.exist;\r",
+									"    pm.collectionVariables.set(\"accessToken\", jsonData.data.accessToken);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response contains refresh token\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData.data.refreshToken).to.exist;\r",
+									"    pm.collectionVariables.set(\"refreshToken\", jsonData.data.refreshToken);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response contains user info\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData.data.email).to.eql(\"admin@mail.com\");\r",
+									"    pm.expect(jsonData.data.role).to.exist;\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{CONSUMER}}/api/v1/auth/login",
+							"host": [
+								"{{CONSUMER}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh JWT token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response contains new access token\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData.data.accessToken).to.exist;\r",
+									"    pm.collectionVariables.set(\"accessToken\", jsonData.data.accessToken);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response contains new refresh token\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData.data.refreshToken).to.exist;\r",
+									"    pm.collectionVariables.set(\"refreshToken\", jsonData.data.refreshToken);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"refreshToken\": \"{{refreshToken}}\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{CONSUMER}}/api/v1/auth/refresh",
+							"host": [
+								"{{CONSUMER}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"refresh"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
 			"name": "Negotiation",
 			"item": [
 				{
@@ -42,7 +175,18 @@
 					],
 					"request": {
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER_PROTOCOL_ENDPOINT}}\",\r\n    \"offer\": {\r\n        \"@id\": \"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"{{datasetId}}\",\r\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"LTEQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
@@ -86,6 +230,11 @@
 					"request": {
 						"method": "GET",
 						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							},
 							{
 								"key": "Content-Type",
 								"value": "application/json",
@@ -153,6 +302,11 @@
 						"method": "GET",
 						"header": [
 							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							},
+							{
 								"key": "Content-Type",
 								"value": "application/json",
 								"type": "text"
@@ -197,6 +351,11 @@
 					"request": {
 						"method": "GET",
 						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							},
 							{
 								"key": "Content-Type",
 								"value": "application/json",
@@ -245,7 +404,8 @@
 							},
 							{
 								"key": "Authorization",
-								"value": "Basic YWRtaW5AbWFpbC5jb206cGFzc3dvcmQ="
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
 							},
 							{
 								"key": "Cookie",
@@ -313,6 +473,11 @@
 						"method": "GET",
 						"header": [
 							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							},
+							{
 								"key": "Content-Type",
 								"value": "application/json",
 								"type": "text"
@@ -359,6 +524,11 @@
 						"method": "GET",
 						"header": [
 							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							},
+							{
 								"key": "Content-Type",
 								"value": "application/json",
 								"type": "text"
@@ -395,6 +565,11 @@
 					"request": {
 						"method": "PUT",
 						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							},
 							{
 								"key": "Content-Type",
 								"value": "application/json"
@@ -461,6 +636,11 @@
 						"method": "GET",
 						"header": [
 							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							},
+							{
 								"key": "Content-Type",
 								"value": "application/json",
 								"type": "text"
@@ -507,6 +687,11 @@
 						"method": "GET",
 						"header": [
 							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							},
+							{
 								"key": "Content-Type",
 								"value": "application/json",
 								"type": "text"
@@ -543,6 +728,11 @@
 					"request": {
 						"method": "PUT",
 						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							},
 							{
 								"key": "Content-Type",
 								"value": "application/json"
@@ -614,6 +804,11 @@
 						"method": "GET",
 						"header": [
 							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							},
+							{
 								"key": "Content-Type",
 								"value": "application/json",
 								"type": "text"
@@ -665,6 +860,11 @@
 						"method": "GET",
 						"header": [
 							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							},
+							{
 								"key": "Content-Type",
 								"value": "application/json",
 								"type": "text"
@@ -711,6 +911,11 @@
 					"request": {
 						"method": "GET",
 						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							},
 							{
 								"key": "Content-Type",
 								"value": "application/json",
@@ -766,6 +971,11 @@
 						"method": "GET",
 						"header": [
 							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							},
+							{
 								"key": "Content-Type",
 								"value": "application/json",
 								"type": "text"
@@ -793,21 +1003,6 @@
 			]
 		}
 	],
-	"auth": {
-		"type": "basic",
-		"basic": [
-			{
-				"key": "password",
-				"value": "password",
-				"type": "string"
-			},
-			{
-				"key": "username",
-				"value": "admin@mail.com",
-				"type": "string"
-			}
-		]
-	},
 	"event": [
 		{
 			"listen": "prerequest",
@@ -832,13 +1027,23 @@
 	],
 	"variable": [
 		{
+			"key": "CONSUMER",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "PROVIDER",
+			"value": "http://localhost:8090",
+			"type": "string"
+		},
+		{
 			"key": "CONSUMER_API_ENDPOINT",
 			"value": "http://localhost:8080/api/v1/negotiations",
 			"type": "string"
 		},
 		{
 			"key": "PROVIDER_API_ENDPOINT",
-			"value": "http://localhost:8090/api/v1/negotiations",
+			"value": "{{PROVIDER}}/api/v1/negotiations",
 			"type": "string"
 		},
 		{
@@ -858,13 +1063,21 @@
 		},
 		{
 			"key": "CONSUMER_SERVER_API_TRANSFERS",
-			"value": "http://localhost:8080/api/v1/transfers",
-			"type": "default"
+			"value": "{{CONSUMER}}/api/v1/transfers",
+			"type": "string"
 		},
 		{
 			"key": "PROVIDER_SERVER_API_TRANSFERS",
-			"value": "http://localhost:8090/api/v1/transfers",
-			"type": "default"
+			"value": "{{PROVIDER}}/api/v1/transfers",
+			"type": "string"
+		},
+		{
+			"key": "accessToken",
+			"value": ""
+		},
+		{
+			"key": "refreshToken",
+			"value": ""
 		}
 	]
 }

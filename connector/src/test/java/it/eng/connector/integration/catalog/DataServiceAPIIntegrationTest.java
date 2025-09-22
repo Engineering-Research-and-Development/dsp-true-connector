@@ -8,13 +8,11 @@ import it.eng.catalog.repository.DataServiceRepository;
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Collections;
@@ -39,46 +37,46 @@ public class DataServiceAPIIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private DataServiceRepository dataServiceRepository;
-    
+
     @Autowired
     private CatalogRepository catalogRepository;
-    
+
     private DataService dataService;
     private Catalog catalog;
-    
+
     @BeforeEach
     public void setup() {
         // Create a new DataService object instead of using the static one to avoid OptimisticLockingFailure
         dataService = DataService.Builder.newInstance()
-            .id(createNewId())
-            .keyword(Set.of("DataService keyword1", "DataService keyword2"))
-            .theme(Set.of("DataService theme1", "DataService theme2"))
-            .conformsTo(CatalogMockObjectUtil.CONFORMSTO)
-            .creator(CatalogMockObjectUtil.CREATOR)
-            .description(Set.of(CatalogMockObjectUtil.MULTILANGUAGE))
-            .identifier(CatalogMockObjectUtil.IDENTIFIER)
-            .issued(CatalogMockObjectUtil.ISSUED)
-            .modified(CatalogMockObjectUtil.MODIFIED)
-            .title(CatalogMockObjectUtil.TITLE)
-            .endpointURL("http://dataservice.com")
-            .endpointDescription("endpoint description")
-            .build();
-            
+                .id(createNewId())
+                .keyword(Set.of("DataService keyword1", "DataService keyword2"))
+                .theme(Set.of("DataService theme1", "DataService theme2"))
+                .conformsTo(CatalogMockObjectUtil.CONFORMSTO)
+                .creator(CatalogMockObjectUtil.CREATOR)
+                .description(Set.of(CatalogMockObjectUtil.MULTILANGUAGE))
+                .identifier(CatalogMockObjectUtil.IDENTIFIER)
+                .issued(CatalogMockObjectUtil.ISSUED)
+                .modified(CatalogMockObjectUtil.MODIFIED)
+                .title(CatalogMockObjectUtil.TITLE)
+                .endpointURL("http://dataservice.com")
+                .endpointDescription("endpoint description")
+                .build();
+
         // Initialize the Catalog before adding, deleting, or updating dataservice
         catalog = Catalog.Builder.newInstance()
-            .service(Collections.singleton(dataService))
-            .build();
-            
+                .service(Collections.singleton(dataService))
+                .build();
+
         dataServiceRepository.save(dataService);
         catalogRepository.save(catalog);
     }
-    
+
     @AfterEach
     public void cleanup() {
         dataServiceRepository.deleteAll();
         catalogRepository.deleteAll();
     }
-    
+
     /**
      * Tests successful retrieval of a data service by ID.
      * Verifies that the controller correctly interacts with the service layer
@@ -86,42 +84,40 @@ public class DataServiceAPIIntegrationTest extends BaseIntegrationTest {
      */
     @Test
     @DisplayName("Get data service by ID - success")
-    @WithUserDetails(TestUtil.API_USER)
     public void getDataServiceById_success() throws Exception {
         // Test getting a data service by ID
         final ResultActions result = mockMvc.perform(
-                get(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/" + dataService.getId())
-                .contentType(MediaType.APPLICATION_JSON));
-        
+                adminGet(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/" + dataService.getId())
+                        .contentType(MediaType.APPLICATION_JSON));
+
         result.andExpect(status().isOk())
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON));
-        
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
         String response = result.andReturn().getResponse().getContentAsString();
         GenericApiResponse<DataService> apiResponse = CatalogSerializer.deserializePlain(response, new TypeReference<GenericApiResponse<DataService>>() {});
-        
+
         assertNotNull(apiResponse);
         assertTrue(apiResponse.isSuccess());
         assertNotNull(apiResponse.getData());
         assertTrue(apiResponse.getData().getId().equals(dataService.getId()));
     }
-    
+
     /**
      * Tests error handling when attempting to retrieve a non-existent data service.
      * Verifies that the controller correctly handles the not found scenario
      */
     @Test
     @DisplayName("Get data service by ID - not found")
-    @WithUserDetails(TestUtil.API_USER)
     public void getDataServiceById_notFound() throws Exception {
         // Test getting a non-existent data service
         final ResultActions result = mockMvc.perform(
-                get(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/non-existent-id")
-                .contentType(MediaType.APPLICATION_JSON));
-        
+                adminGet(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/non-existent-id")
+                        .contentType(MediaType.APPLICATION_JSON));
+
         result.andExpect(status().isNotFound())
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
     }
-    
+
     /**
      * Tests successful retrieval of all data services.
      * Verifies that the controller correctly interacts with the service layer
@@ -129,26 +125,25 @@ public class DataServiceAPIIntegrationTest extends BaseIntegrationTest {
      */
     @Test
     @DisplayName("Get all data services - success")
-    @WithUserDetails(TestUtil.API_USER)
     public void getAllDataServices_success() throws Exception {
         // Test getting all data services
         final ResultActions result = mockMvc.perform(
-                get(ApiEndpoints.CATALOG_DATA_SERVICES_V1)
-                .contentType(MediaType.APPLICATION_JSON));
-        
+                adminGet(ApiEndpoints.CATALOG_DATA_SERVICES_V1)
+                        .contentType(MediaType.APPLICATION_JSON));
+
         result.andExpect(status().isOk())
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON));
-        
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
         String response = result.andReturn().getResponse().getContentAsString();
-        GenericApiResponse<java.util.List<DataService>> apiResponse = CatalogSerializer.deserializePlain(response, 
-            new TypeReference<GenericApiResponse<java.util.List<DataService>>>() {});
-        
+        GenericApiResponse<java.util.List<DataService>> apiResponse = CatalogSerializer.deserializePlain(response,
+                new TypeReference<GenericApiResponse<java.util.List<DataService>>>() {});
+
         assertNotNull(apiResponse);
         assertTrue(apiResponse.isSuccess());
         assertNotNull(apiResponse.getData());
         assertTrue(apiResponse.getData().size() > 0);
     }
-    
+
     /**
      * Tests successful creation of a new data service.
      * Verifies that the controller correctly interacts with the service layer
@@ -156,24 +151,23 @@ public class DataServiceAPIIntegrationTest extends BaseIntegrationTest {
      */
     @Test
     @DisplayName("Create data service - success")
-    @WithUserDetails(TestUtil.API_USER)
     public void createDataService_success() throws Exception {
         // Test creating a new data service
         DataService newDataService = CatalogMockObjectUtil.DATA_SERVICE_FOR_UPDATE;
         String dataServiceJson = CatalogSerializer.serializePlain(newDataService);
-        
+
         final ResultActions result = mockMvc.perform(
-                post(ApiEndpoints.CATALOG_DATA_SERVICES_V1)
-                .content(dataServiceJson)
-                .contentType(MediaType.APPLICATION_JSON));
-        
+                adminPost(ApiEndpoints.CATALOG_DATA_SERVICES_V1)
+                        .content(dataServiceJson)
+                        .contentType(MediaType.APPLICATION_JSON));
+
         result.andExpect(status().isOk())
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON));
-        
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
         String response = result.andReturn().getResponse().getContentAsString();
-        GenericApiResponse<DataService> apiResponse = CatalogSerializer.deserializePlain(response, 
-            new TypeReference<GenericApiResponse<DataService>>() {});
-        
+        GenericApiResponse<DataService> apiResponse = CatalogSerializer.deserializePlain(response,
+                new TypeReference<GenericApiResponse<DataService>>() {});
+
         assertNotNull(apiResponse);
         assertTrue(apiResponse.isSuccess());
         assertNotNull(apiResponse.getData());
@@ -181,28 +175,27 @@ public class DataServiceAPIIntegrationTest extends BaseIntegrationTest {
         assertTrue(apiResponse.getData().getId().equals(newDataService.getId()));
         assertTrue(apiResponse.getData().getTitle().contains(newDataService.getTitle()));
     }
-    
+
     /**
      * Tests validation when attempting to create a data service with invalid data.
      * Verifies that the controller correctly handles the validation error
      */
     @Test
     @DisplayName("Create data service - invalid data")
-    @WithUserDetails(TestUtil.API_USER)
     @Disabled("Until Serializer is fixed to throw exception in case of invalid string vs default object with all fields null")
     public void createDataService_invalidData() throws Exception {
         // Test creating a data service with invalid data
         String invalidJson = "{\"invalid\": \"data\"}";
-        
+
         final ResultActions result = mockMvc.perform(
-                post(ApiEndpoints.CATALOG_DATA_SERVICES_V1)
-                .content(invalidJson)
-                .contentType(MediaType.APPLICATION_JSON));
-        
+                adminPost(ApiEndpoints.CATALOG_DATA_SERVICES_V1)
+                        .content(invalidJson)
+                        .contentType(MediaType.APPLICATION_JSON));
+
         result.andExpect(status().isBadRequest())
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
     }
-    
+
     /**
      * Tests successful update of an existing data service.
      * Verifies that the controller correctly interacts with the service layer
@@ -210,24 +203,23 @@ public class DataServiceAPIIntegrationTest extends BaseIntegrationTest {
      */
     @Test
     @DisplayName("Update data service - success")
-    @WithUserDetails(TestUtil.API_USER)
     public void updateDataService_success() throws Exception {
         // Test updating an existing data service
         // Create a JSON representation of the updated data service
         String dataServiceJson = CatalogSerializer.serializePlain(CatalogMockObjectUtil.DATA_SERVICE_FOR_UPDATE);
-        
+
         final ResultActions result = mockMvc.perform(
-                put(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/" + dataService.getId())
-                .content(dataServiceJson)
-                .contentType(MediaType.APPLICATION_JSON));
-        
+                adminPut(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/" + dataService.getId())
+                        .content(dataServiceJson)
+                        .contentType(MediaType.APPLICATION_JSON));
+
         result.andExpect(status().isOk())
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON));
-        
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
         String response = result.andReturn().getResponse().getContentAsString();
-        GenericApiResponse<DataService> apiResponse = CatalogSerializer.deserializePlain(response, 
-            new TypeReference<GenericApiResponse<DataService>>() {});
-        
+        GenericApiResponse<DataService> apiResponse = CatalogSerializer.deserializePlain(response,
+                new TypeReference<GenericApiResponse<DataService>>() {});
+
         assertNotNull(apiResponse);
         assertTrue(apiResponse.isSuccess());
         assertNotNull(apiResponse.getData());
@@ -235,28 +227,27 @@ public class DataServiceAPIIntegrationTest extends BaseIntegrationTest {
         assertTrue(apiResponse.getData().getId().equals(dataService.getId()));
         assertTrue(apiResponse.getData().getTitle().contains(CatalogMockObjectUtil.DATA_SERVICE_FOR_UPDATE.getTitle()));
     }
-    
+
     /**
      * Tests error handling when attempting to update a non-existent data service.
      * Verifies that the controller correctly handles the not found scenario
      */
     @Test
     @DisplayName("Update data service - not found")
-    @WithUserDetails(TestUtil.API_USER)
     public void updateDataService_notFound() throws Exception {
         // Test updating a non-existent data service
         DataService updatedDataService = CatalogMockObjectUtil.DATA_SERVICE_FOR_UPDATE;
         String dataServiceJson = CatalogSerializer.serializePlain(updatedDataService);
-        
+
         final ResultActions result = mockMvc.perform(
-                put(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/non-existent-id")
-                .content(dataServiceJson)
-                .contentType(MediaType.APPLICATION_JSON));
-        
+                adminPut(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/non-existent-id")
+                        .content(dataServiceJson)
+                        .contentType(MediaType.APPLICATION_JSON));
+
         result.andExpect(status().isNotFound())
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
     }
-    
+
     /**
      * Tests successful deletion of an existing data service.
      * Verifies that the controller correctly interacts with the service layer
@@ -264,43 +255,41 @@ public class DataServiceAPIIntegrationTest extends BaseIntegrationTest {
      */
     @Test
     @DisplayName("Delete data service - success")
-    @WithUserDetails(TestUtil.API_USER)
     public void deleteDataService_success() throws Exception {
         // Test deleting an existing data service
         final ResultActions result = mockMvc.perform(
-                delete(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/" + dataService.getId())
-                .contentType(MediaType.APPLICATION_JSON));
-        
+                adminDelete(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/" + dataService.getId())
+                        .contentType(MediaType.APPLICATION_JSON));
+
         result.andExpect(status().isOk())
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON));
-        
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
         String response = result.andReturn().getResponse().getContentAsString();
-        GenericApiResponse<Void> apiResponse = CatalogSerializer.deserializePlain(response, 
-            new TypeReference<GenericApiResponse<Void>>() {});
-        
+        GenericApiResponse<Void> apiResponse = CatalogSerializer.deserializePlain(response,
+                new TypeReference<GenericApiResponse<Void>>() {});
+
         assertNotNull(apiResponse);
         assertTrue(apiResponse.isSuccess());
         // check in dataserviceRepository not found
         assertTrue(dataServiceRepository.findById(dataService.getId()).isEmpty());
     }
-    
+
     /**
      * Tests error handling when attempting to delete a non-existent data service.
      * Verifies that the controller correctly handles the not found scenario
      */
     @Test
     @DisplayName("Delete data service - not found")
-    @WithUserDetails(TestUtil.API_USER)
     public void deleteDataService_notFound() throws Exception {
         // Test deleting a non-existent data service
         final ResultActions result = mockMvc.perform(
-                delete(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/non-existent-id")
-                .contentType(MediaType.APPLICATION_JSON));
-        
+                adminDelete(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/non-existent-id")
+                        .contentType(MediaType.APPLICATION_JSON));
+
         result.andExpect(status().isNotFound())
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
     }
-    
+
     /**
      * Tests authorization by attempting to access the API without authentication.
      * Verifies that the controller correctly enforces authentication requirements
@@ -311,9 +300,9 @@ public class DataServiceAPIIntegrationTest extends BaseIntegrationTest {
         // Test unauthorized access
         final ResultActions result = mockMvc.perform(
                 get(ApiEndpoints.CATALOG_DATA_SERVICES_V1)
-                .contentType(MediaType.APPLICATION_JSON));
-        
+                        .contentType(MediaType.APPLICATION_JSON));
+
         result.andExpect(status().isUnauthorized())
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
     }
 }

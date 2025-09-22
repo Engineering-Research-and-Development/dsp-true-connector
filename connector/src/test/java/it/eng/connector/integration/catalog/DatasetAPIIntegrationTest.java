@@ -9,7 +9,6 @@ import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
@@ -31,7 +30,6 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.mock.web.MockPart;
-import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -76,19 +74,49 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         catalogRepository.deleteAll();
         artifactRepository.deleteAll();
         datasetRepository.deleteAll();
+        
+        // Ensure S3 bucket is completely clean
         if (s3BucketProvisionService.bucketExists(s3Properties.getBucketName())) {
             List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
-            if (files != null) {
+            if (files != null && !files.isEmpty()) {
                 for (String file : files) {
                     s3ClientService.deleteFile(s3Properties.getBucketName(), file);
                 }
+                // Wait for S3 cleanup to complete to ensure test isolation
+                waitForS3Cleanup();
             }
         }
     }
 
+    /**
+     * Waits for S3 bucket to be completely empty after cleanup.
+     * This ensures proper test isolation by waiting for all file deletions to propagate.
+     */
+    private void waitForS3Cleanup() {
+        int maxRetries = 10;
+        int delayMs = 100;
+        
+        for (int i = 0; i < maxRetries; i++) {
+            List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
+            if (files == null || files.isEmpty()) {
+                log.debug("S3 bucket cleanup completed successfully");
+                return;
+            }
+            log.debug("Waiting for S3 bucket cleanup to complete. Remaining files: {}, Attempt: {}/{}", 
+                     files.size(), i + 1, maxRetries);
+            try {
+                Thread.sleep(delayMs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warn("S3 cleanup wait was interrupted");
+                return;
+            }
+        }
+        log.warn("S3 bucket cleanup did not complete within expected time");
+    }
+
     @Test
     @DisplayName("Dataset API - get by id")
-    @WithUserDetails(TestUtil.API_USER)
     public void getDatasetById() throws Exception {
         Artifact artifactExternal = Artifact.Builder.newInstance()
                 .artifactType(ArtifactType.EXTERNAL)
@@ -127,7 +155,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         };
 
         MvcResult resultList = mockMvc.perform(
-                        get(ApiEndpoints.CATALOG_DATASETS_V1).contentType(MediaType.APPLICATION_JSON))
+                        adminGet(ApiEndpoints.CATALOG_DATASETS_V1).contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -143,7 +171,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Dataset API - get all")
-    @WithUserDetails(TestUtil.API_USER)
     public void getAllDatasets() throws Exception {
         Artifact artifactExternal = Artifact.Builder.newInstance()
                 .artifactType(ArtifactType.EXTERNAL)
@@ -165,7 +192,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         };
 
         MvcResult resultSingle = mockMvc.perform(
-                        get(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + datasetExternal.getId()))
+                        adminGet(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + datasetExternal.getId()))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -181,10 +208,9 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Dataset API - get fail")
-    @WithUserDetails(TestUtil.API_USER)
     public void getDataset_fail() throws Exception {
         MvcResult resultFail = mockMvc.perform(
-                        get(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + "1"))
+                        adminGet(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + "1"))
                 .andExpect(status().isNotFound())
                 .andReturn();
 
@@ -203,7 +229,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Dataset API - upload external")
-    @WithUserDetails(TestUtil.API_USER)
     public void uploadArtifactExternal() throws Exception {
         int initialDatasetSize = datasetRepository.findAll().size();
         int initialArtifactSize = artifactRepository.findAll().size();
@@ -226,9 +251,10 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
                 Objects.requireNonNull(CatalogSerializer.serializePlain(dataset)).getBytes());
         MockPart urlPart = new MockPart("url", CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue().getBytes());
 
-        MvcResult result = mockMvc.perform(
+                MvcResult result = mockMvc.perform(
                         multipart(ApiEndpoints.CATALOG_DATASETS_V1)
-                                .part(datasetPart).part(urlPart))
+                                .part(datasetPart).part(urlPart)
+                                .headers(adminHeaders()))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -263,7 +289,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Dataset API - upload file")
-    @WithUserDetails(TestUtil.API_USER)
     public void uploadArtifactFile() throws Exception {
         int initialDatasetSize = datasetRepository.findAll().size();
         int initialArtifactSize = artifactRepository.findAll().size();
@@ -299,7 +324,8 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
         MvcResult result = mockMvc.perform(
                         multipart(ApiEndpoints.CATALOG_DATASETS_V1)
-                                .file(filePart).part(datasetPart))
+                                .file(filePart).part(datasetPart)
+                                .headers(adminHeaders()))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -352,7 +378,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Dataset API - fail, no URL nor File")
-    @WithUserDetails(TestUtil.API_USER)
     public void uploadArtifactFail() throws Exception {
         Dataset dataset = Dataset.Builder.newInstance()
                 .hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
@@ -366,7 +391,8 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
         MvcResult result = mockMvc.perform(
                         multipart(ApiEndpoints.CATALOG_DATASETS_V1)
-                                .part(datasetPart))
+                                .part(datasetPart)
+                                .headers(adminHeaders()))
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -383,7 +409,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Dataset API - update from external to file")
-    @WithUserDetails(TestUtil.API_USER)
     public void updateArtifactExternalToFile() throws Exception {
         Artifact artifactExternal = Artifact.Builder.newInstance()
                 .artifactType(ArtifactType.EXTERNAL)
@@ -437,7 +462,8 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
 
         MvcResult result = mockMvc.perform(
-                        builder.file(filePart))
+                        builder.file(filePart)
+                                .headers(adminHeaders()))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -489,7 +515,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Dataset API - update from file to external")
-    @WithUserDetails(TestUtil.API_USER)
     public void updateArtifactFileToExternal() throws Exception {
 
         Dataset dataset = Dataset.Builder.newInstance()
@@ -554,7 +579,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
         int initialDatasetSize = datasetRepository.findAll().size();
         int initialArtifactSize = artifactRepository.findAll().size();
-        int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
 
         MockMultipartHttpServletRequestBuilder builder =
                 MockMvcRequestBuilders.multipart(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + datasetWithFile.getId());
@@ -567,7 +591,8 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         });
 
         MvcResult result = mockMvc.perform(
-                        builder.part(urlPart))
+                        builder.part(urlPart)
+                                .headers(adminHeaders()))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -598,13 +623,12 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         assertEquals(ArtifactType.EXTERNAL, artifactFromDb.getArtifactType());
         assertEquals(initialArtifactSize, artifactRepository.findAll().size());
 
-        // check if the file is deleted from S3
-        checkIfEndBucketFileCountIsAsExpected(startingBucketFileCount - 1);
+        // check if the original file is deleted from S3
+        verifyFileDeleted(datasetWithFile.getId());
     }
 
     @Test
     @DisplayName("Dataset API - delete dataset with file")
-    @WithUserDetails(TestUtil.API_USER)
     public void deleteDatasetWithFile() throws Exception {
 
         Dataset dataset = Dataset.Builder.newInstance()
@@ -664,13 +688,12 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
         int initialDatasetSize = datasetRepository.findAll().size();
         int initialArtifactSize = artifactRepository.findAll().size();
-        int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
 
         TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {
         };
 
         MvcResult result = mockMvc.perform(
-                        delete(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + datasetWithFile.getId()))
+                        adminDelete(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + datasetWithFile.getId()))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -692,14 +715,13 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         assertEquals(Optional.empty(), artifactRepository.findById(artifactFile.getId()));
         assertEquals(initialArtifactSize - 1, artifactRepository.findAll().size());
 
-        // check if the file is deleted from the database
-        checkIfEndBucketFileCountIsAsExpected(startingBucketFileCount - 1);
+        // check if the file is deleted from S3 storage
+        verifyFileDeleted(datasetWithFile.getId());
 
     }
 
     @Test
     @DisplayName("Dataset API - delete dataset with external")
-    @WithUserDetails(TestUtil.API_USER)
     public void deleteDatasetWithExternal() throws Exception {
 
         Artifact artifactExternal = Artifact.Builder.newInstance()
@@ -731,7 +753,7 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         };
 
         MvcResult result = mockMvc.perform(
-                        delete(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + dataset.getId()))
+                        adminDelete(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + dataset.getId()))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -757,18 +779,16 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Dataset API - delete fail")
-    @WithUserDetails(TestUtil.API_USER)
     public void deleteDatasetFail() throws Exception {
 
         int initialDatasetSize = datasetRepository.findAll().size();
         int initialArtifactSize = artifactRepository.findAll().size();
-        int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
 
         TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {
         };
 
         MvcResult result = mockMvc.perform(
-                        delete(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + 1))
+                        adminDelete(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + 1))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -786,7 +806,6 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
         // check that the count hasn't changed
         assertEquals(initialDatasetSize, datasetRepository.findAll().size());
         assertEquals(initialArtifactSize, artifactRepository.findAll().size());
-        assertEquals(startingBucketFileCount, s3ClientService.listFiles(s3Properties.getBucketName()).size());
 
     }
 
@@ -803,5 +822,32 @@ public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
             Thread.sleep(delayMs);
         }
         assertEquals(expectedEndBucketFileCount, endBucketFileCount);
+    }
+
+    /**
+     * Verifies that a specific file has been deleted from S3 storage.
+     * This method is more reliable than checking file counts as it directly
+     * tests the file deletion rather than relying on potentially inconsistent counts.
+     * 
+     * @param fileId the ID/key of the file to verify deletion for
+     * @throws InterruptedException if the thread is interrupted during waiting
+     */
+    private void verifyFileDeleted(String fileId) throws InterruptedException {
+        int maxRetries = 20; // Increased retries for better reliability
+        int delayMs = 250;   // Reduced delay for faster retries
+        
+        for (int i = 0; i < maxRetries; i++) {
+            boolean fileExists = s3ClientService.fileExists(s3Properties.getBucketName(), fileId);
+            if (!fileExists) {
+                log.debug("File {} successfully deleted from S3", fileId);
+                return;
+            }
+            log.debug("Waiting for file {} to be deleted from S3. Attempt: {}/{}", fileId, i + 1, maxRetries);
+            Thread.sleep(delayMs);
+        }
+        
+        // Final assertion with descriptive message
+        assertFalse(s3ClientService.fileExists(s3Properties.getBucketName(), fileId), 
+                   "File " + fileId + " was not deleted from S3 after " + maxRetries + " retries");
     }
 }

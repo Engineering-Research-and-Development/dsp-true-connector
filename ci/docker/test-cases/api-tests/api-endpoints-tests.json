@@ -1,813 +1,1178 @@
 {
-	"info": {
-		"_postman_id": "90dd7332-4368-4997-be86-b363c4dbf690",
-		"name": "API tests",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "21815221",
-		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-90dd7332-4368-4997-be86-b363c4dbf690?action=share&source=collection_link&creator=21815221"
-	},
-	"item": [
-		{
-			"name": "Users",
-			"item": [
-				{
-					"name": "Get all users",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {\r",
-									"    pm.response.to.have.status(200);\r",
-									"});\r",
-									"pm.test(\"Check if response contains admin@mail.com\", function () {\r",
-									"    pm.expect(pm.response.text()).to.include(\"admin@mail.com\");\r",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{CONSUMER_SERVER_API_USERS}}",
-							"host": [
-								"{{CONSUMER_SERVER_API_USERS}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get user by email",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {\r",
-									"    pm.response.to.have.status(200);\r",
-									"});\r",
-									"pm.test(\"Check if response contains admin@mail.com\", function () {\r",
-									"    pm.expect(pm.response.text()).to.include(\"admin@mail.com\");\r",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{CONSUMER_SERVER_API_USERS}}/admin@mail.com",
-							"host": [
-								"{{CONSUMER_SERVER_API_USERS}}"
-							],
-							"path": [
-								"admin@mail.com"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Create user",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {\r",
-									"    pm.response.to.have.status(200);\r",
-									"});\r",
-									"pm.test(\"Response body contains New user created\", function () {\r",
-									"    pm.expect(pm.response.text()).to.include(\"New user created\");\r",
-									"    pm.expect(pm.response.text()).to.include(\"user_gha@mail.com\");\r",
-									"    pm.expect(pm.response.text()).to.include(\"GHA Test user\");\r",
-									"    pm.expect(pm.response.text()).to.include(\"DSP-TRUEConnector\");\r",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"firstName\" : \"GHA Test user\",\r\n  \"lastName\" : \"DSP-TRUEConnector\",\r\n  \"email\" : \"user_gha@mail.com\",\r\n  \"password\" : \"GhaPassword123!\",\r\n  \"role\" : \"ROLE_ADMIN\"\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{CONSUMER_SERVER_API_USERS}}",
-							"host": [
-								"{{CONSUMER_SERVER_API_USERS}}"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Get all catalogs",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Check if status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Response is catalog\", function () {\r",
-							"\r",
-							"    result = false;\r",
-							"    var arr = [\"Engineering Informatica S.p.A.\", \"TRUEConnector\", \"REST\", \"SFTP\", \"dataset\", \"distribution\", \"accessService\"];\r",
-							"    responseText = pm.response.text();\r",
-							"\r",
-							"    arr.forEach((x) => {\r",
-							"      if (responseText.includes(x)){\r",
-							"      result = true;\r",
-							"    }\r",
-							"\r",
-							"    pm.expect(result).to.be.true;\r",
-							"    });\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Retrieve catalog id\", function () {\r",
-							"    var jsonData = pm.response.json();\r",
-							"    pm.collectionVariables.set(\"catalogId\", jsonData[\"data\"][\"@id\"])\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Catalog contains data services\", function () {\r",
-							"    const catalog = pm.response.json()[\"data\"];\r",
-							"    pm.expect(catalog.service).to.be.an('array').that.is.not.empty;\r",
-							"    pm.expect(catalog.service).to.satisfy(services => services.every(service => service !== null));\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Catalog contains valid datasets\", function () {\r",
-							"    const catalog = pm.response.json()[\"data\"];\r",
-							"    const datasets = catalog.dataset;\r",
-							"    pm.expect(datasets).to.be.an('array').that.is.not.empty;\r",
-							"    pm.expect(datasets).to.satisfy(datasets => datasets.every(dataset => \r",
-							"        dataset !== null &&\r",
-							"        dataset.hasPolicy !== null &&\r",
-							"        dataset.hasPolicy.length > 0 &&\r",
-							"        dataset.distribution !== null &&\r",
-							"        dataset.distribution.length > 0\r",
-							"    ));\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Catalog contains valid distributions\", function () {\r",
-							"    const catalog = pm.response.json()[\"data\"];\r",
-							"    const distributions = catalog.distribution;\r",
-							"    pm.expect(distributions).to.be.an('array').that.is.not.empty;\r",
-							"    pm.expect(distributions).to.satisfy(distributions => distributions.every(distribution => \r",
-							"        distribution !== null &&\r",
-							"        distribution.accessService !== null &&\r",
-							"        distribution.accessService.length > 0\r",
-							"    ));\r",
-							"});\r",
-							""
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{CONSUMER_SERVER_API_CATALOG}}",
-					"host": [
-						"{{CONSUMER_SERVER_API_CATALOG}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Get catalog by id",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Check if status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Response is catalog\", function () {\r",
-							"\r",
-							"    result = false;\r",
-							"    var arr = [\"Engineering Informatica S.p.A.\", \"TRUEConnector\", \"REST\", \"SFTP\", \"dataset\", \"distribution\", \"accessService\"];\r",
-							"    responseText = pm.response.text();\r",
-							"\r",
-							"    arr.forEach((x) => {\r",
-							"      if (responseText.includes(x)){\r",
-							"      result = true;\r",
-							"    }\r",
-							"\r",
-							"    pm.expect(result).to.be.true;\r",
-							"    });\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Catalog contains data services\", function () {\r",
-							"    const catalog = pm.response.json()[\"data\"];\r",
-							"    pm.expect(catalog.service).to.be.an('array').that.is.not.empty;\r",
-							"    pm.expect(catalog.service).to.satisfy(services => services.every(service => service !== null));\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Catalog contains valid datasets\", function () {\r",
-							"    const catalog = pm.response.json()[\"data\"];\r",
-							"    const datasets = catalog.dataset;\r",
-							"    pm.expect(datasets).to.be.an('array').that.is.not.empty;\r",
-							"    pm.expect(datasets).to.satisfy(datasets => datasets.every(dataset => \r",
-							"        dataset !== null &&\r",
-							"        dataset.hasPolicy !== null &&\r",
-							"        dataset.hasPolicy.length > 0 &&\r",
-							"        dataset.distribution !== null &&\r",
-							"        dataset.distribution.length > 0\r",
-							"    ));\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Catalog contains valid distributions\", function () {\r",
-							"    const catalog = pm.response.json()[\"data\"];\r",
-							"    const distributions = catalog.distribution;\r",
-							"    pm.expect(distributions).to.be.an('array').that.is.not.empty;\r",
-							"    pm.expect(distributions).to.satisfy(distributions => distributions.every(distribution => \r",
-							"        distribution !== null &&\r",
-							"        distribution.accessService !== null &&\r",
-							"        distribution.accessService.length > 0\r",
-							"    ));\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{CONSUMER_SERVER_API_CATALOG}}/{{catalogId}}",
-					"host": [
-						"{{CONSUMER_SERVER_API_CATALOG}}"
-					],
-					"path": [
-						"{{catalogId}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Get all dataservices",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Check if status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Retrieve dataservice id\", function () {\r",
-							"    var jsonData = pm.response.json();\r",
-							"    pm.collectionVariables.set(\"dataserviceId\", jsonData[\"data\"][0][\"@id\"])\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{CONSUMER_SERVER_API_DATASERVICE}}",
-					"host": [
-						"{{CONSUMER_SERVER_API_DATASERVICE}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Get dataservice by id",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Check if status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Response is dataservice\", function () {\r",
-							"\r",
-							"    result = false;\r",
-							"    var arr = [\"DSP TRUEConnector service offering team information\", \"endpointDescription\", \"endpointURL\", \"SFTP\", \"REST\", \"transfer\"];\r",
-							"    responseText = pm.response.text();\r",
-							"\r",
-							"    arr.forEach((x) => {\r",
-							"      if (responseText.includes(x)){\r",
-							"      result = true;\r",
-							"    }\r",
-							"\r",
-							"    pm.expect(result).to.be.true;\r",
-							"    });\r",
-							"});\r",
-							""
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{CONSUMER_SERVER_API_DATASERVICE}}/{{dataserviceId}}",
-					"host": [
-						"{{CONSUMER_SERVER_API_DATASERVICE}}"
-					],
-					"path": [
-						"{{dataserviceId}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Get all datasets",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Check if status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Retrieve dataset id\", function () {\r",
-							"    var jsonData = pm.response.json();\r",
-							"    pm.collectionVariables.set(\"datasetId\", jsonData[\"data\"][0][\"@id\"])\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{CONSUMER_SERVER_API_DATASET}}",
-					"host": [
-						"{{CONSUMER_SERVER_API_DATASET}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Get dataset by id",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Check if status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Response is dataset\", function () {\r",
-							"\r",
-							"    result = false;\r",
-							"    var arr = [\"Dataset offering TRUEConnector team information\", \"distribution\", \"accessService\", \"SFTP\", \"REST\", \"transfer\", \"servesDataset\"];\r",
-							"    responseText = pm.response.text();\r",
-							"\r",
-							"    arr.forEach((x) => {\r",
-							"      if (responseText.includes(x)){\r",
-							"      result = true;\r",
-							"    }\r",
-							"\r",
-							"    pm.expect(result).to.be.true;\r",
-							"    });\r",
-							"});\r",
-							""
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{CONSUMER_SERVER_API_DATASET}}/{{datasetId}}",
-					"host": [
-						"{{CONSUMER_SERVER_API_DATASET}}"
-					],
-					"path": [
-						"{{datasetId}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Get all distributions",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Check if status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Retrieve distribution id\", function () {\r",
-							"    var jsonData = pm.response.json();\r",
-							"    pm.collectionVariables.set(\"distributionId\", jsonData[\"data\"][0][\"@id\"])\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{CONSUMER_SERVER_API_DISTRIBUTION}}",
-					"host": [
-						"{{CONSUMER_SERVER_API_DISTRIBUTION}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Get distribution by id",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Check if status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Response is dataset\", function () {\r",
-							"\r",
-							"    result = false;\r",
-							"    var arr = [\"DSP TRUEConnector service offering team information\", \"endpointDescription\", \"endpointURL\", \"accessService\", \"SFTP\", \"REST\", \"transfer\"];\r",
-							"    responseText = pm.response.text();\r",
-							"\r",
-							"    arr.forEach((x) => {\r",
-							"      if (responseText.includes(x)){\r",
-							"      result = true;\r",
-							"    }\r",
-							"\r",
-							"    pm.expect(result).to.be.true;\r",
-							"    });\r",
-							"});\r",
-							""
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{CONSUMER_SERVER_API_DISTRIBUTION}}/{{distributionId}}",
-					"host": [
-						"{{CONSUMER_SERVER_API_DISTRIBUTION}}"
-					],
-					"path": [
-						"{{distributionId}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Get proxy catalog",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Check if status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Response is catalog\", function () {\r",
-							"\r",
-							"    result = false;\r",
-							"    var arr = [\"Engineering Informatica S.p.A.\", \"TRUEConnector\", \"REST\", \"SFTP\", \"dataset\", \"distribution\", \"accessService\"];\r",
-							"    responseText = pm.response.text();\r",
-							"\r",
-							"    arr.forEach((x) => {\r",
-							"      if (responseText.includes(x)){\r",
-							"      result = true;\r",
-							"    }\r",
-							"\r",
-							"    pm.expect(result).to.be.true;\r",
-							"    });\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Catalog contains data services\", function () {\r",
-							"    const catalog = pm.response.json()[\"data\"];\r",
-							"    pm.expect(catalog.service).to.be.an('array').that.is.not.empty;\r",
-							"    pm.expect(catalog.service).to.satisfy(services => services.every(service => service !== null));\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Catalog contains valid datasets\", function () {\r",
-							"    const catalog = pm.response.json()[\"data\"];\r",
-							"    const datasets = catalog.dataset;\r",
-							"    pm.expect(datasets).to.be.an('array').that.is.not.empty;\r",
-							"    pm.expect(datasets).to.satisfy(datasets => datasets.every(dataset => \r",
-							"        dataset !== null &&\r",
-							"        dataset.hasPolicy !== null &&\r",
-							"        dataset.hasPolicy.length > 0 &&\r",
-							"        dataset.distribution !== null &&\r",
-							"        dataset.distribution.length > 0\r",
-							"    ));\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Catalog contains valid distributions\", function () {\r",
-							"    const catalog = pm.response.json()[\"data\"];\r",
-							"    const distributions = catalog.distribution;\r",
-							"    pm.expect(distributions).to.be.an('array').that.is.not.empty;\r",
-							"    pm.expect(distributions).to.satisfy(distributions => distributions.every(distribution => \r",
-							"        distribution !== null &&\r",
-							"        distribution.accessService !== null &&\r",
-							"        distribution.accessService.length > 0\r",
-							"    ));\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n    \"Forward-To\" : \"{{PROVIDER_PROTOCOL}}\"\r\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{CONSUMER_SERVER_API_PROXY}}/catalogs",
-					"host": [
-						"{{CONSUMER_SERVER_API_PROXY}}"
-					],
-					"path": [
-						"catalogs"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Get Dataset formats",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Check if status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
-							"});\r",
-							"\r",
-							"pm.test(\"Check if at least one format exists in the array\", function () {\r",
-							"    const jsonData = pm.response.json();\r",
-							"    pm.expect(jsonData.data).to.be.an('array').that.is.not.empty;\r",
-							"    pm.expect(jsonData.data[0]).to.exist;\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n    \"Forward-To\" : \"{{PROVIDER_PROTOCOL}}\"\r\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{CONSUMER_SERVER_API_PROXY}}/datasets/{{datasetId}}/formats",
-					"host": [
-						"{{CONSUMER_SERVER_API_PROXY}}"
-					],
-					"path": [
-						"datasets",
-						"{{datasetId}}",
-						"formats"
-					]
-				}
-			},
-			"response": []
-		}
-	],
-	"auth": {
-		"type": "basic",
-		"basic": [
-			{
-				"key": "password",
-				"value": "password",
-				"type": "string"
-			},
-			{
-				"key": "username",
-				"value": "admin@mail.com",
-				"type": "string"
-			}
-		]
-	},
-	"event": [
-		{
-			"listen": "prerequest",
-			"script": {
-				"type": "text/javascript",
-				"packages": {},
-				"exec": [
-					""
-				]
-			}
-		},
-		{
-			"listen": "test",
-			"script": {
-				"type": "text/javascript",
-				"packages": {},
-				"exec": [
-					""
-				]
-			}
-		}
-	],
-	"variable": [
-		{
-			"key": "CONSUMER",
-			"value": "http://localhost:8080",
-			"type": "string"
-		},
-		{
-			"key": "CONSUMER_SERVER_API_CATALOG",
-			"value": "{{CONSUMER}}/api/v1/catalogs",
-			"type": "string"
-		},
-		{
-			"key": "CONSUMER_SERVER_API_DATASERVICE",
-			"value": "{{CONSUMER}}/api/v1/dataservices",
-			"type": "string"
-		},
-		{
-			"key": "CONSUMER_SERVER_API_DATASET",
-			"value": "{{CONSUMER}}/api/v1/datasets",
-			"type": "string"
-		},
-		{
-			"key": "CONSUMER_SERVER_API_DISTRIBUTION",
-			"value": "{{CONSUMER}}/api/v1/distributions",
-			"type": "string"
-		},
-		{
-			"key": "CONSUMER_SERVER_API_PROXY",
-			"value": "{{CONSUMER}}/api/v1/proxy",
-			"type": "string"
-		},
-		{
-			"key": "CONSUMER_SERVER_API_USERS",
-			"value": "{{CONSUMER}}/api/v1/users",
-			"type": "string"
-		},
-		{
-			"key": "PROVIDER_PROTOCOL",
-			"value": "http://172.17.0.1:8090",
-			"type": "string"
-		},
-		{
-			"key": "catalogId",
-			"value": ""
-		},
-		{
-			"key": "dataserviceId",
-			"value": ""
-		},
-		{
-			"key": "datasetId",
-			"value": ""
-		},
-		{
-			"key": "distributionId",
-			"value": ""
-		}
-	]
+  "info": {
+    "_postman_id": "5871ebbc-21c4-4832-884a-16090317656b",
+    "name": "API tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "2326106",
+    "_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-90dd7332-4368-4997-be86-b363c4dbf690?action=share&source=collection_link&creator=21815221"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login to get JWT token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {\r",
+                  "    pm.response.to.have.status(200);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Response contains access token\", function () {\r",
+                  "    var jsonData = pm.response.json();\r",
+                  "    pm.expect(jsonData.data.accessToken).to.exist;\r",
+                  "    pm.collectionVariables.set(\"accessToken\", jsonData.data.accessToken);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Response contains refresh token\", function () {\r",
+                  "    var jsonData = pm.response.json();\r",
+                  "    pm.expect(jsonData.data.refreshToken).to.exist;\r",
+                  "    pm.collectionVariables.set(\"refreshToken\", jsonData.data.refreshToken);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Response contains user info\", function () {\r",
+                  "    var jsonData = pm.response.json();\r",
+                  "    pm.expect(jsonData.data.email).to.eql(\"admin@mail.com\");\r",
+                  "    pm.expect(jsonData.data.role).to.exist;\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{CONSUMER}}/api/v1/auth/login",
+              "host": [
+                "{{CONSUMER}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh JWT token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {\r",
+                  "    pm.response.to.have.status(200);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Response contains new access token\", function () {\r",
+                  "    var jsonData = pm.response.json();\r",
+                  "    pm.expect(jsonData.data.accessToken).to.exist;\r",
+                  "    pm.collectionVariables.set(\"accessToken\", jsonData.data.accessToken);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Response contains new refresh token\", function () {\r",
+                  "    var jsonData = pm.response.json();\r",
+                  "    pm.expect(jsonData.data.refreshToken).to.exist;\r",
+                  "    pm.collectionVariables.set(\"refreshToken\", jsonData.data.refreshToken);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Response contains user info\", function () {\r",
+                  "    var jsonData = pm.response.json();\r",
+                  "    pm.expect(jsonData.data.email).to.eql(\"admin@mail.com\");\r",
+                  "    pm.expect(jsonData.data.role).to.exist;\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"refreshToken\": \"{{refreshToken}}\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{CONSUMER}}/api/v1/auth/refresh",
+              "host": [
+                "{{CONSUMER}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Test invalid token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401\", function () {\r",
+                  "    pm.response.to.have.status(401);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Response indicates unauthorized\", function () {\r",
+                  "    var jsonData = pm.response.json();\r",
+                  "    pm.expect(jsonData.message).to.exist;\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer invalid-token-12345",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{CONSUMER_SERVER_API_USERS}}",
+              "host": [
+                "{{CONSUMER_SERVER_API_USERS}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Test expired token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401\", function () {\r",
+                  "    pm.response.to.have.status(401);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Response indicates token expired\", function () {\r",
+                  "    var jsonData = pm.response.json();\r",
+                  "    pm.expect(jsonData.message).to.exist;\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwMjJ9.invalid",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{CONSUMER_SERVER_API_USERS}}",
+              "host": [
+                "{{CONSUMER_SERVER_API_USERS}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get all users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {\r",
+                  "    pm.response.to.have.status(200);\r",
+                  "});\r",
+                  "pm.test(\"Check if response contains admin@mail.com\", function () {\r",
+                  "    pm.expect(pm.response.text()).to.include(\"admin@mail.com\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{CONSUMER_SERVER_API_USERS}}",
+              "host": [
+                "{{CONSUMER_SERVER_API_USERS}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get user by id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {\r",
+                  "    pm.response.to.have.status(200);\r",
+                  "});\r",
+                  "pm.test(\"Check if response contains admin@mail.com\", function () {\r",
+                  "    pm.expect(pm.response.text()).to.include(\"admin@mail.com\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{CONSUMER_SERVER_API_USERS}}/59d54e6d-a3f3-4a03-a093-d276e3068eef",
+              "host": [
+                "{{CONSUMER_SERVER_API_USERS}}"
+              ],
+              "path": [
+                "59d54e6d-a3f3-4a03-a093-d276e3068eef"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {\r",
+                  "    pm.response.to.have.status(200);\r",
+                  "});\r",
+                  "\r",
+                  "const response = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"Success is true\", function () {\r",
+                  "    pm.expect(response.success).to.be.true;\r",
+                  "});\r",
+                  "\r",
+                  "\r",
+                  "pm.test(\"Response contains correct user data\", function () {\r",
+                  "    pm.expect(response.data.email).to.eql(\"user_gha@mail.com\");\r",
+                  "    pm.expect(response.data.firstName).to.eql(\"GHA Test user\");\r",
+                  "    pm.expect(response.data.lastName).to.eql(\"DSP-TRUEConnector\");\r",
+                  "    pm.expect(response.data.role).to.eql(\"ROLE_ADMIN\");\r",
+                  "    pm.expect(response.data.enabled).to.be.true;\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"firstName\" : \"GHA Test user\",\r\n  \"lastName\" : \"DSP-TRUEConnector\",\r\n  \"email\" : \"user_gha@mail.com\",\r\n  \"password\" : \"GhaPassword123!\",\r\n  \"role\" : \"ROLE_ADMIN\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{CONSUMER_SERVER_API_USERS}}",
+              "host": [
+                "{{CONSUMER_SERVER_API_USERS}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Get all catalogs",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Check if status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Response is catalog\", function () {\r",
+              "\r",
+              "    result = false;\r",
+              "    var arr = [\"Engineering Informatica S.p.A.\", \"TRUEConnector\", \"REST\", \"SFTP\", \"dataset\", \"distribution\", \"accessService\"];\r",
+              "    responseText = pm.response.text();\r",
+              "\r",
+              "    arr.forEach((x) => {\r",
+              "      if (responseText.includes(x)){\r",
+              "      result = true;\r",
+              "    }\r",
+              "\r",
+              "    pm.expect(result).to.be.true;\r",
+              "    });\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Retrieve catalog id\", function () {\r",
+              "    var jsonData = pm.response.json();\r",
+              "    pm.collectionVariables.set(\"catalogId\", jsonData[\"data\"][\"@id\"])\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Catalog contains data services\", function () {\r",
+              "    const catalog = pm.response.json()[\"data\"];\r",
+              "    pm.expect(catalog.service).to.be.an('array').that.is.not.empty;\r",
+              "    pm.expect(catalog.service).to.satisfy(services => services.every(service => service !== null));\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Catalog contains valid datasets\", function () {\r",
+              "    const catalog = pm.response.json()[\"data\"];\r",
+              "    const datasets = catalog.dataset;\r",
+              "    pm.expect(datasets).to.be.an('array').that.is.not.empty;\r",
+              "    pm.expect(datasets).to.satisfy(datasets => datasets.every(dataset => \r",
+              "        dataset !== null &&\r",
+              "        dataset.hasPolicy !== null &&\r",
+              "        dataset.hasPolicy.length > 0 &&\r",
+              "        dataset.distribution !== null &&\r",
+              "        dataset.distribution.length > 0\r",
+              "    ));\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Catalog contains valid distributions\", function () {\r",
+              "    const catalog = pm.response.json()[\"data\"];\r",
+              "    const distributions = catalog.distribution;\r",
+              "    pm.expect(distributions).to.be.an('array').that.is.not.empty;\r",
+              "    pm.expect(distributions).to.satisfy(distributions => distributions.every(distribution => \r",
+              "        distribution !== null &&\r",
+              "        distribution.accessService !== null &&\r",
+              "        distribution.accessService.length > 0\r",
+              "    ));\r",
+              "});\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{CONSUMER_SERVER_API_CATALOG}}",
+          "host": [
+            "{{CONSUMER_SERVER_API_CATALOG}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get catalog by id",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Check if status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Response is catalog\", function () {\r",
+              "\r",
+              "    result = false;\r",
+              "    var arr = [\"Engineering Informatica S.p.A.\", \"TRUEConnector\", \"REST\", \"SFTP\", \"dataset\", \"distribution\", \"accessService\"];\r",
+              "    responseText = pm.response.text();\r",
+              "\r",
+              "    arr.forEach((x) => {\r",
+              "      if (responseText.includes(x)){\r",
+              "      result = true;\r",
+              "    }\r",
+              "\r",
+              "    pm.expect(result).to.be.true;\r",
+              "    });\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Catalog contains data services\", function () {\r",
+              "    const catalog = pm.response.json()[\"data\"];\r",
+              "    pm.expect(catalog.service).to.be.an('array').that.is.not.empty;\r",
+              "    pm.expect(catalog.service).to.satisfy(services => services.every(service => service !== null));\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Catalog contains valid datasets\", function () {\r",
+              "    const catalog = pm.response.json()[\"data\"];\r",
+              "    const datasets = catalog.dataset;\r",
+              "    pm.expect(datasets).to.be.an('array').that.is.not.empty;\r",
+              "    pm.expect(datasets).to.satisfy(datasets => datasets.every(dataset => \r",
+              "        dataset !== null &&\r",
+              "        dataset.hasPolicy !== null &&\r",
+              "        dataset.hasPolicy.length > 0 &&\r",
+              "        dataset.distribution !== null &&\r",
+              "        dataset.distribution.length > 0\r",
+              "    ));\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Catalog contains valid distributions\", function () {\r",
+              "    const catalog = pm.response.json()[\"data\"];\r",
+              "    const distributions = catalog.distribution;\r",
+              "    pm.expect(distributions).to.be.an('array').that.is.not.empty;\r",
+              "    pm.expect(distributions).to.satisfy(distributions => distributions.every(distribution => \r",
+              "        distribution !== null &&\r",
+              "        distribution.accessService !== null &&\r",
+              "        distribution.accessService.length > 0\r",
+              "    ));\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{CONSUMER_SERVER_API_CATALOG}}/{{catalogId}}",
+          "host": [
+            "{{CONSUMER_SERVER_API_CATALOG}}"
+          ],
+          "path": [
+            "{{catalogId}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get all dataservices",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Check if status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Retrieve dataservice id\", function () {\r",
+              "    var jsonData = pm.response.json();\r",
+              "    pm.collectionVariables.set(\"dataserviceId\", jsonData[\"data\"][0][\"@id\"])\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{CONSUMER_SERVER_API_DATASERVICE}}",
+          "host": [
+            "{{CONSUMER_SERVER_API_DATASERVICE}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get dataservice by id",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Check if status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Response is dataservice\", function () {\r",
+              "\r",
+              "    result = false;\r",
+              "    var arr = [\"DSP TRUEConnector service offering team information\", \"endpointDescription\", \"endpointURL\", \"SFTP\", \"REST\", \"transfer\"];\r",
+              "    responseText = pm.response.text();\r",
+              "\r",
+              "    arr.forEach((x) => {\r",
+              "      if (responseText.includes(x)){\r",
+              "      result = true;\r",
+              "    }\r",
+              "\r",
+              "    pm.expect(result).to.be.true;\r",
+              "    });\r",
+              "});\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{CONSUMER_SERVER_API_DATASERVICE}}/{{dataserviceId}}",
+          "host": [
+            "{{CONSUMER_SERVER_API_DATASERVICE}}"
+          ],
+          "path": [
+            "{{dataserviceId}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get all datasets",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Check if status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Retrieve dataset id\", function () {\r",
+              "    var jsonData = pm.response.json();\r",
+              "    pm.collectionVariables.set(\"datasetId\", jsonData[\"data\"][0][\"@id\"])\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{CONSUMER_SERVER_API_DATASET}}",
+          "host": [
+            "{{CONSUMER_SERVER_API_DATASET}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get dataset by id",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Check if status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Response is dataset\", function () {\r",
+              "\r",
+              "    result = false;\r",
+              "    var arr = [\"Dataset offering TRUEConnector team information\", \"distribution\", \"accessService\", \"SFTP\", \"REST\", \"transfer\", \"servesDataset\"];\r",
+              "    responseText = pm.response.text();\r",
+              "\r",
+              "    arr.forEach((x) => {\r",
+              "      if (responseText.includes(x)){\r",
+              "      result = true;\r",
+              "    }\r",
+              "\r",
+              "    pm.expect(result).to.be.true;\r",
+              "    });\r",
+              "});\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{CONSUMER_SERVER_API_DATASET}}/{{datasetId}}",
+          "host": [
+            "{{CONSUMER_SERVER_API_DATASET}}"
+          ],
+          "path": [
+            "{{datasetId}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get all distributions",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Check if status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Retrieve distribution id\", function () {\r",
+              "    var jsonData = pm.response.json();\r",
+              "    pm.collectionVariables.set(\"distributionId\", jsonData[\"data\"][0][\"@id\"])\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{CONSUMER_SERVER_API_DISTRIBUTION}}",
+          "host": [
+            "{{CONSUMER_SERVER_API_DISTRIBUTION}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get distribution by id",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Check if status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Response is dataset\", function () {\r",
+              "\r",
+              "    result = false;\r",
+              "    var arr = [\"DSP TRUEConnector service offering team information\", \"endpointDescription\", \"endpointURL\", \"accessService\", \"SFTP\", \"REST\", \"transfer\"];\r",
+              "    responseText = pm.response.text();\r",
+              "\r",
+              "    arr.forEach((x) => {\r",
+              "      if (responseText.includes(x)){\r",
+              "      result = true;\r",
+              "    }\r",
+              "\r",
+              "    pm.expect(result).to.be.true;\r",
+              "    });\r",
+              "});\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{CONSUMER_SERVER_API_DISTRIBUTION}}/{{distributionId}}",
+          "host": [
+            "{{CONSUMER_SERVER_API_DISTRIBUTION}}"
+          ],
+          "path": [
+            "{{distributionId}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get proxy catalog",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Check if status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Response is catalog\", function () {\r",
+              "\r",
+              "    result = false;\r",
+              "    var arr = [\"Engineering Informatica S.p.A.\", \"TRUEConnector\", \"REST\", \"SFTP\", \"dataset\", \"distribution\", \"accessService\"];\r",
+              "    responseText = pm.response.text();\r",
+              "\r",
+              "    arr.forEach((x) => {\r",
+              "      if (responseText.includes(x)){\r",
+              "      result = true;\r",
+              "    }\r",
+              "\r",
+              "    pm.expect(result).to.be.true;\r",
+              "    });\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Catalog contains data services\", function () {\r",
+              "    const catalog = pm.response.json()[\"data\"];\r",
+              "    pm.expect(catalog.service).to.be.an('array').that.is.not.empty;\r",
+              "    pm.expect(catalog.service).to.satisfy(services => services.every(service => service !== null));\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Catalog contains valid datasets\", function () {\r",
+              "    const catalog = pm.response.json()[\"data\"];\r",
+              "    const datasets = catalog.dataset;\r",
+              "    pm.expect(datasets).to.be.an('array').that.is.not.empty;\r",
+              "    pm.expect(datasets).to.satisfy(datasets => datasets.every(dataset => \r",
+              "        dataset !== null &&\r",
+              "        dataset.hasPolicy !== null &&\r",
+              "        dataset.hasPolicy.length > 0 &&\r",
+              "        dataset.distribution !== null &&\r",
+              "        dataset.distribution.length > 0\r",
+              "    ));\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Catalog contains valid distributions\", function () {\r",
+              "    const catalog = pm.response.json()[\"data\"];\r",
+              "    const distributions = catalog.distribution;\r",
+              "    pm.expect(distributions).to.be.an('array').that.is.not.empty;\r",
+              "    pm.expect(distributions).to.satisfy(distributions => distributions.every(distribution => \r",
+              "        distribution !== null &&\r",
+              "        distribution.accessService !== null &&\r",
+              "        distribution.accessService.length > 0\r",
+              "    ));\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"Forward-To\" : \"{{PROVIDER_PROTOCOL}}\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{CONSUMER_SERVER_API_PROXY}}/catalogs",
+          "host": [
+            "{{CONSUMER_SERVER_API_PROXY}}"
+          ],
+          "path": [
+            "catalogs"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Dataset formats",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Check if status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Check if at least one format exists in the array\", function () {\r",
+              "    const jsonData = pm.response.json();\r",
+              "    pm.expect(jsonData.data).to.be.an('array').that.is.not.empty;\r",
+              "    pm.expect(jsonData.data[0]).to.exist;\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"Forward-To\" : \"{{PROVIDER_PROTOCOL}}\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{CONSUMER_SERVER_API_PROXY}}/datasets/{{datasetId}}/formats",
+          "host": [
+            "{{CONSUMER_SERVER_API_PROXY}}"
+          ],
+          "path": [
+            "datasets",
+            "{{datasetId}}",
+            "formats"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Logout",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Response indicates successful logout\", function () {\r",
+              "    var jsonData = pm.response.json();\r",
+              "    pm.expect(jsonData.message).to.exist;\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"refreshToken\": \"{{refreshToken}}\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{CONSUMER}}/api/v1/auth/logout",
+          "host": [
+            "{{CONSUMER}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "logout"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "CONSUMER",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "CONSUMER_SERVER_API_CATALOG",
+      "value": "{{CONSUMER}}/api/v1/catalogs",
+      "type": "string"
+    },
+    {
+      "key": "CONSUMER_SERVER_API_DATASERVICE",
+      "value": "{{CONSUMER}}/api/v1/dataservices",
+      "type": "string"
+    },
+    {
+      "key": "CONSUMER_SERVER_API_DATASET",
+      "value": "{{CONSUMER}}/api/v1/datasets",
+      "type": "string"
+    },
+    {
+      "key": "CONSUMER_SERVER_API_DISTRIBUTION",
+      "value": "{{CONSUMER}}/api/v1/distributions",
+      "type": "string"
+    },
+    {
+      "key": "CONSUMER_SERVER_API_PROXY",
+      "value": "{{CONSUMER}}/api/v1/proxy",
+      "type": "string"
+    },
+    {
+      "key": "CONSUMER_SERVER_API_USERS",
+      "value": "{{CONSUMER}}/api/v1/users",
+      "type": "string"
+    },
+    {
+      "key": "PROVIDER_PROTOCOL",
+      "value": "http://172.17.0.1:8090",
+      "type": "string"
+    },
+    {
+      "key": "catalogId",
+      "value": ""
+    },
+    {
+      "key": "dataserviceId",
+      "value": ""
+    },
+    {
+      "key": "datasetId",
+      "value": ""
+    },
+    {
+      "key": "distributionId",
+      "value": ""
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    }
+  ]
 }

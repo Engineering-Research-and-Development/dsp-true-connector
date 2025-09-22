@@ -8,6 +8,139 @@
 	},
 	"item": [
 		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login to get JWT token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response contains access token\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData.data.accessToken).to.exist;\r",
+									"    pm.collectionVariables.set(\"accessToken\", jsonData.data.accessToken);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response contains refresh token\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData.data.refreshToken).to.exist;\r",
+									"    pm.collectionVariables.set(\"refreshToken\", jsonData.data.refreshToken);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response contains user info\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData.data.email).to.eql(\"admin@mail.com\");\r",
+									"    pm.expect(jsonData.data.role).to.exist;\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{PROVIDER}}/api/v1/auth/login",
+							"host": [
+								"{{PROVIDER}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh JWT token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response contains new access token\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData.data.accessToken).to.exist;\r",
+									"    pm.collectionVariables.set(\"accessToken\", jsonData.data.accessToken);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response contains new refresh token\", function () {\r",
+									"    var jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData.data.refreshToken).to.exist;\r",
+									"    pm.collectionVariables.set(\"refreshToken\", jsonData.data.refreshToken);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"refreshToken\": \"{{refreshToken}}\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{PROVIDER}}/api/v1/auth/refresh",
+							"host": [
+								"{{PROVIDER}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"refresh"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
 			"name": "List all artifacts",
 			"event": [
 				{
@@ -30,7 +163,13 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					}
+				],
 				"url": {
 					"raw": "{{PROVIDER_API_ARTIFACTS}}",
 					"host": [
@@ -64,6 +203,11 @@
 			"request": {
 				"method": "GET",
 				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
 					{
 						"key": "Content-Type",
 						"value": "application/json",
@@ -104,6 +248,11 @@
 				"method": "POST",
 				"header": [
 					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
+					{
 						"key": "Content-Type",
 						"value": "application/json"
 					}
@@ -164,7 +313,13 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					}
+				],
 				"url": {
 					"raw": "{{PROVIDER_API_ARTIFACTS}}",
 					"host": [
@@ -198,6 +353,11 @@
 			"request": {
 				"method": "GET",
 				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
 					{
 						"key": "Content-Type",
 						"value": "application/json",
@@ -233,6 +393,11 @@
 				"method": "PUT",
 				"header": [
 					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
+					{
 						"key": "Content-Type",
 						"value": "application/json"
 					}
@@ -297,7 +462,13 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					}
+				],
 				"url": {
 					"raw": "{{PROVIDER_API_ARTIFACTS}}",
 					"host": [
@@ -332,6 +503,11 @@
 				"method": "GET",
 				"header": [
 					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
+					{
 						"key": "Content-Type",
 						"value": "application/json",
 						"type": "text"
@@ -365,6 +541,11 @@
 			"request": {
 				"method": "PUT",
 				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
 					{
 						"key": "Content-Type",
 						"value": "application/json"
@@ -429,7 +610,13 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					}
+				],
 				"url": {
 					"raw": "{{PROVIDER_API_ARTIFACTS}}",
 					"host": [
@@ -464,6 +651,11 @@
 				"method": "GET",
 				"header": [
 					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
+					{
 						"key": "Content-Type",
 						"value": "application/json",
 						"type": "text"
@@ -497,6 +689,11 @@
 			"request": {
 				"method": "PUT",
 				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
 					{
 						"key": "Content-Type",
 						"value": "application/json"
@@ -562,7 +759,13 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					}
+				],
 				"url": {
 					"raw": "{{PROVIDER_API_ARTIFACTS}}",
 					"host": [
@@ -597,6 +800,11 @@
 				"method": "GET",
 				"header": [
 					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
+					{
 						"key": "Content-Type",
 						"value": "application/json",
 						"type": "text"
@@ -630,6 +838,11 @@
 			"request": {
 				"method": "POST",
 				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
 					{
 						"key": "Content-Type",
 						"value": "application/json"
@@ -692,7 +905,13 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					}
+				],
 				"url": {
 					"raw": "{{PROVIDER_API_ARTIFACTS}}",
 					"host": [
@@ -727,6 +946,11 @@
 				"method": "GET",
 				"header": [
 					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
+					{
 						"key": "Content-Type",
 						"value": "application/json",
 						"type": "text"
@@ -759,7 +983,13 @@
 			],
 			"request": {
 				"method": "DELETE",
-				"header": [],
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					}
+				],
 				"url": {
 					"raw": "{{PROVIDER_API_DATASETS}}/{{datasetWithFileId}}",
 					"host": [
@@ -795,7 +1025,13 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					}
+				],
 				"url": {
 					"raw": "{{PROVIDER_API_ARTIFACTS}}",
 					"host": [
@@ -829,6 +1065,11 @@
 			"request": {
 				"method": "GET",
 				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
 					{
 						"key": "Content-Type",
 						"value": "application/json",
@@ -868,6 +1109,11 @@
 			"request": {
 				"method": "POST",
 				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
 					{
 						"key": "Content-Type",
 						"value": "application/json"
@@ -929,7 +1175,13 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					}
+				],
 				"url": {
 					"raw": "{{PROVIDER_API_ARTIFACTS}}",
 					"host": [
@@ -964,6 +1216,11 @@
 				"method": "GET",
 				"header": [
 					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
+					{
 						"key": "Content-Type",
 						"value": "application/json",
 						"type": "text"
@@ -996,7 +1253,13 @@
 			],
 			"request": {
 				"method": "DELETE",
-				"header": [],
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					}
+				],
 				"url": {
 					"raw": "{{PROVIDER_API_DATASETS}}/{{datasetWithExternalId}}",
 					"host": [
@@ -1032,7 +1295,13 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					}
+				],
 				"url": {
 					"raw": "{{PROVIDER_API_ARTIFACTS}}",
 					"host": [
@@ -1067,6 +1336,11 @@
 				"method": "GET",
 				"header": [
 					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					},
+					{
 						"key": "Content-Type",
 						"value": "application/json",
 						"type": "text"
@@ -1082,21 +1356,6 @@
 			"response": []
 		}
 	],
-	"auth": {
-		"type": "basic",
-		"basic": [
-			{
-				"key": "password",
-				"value": "password",
-				"type": "string"
-			},
-			{
-				"key": "username",
-				"value": "admin@mail.com",
-				"type": "string"
-			}
-		]
-	},
 	"event": [
 		{
 			"listen": "prerequest",
@@ -1121,19 +1380,32 @@
 	],
 	"variable": [
 		{
+			"key": "PROVIDER",
+			"value": "http://localhost:8090",
+			"type": "string"
+		},
+		{
 			"key": "datasetId",
 			"value": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
 			"type": "string"
 		},
 		{
 			"key": "PROVIDER_API_ARTIFACTS",
-			"value": "http://localhost:8090/api/v1/artifacts",
+			"value": "{{PROVIDER}}/api/v1/artifacts",
 			"type": "string"
 		},
 		{
 			"key": "PROVIDER_API_DATASETS",
-			"value": "http://localhost:8090/api/v1/datasets",
+			"value": "{{PROVIDER}}/api/v1/datasets",
 			"type": "string"
+		},
+		{
+			"key": "accessToken",
+			"value": ""
+		},
+		{
+			"key": "refreshToken",
+			"value": ""
 		}
 	]
 }

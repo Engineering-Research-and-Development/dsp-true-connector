@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.repository.TransferProcessRepository;
@@ -24,7 +23,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 import org.wiremock.spring.InjectWireMock;
 
@@ -39,7 +37,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -90,7 +87,6 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
     @ParameterizedTest
     @MethodSource("getValidConstraints")
     @DisplayName("View data - success")
-    @WithUserDetails(TestUtil.API_USER)
     public void viewData_success(Constraint constraint) throws Exception {
         String fileContent = "Hello, World!";
 
@@ -132,7 +128,7 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
         // send request
         final ResultActions result =
                 mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessCompleted.getId() + "/view")
+                        adminGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessCompleted.getId() + "/view")
                                 .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isOk())
@@ -166,7 +162,6 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
     @ParameterizedTest
     @MethodSource("getInvalidConstraints")
     @DisplayName("View data - fail policy invalid")
-    @WithUserDetails(TestUtil.API_USER)
     public void viewData_fail_policyInvalid(Constraint constraint) throws Exception {
         Agreement agreement = insertAgreement(constraint, 6);
 
@@ -186,7 +181,7 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
         // send request
         final ResultActions result =
                 mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessCompleted.getId() + "/view")
+                        adminGet(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessCompleted.getId() + "/view")
                                 .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isBadRequest())

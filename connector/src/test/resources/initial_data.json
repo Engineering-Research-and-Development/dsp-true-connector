@@ -10,7 +10,9 @@
       "enabled": true,
       "expired": false,
       "locked": false,
-      "role": "ROLE_ADMIN"
+      "lastLoginDate": null,
+            "createdDate": "2024-06-24T16:26:00.000Z",
+            "role": "ROLE_ADMIN"
     },
     {
       "_class": "it.eng.connector.model.User",
@@ -19,10 +21,25 @@
       "lastName": "Role",
       "email": "connector@mail.com",
       "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
-      "enabled": "true",
+      "enabled": true,
       "expired": false,
       "locked": false,
+            "lastLoginDate": null,
+            "createdDate": "2024-06-24T16:26:00.000Z",
       "role": "ROLE_CONNECTOR"
+        }, {
+            "_class": "it.eng.connector.model.User",
+            "_id": "f9e8d7c6-b5a4-4321-9876-543210abcdef",
+            "firstName": "User",
+            "lastName": "Role",
+            "email": "user@mail.com",
+            "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
+            "enabled": true,
+            "expired": false,
+            "locked": false,
+            "lastLoginDate": null,
+            "createdDate": "2024-06-24T16:26:00.000Z",
+            "role": "ROLE_USER"
     }
   ],
   "application_properties": [
