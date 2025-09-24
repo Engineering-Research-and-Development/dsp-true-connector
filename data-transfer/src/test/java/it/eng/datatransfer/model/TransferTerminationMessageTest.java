@@ -42,9 +42,9 @@ public class TransferTerminationMessageTest {
 		JsonNode result = TransferSerializer.serializeProtocolJsonNode(transferTerminationMessage);
 		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
 		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
-		assertNotNull(result.get(DSpaceConstants.DSPACE_CONSUMER_PID).asText());
-		assertNotNull(result.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText());
-		assertNotNull(result.get(DSpaceConstants.DSPACE_CODE).asText());
+		assertNotNull(result.get(DSpaceConstants.CONSUMER_PID).asText());
+		assertNotNull(result.get(DSpaceConstants.PROVIDER_PID).asText());
+		assertNotNull(result.get(DSpaceConstants.CODE).asText());
 
 		TransferTerminationMessage javaObj = TransferSerializer.deserializeProtocol(result, TransferTerminationMessage.class);
 		validateJavaObject(javaObj);

@@ -20,7 +20,6 @@ import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.BucketCredentialsService;
-import it.eng.tools.s3.service.S3BucketProvisionService;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.serializer.ToolsSerializer;
@@ -37,10 +36,12 @@ import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -698,4 +699,34 @@ public class DataTransferAPIService {
                             "role", IConstants.ROLE_API));
         }
     }
+
+    public JsonNode tck(TCKRequest body) {
+//        will be moved in a separate service and controler
+        if (!dataTransferProperties.tckInteractionEnabled()) {
+            return null;
+        }
+
+        if (body == null || StringUtils.isBlank(body.getAgreementId())) {
+            throw new DataTransferAPIException("Missing agreementId in TCK request");
+        }
+
+        String agreementId = body.getAgreementId();
+        final String boundary = "-test-";
+        int idx = agreementId.indexOf(boundary);
+        if (idx < 0) {
+            throw new DataTransferAPIException("agreementId not in expected format, missing '" + boundary + "'");
+        }
+
+        String after = agreementId.substring(idx + boundary.length());
+
+//        create list of states from the agreementId
+//        agreementId = "tp0202-test-REQUESTED-COMPLETED results in states={REQUESTED,COMPLETED}
+        List<TransferState> states = Arrays.stream(after.split("-"))
+                .map(state -> TransferState.fromString(state))
+                .collect(Collectors.toList());
+
+        return null;
+
+    }
+
 }

@@ -14,37 +14,37 @@ import it.eng.tools.model.DSpaceConstants.DataTransferStates;
 
 public enum TransferState {
 	
-	INITIALIZED(DSpaceConstants.DSPACE + DataTransferStates.INITIALIZED) {
+	INITIALIZED(DataTransferStates.INITIALIZED.name()) {
 		@Override
 		public List<TransferState> nextState() {
 			return Arrays.asList(REQUESTED);
 		}
 	},
-	REQUESTED(DSpaceConstants.DSPACE + DataTransferStates.REQUESTED) {
+	REQUESTED(DataTransferStates.REQUESTED.name()) {
 		@Override
 		public List<TransferState> nextState() {
 			return Arrays.asList(STARTED, TERMINATED);
 		}
 	},
-	STARTED(DSpaceConstants.DSPACE + DataTransferStates.STARTED) {
+	STARTED(DataTransferStates.STARTED.name()) {
 		@Override
 		public List<TransferState> nextState() {
 			return Arrays.asList(SUSPENDED, COMPLETED, TERMINATED);
 		}
 	},
-	TERMINATED(DSpaceConstants.DSPACE + DataTransferStates.TERMINATED) {
+	TERMINATED(DataTransferStates.TERMINATED.name()) {
 		@Override
 		public List<TransferState> nextState() {
 			return Arrays.asList();
 		}
 	},
-	COMPLETED(DSpaceConstants.DSPACE + DataTransferStates.COMPLETED) {
+	COMPLETED(DataTransferStates.COMPLETED.name()) {
 		@Override
 		public List<TransferState> nextState() {
 			return Arrays.asList();
 		}
 	},
-	SUSPENDED(DSpaceConstants.DSPACE + DataTransferStates.SUSPENDED) {
+	SUSPENDED(DataTransferStates.SUSPENDED.name()) {
 		@Override
 		public List<TransferState> nextState() {
 			return Arrays.asList(STARTED, TERMINATED);

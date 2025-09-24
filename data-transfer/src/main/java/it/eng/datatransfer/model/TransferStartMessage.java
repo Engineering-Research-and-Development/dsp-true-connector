@@ -61,12 +61,10 @@ public class TransferStartMessage extends AbstractTransferMessage {
     private String id;
     
 	@NotNull
-	@JsonProperty(DSpaceConstants.DSPACE_PROVIDER_PID)
 	private String providerPid;
 	
 	//	The dataAddress is only provided if the current transfer is a pull transfer 
 	//	and contains a transport-specific endpoint address for obtaining the data.
-	@JsonProperty(DSpaceConstants.DSPACE_DATA_ADDRESS)
 	private DataAddress dataAddress;
 	
 	@JsonPOJOBuilder(withPrefix = "")
@@ -88,19 +86,16 @@ public class TransferStartMessage extends AbstractTransferMessage {
         	return this;
         }
 
-		@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
 		public Builder consumerPid(String consumerPid) {
 			message.consumerPid = consumerPid;
 			return this;
 		}
 
-		@JsonProperty((DSpaceConstants.DSPACE_PROVIDER_PID))
 		public Builder providerPid(String providerPid) {
 			message.providerPid = providerPid;
 			return this;
 		}
 
-		@JsonProperty(DSpaceConstants.DSPACE_DATA_ADDRESS)
 		public Builder dataAddress(DataAddress dataAddress) {
 			message.dataAddress = dataAddress;
 			return this;
@@ -125,7 +120,7 @@ public class TransferStartMessage extends AbstractTransferMessage {
 	
 	@Override
 	public String getType() {
-		return DSpaceConstants.DSPACE + TransferStartMessage.class.getSimpleName();
+		return TransferStartMessage.class.getSimpleName();
 	}
 
 }

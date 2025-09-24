@@ -2,6 +2,7 @@ package it.eng.datatransfer.rest.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.model.DataTransferRequest;
+import it.eng.datatransfer.model.TCKRequest;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
@@ -212,6 +213,18 @@ public class DataTransferAPIController {
         JsonNode response = apiService.terminateTransfer(transferProcessId);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(GenericApiResponse.success(response, "Data transfer terminated"));
+    }
+
+
+    @PostMapping(path = {"/tck"}, consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<GenericApiResponse<JsonNode>> tck(@RequestBody TCKRequest body) {
+        log.info("TCK request");
+        JsonNode response = apiService.tck(body);
+        if (response == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(GenericApiResponse.success(response, "TCK request processed successfully"));
     }
 
 }

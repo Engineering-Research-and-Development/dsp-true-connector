@@ -59,11 +59,11 @@ public class TransferRequestMessageTest {
 		JsonNode result = TransferSerializer.serializeProtocolJsonNode(transferRequestMessage);
 		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
 		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
-		assertNotNull(result.get(DSpaceConstants.DSPACE_CONSUMER_PID).asText());
-		assertNotNull(result.get(DSpaceConstants.DSPACE_AGREEMENT_ID).asText());
-		assertNotNull(result.get(DSpaceConstants.DSPACE_CALLBACK_ADDRESS).asText());
+		assertNotNull(result.get(DSpaceConstants.CONSUMER_PID).asText());
+		assertNotNull(result.get(DSpaceConstants.AGREEMENT_ID).asText());
+		assertNotNull(result.get(DSpaceConstants.CALLBACK_ADDRESS).asText());
 		
-		JsonNode dataAddres = result.get(DSpaceConstants.DSPACE_DATA_ADDRESS);
+		JsonNode dataAddres = result.get(DSpaceConstants.DATA_ADDRESS);
 		assertNotNull(dataAddres);
 		validateDataAddress(dataAddres);
 		
@@ -105,8 +105,8 @@ public class TransferRequestMessageTest {
 	}
 	
 	private void validateDataAddress(JsonNode dataAddress) {
-		assertNotNull(dataAddress.get(DSpaceConstants.DSPACE_ENDPOINT_TYPE).asText());
-		assertNotNull(dataAddress.get(DSpaceConstants.DSPACE_ENDPOINT).asText());
-		assertNotNull(dataAddress.get(DSpaceConstants.DSPACE_ENDPOINT_PROPERTIES));
+		assertNotNull(dataAddress.get(DSpaceConstants.ENDPOINT_TYPE).asText());
+		assertNotNull(dataAddress.get(DSpaceConstants.ENDPOINT).asText());
+		assertNotNull(dataAddress.get(DSpaceConstants.ENDPOINT_PROPERTIES));
 	}
 }

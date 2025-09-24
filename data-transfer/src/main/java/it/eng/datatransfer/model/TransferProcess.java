@@ -52,11 +52,9 @@ public class TransferProcess extends AbstractTransferMessage {
     private String id;
     
 	@NotNull
-	@JsonProperty(DSpaceConstants.DSPACE_PROVIDER_PID)
 	private String providerPid;
 	
 	@NotNull
-	@JsonProperty(DSpaceConstants.DSPACE_STATE)
 	private TransferState state;
 	
 	/**
@@ -132,19 +130,16 @@ public class TransferProcess extends AbstractTransferMessage {
         	return this;
         }
 		
-		@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
 		public Builder consumerPid(String consumerPid) {
 			message.consumerPid = consumerPid;
 			return this;
 		}
 
-		@JsonProperty(DSpaceConstants.DSPACE_PROVIDER_PID)
 		public Builder providerPid(String providerPid) {
 			message.providerPid = providerPid;
 			return this;
 		}
 		
-		@JsonProperty(DSpaceConstants.DSPACE_STATE)
 		public Builder state(TransferState state) {
 			message.state = state;
 			return this;
@@ -175,13 +170,11 @@ public class TransferProcess extends AbstractTransferMessage {
         	return this;
         }
 		
-		@JsonProperty(DSpaceConstants.AGREEMENT_ID)
 		public Builder agreementId(String agreementId) {
 			message.agreementId = agreementId;
 			return this;
 		}
 		
-		@JsonProperty(DSpaceConstants.CALLBACK_ADDRESS)
 		public Builder callbackAddress(String callbackAddress) {
 			message.callbackAddress = callbackAddress;
 			return this;
@@ -247,7 +240,7 @@ public class TransferProcess extends AbstractTransferMessage {
 	
 	@Override
 	public String getType() {
-		return DSpaceConstants.DSPACE + TransferProcess.class.getSimpleName();
+		return TransferProcess.class.getSimpleName();
 	}
 	
 	/**

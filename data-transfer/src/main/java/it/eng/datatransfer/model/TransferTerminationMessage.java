@@ -1,14 +1,9 @@
 package it.eng.datatransfer.model;
 
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -17,6 +12,10 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /*
  * {
@@ -40,13 +39,10 @@ public class TransferTerminationMessage extends AbstractTransferMessage {
 	private static final long serialVersionUID = 7638790814588039703L;
 
 	@NotNull
-	@JsonProperty(DSpaceConstants.DSPACE_PROVIDER_PID)
 	private String providerPid;
 	
-	@JsonProperty(DSpaceConstants.DSPACE_CODE)
 	private String code;
 	
-	@JsonProperty(DSpaceConstants.DSPACE_REASON)
 	private List<Object> reason;
 	
 	@JsonPOJOBuilder(withPrefix = "")
@@ -63,24 +59,20 @@ public class TransferTerminationMessage extends AbstractTransferMessage {
 			return new Builder();
 		}
 		
-		@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
 		public Builder consumerPid(String consumerPid) {
 			message.consumerPid = consumerPid;
 			return this;
 		}
 
-		@JsonProperty((DSpaceConstants.DSPACE_PROVIDER_PID))
 		public Builder providerPid(String providerPid) {
 			message.providerPid = providerPid;
 			return this;
 		}
 		
-		@JsonProperty(DSpaceConstants.DSPACE_CODE)
 		public Builder code(String code) {
 			message.code = code;
 			return this;
 		}
-		@JsonProperty(DSpaceConstants.DSPACE_REASON)
 		public Builder reason(List<Object> reason) {
 			message.reason = reason;
 			return this;
@@ -102,7 +94,7 @@ public class TransferTerminationMessage extends AbstractTransferMessage {
 	
 	@Override
 	public String getType() {
-		return DSpaceConstants.DSPACE + TransferTerminationMessage.class.getSimpleName();
+		return TransferTerminationMessage.class.getSimpleName();
 	}
 
 }

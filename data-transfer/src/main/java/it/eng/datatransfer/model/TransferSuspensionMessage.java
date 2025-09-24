@@ -1,15 +1,8 @@
 package it.eng.datatransfer.model;
 
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-
-import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
@@ -17,6 +10,10 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /*
  * {
@@ -40,13 +37,10 @@ public class TransferSuspensionMessage extends AbstractTransferMessage {
 	private static final long serialVersionUID = 6065245999402269996L;
 
 	@NotNull
-	@JsonProperty(DSpaceConstants.DSPACE_PROVIDER_PID)
 	private String providerPid;
 	
-	@JsonProperty(DSpaceConstants.DSPACE_CODE)
 	private String code;
 	
-	@JsonProperty(DSpaceConstants.DSPACE_REASON)
 	private List<Object> reason;
 	
 	@JsonPOJOBuilder(withPrefix = "")
@@ -63,24 +57,20 @@ public class TransferSuspensionMessage extends AbstractTransferMessage {
 			return new Builder();
 		}
 		
-		@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
 		public Builder consumerPid(String consumerPid) {
 			message.consumerPid = consumerPid;
 			return this;
 		}
 
-		@JsonProperty((DSpaceConstants.DSPACE_PROVIDER_PID))
 		public Builder providerPid(String providerPid) {
 			message.providerPid = providerPid;
 			return this;
 		}
 		
-		@JsonProperty(DSpaceConstants.DSPACE_CODE)
 		public Builder code(String code) {
 			message.code = code;
 			return this;
 		}
-		@JsonProperty(DSpaceConstants.DSPACE_REASON)
 		public Builder reason(List<Object> reason) {
 			message.reason = reason;
 			return this;
@@ -98,12 +88,12 @@ public class TransferSuspensionMessage extends AbstractTransferMessage {
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())
 						.collect(Collectors.joining(",")));
 			}
-	}
-	
+		}
+
 	
 	@Override
 	public String getType() {
-		return DSpaceConstants.DSPACE + TransferSuspensionMessage.class.getSimpleName();
+		return TransferSuspensionMessage.class.getSimpleName();
 	}
 
 }

@@ -63,17 +63,13 @@ public class TransferRequestMessage extends AbstractTransferMessage {
     private String id;
     
 	@NotNull
-	@JsonProperty(DSpaceConstants.DSPACE_AGREEMENT_ID)
 	private String agreementId;
 	
-	@JsonProperty(DSpaceConstants.DCT_FORMAT)
 	private String format;
 	
-	@JsonProperty(DSpaceConstants.DSPACE_DATA_ADDRESS)
 	private DataAddress dataAddress;
 	
 	@NotNull
-	@JsonProperty(DSpaceConstants.DSPACE_CALLBACK_ADDRESS)
 	private String callbackAddress;
 	
 	@JsonPOJOBuilder(withPrefix = "")
@@ -95,31 +91,26 @@ public class TransferRequestMessage extends AbstractTransferMessage {
         	return this;
         }
 		
-		@JsonProperty(DSpaceConstants.DSPACE_AGREEMENT_ID)
 		public Builder agreementId(String agreementId) {
 			message.agreementId = agreementId;
 			return this;
 		}
 
-		@JsonProperty(DSpaceConstants.DCT_FORMAT)
 		public Builder format(String format) {
 			message.format = format;
 			return this;
 		}
 		
-		@JsonProperty(DSpaceConstants.DSPACE_DATA_ADDRESS)
 		public Builder dataAddress(DataAddress dataAddress) {
 			message.dataAddress = dataAddress;
 			return this;
 		}
 		
-		@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
 		public Builder consumerPid(String consumerPid) {
 			message.consumerPid = consumerPid;
 			return this;
 		}
 		
-		@JsonProperty(DSpaceConstants.DSPACE_CALLBACK_ADDRESS)
 		public Builder callbackAddress(String callbackAddress) {
 			message.callbackAddress = callbackAddress;
 			return this;
@@ -140,11 +131,11 @@ public class TransferRequestMessage extends AbstractTransferMessage {
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())
 						.collect(Collectors.joining(",")));
 			}
-	}	
-	
+		}
+
 	@Override
 	public String getType() {
-		return DSpaceConstants.DSPACE + TransferRequestMessage.class.getSimpleName();
+		return TransferRequestMessage.class.getSimpleName();
 	}
 	
 }

@@ -4,11 +4,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
-import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
@@ -33,7 +31,6 @@ public class TransferCompletionMessage extends AbstractTransferMessage {
 
 	private static final long serialVersionUID = -5101074485122105715L;
 	@NotNull
-	@JsonProperty(DSpaceConstants.DSPACE_PROVIDER_PID)
 	private String providerPid;
 	
 	@JsonPOJOBuilder(withPrefix = "")
@@ -50,13 +47,11 @@ public class TransferCompletionMessage extends AbstractTransferMessage {
 			return new Builder();
 		}
 		
-		@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
 		public Builder consumerPid(String consumerPid) {
 			message.consumerPid = consumerPid;
 			return this;
 		}
 
-		@JsonProperty((DSpaceConstants.DSPACE_PROVIDER_PID))
 		public Builder providerPid(String providerPid) {
 			message.providerPid = providerPid;
 			return this;
@@ -78,7 +73,7 @@ public class TransferCompletionMessage extends AbstractTransferMessage {
 	
 	@Override
 	public String getType() {
-		return DSpaceConstants.DSPACE + TransferCompletionMessage.class.getSimpleName();
+		return TransferCompletionMessage.class.getSimpleName();
 	}
 	
 }
