@@ -7,7 +7,6 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - GHA Build update, branches can also have fix/ prefix
--
 
 ### Changed
 
