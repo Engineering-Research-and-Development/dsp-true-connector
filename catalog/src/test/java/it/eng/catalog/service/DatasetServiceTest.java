@@ -100,7 +100,7 @@ public class DatasetServiceTest {
 
         List<String> formats = datasetService.getFormatsFromDataset(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
 
-        assertEquals(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getDistribution().stream().findFirst().get().getFormat().getId(), formats.get(0));
+        assertEquals(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getDistribution().stream().findFirst().get().getFormat(), formats.get(0));
         verify(repository).findById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
     }
 

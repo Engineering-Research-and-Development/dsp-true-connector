@@ -49,19 +49,19 @@ public class DataServiceTest {
         assertNotNull(result.get(DSpaceConstants.TYPE).asText());
 
         assertNotNull(result.get(DSpaceConstants.ID).asText());
-        assertNotNull(result.get(DSpaceConstants.DCAT_KEYWORD).asText());
-        assertNotNull(result.get(DSpaceConstants.DCAT_THEME).asText());
-        assertNotNull(result.get(DSpaceConstants.DCT_CONFORMSTO).asText());
-        assertNotNull(result.get(DSpaceConstants.DCT_CREATOR).asText());
-        assertNotNull(result.get(DSpaceConstants.DCT_DESCRIPTION).asText());
-        assertNotNull(result.get(DSpaceConstants.DCT_IDENTIFIER).asText());
-        assertNotNull(result.get(DSpaceConstants.DCT_TITLE).asText());
-        assertNotNull(result.get(DSpaceConstants.DCT_ISSUED).asText());
-        assertNotNull(result.get(DSpaceConstants.DCT_MODIFIED).asText());
-        assertNotNull(result.get(DSpaceConstants.DCT_MODIFIED).asText());
+        assertNotNull(result.get(DSpaceConstants.KEYWORD).asText());
+        assertNotNull(result.get(DSpaceConstants.THEME).asText());
+        assertNotNull(result.get(DSpaceConstants.CONFORMSTO).asText());
+        assertNotNull(result.get(DSpaceConstants.CREATOR).asText());
+        assertNotNull(result.get(DSpaceConstants.DESCRIPTION).asText());
+        assertNotNull(result.get(DSpaceConstants.IDENTIFIER).asText());
+        assertNotNull(result.get(DSpaceConstants.TITLE).asText());
+        assertNotNull(result.get(DSpaceConstants.ISSUED).asText());
+        assertNotNull(result.get(DSpaceConstants.MODIFIED).asText());
+        assertNotNull(result.get(DSpaceConstants.MODIFIED).asText());
 
-        assertNotNull(result.get(DSpaceConstants.DCAT_ENDPOINT_URL).asText());
-        assertNotNull(result.get(DSpaceConstants.DCAT_ENDPOINT_DESCRIPTION).asText());
+        assertNotNull(result.get(DSpaceConstants.ENDPOINT_URL).asText());
+        assertNotNull(result.get(DSpaceConstants.ENDPOINT_DESCRIPTION).asText());
 
         DataService javaObj = CatalogSerializer.deserializeProtocol(result, DataService.class);
         validateDataService(javaObj);

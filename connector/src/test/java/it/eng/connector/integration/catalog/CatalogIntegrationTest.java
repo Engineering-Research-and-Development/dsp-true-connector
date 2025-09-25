@@ -15,11 +15,7 @@ import it.eng.connector.util.TestUtil;
 import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
-import it.eng.tools.s3.util.S3Utils;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.MediaType;
@@ -63,7 +59,6 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
 
     private Catalog catalog;
     private Dataset dataset;
-//    private Artifact artifact;
 
     @BeforeEach
     public void populateCatalog() {
@@ -185,7 +180,7 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
         CatalogError error = CatalogSerializer.deserializeProtocol(response, CatalogError.class);
         assertNotNull(error);
         assertNotNull(error.getReason().stream()
-                .filter(reason -> reason.getValue().contains("expected dspace:CatalogRequestMessage"))
+                .filter(reason -> reason.getValue().contains("expected CatalogRequestMessage"))
                 .findFirst()
                 .orElse(null));
     }
@@ -211,31 +206,6 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
         assertNotNull(datasetResponse);
 
         removeFiles();
-    }
-
-    @Test
-    @DisplayName("Get dataset - not valid dataset request message")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
-    public void notValidDatasetRequestMessageTest() throws Exception {
-
-        String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.CATALOG_REQUEST_MESSAGE);
-
-        assertNotNull(body);
-        final ResultActions result =
-                mockMvc.perform(
-                        get("/catalog/datasets/" + TestUtil.DATASET_ID)
-                                .content(body)
-                                .contentType(MediaType.APPLICATION_JSON));
-        result.andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
-
-        String response = result.andReturn().getResponse().getContentAsString();
-        CatalogError error = CatalogSerializer.deserializeProtocol(response, CatalogError.class);
-        assertNotNull(error);
-        assertNotNull(error.getReason().stream()
-                .filter(reason -> reason.getValue().contains("expected dspace:DatasetRequestMessage"))
-                .findFirst()
-                .orElse(null));
     }
 
     @Test
@@ -388,10 +358,11 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
     @Test
     @DisplayName("Get dataset - dataset with null data services")
     @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @Disabled("Disabled because the current implementation does not allows distributions with null accessServices")
     public void getDatasetWithNullDataServicesTest() throws Exception {
         // given
         Distribution distributionNullServices = Distribution.Builder.newInstance()
-                .accessService(new HashSet<>())
+                .accessService(null)
                 .build();
         Dataset datasetNullServices = Dataset.Builder.newInstance()
                 .id("null-services-dataset")

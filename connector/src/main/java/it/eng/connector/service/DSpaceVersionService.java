@@ -5,6 +5,7 @@ import it.eng.connector.model.wellknown.Version;
 import it.eng.connector.model.wellknown.VersionResponse;
 import it.eng.tools.model.ApplicationProperty;
 import it.eng.tools.service.ApplicationPropertiesService;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +16,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class DSpaceVersionService {
 
     public final static String DSPACE_VERSION_PROPERTY_GROUP = "application.dspace.version";
@@ -34,7 +36,7 @@ public class DSpaceVersionService {
     }
 
     public VersionResponse getVersion() {
-
+        log.info("getVersion");
         String path;
         String identifierType;
         String serviceId;
@@ -58,7 +60,7 @@ public class DSpaceVersionService {
 
         return VersionResponse.Builder.newInstance()
                 .protocolVersions(Collections.singletonList(Version.Builder.newInstance()
-                        .version("2024-01")
+                        .version("2025-1")
                         .path(path)
                         .identifierType(identifierType)
                         .serviceId(serviceId)

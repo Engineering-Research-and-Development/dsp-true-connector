@@ -5,14 +5,15 @@ import com.fasterxml.jackson.annotation.JsonProperty.Access;
 import it.eng.tools.model.DSpaceConstants;
 
 import java.io.Serializable;
+import java.util.List;
 import java.util.UUID;
 
 public abstract class AbstractCatalogObject implements Serializable {
 
-	private static final long serialVersionUID = 6931659075077465603L;
+    private static final long serialVersionUID = 6931659075077465603L;
 
-	@JsonProperty(value = DSpaceConstants.CONTEXT, access = Access.READ_ONLY)
-    private String context = DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE;
+    @JsonProperty(value = DSpaceConstants.CONTEXT, access = Access.READ_ONLY)
+    private List<String> context = List.of(DSpaceConstants.DSPACE_2025_01_CONTEXT);
 
     /**
      * Can be optional.
@@ -22,6 +23,7 @@ public abstract class AbstractCatalogObject implements Serializable {
 
     /**
      * Returns dspace protocol type.
+     *
      * @return type
      */
     @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)

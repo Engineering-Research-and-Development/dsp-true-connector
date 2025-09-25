@@ -16,35 +16,12 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
-/*
-"odrl:offer": {
-"@type": "odrl:Offer",
-"@id": "urn:uuid:6bcea82e-c509-443d-ba8c-8eef25984c07",
-"odrl:permission": [{
-  "odrl:action": "odrl:use" ,
-  "odrl:constraint": [{
-    "odrl:leftOperand": "odrl:dateTime",
-    "odrl:operand": "odrl:lteq",
-    "odrl:rightOperand": { "@value": "2023-12-31T06:00Z", "@type": "xsd:dateTime" }
-  }]
-}]
-}
-Offer -> allOf  /definitions/MessageOffer
-	allOf /definitions/PolicyClass
-		allOf /definitions/AbstractPolicyRule
-			"not": { "required": [ "odrl:target" ] }
-		"required": "@id"
-	"required": [ "@type", "odrl:assigner" ]
-"required": "odrl:permission" or "odrl:prohibition"
-	"not": { "required": [ "odrl:target" ] }
-*
-*/
 
 @Getter
 @EqualsAndHashCode(exclude = {"target", "assigner", "assignee"}) // requires for offer check in negotiation flow
@@ -53,6 +30,7 @@ Offer -> allOf  /definitions/MessageOffer
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic = true)
 public class Offer implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 4003295986049329564L;
 
     //	@NotNull (if new offer from consumer Id of offer is null)
@@ -61,32 +39,28 @@ public class Offer implements Serializable {
 
     // Different to a Catalog or Dataset, the Offer inside a Contract Request Message must have an odrl:target attribute.
     // not mandatory for Catalog or Dataset offer to have target field - different from the Offer in negotiation module
-    @JsonProperty(DSpaceConstants.ODRL_TARGET)
     private String target;
 
     // required in catalog???
-    @JsonProperty(DSpaceConstants.ODRL_ASSIGNER)
     private String assigner;
 
     // required in catalog???
-    @JsonProperty(DSpaceConstants.ODRL_ASSIGNEE)
     private String assignee;
 
     @NotNull
-    @JsonProperty(DSpaceConstants.ODRL_PERMISSION)
     private Set<Permission> permission;
 
     @JsonIgnoreProperties(value = {"type"}) //, allowGetters=true
     @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
     private String getType() {
-        return DSpaceConstants.ODRL + Offer.class.getSimpleName();
+        return Offer.class.getSimpleName();
     }
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Builder {
 
-        private Offer offer;
+        private final Offer offer;
 
         private Builder() {
             offer = new Offer();
@@ -96,34 +70,27 @@ public class Offer implements Serializable {
             return new Builder();
         }
 
-        //		@JsonSetter(DSpaceConstants.ID)
         @JsonProperty(DSpaceConstants.ID)
         public Builder id(String id) {
             offer.id = id;
             return this;
         }
 
-        //		@JsonSetter(DSpaceConstants.ODRL_TARGET)
-        @JsonProperty(DSpaceConstants.ODRL_TARGET)
         public Builder target(String target) {
             offer.target = target;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.ODRL_ASSIGNER)
         public Builder assigner(String assigner) {
             offer.assigner = assigner;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.ODRL_ASSIGNEE)
         public Builder assignee(String assignee) {
             offer.assignee = assignee;
             return this;
         }
 
-        //		@JsonSetter(DSpaceConstants.ODRL_PERMISSION)
-        @JsonProperty(DSpaceConstants.ODRL_PERMISSION)
         @JsonDeserialize(as = Set.class)
         public Builder permission(Set<Permission> permission) {
             offer.permission = permission;

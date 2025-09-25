@@ -23,7 +23,7 @@
 							"    pm.expect(response.protocolVersions).to.be.an('array').that.is.not.empty;\r",
 							"\r",
 							"    response.protocolVersions.forEach(protocol => {\r",
-							"        pm.expect(protocol).to.have.property('version').that.equals('2024-01');\r",
+							"        pm.expect(protocol).to.have.property('version').that.equals('2025-1');\r",
 							"        pm.expect(protocol).to.have.property('binding').that.equals('HTTPS');\r",
 							"    });\r",
 							"});\r",

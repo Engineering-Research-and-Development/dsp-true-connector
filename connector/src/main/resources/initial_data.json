@@ -110,11 +110,11 @@
           "_class": "it.eng.catalog.model.Offer",
           "permission": [
             {
-              "action": "USE",
+              "action": "use",
               "constraint": [
                 {
-                  "leftOperand": "COUNT",
-                  "operator": "LTEQ",
+                  "leftOperand": "count",
+                  "operator": "lteq",
                   "rightOperand": "5"
                 }
               ]

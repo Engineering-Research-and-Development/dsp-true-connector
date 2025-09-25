@@ -22,12 +22,12 @@ public class DspaceVersionIntegrationTest extends BaseIntegrationTest {
         assert response.getProtocolVersions() != null;
         assert !response.getProtocolVersions().isEmpty();
         var version = response.getProtocolVersions().get(0);
-        assert "2024-01".equals(version.getVersion());
+        assert "2025-1".equals(version.getVersion());
         assert "/".equals(version.getPath());
         assert "HTTPS".equalsIgnoreCase(version.getBinding());  // hardcoded in Version.Builder; must be HTTPS
         assert version.getAuth() != null;
         assert "https".equalsIgnoreCase(version.getAuth().getProtocol());
-        assert "2024-01".equals(version.getAuth().getVersion());
+        assert "2025-1".equals(version.getAuth().getVersion());
     }
 
     @Test
@@ -38,11 +38,11 @@ public class DspaceVersionIntegrationTest extends BaseIntegrationTest {
                     .andExpect(status().isOk())
                     .andExpect(content().contentType("application/json"))
                     .andExpect(jsonPath("$.protocolVersions").isArray())
-                    .andExpect(jsonPath("$.protocolVersions[0].version").value("2024-01"))
+                    .andExpect(jsonPath("$.protocolVersions[0].version").value("2025-1"))
                     .andExpect(jsonPath("$.protocolVersions[0].path").value("/"))
                     .andExpect(jsonPath("$.protocolVersions[0].binding").value("HTTPS"))
                     .andExpect(jsonPath("$.protocolVersions[0].auth.protocol").value("https"))
-                    .andExpect(jsonPath("$.protocolVersions[0].auth.version").value("2024-01"));
+                    .andExpect(jsonPath("$.protocolVersions[0].auth.version").value("2025-1"));
         } catch (Exception e) {
             assert false : "MockMvc request failed";
         }
