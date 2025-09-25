@@ -1,10 +1,8 @@
 package it.eng.datatransfer.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
@@ -20,7 +18,6 @@ import java.util.stream.Collectors;
 @Getter
 @JsonDeserialize(builder = TransferSuspensionMessage.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-@JsonPropertyOrder(value = {DSpaceConstants.CONTEXT, DSpaceConstants.TYPE}, alphabetic = true)
 public class TransferSuspensionMessage extends AbstractTransferMessage {
 
 	private static final long serialVersionUID = 6065245999402269996L;

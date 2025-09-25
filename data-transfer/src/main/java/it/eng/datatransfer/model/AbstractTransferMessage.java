@@ -2,12 +2,14 @@ package it.eng.datatransfer.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.constraints.NotNull;
 
 import java.io.Serializable;
 import java.util.List;
 import java.util.UUID;
+@JsonPropertyOrder(value = {DSpaceConstants.CONTEXT, DSpaceConstants.TYPE, DSpaceConstants.CONSUMER_PID, DSpaceConstants.PROVIDER_PID}, alphabetic = true)
 public abstract class AbstractTransferMessage implements Serializable {
 	
 	private static final long serialVersionUID = -3150306747585657302L;

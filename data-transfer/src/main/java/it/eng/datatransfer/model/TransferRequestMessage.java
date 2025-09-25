@@ -3,7 +3,6 @@ package it.eng.datatransfer.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import it.eng.tools.model.DSpaceConstants;
@@ -24,7 +23,6 @@ import java.util.stream.Collectors;
 @JsonDeserialize(builder = TransferRequestMessage.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @Document(collection = "transfer_request_messages")
-@JsonPropertyOrder(value = {DSpaceConstants.CONTEXT, DSpaceConstants.TYPE}, alphabetic = true)
 public class TransferRequestMessage extends AbstractTransferMessage {
 
 	private static final long serialVersionUID = 8814457068103190252L;
