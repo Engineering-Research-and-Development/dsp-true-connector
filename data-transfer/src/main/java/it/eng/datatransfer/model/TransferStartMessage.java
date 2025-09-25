@@ -1,17 +1,10 @@
 package it.eng.datatransfer.model;
 
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -20,32 +13,11 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-/*
- * {
-  "@context":  "https://w3id.org/dspace/2024/1/context.json",
-  "@type": "dspace:TransferStartMessage",
-  "dspace:providerPid": "urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aab",
-  "dspace:consumerPid": "urn:uuid:32541fe6-c580-409e-85a8-8a9a32fbe833",
-  "dspace:dataAddress": {
-    "@type": "dspace:DataAddress",
-    "dspace:endpointType": "https://w3id.org/idsa/v4.1/HTTP",
-    "dspace:endpoint": "http://example.com",
-    "dspace:endpointProperties": [
-      {
-        "@type": "dspace:EndpointProperty",
-        "dspace:name": "authorization",
-        "dspace:value": "TOKEN-ABCDEFG"
-      },
-      {
-        "@type": "dspace:EndpointProperty",
-        "dspace:name": "authType",
-        "dspace:value": "bearer"
-      }
-    ]
-  }
-}
- */
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Getter
 @JsonDeserialize(builder = TransferStartMessage.Builder.class)
@@ -61,12 +33,10 @@ public class TransferStartMessage extends AbstractTransferMessage {
     private String id;
     
 	@NotNull
-	@JsonProperty(DSpaceConstants.DSPACE_PROVIDER_PID)
 	private String providerPid;
 	
 	//	The dataAddress is only provided if the current transfer is a pull transfer 
 	//	and contains a transport-specific endpoint address for obtaining the data.
-	@JsonProperty(DSpaceConstants.DSPACE_DATA_ADDRESS)
 	private DataAddress dataAddress;
 	
 	@JsonPOJOBuilder(withPrefix = "")
@@ -88,19 +58,16 @@ public class TransferStartMessage extends AbstractTransferMessage {
         	return this;
         }
 
-		@JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
 		public Builder consumerPid(String consumerPid) {
 			message.consumerPid = consumerPid;
 			return this;
 		}
 
-		@JsonProperty((DSpaceConstants.DSPACE_PROVIDER_PID))
 		public Builder providerPid(String providerPid) {
 			message.providerPid = providerPid;
 			return this;
 		}
 
-		@JsonProperty(DSpaceConstants.DSPACE_DATA_ADDRESS)
 		public Builder dataAddress(DataAddress dataAddress) {
 			message.dataAddress = dataAddress;
 			return this;
@@ -125,7 +92,7 @@ public class TransferStartMessage extends AbstractTransferMessage {
 	
 	@Override
 	public String getType() {
-		return DSpaceConstants.DSPACE + TransferStartMessage.class.getSimpleName();
+		return TransferStartMessage.class.getSimpleName();
 	}
 
 }

@@ -25,13 +25,10 @@ public class DataAddress implements Serializable {
 
 	private static final long serialVersionUID = -2851504722128056767L;
 
-	@JsonProperty(DSpaceConstants.DSPACE_ENDPOINT_TYPE)
 	private String endpointType;
 	
-	@JsonProperty(DSpaceConstants.DSPACE_ENDPOINT)
 	private String endpoint;
 	
-	@JsonProperty(DSpaceConstants.DSPACE_ENDPOINT_PROPERTIES)
 	private List<EndpointProperty> endpointProperties;
 	
 	@JsonPOJOBuilder(withPrefix = "")
@@ -48,19 +45,16 @@ public class DataAddress implements Serializable {
 			return new Builder();
 		}
 		
-		@JsonProperty(DSpaceConstants.DSPACE_ENDPOINT_TYPE)
 		public Builder endpointType(String endpointType) {
 			dataAddress.endpointType = endpointType;
 			return this;
 		}
 
-		@JsonProperty(DSpaceConstants.DSPACE_ENDPOINT)
 		public Builder endpoint(String endpoint) {
 			dataAddress.endpoint = endpoint;
 			return this;
 		}
 		
-		@JsonProperty(DSpaceConstants.DSPACE_ENDPOINT_PROPERTIES)
 		public Builder endpointProperties(List<EndpointProperty> endpointProperties) {
 			dataAddress.endpointProperties = endpointProperties;
 			return this;
@@ -82,6 +76,6 @@ public class DataAddress implements Serializable {
 
 	@JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
 	public String getType() {
-		return DSpaceConstants.DSPACE + DataAddress.class.getSimpleName();
+		return DataAddress.class.getSimpleName();
 	}
 }

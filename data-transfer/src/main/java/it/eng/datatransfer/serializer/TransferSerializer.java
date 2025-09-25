@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.jsontype.TypeResolverBuilder;
 import com.fasterxml.jackson.databind.jsontype.impl.StdTypeResolverBuilder;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import it.eng.tools.model.DSpaceConstants;
@@ -36,9 +37,9 @@ import jakarta.validation.Validator;
 
 public class TransferSerializer {
 
-	private static JsonMapper jsonMapperPlain;
-	private static JsonMapper jsonMapper;
-	private static Validator validator;
+	private static final JsonMapper jsonMapperPlain;
+	private static final JsonMapper jsonMapper;
+	private static final Validator validator;
 	
 	static {
 		SimpleModule instantConverterModule = new SimpleModule();
@@ -98,9 +99,8 @@ public class TransferSerializer {
 		try {
 			return jsonMapperPlain.writeValueAsString(toSerialize);
 		} catch (JsonProcessingException e) {
-			e.printStackTrace();
+			throw new ValidationException(e);
 		}
-		return null;
 	}
 	
 	/**
@@ -132,9 +132,8 @@ public class TransferSerializer {
 						.map(v -> v.getPropertyPath() + " " + v.getMessage())
 						.collect(Collectors.joining(",")));
 		} catch (JsonProcessingException e) {
-			e.printStackTrace();
+			throw new ValidationException(e);
 		}
-		return null;
 	}
 	
 	/**
@@ -157,9 +156,8 @@ public class TransferSerializer {
 					.map(v -> v.getPropertyPath() + " " + v.getMessage())
 					.collect(Collectors.joining(",")));
 		} catch (JsonProcessingException e) {
-			e.printStackTrace();
+			throw new ValidationException(e);
 		}
-		return null;
 	}
 	
 	
@@ -192,9 +190,8 @@ public class TransferSerializer {
 		try {
 			return jsonMapper.writeValueAsString(toSerialize);
 		} catch (JsonProcessingException e) {
-			e.printStackTrace();
+			throw new ValidationException(e);
 		}
-		return null;
 	}
 	
 	/**
@@ -244,21 +241,20 @@ public class TransferSerializer {
 	 */
 	public static <T> T deserializeProtocol(String jsonNodeString, Class<T> clazz) {
 		try {
-	        T obj = jsonMapper.readValue(jsonNodeString, clazz);
-	        Set<ConstraintViolation<T>> violations = validator.validate(obj);
-	        if (violations.isEmpty()) {
-	            return obj;
-	        }
-	        throw new ValidationException(
-	                violations
-	                        .stream()
-	                        .map(v -> v.getPropertyPath() + " " + v.getMessage())
-	                        .collect(Collectors.joining(",")));
-	    } catch (JsonProcessingException e) {
-	        e.printStackTrace();
-	    }
-	    return null;
+			T obj = jsonMapper.readValue(jsonNodeString, clazz);
+			Set<ConstraintViolation<T>> violations = validator.validate(obj);
+			if (violations.isEmpty()) {
+				return obj;
+			}
+			throw new ValidationException(
+					violations
+							.stream()
+							.map(v -> v.getPropertyPath() + " " + v.getMessage())
+							.collect(Collectors.joining(",")));
+		} catch (JsonProcessingException e) {
+			throw new ValidationException(e);
 		}
+	}
 	
 	/**
 	 * Checks for @context and @type if present and if values are correct.
@@ -270,11 +266,18 @@ public class TransferSerializer {
 		try { 
 			Objects.requireNonNull(jsonNode.get(DSpaceConstants.TYPE));
 			Objects.requireNonNull(jsonNode.get(DSpaceConstants.CONTEXT));
-			if(!Objects.equals(DSpaceConstants.DSPACE + clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
+			if(!Objects.equals(clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
 				throw new ValidationException("@type field not correct, expected " + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
 			}
-			if(!Objects.equals(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE, jsonNode.get(DSpaceConstants.CONTEXT).asText())) {
-				throw new ValidationException("@context field not valid - was " + jsonNode.get(DSpaceConstants.CONTEXT).asText());
+			JsonNode context = jsonNode.get(DSpaceConstants.CONTEXT);
+			if (context.isArray()) {
+				ArrayNode arrayNode = (ArrayNode) context;
+				String contextFromJson = arrayNode.get(0).asText();
+				if (!Objects.equals(DSpaceConstants.DSPACE_2025_01_CONTEXT, contextFromJson)) {
+					throw new ValidationException("@context field not valid - was " + contextFromJson);
+				}
+			} else {
+				// TODO check if context can be single value!!!!
 			}
 		} catch (NullPointerException npe) {
 			throw new ValidationException("Missing mandatory protocol fields @context and/or @type or value not correct");

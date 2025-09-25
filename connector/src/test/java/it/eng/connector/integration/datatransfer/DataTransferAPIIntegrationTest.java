@@ -133,7 +133,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 
         WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/transfers/request")
                 .withBasicAuth("connector@mail.com", "password")
-                .withRequestBody(WireMock.containing("dspace:TransferRequestMessage"))
+                .withRequestBody(WireMock.containing("TransferRequestMessage"))
                 .willReturn(
                         aResponse().withHeader("Content-Type", "application/json")
                                 .withBody(TransferSerializer.serializeProtocol(providerResponse))));
@@ -189,7 +189,7 @@ public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
 
         WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/transfers/request")
                 .withBasicAuth("connector@mail.com", "password")
-                .withRequestBody(WireMock.containing("dspace:TransferRequestMessage"))
+                .withRequestBody(WireMock.containing("TransferRequestMessage"))
                 .willReturn(
                         aResponse().withHeader("Content-Type", "application/json")
                                 .withStatus(400)
