@@ -36,7 +36,7 @@ public interface DSpaceConstants {
     public static final String DATASET_CONTEXT_VALUE = "https://w3id.org/dspace/1/0/context.json";
     public static final String DSPACE_2025_01_CONTEXT = "https://w3id.org/dspace/2025/1/context.jsonld";
     public static final String TYPE = "@type";
-    public static final String VALUE = "@value";
+    public static final String VALUE = "value";
     public static final String LANGUAGE = "@language";
     public static final String CONSUMER_PID = "consumerPid";
     public static final String PROVIDER_PID = "providerPid";

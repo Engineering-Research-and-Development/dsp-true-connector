@@ -1,14 +1,10 @@
 package it.eng.datatransfer.model;
 
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-
+import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
@@ -17,25 +13,14 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/*
- * {
-  "@context":  "https://w3id.org/dspace/2024/1/context.json",
-  "@type": "dspace:TransferError",
-  "dspace:providerPid": "urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aab",
-  "dspace:consumerPid": "urn:uuid:32541fe6-c580-409e-85a8-8a9a32fbe833",
-  "dspace:code": "...",
-  "dspace:reason": [
-    {},
-    {}
-  ]
-}
- *
- */
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = TransferError.Builder.class)
-@JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic =  true) 
+@JsonPropertyOrder(value = {DSpaceConstants.CONTEXT, DSpaceConstants.TYPE}, alphabetic = true)
 public class TransferError extends AbstractTransferMessage {
 
 	private static final long serialVersionUID = 8503165742320963612L;

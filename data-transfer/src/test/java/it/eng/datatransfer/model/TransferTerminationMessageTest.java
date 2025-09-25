@@ -1,10 +1,6 @@
 package it.eng.datatransfer.model;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -13,6 +9,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TransferTerminationMessageTest {
 
@@ -40,11 +38,17 @@ public class TransferTerminationMessageTest {
 	@DisplayName("Verify valid protocol object serialization")
 	public void testPlain_protocol() {
 		JsonNode result = TransferSerializer.serializeProtocolJsonNode(transferTerminationMessage);
-		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
-		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
-		assertNotNull(result.get(DSpaceConstants.CONSUMER_PID).asText());
-		assertNotNull(result.get(DSpaceConstants.PROVIDER_PID).asText());
-		assertNotNull(result.get(DSpaceConstants.CODE).asText());
+		JsonNode context = result.get(DSpaceConstants.CONTEXT);
+		assertNotNull(context);
+		if (context.isArray()) {
+			ArrayNode arrayNode = (ArrayNode) context;
+			assertFalse(arrayNode.isEmpty());
+			assertEquals(DSpaceConstants.DSPACE_2025_01_CONTEXT, arrayNode.get(0).asText());
+		}
+		assertEquals(result.get(DSpaceConstants.TYPE).asText(), transferTerminationMessage.getType());
+		assertEquals(result.get(DSpaceConstants.CONSUMER_PID).asText(), transferTerminationMessage.getConsumerPid());
+		assertEquals(result.get(DSpaceConstants.PROVIDER_PID).asText(), transferTerminationMessage.getProviderPid());
+		assertEquals(result.get(DSpaceConstants.CODE).asText(), transferTerminationMessage.getCode());
 
 		TransferTerminationMessage javaObj = TransferSerializer.deserializeProtocol(result, TransferTerminationMessage.class);
 		validateJavaObject(javaObj);

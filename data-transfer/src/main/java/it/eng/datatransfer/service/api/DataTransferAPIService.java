@@ -725,6 +725,34 @@ public class DataTransferAPIService {
                 .map(state -> TransferState.fromString(state))
                 .collect(Collectors.toList());
 
+        for (TransferState state : states) {
+            switch (state) {
+                case REQUESTED -> {
+                    if (findTransferProcessById(agreementId) == null) {
+                        log.info("TCK: posting transfer request");
+                    } else {
+                        log.info("TCK: transfer process already exists, skipping posting transfer request");
+                    }
+                }
+                case STARTED -> {
+                    log.info("TCK: starting transfer");
+                    startTransfer(agreementId);
+                }
+                case COMPLETED -> {
+                    log.info("TCK: completing transfer");
+                    completeTransfer(agreementId);
+                }
+                case SUSPENDED -> {
+                    log.info("TCK: suspending transfer");
+                    suspendTransfer(agreementId);
+                }
+                case TERMINATED -> {
+                    log.info("TCK: terminating transfer");
+                    terminateTransfer(agreementId);
+                }
+                default -> throw new DataTransferAPIException("State " + state + " not supported in TCK interaction");
+            }
+        }
         return null;
 
     }

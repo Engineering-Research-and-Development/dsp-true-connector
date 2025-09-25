@@ -3,17 +3,9 @@ package it.eng.datatransfer.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-/*
-{
-      "@value": "License model does not fit.",
-      "@language": "en"
-}
- */
 
 @Getter
 @JsonDeserialize(builder = Reason.Builder.class)

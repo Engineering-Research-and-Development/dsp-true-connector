@@ -1,12 +1,8 @@
 package it.eng.datatransfer.model;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import java.util.Arrays;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -15,6 +11,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class TransferStartMessageTest {
 
@@ -51,13 +50,21 @@ public class TransferStartMessageTest {
 	@DisplayName("Verify valid protocol object serialization")
 	public void testProtocol() {
 		JsonNode result = TransferSerializer.serializeProtocolJsonNode(transferStartMessage);
-		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
-		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
-		assertNotNull(result.get(DSpaceConstants.CONSUMER_PID).asText());
-		assertNotNull(result.get(DSpaceConstants.PROVIDER_PID).asText());
-		JsonNode dataAddres = result.get(DSpaceConstants.DATA_ADDRESS);
-		assertNotNull(dataAddres);
-		validateDataAddress(dataAddres);
+		JsonNode context = result.get(DSpaceConstants.CONTEXT);
+		assertNotNull(context);
+		if (context.isArray()) {
+			ArrayNode arrayNode = (ArrayNode) context;
+			assertFalse(arrayNode.isEmpty());
+			assertEquals(DSpaceConstants.DSPACE_2025_01_CONTEXT, arrayNode.get(0).asText());
+		}
+		assertEquals(result.get(DSpaceConstants.TYPE).asText(), transferStartMessage.getType());
+		assertEquals(result.get(DSpaceConstants.CONSUMER_PID).asText(), transferStartMessage.getConsumerPid());
+		assertEquals(result.get(DSpaceConstants.PROVIDER_PID).asText(), transferStartMessage.getProviderPid());
+
+
+		JsonNode dataAddress = result.get(DSpaceConstants.DATA_ADDRESS);
+		assertNotNull(dataAddress);
+		validateDataAddress(dataAddress);
 		
 		TransferStartMessage javaObj = TransferSerializer.deserializeProtocol(result, TransferStartMessage.class);
 		validateJavaObject(javaObj);
@@ -80,24 +87,38 @@ public class TransferStartMessageTest {
 
 	private void validateJavaObject(TransferStartMessage javaObj) {
 		assertNotNull(javaObj);
-		assertNotNull(javaObj.getConsumerPid());
-		assertNotNull(javaObj.getProviderPid());
+		assertEquals(transferStartMessage.getConsumerPid(), javaObj.getConsumerPid());
+		assertEquals(transferStartMessage.getProviderPid(), javaObj.getProviderPid());
 		assertNotNull(javaObj.getDataAddress());
-		
-		assertNotNull(javaObj.getDataAddress().getEndpoint());
-		assertNotNull(javaObj.getDataAddress().getEndpointType());
-		assertNotNull(javaObj.getDataAddress().getEndpointProperties());
 
-		assertNotNull(javaObj.getDataAddress().getEndpointProperties().get(0).getName());
-		assertNotNull(javaObj.getDataAddress().getEndpointProperties().get(0).getValue());
-		assertNotNull(javaObj.getDataAddress().getEndpointProperties().get(1).getName());
-		assertNotNull(javaObj.getDataAddress().getEndpointProperties().get(1).getValue());
-		
+		DataAddress expected = transferStartMessage.getDataAddress();
+		assertEquals(expected.getEndpoint(), javaObj.getDataAddress().getEndpoint());
+		assertEquals(expected.getEndpointType(), javaObj.getDataAddress().getEndpointType());
+		assertNotNull(javaObj.getDataAddress().getEndpointProperties());
+		assertEquals(expected.getEndpointProperties().size(), javaObj.getDataAddress().getEndpointProperties().size());
+
+		for (int i = 0; i < expected.getEndpointProperties().size(); i++) {
+			EndpointProperty exp = expected.getEndpointProperties().get(i);
+			EndpointProperty actual = javaObj.getDataAddress().getEndpointProperties().get(i);
+			assertEquals(exp.getName(), actual.getName());
+			assertEquals(exp.getValue(), actual.getValue());
+		}
 	}
-	
-	private void validateDataAddress(JsonNode dataAddress) {
-		assertNotNull(dataAddress.get(DSpaceConstants.ENDPOINT_TYPE).asText());
-		assertNotNull(dataAddress.get(DSpaceConstants.ENDPOINT).asText());
-		assertNotNull(dataAddress.get(DSpaceConstants.ENDPOINT_PROPERTIES));
+
+	private void validateDataAddress(JsonNode dataAddressForChecking) {
+		assertEquals(dataAddressForChecking.get(DSpaceConstants.ENDPOINT_TYPE).asText(), dataAddress.getEndpointType());
+		assertEquals(dataAddressForChecking.get(DSpaceConstants.ENDPOINT).asText(), dataAddress.getEndpoint());
+
+		JsonNode properties = dataAddressForChecking.get(DSpaceConstants.ENDPOINT_PROPERTIES);
+		assertNotNull(properties);
+		if (properties.isArray()) {
+			ArrayNode arrayNode = (ArrayNode) properties;
+			assertFalse(arrayNode.isEmpty());
+			for (int i = 0; i < arrayNode.size(); i++) {
+				JsonNode prop = arrayNode.get(i);
+				assertEquals(prop.get(DSpaceConstants.NAME).asText(), dataAddress.getEndpointProperties().get(i).getName());
+				assertEquals(prop.get(DSpaceConstants.VALUE).asText(), dataAddress.getEndpointProperties().get(i).getValue());
+			}
+		}
 	}
 }

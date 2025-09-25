@@ -1,17 +1,11 @@
 package it.eng.datatransfer.model;
 
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -20,37 +14,17 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-/*
- * {
-  "@context":  "https://w3id.org/dspace/2024/1/context.json",
-  "@type": "dspace:TransferStartMessage",
-  "dspace:providerPid": "urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aab",
-  "dspace:consumerPid": "urn:uuid:32541fe6-c580-409e-85a8-8a9a32fbe833",
-  "dspace:dataAddress": {
-    "@type": "dspace:DataAddress",
-    "dspace:endpointType": "https://w3id.org/idsa/v4.1/HTTP",
-    "dspace:endpoint": "http://example.com",
-    "dspace:endpointProperties": [
-      {
-        "@type": "dspace:EndpointProperty",
-        "dspace:name": "authorization",
-        "dspace:value": "TOKEN-ABCDEFG"
-      },
-      {
-        "@type": "dspace:EndpointProperty",
-        "dspace:name": "authType",
-        "dspace:value": "bearer"
-      }
-    ]
-  }
-}
- */
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Getter
 @JsonDeserialize(builder = TransferStartMessage.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @Document(collection = "transfer_start_messages")
+@JsonPropertyOrder(value = {DSpaceConstants.CONTEXT, DSpaceConstants.TYPE}, alphabetic = true)
 public class TransferStartMessage extends AbstractTransferMessage {
 
 	private static final long serialVersionUID = 7918949682633114473L;

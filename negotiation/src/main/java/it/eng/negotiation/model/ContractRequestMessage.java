@@ -46,9 +46,6 @@ public class ContractRequestMessage {
 	@JsonProperty(value = DSpaceConstants.CONTEXT, access = Access.READ_ONLY)
 	private String context = DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE;
 
-	@JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
-	public String type = DSpaceConstants.DSPACE + ContractRequestMessage.class.getSimpleName();
-
 	@JsonProperty(DSpaceConstants.DSPACE_PROVIDER_PID)
 	private String providerPid;
 

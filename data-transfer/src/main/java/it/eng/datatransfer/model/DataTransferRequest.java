@@ -1,16 +1,15 @@
 package it.eng.datatransfer.model;
 
-import java.io.Serializable;
-
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
-
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.io.Serializable;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
