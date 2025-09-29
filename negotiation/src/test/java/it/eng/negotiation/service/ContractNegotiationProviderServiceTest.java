@@ -70,7 +70,7 @@ public class ContractNegotiationProviderServiceTest {
         ContractNegotiation result = service.startContractNegotiation(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE);
 
         assertNotNull(result);
-        assertEquals(result.getType(), "dspace:ContractNegotiation");
+        assertEquals(result.getType(), "ContractNegotiation");
         verify(repository).save(argCaptorContractNegotiation.capture());
         verify(offerRepository).save(argCaptorOffer.capture());
         //verify that status is updated to REQUESTED
@@ -96,7 +96,7 @@ public class ContractNegotiationProviderServiceTest {
         ContractNegotiation result = service.startContractNegotiation(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE);
 
         assertNotNull(result);
-        assertEquals(result.getType(), "dspace:ContractNegotiation");
+        assertEquals(result.getType(), "ContractNegotiation");
         verify(repository).save(argCaptorContractNegotiation.capture());
         verify(offerRepository).save(argCaptorOffer.capture());
         //verify that status is updated to REQUESTED

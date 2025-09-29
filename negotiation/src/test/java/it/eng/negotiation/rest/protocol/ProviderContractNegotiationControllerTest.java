@@ -20,6 +20,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.concurrent.ExecutionException;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -59,8 +60,8 @@ public class ProviderContractNegotiationControllerTest {
         ResponseEntity<JsonNode> response = controller.getNegotiationByProviderPid(NegotiationMockObjectUtil.PROVIDER_PID);
         assertNotNull(response, "Response is not null");
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(response.getBody().get(DSpaceConstants.TYPE).asText(), DSpaceConstants.DSPACE + ContractNegotiation.class.getSimpleName());
-        assertEquals(response.getBody().get(DSpaceConstants.CONTEXT).asText(), DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE);
+        assertEquals(response.getBody().get(DSpaceConstants.TYPE).asText(), ContractNegotiation.class.getSimpleName());
+        assertEquals(response.getBody().get(DSpaceConstants.CONTEXT).get(0).asText(), DSpaceConstants.DSPACE_2025_01_CONTEXT);
     }
 
     @Test
@@ -81,8 +82,8 @@ public class ProviderContractNegotiationControllerTest {
 
         assertNotNull(response, "Response is not null");
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertEquals(response.getBody().get(DSpaceConstants.TYPE).asText(), DSpaceConstants.DSPACE + ContractNegotiation.class.getSimpleName());
-        assertEquals(response.getBody().get(DSpaceConstants.CONTEXT).asText(), DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE);
+        assertEquals(response.getBody().get(DSpaceConstants.TYPE).asText(), ContractNegotiation.class.getSimpleName());
+        assertEquals(response.getBody().get(DSpaceConstants.CONTEXT).get(0).asText(), DSpaceConstants.DSPACE_2025_01_CONTEXT);
     }
 
     @Test
@@ -135,7 +136,7 @@ public class ProviderContractNegotiationControllerTest {
                 .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
                 .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
                 .code("1")
-                .reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("test").build()))
+                .reason(Collections.singletonList("test"))
                 .build();
         ResponseEntity<Void> response = controller.handleTerminationMessage(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializeProtocolJsonNode(cntm));
         assertNotNull(response, "Response is not null");
@@ -148,7 +149,7 @@ public class ProviderContractNegotiationControllerTest {
                 .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
                 .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
                 .code("1")
-                .reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("test").build()))
+                .reason(Collections.singletonList("test"))
                 .build();
         doThrow(ContractNegotiationNotFoundException.class)
                 .when(contractNegotiationService).handleTerminationRequest(anyString(), any(ContractNegotiationTerminationMessage.class));

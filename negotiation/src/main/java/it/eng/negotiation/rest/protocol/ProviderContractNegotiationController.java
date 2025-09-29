@@ -122,7 +122,7 @@ public class ProviderContractNegotiationController {
                 .code("1")
                 .consumerPid("NOT IMPLEMENTED")
                 .providerPid("NOT IMPLEMENTED")
-                .description(Collections.singletonList(Description.Builder.newInstance().language("en").value("Not implemented").build()))
+                .reason(Collections.singletonList("Not implemented"))
                 .build();
         return cnem;
     }

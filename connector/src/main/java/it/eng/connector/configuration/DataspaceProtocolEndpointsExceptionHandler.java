@@ -2,6 +2,7 @@ package it.eng.connector.configuration;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
@@ -85,7 +86,7 @@ public class DataspaceProtocolEndpointsExceptionHandler extends ResponseEntityEx
 						.consumerPid(consumerPid)
 						.providerPid(providerPid)
 						.code(NOT_AUTH_CODE)
-						.reason(Arrays.asList(it.eng.negotiation.model.Reason.Builder.newInstance().language(EN).value(NOT_AUTH).build()))
+						.reason(Collections.singletonList(NOT_AUTH))
 						.build();
 				error = CatalogSerializer.serializeProtocolJsonNode(negotationError);
 			} else if(uri.contains("transfers")) {

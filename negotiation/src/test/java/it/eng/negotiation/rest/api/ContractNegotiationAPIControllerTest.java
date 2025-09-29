@@ -216,7 +216,7 @@ public class ContractNegotiationAPIControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody().isSuccess());
-        assertEquals(response.getBody().getData().get(DSpaceConstants.TYPE).asText(), DSpaceConstants.DSPACE + ContractNegotiation.class.getSimpleName());
+        assertEquals(response.getBody().getData().get(DSpaceConstants.TYPE).asText(), ContractNegotiation.class.getSimpleName());
     }
 
     @Test

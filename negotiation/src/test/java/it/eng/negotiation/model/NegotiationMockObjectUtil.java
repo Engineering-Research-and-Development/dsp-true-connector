@@ -46,7 +46,7 @@ public class NegotiationMockObjectUtil {
 			.consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
 			.providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
 			.code("Test")
-			.reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("test").build()))
+            .reason(Collections.singletonList("test"))
 			.build();
 	
 	public static final Constraint CONSTRAINT = Constraint.Builder.newInstance()
@@ -170,8 +170,7 @@ public class NegotiationMockObjectUtil {
 			.consumerPid(CONSUMER_PID)
 			.providerPid(PROVIDER_PID)
 			.code(HttpStatus.NOT_FOUND.getReasonPhrase())
-            .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value("Some reason").build()))
-            .description(Collections.singletonList(Description.Builder.newInstance().language("en").value("Some description").build()))
+            .reason(Collections.singletonList("Some reason"))
 			.build();
 	
 	public static final ContractNegotiation CONTRACT_NEGOTIATION_ACCEPTED = ContractNegotiation.Builder.newInstance()

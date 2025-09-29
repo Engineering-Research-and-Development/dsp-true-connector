@@ -97,7 +97,7 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
                 .consumerPid(contractNegotiation.getConsumerPid())
                 .providerPid(contractNegotiation.getProviderPid())
                 .code(contractNegotiationId)
-                .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value("Contract negotiation terminated by provider").build()))
+                .reason(Collections.singletonList("Contract negotiation terminated by provider"))
                 .build();
 
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
