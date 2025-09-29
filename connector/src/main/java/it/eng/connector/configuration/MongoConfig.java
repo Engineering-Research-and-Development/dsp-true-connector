@@ -93,6 +93,22 @@ public class MongoConfig {
     }
 
     @ReadingConverter
+    public static class StringToActionConverterCN implements Converter<String, it.eng.negotiation.model.Action> {
+        @Override
+        public it.eng.negotiation.model.Action convert(String source) {
+            return it.eng.negotiation.model.Action.fromString(source);
+        }
+    }
+
+    @WritingConverter
+    public static class ActionToStringConverterCN implements Converter<it.eng.negotiation.model.Action, String> {
+        @Override
+        public String convert(it.eng.negotiation.model.Action source) {
+            return source.toString();
+        }
+    }
+
+    @ReadingConverter
     public static class StringToLeftOperandConverter implements Converter<String, LeftOperand> {
         @Override
         public LeftOperand convert(String source) {
@@ -109,6 +125,22 @@ public class MongoConfig {
     }
 
     @ReadingConverter
+    public static class StringToLeftOperandConverterCN implements Converter<String, it.eng.negotiation.model.LeftOperand> {
+        @Override
+        public it.eng.negotiation.model.LeftOperand convert(String source) {
+            return it.eng.negotiation.model.LeftOperand.fromString(source);
+        }
+    }
+
+    @WritingConverter
+    public static class LeftOperandToStringConverterCN implements Converter<it.eng.negotiation.model.LeftOperand, String> {
+        @Override
+        public String convert(it.eng.negotiation.model.LeftOperand source) {
+            return source.toString();
+        }
+    }
+
+    @ReadingConverter
     public static class StringToOperatorConverter implements Converter<String, Operator> {
         @Override
         public Operator convert(String source) {
@@ -120,6 +152,22 @@ public class MongoConfig {
     public static class OperatorToStringConverter implements Converter<Operator, String> {
         @Override
         public String convert(Operator source) {
+            return source.toString();
+        }
+    }
+
+    @ReadingConverter
+    public static class StringToOperatorConverterCN implements Converter<String, it.eng.negotiation.model.Operator> {
+        @Override
+        public it.eng.negotiation.model.Operator convert(String source) {
+            return it.eng.negotiation.model.Operator.fromString(source);
+        }
+    }
+
+    @WritingConverter
+    public static class OperatorToStringConverterCN implements Converter<it.eng.negotiation.model.Operator, String> {
+        @Override
+        public String convert(it.eng.negotiation.model.Operator source) {
             return source.toString();
         }
     }
