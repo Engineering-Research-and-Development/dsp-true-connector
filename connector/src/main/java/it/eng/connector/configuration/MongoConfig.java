@@ -72,7 +72,13 @@ public class MongoConfig {
                 new StringToLeftOperandConverter(),
                 new LeftOperandToStringConverter(),
                 new StringToOperatorConverter(),
-                new OperatorToStringConverter()
+                new OperatorToStringConverter(),
+                new StringToActionConverterCN(),
+                new ActionToStringConverterCN(),
+                new StringToLeftOperandConverterCN(),
+                new LeftOperandToStringConverterCN(),
+                new StringToOperatorConverterCN(),
+                new OperatorToStringConverterCN()
         ));
     }
 

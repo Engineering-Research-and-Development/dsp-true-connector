@@ -10,18 +10,18 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public enum Operator {
 
-    EQ("EQ"),
-    GT("GT"),
-    GTEQ("GTEQ"),
-    HAS_PARENT("HAS_PARENT"),
-    IS_A("IS_A"),
-    IS_ALL_OF("IS_ALL_OF"),
-    IS_ANY_OF("IS_ANY_OF"),
-    IS_NONE_OF("IS_NONE_OF"),
-    IS_PART_OF("IS_PART_OF"),
-    LT("LT"),
-    LTEQ("LTEQ"),
-    NEQ("NEQ");
+    EQ("eq"),
+    GT("gt"),
+    GTEQ("gteq"),
+    HAS_PART("hasPart"),
+    IS_A("isA"),
+    IS_ALL_OF("isAllOf"),
+    IS_ANY_OF("isAnyOf"),
+    IS_NONE_OF("isNoneOf"),
+    IS_PART_OF("isPartOf"),
+    LT("lt"),
+    LTEQ("lteq"),
+    NEQ("neq");
 
     private final String operator;
     private static final Map<String, Operator> BY_LABEL;
