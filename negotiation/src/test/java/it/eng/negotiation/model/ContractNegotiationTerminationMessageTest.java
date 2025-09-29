@@ -1,6 +1,7 @@
 package it.eng.negotiation.model;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
@@ -42,12 +43,20 @@ public class ContractNegotiationTerminationMessageTest {
     @DisplayName("Verify valid protocol object serialization")
     public void testProtocol() {
         JsonNode result = NegotiationSerializer.serializeProtocolJsonNode(contractNegotiationTerminationMessage);
-        assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
-        assertNotNull(result.get(DSpaceConstants.TYPE).asText());
-        assertNotNull(result.get(DSpaceConstants.CONSUMER_PID).asText());
-        assertNotNull(result.get(DSpaceConstants.PROVIDER_PID).asText());
-        assertNotNull(result.get(DSpaceConstants.CODE).asText());
-        assertNotNull(result.get(DSpaceConstants.REASON).get(0));
+        JsonNode context = result.get(DSpaceConstants.CONTEXT);
+        assertNotNull(context);
+        if (context.isArray()) {
+            ArrayNode arrayNode = (ArrayNode) context;
+            assertFalse(arrayNode.isEmpty());
+            assertEquals(DSpaceConstants.DSPACE_2025_01_CONTEXT, arrayNode.get(0).asText());
+        }
+        assertEquals(result.get(DSpaceConstants.TYPE).asText(), contractNegotiationTerminationMessage.getType());
+        assertEquals(result.get(DSpaceConstants.CONSUMER_PID).asText(), contractNegotiationTerminationMessage.getConsumerPid());
+        assertEquals(result.get(DSpaceConstants.PROVIDER_PID).asText(), contractNegotiationTerminationMessage.getProviderPid());
+        assertEquals(result.get(DSpaceConstants.CODE).asText(), contractNegotiationTerminationMessage.getCode());
+        assertEquals(result.get(DSpaceConstants.REASON).size(), 2);
+        assertEquals(result.get(DSpaceConstants.REASON).get(0).asText(), "Hello");
+        assertEquals(result.get(DSpaceConstants.REASON).get(1).asText(), "World");
 
         ContractNegotiationTerminationMessage javaObj = NegotiationSerializer.deserializeProtocol(result, ContractNegotiationTerminationMessage.class);
         validateJavaObj(javaObj);
@@ -85,10 +94,10 @@ public class ContractNegotiationTerminationMessageTest {
     }
 
     private void validateJavaObj(ContractNegotiationTerminationMessage javaObj) {
-        assertNotNull(javaObj);
-        assertNotNull(javaObj.getConsumerPid());
-        assertNotNull(javaObj.getProviderPid());
-        assertNotNull(javaObj.getCode());
+        assertEquals(contractNegotiationTerminationMessage.getConsumerPid(), javaObj.getConsumerPid());
+        assertEquals(contractNegotiationTerminationMessage.getProviderPid(), javaObj.getProviderPid());
+        assertEquals(contractNegotiationTerminationMessage.getCode(), javaObj.getCode());
+        assertEquals(contractNegotiationTerminationMessage.getReason(), javaObj.getReason());
         // must be 2 reasons
         assertEquals(2, javaObj.getReason().size());
     }

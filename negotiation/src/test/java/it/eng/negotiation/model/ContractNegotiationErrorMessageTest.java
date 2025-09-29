@@ -1,6 +1,7 @@
 package it.eng.negotiation.model;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
@@ -42,12 +43,18 @@ public class ContractNegotiationErrorMessageTest {
     @DisplayName("Verify valid protocol object serialization")
     public void testPlain_protocol() {
         JsonNode result = NegotiationSerializer.serializeProtocolJsonNode(contractNegotiationErrorMessage);
-        assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
-        assertNotNull(result.get(DSpaceConstants.TYPE).asText());
-        assertNotNull(result.get(DSpaceConstants.CONSUMER_PID).asText());
-        assertNotNull(result.get(DSpaceConstants.PROVIDER_PID).asText());
-        assertNotNull(result.get(DSpaceConstants.CODE).asText());
-        assertNotNull(result.get(DSpaceConstants.REASON).get(0));
+        JsonNode context = result.get(DSpaceConstants.CONTEXT);
+        assertNotNull(context);
+        if (context.isArray()) {
+            ArrayNode arrayNode = (ArrayNode) context;
+            assertFalse(arrayNode.isEmpty());
+            assertEquals(DSpaceConstants.DSPACE_2025_01_CONTEXT, arrayNode.get(0).asText());
+        }
+        assertEquals(result.get(DSpaceConstants.TYPE).asText(), contractNegotiationErrorMessage.getType());
+        assertEquals(result.get(DSpaceConstants.CONSUMER_PID).asText(), contractNegotiationErrorMessage.getConsumerPid());
+        assertEquals(result.get(DSpaceConstants.PROVIDER_PID).asText(), contractNegotiationErrorMessage.getProviderPid());
+        assertEquals(result.get(DSpaceConstants.CODE).asText(), contractNegotiationErrorMessage.getCode());
+        assertEquals(result.get(DSpaceConstants.REASON).get(0).asText(), contractNegotiationErrorMessage.getReason().get(0));
 
         ContractNegotiationErrorMessage javaObj = NegotiationSerializer.deserializeProtocol(result, ContractNegotiationErrorMessage.class);
         validateJavaObj(javaObj);
@@ -85,12 +92,12 @@ public class ContractNegotiationErrorMessageTest {
     }
 
     private void validateJavaObj(ContractNegotiationErrorMessage javaObj) {
-        assertNotNull(javaObj);
-        assertNotNull(javaObj.getConsumerPid());
-        assertNotNull(javaObj.getProviderPid());
-        assertNotNull(javaObj.getCode());
-        // must be exact one in array
+        assertEquals(contractNegotiationErrorMessage.getConsumerPid(), javaObj.getConsumerPid());
+        assertEquals(contractNegotiationErrorMessage.getProviderPid(), javaObj.getProviderPid());
+        assertEquals(contractNegotiationErrorMessage.getCode(), javaObj.getCode());
         assertNotNull(javaObj.getReason().get(0));
+        // must be exactly one in the array
         assertEquals(1, javaObj.getReason().size());
+        assertEquals(contractNegotiationErrorMessage.getReason().get(0), javaObj.getReason().get(0));
     }
 }

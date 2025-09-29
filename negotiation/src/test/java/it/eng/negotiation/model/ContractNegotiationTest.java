@@ -1,6 +1,7 @@
 package it.eng.negotiation.model;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
@@ -16,7 +17,6 @@ import static org.junit.jupiter.api.Assertions.*;
 public class ContractNegotiationTest {
 
     private final ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
-            .id("urn:uuid:" + UUID.randomUUID())
             .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
             .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
             .state(ContractNegotiationState.ACCEPTED)
@@ -31,7 +31,7 @@ public class ContractNegotiationTest {
         assertTrue(result.contains(DSpaceConstants.ID));
         assertTrue(result.contains(DSpaceConstants.CONSUMER_PID));
         assertTrue(result.contains(DSpaceConstants.PROVIDER_PID));
-        assertTrue(result.contains("ACCEPTED"));
+        assertTrue(result.contains(ContractNegotiationState.ACCEPTED.name()));
 
         ContractNegotiation javaObj = NegotiationSerializer.deserializePlain(result, ContractNegotiation.class);
         validateJavaObj(javaObj);
@@ -41,11 +41,17 @@ public class ContractNegotiationTest {
     @DisplayName("Verify valid protocol object serialization")
     public void testProtocol() {
         JsonNode result = NegotiationSerializer.serializeProtocolJsonNode(contractNegotiation);
-        assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
-        assertNotNull(result.get(DSpaceConstants.TYPE).asText());
-        assertNotNull(result.get(DSpaceConstants.CONSUMER_PID).asText());
-        assertNotNull(result.get(DSpaceConstants.PROVIDER_PID).asText());
-        assertNotNull(result.get(DSpaceConstants.STATE).asText());
+        JsonNode context = result.get(DSpaceConstants.CONTEXT);
+        assertNotNull(context);
+        if (context.isArray()) {
+            ArrayNode arrayNode = (ArrayNode) context;
+            assertFalse(arrayNode.isEmpty());
+            assertEquals(DSpaceConstants.DSPACE_2025_01_CONTEXT, arrayNode.get(0).asText());
+        }
+        assertEquals(result.get(DSpaceConstants.TYPE).asText(), contractNegotiation.getType());
+        assertEquals(result.get(DSpaceConstants.CONSUMER_PID).asText(), contractNegotiation.getConsumerPid());
+        assertEquals(result.get(DSpaceConstants.PROVIDER_PID).asText(), contractNegotiation.getProviderPid());
+        assertEquals(result.get(DSpaceConstants.STATE).asText(), contractNegotiation.getState().name());
         assertNull(result.get(DSpaceConstants.ID));
         ContractNegotiation javaObj = NegotiationSerializer.deserializeProtocol(result, ContractNegotiation.class);
         validateJavaObj(javaObj);
@@ -154,9 +160,8 @@ public class ContractNegotiationTest {
     }
 
     private void validateJavaObj(ContractNegotiation javaObj) {
-        assertNotNull(javaObj);
-        assertNotNull(javaObj.getConsumerPid());
-        assertNotNull(javaObj.getProviderPid());
-        assertNotNull(javaObj.getState());
+        assertEquals(contractNegotiation.getConsumerPid(), javaObj.getConsumerPid());
+        assertEquals(contractNegotiation.getProviderPid(), javaObj.getProviderPid());
+        assertEquals(contractNegotiation.getState(), javaObj.getState());
     }
 }

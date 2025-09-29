@@ -2,6 +2,7 @@ package it.eng.negotiation.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import it.eng.tools.model.DSpaceConstants;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -12,43 +13,43 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public enum ContractNegotiationState {
 
-    REQUESTED("REQUESTED") {
+    REQUESTED(DSpaceConstants.ContractNegotiationStates.REQUESTED.name()) {
         @Override
         public List<ContractNegotiationState> nextState() {
             return Arrays.asList(OFFERED, AGREED, TERMINATED);
         }
     },
-    OFFERED("OFFERED") {
+    OFFERED(DSpaceConstants.ContractNegotiationStates.OFFERED.name()) {
         @Override
         public List<ContractNegotiationState> nextState() {
             return Arrays.asList(REQUESTED, ACCEPTED, TERMINATED);
         }
     },
-    ACCEPTED("ACCEPTED") {
+    ACCEPTED(DSpaceConstants.ContractNegotiationStates.ACCEPTED.name()) {
         @Override
         public List<ContractNegotiationState> nextState() {
             return Arrays.asList(AGREED, TERMINATED);
         }
     },
-    AGREED("AGREED") {
+    AGREED(DSpaceConstants.ContractNegotiationStates.AGREED.name()) {
         @Override
         public List<ContractNegotiationState> nextState() {
             return Arrays.asList(VERIFIED, TERMINATED);
         }
     },
-    VERIFIED("VERIFIED") {
+    VERIFIED(DSpaceConstants.ContractNegotiationStates.VERIFIED.name()) {
         @Override
         public List<ContractNegotiationState> nextState() {
             return Arrays.asList(FINALIZED, TERMINATED);
         }
     },
-    FINALIZED("FINALIZED") {
+    FINALIZED(DSpaceConstants.ContractNegotiationStates.FINALIZED.name()) {
         @Override
         public List<ContractNegotiationState> nextState() {
             return Arrays.asList();
         }
     },
-    TERMINATED("TERMINATED") {
+    TERMINATED(DSpaceConstants.ContractNegotiationStates.TERMINATED.name()) {
         @Override
         public List<ContractNegotiationState> nextState() {
             return Arrays.asList();

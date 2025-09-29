@@ -5,8 +5,8 @@ import it.eng.tools.model.DSpaceConstants.ContractNegotiationEvent;
 
 public enum ContractNegotiationEventType {
 
-    ACCEPTED(ContractNegotiationEvent.ACCEPTED.toString()),
-    FINALIZED(ContractNegotiationEvent.FINALIZED.toString());
+    ACCEPTED(ContractNegotiationEvent.ACCEPTED.name()),
+    FINALIZED(ContractNegotiationEvent.FINALIZED.name());
 
     private final String eventType;
 

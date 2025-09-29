@@ -1,7 +1,7 @@
 package it.eng.negotiation.model;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
@@ -22,7 +22,7 @@ public class ContractRequestMessageTest {
 
     @Test
     @DisplayName("Verify valid plain object serialization")
-    public void testPlain() throws JsonProcessingException {
+    public void testPlain() {
         String result = NegotiationSerializer.serializePlain(contractRequestMessage);
         assertFalse(result.contains(DSpaceConstants.CONTEXT));
         assertFalse(result.contains(DSpaceConstants.TYPE));
@@ -54,7 +54,7 @@ public class ContractRequestMessageTest {
 
     @Test
     @DisplayName("Verify valid plain object serialization - contains offer")
-    public void testPlain_offer() throws JsonProcessingException {
+    public void testPlain_offer() {
         ContractRequestMessage contractRequestMessageOffer = ContractRequestMessage.Builder.newInstance()
                 .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
                 .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
@@ -77,13 +77,19 @@ public class ContractRequestMessageTest {
 
     @Test
     @DisplayName("Verify valid protocol object serialization")
-    public void testProtocol() throws JsonProcessingException {
+    public void testProtocol() {
         JsonNode result = NegotiationSerializer.serializeProtocolJsonNode(contractRequestMessage);
-        assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
-        assertNotNull(result.get(DSpaceConstants.TYPE).asText());
-        assertNotNull(result.get(DSpaceConstants.CONSUMER_PID).asText());
-        assertNotNull(result.get(DSpaceConstants.PROVIDER_PID).asText());
-        assertNotNull(result.get(DSpaceConstants.CALLBACK_ADDRESS).asText());
+        JsonNode context = result.get(DSpaceConstants.CONTEXT);
+        assertNotNull(context);
+        if (context.isArray()) {
+            ArrayNode arrayNode = (ArrayNode) context;
+            assertFalse(arrayNode.isEmpty());
+            assertEquals(DSpaceConstants.DSPACE_2025_01_CONTEXT, arrayNode.get(0).asText());
+        }
+        assertEquals(result.get(DSpaceConstants.TYPE).asText(), contractRequestMessage.getType());
+        assertEquals(result.get(DSpaceConstants.CONSUMER_PID).asText(), contractRequestMessage.getConsumerPid());
+        assertEquals(result.get(DSpaceConstants.PROVIDER_PID).asText(), contractRequestMessage.getProviderPid());
+        assertEquals(result.get(DSpaceConstants.CALLBACK_ADDRESS).asText(), contractRequestMessage.getCallbackAddress());
 
         validateOfferProtocol(result.get(DSpaceConstants.OFFER));
 
@@ -123,21 +129,27 @@ public class ContractRequestMessageTest {
     }
 
     private void validateOfferProtocol(JsonNode offer) {
-        assertNotNull(offer.get(DSpaceConstants.ASSIGNEE).asText());
-        assertNotNull(offer.get(DSpaceConstants.ASSIGNER).asText());
-        JsonNode permission = offer.get(DSpaceConstants.PERMISSION).get(0);
-        assertNotNull(permission.get(DSpaceConstants.ACTION).asText());
-        JsonNode constraint = permission.get(DSpaceConstants.CONSTRAINT).get(0);
-        assertNotNull(constraint.get(DSpaceConstants.LEFT_OPERAND).asText());
-        assertNotNull(constraint.get(DSpaceConstants.OPERATOR).asText());
-        assertNotNull(constraint.get(DSpaceConstants.RIGHT_OPERAND).asText());
+        assertEquals(NegotiationMockObjectUtil.OFFER.getAssignee(), offer.get(DSpaceConstants.ASSIGNEE).asText());
+        assertEquals(NegotiationMockObjectUtil.OFFER.getAssigner(), offer.get(DSpaceConstants.ASSIGNER).asText());
+        assertEquals(NegotiationMockObjectUtil.OFFER.getTarget(), offer.get(DSpaceConstants.TARGET).asText());
+        JsonNode permissionNode = offer.get(DSpaceConstants.PERMISSION).get(0);
+        assertEquals(NegotiationMockObjectUtil.PERMISSION.getAction().toString(), permissionNode.get(DSpaceConstants.ACTION).asText());
+        JsonNode constraintNode = permissionNode.get(DSpaceConstants.CONSTRAINT).get(0);
+        assertEquals(NegotiationMockObjectUtil.CONSTRAINT.getLeftOperand().toString(), constraintNode.get(DSpaceConstants.LEFT_OPERAND).asText());
+        assertEquals(NegotiationMockObjectUtil.CONSTRAINT.getOperator().toString(), constraintNode.get(DSpaceConstants.OPERATOR).asText());
+        assertEquals(NegotiationMockObjectUtil.CONSTRAINT.getRightOperand(), constraintNode.get(DSpaceConstants.RIGHT_OPERAND).asText());
     }
 
     private void validateJavaObj(ContractRequestMessage javaObj) {
-        assertNotNull(javaObj);
         assertEquals(NegotiationMockObjectUtil.CONSUMER_PID, javaObj.getConsumerPid());
         assertEquals(NegotiationMockObjectUtil.PROVIDER_PID, javaObj.getProviderPid());
         assertEquals(NegotiationMockObjectUtil.CALLBACK_ADDRESS, javaObj.getCallbackAddress());
-        assertNotNull(javaObj.getOffer());
+        assertEquals(NegotiationMockObjectUtil.OFFER.getAssignee(), javaObj.getOffer().getAssignee());
+        assertEquals(NegotiationMockObjectUtil.OFFER.getAssigner(), javaObj.getOffer().getAssigner());
+        assertEquals(NegotiationMockObjectUtil.OFFER.getTarget(), javaObj.getOffer().getTarget());
+        assertEquals(NegotiationMockObjectUtil.PERMISSION.getAction(), javaObj.getOffer().getPermission().get(0).getAction());
+        assertEquals(NegotiationMockObjectUtil.CONSTRAINT.getLeftOperand(), javaObj.getOffer().getPermission().get(0).getConstraint().get(0).getLeftOperand());
+        assertEquals(NegotiationMockObjectUtil.CONSTRAINT.getOperator(), javaObj.getOffer().getPermission().get(0).getConstraint().get(0).getOperator());
+        assertEquals(NegotiationMockObjectUtil.CONSTRAINT.getRightOperand(), javaObj.getOffer().getPermission().get(0).getConstraint().get(0).getRightOperand());
     }
 }

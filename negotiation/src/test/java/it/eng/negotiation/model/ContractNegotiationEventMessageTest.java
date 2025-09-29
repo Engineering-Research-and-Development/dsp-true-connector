@@ -1,6 +1,7 @@
 package it.eng.negotiation.model;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
@@ -36,11 +37,17 @@ public class ContractNegotiationEventMessageTest {
     @DisplayName("Verify valid protocol object serialization")
     public void testProtocol() {
         JsonNode result = NegotiationSerializer.serializeProtocolJsonNode(contractNegotiationEventMessage);
-        assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
-        assertNotNull(result.get(DSpaceConstants.TYPE).asText());
-        assertNotNull(result.get(DSpaceConstants.CONSUMER_PID).asText());
-        assertNotNull(result.get(DSpaceConstants.PROVIDER_PID).asText());
-        assertNotNull(result.get(DSpaceConstants.EVENT_TYPE).asText());
+        JsonNode context = result.get(DSpaceConstants.CONTEXT);
+        assertNotNull(context);
+        if (context.isArray()) {
+            ArrayNode arrayNode = (ArrayNode) context;
+            assertFalse(arrayNode.isEmpty());
+            assertEquals(DSpaceConstants.DSPACE_2025_01_CONTEXT, arrayNode.get(0).asText());
+        }
+        assertEquals(result.get(DSpaceConstants.TYPE).asText(), contractNegotiationEventMessage.getType());
+        assertEquals(result.get(DSpaceConstants.CONSUMER_PID).asText(), contractNegotiationEventMessage.getConsumerPid());
+        assertEquals(result.get(DSpaceConstants.PROVIDER_PID).asText(), contractNegotiationEventMessage.getProviderPid());
+        assertEquals(result.get(DSpaceConstants.EVENT_TYPE).asText(), contractNegotiationEventMessage.getEventType().name());
 
         ContractNegotiationEventMessage javaObj = NegotiationSerializer.deserializeProtocol(result, ContractNegotiationEventMessage.class);
         validateJavaObj(javaObj);
@@ -78,10 +85,9 @@ public class ContractNegotiationEventMessageTest {
     }
 
     private void validateJavaObj(ContractNegotiationEventMessage javaObj) {
-        assertNotNull(javaObj);
-        assertNotNull(javaObj.getConsumerPid());
-        assertNotNull(javaObj.getProviderPid());
-        assertNotNull(javaObj.getEventType());
+        assertEquals(contractNegotiationEventMessage.getConsumerPid(), javaObj.getConsumerPid());
+        assertEquals(contractNegotiationEventMessage.getProviderPid(), javaObj.getProviderPid());
+        assertEquals(contractNegotiationEventMessage.getEventType(), javaObj.getEventType());
     }
 
 }

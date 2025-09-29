@@ -1,6 +1,7 @@
 package it.eng.negotiation.model;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
@@ -35,10 +36,16 @@ public class ContractAgreementVerificationMessageTest {
     @DisplayName("Verify valid protocol object serialization")
     public void testProtocol() {
         JsonNode result = NegotiationSerializer.serializeProtocolJsonNode(contractAgreementVerificationMessage);
-        assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
-        assertNotNull(result.get(DSpaceConstants.TYPE).asText());
-        assertNotNull(result.get(DSpaceConstants.CONSUMER_PID).asText());
-        assertNotNull(result.get(DSpaceConstants.PROVIDER_PID).asText());
+        JsonNode context = result.get(DSpaceConstants.CONTEXT);
+        assertNotNull(context);
+        if (context.isArray()) {
+            ArrayNode arrayNode = (ArrayNode) context;
+            assertFalse(arrayNode.isEmpty());
+            assertEquals(DSpaceConstants.DSPACE_2025_01_CONTEXT, arrayNode.get(0).asText());
+        }
+        assertEquals(result.get(DSpaceConstants.TYPE).asText(), contractAgreementVerificationMessage.getType());
+        assertEquals(result.get(DSpaceConstants.CONSUMER_PID).asText(), contractAgreementVerificationMessage.getConsumerPid());
+        assertEquals(result.get(DSpaceConstants.PROVIDER_PID).asText(), contractAgreementVerificationMessage.getProviderPid());
 
         ContractAgreementVerificationMessage javaObj = NegotiationSerializer.deserializeProtocol(result, ContractAgreementVerificationMessage.class);
         validateJavaObj(javaObj);
@@ -76,9 +83,8 @@ public class ContractAgreementVerificationMessageTest {
     }
 
     private void validateJavaObj(ContractAgreementVerificationMessage javaObj) {
-        assertNotNull(javaObj);
-        assertNotNull(javaObj.getConsumerPid());
-        assertNotNull(javaObj.getProviderPid());
+        assertEquals(contractAgreementVerificationMessage.getConsumerPid(), javaObj.getConsumerPid());
+        assertEquals(contractAgreementVerificationMessage.getProviderPid(), javaObj.getProviderPid());
     }
 
 }

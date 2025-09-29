@@ -1,6 +1,7 @@
 package it.eng.negotiation.model;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
@@ -64,10 +65,16 @@ public class ContractAgreementMessageTest {
     @DisplayName("Verify valid protocol object serialization")
     public void testProtocol() {
         JsonNode result = NegotiationSerializer.serializeProtocolJsonNode(contractAgreementMessage);
-        assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
-        assertNotNull(result.get(DSpaceConstants.TYPE).asText());
-        assertNotNull(result.get(DSpaceConstants.CONSUMER_PID).asText());
-        assertNotNull(result.get(DSpaceConstants.PROVIDER_PID).asText());
+        JsonNode context = result.get(DSpaceConstants.CONTEXT);
+        assertNotNull(context);
+        if (context.isArray()) {
+            ArrayNode arrayNode = (ArrayNode) context;
+            assertFalse(arrayNode.isEmpty());
+            assertEquals(DSpaceConstants.DSPACE_2025_01_CONTEXT, arrayNode.get(0).asText());
+        }
+        assertEquals(result.get(DSpaceConstants.TYPE).asText(), contractAgreementMessage.getType());
+        assertEquals(result.get(DSpaceConstants.CONSUMER_PID).asText(), contractAgreementMessage.getConsumerPid());
+        assertEquals(result.get(DSpaceConstants.PROVIDER_PID).asText(), contractAgreementMessage.getProviderPid());
         assertNotNull(result.get(DSpaceConstants.AGREEMENT).asText());
         validateAgreementProtocol(result.get(DSpaceConstants.AGREEMENT));
 
@@ -109,32 +116,33 @@ public class ContractAgreementMessageTest {
         assertThat(contractAgreementMessage).usingRecursiveComparison().isEqualTo(obj);
     }
 
-    private void validateAgreementProtocol(JsonNode agreement) {
-        assertNotNull(agreement.get(DSpaceConstants.ASSIGNEE).asText());
-        assertNotNull(agreement.get(DSpaceConstants.ASSIGNER).asText());
-        JsonNode permission = agreement.get(DSpaceConstants.PERMISSION).get(0);
-        assertNotNull(permission.get(DSpaceConstants.ACTION).asText());
-        JsonNode constraint = permission.get(DSpaceConstants.CONSTRAINT).get(0);
-        assertNotNull(constraint.get(DSpaceConstants.LEFT_OPERAND).asText());
-        assertNotNull(constraint.get(DSpaceConstants.OPERATOR).asText());
-        assertNotNull(constraint.get(DSpaceConstants.RIGHT_OPERAND).asText());
+    private void validateAgreementProtocol(JsonNode agreementForTesting) {
+        assertEquals(agreement.getAssignee(), agreementForTesting.get(DSpaceConstants.ASSIGNEE).asText());
+        assertEquals(agreement.getAssigner(), agreementForTesting.get(DSpaceConstants.ASSIGNER).asText());
+        assertEquals(agreement.getTarget(), agreementForTesting.get(DSpaceConstants.TARGET).asText());
+        assertEquals(agreement.getTimestamp(), agreementForTesting.get(DSpaceConstants.TIMESTAMP).asText());
+        JsonNode permissionNode = agreementForTesting.get(DSpaceConstants.PERMISSION).get(0);
+        assertEquals(permission.getAction().toString(), permissionNode.get(DSpaceConstants.ACTION).asText());
+        JsonNode constraintNode = permissionNode.get(DSpaceConstants.CONSTRAINT).get(0);
+        assertEquals(constraint.getLeftOperand().toString(), constraintNode.get(DSpaceConstants.LEFT_OPERAND).asText());
+        assertEquals(constraint.getOperator().toString(), constraintNode.get(DSpaceConstants.OPERATOR).asText());
+        assertEquals(constraint.getRightOperand(), constraintNode.get(DSpaceConstants.RIGHT_OPERAND).asText());
     }
 
     private void validateJavaObj(ContractAgreementMessage javaObj) {
-        assertNotNull(javaObj);
-        assertNotNull(javaObj.getConsumerPid());
-        assertNotNull(javaObj.getProviderPid());
-        assertNotNull(javaObj.getAgreement());
+        assertEquals(contractAgreementMessage.getConsumerPid(), javaObj.getConsumerPid());
+        assertEquals(contractAgreementMessage.getProviderPid(), javaObj.getProviderPid());
+        assertEquals(contractAgreementMessage.getCallbackAddress(), javaObj.getCallbackAddress());
 
         validateAgreement(javaObj.getAgreement());
     }
 
-    private void validateAgreement(Agreement agreement) {
-        assertEquals(NegotiationMockObjectUtil.ASSIGNEE, agreement.getAssignee());
-        assertEquals(NegotiationMockObjectUtil.ASSIGNER, agreement.getAssigner());
-        assertEquals(NegotiationMockObjectUtil.TARGET, agreement.getTarget());
+    private void validateAgreement(Agreement agreementForTesting) {
+        assertEquals(NegotiationMockObjectUtil.ASSIGNEE, agreementForTesting.getAssignee());
+        assertEquals(NegotiationMockObjectUtil.ASSIGNER, agreementForTesting.getAssigner());
+        assertEquals(NegotiationMockObjectUtil.TARGET, agreementForTesting.getTarget());
 
-        var permission = agreement.getPermission().get(0);
+        var permission = agreementForTesting.getPermission().get(0);
         assertNotNull(permission);
         assertEquals(Action.USE, permission.getAction());
 
@@ -143,6 +151,17 @@ public class ContractAgreementMessageTest {
         assertEquals(LeftOperand.COUNT, constraint.getLeftOperand());
         assertEquals(Operator.EQ, constraint.getOperator());
         assertEquals("5", constraint.getRightOperand());
+
+        assertEquals(agreement.getAssignee(), agreementForTesting.getAssignee());
+        assertEquals(agreement.getAssigner(), agreementForTesting.getAssigner());
+        assertEquals(agreement.getTarget(), agreementForTesting.getTarget());
+        assertEquals(agreement.getTimestamp(), agreementForTesting.getTimestamp());
+        Permission permissionNode = agreementForTesting.getPermission().get(0);
+        assertEquals(permission.getAction(), permissionNode.getAction());
+        Constraint constraintNode = permissionNode.getConstraint().get(0);
+        assertEquals(constraint.getLeftOperand(), constraintNode.getLeftOperand());
+        assertEquals(constraint.getOperator(), constraintNode.getOperator());
+        assertEquals(constraint.getRightOperand(), constraintNode.getRightOperand());
 
     }
 }
