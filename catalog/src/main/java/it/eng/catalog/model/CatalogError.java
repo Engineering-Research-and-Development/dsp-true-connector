@@ -12,6 +12,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.io.Serial;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -22,10 +23,11 @@ import java.util.stream.Collectors;
 @JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic = true)
 public class CatalogError extends AbstractCatalogObject {
 
+    @Serial
     private static final long serialVersionUID = -5538644369452254847L;
 
     private String code;
-    private List<Reason> reason;
+    private List<String> reason;
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -46,7 +48,7 @@ public class CatalogError extends AbstractCatalogObject {
             return this;
         }
 
-        public Builder reason(List<Reason> reason) {
+        public Builder reason(List<String> reason) {
             catalogError.reason = reason;
             return this;
         }

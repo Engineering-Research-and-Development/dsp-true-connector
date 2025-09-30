@@ -1,7 +1,6 @@
 package it.eng.catalog.exceptions;
 
 import it.eng.catalog.model.CatalogError;
-import it.eng.catalog.model.Reason;
 import it.eng.catalog.rest.protocol.CatalogController;
 import it.eng.catalog.serializer.CatalogSerializer;
 import jakarta.validation.ValidationException;
@@ -22,7 +21,7 @@ public class CatalogExceptionAdvice extends ResponseEntityExceptionHandler {
     protected ResponseEntity<Object> handleCatalogErrorException(CatalogErrorException ex, WebRequest request) {
         CatalogError catalogError = CatalogError.Builder.newInstance()
                 .code(HttpStatus.NOT_FOUND.getReasonPhrase())
-                .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()))
+                .reason(Collections.singletonList(ex.getLocalizedMessage()))
                 .build();
 
         return handleExceptionInternal(ex, CatalogSerializer.serializeProtocolJsonNode(catalogError), new HttpHeaders(), HttpStatus.NOT_FOUND, request);
@@ -32,7 +31,7 @@ public class CatalogExceptionAdvice extends ResponseEntityExceptionHandler {
     protected ResponseEntity<Object> handleValidationException(ValidationException ex, WebRequest request) {
         CatalogError catalogError = CatalogError.Builder.newInstance()
                 .code(HttpStatus.BAD_REQUEST.getReasonPhrase())
-                .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value(ex.getLocalizedMessage()).build()))
+                .reason(Collections.singletonList(ex.getLocalizedMessage()))
                 .build();
 
         return handleExceptionInternal(ex, CatalogSerializer.serializeProtocolJsonNode(catalogError), new HttpHeaders(), HttpStatus.BAD_REQUEST, request);

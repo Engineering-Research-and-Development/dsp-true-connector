@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.io.Serial;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -25,87 +26,88 @@ import java.util.stream.Collectors;
 @Document(collection = "transfer_request_messages")
 public class TransferRequestMessage extends AbstractTransferMessage {
 
-	private static final long serialVersionUID = 8814457068103190252L;
+    @Serial
+    private static final long serialVersionUID = 8814457068103190252L;
 
-	@JsonIgnore
+    @JsonIgnore
     @JsonProperty(DSpaceConstants.ID)
     @Id
     private String id;
-    
-	@NotNull
-	private String agreementId;
-	
-	private String format;
-	
-	private DataAddress dataAddress;
-	
-	@NotNull
-	private String callbackAddress;
-	
-	@JsonPOJOBuilder(withPrefix = "")
-	@JsonIgnoreProperties(ignoreUnknown = true)
-	public static class Builder {
-		
-		private TransferRequestMessage message;
-		
-		private Builder() {
-			message = new TransferRequestMessage();
-		}
-		
-		public static Builder newInstance() {
-			return new Builder();
-		}
-		
-		public Builder id(String id) {
-        	message.id = id;
-        	return this;
+
+    @NotNull
+    private String agreementId;
+
+    private String format;
+
+    private DataAddress dataAddress;
+
+    @NotNull
+    private String callbackAddress;
+
+    @JsonPOJOBuilder(withPrefix = "")
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Builder {
+
+        private final TransferRequestMessage message;
+
+        private Builder() {
+            message = new TransferRequestMessage();
         }
-		
-		public Builder agreementId(String agreementId) {
-			message.agreementId = agreementId;
-			return this;
-		}
 
-		public Builder format(String format) {
-			message.format = format;
-			return this;
-		}
-		
-		public Builder dataAddress(DataAddress dataAddress) {
-			message.dataAddress = dataAddress;
-			return this;
-		}
-		
-		public Builder consumerPid(String consumerPid) {
-			message.consumerPid = consumerPid;
-			return this;
-		}
-		
-		public Builder callbackAddress(String callbackAddress) {
-			message.callbackAddress = callbackAddress;
-			return this;
-		}
+        public static Builder newInstance() {
+            return new Builder();
+        }
 
-		public TransferRequestMessage build() {
-			if (message.id == null) {
-	               message.id = message.createNewId();
-	        }
-			Set<ConstraintViolation<TransferRequestMessage>> violations 
-				= Validation.buildDefaultValidatorFactory().getValidator().validate(message);
-			if(violations.isEmpty()) {
-				return message;
-			}
-			throw new ValidationException("TransferRequestMessage - " +
-					violations
-						.stream()
-						.map(v -> v.getPropertyPath() + " " + v.getMessage())
-						.collect(Collectors.joining(",")));
-			}
-		}
+        public Builder id(String id) {
+            message.id = id;
+            return this;
+        }
 
-	@Override
-	public String getType() {
-		return TransferRequestMessage.class.getSimpleName();
-	}
-	
+        public Builder agreementId(String agreementId) {
+            message.agreementId = agreementId;
+            return this;
+        }
+
+        public Builder format(String format) {
+            message.format = format;
+            return this;
+        }
+
+        public Builder dataAddress(DataAddress dataAddress) {
+            message.dataAddress = dataAddress;
+            return this;
+        }
+
+        public Builder consumerPid(String consumerPid) {
+            message.consumerPid = consumerPid;
+            return this;
+        }
+
+        public Builder callbackAddress(String callbackAddress) {
+            message.callbackAddress = callbackAddress;
+            return this;
+        }
+
+        public TransferRequestMessage build() {
+            if (message.id == null) {
+                message.id = message.createNewId();
+            }
+            Set<ConstraintViolation<TransferRequestMessage>> violations
+                    = Validation.buildDefaultValidatorFactory().getValidator().validate(message);
+            if (violations.isEmpty()) {
+                return message;
+            }
+            throw new ValidationException("TransferRequestMessage - " +
+                    violations
+                            .stream()
+                            .map(v -> v.getPropertyPath() + " " + v.getMessage())
+                            .collect(Collectors.joining(",")));
+        }
+    }
+
+    @Override
+    public String getType() {
+        return TransferRequestMessage.class.getSimpleName();
+    }
+
 }

@@ -34,7 +34,7 @@
         "Information",
         "Test",
         "TRUEConnector team information",
-        "ConnectorB"
+        "ConnectorA"
       ],
       "theme": [
         "Data"
@@ -43,11 +43,11 @@
       "creator": "Engineering Informatica S.p.A.",
       "description": [
         {
-          "value": "Sample connectorB catalog offering TRUEConnector team information",
+          "value": "Sample connectorA catalog offering TRUEConnector team information",
           "language": "en"
         }
       ],
-      "identifier": "Unique identifier for test ConnectorB Catalog",
+      "identifier": "Unique identifier for test ConnectorA Catalog",
       "issued": "2024-04-23T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
       "title": "Testcatalog - TRUEConnector team information",
@@ -74,7 +74,6 @@
         }
       ],
       "participantId": "urn:example:DataProviderA",
-      "homepage": "https://www.homepage.com/test",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": 0
@@ -111,11 +110,11 @@
           "_class": "it.eng.catalog.model.Offer",
           "permission": [
             {
-              "action": "USE",
+              "action": "use",
               "constraint": [
                 {
-                  "leftOperand": "COUNT",
-                  "operator": "LTEQ",
+                  "leftOperand": "count",
+                  "operator": "lteq",
                   "rightOperand": "5"
                 }
               ]
@@ -166,7 +165,7 @@
       "modified": "2024-04-23T16:26:00.000Z",
       "title": "DSP TRUE Connector",
       "endpointDescription": "dspace:connector",
-      "endpointURL": "http://connector-b:8080/",
+      "endpointURL": "http://localhost:8090/",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": 0
@@ -177,15 +176,11 @@
       "_id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5",
       "_class": "it.eng.catalog.model.Distribution",
       "title": "HTTP Data PULL",
-      "format": {
-        "_id": "HttpData-PULL"
+      "format": "HttpData-PULL",
+      "accessService": {
+        "$ref": "dataservices",
+        "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
       },
-      "accessService": [
-        {
-          "$ref": "dataservices",
-          "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
-        }
-      ],
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "issued": "2024-04-23T16:26:00.000Z",
@@ -196,15 +191,11 @@
       "_id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5",
       "_class": "it.eng.catalog.model.Distribution",
       "title": "HTTP Data PUSH",
-      "format": {
-        "_id": "HttpData-PUSH"
+      "format": "HttpData-PUSH",
+      "accessService": {
+        "$ref": "dataservices",
+        "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
       },
-      "accessService": [
-        {
-          "$ref": "dataservices",
-          "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
-        }
-      ],
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "issued": "2024-04-23T16:26:00.000Z",
@@ -310,10 +301,411 @@
       "issued": "2024-06-24T16:26:00.000Z",
       "modified": "2024-06-24T16:26:00.000Z",
       "version": 0
+    },
+    {
+      "_id": "application.dspace.version.path",
+      "value": "/",
+      "label": "Dspace Version path",
+      "group": "DspaceVersion",
+      "tooltip": "Dspace Version path",
+      "mandatory": false,
+      "issued": "2025-09-15T16:26:00.000Z",
+      "modified": "2025-09-15T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "application.dspace.version.identifierType",
+      "value": "",
+      "label": "Dspace Version identifierType",
+      "group": "DspaceVersion",
+      "tooltip": "Dspace Version identifierType",
+      "mandatory": false,
+      "issued": "2025-09-15T16:26:00.000Z",
+      "modified": "2025-09-15T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "application.dspace.version.serviceId",
+      "value": "",
+      "label": "Dspace Version serviceId",
+      "group": "DspaceVersion",
+      "tooltip": "Dspace Version serviceId",
+      "mandatory": false,
+      "issued": "2025-09-15T16:26:00.000Z",
+      "modified": "2025-09-15T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "application.dspace.version.auth.protocol",
+      "value": "https",
+      "label": "Dspace Version Auth protocol",
+      "group": "DspaceVersion",
+      "tooltip": "Dspace Version Authentication protocol",
+      "mandatory": false,
+      "issued": "2025-09-15T16:26:00.000Z",
+      "modified": "2025-09-15T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "application.dspace.version.auth.version",
+      "value": "2025-1",
+      "label": "Dspace Version Auth version",
+      "group": "DspaceVersion",
+      "tooltip": "Dspace Version Authentication version",
+      "mandatory": false,
+      "issued": "2025-09-15T16:26:00.000Z",
+      "modified": "2025-09-15T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "application.dspace.version.auth.profile",
+      "value": "authorization_code,refresh_token",
+      "label": "Dspace Version Auth profile",
+      "group": "DspaceVersion",
+      "tooltip": "Dspace Version Authentication profile, comma separated list of strings",
+      "mandatory": false,
+      "issued": "2025-09-15T16:26:00.000Z",
+      "modified": "2025-09-15T16:26:00.000Z",
+      "version": 0
     }
   ],
-  "contract_negotiations": [],
+  "contract_negotiations": [
+    {
+      "_id": "urn:uuid:CONTRACT_NEGOTIATION_ID_INITIALIZED_API_GHA",
+      "callbackAddress": "http://localhost:8080/consumer",
+      "assigner": "urn:uuid:ASSIGNER_PROVIDER",
+      "role": "provider",
+      "agreement": {
+        "$ref": "agreements",
+        "$id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA"
+      },
+      "consumerPid": "urn:uuid:be8c0f63-1350-4288-9bf7-5f5495da48b8",
+      "state": "FINALIZED",
+      "providerPid": "urn:uuid:3e370869-48ec-4475-bf51-ea0c37860d07",
+      "_class": "it.eng.negotiation.model.ContractNegotiation"
+    }
+  ],
   "agreements": [
+    {
+      "_id": "ATP0101",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATP0102",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATP0103",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATP0104",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATP0105",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATP0201",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATP0202",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATP0203",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATP0204",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATP0205",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATP0301",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATP0302",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATP0303",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATP0304",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATP0305",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATP0306",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
     {
       "_id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
       "_class": "it.eng.negotiation.model.Agreement",
@@ -323,11 +715,11 @@
       "assignee": "urn:jashd766",
       "permission": [
         {
-          "action": "USE",
+          "action": "use",
           "constraint": [
             {
-              "leftOperand": "DATE_TIME",
-              "operator": "GT",
+              "leftOperand": "dateTime",
+              "operator": "gt",
               "rightOperand": "2024-10-01T14:48:22.605323600Z"
             }
           ]
@@ -335,13 +727,12 @@
       ]
     }
   ],
-  "transfer_request_messages": [],
   "transfer_process": [
     {
       "_id": "urn:uuid:abc45798-1434-4932-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "temporary_consumer_pid",
-      "callbackAddress": "http://172.17.0.1:8080/",
+      "callbackAddress": "http://localhost:8090/",
       "agreementId": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
       "state": "INITIALIZED",
       "role": "provider",
@@ -353,418 +744,257 @@
       "version": 0
     },
     {
-      "_id": "urn:uuid:tpc0101-4434-4932-8baf-ab7fd66ql4d5",
+      "_id": "urn:uuid:ATP0101-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tpc0101-test-REQUESTED-STARTED-TERMINATED",
-      "state": "INITIALIZED",
-      "role": "consumer",
-      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
-      "createdBy": "admin@mail.com",
-      "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
-      "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
-    },
-    {
-      "_id": "urn:uuid:tpc0102-4434-4932-8baf-ab7fd66ql4d5",
-      "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tpc0102-test-REQUESTED-STARTED-COMPLETED",
-      "state": "INITIALIZED",
-      "role": "consumer",
-      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
-      "createdBy": "admin@mail.com",
-      "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
-      "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
-    },
-    {
-      "_id": "urn:uuid:tpc0103-4434-4932-8baf-ab7fd66ql4d5",
-      "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tpc0103-test-REQUESTED-STARTED-SUSPENDED-TERMINATED",
-      "state": "INITIALIZED",
-      "role": "consumer",
-      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
-      "createdBy": "admin@mail.com",
-      "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
-      "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
-    },
-    {
-      "_id": "urn:uuid:tpc0104-4434-4932-8baf-ab7fd66ql4d5",
-      "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tpc0104-test-REQUESTED-STARTED-SUSPENDED-STARTED-COMPLETED",
-      "state": "INITIALIZED",
-      "role": "consumer",
-      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
-      "createdBy": "admin@mail.com",
-      "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
-      "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
-    },
-    {
-      "_id": "urn:uuid:tpc0105-4434-4932-8baf-ab7fd66ql4d5",
-      "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tpc0105-test-REQUESTED-TERMINATED",
-      "state": "INITIALIZED",
-      "role": "consumer",
-      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
-      "createdBy": "admin@mail.com",
-      "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
-      "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
-    },
-    {
-      "_id": "urn:uuid:tpc0201-4434-4932-8baf-ab7fd66ql4d5",
-      "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tpc0201-test-REQUESTED-STARTED-TERMINATED",
-      "state": "INITIALIZED",
-      "role": "consumer",
-      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
-      "createdBy": "admin@mail.com",
-      "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
-      "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
-    },
-    {
-      "_id": "urn:uuid:tpc0202-4434-4932-8baf-ab7fd66ql4d5",
-      "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tpc0202-test-REQUESTED-STARTED-COMPLETED",
-      "state": "INITIALIZED",
-      "role": "consumer",
-      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
-      "createdBy": "admin@mail.com",
-      "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
-      "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
-    },
-    {
-      "_id": "urn:uuid:tpc0203-4434-4932-8baf-ab7fd66ql4d5",
-      "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tpc0203-test-REQUESTED-STARTED-SUSPENDED-TERMINATED",
-      "state": "INITIALIZED",
-      "role": "consumer",
-      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
-      "createdBy": "admin@mail.com",
-      "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
-      "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
-    },
-    {
-      "_id": "urn:uuid:tpc0204-4434-4932-8baf-ab7fd66ql4d5",
-      "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tpc0204-test-REQUESTED-STARTED-SUSPENDED-STARTED-COMPLETED",
-      "state": "INITIALIZED",
-      "role": "consumer",
-      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
-      "createdBy": "admin@mail.com",
-      "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
-      "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
-    },
-    {
-      "_id": "urn:uuid:tpc0205-4434-4932-8baf-ab7fd66ql4d5",
-      "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tpc0205-test-REQUESTED-TERMINATED",
-      "state": "INITIALIZED",
-      "role": "consumer",
-      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
-      "createdBy": "admin@mail.com",
-      "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
-      "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
-    },
-    {
-      "_id": "urn:uuid:tp0101-4434-4932-8baf-ab7fd66ql4d5",
-      "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tp0101-test-REQUESTED-STARTED-TERMINATED",
+      "consumerPid": "temporary_consumer_pid",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATP0101",
       "state": "INITIALIZED",
       "role": "provider",
       "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
+      "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
       "version": 0
     },
     {
-      "_id": "urn:uuid:tp0102-4434-4932-8baf-ab7fd66ql4d5",
+      "_id": "urn:uuid:ATP0102-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tp0102-test-REQUESTED-STARTED-COMPLETED",
+      "consumerPid": "temporary_consumer_pid",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATP0102",
       "state": "INITIALIZED",
       "role": "provider",
       "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
+      "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
       "version": 0
     },
     {
-      "_id": "urn:uuid:tp0103-4434-4932-8baf-ab7fd66ql4d5",
+      "_id": "urn:uuid:ATP0103-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tp0103-test-REQUESTED-STARTED-SUSPENDED-TERMINATED",
+      "consumerPid": "temporary_consumer_pid",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATP0103",
       "state": "INITIALIZED",
       "role": "provider",
       "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
+      "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
       "version": 0
     },
     {
-      "_id": "urn:uuid:tp0104-4434-4932-8baf-ab7fd66ql4d5",
+      "_id": "urn:uuid:ATP0104-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tp0104-test-REQUESTED-STARTED-SUSPENDED-STARTED-COMPLETED",
+      "consumerPid": "temporary_consumer_pid",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATP0104",
       "state": "INITIALIZED",
       "role": "provider",
       "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
+      "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
       "version": 0
     },
     {
-      "_id": "urn:uuid:tp0105-4434-4932-8baf-ab7fd66ql4d5",
+      "_id": "urn:uuid:ATP0105-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tp0105-test-REQUESTED-TERMINATED",
+      "consumerPid": "temporary_consumer_pid",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATP0105",
       "state": "INITIALIZED",
       "role": "provider",
       "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
+      "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
       "version": 0
     },
     {
-      "_id": "urn:uuid:tp0201-4434-4932-8baf-ab7fd66ql4d5",
+      "_id": "urn:uuid:ATP0201-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tp0201-test-REQUESTED-STARTED-TERMINATED",
+      "consumerPid": "temporary_consumer_pid",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATP0201",
       "state": "INITIALIZED",
       "role": "provider",
       "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
+      "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
       "version": 0
     },
     {
-      "_id": "urn:uuid:tp0202-4434-4932-8baf-ab7fd66ql4d5",
+      "_id": "urn:uuid:ATP0202-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tp0202-test-REQUESTED-COMPLETED",
+      "consumerPid": "temporary_consumer_pid",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATP0202",
       "state": "INITIALIZED",
       "role": "provider",
       "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
+      "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
       "version": 0
     },
     {
-      "_id": "urn:uuid:tp0203-4434-4932-8baf-ab7fd66ql4d5",
+      "_id": "urn:uuid:ATP0203-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tp0203-test-REQUESTED-STARTED-SUSPENDED",
+      "consumerPid": "temporary_consumer_pid",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATP0203",
       "state": "INITIALIZED",
       "role": "provider",
       "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
+      "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
       "version": 0
     },
     {
-      "_id": "urn:uuid:tp0204-4434-4932-8baf-ab7fd66ql4d5",
+      "_id": "urn:uuid:ATP0204-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tp0204-test-REQUESTED-STARTED-SUSPENDED-STARTED-COMPLETED",
+      "consumerPid": "temporary_consumer_pid",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATP0204",
       "state": "INITIALIZED",
       "role": "provider",
       "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
+      "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
       "version": 0
     },
     {
-      "_id": "urn:uuid:tp0205-4434-4932-8baf-ab7fd66ql4d5",
+      "_id": "urn:uuid:ATP0205-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tp0205-test-REQUESTED-TERMINATED",
+      "consumerPid": "temporary_consumer_pid",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATP0205",
       "state": "INITIALIZED",
       "role": "provider",
       "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
+      "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
       "version": 0
     },
     {
-      "_id": "urn:uuid:tp0301-4434-4932-8baf-ab7fd66ql4d5",
+      "_id": "urn:uuid:ATP0301-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tp0301-test-REQUESTED-COMPLETED",
+      "consumerPid": "temporary_consumer_pid",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATP0301",
       "state": "INITIALIZED",
       "role": "provider",
       "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
+      "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
       "version": 0
     },
     {
-      "_id": "urn:uuid:tp0302-4434-4932-8baf-ab7fd66ql4d5",
+      "_id": "urn:uuid:ATP0302-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tp0302-test-REQUESTED-SUSPENDED",
+      "consumerPid": "temporary_consumer_pid",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATP0302",
       "state": "INITIALIZED",
       "role": "provider",
       "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
+      "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
       "version": 0
     },
     {
-      "_id": "urn:uuid:tp0303-4434-4932-8baf-ab7fd66ql4d5",
+      "_id": "urn:uuid:ATP0303-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tp0303-test-REQUESTED-STARTED-SUSPENDED-COMPLETED",
+      "consumerPid": "temporary_consumer_pid",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATP0303",
       "state": "INITIALIZED",
       "role": "provider",
       "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
+      "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
       "version": 0
     },
     {
-      "_id": "urn:uuid:tp0304-4434-4932-8baf-ab7fd66ql4d5",
+      "_id": "urn:uuid:ATP0304-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tp0304-test-REQUESTED-STARTED-TERMINATED-STARTED",
+      "consumerPid": "temporary_consumer_pid",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATP0304",
       "state": "INITIALIZED",
       "role": "provider",
       "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
+      "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
       "version": 0
     },
     {
-      "_id": "urn:uuid:tp0305-4434-4932-8baf-ab7fd66ql4d5",
+      "_id": "urn:uuid:ATP0305-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tp0305-test-REQUESTED-STARTED-TERMINATED-SUSPENDED",
+      "consumerPid": "temporary_consumer_pid",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATP0305",
       "state": "INITIALIZED",
       "role": "provider",
       "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
+      "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
       "version": 0
     },
     {
-      "_id": "urn:uuid:tp0306-4434-4932-8baf-ab7fd66ql4d5",
+      "_id": "urn:uuid:ATP0306-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
-      "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER_OK",
-      "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_OK",
-      "callbackAddress": "http://localhost:8090/",
-      "agreementId": "tp0306-test-REQUESTED-STARTED-TERMINATED-COMPLETED",
+      "consumerPid": "temporary_consumer_pid",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATP0306",
       "state": "INITIALIZED",
       "role": "provider",
       "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "issued": "2024-04-23T16:26:00.000Z",
+      "issued": "2025-09-29T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "urn:uuid:ATP0101-1434-1234-8baf-ab7fd66ql4d5",
+      "_class": "it.eng.datatransfer.model.TransferProcess",
+      "consumerPid": "temporary_consumer_pid",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATP0101",
+      "state": "INITIALIZED",
+      "role": "provider",
+      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
       "version": 0
     }

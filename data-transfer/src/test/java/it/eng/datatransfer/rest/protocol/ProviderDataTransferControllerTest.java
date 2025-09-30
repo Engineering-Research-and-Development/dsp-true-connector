@@ -14,6 +14,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -28,6 +30,10 @@ public class ProviderDataTransferControllerTest {
 
     @Mock
     private DataTransferService dataTransferService;
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
+    @Mock
+    private Environment environment;
 
     @InjectMocks
     private ProviderDataTransferController controller;
@@ -52,9 +58,10 @@ public class ProviderDataTransferControllerTest {
     // initiate transfer
     @Test
     @DisplayName("Initiate TransferProcess")
-    public void initateDataTransfer() {
+    public void initiateDataTransfer() {
         when(dataTransferService.initiateDataTransfer(any(TransferRequestMessage.class)))
                 .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER);
+        when(environment.getActiveProfiles()).thenReturn(new String[]{"dev"});
         ResponseEntity<JsonNode> response = controller.initiateDataTransfer(TransferSerializer.serializeProtocolJsonNode(DataTransferMockObjectUtil.TRANSFER_REQUEST_MESSAGE));
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
     }
