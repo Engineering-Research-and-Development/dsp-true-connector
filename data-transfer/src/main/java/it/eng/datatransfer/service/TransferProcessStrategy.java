@@ -7,6 +7,8 @@ public interface TransferProcessStrategy {
 
     TransferProcess findTransferProcessByProviderPid(String providerPid);
 
+    TransferProcess findTransferProcessByConsumerPid(String consumerPid);
+
     TransferProcess initiateDataTransfer(TransferRequestMessage transferRequestMessage);
 
     TransferProcess startDataTransfer(TransferStartMessage transferStartMessage, String consumerPid, String providerPid);
@@ -18,5 +20,7 @@ public interface TransferProcessStrategy {
     TransferProcess suspendDataTransfer(TransferSuspensionMessage transferSuspensionMessage, String consumerPid, String providerPid);
 
     boolean isDataTransferStarted(String consumerPid, String providerPid);
+
+    TransferProcess requestTransfer(TCKRequest tckRequest);
 }
 

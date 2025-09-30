@@ -81,7 +81,7 @@ public class ProviderDataTransferController {
     public ResponseEntity<Void> terminateDataTransfer(@PathVariable String providerPid,
                                                       @RequestBody JsonNode transferTerminationMessageJsonNode) {
         TransferTerminationMessage transferTerminationMessage = TransferSerializer.deserializeProtocol(transferTerminationMessageJsonNode, TransferTerminationMessage.class);
-        log.info("Terminating data transfer for providerPid {} and comsumerPid {}", providerPid, transferTerminationMessage.getConsumerPid());
+        log.info("Terminating data transfer for providerPid {} and consumerPid {}", providerPid, transferTerminationMessage.getConsumerPid());
         TransferProcess transferProcessTerminated = dataTransferService.terminateDataTransfer(transferTerminationMessage, null, providerPid);
         log.info("TransferProcess {} state changed to {}", transferProcessTerminated.getId(), transferProcessTerminated.getState());
         return ResponseEntity.ok().build();

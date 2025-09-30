@@ -62,6 +62,11 @@ public class DataTransferService implements TransferProcessStrategy {
                 .orElse(false);
     }
 
+    @Override
+    public TransferProcess requestTransfer(TCKRequest tckRequest) {
+        throw new UnsupportedOperationException("Not supported!");
+    }
+
     /**
      * Find transferProcess for given providerPid.
      *
@@ -71,6 +76,11 @@ public class DataTransferService implements TransferProcessStrategy {
     public TransferProcess findTransferProcessByProviderPid(String providerPid) {
         return transferProcessRepository.findByProviderPid(providerPid)
                 .orElseThrow(() -> new TransferProcessNotFoundException("TransferProcess with providerPid " + providerPid + " not found"));
+    }
+
+    @Override
+    public TransferProcess findTransferProcessByConsumerPid(String consumerPid) {
+        return null;
     }
 
     /**

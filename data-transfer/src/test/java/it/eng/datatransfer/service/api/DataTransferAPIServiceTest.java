@@ -2,6 +2,7 @@ package it.eng.datatransfer.service.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
+import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.DataTransferRequest;
 import it.eng.datatransfer.model.TransferProcess;
@@ -305,7 +306,7 @@ class DataTransferAPIServiceTest {
         when(artifactTransferService.findArtifact(input))
                 .thenReturn(DataTransferMockObjectUtil.ARTIFACT_FILE);
 
-        assertThrows(DataTransferAPIException.class,
+        assertThrows(TransferProcessInvalidStateException.class, //DataTransferAPIException.class,
                 () -> apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
         verify(transferProcessRepository).findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
@@ -369,7 +370,7 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId()))
                 .thenReturn(Optional.of(input));
 
-        assertThrows(DataTransferAPIException.class,
+        assertThrows(TransferProcessInvalidStateException.class, //DataTransferAPIException.class,
                 () -> apiService.completeTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId()));
 
         verify(transferProcessRepository).findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId());
@@ -431,7 +432,7 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId()))
                 .thenReturn(Optional.of(input));
 
-        assertThrows(DataTransferAPIException.class,
+        assertThrows(TransferProcessInvalidStateException.class, //DataTransferAPIException.class,
                 () -> apiService.suspendTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId()));
 
         verify(transferProcessRepository).findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId());
@@ -493,7 +494,7 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId()))
                 .thenReturn(Optional.of(input));
 
-        assertThrows(DataTransferAPIException.class,
+        assertThrows(TransferProcessInvalidStateException.class, //DataTransferAPIException.class,
                 () -> apiService.terminateTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId()));
 
         verify(transferProcessRepository).findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId());

@@ -1,24 +1,25 @@
 package it.eng.datatransfer.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
-import it.eng.datatransfer.exceptions.TransferProcessInternalException;
-import it.eng.datatransfer.exceptions.TransferProcessInvalidFormatException;
-import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
-import it.eng.datatransfer.exceptions.TransferProcessNotFoundException;
-import it.eng.datatransfer.model.TransferError;
-import it.eng.datatransfer.model.TransferProcess;
-import it.eng.datatransfer.model.TransferRequestMessage;
-import it.eng.datatransfer.model.TransferState;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.datatransfer.event.TransferProcessChangeEvent;
+import it.eng.datatransfer.exceptions.*;
+import it.eng.datatransfer.model.*;
+import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
+import it.eng.datatransfer.rest.protocol.DataTransferCallback;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.apache.commons.lang3.StringUtils;
@@ -39,13 +40,21 @@ public class DataTransferUtil {
     private final TransferRequestMessageRepository transferRequestMessageRepository;
     private final AuditEventPublisher publisher;
     private final OkHttpRestClient okHttpRestClient;
+    private final S3Properties s3Properties;
+    private final CredentialUtils credentialUtils;
+    private final DataTransferProperties dataTransferProperties;
 
-    public DataTransferUtil(OkHttpClient okHttpClient, TransferProcessRepository transferProcessRepository, TransferRequestMessageRepository transferRequestMessageRepository, AuditEventPublisher publisher, OkHttpRestClient okHttpRestClient) {
+    private final ObjectMapper mapper = new ObjectMapper();
+
+    public DataTransferUtil(OkHttpClient okHttpClient, TransferProcessRepository transferProcessRepository, TransferRequestMessageRepository transferRequestMessageRepository, AuditEventPublisher publisher, OkHttpRestClient okHttpRestClient, S3Properties s3Properties, CredentialUtils credentialUtils, DataTransferProperties dataTransferProperties) {
         this.okHttpClient = okHttpClient;
         this.transferProcessRepository = transferProcessRepository;
         this.transferRequestMessageRepository = transferRequestMessageRepository;
         this.publisher = publisher;
         this.okHttpRestClient = okHttpRestClient;
+        this.s3Properties = s3Properties;
+        this.credentialUtils = credentialUtils;
+        this.dataTransferProperties = dataTransferProperties;
     }
 
     public TransferProcess initiateDataTransfer(TransferRequestMessage transferRequestMessage) {
@@ -87,12 +96,6 @@ public class DataTransferUtil {
                 .version(transferProcessInitialized.getVersion())
                 .build();
         transferProcessRepository.save(transferProcessRequested);
-        publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
-                "Transfer process requested",
-                Map.of("role", IConstants.ROLE_PROTOCOL,
-                        "transferProcess", transferProcessRequested,
-                        "consumerPid", transferProcessRequested.getConsumerPid(),
-                        "providerPid", transferProcessRequested.getProviderPid()));
         log.info("Requested TransferProcess created");
         return transferProcessRequested;
     }
@@ -184,4 +187,139 @@ public class DataTransferUtil {
         }
     }
 
+
+    /// AS CONSUMER
+    public JsonNode requestTransfer(TransferProcess transferProcessInitialized, String format) {
+        stateTransitionCheck(transferProcessInitialized, TransferState.REQUESTED);
+
+        TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
+                .agreementId(transferProcessInitialized.getAgreementId())
+                .callbackAddress(dataTransferProperties.consumerCallbackAddress())
+                .consumerPid(transferProcessInitialized.getConsumerPid())
+                .format(format)
+                .dataAddress(null)
+                .build();
+
+        GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
+                DataTransferCallback.getConsumerDataTransferRequest(transferProcessInitialized.getCallbackAddress()),
+                TransferSerializer.serializeProtocolJsonNode(transferRequestMessage),
+                credentialUtils.getConnectorCredentials());
+        log.info("Response received {}", response);
+
+        TransferProcess transferProcessForDB;
+        if (response.isSuccess()) {
+            try {
+                JsonNode jsonNode = mapper.readTree(response.getData());
+                TransferProcess transferProcessFromResponse = TransferSerializer.deserializeProtocol(jsonNode, TransferProcess.class);
+
+                transferProcessForDB = TransferProcess.Builder.newInstance()
+                        .id(transferProcessInitialized.getId())
+                        .agreementId(transferProcessInitialized.getAgreementId())
+                        .consumerPid(transferProcessInitialized.getConsumerPid())
+                        .providerPid(transferProcessFromResponse.getProviderPid())
+                        .format(format)
+                        .dataAddress(null)
+                        .isDownloaded(transferProcessInitialized.isDownloaded())
+                        .dataId(transferProcessInitialized.getDataId())
+                        .callbackAddress(transferProcessInitialized.getCallbackAddress())
+                        .role(IConstants.ROLE_CONSUMER)
+                        .state(transferProcessFromResponse.getState())
+                        .created(transferProcessInitialized.getCreated())
+                        .createdBy(transferProcessInitialized.getCreatedBy())
+                        .modified(transferProcessInitialized.getModified())
+                        .lastModifiedBy(transferProcessInitialized.getLastModifiedBy())
+                        .version(transferProcessInitialized.getVersion())
+                        // although not needed on consumer side it is added here to avoid duplicate id exception from mongodb
+                        .datasetId(transferProcessInitialized.getDatasetId())
+                        .build();
+
+                transferProcessRepository.save(transferProcessForDB);
+                log.info("Transfer process {} saved", transferProcessForDB.getId());
+            } catch (JsonProcessingException e) {
+                log.error("Transfer process from response not valid");
+                throw new DataTransferAPIException(e.getLocalizedMessage(), e);
+            }
+        } else {
+            log.info("Error response received!");
+            log.error("Transfer process from response not valid");
+            JsonNode jsonNode;
+            try {
+                jsonNode = mapper.readTree(response.getData());
+                TransferError transferError = TransferSerializer.deserializeProtocol(jsonNode, TransferError.class);
+                Map<String, Object> details = new HashMap<>();
+                details.put("transferProcess", transferProcessInitialized);
+                details.put("role", IConstants.ROLE_API);
+                details.put("errorMessage", transferError);
+                if (transferProcessInitialized.getConsumerPid() != null) {
+                    details.put("consumerPid", transferProcessInitialized.getConsumerPid());
+                }
+                if (transferProcessInitialized.getProviderPid() != null) {
+                    details.put("providerPid", transferProcessInitialized.getProviderPid());
+                }
+                publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
+                        "Transfer process request failed",
+                        details);
+                throw new DataTransferAPIException(transferError, "Error making request");
+            } catch (JsonProcessingException ex) {
+                throw new DataTransferAPIException("Error occurred");
+            }
+        }
+        return TransferSerializer.serializePlainJsonNode(transferProcessForDB);
+    }
+
+    public TransferProcess startDataTransfer(TransferStartMessage transferStartMessage, String consumerPid, String providerPid) {
+        String consumerPidFinal = consumerPid == null ? transferStartMessage.getConsumerPid() : consumerPid;
+        String providerPidFinal = providerPid == null ? transferStartMessage.getProviderPid() : providerPid;
+        log.debug("Starting data transfer for consumerPid {} and providerPid {}", consumerPidFinal, providerPidFinal);
+
+        TransferProcess transferProcessRequested = findTransferProcess(consumerPidFinal, providerPidFinal);
+
+        if (IConstants.ROLE_PROVIDER.equals(transferProcessRequested.getRole()) && TransferState.REQUESTED.equals(transferProcessRequested.getState())) {
+            // Only consumer can transit from REQUESTED to STARTED state
+            String errorMessage = "State transition aborted, consumer can not transit from " + TransferState.REQUESTED.name()
+                    + " to " + TransferState.STARTED.name();
+            throw new TransferProcessInvalidStateException(errorMessage, transferProcessRequested.getConsumerPid(), transferProcessRequested.getProviderPid());
+        }
+
+        stateTransitionCheck(transferProcessRequested, TransferState.STARTED);
+
+        TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
+                .id(transferProcessRequested.getId())
+                .agreementId(transferProcessRequested.getAgreementId())
+                .consumerPid(transferProcessRequested.getConsumerPid())
+                .providerPid(transferProcessRequested.getProviderPid())
+                .callbackAddress(transferProcessRequested.getCallbackAddress())
+                .dataAddress(transferStartMessage.getDataAddress())
+                .format(transferProcessRequested.getFormat())
+                .state(TransferState.STARTED)
+                .role(transferProcessRequested.getRole())
+                .datasetId(transferProcessRequested.getDatasetId())
+                .created(transferProcessRequested.getCreated())
+                .createdBy(transferProcessRequested.getCreatedBy())
+                .modified(transferProcessRequested.getModified())
+                .lastModifiedBy(transferProcessRequested.getLastModifiedBy())
+                .version(transferProcessRequested.getVersion())
+                .build();
+        transferProcessRepository.save(transferProcessStarted);
+        publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()
+                .oldTransferProcess(transferProcessRequested)
+                .newTransferProcess(transferProcessStarted)
+                .build());
+        // TODO check how to handle this on consumer side!!!
+        publisher.publishEvent(transferStartMessage);
+        publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
+                "Transfer process started",
+                Map.of("role", IConstants.ROLE_PROTOCOL,
+                        "transferProcess", transferProcessStarted,
+                        "consumerPid", transferProcessStarted.getConsumerPid(),
+                        "providerPid", transferProcessStarted.getProviderPid()));
+        return transferProcessStarted;
+    }
+
+    public TransferProcess findTransferProcess(String consumerPid, String providerPid) {
+        return transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid)
+                .orElseThrow(() -> new TransferProcessNotFoundException("Transfer process for consumerPid " + consumerPid
+                        + " and providerPid " + providerPid + " not found")
+                );
+    }
 }

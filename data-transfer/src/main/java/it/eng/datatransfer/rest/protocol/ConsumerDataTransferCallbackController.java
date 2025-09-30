@@ -10,7 +10,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/consumer/transfers")
+//consumes = MediaType.APPLICATION_JSON_VALUE,
+@RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE, path = "/consumer/transfers")
 @Slf4j
 public class ConsumerDataTransferCallbackController {
 
@@ -19,6 +20,22 @@ public class ConsumerDataTransferCallbackController {
     public ConsumerDataTransferCallbackController(TransferProcessStrategy dataTransferService) {
         super();
         this.dataTransferService = dataTransferService;
+    }
+
+    @PostMapping("/tck")
+    public ResponseEntity<JsonNode> initiateDataTransfer(@RequestBody TCKRequest tckRequest) {
+        log.info("Received TCK request for agreementId {}, format {} from connector {}",
+                tckRequest.getAgreementId(), tckRequest.getFormat(), tckRequest.getConnectorAddress());
+
+        TransferProcess transferProcessRequested = dataTransferService.requestTransfer(tckRequest);
+
+        return ResponseEntity.ok(TransferSerializer.serializeProtocolJsonNode(transferProcessRequested));
+    }
+
+    @GetMapping("/{consumerPid}")
+    public ResponseEntity<String> getTransferProcessByConsumerPid(@PathVariable String consumerPid) {
+        TransferProcess transferProcess = dataTransferService.findTransferProcessByConsumerPid(consumerPid);
+        return ResponseEntity.ok(TransferSerializer.serializeProtocol(transferProcess));
     }
 
     @PostMapping(path = "/{consumerPid}/start")

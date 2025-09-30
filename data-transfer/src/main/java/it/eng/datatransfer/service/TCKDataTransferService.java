@@ -6,13 +6,12 @@ import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
+import it.eng.tools.model.IConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
-
-import java.util.concurrent.CompletableFuture;
 
 @Service
 @Slf4j
@@ -45,6 +44,11 @@ public class TCKDataTransferService implements TransferProcessStrategy {
     }
 
     @Override
+    public TransferProcess findTransferProcessByConsumerPid(String consumerPid) {
+        return transferProcessRepository.findByConsumerPid(consumerPid).orElseThrow(() -> new RuntimeException("No transfer process found"));
+    }
+
+    @Override
     public TransferProcess initiateDataTransfer(TransferRequestMessage transferRequestMessage) {
         log.info("initiateDataTransfer TCK stub called, {}", TransferSerializer.serializeProtocol(transferRequestMessage));
 
@@ -54,14 +58,26 @@ public class TCKDataTransferService implements TransferProcessStrategy {
     @Override
     public TransferProcess startDataTransfer(TransferStartMessage transferStartMessage, String consumerPid, String providerPid) {
         log.info("startDataTransfer TCK stub called");
-        String consumerPidFinal = consumerPid == null ? transferStartMessage.getConsumerPid() : consumerPid;
-        String providerPidFinal = providerPid == null ? transferStartMessage.getProviderPid() : providerPid;
-        TransferProcess transferProcess = transferProcessRepository.findByConsumerPidAndProviderPid(consumerPidFinal, providerPidFinal).orElseThrow();
-        log.info("Found transfer process: consumerPid {}, providerPid{} , state {} - checking transition to STARTED", transferProcess.getConsumerPid(), transferProcess.getProviderPid(), transferProcess.getState());
+//        String consumerPidFinal = consumerPid == null ? transferStartMessage.getConsumerPid() : consumerPid;
+//        String providerPidFinal = providerPid == null ? transferStartMessage.getProviderPid() : providerPid;
+//        TransferProcess transferProcess = transferProcessRepository.findByConsumerPidAndProviderPid(consumerPidFinal, providerPidFinal).orElseThrow();
+//        log.info("Found transfer process: consumerPid {}, providerPid{} , state {} - checking transition to STARTED", transferProcess.getConsumerPid(), transferProcess.getProviderPid(), transferProcess.getState());
 
-        stateTransitionCheck(transferProcess, TransferState.STARTED);
-
-        return transferProcess;
+//        stateTransitionCheck(transferProcess, TransferState.STARTED);
+        TransferProcess transferProcessStarted = dataTransferUtil.startDataTransfer(transferStartMessage, consumerPid, providerPid);
+        if (transferProcessStarted.getAgreementId().equals("ATPC0201")) {
+            log.info("Publishing event to initiate STARTED -> TERMINATE back to provider for agreementId ATPC0201");
+            applicationEventPublisher.publishEvent(transferProcessStarted);
+        }
+        if (transferProcessStarted.getAgreementId().equals("ATPC0202")) {
+            log.info("Publishing event to initiate STARTED -> COMPLETION back to provider for agreementId ATPC0202");
+            applicationEventPublisher.publishEvent(transferProcessStarted);
+        }
+        if (transferProcessStarted.getAgreementId().equals("ATPC0203")) {
+            log.info("Publishing event to initiate STARTED -> COMPLETION back to provider for agreementId ATPC0203");
+            applicationEventPublisher.publishEvent(transferProcessStarted);
+        }
+        return transferProcessStarted;
     }
 
     @Override
@@ -126,11 +142,20 @@ public class TCKDataTransferService implements TransferProcessStrategy {
         TransferProcess transferProcess = transferProcessRepository.findByConsumerPidAndProviderPid(consumerPidFinal, providerPidFinal).orElseThrow();
         log.info("Found TransferProcessState {} ", transferProcess.getState());
 
-        stateTransitionCheck(transferProcess, TransferState.SUSPENDED);
+        if (transferProcess.getRole().equalsIgnoreCase(IConstants.ROLE_PROVIDER)) {
+            log.info("Acting as provider, just changes state to SUSPENDED if state transition allows");
+            stateTransitionCheck(transferProcess, TransferState.SUSPENDED);
 
-//        dataTransferAPIService.suspendTransfer(transferProcess.getId());
+            TransferProcess transferProcessSuspended = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED);
+            return transferProcessRepository.save(transferProcessSuspended);
+        }
+
+        stateTransitionCheck(transferProcess, TransferState.SUSPENDED);
+        log.info("Acting as consumer, suspend the transfer process");
         TransferProcess transferProcessSuspended = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED);
         return transferProcessRepository.save(transferProcessSuspended);
+//        JsonNode jsonNOdeSuspended = dataTransferAPIService.suspendTransfer(transferProcess.getId());
+//        return TransferSerializer.deserializePlain(jsonNOdeSuspended, TransferProcess.class);
     }
 
     @Override
@@ -139,14 +164,24 @@ public class TCKDataTransferService implements TransferProcessStrategy {
         return false;
     }
 
-    private TransferProcess processTp0101(TransferRequestMessage transferRequestMessage) {
-        // Store the process for later use
-        CompletableFuture<TransferProcess> chain = CompletableFuture
-                .supplyAsync(() -> dataTransferUtil.initiateDataTransfer(transferRequestMessage))
-                .thenCompose(CompletableFuture::completedFuture);
+    @Override
+    public TransferProcess requestTransfer(TCKRequest tckRequest) {
+        TransferProcess tpInitialized = transferProcessRepository.findByAgreementId(tckRequest.getAgreementId())
+                .orElseThrow(() -> new RuntimeException("No transfer process found"));
+        log.info("TransferProcess found for agreementId {}: consumerPid {}, providerPid {} , state {}",
+                tpInitialized.getAgreementId(), tpInitialized.getConsumerPid(), tpInitialized.getProviderPid(), tpInitialized.getState());
 
-        // Store and wait for the next request in chain
-        return chain.join();
+        JsonNode jsonNodeRequested = dataTransferUtil.requestTransfer(tpInitialized, tckRequest.getFormat());
+        TransferProcess transferProcess = TransferSerializer.deserializePlain(jsonNodeRequested, TransferProcess.class);
+        if (transferProcess.getAgreementId().equals("ATPC0205")) {
+            log.info("Publishing event to initiate REQUESTED -> TERMINATED back to provider for agreementId ATPC0205");
+            applicationEventPublisher.publishEvent(transferProcess);
+        }
+        return TransferSerializer.deserializePlain(jsonNodeRequested, TransferProcess.class);
+    }
+
+    private TransferProcess processTp0101(TransferRequestMessage transferRequestMessage) {
+        return dataTransferUtil.initiateDataTransfer(transferRequestMessage);
     }
 
     @EventListener(classes = TransferProcess.class)
@@ -175,6 +210,21 @@ public class TCKDataTransferService implements TransferProcessStrategy {
             log.info("Processing {} - REQUESTED -> STARTED : {}", transferProcess.getAgreementId(), transferProcess.getId());
             JsonNode jsonNode = dataTransferAPIService.startTransfer(transferProcess.getId());
             applicationEventPublisher.publishEvent(TransferSerializer.deserializePlain(jsonNode, TransferProcess.class));
+        }
+
+        if (transferProcess.getAgreementId().equals("ATPC0201") && transferProcess.getState().equals(TransferState.STARTED)) {
+            dataTransferAPIService.terminateTransfer(transferProcess.getId());
+        }
+        if (transferProcess.getAgreementId().equals("ATPC0202") && transferProcess.getState().equals(TransferState.STARTED)) {
+            dataTransferAPIService.completeTransfer(transferProcess.getId());
+        }
+        if (transferProcess.getAgreementId().equals("ATPC0203") && transferProcess.getState().equals(TransferState.STARTED)) {
+            dataTransferAPIService.suspendTransfer(transferProcess.getId());
+            Thread.sleep(2000);
+            dataTransferAPIService.terminateTransfer(transferProcess.getId());
+        }
+        if (transferProcess.getAgreementId().equals("ATPC0205") && transferProcess.getState().equals(TransferState.REQUESTED)) {
+            dataTransferAPIService.terminateTransfer(transferProcess.getId());
         }
 
         if (transferProcess.getAgreementId().equalsIgnoreCase("ATP0101")

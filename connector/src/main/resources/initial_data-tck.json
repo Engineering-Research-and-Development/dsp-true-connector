@@ -707,6 +707,326 @@
       ]
     },
     {
+      "_id": "ATPC0101",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATPC0102",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATPC0103",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATPC0104",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATPC0105",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATPC0201",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATPC0202",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATPC0203",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATPC0204",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATPC0205",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATPC0301",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATPC0302",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATPC0303",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATPC0304",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATPC0305",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "ATPC0306",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
+      "timestamp": "2025-09-29T01:00:00Z",
+      "assigner": "urn:tck",
+      "assignee": "urn:DSPTRUEConnector",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "dateTime",
+              "operator": "gt",
+              "rightOperand": "2024-10-01T14:48:22.605323600Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "_id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
       "_class": "it.eng.negotiation.model.Agreement",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -991,6 +1311,246 @@
       "agreementId": "ATP0101",
       "state": "INITIALIZED",
       "role": "provider",
+      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2025-09-29T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "urn:uuid:ATPC0101-1434-1234-8baf-ab7fd66ql4d5",
+      "_class": "it.eng.datatransfer.model.TransferProcess",
+      "consumerPid": "39d3a8a9-a047-4226-8604-6c7618377f6a",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATPC0101",
+      "state": "INITIALIZED",
+      "role": "consumer",
+      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2025-09-29T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "urn:uuid:ATPC0102-1434-1234-8baf-ab7fd66ql4d5",
+      "_class": "it.eng.datatransfer.model.TransferProcess",
+      "consumerPid": "e8c4c298-7e3a-4062-82ec-f2b6e13f409f",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATPC0102",
+      "state": "INITIALIZED",
+      "role": "consumer",
+      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2025-09-29T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "urn:uuid:ATPC0103-1434-1234-8baf-ab7fd66ql4d5",
+      "_class": "it.eng.datatransfer.model.TransferProcess",
+      "consumerPid": "f3e7deda-09f2-4406-858d-d90dda52bb86",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATPC0103",
+      "state": "INITIALIZED",
+      "role": "consumer",
+      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2025-09-29T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "urn:uuid:ATPC0104-1434-1234-8baf-ab7fd66ql4d5",
+      "_class": "it.eng.datatransfer.model.TransferProcess",
+      "consumerPid": "297e56af-4a5f-49aa-b747-577d0a239354",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATPC0104",
+      "state": "INITIALIZED",
+      "role": "consumer",
+      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2025-09-29T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "urn:uuid:ATPC0105-1434-1234-8baf-ab7fd66ql4d5",
+      "_class": "it.eng.datatransfer.model.TransferProcess",
+      "consumerPid": "724578ba-ace9-46d7-8d49-327353247707",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATPC0105",
+      "state": "INITIALIZED",
+      "role": "consumer",
+      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2025-09-29T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "urn:uuid:ATPC0201-1434-1234-8baf-ab7fd66ql4d5",
+      "_class": "it.eng.datatransfer.model.TransferProcess",
+      "consumerPid": "3f17dbb4-b46c-4ef4-b60e-bb67248a64df",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATPC0201",
+      "state": "INITIALIZED",
+      "role": "consumer",
+      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2025-09-29T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "urn:uuid:ATPC0202-1434-1234-8baf-ab7fd66ql4d5",
+      "_class": "it.eng.datatransfer.model.TransferProcess",
+      "consumerPid": "aec9462f-e55d-4e48-aa47-687d7a7be50f",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATPC0202",
+      "state": "INITIALIZED",
+      "role": "consumer",
+      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2025-09-29T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "urn:uuid:ATPC0203-1434-1234-8baf-ab7fd66ql4d5",
+      "_class": "it.eng.datatransfer.model.TransferProcess",
+      "consumerPid": "00233881-7ecd-4c3f-a469-ea84b59d4013",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATPC0203",
+      "state": "INITIALIZED",
+      "role": "consumer",
+      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2025-09-29T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "urn:uuid:ATPC0204-1434-1234-8baf-ab7fd66ql4d5",
+      "_class": "it.eng.datatransfer.model.TransferProcess",
+      "consumerPid": "26532346-9907-416f-b31a-c674cb749e74",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATPC0204",
+      "state": "INITIALIZED",
+      "role": "consumer",
+      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2025-09-29T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "urn:uuid:ATPC0205-1434-1234-8baf-ab7fd66ql4d5",
+      "_class": "it.eng.datatransfer.model.TransferProcess",
+      "consumerPid": "02966c9f-3997-42d1-94bd-98e5d00d071b",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATPC0205",
+      "state": "INITIALIZED",
+      "role": "consumer",
+      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2025-09-29T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "urn:uuid:ATPC0301-1434-1234-8baf-ab7fd66ql4d5",
+      "_class": "it.eng.datatransfer.model.TransferProcess",
+      "consumerPid": "4659244b-71eb-47c6-941d-200e1cb5c932",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATPC0301",
+      "state": "INITIALIZED",
+      "role": "consumer",
+      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2025-09-29T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "urn:uuid:ATPC0302-1434-1234-8baf-ab7fd66ql4d5",
+      "_class": "it.eng.datatransfer.model.TransferProcess",
+      "consumerPid": "d7f8e8f0-8bba-4ba8-a9e1-06383f723b1b",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATPC0302",
+      "state": "INITIALIZED",
+      "role": "consumer",
+      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2025-09-29T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "urn:uuid:ATPC0303-1434-1234-8baf-ab7fd66ql4d5",
+      "_class": "it.eng.datatransfer.model.TransferProcess",
+      "consumerPid": "2248efc7-a254-4fd5-90df-e66d6b79624b",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATPC0303",
+      "state": "INITIALIZED",
+      "role": "consumer",
+      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2025-09-29T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "urn:uuid:ATPC0304-1434-1234-8baf-ab7fd66ql4d5",
+      "_class": "it.eng.datatransfer.model.TransferProcess",
+      "consumerPid": "d9b013c9-e1eb-4fbd-b994-5dd339721c67",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATPC0304",
+      "state": "INITIALIZED",
+      "role": "consumer",
+      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2025-09-29T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "urn:uuid:ATPC0305-1434-1234-8baf-ab7fd66ql4d5",
+      "_class": "it.eng.datatransfer.model.TransferProcess",
+      "consumerPid": "173e6cbd-c675-4c20-8674-8d1c818bc3fa",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATPC0305",
+      "state": "INITIALIZED",
+      "role": "consumer",
+      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2025-09-29T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "urn:uuid:ATPC0306-1434-1234-8baf-ab7fd66ql4d5",
+      "_class": "it.eng.datatransfer.model.TransferProcess",
+      "consumerPid": "8fd8ff1f-d307-46c1-9fa9-28313fcddfcf",
+      "callbackAddress": "http://localhost:8083/",
+      "agreementId": "ATPC0306",
+      "state": "INITIALIZED",
+      "role": "consumer",
       "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
