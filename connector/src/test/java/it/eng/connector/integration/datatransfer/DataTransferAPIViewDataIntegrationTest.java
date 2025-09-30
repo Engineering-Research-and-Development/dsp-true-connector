@@ -221,7 +221,7 @@ public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest 
                 .rightOperand("USA")
                 .build();
 
-        return Stream.of(NegotiationMockObjectUtil.CONSTRAINT_DATEIME_INVALID, NegotiationMockObjectUtil.CONSTRAINT_COUNT_5,
+        return Stream.of(NegotiationMockObjectUtil.CONSTRAINT_DATETIME_INVALID, NegotiationMockObjectUtil.CONSTRAINT_COUNT_5,
                 constraintPurpose, constraintSpatial);
     }
 

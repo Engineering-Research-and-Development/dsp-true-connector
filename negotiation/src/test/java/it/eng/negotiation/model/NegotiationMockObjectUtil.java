@@ -24,7 +24,7 @@ public class NegotiationMockObjectUtil {
     public static final String TARGET = DATASET_ID;
 
     public static String generateUUID() {
-        return "urn:uuid:" + UUID.randomUUID().toString();
+        return "urn:uuid:" + UUID.randomUUID();
     }
 
 
@@ -54,7 +54,7 @@ public class NegotiationMockObjectUtil {
             .rightOperand("2024-02-29T00:00:01+01:00")
             .build();
 
-    public static final Constraint CONSTRAINT_DATEIME_INVALID = Constraint.Builder.newInstance()
+    public static final Constraint CONSTRAINT_DATETIME_INVALID = Constraint.Builder.newInstance()
             .leftOperand(LeftOperand.DATE_TIME)
             .operator(Operator.LT)
             .rightOperand("2024-02-29T00:00:01+01:00")
@@ -199,7 +199,7 @@ public class NegotiationMockObjectUtil {
             .role(IConstants.ROLE_CONSUMER)
             .build();
 
-    public static final ContractNegotiation CONTRACT_NEGOTIATION_REQUESTED_PROIVDER = ContractNegotiation.Builder.newInstance()
+    public static final ContractNegotiation CONTRACT_NEGOTIATION_REQUESTED_PROVIDER = ContractNegotiation.Builder.newInstance()
             .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
             .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
             .callbackAddress(CALLBACK_ADDRESS)

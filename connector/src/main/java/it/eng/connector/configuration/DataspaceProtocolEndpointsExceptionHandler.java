@@ -7,10 +7,6 @@ import it.eng.datatransfer.model.TransferError;
 import it.eng.negotiation.model.ContractNegotiationErrorMessage;
 import it.eng.tools.model.DSpaceConstants;
 import lombok.extern.slf4j.Slf4j;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.*;
 import org.springframework.security.core.AuthenticationException;
@@ -23,21 +19,19 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 
 @ControllerAdvice
 @Slf4j
 public class DataspaceProtocolEndpointsExceptionHandler extends ResponseEntityExceptionHandler {
 
-    private static final String EN = "en";
     private static final String NOT_AUTH = "Not authorized";
     private static final String NOT_AUTH_CODE = String.valueOf(HttpStatus.UNAUTHORIZED.value());
 
     @ExceptionHandler({AuthenticationException.class})
     @ResponseBody
     public ResponseEntity<JsonNode> handleAuthenticationException(Exception ex, WebRequest request) {
-        String uri = ((ServletWebRequest) request).getRequest().getRequestURI().toString();
+        String uri = ((ServletWebRequest) request).getRequest().getRequestURI();
         String consumerPid = "NA";
         String providerPid = "NA";
         try {
@@ -84,7 +78,7 @@ public class DataspaceProtocolEndpointsExceptionHandler extends ResponseEntityEx
                         .consumerPid(consumerPid)
                         .providerPid(providerPid)
                         .code(NOT_AUTH_CODE)
-						.reason(Collections.singletonList(NOT_AUTH))
+                        .reason(List.of(NOT_AUTH))
                         .build();
                 error = CatalogSerializer.serializeProtocolJsonNode(negotiationError);
             } else if (uri.contains("transfers")) {
@@ -92,7 +86,7 @@ public class DataspaceProtocolEndpointsExceptionHandler extends ResponseEntityEx
                         .consumerPid(consumerPid)
                         .providerPid(providerPid)
                         .code(NOT_AUTH_CODE)
-                        .reason(Arrays.asList(it.eng.datatransfer.model.Reason.Builder.newInstance().language(EN).value(NOT_AUTH).build()))
+                        .reason(List.of(NOT_AUTH))
                         .build();
                 error = CatalogSerializer.serializeProtocolJsonNode(transferError);
             }
