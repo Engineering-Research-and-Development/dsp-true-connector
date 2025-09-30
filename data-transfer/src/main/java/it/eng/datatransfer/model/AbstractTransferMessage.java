@@ -6,31 +6,34 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.constraints.NotNull;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 import java.util.UUID;
+
 @JsonPropertyOrder(value = {DSpaceConstants.CONTEXT, DSpaceConstants.TYPE, DSpaceConstants.CONSUMER_PID, DSpaceConstants.PROVIDER_PID}, alphabetic = true)
 public abstract class AbstractTransferMessage implements Serializable {
-	
-	private static final long serialVersionUID = -3150306747585657302L;
 
-	@JsonProperty(value = DSpaceConstants.CONTEXT, access = Access.READ_ONLY)
-	private List<String> context = List.of(DSpaceConstants.DSPACE_2025_01_CONTEXT);
+    @Serial
+    private static final long serialVersionUID = -3150306747585657302L;
 
-	@NotNull
-	protected String consumerPid;
+    @JsonProperty(value = DSpaceConstants.CONTEXT, access = Access.READ_ONLY)
+    private List<String> context = List.of(DSpaceConstants.DSPACE_2025_01_CONTEXT);
 
-	@JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
-	public abstract String getType();
+    @NotNull
+    protected String consumerPid;
 
-	public String getConsumerPid() {
-		return consumerPid;
-	}
-	
-	protected String createNewId() {
-	    return UUID.randomUUID().toString();
-	}
-	
+    @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
+    public abstract String getType();
+
+    public String getConsumerPid() {
+        return consumerPid;
+    }
+
+    protected String createNewId() {
+        return UUID.randomUUID().toString();
+    }
+
     protected String createNewPid() {
         return "urn:uuid:" + UUID.randomUUID();
     }

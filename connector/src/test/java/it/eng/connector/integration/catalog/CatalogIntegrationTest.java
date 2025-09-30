@@ -180,7 +180,7 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
         CatalogError error = CatalogSerializer.deserializeProtocol(response, CatalogError.class);
         assertNotNull(error);
         assertNotNull(error.getReason().stream()
-                .filter(reason -> reason.getValue().contains("expected CatalogRequestMessage"))
+                .filter(reason -> reason.contains("expected CatalogRequestMessage"))
                 .findFirst()
                 .orElse(null));
     }
@@ -228,7 +228,7 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
         CatalogError error = CatalogSerializer.deserializeProtocol(response, CatalogError.class);
         assertNotNull(error);
         assertNotNull(error.getReason().stream()
-                .filter(reason -> reason.getValue().contains("Dataset with id: 1 not found"))
+                .filter(reason -> reason.contains("Dataset with id: 1 not found"))
                 .findFirst()
                 .orElse(null));
     }
@@ -283,7 +283,7 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
         CatalogError error = CatalogSerializer.deserializeProtocol(response, CatalogError.class);
         assertNotNull(error);
         assertNotNull(error.getReason().stream()
-                .filter(reason -> reason.getValue().contains("Dataset with id: " + datasetNullPolicies.getId() + " not found"))
+                .filter(reason -> reason.contains("Dataset with id: " + datasetNullPolicies.getId() + " not found"))
                 .findFirst()
                 .orElse(null));
     }
@@ -316,7 +316,7 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
         CatalogError error = CatalogSerializer.deserializeProtocol(response, CatalogError.class);
         assertNotNull(error);
         assertNotNull(error.getReason().stream()
-                .filter(reason -> reason.getValue().contains("Dataset with id: " + datasetNoDistributions.getId() + " not found"))
+                .filter(reason -> reason.contains("Dataset with id: " + datasetNoDistributions.getId() + " not found"))
                 .findFirst()
                 .orElse(null));
     }
@@ -350,7 +350,7 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
         CatalogError error = CatalogSerializer.deserializeProtocol(response, CatalogError.class);
         assertNotNull(error);
         assertNotNull(error.getReason().stream()
-                .filter(reason -> reason.getValue().contains("Dataset with id: " + datasetNullDistributions.getId() + " not found"))
+                .filter(reason -> reason.contains("Dataset with id: " + datasetNullDistributions.getId() + " not found"))
                 .findFirst()
                 .orElse(null));
     }
@@ -388,7 +388,7 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
         CatalogError error = CatalogSerializer.deserializeProtocol(response, CatalogError.class);
         assertNotNull(error);
         assertNotNull(error.getReason().stream()
-                .filter(reason -> reason.getValue().contains("Dataset with id: " + datasetNullServices.getId() + " not found"))
+                .filter(reason -> reason.contains("Dataset with id: " + datasetNullServices.getId() + " not found"))
                 .findFirst()
                 .orElse(null));
     }
@@ -423,7 +423,7 @@ public class CatalogIntegrationTest extends BaseIntegrationTest {
         CatalogError error = CatalogSerializer.deserializeProtocol(response, CatalogError.class);
         assertNotNull(error);
         assertNotNull(error.getReason().stream()
-                .filter(reason -> reason.getValue().contains("Dataset with id: " + datasetNoFile.getId() + " not found"))
+                .filter(reason -> reason.contains("Dataset with id: " + datasetNoFile.getId() + " not found"))
                 .findFirst()
                 .orElse(null));
     }

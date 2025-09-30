@@ -12,36 +12,36 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Reason {
 
-	private String value;
-	
-	private String language;
-	
-	@JsonPOJOBuilder(withPrefix = "")
-	@JsonIgnoreProperties(ignoreUnknown = true)
-	public static class Builder {
-		
-		private Reason message;
+    private String value;
 
-		private Builder() {
-			message = new Reason();
-		}
+    private String language;
 
-		public static Builder newInstance() {
-			return new Builder();
-		}
+    @JsonPOJOBuilder(withPrefix = "")
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Builder {
 
-		public Builder value(String value) {
-			message.value = value;
-			return this;
-		}
+        private final Reason message;
 
-		public Builder language(String language) {
-			message.language = language;
-			return this;
-		}
-		
-		public Reason build() {
-			return message;
-		}
-	}
+        private Builder() {
+            message = new Reason();
+        }
+
+        public static Builder newInstance() {
+            return new Builder();
+        }
+
+        public Builder value(String value) {
+            message.value = value;
+            return this;
+        }
+
+        public Builder language(String language) {
+            message.language = language;
+            return this;
+        }
+
+        public Reason build() {
+            return message;
+        }
+    }
 }

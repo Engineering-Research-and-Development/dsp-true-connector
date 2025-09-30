@@ -197,6 +197,12 @@
             <version>${dsp.tck.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.eclipse.dataspacetck.dsp</groupId>
+            <artifactId>dsp-transfer-process</artifactId>
+            <version>${dsp.tck.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <!-- <build> -->

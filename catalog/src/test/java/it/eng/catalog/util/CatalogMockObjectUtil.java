@@ -353,7 +353,7 @@ public class CatalogMockObjectUtil {
                 .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
                 .issued(ISSUED)
                 .modified(MODIFIED)
-                .format("HTTP:PULL")
+                .format("HttpData-PULL")
                 .hasPolicy(Arrays.asList(createNewOffer()).stream().collect(Collectors.toCollection(HashSet::new)))
                 .accessService(createNewDataService())
                 .build();

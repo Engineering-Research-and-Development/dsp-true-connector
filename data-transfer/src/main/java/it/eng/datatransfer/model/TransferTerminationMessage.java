@@ -11,6 +11,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.io.Serial;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -20,65 +21,67 @@ import java.util.stream.Collectors;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class TransferTerminationMessage extends AbstractTransferMessage {
 
-	private static final long serialVersionUID = 7638790814588039703L;
+    @Serial
+    private static final long serialVersionUID = 7638790814588039703L;
 
-	@NotNull
-	private String providerPid;
-	
-	private String code;
-	
-	private List<Object> reason;
-	
-	@JsonPOJOBuilder(withPrefix = "")
-	@JsonIgnoreProperties(ignoreUnknown = true)
-	public static class Builder {
-		
-		private TransferTerminationMessage message;
-		
-		private Builder() {
-			message = new TransferTerminationMessage();
-		}
-		
-		public static Builder newInstance() {
-			return new Builder();
-		}
-		
-		public Builder consumerPid(String consumerPid) {
-			message.consumerPid = consumerPid;
-			return this;
-		}
+    @NotNull
+    private String providerPid;
 
-		public Builder providerPid(String providerPid) {
-			message.providerPid = providerPid;
-			return this;
-		}
-		
-		public Builder code(String code) {
-			message.code = code;
-			return this;
-		}
-		public Builder reason(List<Object> reason) {
-			message.reason = reason;
-			return this;
-		}
+    private String code;
 
-		public TransferTerminationMessage build() {
-			Set<ConstraintViolation<TransferTerminationMessage>> violations 
-				= Validation.buildDefaultValidatorFactory().getValidator().validate(message);
-			if(violations.isEmpty()) {
-				return message;
-			}
-			throw new ValidationException("TransferTerminationMessage - " +
-					violations
-						.stream()
-						.map(v -> v.getPropertyPath() + " " + v.getMessage())
-						.collect(Collectors.joining(",")));
-			}
-	}
-	
-	@Override
-	public String getType() {
-		return TransferTerminationMessage.class.getSimpleName();
-	}
+    private List<Object> reason;
+
+    @JsonPOJOBuilder(withPrefix = "")
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Builder {
+
+        private final TransferTerminationMessage message;
+
+        private Builder() {
+            message = new TransferTerminationMessage();
+        }
+
+        public static Builder newInstance() {
+            return new Builder();
+        }
+
+        public Builder consumerPid(String consumerPid) {
+            message.consumerPid = consumerPid;
+            return this;
+        }
+
+        public Builder providerPid(String providerPid) {
+            message.providerPid = providerPid;
+            return this;
+        }
+
+        public Builder code(String code) {
+            message.code = code;
+            return this;
+        }
+
+        public Builder reason(List<Object> reason) {
+            message.reason = reason;
+            return this;
+        }
+
+        public TransferTerminationMessage build() {
+            Set<ConstraintViolation<TransferTerminationMessage>> violations
+                    = Validation.buildDefaultValidatorFactory().getValidator().validate(message);
+            if (violations.isEmpty()) {
+                return message;
+            }
+            throw new ValidationException("TransferTerminationMessage - " +
+                    violations
+                            .stream()
+                            .map(v -> v.getPropertyPath() + " " + v.getMessage())
+                            .collect(Collectors.joining(",")));
+        }
+    }
+
+    @Override
+    public String getType() {
+        return TransferTerminationMessage.class.getSimpleName();
+    }
 
 }

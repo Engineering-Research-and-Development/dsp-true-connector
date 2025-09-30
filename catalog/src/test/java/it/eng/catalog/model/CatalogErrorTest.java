@@ -8,7 +8,7 @@ import jakarta.validation.ValidationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.util.Arrays;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -17,15 +17,7 @@ public class CatalogErrorTest {
 
     CatalogError catalogError = CatalogError.Builder.newInstance()
             .code("cat err code")
-            .reason(Arrays.asList(
-                    Reason.Builder.newInstance()
-                            .language("en")
-                            .value("Not correct")
-                            .build(),
-                    Reason.Builder.newInstance()
-                            .language("it")
-                            .value("same but in Italian")
-                            .build()))
+            .reason(List.of("Not correct", "same but in Italian"))
             .build();
 
     @Test

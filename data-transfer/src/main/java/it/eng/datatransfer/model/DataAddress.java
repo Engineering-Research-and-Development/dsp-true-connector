@@ -13,6 +13,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Set;
@@ -23,59 +24,60 @@ import java.util.stream.Collectors;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class DataAddress implements Serializable {
 
-	private static final long serialVersionUID = -2851504722128056767L;
+    @Serial
+    private static final long serialVersionUID = -2851504722128056767L;
 
-	private String endpointType;
-	
-	private String endpoint;
-	
-	private List<EndpointProperty> endpointProperties;
-	
-	@JsonPOJOBuilder(withPrefix = "")
-	@JsonIgnoreProperties(ignoreUnknown = true)
-	public static class Builder {
-		
-		private DataAddress dataAddress;
-		
-		private Builder() {
-			dataAddress = new DataAddress();
-		}
-		
-		public static Builder newInstance() {
-			return new Builder();
-		}
-		
-		public Builder endpointType(String endpointType) {
-			dataAddress.endpointType = endpointType;
-			return this;
-		}
+    private String endpointType;
 
-		public Builder endpoint(String endpoint) {
-			dataAddress.endpoint = endpoint;
-			return this;
-		}
-		
-		public Builder endpointProperties(List<EndpointProperty> endpointProperties) {
-			dataAddress.endpointProperties = endpointProperties;
-			return this;
-		}
-		
-		public DataAddress build() {
-			Set<ConstraintViolation<DataAddress>> violations 
-				= Validation.buildDefaultValidatorFactory().getValidator().validate(dataAddress);
-			if(violations.isEmpty()) {
-				return dataAddress;
-			}
-			throw new ValidationException("DataAddress - " + 
-					violations
-						.stream()
-						.map(v -> v.getPropertyPath() + " " + v.getMessage())
-						.collect(Collectors.joining(",")));
-			}
-	}	
+    private String endpoint;
 
-	@JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
-	public String getType() {
-		return DataAddress.class.getSimpleName();
-	}
+    private List<EndpointProperty> endpointProperties;
+
+    @JsonPOJOBuilder(withPrefix = "")
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Builder {
+
+        private DataAddress dataAddress;
+
+        private Builder() {
+            dataAddress = new DataAddress();
+        }
+
+        public static Builder newInstance() {
+            return new Builder();
+        }
+
+        public Builder endpointType(String endpointType) {
+            dataAddress.endpointType = endpointType;
+            return this;
+        }
+
+        public Builder endpoint(String endpoint) {
+            dataAddress.endpoint = endpoint;
+            return this;
+        }
+
+        public Builder endpointProperties(List<EndpointProperty> endpointProperties) {
+            dataAddress.endpointProperties = endpointProperties;
+            return this;
+        }
+
+        public DataAddress build() {
+            Set<ConstraintViolation<DataAddress>> violations
+                    = Validation.buildDefaultValidatorFactory().getValidator().validate(dataAddress);
+            if (violations.isEmpty()) {
+                return dataAddress;
+            }
+            throw new ValidationException("DataAddress - " +
+                    violations
+                            .stream()
+                            .map(v -> v.getPropertyPath() + " " + v.getMessage())
+                            .collect(Collectors.joining(",")));
+        }
+    }
+
+    @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
+    public String getType() {
+        return DataAddress.class.getSimpleName();
+    }
 }

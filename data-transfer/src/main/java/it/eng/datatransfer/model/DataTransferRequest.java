@@ -1,14 +1,13 @@
 package it.eng.datatransfer.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
-import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 @Getter
@@ -16,13 +15,11 @@ import java.io.Serializable;
 @AllArgsConstructor
 public class DataTransferRequest implements Serializable {
 
-	private static final long serialVersionUID = 4451699406021801277L;
+    @Serial
+    private static final long serialVersionUID = 4451699406021801277L;
 
-	@NotNull
-	@JsonProperty("transferProcessId")
-	private String transferProcessId;
-	@JsonProperty(DSpaceConstants.FORMAT)
-	private String format;
-	@JsonProperty(DSpaceConstants.DATA_ADDRESS)
-	private JsonNode dataAddress;
+    @NotNull
+    private String transferProcessId;
+    private String format;
+    private JsonNode dataAddress;
 }
