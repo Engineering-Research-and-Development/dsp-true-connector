@@ -1,5 +1,15 @@
 # TCK Compliancy
 
+## DSP TRUEConnector configuration
+
+Connector must be running using tck profile configuration.
+This profile will use initial_data_tck.json file to load test data, that are mandatory for TCK tests.
+
+Other important notice is that it will load services based on profile, which will rely on provided test data
+(datasets, contract negotiations, agreements, etc) to initiate next steps of TCK tests.
+
+## TCK
+
 Tested against TCK version v1.0.0-RC5
 
 - Cloned TCK project
