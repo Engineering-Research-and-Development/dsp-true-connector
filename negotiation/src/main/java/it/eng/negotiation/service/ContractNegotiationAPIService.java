@@ -524,7 +524,7 @@ public class ContractNegotiationAPIService {
                 .consumerPid(contractNegotiation.getConsumerPid())
                 .providerPid(contractNegotiation.getProviderPid())
                 .code(contractNegotiationId)
-                .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value(reason).build()))
+                .reason(Collections.singletonList(reason))
                 .build();
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
                 address,

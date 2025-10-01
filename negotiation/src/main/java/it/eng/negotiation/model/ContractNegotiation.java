@@ -1,27 +1,11 @@
 package it.eng.negotiation.model;
 
-import java.time.Instant;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import org.springframework.data.annotation.CreatedBy;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.LastModifiedBy;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.annotation.Version;
-import org.springframework.data.mongodb.core.mapping.DBRef;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -30,55 +14,48 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.*;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-/*
-{
-    "@context":  "https://w3id.org/dspace/2024/1/context.json",
-    "@type": "dspace:ContractNegotiation",
-    "dspace:providerPid": "urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aab",
-    "dspace:consumerPid": "urn:uuid:32541fe6-c580-409e-85a8-8a9a32fbe833",
-    "dspace:state": "dspace:REQUESTED"
-  }
-"required": [ "@context", "@type", "dspace:providerPid", "dspace:consumerPid", "dspace:state" ]
- */
+import java.time.Instant;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = ContractNegotiation.Builder.class)
-@JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic = true)
 @Document(collection = "contract_negotiations")
-//@EntityListeners(AuditingEntityListener.class)
 public class ContractNegotiation extends AbstractNegotiationObject {
 
     @JsonIgnore
     @JsonProperty(DSpaceConstants.ID)
     @Id
     private String id;
-    
+
     @JsonIgnore
     private String callbackAddress;
     @JsonIgnore
     private String assigner;
-    // determins which role the connector is for that contract negotiation (consumer or provider)
+    // determines which role the connector is for that contract negotiation (consumer or provider)
     @JsonIgnore
     private String role;
-    
+
     @JsonIgnore
     @DBRef
     private Offer offer;
-    
+
     @JsonIgnore
     @DBRef
     private Agreement agreement;
-    
+
     @NotNull
-    @JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
     private String consumerPid;
 
     @NotNull
-    @JsonProperty(DSpaceConstants.DSPACE_STATE)
     private ContractNegotiationState state;
-    
+
     @JsonIgnore
     @CreatedBy
     private String createdBy;
@@ -92,12 +69,12 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     @JsonIgnore
     @LastModifiedDate
     private Instant modified;
-    
+
     @JsonIgnore
     @Version
     @Field("version")
     private Long version;
-    
+
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Builder {
@@ -112,88 +89,88 @@ public class ContractNegotiation extends AbstractNegotiationObject {
         public static ContractNegotiation.Builder newInstance() {
             return new ContractNegotiation.Builder();
         }
-        
+
         @JsonProperty(DSpaceConstants.ID)
         public Builder id(String id) {
-        	message.id = id;
-        	return this;
+            message.id = id;
+            return this;
         }
 
-        @JsonProperty(DSpaceConstants.DSPACE_STATE)
         public Builder state(ContractNegotiationState state) {
             message.state = state;
             return this;
         }
-        
+
         /**
          * It is sent in a request and is stored on the responder side for the next request.
          * E.g. Consumer sends request to provider-> Provider stores callbackAddress for future request and responses with 200 ()
-         * @param callbackAddress
+         *
+         * @param callbackAddress - URL for future requests and responses
          * @return Builder object
          */
         public Builder callbackAddress(String callbackAddress) {
-        	message.callbackAddress = callbackAddress;
-        	return this;
-        }
-        
-        public Builder assigner(String assigner) {
-        	message.assigner = assigner;
-        	return this;
-        }
-        
-        public Builder role(String role) {
-        	message.role = role;
-        	return this;
-        }
-        
-        public Builder offer(Offer offer) {
-        	message.offer = offer;
-        	return this;
-        }
-        
-        public Builder agreement(Agreement agreement) {
-        	message.agreement = agreement;
-        	return this;
+            message.callbackAddress = callbackAddress;
+            return this;
         }
 
-        @JsonProperty(DSpaceConstants.DSPACE_PROVIDER_PID)
+        public Builder assigner(String assigner) {
+            message.assigner = assigner;
+            return this;
+        }
+
+        public Builder role(String role) {
+            message.role = role;
+            return this;
+        }
+
+        public Builder offer(Offer offer) {
+            message.offer = offer;
+            return this;
+        }
+
+        public Builder agreement(Agreement agreement) {
+            message.agreement = agreement;
+            return this;
+        }
+
         public Builder providerPid(String providerPid) {
             message.providerPid = providerPid;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DSPACE_CONSUMER_PID)
         public Builder consumerPid(String consumerPid) {
             message.consumerPid = consumerPid;
             return this;
         }
-        
+
         // Auditable fields
         @JsonProperty("version")
         public Builder version(Long version) {
             message.version = version;
             return this;
         }
-        
+
         @JsonProperty("createdBy")
         public Builder createdBy(String createdBy) {
-        	message.createdBy = createdBy;
+            message.createdBy = createdBy;
             return this;
         }
+
         @JsonProperty("created")
         public Builder created(Instant created) {
-        	message.created = created;
+            message.created = created;
             return this;
         }
 
         @JsonProperty("modified")
         public Builder modified(Instant modified) {
-        	message.modified = modified;
+            message.modified = modified;
             return this;
         }
+
         @JsonProperty("lastModifiedBy")
         public Builder lastModifiedBy(String lastModifiedBy) {
-        	message.lastModifiedBy = lastModifiedBy;
+            message.lastModifiedBy = lastModifiedBy;
             return this;
         }
 
@@ -219,34 +196,35 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     }
 
     @Override
-    @JsonIgnoreProperties(value = {"type"}, allowGetters = true)
+    @JsonProperty(value = DSpaceConstants.TYPE, access = JsonProperty.Access.READ_ONLY)
     public String getType() {
-        return DSpaceConstants.DSPACE + ContractNegotiation.class.getSimpleName();
+        return ContractNegotiation.class.getSimpleName();
     }
-    
+
     /**
      * Create new ContractNegotiation from initial, with new state.
+     *
      * @param newState new ContractNegotiationState
      * @return new instance of ContractNegotiation
      */
     public ContractNegotiation withNewContractNegotiationState(ContractNegotiationState newState) {
-    	return ContractNegotiation.Builder.newInstance()
-    			.id(this.id)
-    			.consumerPid(this.consumerPid)
-    			.providerPid(this.providerPid)
-    			.callbackAddress(this.callbackAddress)
-    			.offer(this.offer)
-    			.assigner(this.assigner)
-    			.role(this.role)
-    			.agreement(this.agreement)
-    			// auditable fields
-    			.createdBy(this.createdBy)
-    			.created(created)
-				.lastModifiedBy(this.lastModifiedBy)
-				.modified(modified)
-				.version(this.version)
-    			.state(newState)
-    			.build();
+        return ContractNegotiation.Builder.newInstance()
+                .id(this.id)
+                .consumerPid(this.consumerPid)
+                .providerPid(this.providerPid)
+                .callbackAddress(this.callbackAddress)
+                .offer(this.offer)
+                .assigner(this.assigner)
+                .role(this.role)
+                .agreement(this.agreement)
+                // auditable fields
+                .createdBy(this.createdBy)
+                .created(created)
+                .lastModifiedBy(this.lastModifiedBy)
+                .modified(modified)
+                .version(this.version)
+                .state(newState)
+                .build();
     }
 }
 

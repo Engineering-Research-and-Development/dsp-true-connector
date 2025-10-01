@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.Arrays;
+import java.util.Collections;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -22,7 +22,6 @@ import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationErrorMessage;
 import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.model.ContractNegotiationTerminationMessage;
-import it.eng.negotiation.model.Reason;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.model.IConstants;
@@ -51,7 +50,7 @@ public class ContractNegotiationTerminateIntegrationTest extends BaseIntegration
     			.consumerPid(cn.getConsumerPid())
     			.providerPid(cn.getProviderPid())
     			.code("test")
-    			.reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("test").build()))
+    			.reason(Collections.singletonList("test"))
     			.build();
     	String body = NegotiationSerializer.serializeProtocol(terminaionMessage);
     	
@@ -77,7 +76,7 @@ public class ContractNegotiationTerminateIntegrationTest extends BaseIntegration
     			.consumerPid(cn.getConsumerPid())
     			.providerPid(cn.getProviderPid())
     			.code("test")
-    			.reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("test").build()))
+                .reason(Collections.singletonList("test"))
     			.build();
     	String body = NegotiationSerializer.serializeProtocol(terminaionMessage);
     	
@@ -108,7 +107,7 @@ public class ContractNegotiationTerminateIntegrationTest extends BaseIntegration
     			.consumerPid(cn.getConsumerPid())
     			.providerPid(cn.getProviderPid())
     			.code("test")
-    			.reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("test").build()))
+                .reason(Collections.singletonList("test"))
     			.build();
     	String body = NegotiationSerializer.serializeProtocol(terminaionMessage);
     	
@@ -133,7 +132,7 @@ public class ContractNegotiationTerminateIntegrationTest extends BaseIntegration
     			.consumerPid(cn.getConsumerPid())
     			.providerPid(cn.getProviderPid())
     			.code("test")
-    			.reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("test").build()))
+                .reason(Collections.singletonList("test"))
     			.build();
     	String body = NegotiationSerializer.serializeProtocol(terminaionMessage);
     	

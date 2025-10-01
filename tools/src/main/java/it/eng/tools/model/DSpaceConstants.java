@@ -100,6 +100,10 @@ public interface DSpaceConstants {
     public static final String DCAT_ENDPOINT_DESCRIPTION = DCAT + ENDPOINT_DESCRIPTION;
 
     public static final String PERMISSION = "permission";
+    public static final String ASSIGNEE = "assignee";
+    public static final String ASSIGNER = "assigner";
+    public static final String OPERATOR = "operator";
+
     public static final String ODRL = "odrl:";
     public static final String ODRL_SCHEMA = "http://www.w3.org/ns/odrl/2/";
     public static final String ODRL_ASSIGNEE = ODRL + "assignee";
