@@ -1,0 +1,36 @@
+name: TCK compliance test
+run-name: TCK compliance test
+
+on:
+  #  workflow_dispatch:
+  push:
+    branches: [ "feature/dsp-2025-01-catalog" ]
+
+jobs:
+  tckComplianceTest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Run docker container for DSPTRUEConnector as TCK profile
+        run: docker compose -f ./ci/tck/docker-compose.yml up -d
+
+      - name: Wait for container starting
+        run: sleep 30
+
+      - name: Check if the container is up and running
+        run: docker ps -a
+
+      - name: Run docker container for TCK Runtime
+        run: docker compose -f ./ci/tck/docker-compose-tck.yml up -d
+
+      - name: Dump docker logs for TCK Runtime
+        if: failure()
+        uses: jwalton/gh-docker-logs@v2
+
+      - name: Stop docker container TCK Runtime
+        run: docker compose -f ./ci/tck/docker-compose-tck.yml down -v
+
+      - name: Stop docker container DSPTRUEConnector as TCK profile
+        run: docker compose -f ./ci/tck/docker-compose.yml --env-file ./ci/docker/.env down -v

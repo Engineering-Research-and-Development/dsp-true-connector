@@ -1,8 +1,9 @@
 name: Feature or hotfix build
 
 on:
-  push:
-    branches: [ "feature/*", "hotfix/*" ]
+  workflow_dispatch:
+#  push:
+#    branches: [ "feature/*", "hotfix/*" ]
 
 jobs:
   build-and-push-image:
@@ -118,7 +119,7 @@ jobs:
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
-        
+
       - name: Run docker container for datatransfer-api-http-push-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
 
