@@ -3,26 +3,33 @@ package it.eng.negotiation.rest.protocol;
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.negotiation.model.*;
 import it.eng.negotiation.serializer.NegotiationSerializer;
-import it.eng.negotiation.service.ContractNegotiationProviderService;
+import it.eng.negotiation.service.ContractNegotiationProviderStrategy;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.core.env.Environment;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import java.util.Arrays;
 import java.util.Collections;
 
 @RestController
 @RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/negotiations")
 @Slf4j
-public class ProviderContractNegotiationController {
+public class ContractNegotiationProviderController {
 
-    private final ContractNegotiationProviderService providerService;
+    private final ContractNegotiationProviderStrategy providerService;
+    private final Environment environment;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
-    public ProviderContractNegotiationController(ContractNegotiationProviderService providerService) {
+    public ContractNegotiationProviderController(Environment environment, ContractNegotiationProviderStrategy providerService, ApplicationEventPublisher applicationEventPublisher) {
         super();
+        this.environment = environment;
         this.providerService = providerService;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     // 2.1 The negotiation endpoint
@@ -50,6 +57,13 @@ public class ProviderContractNegotiationController {
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest().path("/{id}")
                 .buildAndExpand(cn.getProviderPid()).toUri();
+
+        // publish event only when "tck" profile is active
+        if (Arrays.asList(environment.getActiveProfiles()).contains("tck")) {
+            log.info("TCK profile running - publishing event - {}", cn.getState());
+            log.info("ConsumerPid: {}, ProviderPid: {}", cn.getConsumerPid(), cn.getProviderPid());
+            applicationEventPublisher.publishEvent(cn);
+        }
 
         return ResponseEntity.created(location)
                 .body(NegotiationSerializer.serializeProtocolJsonNode(cn));

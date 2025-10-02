@@ -177,6 +177,7 @@ public class DataTransferService implements TransferProcessStrategy {
                 .consumerPid(transferProcessRequested.getConsumerPid())
                 .providerPid(transferProcessRequested.getProviderPid())
                 .callbackAddress(transferProcessRequested.getCallbackAddress())
+//                check if dataAddress is still the same after SUSPENDED->STARTED transition
                 .dataAddress(transferStartMessage.getDataAddress())
                 .format(transferProcessRequested.getFormat())
                 .state(TransferState.STARTED)

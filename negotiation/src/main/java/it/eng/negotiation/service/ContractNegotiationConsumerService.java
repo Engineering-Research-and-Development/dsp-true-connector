@@ -18,6 +18,7 @@ import it.eng.tools.event.datatransfer.InitializeTransferProcess;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.service.AuditEventPublisher;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;

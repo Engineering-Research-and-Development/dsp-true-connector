@@ -65,7 +65,22 @@
         {
           "$ref": "datasets",
           "$id": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
-        }
+        },
+        {"$ref": "datasets","$id": "ACN0101"},
+        {"$ref": "datasets","$id": "ACN0102"},
+        {"$ref": "datasets","$id": "ACN0103"},
+        {"$ref": "datasets","$id": "ACN0104"},
+        {"$ref": "datasets","$id": "ACN0201"},
+        {"$ref": "datasets","$id": "ACN0202"},
+        {"$ref": "datasets","$id": "ACN0203"},
+        {"$ref": "datasets","$id": "ACN0204"},
+        {"$ref": "datasets","$id": "ACN0205"},
+        {"$ref": "datasets","$id": "ACN0206"},
+        {"$ref": "datasets","$id": "ACN0207"},
+        {"$ref": "datasets","$id": "ACN0301"},
+        {"$ref": "datasets","$id": "ACN0302"},
+        {"$ref": "datasets","$id": "ACN0303"},
+        {"$ref": "datasets","$id": "ACN0304"}
       ],
       "service": [
         {
@@ -135,6 +150,801 @@
       "artifact": {
         "$ref": "artifacts",
         "$id": "urn:uuid:fdc45798-a123-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0101",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0101:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0102",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0102:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0103",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0103:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0104",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0104:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0201",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0201:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0202",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0202:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0203",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0203:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0204",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0204:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0205",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0205:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0206",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0206:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0207",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0207:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0301",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0301:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0302",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0302:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0303",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0303:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0304",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0304:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
       },
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
@@ -209,6 +1019,24 @@
       "artifactType": "FILE",
       "filename": "ENG employee.json",
       "value": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "contentType": "application/json",
+      "created": {
+        "$date": "2024-12-10T16:04:59.358Z"
+      },
+      "lastModifiedDate": {
+        "$date": "2024-12-10T16:04:59.358Z"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": {
+        "$numberLong": "0"
+      },
+      "_class": "it.eng.tools.model.Artifact"
+    },
+    {
+      "_id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8",
+      "artifactType": "EXTERNAL",
+      "value": "http://example.com/ENG employee.json",
       "contentType": "application/json",
       "created": {
         "$date": "2024-12-10T16:04:59.358Z"

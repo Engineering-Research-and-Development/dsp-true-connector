@@ -29,7 +29,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class ContractNegotiationProviderServiceTest {
+public class DSPContractNegotiationProviderServiceTest {
 
     @Mock
     private AuditEventPublisher publisher;
@@ -49,7 +49,7 @@ public class ContractNegotiationProviderServiceTest {
     private ConnectorProperties connectorProperties;
 
     @InjectMocks
-    private ContractNegotiationProviderService service;
+    private DSPContractNegotiationProviderService service;
 
     @Captor
     private ArgumentCaptor<ContractNegotiation> argCaptorContractNegotiation;

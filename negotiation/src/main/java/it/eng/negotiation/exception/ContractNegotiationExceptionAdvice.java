@@ -1,8 +1,8 @@
 package it.eng.negotiation.exception;
 
 import it.eng.negotiation.model.ContractNegotiationErrorMessage;
-import it.eng.negotiation.rest.protocol.ConsumerContractNegotiationCallbackController;
-import it.eng.negotiation.rest.protocol.ProviderContractNegotiationController;
+import it.eng.negotiation.rest.protocol.ContractNegotiationConsumerCallbackController;
+import it.eng.negotiation.rest.protocol.ContractNegotiationProviderController;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import jakarta.validation.ValidationException;
 import org.springframework.http.HttpHeaders;
@@ -15,7 +15,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 import java.util.Collections;
 
-@RestControllerAdvice(basePackageClasses = {ProviderContractNegotiationController.class, ConsumerContractNegotiationCallbackController.class})
+@RestControllerAdvice(basePackageClasses = {ContractNegotiationProviderController.class, ContractNegotiationConsumerCallbackController.class})
 public class ContractNegotiationExceptionAdvice extends ResponseEntityExceptionHandler {
 
     private final String PID_NOT_FOUND = "PID_NOT_FOUND";

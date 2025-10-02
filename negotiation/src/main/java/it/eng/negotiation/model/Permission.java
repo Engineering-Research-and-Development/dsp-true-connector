@@ -38,7 +38,7 @@ public class Permission {
     @NotNull
     private Action action;
 
-    @NotNull
+//    @NotNull
     private List<Constraint> constraint;
 
     @JsonPOJOBuilder(withPrefix = "")

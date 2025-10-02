@@ -142,15 +142,14 @@ public class ContractAgreementMessageTest {
         assertEquals(NegotiationMockObjectUtil.ASSIGNER, agreementForTesting.getAssigner());
         assertEquals(NegotiationMockObjectUtil.TARGET, agreementForTesting.getTarget());
 
-        var permission = agreementForTesting.getPermission().get(0);
-        assertNotNull(permission);
-        assertEquals(Action.USE, permission.getAction());
+        // compare fetched permission/constraint against the class-level fixtures (avoid shadowing)
+        Permission fetchedPermission = agreementForTesting.getPermission().get(0);
+        assertEquals(permission.getAction(), fetchedPermission.getAction());
 
-        var constraint = permission.getConstraint().get(0);
-        assertNotNull(constraint);
-        assertEquals(LeftOperand.COUNT, constraint.getLeftOperand());
-        assertEquals(Operator.EQ, constraint.getOperator());
-        assertEquals("5", constraint.getRightOperand());
+        Constraint fetchedConstraint = fetchedPermission.getConstraint().get(0);
+        assertEquals(constraint.getLeftOperand(), fetchedConstraint.getLeftOperand());
+        assertEquals(constraint.getOperator(), fetchedConstraint.getOperator());
+        assertEquals(constraint.getRightOperand(), fetchedConstraint.getRightOperand());
 
         assertEquals(agreement.getAssignee(), agreementForTesting.getAssignee());
         assertEquals(agreement.getAssigner(), agreementForTesting.getAssigner());

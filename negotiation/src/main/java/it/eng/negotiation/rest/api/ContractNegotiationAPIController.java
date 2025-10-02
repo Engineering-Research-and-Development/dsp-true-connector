@@ -140,7 +140,7 @@ public class ContractNegotiationAPIController {
     @PutMapping(path = "/{contractNegotiationId}/terminate")
     public ResponseEntity<GenericApiResponse<JsonNode>> terminateContractNegotiation(@PathVariable String contractNegotiationId) {
         log.info("Handling contract negotiation approved");
-        ContractNegotiation contractNegotiationTerminated = apiService.handleContractNegotiationTerminated(contractNegotiationId);
+        ContractNegotiation contractNegotiationTerminated = apiService.terminateContractNegotiation(contractNegotiationId);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(GenericApiResponse.success(NegotiationSerializer.serializeProtocolJsonNode(contractNegotiationTerminated),

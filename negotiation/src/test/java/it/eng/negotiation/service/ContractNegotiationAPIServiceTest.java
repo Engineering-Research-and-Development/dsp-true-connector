@@ -485,7 +485,7 @@ public class ContractNegotiationAPIServiceTest {
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
 
-        service.handleContractNegotiationTerminated(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED_PROVIDER.getId());
+        service.terminateContractNegotiation(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED_PROVIDER.getId());
 
         verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
         assertEquals(ContractNegotiationState.TERMINATED, argCaptorContractNegotiation.getValue().getState());
@@ -502,7 +502,7 @@ public class ContractNegotiationAPIServiceTest {
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
 
-        service.handleContractNegotiationTerminated(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED.getId());
+        service.terminateContractNegotiation(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED.getId());
 
         verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
         assertEquals(ContractNegotiationState.TERMINATED, argCaptorContractNegotiation.getValue().getState());
@@ -517,7 +517,7 @@ public class ContractNegotiationAPIServiceTest {
         when(contractNegotiationRepository.findById(contractNegotiationId)).thenReturn(Optional.empty());
 
         assertThrows(ContractNegotiationAPIException.class,
-                () -> service.handleContractNegotiationTerminated(contractNegotiationId));
+                () -> service.terminateContractNegotiation(contractNegotiationId));
 
         verify(contractNegotiationRepository, times(0)).save(argCaptorContractNegotiation.capture());
     }
@@ -533,7 +533,7 @@ public class ContractNegotiationAPIServiceTest {
         when(apiResponse.getData()).thenReturn(NegotiationSerializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE));
 
         assertThrows(ContractNegotiationAPIException.class,
-                () -> service.handleContractNegotiationTerminated(contractNegotiationId));
+                () -> service.terminateContractNegotiation(contractNegotiationId));
 
         verify(contractNegotiationRepository, times(0)).save(argCaptorContractNegotiation.capture());
         verifyAuditEvent(AuditEventType.PROTOCOL_NEGOTIATION_TERMINATED, "Contract negotiation termination failed");

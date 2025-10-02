@@ -5,7 +5,7 @@ import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
 import it.eng.negotiation.exception.ProviderPidNotBlankException;
 import it.eng.negotiation.model.*;
 import it.eng.negotiation.serializer.NegotiationSerializer;
-import it.eng.negotiation.service.ContractNegotiationProviderService;
+import it.eng.negotiation.service.ContractNegotiationProviderStrategy;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,14 +14,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.concurrent.ExecutionException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -30,17 +29,19 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class ProviderContractNegotiationControllerTest {
+public class ContractNegotiationProviderControllerTest {
 
     @Mock
-    private ContractNegotiationProviderService contractNegotiationService;
+    private Environment environment;
+    @Mock
+    private ContractNegotiationProviderStrategy contractNegotiationService;
     @Mock
     private ServletRequestAttributes attrs;
     @Mock
     private HttpServletRequest request;
 
     @InjectMocks
-    private ProviderContractNegotiationController controller;
+    private ContractNegotiationProviderController controller;
 
     @BeforeEach
     public void before() {
@@ -54,7 +55,7 @@ public class ProviderContractNegotiationControllerTest {
             .build();
 
     @Test
-    public void getNegotiationByProviderPid_success() throws InterruptedException, ExecutionException {
+    public void getNegotiationByProviderPid_success() {
         when(contractNegotiationService.getNegotiationByProviderPid(NegotiationMockObjectUtil.PROVIDER_PID))
                 .thenReturn(contractNegotiation);
         ResponseEntity<JsonNode> response = controller.getNegotiationByProviderPid(NegotiationMockObjectUtil.PROVIDER_PID);
@@ -65,7 +66,7 @@ public class ProviderContractNegotiationControllerTest {
     }
 
     @Test
-    public void getNegotiationByProviderPid_failed() throws InterruptedException, ExecutionException {
+    public void getNegotiationByProviderPid_failed() {
         when(contractNegotiationService.getNegotiationByProviderPid(NegotiationMockObjectUtil.PROVIDER_PID))
                 .thenThrow(ContractNegotiationNotFoundException.class);
 
@@ -73,7 +74,8 @@ public class ProviderContractNegotiationControllerTest {
     }
 
     @Test
-    public void createNegotiation_success() throws InterruptedException, ExecutionException {
+    public void createNegotiation_success() {
+        when(environment.getActiveProfiles()).thenReturn(new String[]{});
         when(attrs.getRequest()).thenReturn(request);
         when(contractNegotiationService.startContractNegotiation(any(ContractRequestMessage.class)))
                 .thenReturn(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED);
@@ -87,7 +89,7 @@ public class ProviderContractNegotiationControllerTest {
     }
 
     @Test
-    public void createNegotiation_failed() throws InterruptedException, ExecutionException {
+    public void createNegotiation_failed() {
         when(contractNegotiationService.startContractNegotiation(any(ContractRequestMessage.class)))
                 .thenThrow(ProviderPidNotBlankException.class);
 

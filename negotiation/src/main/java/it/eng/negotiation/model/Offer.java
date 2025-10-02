@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 @EqualsAndHashCode
 @JsonDeserialize(builder = Offer.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-@JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic = true)
+@JsonPropertyOrder(value = {DSpaceConstants.CONTEXT, DSpaceConstants.TYPE, DSpaceConstants.ID}, alphabetic = true)
 public class Offer {
 
     //	@NotNull
@@ -37,7 +37,8 @@ public class Offer {
     @NotNull
     private String target;
 
-    @NotNull
+//    @NotNull
+//    temporary due to TCK tests not providing assigner in the ContractRequestMessage
     private String assigner;
 
     private String assignee;

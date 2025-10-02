@@ -19,12 +19,12 @@ import java.util.concurrent.ExecutionException;
 @RestController
 @RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 @Slf4j
-public class ConsumerContractNegotiationCallbackController {
+public class ContractNegotiationConsumerCallbackController {
 
     private final ContractNegotiationConsumerService contractNegotiationConsumerService;
     private final ContractNegotiationProperties properties;
 
-    public ConsumerContractNegotiationCallbackController(ContractNegotiationConsumerService contractNegotiationConsumerService,
+    public ContractNegotiationConsumerCallbackController(ContractNegotiationConsumerService contractNegotiationConsumerService,
                                                          ContractNegotiationProperties properties) {
         super();
         this.contractNegotiationConsumerService = contractNegotiationConsumerService;

@@ -86,22 +86,22 @@ public class InitialDataLoader {
                         Document mongoDocument = Document.parse(document.toString());
                         Object documentId = mongoDocument.get("_id");
 
-                        if (documentId != null) {
-                            // Check if document already exists
-                            Document existingDocument = mongoTemplate.findById(documentId, Document.class, collectionName);
-                            if (existingDocument == null) {
-                                mongoTemplate.save(mongoDocument, collectionName);
-                                newDocuments++;
-                            } else {
-                                log.debug("Document with ID {} already exists in collection '{}', skipping...",
-                                        documentId, collectionName);
-                                skippedDocuments++;
-                            }
-                        } else {
+//                        if (documentId != null) {
+//                            // Check if document already exists
+//                            Document existingDocument = mongoTemplate.findById(documentId, Document.class, collectionName);
+//                            if (existingDocument == null) {
+//                                mongoTemplate.save(mongoDocument, collectionName);
+//                                newDocuments++;
+//                            } else {
+//                                log.debug("Document with ID {} already exists in collection '{}', skipping...",
+//                                        documentId, collectionName);
+//                                skippedDocuments++;
+//                            }
+//                        } else {
                             // If document has no ID, treat as new document
                             mongoTemplate.save(mongoDocument, collectionName);
                             newDocuments++;
-                        }
+//                        }
                     }
 
                     log.info("Collection '{}': {} new documents loaded, {} documents skipped (already exist).",

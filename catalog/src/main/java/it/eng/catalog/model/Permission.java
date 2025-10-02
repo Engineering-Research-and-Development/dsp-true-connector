@@ -36,7 +36,7 @@ public class Permission implements Serializable {
     @NotNull
     private Action action;
 
-    @NotNull
+//    @NotNull
     private Set<Constraint> constraint;
 
     @JsonPOJOBuilder(withPrefix = "")
@@ -98,8 +98,10 @@ public class Permission implements Serializable {
         if (action == null) {
             throw new ValidationException("Permission - action is mandatory");
         }
-        if (constraint == null || constraint.isEmpty()) {
-            throw new ValidationException("Permission - constraint is mandatory");
-        }
+//        A Rule MAY have none, one or many constraint property values of type Constraint/LogicalConstraint.
+//        https://www.w3.org/TR/odrl-model/#rule
+//        if (constraint == null || constraint.isEmpty()) {
+//            throw new ValidationException("Permission - constraint is mandatory");
+//        }
     }
 }

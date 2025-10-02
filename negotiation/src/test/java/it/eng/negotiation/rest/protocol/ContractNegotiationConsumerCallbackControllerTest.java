@@ -36,10 +36,10 @@ import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.negotiation.service.ContractNegotiationConsumerService;
 
 @ExtendWith(MockitoExtension.class)
-public class ConsumerContractNegotiationCallbackControllerTest {
+public class ContractNegotiationConsumerCallbackControllerTest {
 
 	@InjectMocks
-    private ConsumerContractNegotiationCallbackController controller;
+    private ContractNegotiationConsumerCallbackController controller;
 
     @Mock
     private ContractNegotiationConsumerService contractNegotiationConsumerService;

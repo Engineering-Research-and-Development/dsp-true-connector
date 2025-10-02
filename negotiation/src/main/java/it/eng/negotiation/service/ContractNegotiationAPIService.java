@@ -502,7 +502,7 @@ public class ContractNegotiationAPIService {
      * @param contractNegotiationId - id of the contract negotiation
      * @return ContractNegotiation
      */
-    public ContractNegotiation handleContractNegotiationTerminated(String contractNegotiationId) {
+    public ContractNegotiation terminateContractNegotiation(String contractNegotiationId) {
         ContractNegotiation contractNegotiation = findContractNegotiationById(contractNegotiationId);
         // for now, log it; maybe we can publish event?
         log.info("Contract negotiation with consumerPid {} and providerPid {} declined", contractNegotiation.getConsumerPid(), contractNegotiation.getProviderPid());
