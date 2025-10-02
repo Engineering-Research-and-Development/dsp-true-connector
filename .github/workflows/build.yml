@@ -1,9 +1,8 @@
 name: Feature or hotfix build
 
 on:
-  workflow_dispatch:
-#  push:
-#    branches: [ "feature/*", "hotfix/*" ]
+  push:
+    branches: [ "feature/*", "hotfix/*" ]
 
 jobs:
   build-and-push-image:
