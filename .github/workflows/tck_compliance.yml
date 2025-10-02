@@ -23,7 +23,7 @@ jobs:
         run: docker ps -a
 
       - name: Run docker container for TCK Runtime
-        run: docker compose -f ./ci/tck/docker-compose-tck.yml up -d
+        run: docker compose -f ./ci/tck/docker-compose-tck.yml up
 
       - name: Dump docker logs for TCK Runtime
         if: failure()
@@ -33,4 +33,4 @@ jobs:
         run: docker compose -f ./ci/tck/docker-compose-tck.yml down -v
 
       - name: Stop docker container DSPTRUEConnector as TCK profile
-        run: docker compose -f ./ci/tck/docker-compose.yml --env-file ./ci/docker/.env down -v
+        run: docker compose -f ./ci/tck/docker-compose.yml down -v
