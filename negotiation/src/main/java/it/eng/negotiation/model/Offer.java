@@ -37,7 +37,7 @@ public class Offer {
     @NotNull
     private String target;
 
-//    @NotNull
+    //    @NotNull
 //    temporary due to TCK tests not providing assigner in the ContractRequestMessage
     private String assigner;
 
@@ -55,7 +55,7 @@ public class Offer {
     @JsonIgnoreProperties(value = {"type"}, allowGetters = true)
     @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
     private String getType() {
-        return DSpaceConstants.ODRL + Offer.class.getSimpleName();
+        return Offer.class.getSimpleName();
     }
 
     @JsonPOJOBuilder(withPrefix = "")

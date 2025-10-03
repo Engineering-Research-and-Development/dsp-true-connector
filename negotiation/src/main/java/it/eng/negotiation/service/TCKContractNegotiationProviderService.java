@@ -22,15 +22,17 @@ public class TCKContractNegotiationProviderService extends ContractNegotiationPr
 
     private final ContractNegotiationAPIService apiService;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final ContractNegotiationAPIService contractNegotiationAPIService;
 
     public TCKContractNegotiationProviderService(ContractNegotiationAPIService apiService, ApplicationEventPublisher applicationEventPublisher,
                                                  AuditEventPublisher publisher, ConnectorProperties connectorProperties,
                                                  ContractNegotiationRepository contractNegotiationRepository, OkHttpRestClient okHttpRestClient,
                                                  ContractNegotiationProperties properties, OfferRepository offerRepository,
-                                                 CredentialUtils credentialUtils) {
+                                                 CredentialUtils credentialUtils, ContractNegotiationAPIService contractNegotiationAPIService) {
         super(publisher, connectorProperties, contractNegotiationRepository, okHttpRestClient, properties, offerRepository, credentialUtils);
         this.apiService = apiService;
         this.applicationEventPublisher = applicationEventPublisher;
+        this.contractNegotiationAPIService = contractNegotiationAPIService;
     }
 
 
@@ -109,13 +111,13 @@ public class TCKContractNegotiationProviderService extends ContractNegotiationPr
 //                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0102")
 //                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0103")
 //                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0104")
-                 contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0203")
-                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0207")
+                contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0203")
+                        || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0207")
 //                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0303")
 //                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0304")
 //                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0305")
 //                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0306")
-    )
+        )
                 && contractNegotiation.getState().equals(ContractNegotiationState.REQUESTED)) {
             log.info("Processing {} - REQUESTED -> AGREED : {}", contractNegotiation.getOffer().getTarget(), contractNegotiation.getId());
             ContractNegotiation result = apiService.approveContractNegotiation(contractNegotiation.getId());
@@ -185,6 +187,27 @@ public class TCKContractNegotiationProviderService extends ContractNegotiationPr
 //            log.info("Processing ACN0303 - STARTED -> SUSPENDED: {}", transferProcess.getId());
 //            apiService.suspendTransfer(transferProcess.getId());
 //        }
+
+        if (contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACNC0101")
+                && contractNegotiation.getState().equals(ContractNegotiationState.OFFERED)) {
+            log.info("Processing ACNC0101 - OFFERED -> ACCEPTED : {}", contractNegotiation.getId());
+            ContractNegotiation result = apiService.sendContractNegotiationEventMessage(contractNegotiation, ContractNegotiationEventType.ACCEPTED);
+            applicationEventPublisher.publishEvent(result);
+        }
+
+        if (contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACNC0101")
+                && contractNegotiation.getState().equals(ContractNegotiationState.AGREED)) {
+            log.info("Processing ACNC0101 - AGREED -> VERIFIED : {}", contractNegotiation.getId());
+            apiService.verifyNegotiation(contractNegotiation.getId());
+        }
+
+        if (contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACNC0102")
+                && contractNegotiation.getState().equals(ContractNegotiationState.OFFERED)) {
+            log.info("Processing ACNC0102 - OFFERED -> REQUESTED : {}", contractNegotiation.getId());
+            ContractNegotiation cn = apiService.sendContractNegotiationRequest(contractNegotiation);
+//            JsonNode negotiationNode = apiService.startNegotiation(contractNegotiation.getCallbackAddress(),
+//                    NegotiationSerializer.serializeProtocolJsonNode(contractNegotiation.getOffer()));
+        }
     }
 }
 

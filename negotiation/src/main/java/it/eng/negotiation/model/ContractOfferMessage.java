@@ -28,7 +28,6 @@ public class ContractOfferMessage extends AbstractNegotiationObject {
     @NotNull
     private Offer offer;
 
-    @NotNull
     private String callbackAddress;
 
     @JsonPOJOBuilder(withPrefix = "")

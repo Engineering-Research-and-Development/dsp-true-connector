@@ -203,6 +203,12 @@
             <version>${dsp.tck.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.eclipse.dataspacetck.dsp</groupId>
+            <artifactId>dsp-contract-negotiation</artifactId>
+            <version>${dsp.tck.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <!-- <build> -->

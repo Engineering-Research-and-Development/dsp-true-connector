@@ -15,10 +15,8 @@ import java.util.UUID;
 @JsonPropertyOrder(value = {DSpaceConstants.CONTEXT, DSpaceConstants.TYPE, DSpaceConstants.ID, DSpaceConstants.CONSUMER_PID, DSpaceConstants.PROVIDER_PID}, alphabetic = true)
 public abstract class AbstractNegotiationObject implements Serializable {
 
-
     @Serial
     private static final long serialVersionUID = 1L;
-
 
     @JsonProperty(value = DSpaceConstants.CONTEXT, access = Access.READ_ONLY)
     private List<String> context = List.of(DSpaceConstants.DSPACE_2025_01_CONTEXT);

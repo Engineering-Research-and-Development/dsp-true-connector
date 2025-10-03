@@ -1,6 +1,9 @@
 package it.eng.negotiation.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.negotiation.exception.ContractNegotiationAPIException;
 import it.eng.negotiation.exception.ContractNegotiationInvalidEventTypeException;
 import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
 import it.eng.negotiation.exception.OfferNotFoundException;
@@ -10,17 +13,21 @@ import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
+import it.eng.negotiation.rest.protocol.ContractNegotiationCallback;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.datatransfer.InitializeTransferProcess;
 import it.eng.tools.model.IConstants;
+import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.AuditEventPublisher;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -30,28 +37,18 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
 
     private final AgreementRepository agreementRepository;
     private final PolicyAdministrationPoint policyAdministrationPoint;
+    private final ObjectMapper mapper = new ObjectMapper();
+    private final Environment environment;
 
     public ContractNegotiationConsumerService(AuditEventPublisher publisher,
                                               ContractNegotiationRepository contractNegotiationRepository, OkHttpRestClient okHttpRestClient,
                                               ContractNegotiationProperties properties, OfferRepository offerRepository,
-                                              AgreementRepository agreementRepository, PolicyAdministrationPoint policyAdministrationPoint) {
+                                              AgreementRepository agreementRepository, PolicyAdministrationPoint policyAdministrationPoint, Environment environment) {
         super(publisher, contractNegotiationRepository, okHttpRestClient, properties, offerRepository);
         this.agreementRepository = agreementRepository;
         this.policyAdministrationPoint = policyAdministrationPoint;
+        this.environment = environment;
     }
-
-    /*
-     * {
-     * "@context": "https://w3id.org/dspace/v0.8/context.json",
-     * "@type": "dspace:ContractNegotiation",
-     * "dspace:providerPid": "urn:uuid:dcbf434c-eacf-4582-9a02-f8dd50120fd3",
-     * "dspace:consumerPid": "urn:uuid:32541fe6-c580-409e-85a8-8a9a32fbe833",
-     * "dspace:state" :"OFFERED"
-     * }
-     *
-     * @param contractOfferMessage
-     * @return
-     */
 
     /**
      * Process contract offer.
@@ -59,22 +56,34 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
      * @param contractOfferMessage
      * @return ContractNegotiation as JsonNode
      */
-    public JsonNode processContractOffer(ContractOfferMessage contractOfferMessage) {
-        checkIfContractNegotiationExists(contractOfferMessage.getConsumerPid(), contractOfferMessage.getProviderPid());
+    public ContractNegotiation processContractOffer(ContractOfferMessage contractOfferMessage) {
+//        checkIfContractNegotiationExists(contractOfferMessage.getConsumerPid(), contractOfferMessage.getProviderPid());
 
-        processContractOffer(contractOfferMessage.getOffer());
+//        processContractOffer(contractOfferMessage.getOffer());
+        ContractNegotiation contractNegotiationInitial =
+                contractNegotiationRepository.findByConsumerPid(contractOfferMessage.getConsumerPid())
+                        .orElseThrow(() -> new ContractNegotiationNotFoundException(
+                                "Contract negotiation with consumerPid " + contractOfferMessage.getConsumerPid() +
+                                        " not found", contractOfferMessage.getConsumerPid(), contractOfferMessage.getProviderPid()));
 
+        log.info("CONSUMER - saving negotiation with state OFFERED");
         ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
-                .consumerPid("urn:uuid:" + UUID.randomUUID())
-                .providerPid(contractOfferMessage.getProviderPid())
+                .consumerPid(contractNegotiationInitial.getConsumerPid())
+                .providerPid(contractNegotiationInitial.getProviderPid())
                 .state(ContractNegotiationState.OFFERED)
                 .role(IConstants.ROLE_CONSUMER)
                 .offer(contractOfferMessage.getOffer())
                 .assigner(contractOfferMessage.getOffer().getAssigner())
-                .callbackAddress(contractOfferMessage.getCallbackAddress())
+                .callbackAddress(contractNegotiationInitial.getCallbackAddress())
                 .build();
         contractNegotiationRepository.save(contractNegotiation);
-        return NegotiationSerializer.serializeProtocolJsonNode(contractNegotiation);
+
+        if (Arrays.asList(environment.getActiveProfiles()).contains("tck")) {
+            log.info("TCK profile running - publishing event - {}", contractNegotiation.getState());
+            log.info("ConsumerPid: {}, ProviderPid: {}", contractNegotiation.getConsumerPid(), contractNegotiation.getProviderPid());
+            publisher.publishEvent(contractNegotiation);
+        }
+        return contractNegotiation;
     }
 
     private void processContractOffer(Offer offer) {
@@ -138,15 +147,20 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
                 .build());
         // sends verification message to provider
         // TODO add error handling in case not correct
-        if (properties.isAutomaticNegotiation()) {
-            log.debug("Automatic negotiation - processing sending ContractAgreementVerificationMessage");
-            ContractAgreementVerificationMessage verificationMessage = ContractAgreementVerificationMessage.Builder.newInstance()
-                    .consumerPid(contractAgreementMessage.getConsumerPid())
-                    .providerPid(contractAgreementMessage.getProviderPid())
-                    .build();
-            publisher.publishEvent(verificationMessage);
-        } else {
-            log.debug("Sending only 200 if agreement is valid, ContractAgreementVerificationMessage must be manually sent");
+//        if (properties.isAutomaticNegotiation()) {
+//            log.debug("Automatic negotiation - processing sending ContractAgreementVerificationMessage");
+//            ContractAgreementVerificationMessage verificationMessage = ContractAgreementVerificationMessage.Builder.newInstance()
+//                    .consumerPid(contractAgreementMessage.getConsumerPid())
+//                    .providerPid(contractAgreementMessage.getProviderPid())
+//                    .build();
+//            publisher.publishEvent(verificationMessage);
+//        } else {
+//            log.debug("Sending only 200 if agreement is valid, ContractAgreementVerificationMessage must be manually sent");
+//        }
+        if (environment.matchesProfiles("tck")) {
+            log.info("TCK profile running - publishing event - {}", contractNegotiationAgreed.getState());
+            log.info("ConsumerPid: {}, ProviderPid: {}", contractNegotiationAgreed.getConsumerPid(), contractNegotiationAgreed.getProviderPid());
+            publisher.publishEvent(contractNegotiationAgreed);
         }
     }
 
@@ -216,5 +230,56 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
                         "contractNegotiation", contractNegotiationTerminated,
                         "role", IConstants.ROLE_CONSUMER))
                 .build());
+    }
+
+    public ContractNegotiation processTCKRequest(TCKContractNegotiationRequest contractNegotiationRequest) {
+
+        Offer offer = Offer.Builder.newInstance()
+                .id(contractNegotiationRequest.getOfferId())
+                .permission(List.of(Permission.Builder.newInstance().action(Action.USE).build()))
+                .target(contractNegotiationRequest.getDatasetId())
+                .build();
+
+        ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
+                .callbackAddress(properties.consumerCallbackAddress())
+                .consumerPid("urn:uuid:" + UUID.randomUUID())
+                .offer(offer)
+                .build();
+
+        String connectorAddress = ContractNegotiationCallback.getNegotiationRequestURL(contractNegotiationRequest.getConnectorAddress());
+        log.info("Sending contract request to {}", connectorAddress);
+        GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(connectorAddress,
+                NegotiationSerializer.serializeProtocolJsonNode(contractRequestMessage),
+                null);
+        log.info("Response received {}", response);
+
+        if (response.isSuccess()) {
+            JsonNode jsonNode = null;
+            try {
+                jsonNode = mapper.readTree(response.getData());
+                ContractNegotiation contractNegotiationResponse = NegotiationSerializer.deserializeProtocol(jsonNode, ContractNegotiation.class);
+                ContractNegotiation contractNegotiationUpdated = ContractNegotiation.Builder.newInstance()
+                        .consumerPid(contractRequestMessage.getConsumerPid())
+                        .providerPid(contractNegotiationResponse.getProviderPid())
+                        .callbackAddress(contractNegotiationResponse.getCallbackAddress() != null ?
+                                contractNegotiationResponse.getCallbackAddress() : contractNegotiationRequest.getConnectorAddress())
+                        .assigner(offer.getAssigner())
+                        .state(contractNegotiationResponse.getState())
+                        .role(IConstants.ROLE_CONSUMER)
+                        .offer(offer)
+//                        .created(contractNegotiation.getCreated())
+//                        .createdBy(contractNegotiation.getCreatedBy())
+//                        .modified(contractNegotiation.getModified())
+//                        .lastModifiedBy(contractNegotiation.getLastModifiedBy())
+//                        .version(contractNegotiation.getVersion())
+                        .build();
+                contractNegotiationRepository.save(contractNegotiationUpdated);
+                log.info("Contract negotiation saved with id {}", contractNegotiationUpdated.getId());
+                return contractNegotiationUpdated;
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        throw new ContractNegotiationAPIException("Error occurred");
     }
 }

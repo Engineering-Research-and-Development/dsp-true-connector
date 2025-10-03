@@ -243,9 +243,9 @@ public class NegotiationSerializer {
         }
     }
 
-    public static <T> T deserializeProtocol(String jsonStringPlain, Class<T> clazz) {
+    public static <T> T deserializeProtocol(String jsonStringProtocol, Class<T> clazz) {
         try {
-            T obj = jsonMapper.readValue(jsonStringPlain, clazz);
+            T obj = jsonMapper.readValue(jsonStringProtocol, clazz);
             Set<ConstraintViolation<T>> violations = validator.validate(obj);
             if (violations.isEmpty()) {
                 return obj;
