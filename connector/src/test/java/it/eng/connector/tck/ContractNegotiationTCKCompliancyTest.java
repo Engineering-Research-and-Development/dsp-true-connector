@@ -8,26 +8,23 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-//@Profile("tck")
 @ActiveProfiles("tck")
-@Disabled("Disabled until the TCK issues are resolved")
-public class TransferTCKComplianceTest extends BaseIntegrationTest {
-
+@Disabled
+public class ContractNegotiationTCKCompliancyTest extends BaseIntegrationTest {
 
     @Test
-    void assertDspCompatibility() throws IOException {
+    public void contractNegotiationTCKCompliancyTest() {
         var monitor = new ConsoleMonitor(true, true);
 
         Map<String, String> properties = createProperties();
 
         var result = TckRuntime.Builder.newInstance()
                 .properties(properties) // Add any additional properties if needed
-                .addPackage("org.eclipse.dataspacetck.dsp.verification.tp")
+                .addPackage("org.eclipse.dataspacetck.dsp.verification.cn")
                 .monitor(monitor)
                 .build()
                 .execute();
@@ -40,7 +37,6 @@ public class TransferTCKComplianceTest extends BaseIntegrationTest {
         }
     }
 
-
     private Map<String, String> createProperties() {
         Map<String, String> properties = new HashMap<>();
         // Basic configuration
@@ -52,11 +48,12 @@ public class TransferTCKComplianceTest extends BaseIntegrationTest {
         properties.put("dataspacetck.dsp.connector.http.headers.authorization", "Basic Y29ubmVjdG9yQG1haWwuY29tOnBhc3N3b3Jk");
         properties.put("dataspacetck.dsp.connector.negotiation.initiate.url", "http://localhost:8080/consumer/negotiations/tck");
         properties.put("dataspacetck.dsp.connector.transfer.initiate.url", "http://localhost:8080/consumer/transfers/tck");
+//        properties.put("dataspacetck.callback.address", "http://localhost:8083/callback");
 
         // Contract negotiation provider properties
         for (int i = 1; i <= 3; i++) {
             for (int j = 1; j <= 4; j++) {
-                String prefix = String.format("CN_%02d_%02d_", i, j);
+                String prefix = "CN_0%d_0%d_".formatted(i, j);
                 properties.put(prefix + "DATASETID", "ACN0%d0%d".formatted(i, j));
                 properties.put(prefix + "OFFERID", "CD123:ACN0%d0%d:456".formatted(i, j));
             }

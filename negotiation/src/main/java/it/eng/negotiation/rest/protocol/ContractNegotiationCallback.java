@@ -8,7 +8,7 @@ public class ContractNegotiationCallback {
     private static final String CONSUMER_AGREEMENT = ":callback:/negotiations/:consumerPid:/agreement";
     private static final String CONSUMER_EVENTS = ":callback:/negotiations/:consumerPid:/events";
 
-    private static final String PROVIDER_NEGOTIATION_REQUEST = "/negotiations/:providerPid/request";
+    private static final String PROVIDER_NEGOTIATION_REQUEST = "/negotiations/:providerPid:/request";
     private static final String PROVIDER_EVENTS = "/negotiations/:providerPid:/events";
     private static final String PROVIDER_TERMINATION = "/negotiations/:providerPid:/termination";
     private static final String CONSUMER_TERMINATION = ":callback:/negotiations/:consumerPid:/termination";

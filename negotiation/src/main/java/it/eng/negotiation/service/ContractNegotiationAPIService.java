@@ -698,7 +698,6 @@ public class ContractNegotiationAPIService {
                 .offer(contractNegotiation.getOffer())
                 .build();
 
-
         String address = null;
         if (IConstants.ROLE_PROVIDER.equals(contractNegotiation.getRole())) {
             address = ContractNegotiationCallback.getNegotiationRequestURL(contractNegotiation.getCallbackAddress());
