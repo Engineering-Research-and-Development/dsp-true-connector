@@ -387,7 +387,7 @@ public class ContractNegotiationAPIServiceTest {
         when(contractNegotiationRepository.findById(contractNegotiationId)).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(properties.providerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
-        when(properties.getAssignee()).thenReturn(NegotiationMockObjectUtil.ASSIGNEE);
+//        when(properties.getAssignee()).thenReturn(NegotiationMockObjectUtil.ASSIGNEE);
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
 
@@ -418,7 +418,7 @@ public class ContractNegotiationAPIServiceTest {
         when(contractNegotiationRepository.findById(contractNegotiationId)).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(properties.providerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
-        when(properties.getAssignee()).thenReturn(NegotiationMockObjectUtil.ASSIGNEE);
+//        when(properties.getAssignee()).thenReturn(NegotiationMockObjectUtil.ASSIGNEE);
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(false);
         when(apiResponse.getMessage()).thenReturn("Error while contacting consumer");

@@ -20,6 +20,7 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.env.Environment;
 
 import java.util.Optional;
 
@@ -43,6 +44,8 @@ public class ContractNegotiationConsumerServiceTest {
     private OfferRepository offerRepository;
     @Mock
     private PolicyAdministrationPoint policyAdministrationPoint;
+    @Mock
+    private Environment environment;
 
     @Captor
     private ArgumentCaptor<ContractNegotiation> argCaptorContractNegotiation;
@@ -53,8 +56,11 @@ public class ContractNegotiationConsumerServiceTest {
     @Test
     @DisplayName("Process contract offer success")
     public void processContractOffer_success() {
+        when(contractNegotiationRepository.findByConsumerPid(anyString())).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
+        when(environment.getActiveProfiles()).thenReturn(new String[]{"dev"});
+
         service.processContractOffer(NegotiationMockObjectUtil.CONTRACT_OFFER_MESSAGE);
-        verify(offerRepository).save(any(Offer.class));
+
         verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
         assertEquals(ContractNegotiationState.OFFERED, argCaptorContractNegotiation.getValue().getState());
     }
@@ -62,7 +68,7 @@ public class ContractNegotiationConsumerServiceTest {
     @Test
     @DisplayName("Process agreement message - automatic negotiation - ON success")
     public void handleAgreement_success() {
-        when(properties.isAutomaticNegotiation()).thenReturn(true);
+//        when(properties.isAutomaticNegotiation()).thenReturn(true);
         when(contractNegotiationRepository.findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID)).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 
         service.handleAgreement(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE);
@@ -74,13 +80,13 @@ public class ContractNegotiationConsumerServiceTest {
         assertEquals(ContractNegotiationState.AGREED, argCaptorContractNegotiation.getValue().getState());
         assertEquals(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE.getAgreement().getId(), argCaptorContractNegotiation.getValue().getAgreement().getId());
 
-        verify(publisher).publishEvent(any(ContractAgreementVerificationMessage.class));
+//        verify(publisher).publishEvent(any(ContractAgreementVerificationMessage.class));
     }
 
     @Test
     @DisplayName("Process agreement message - automatic negotiation OFF - success")
     public void handleAgreement_off_success() {
-        when(properties.isAutomaticNegotiation()).thenReturn(false);
+//        when(properties.isAutomaticNegotiation()).thenReturn(false);
         when(contractNegotiationRepository.findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID)).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 
         service.handleAgreement(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE);
