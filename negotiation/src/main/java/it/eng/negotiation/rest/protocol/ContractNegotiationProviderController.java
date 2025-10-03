@@ -17,7 +17,7 @@ import java.util.Arrays;
 import java.util.Collections;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/negotiations")
+@RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE, path = "/negotiations")
 @Slf4j
 public class ContractNegotiationProviderController {
 

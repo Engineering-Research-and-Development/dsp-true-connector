@@ -112,8 +112,8 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
         }
 
         Offer offerToBeInserted = Offer.Builder.newInstance()
-                .assignee(contractRequestMessage.getOffer().getAssignee())
-                .assigner(contractRequestMessage.getOffer().getAssigner())
+                .assignee(contractRequestMessage.getOffer().getAssignee() == null ? contractRequestMessage.getCallbackAddress() : contractRequestMessage.getOffer().getAssignee())
+                .assigner(contractRequestMessage.getOffer().getAssigner() == null ? properties.connectorId() : contractRequestMessage.getOffer().getAssigner())
                 .originalId(contractRequestMessage.getOffer().getId())
                 .permission(contractRequestMessage.getOffer().getPermission())
                 .target(contractRequestMessage.getOffer().getTarget())

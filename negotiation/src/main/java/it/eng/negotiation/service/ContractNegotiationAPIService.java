@@ -383,7 +383,7 @@ public class ContractNegotiationAPIService {
                 .consumerPid(contractNegotiation.getConsumerPid())
                 .providerPid(contractNegotiation.getProviderPid())
                 .callbackAddress(properties.providerCallbackAddress())
-                .agreement(agreementFromOffer(contractNegotiation.getOffer(), contractNegotiation.getAssigner()))
+                .agreement(agreementFromOffer(contractNegotiation.getOffer()))
                 .build();
         // TODO this one will fail because provider does not have consumer callbackAddress for sending agreement
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
@@ -590,11 +590,11 @@ public class ContractNegotiationAPIService {
         }
     }
 
-    private Agreement agreementFromOffer(Offer offer, String assigner) {
+    private Agreement agreementFromOffer(Offer offer) {
         return Agreement.Builder.newInstance()
                 .id("urn:uuid:" + UUID.randomUUID())
-                .assignee(properties.getAssignee())
-                .assigner(assigner)
+                .assignee(offer.getAssignee())
+                .assigner(offer.getAssigner())
                 .target(offer.getTarget())
                 .timestamp(FORMATTER.format(ZonedDateTime.now()))
                 .permission(offer.getPermission())

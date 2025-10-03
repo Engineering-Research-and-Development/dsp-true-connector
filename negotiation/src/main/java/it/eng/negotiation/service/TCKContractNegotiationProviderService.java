@@ -95,7 +95,7 @@ public class TCKContractNegotiationProviderService extends ContractNegotiationPr
     }
 
     @EventListener(classes = ContractNegotiation.class)
-    public void onTransferProcessEvent(ContractNegotiation contractNegotiation) throws InterruptedException {
+    public void onTransferProcessEvent(ContractNegotiation contractNegotiation) {
         log.info("TCKDataTransferService received event for Agreement id: {} with state {}", contractNegotiation.getOffer().getTarget(), contractNegotiation.getState());
         log.info("ConsumerPid: {}, ProviderPid: {}", contractNegotiation.getConsumerPid(), contractNegotiation.getProviderPid());
         try {
@@ -104,18 +104,20 @@ public class TCKContractNegotiationProviderService extends ContractNegotiationPr
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-        if ((contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0101")
-                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0102")
-                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0103")
-                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0104")
-                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0203")
-                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0204")
-                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0303")
-                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0304")
-                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0305")
-                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0306"))
+        if ((
+//                contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0101")
+//                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0102")
+//                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0103")
+//                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0104")
+                 contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0203")
+                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0207")
+//                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0303")
+//                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0304")
+//                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0305")
+//                || contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0306")
+    )
                 && contractNegotiation.getState().equals(ContractNegotiationState.REQUESTED)) {
-            log.info("Processing {} - REQUESTED -> STARTED : {}", contractNegotiation.getOffer().getTarget(), contractNegotiation.getId());
+            log.info("Processing {} - REQUESTED -> AGREED : {}", contractNegotiation.getOffer().getTarget(), contractNegotiation.getId());
             ContractNegotiation result = apiService.approveContractNegotiation(contractNegotiation.getId());
             applicationEventPublisher.publishEvent(result);
         }
@@ -126,11 +128,29 @@ public class TCKContractNegotiationProviderService extends ContractNegotiationPr
             apiService.terminateContractNegotiation(contractNegotiation.getId());
         }
 
-//        if (contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0101")
-//                && contractNegotiation.getState().equals(ContractNegotiationState.STARTED)) {
-//            log.info("Processing ACN0101 - STARTED -> TERMINATED: {}", contractNegotiation.getId());
-//            apiService.terminateTransfer(contractNegotiation.getId());
-//        }
+        if (contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0207")
+                && contractNegotiation.getState().equals(ContractNegotiationState.VERIFIED)) {
+            log.info("Processing {} - VERIFIED -> TERMINATED : {}", contractNegotiation.getOffer().getTarget(), contractNegotiation.getId());
+            apiService.terminateContractNegotiation(contractNegotiation.getId());
+        }
+
+        if (contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0204")
+                && contractNegotiation.getState().equals(ContractNegotiationState.REQUESTED)) {
+            log.info("Processing ACN0203 - REQUESTED -> AGREED: {}", contractNegotiation.getId());
+            apiService.terminateContractNegotiation(contractNegotiation.getId());
+        }
+
+        if (contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0205")
+                && contractNegotiation.getState().equals(ContractNegotiationState.REQUESTED)) {
+            log.info("Processing ACN0203 - REQUESTED -> AGREED: {}", contractNegotiation.getId());
+            apiService.terminateContractNegotiation(contractNegotiation.getId());
+        }
+
+        if (contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0206")
+                && contractNegotiation.getState().equals(ContractNegotiationState.REQUESTED)) {
+            log.info("Processing ACN0203 - REQUESTED -> AGREED: {}", contractNegotiation.getId());
+            apiService.terminateContractNegotiation(contractNegotiation.getId());
+        }
 //        if (contractNegotiation.getOffer().getTarget().equalsIgnoreCase("ACN0102") && contractNegotiation.getState().equals(ContractNegotiationState.STARTED)) {
 //            log.info("Processing ACN0101 - STARTED -> TERMINATED: {}", contractNegotiation.getId());
 //            apiService.completeTransfer(contractNegotiation.getId());
