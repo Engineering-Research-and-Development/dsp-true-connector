@@ -10,6 +10,14 @@ Other important notice is that it will load services based on profile, which wil
 
 ## TCK
 
+### GitHub Action
+
+[GitHub Action result](https://github.com/Engineering-Research-and-Development/dsp-true-connector/actions/runs/18193969708/job/51795340748)
+
+If you do not see the result, please check if GitHub Action `Run docker container for TCK Runtime` step.
+
+### CMD
+
 Tested against TCK version v1.0.0-RC5
 
 - Cloned TCK project

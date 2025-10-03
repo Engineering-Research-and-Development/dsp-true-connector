@@ -1,0 +1,16 @@
+services:
+  dsp-tck-runtime:
+    image: eclipsedataspacetck/dsp-tck-runtime:latest
+    container_name: dsp-tck
+    ports:
+      - "8083:8083"
+    volumes:
+      - type: bind
+        source: ./tck_resources/sample.tck.properties
+        target: /etc/tck/config.properties
+    networks:
+      - dsp-tc-net
+networks:
+  dsp-tc-net:
+    external: true
+    
