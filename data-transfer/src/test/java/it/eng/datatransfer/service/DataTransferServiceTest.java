@@ -86,7 +86,9 @@ public class DataTransferServiceTest {
     public void dataTransferDoesNotExists() {
         when(transferProcessRepository.findByConsumerPidAndProviderPid(DataTransferMockObjectUtil.CONSUMER_PID, DataTransferMockObjectUtil.PROVIDER_PID))
                 .thenReturn(Optional.empty());
-        assertFalse(service.isDataTransferStarted(DataTransferMockObjectUtil.CONSUMER_PID, DataTransferMockObjectUtil.PROVIDER_PID));
+        assertThrows(TransferProcessNotFoundException.class, () -> {
+            service.isDataTransferStarted(DataTransferMockObjectUtil.CONSUMER_PID, DataTransferMockObjectUtil.PROVIDER_PID);
+        });
     }
 
     @Test
