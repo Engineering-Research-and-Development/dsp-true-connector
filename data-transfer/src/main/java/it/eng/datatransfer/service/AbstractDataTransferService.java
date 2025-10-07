@@ -47,6 +47,12 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
         this.transferRequestMessageRepository = transferRequestMessageRepository;
     }
 
+    /**
+     * Find transferProcess for given providerPid.
+     *
+     * @param providerPid providerPid to search by
+     * @return TransferProcess
+     */
     @Override
     public TransferProcess findTransferProcessByProviderPid(String providerPid) {
         TransferProcess tp = transferProcessRepository.findByProviderPid(providerPid)
@@ -55,32 +61,71 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
         return tp;
     }
 
+    /**
+     * Find transferProcess for given consumerPid.
+     *
+     * @param consumerPid consumerPid to search by
+     * @return TransferProcess
+     */
     @Override
     public TransferProcess findTransferProcessByConsumerPid(String consumerPid) {
         return transferProcessRepository.findByConsumerPid(consumerPid)
                 .orElseThrow(() -> new TransferProcessNotFoundException("No transfer process found for consumerPid: " + consumerPid));
     }
 
+    /**
+     * Find transferProcess for given providerPid.
+     *
+     * @param consumerPid consumerPid to search by
+     * @param providerPid providerPid to search by
+     * @return TransferProcess
+     */
     public TransferProcess findByConsumerPidAndProviderPid(String consumerPid, String providerPid) {
         return transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid)
                 .orElseThrow(() -> new TransferProcessNotFoundException("No transfer process found"));
     }
 
+    /**
+     * Find transferProcess for given agreementId.
+     *
+     * @param agreementId agreementId to search by
+     * @return TransferProcess
+     */
     public TransferProcess findByAgreementId(String agreementId) {
         return transferProcessRepository.findByAgreementId(agreementId)
                 .orElseThrow(() -> new TransferProcessNotFoundException("No transfer process found for agreementId: " + agreementId));
     }
 
+    /**
+     * Save or update TransferProcess.
+     *
+     * @param transferProcess TransferProcess to save
+     * @return saved TransferProcess
+     */
     public TransferProcess saveTransferProcess(TransferProcess transferProcess) {
         return transferProcessRepository.save(transferProcess);
     }
 
+    /**
+     * If TransferProcess for given consumerPid and providerPid exists and state is STARTED.<br>
+     * Note: those 2 Pid's are not to be mixed with Contract Negotiation ones. They are unique
+     *
+     * @param consumerPid consumerPid to search by
+     * @param providerPid providerPid to search by
+     * @return true if there is transferProcess with state STARTED for consumerPid and providerPid
+     */
     public boolean isDataTransferStarted(String consumerPid, String providerPid) {
         return transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid)
                 .map(tp -> TransferState.STARTED.equals(tp.getState()))
                 .orElse(false);
     }
 
+    /**
+     * Initiate data transfer.
+     *
+     * @param transferRequestMessage message
+     * @return TransferProcess with status REQUESTED
+     */
     public TransferProcess initiateDataTransfer(TransferRequestMessage transferRequestMessage) {
         TransferProcess transferProcessInitialized = transferProcessRepository.findByAgreementId(transferRequestMessage.getAgreementId())
                 .orElseThrow(() ->
@@ -130,6 +175,14 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
         return transferProcessRequested;
     }
 
+    /**
+     * Transfer from REQUESTED or SUSPENDED to STARTED state.
+     *
+     * @param transferStartMessage TransferStartMessage
+     * @param consumerPid          consumerPid in case of consumer callback usage
+     * @param providerPid          providerPid in case of provider usage
+     * @return TransferProcess with status STARTED
+     */
     public TransferProcess startDataTransfer(TransferStartMessage transferStartMessage, String consumerPid, String providerPid) {
         String consumerPidFinal = consumerPid == null ? transferStartMessage.getConsumerPid() : consumerPid;
         String providerPidFinal = providerPid == null ? transferStartMessage.getProviderPid() : providerPid;
@@ -188,12 +241,13 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
         return transferProcessStarted;
     }
 
-    //    public TransferProcess findTransferProcess(String consumerPid, String providerPid) {
-//        return transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid)
-//                .orElseThrow(() -> new TransferProcessNotFoundException("Transfer process for consumerPid " + consumerPid
-//                        + " and providerPid " + providerPid + " not found")
-//                );
-//    }
+    /**
+     * Find TransferProcess for given consumerPid and providerPid.
+     *
+     * @param consumerPid consumerPid to search by
+     * @param providerPid providerPid to search by
+     * @return TransferProcess
+     */
     public TransferProcess findTransferProcess(String consumerPid, String providerPid) {
         return transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid)
                 .orElseThrow(() ->
@@ -261,10 +315,6 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
             throw new TransferProcessInvalidFormatException("dct:format '" + format + "' not supported",
                     transferProcess.getConsumerPid(), transferProcess.getProviderPid());
         }
-//	    } catch (JsonProcessingException e) {
-//	    	log.error(e.getLocalizedMessage(), e);
-//	        throw new TransferProcessInternalException("Internal error", transferProcess.getConsumerPid(), transferProcess.getProviderPid());
-//	    }
     }
 
 }

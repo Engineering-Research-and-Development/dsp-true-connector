@@ -57,17 +57,6 @@ public class TCKDataTransferService extends AbstractDataTransferService {
         this.credentialUtils = credentialUtils;
     }
 
-    public TransferProcess findTransferProcess(String consumerPid, String providerPid) {
-        log.info("findTransferProcess TCK stub called");
-        return super.findTransferProcess(consumerPid, providerPid);
-    }
-
-    @Override
-    public TransferProcess initiateDataTransfer(TransferRequestMessage transferRequestMessage) {
-        log.info("initiateDataTransfer TCK stub called, {}", TransferSerializer.serializeProtocol(transferRequestMessage));
-        return super.initiateDataTransfer(transferRequestMessage);
-    }
-
     @Override
     public TransferProcess startDataTransfer(TransferStartMessage transferStartMessage, String consumerPid, String providerPid) {
         log.info("startDataTransfer TCK stub called");

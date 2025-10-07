@@ -47,43 +47,6 @@ public class DataTransferService extends AbstractDataTransferService {
     }
 
     /**
-     * Find transferProcess for given providerPid.
-     *
-     * @param providerPid providerPid to search by
-     * @return TransferProcess
-     */
-    public TransferProcess findTransferProcessByProviderPid(String providerPid) {
-        return super.findTransferProcessByProviderPid(providerPid);
-    }
-
-    @Override
-    public TransferProcess findTransferProcessByConsumerPid(String consumerPid) {
-        return super.findTransferProcessByConsumerPid(consumerPid);
-    }
-
-    /**
-     * Initiate data transfer.
-     *
-     * @param transferRequestMessage message
-     * @return TransferProcess with status REQUESTED
-     */
-    public TransferProcess initiateDataTransfer(TransferRequestMessage transferRequestMessage) {
-        return super.initiateDataTransfer(transferRequestMessage);
-    }
-
-    /**
-     * Transfer from REQUESTED or SUSPENDED to STARTED state.
-     *
-     * @param transferStartMessage TransferStartMessage
-     * @param consumerPid          consumerPid in case of consumer callback usage
-     * @param providerPid          providerPid in case of provider usage
-     * @return TransferProcess with status STARTED
-     */
-    public TransferProcess startDataTransfer(TransferStartMessage transferStartMessage, String consumerPid, String providerPid) {
-        return super.startDataTransfer(transferStartMessage, consumerPid, providerPid);
-    }
-
-    /**
      * Finds transfer process, check if status is correct, publish event and update state to COMPLETED.
      *
      * @param transferCompletionMessage TransferCompletionMessage

@@ -13,11 +13,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-//@Profile("tck")
 @ActiveProfiles("tck")
-@Disabled("Disabled until the TCK issues are resolved")
-public class TransferTCKComplianceTest extends BaseIntegrationTest {
-
+@Disabled("Disabled until WE can run it in CI/CD")
+public class TCKComplianceTest extends BaseIntegrationTest {
 
     @Test
     void assertDspCompatibility() throws IOException {
@@ -28,6 +26,10 @@ public class TransferTCKComplianceTest extends BaseIntegrationTest {
         var result = TckRuntime.Builder.newInstance()
                 .properties(properties) // Add any additional properties if needed
                 .addPackage("org.eclipse.dataspacetck.dsp.verification.tp")
+                .addPackage("org.eclipse.dataspacetck.dsp.verification.metadata")
+                .addPackage("org.eclipse.dataspacetck.dsp.verification.catalog")
+                // enable it when ContractNegotiation is completed
+//                .addPackage("org.eclipse.dataspacetck.dsp.verification.cn")
                 .monitor(monitor)
                 .build()
                 .execute();
@@ -39,7 +41,6 @@ public class TransferTCKComplianceTest extends BaseIntegrationTest {
             Assertions.fail(result.getTotalFailureCount() + " TCK test cases failed:\n" + failures);
         }
     }
-
 
     private Map<String, String> createProperties() {
         Map<String, String> properties = new HashMap<>();
@@ -89,6 +90,7 @@ public class TransferTCKComplianceTest extends BaseIntegrationTest {
 
         // Catalog properties
         for (int i = 1; i <= 2; i++) {
+            // datasetId from initial_data_tck.json
             properties.put(String.format("CAT_01_%02d_DATASETID", i), "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5");
         }
         properties.put(String.format("CAT_01_%02d_DATASETID", 3), "dataset_not_found");
