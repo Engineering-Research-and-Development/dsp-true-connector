@@ -33,7 +33,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-public class CatalogAPIIntegrationTest extends BaseIntegrationTest {
+public class CatalogAPIIT extends BaseIntegrationTest {
 
     @Autowired
     private CatalogRepository catalogRepository;

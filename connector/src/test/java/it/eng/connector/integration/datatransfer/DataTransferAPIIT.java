@@ -37,7 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Data Transfer API endpoints integration test
  */
-public class DataTransferAPIIntegrationTest extends BaseIntegrationTest {
+public class DataTransferAPIIT extends BaseIntegrationTest {
 
     @Autowired
     private TransferProcessRepository transferProcessRepository;

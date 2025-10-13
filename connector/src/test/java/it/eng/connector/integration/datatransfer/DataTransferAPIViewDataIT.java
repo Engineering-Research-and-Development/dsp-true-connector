@@ -43,7 +43,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-public class DataTransferAPIViewDataIntegrationTest extends BaseIntegrationTest {
+public class DataTransferAPIViewDataIT extends BaseIntegrationTest {
 
     @InjectWireMock
     private WireMockServer wiremock;

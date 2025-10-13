@@ -110,7 +110,7 @@ public class ContractNegotiationAPIController {
     public ResponseEntity<GenericApiResponse<JsonNode>> startNegotiation(@RequestBody JsonNode startNegotiationRequest) {
         String targetConnector = startNegotiationRequest.get("Forward-To").asText();
         JsonNode offerNode = startNegotiationRequest.get(DSpaceConstants.OFFER);
-        log.info("Consumer starts negotaition with {}", targetConnector);
+        log.info("Consumer starts negotiation with {}", targetConnector);
         JsonNode response = apiService.startNegotiation(targetConnector, offerNode);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(GenericApiResponse.success(response, "Contract negotiation initiated"));
@@ -139,7 +139,7 @@ public class ContractNegotiationAPIController {
      */
     @PutMapping(path = "/{contractNegotiationId}/terminate")
     public ResponseEntity<GenericApiResponse<JsonNode>> terminateContractNegotiation(@PathVariable String contractNegotiationId) {
-        log.info("Handling contract negotiation approved");
+        log.info("Handling contract negotiation terminate");
         ContractNegotiation contractNegotiationTerminated = apiService.terminateContractNegotiation(contractNegotiationId);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
@@ -173,7 +173,7 @@ public class ContractNegotiationAPIController {
     public ResponseEntity<GenericApiResponse<JsonNode>> sendContractOffer(@RequestBody JsonNode contractOfferRequest) {
         String targetConnector = contractOfferRequest.get("Forward-To").asText();
         JsonNode offerNode = contractOfferRequest.get(DSpaceConstants.OFFER);
-        log.info("Provider posts offer - starts negotaition with {}", targetConnector);
+        log.info("Provider posts offer - starts negotiation with {}", targetConnector);
         JsonNode response = apiService.sendContractOffer(targetConnector, offerNode);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(GenericApiResponse.success(response, "Contract negotiation posted"));

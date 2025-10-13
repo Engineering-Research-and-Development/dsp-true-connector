@@ -22,7 +22,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 @Slf4j
-public class S3BucketProvisionIntegrationTest extends BaseIntegrationTest {
+public class S3BucketProvisionIT extends BaseIntegrationTest {
 
     private final String bucketName = "test-bucket-test";
 

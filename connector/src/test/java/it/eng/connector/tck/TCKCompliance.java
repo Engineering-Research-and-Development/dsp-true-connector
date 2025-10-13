@@ -4,8 +4,8 @@ import it.eng.connector.integration.BaseIntegrationTest;
 import org.eclipse.dataspacetck.core.system.ConsoleMonitor;
 import org.eclipse.dataspacetck.runtime.TckRuntime;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.Profile;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.io.IOException;
@@ -14,8 +14,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @ActiveProfiles("tck")
-@Disabled("Disabled until WE can run it in CI/CD")
-public class TCKComplianceTest extends BaseIntegrationTest {
+@Profile("tck")
+//@Disabled("Disabled until WE can run it in CI/CD")
+public class TCKCompliance extends BaseIntegrationTest {
 
     @Test
     void assertDspCompatibility() throws IOException {
@@ -25,9 +26,9 @@ public class TCKComplianceTest extends BaseIntegrationTest {
 
         var result = TckRuntime.Builder.newInstance()
                 .properties(properties) // Add any additional properties if needed
-                .addPackage("org.eclipse.dataspacetck.dsp.verification.tp")
                 .addPackage("org.eclipse.dataspacetck.dsp.verification.metadata")
                 .addPackage("org.eclipse.dataspacetck.dsp.verification.catalog")
+                .addPackage("org.eclipse.dataspacetck.dsp.verification.tp")
                 // enable it when ContractNegotiation is completed
 //                .addPackage("org.eclipse.dataspacetck.dsp.verification.cn")
                 .monitor(monitor)

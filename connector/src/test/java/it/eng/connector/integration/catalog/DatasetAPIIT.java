@@ -48,7 +48,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @Slf4j
-public class DatasetAPIIntegrationTest extends BaseIntegrationTest {
+public class DatasetAPIIT extends BaseIntegrationTest {
 
     @Autowired
     private CatalogRepository catalogRepository;
