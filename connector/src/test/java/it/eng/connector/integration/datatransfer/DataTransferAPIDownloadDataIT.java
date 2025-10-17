@@ -14,7 +14,6 @@ import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.repository.TransferProcessRepository;
-import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.negotiation.model.*;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
@@ -32,7 +31,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithUserDetails;
@@ -54,7 +52,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-public class DataTransferAPIDownloadDataIntegrationTest extends BaseIntegrationTest {
+public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
 
     private static final String FILE_NAME = "hello.txt";
     private final String fileContent = "Hello, World!";

@@ -1,33 +1,8 @@
 package it.eng.connector.integration.negotiation;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithUserDetails;
-import org.springframework.test.web.servlet.ResultActions;
-import org.wiremock.spring.InjectWireMock;
-
 import com.fasterxml.jackson.databind.JavaType;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
-
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.negotiation.model.ContractNegotiation;
@@ -39,8 +14,27 @@ import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithUserDetails;
+import org.springframework.test.web.servlet.ResultActions;
+import org.wiremock.spring.InjectWireMock;
 
-public class ConsumerAPIContractNegotiationIntegrationTest extends BaseIntegrationTest {
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
 
     @InjectWireMock
     private WireMockServer wiremock;

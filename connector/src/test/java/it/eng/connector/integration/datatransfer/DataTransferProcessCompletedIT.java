@@ -21,7 +21,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-public class DataTransferProcessCompletedIntegrationTest extends BaseIntegrationTest {
+public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
 // STARTED -> COMPLETED
 
     @Autowired

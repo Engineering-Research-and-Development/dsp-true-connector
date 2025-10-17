@@ -44,3 +44,19 @@ Console output of [tck run result](tck_compliancy_result.txt)
 [2025-10-01T12:09:43.7705941] Passed tests: 34
 [2025-10-01T12:09:43.7705941] Failed tests: 31
 ```
+
+### Maven profile
+
+There is also maven profile to run TCK tests, skipping ALL junit and integration tests, which can be used as alternative
+to above-mentioned command line execution.
+
+```
+mvn clean verify -Ptck
+```
+
+This will run TCK tests against running connector, based on configuration provided in
+
+- connector/src/test/resources/application-tck.properties
+- connector/src/test/resources/initial_data-tck.json
+
+files.

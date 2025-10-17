@@ -34,7 +34,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-public class CatalogIntegrationTest extends BaseIntegrationTest {
+public class CatalogIT extends BaseIntegrationTest {
 
     @Autowired
     private CatalogRepository catalogRepository;

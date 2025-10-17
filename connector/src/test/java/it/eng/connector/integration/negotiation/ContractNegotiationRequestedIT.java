@@ -33,7 +33,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-public class ContractNegotiationRequestedIntegrationTest extends BaseIntegrationTest {
+public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
 // -> REQUESTED
 //	@PostMapping(path = "/request")
 

@@ -1,51 +1,32 @@
 package it.eng.datatransfer.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import it.eng.datatransfer.event.TransferProcessChangeEvent;
-import it.eng.datatransfer.exceptions.TransferProcessInternalException;
-import it.eng.datatransfer.exceptions.TransferProcessInvalidFormatException;
-import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
-import it.eng.datatransfer.exceptions.TransferProcessNotFoundException;
 import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
-import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.IConstants;
-import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.AuditEventPublisher;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.annotation.Profile;
-import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @Service
 @Slf4j
 @Profile("!tck")
-public class DataTransferService implements TransferProcessStrategy {
+public class DataTransferService extends AbstractDataTransferService {
 
-    private final TransferProcessRepository transferProcessRepository;
-    private final TransferRequestMessageRepository transferRequestMessageRepository;
     private final AuditEventPublisher publisher;
-
-    private final OkHttpRestClient okHttpRestClient;
 
     public DataTransferService(TransferProcessRepository transferProcessRepository,
                                TransferRequestMessageRepository transferRequestMessageRepository,
                                AuditEventPublisher publisher,
                                OkHttpRestClient okHttpRestClient) {
-        super();
-        this.transferProcessRepository = transferProcessRepository;
-        this.transferRequestMessageRepository = transferRequestMessageRepository;
+        super(transferProcessRepository, publisher, okHttpRestClient, transferRequestMessageRepository);
         this.publisher = publisher;
-        this.okHttpRestClient = okHttpRestClient;
     }
 
     /**
@@ -57,152 +38,12 @@ public class DataTransferService implements TransferProcessStrategy {
      * @return true if there is transferProcess with state STARTED for consumerPid and providerPid
      */
     public boolean isDataTransferStarted(String consumerPid, String providerPid) {
-        return transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid)
-                .map(tp -> TransferState.STARTED.equals(tp.getState()))
-                .orElse(false);
+        return findByConsumerPidAndProviderPid(consumerPid, providerPid).getState().equals(TransferState.STARTED);
     }
 
     @Override
     public TransferProcess requestTransfer(TCKRequest tckRequest) {
         throw new UnsupportedOperationException("Not supported!");
-    }
-
-    /**
-     * Find transferProcess for given providerPid.
-     *
-     * @param providerPid providerPid to search by
-     * @return TransferProcess
-     */
-    public TransferProcess findTransferProcessByProviderPid(String providerPid) {
-        return transferProcessRepository.findByProviderPid(providerPid)
-                .orElseThrow(() -> new TransferProcessNotFoundException("TransferProcess with providerPid " + providerPid + " not found"));
-    }
-
-    @Override
-    public TransferProcess findTransferProcessByConsumerPid(String consumerPid) {
-        return null;
-    }
-
-    /**
-     * Initiate data transfer.
-     *
-     * @param transferRequestMessage message
-     * @return TransferProcess with status REQUESTED
-     */
-    public TransferProcess initiateDataTransfer(TransferRequestMessage transferRequestMessage) {
-        TransferProcess transferProcessInitialized = transferProcessRepository.findByAgreementId(transferRequestMessage.getAgreementId())
-                .orElseThrow(() ->
-                {
-                    String errorMessage = "No agreement with id " + transferRequestMessage.getAgreementId() +
-                            " exists or Contract Negotiation not finalized";
-                    publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND,
-                            "Transfer process not found for agreementId " + transferRequestMessage.getAgreementId(),
-                            Map.of("role", IConstants.ROLE_PROTOCOL,
-                                    "transferRequestMessage", transferRequestMessage,
-                                    "errorMessage", errorMessage));
-                    return new TransferProcessNotFoundException(errorMessage);
-                });
-
-        stateTransitionCheck(transferProcessInitialized, TransferState.REQUESTED);
-
-        // check if TransferRequestMessage.format is supported by dataset.[distribution]
-        checkSupportedFormats(transferProcessInitialized, transferRequestMessage.getFormat());
-
-        transferRequestMessageRepository.save(transferRequestMessage);
-
-        TransferProcess transferProcessRequested = TransferProcess.Builder.newInstance()
-                .id(transferProcessInitialized.getId())
-                .agreementId(transferRequestMessage.getAgreementId())
-                .callbackAddress(transferRequestMessage.getCallbackAddress())
-                .consumerPid(transferRequestMessage.getConsumerPid())
-                .providerPid(transferProcessInitialized.getProviderPid())
-                .format(transferRequestMessage.getFormat())
-                .dataAddress(transferRequestMessage.getDataAddress())
-                .state(TransferState.REQUESTED)
-                .role(IConstants.ROLE_PROVIDER)
-                .datasetId(transferProcessInitialized.getDatasetId())
-                .created(transferProcessInitialized.getCreated())
-                .createdBy(transferProcessInitialized.getCreatedBy())
-                .modified(transferProcessInitialized.getModified())
-                .lastModifiedBy(transferProcessInitialized.getLastModifiedBy())
-                .version(transferProcessInitialized.getVersion())
-                .build();
-        transferProcessRepository.save(transferProcessRequested);
-        publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
-                "Transfer process requested",
-                Map.of("role", IConstants.ROLE_PROTOCOL,
-                        "transferProcess", transferProcessRequested,
-                        "consumerPid", transferProcessRequested.getConsumerPid(),
-                        "providerPid", transferProcessRequested.getProviderPid()));
-        log.info("Requested TransferProcess created");
-        return transferProcessRequested;
-    }
-
-    /**
-     * Transfer from REQUESTED or SUSPENDED to STARTED state.
-     *
-     * @param transferStartMessage TransferStartMessage
-     * @param consumerPid          consumerPid in case of consumer callback usage
-     * @param providerPid          providerPid in case of provider usage
-     * @return TransferProcess with status STARTED
-     */
-    public TransferProcess startDataTransfer(TransferStartMessage transferStartMessage, String consumerPid, String providerPid) {
-        String consumerPidFinal = consumerPid == null ? transferStartMessage.getConsumerPid() : consumerPid;
-        String providerPidFinal = providerPid == null ? transferStartMessage.getProviderPid() : providerPid;
-        log.debug("Starting data transfer for consumerPid {} and providerPid {}", consumerPidFinal, providerPidFinal);
-
-        TransferProcess transferProcessRequested = findTransferProcess(consumerPidFinal, providerPidFinal);
-
-        if (IConstants.ROLE_PROVIDER.equals(transferProcessRequested.getRole()) && TransferState.REQUESTED.equals(transferProcessRequested.getState())) {
-            // Only consumer can transit from REQUESTED to STARTED state
-            String errorMessage = "State transition aborted, consumer can not transit from " + TransferState.REQUESTED.name()
-                    + " to " + TransferState.STARTED.name();
-            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR,
-                    "Transfer process state transition error",
-                    Map.of("transferProcess", transferProcessRequested,
-                            "currentState", transferProcessRequested.getState(),
-                            "newState", TransferState.STARTED,
-                            "consumerPid", transferProcessRequested.getConsumerPid(),
-                            "providerPid", transferProcessRequested.getProviderPid(),
-                            "role", IConstants.ROLE_PROTOCOL,
-                            "errorMessage", errorMessage));
-            throw new TransferProcessInvalidStateException(errorMessage, transferProcessRequested.getConsumerPid(), transferProcessRequested.getProviderPid());
-        }
-
-        stateTransitionCheck(transferProcessRequested, TransferState.STARTED);
-
-        TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
-                .id(transferProcessRequested.getId())
-                .agreementId(transferProcessRequested.getAgreementId())
-                .consumerPid(transferProcessRequested.getConsumerPid())
-                .providerPid(transferProcessRequested.getProviderPid())
-                .callbackAddress(transferProcessRequested.getCallbackAddress())
-//                check if dataAddress is still the same after SUSPENDED->STARTED transition
-                .dataAddress(transferStartMessage.getDataAddress())
-                .format(transferProcessRequested.getFormat())
-                .state(TransferState.STARTED)
-                .role(transferProcessRequested.getRole())
-                .datasetId(transferProcessRequested.getDatasetId())
-                .created(transferProcessRequested.getCreated())
-                .createdBy(transferProcessRequested.getCreatedBy())
-                .modified(transferProcessRequested.getModified())
-                .lastModifiedBy(transferProcessRequested.getLastModifiedBy())
-                .version(transferProcessRequested.getVersion())
-                .build();
-        transferProcessRepository.save(transferProcessStarted);
-        publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()
-                .oldTransferProcess(transferProcessRequested)
-                .newTransferProcess(transferProcessStarted)
-                .build());
-        // TODO check how to handle this on consumer side!!!
-        publisher.publishEvent(transferStartMessage);
-        publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
-                "Transfer process started",
-                Map.of("role", IConstants.ROLE_PROTOCOL,
-                        "transferProcess", transferProcessStarted,
-                        "consumerPid", transferProcessStarted.getConsumerPid(),
-                        "providerPid", transferProcessStarted.getProviderPid()));
-        return transferProcessStarted;
     }
 
     /**
@@ -242,7 +83,7 @@ public class DataTransferService implements TransferProcessStrategy {
                 .version(transferProcessStarted.getVersion())
                 .build();
 
-        transferProcessRepository.save(transferProcessCompleted);
+        saveTransferProcess(transferProcessCompleted);
         publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()
                 .oldTransferProcess(transferProcessStarted)
                 .newTransferProcess(transferProcessCompleted)
@@ -275,7 +116,7 @@ public class DataTransferService implements TransferProcessStrategy {
         stateTransitionCheck(transferProcessStarted, TransferState.SUSPENDED);
 
         TransferProcess transferProcessSuspended = transferProcessStarted.copyWithNewTransferState(TransferState.SUSPENDED);
-        transferProcessRepository.save(transferProcessSuspended);
+        saveTransferProcess(transferProcessSuspended);
         publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()
                 .oldTransferProcess(transferProcessStarted)
                 .newTransferProcess(transferProcessSuspended)
@@ -309,7 +150,7 @@ public class DataTransferService implements TransferProcessStrategy {
         stateTransitionCheck(transferProcess, TransferState.TERMINATED);
 
         TransferProcess transferProcessTerminated = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);
-        transferProcessRepository.save(transferProcessTerminated);
+        saveTransferProcess(transferProcessTerminated);
         publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()
                 .oldTransferProcess(transferProcess)
                 .newTransferProcess(transferProcessTerminated)
@@ -323,85 +164,4 @@ public class DataTransferService implements TransferProcessStrategy {
                         "providerPid", transferProcessTerminated.getProviderPid()));
         return transferProcessTerminated;
     }
-
-    /**
-     * Find TransferProcess by consumerPid and providerPid.
-     *
-     * @param consumerPid consumerPid to search by
-     * @param providerPid providerPid to search by
-     * @return TransferProcess if found, otherwise throws TransferProcessNotFoundException
-     */
-    public TransferProcess findTransferProcess(String consumerPid, String providerPid) {
-        return transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid)
-                .orElseThrow(() ->
-                {
-                    publisher.publishEvent(
-                            AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND,
-                            "Transfer process with consumerPid " + consumerPid + " and providerPid " + providerPid + " not found",
-                            Map.of("role", IConstants.ROLE_PROTOCOL,
-                                    "consumerPid", IConstants.TEMPORARY_CONSUMER_PID,
-                                    "providerPid", IConstants.TEMPORARY_PROVIDER_PID));
-                    return new TransferProcessNotFoundException("Transfer process for consumerPid " + consumerPid
-                            + " and providerPid " + providerPid + " not found");
-                });
-    }
-
-    private void stateTransitionCheck(TransferProcess transferProcess, TransferState stateToTransit) {
-        if (!transferProcess.getState().canTransitTo(stateToTransit)) {
-            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR,
-                    "Transfer process state transition error",
-                    Map.of("transferProcess", transferProcess,
-                            "currentState", transferProcess.getState(),
-                            "newState", stateToTransit,
-                            "consumerPid", transferProcess.getConsumerPid(),
-                            "providerPid", transferProcess.getProviderPid(),
-                            "role", IConstants.ROLE_PROTOCOL));
-            throw new TransferProcessInvalidStateException("TransferProcess is in invalid state " + transferProcess.getState(),
-                    transferProcess.getConsumerPid(), transferProcess.getProviderPid());
-        }
-    }
-
-    private void checkSupportedFormats(TransferProcess transferProcess, String format) {
-        String response = okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/"
-                        + transferProcess.getDatasetId() + "/formats",
-                HttpMethod.GET,
-                null);
-
-        Map<String, Object> details = new HashMap<>();
-        details.put("role", IConstants.ROLE_PROTOCOL);
-        details.put("transferProcess", transferProcess);
-        if (transferProcess.getConsumerPid() != null) {
-            details.put("consumerPid", transferProcess.getConsumerPid());
-        }
-        if (transferProcess.getProviderPid() != null) {
-            details.put("providerPid", transferProcess.getProviderPid());
-        }
-        if (StringUtils.isBlank(response)) {
-            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
-                    "Internal error while checking supported formats for dataset " + transferProcess.getDatasetId(),
-                    details);
-            throw new TransferProcessInternalException("Internal error",
-                    transferProcess.getConsumerPid(), transferProcess.getProviderPid());
-        }
-
-        TypeReference<GenericApiResponse<List<String>>> typeRef = new TypeReference<GenericApiResponse<List<String>>>() {
-        };
-        GenericApiResponse<List<String>> apiResp = TransferSerializer.deserializePlain(response, typeRef);
-        boolean formatValid = apiResp.getData().stream().anyMatch(f -> f.equals(format));
-        publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
-                "Supported format evaluated as " + (formatValid ? "valid" : "invalid"),
-                details);
-        if (formatValid) {
-            log.debug("Found supported format");
-        } else {
-            log.info("{} not found as one of supported distribution formats", format);
-            throw new TransferProcessInvalidFormatException("dct:format '" + format + "' not supported",
-                    transferProcess.getConsumerPid(), transferProcess.getProviderPid());
-        }
-//	    } catch (JsonProcessingException e) {
-//	    	log.error(e.getLocalizedMessage(), e);
-//	        throw new TransferProcessInternalException("Internal error", transferProcess.getConsumerPid(), transferProcess.getProviderPid());
-//	    }
-    }
-
 }

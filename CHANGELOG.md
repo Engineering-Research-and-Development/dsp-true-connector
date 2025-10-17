@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Support for new Dataspace Protocol version 2025-1
+- New GitHub Action (manually triggered) to run TCK tests against running connector
+- Documentation how to run TCK tests using CMD and GitHub Action
+
+### Changed
+
+- Renamed integration test classes to have IT suffix
+- Configured maven surefire and failsafe plugins to have different includes for unit and integration tests
+
 ## [0.5.3-SNAPSHOT] - 18.09.2025.
 
 ### Added

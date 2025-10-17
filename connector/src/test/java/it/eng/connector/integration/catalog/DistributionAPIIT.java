@@ -40,7 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * - Validation of input data
  * - Authorization checks
  */
-public class DistributionAPIIntegrationTest extends BaseIntegrationTest {
+public class DistributionAPIIT extends BaseIntegrationTest {
 
     @Autowired
     private DistributionRepository distributionRepository;

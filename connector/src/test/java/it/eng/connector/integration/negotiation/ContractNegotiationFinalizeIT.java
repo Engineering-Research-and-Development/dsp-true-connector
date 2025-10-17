@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-public class ContractNegotiationFinalizeIntegrationTest extends BaseIntegrationTest {
+public class ContractNegotiationFinalizeIT extends BaseIntegrationTest {
 
 // VERIFIED->FINALIZED
 // https://consumer.com/:callback/negotiations/:consumerPid/events	POST	ContractNegotiationEventMessage
