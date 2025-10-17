@@ -77,7 +77,10 @@ public class ContractNegotiationAPIServiceTest {
 
     @Test
     @DisplayName("Start contract negotiation success")
-    public void startNegotiation_success() {
+    public void sendContractRequestMessage_success() {
+        ContractRequestMessageRequest request = new ContractRequestMessageRequest
+                (null, NegotiationMockObjectUtil.FORWARD_TO, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
+
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.getData()).thenReturn(NegotiationSerializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
@@ -85,7 +88,7 @@ public class ContractNegotiationAPIServiceTest {
         when(properties.consumerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
         when(offerRepository.save(any(Offer.class))).thenReturn(NegotiationMockObjectUtil.OFFER_WITH_ORIGINAL_ID);
 
-        service.startNegotiation(NegotiationMockObjectUtil.FORWARD_TO, NegotiationSerializer.serializePlainJsonNode(NegotiationMockObjectUtil.OFFER));
+        service.sendContractRequestMessage(request);
 
         verify(offerRepository).save(argCaptorOffer.capture());
         verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
@@ -97,13 +100,16 @@ public class ContractNegotiationAPIServiceTest {
 
     @Test
     @DisplayName("Start contract negotiation failed")
-    public void startNegotiation_failed() {
+    public void sendContractRequestMessage_failed() {
+        ContractRequestMessageRequest request = new ContractRequestMessageRequest
+                (null, NegotiationMockObjectUtil.FORWARD_TO, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
+
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.getData()).thenReturn(NegotiationSerializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE));
         when(properties.consumerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
 
-        assertThrows(ContractNegotiationAPIException.class, () -> service.startNegotiation(NegotiationMockObjectUtil.FORWARD_TO, NegotiationSerializer.serializePlainJsonNode(NegotiationMockObjectUtil.OFFER)));
+        assertThrows(ContractNegotiationAPIException.class, () -> service.sendContractRequestMessage(request));
 
         verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
 
@@ -112,14 +118,17 @@ public class ContractNegotiationAPIServiceTest {
 
     @Test
     @DisplayName("Start contract negotiation json exception")
-    public void startNegotiation_jsonException() {
+    public void sendContractRequestMessage_jsonException() {
+        ContractRequestMessageRequest request = new ContractRequestMessageRequest
+                (null, NegotiationMockObjectUtil.FORWARD_TO, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
+
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.getData()).thenReturn("not a JSON");
         when(apiResponse.isSuccess()).thenReturn(true);
         when(properties.consumerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
 
-        assertThrows(ContractNegotiationAPIException.class, () -> service.startNegotiation(NegotiationMockObjectUtil.FORWARD_TO, NegotiationSerializer.serializePlainJsonNode(NegotiationMockObjectUtil.OFFER)));
+        assertThrows(ContractNegotiationAPIException.class, () -> service.sendContractRequestMessage(request));
 
         verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
     }
@@ -127,6 +136,8 @@ public class ContractNegotiationAPIServiceTest {
     @Test
     @DisplayName("Process posted offer - success")
     public void postContractOffer_success() {
+        ContractRequestMessageRequest request = new ContractRequestMessageRequest
+                (null, NegotiationMockObjectUtil.FORWARD_TO, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
         when(properties.providerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
@@ -134,7 +145,7 @@ public class ContractNegotiationAPIServiceTest {
         when(apiResponse.isSuccess()).thenReturn(true);
         when(apiResponse.getData()).thenReturn(NegotiationSerializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_OFFERED));
         // plain jsonNode
-        service.sendContractOffer(NegotiationMockObjectUtil.FORWARD_TO, NegotiationSerializer.serializePlainJsonNode(NegotiationMockObjectUtil.OFFER));
+        service.sendContractOfferMessage(request);
 
         verify(contractNegotiationRepository).save(any(ContractNegotiation.class));
     }
@@ -142,6 +153,8 @@ public class ContractNegotiationAPIServiceTest {
     @Test
     @DisplayName("Process posted offer - error")
     public void postContractOffer_error() {
+        ContractRequestMessageRequest request = new ContractRequestMessageRequest
+                (null, NegotiationMockObjectUtil.FORWARD_TO, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(properties.providerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
@@ -149,7 +162,7 @@ public class ContractNegotiationAPIServiceTest {
         when(apiResponse.isSuccess()).thenReturn(false);
 
         assertThrows(ContractNegotiationAPIException.class, () ->
-                service.sendContractOffer(NegotiationMockObjectUtil.FORWARD_TO, NegotiationSerializer.serializePlainJsonNode(NegotiationMockObjectUtil.OFFER)));
+                service.sendContractOfferMessage(request));
     }
 
     @Test

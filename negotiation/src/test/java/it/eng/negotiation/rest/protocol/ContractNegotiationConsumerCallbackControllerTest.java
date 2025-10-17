@@ -40,7 +40,7 @@ public class ContractNegotiationConsumerCallbackControllerTest {
     public void handleNegotiationOffers() throws JsonProcessingException {
         String json = NegotiationSerializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_OFFER_MESSAGE);
         JsonNode jsonNode = mapper.readTree(json);
-        when(contractNegotiationConsumerService.processContractOffer(any(ContractOfferMessage.class)))
+        when(contractNegotiationConsumerService.handleContractOfferMessage(null, any(ContractOfferMessage.class)))
                 .thenReturn(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_OFFERED);
         when(properties.providerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
         ResponseEntity<JsonNode> response = controller.handleNegotiationOffers(jsonNode);
@@ -62,13 +62,13 @@ public class ContractNegotiationConsumerCallbackControllerTest {
     public void handleAgreement_success() throws InterruptedException, ExecutionException, JsonMappingException, JsonProcessingException {
         String json = NegotiationSerializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE);
         JsonNode jsonNode = mapper.readTree(json);
-        doNothing().when(contractNegotiationConsumerService).handleAgreement(any(ContractAgreementMessage.class));
+        doNothing().when(contractNegotiationConsumerService).handleContractAgreementMessage(any(ContractAgreementMessage.class));
 
         ResponseEntity<Void> response = controller.handleAgreement(NegotiationMockObjectUtil.CONSUMER_PID, jsonNode);
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
 
-        verify(contractNegotiationConsumerService).handleAgreement(any(ContractAgreementMessage.class));
+        verify(contractNegotiationConsumerService).handleContractAgreementMessage(any(ContractAgreementMessage.class));
     }
 
     @Test
@@ -77,7 +77,7 @@ public class ContractNegotiationConsumerCallbackControllerTest {
         JsonNode jsonNode = mapper.readTree(json);
 
         doThrow(new ContractNegotiationInvalidStateException("Something not correct - tests", NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.PROVIDER_PID))
-                .when(contractNegotiationConsumerService).handleAgreement(any(ContractAgreementMessage.class));
+                .when(contractNegotiationConsumerService).handleContractAgreementMessage(any(ContractAgreementMessage.class));
 
         assertThrows(ContractNegotiationInvalidStateException.class, () ->
                 controller.handleAgreement(NegotiationMockObjectUtil.CONSUMER_PID, jsonNode));

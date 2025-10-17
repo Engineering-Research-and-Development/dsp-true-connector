@@ -42,7 +42,6 @@ public class ContractAgreementMessageTest {
     private final ContractAgreementMessage contractAgreementMessage = ContractAgreementMessage.Builder.newInstance()
             .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
             .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
-            .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
             .agreement(agreement)
             .build();
 
@@ -88,7 +87,6 @@ public class ContractAgreementMessageTest {
         assertThrows(ValidationException.class,
                 () -> ContractAgreementMessage.Builder.newInstance()
                         .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
-                        .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
                         .agreement(agreement)
                         .build());
     }
@@ -132,7 +130,6 @@ public class ContractAgreementMessageTest {
     private void validateJavaObj(ContractAgreementMessage javaObj) {
         assertEquals(contractAgreementMessage.getConsumerPid(), javaObj.getConsumerPid());
         assertEquals(contractAgreementMessage.getProviderPid(), javaObj.getProviderPid());
-        assertEquals(contractAgreementMessage.getCallbackAddress(), javaObj.getCallbackAddress());
 
         validateAgreement(javaObj.getAgreement());
     }

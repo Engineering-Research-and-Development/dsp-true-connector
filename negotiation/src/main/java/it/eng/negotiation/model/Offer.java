@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import it.eng.tools.model.DSpaceConstants;
+import it.eng.tools.util.ToolsUtil;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
@@ -19,7 +20,6 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 
@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 @JsonPropertyOrder(value = {DSpaceConstants.CONTEXT, DSpaceConstants.TYPE, DSpaceConstants.ID}, alphabetic = true)
 public class Offer {
 
-    //	@NotNull
+    @NotNull
     @JsonProperty(DSpaceConstants.ID)
     private String id;
 
@@ -105,7 +105,7 @@ public class Offer {
 
         public Offer build() {
             if (offer.id == null) {
-                offer.id = "urn:uuid:" + UUID.randomUUID();
+                offer.id = ToolsUtil.generateUniqueId();
             }
             Set<ConstraintViolation<Offer>> violations
                     = Validation.buildDefaultValidatorFactory().getValidator().validate(offer);

@@ -99,7 +99,6 @@ public class ContractNegotiationAgreedIntegrationTest extends BaseIntegrationTes
 		ContractAgreementMessage agreementMessage = ContractAgreementMessage.Builder.newInstance()
 				.consumerPid(contractNegotiationRequested.getConsumerPid())
 				.providerPid(contractNegotiationRequested.getProviderPid())
-				.callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
 				.agreement(agreement)
 				.build();
 
@@ -123,7 +122,6 @@ public class ContractNegotiationAgreedIntegrationTest extends BaseIntegrationTes
     	ContractAgreementMessage agreementMessage = ContractAgreementMessage.Builder.newInstance()
 				.consumerPid(createNewId())
 				.providerPid(createNewId())
-				.callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
 				.agreement(NegotiationMockObjectUtil.AGREEMENT).build();
     	
     	final ResultActions result = mockMvc
@@ -150,7 +148,6 @@ public class ContractNegotiationAgreedIntegrationTest extends BaseIntegrationTes
     	ContractAgreementMessage agreementMessage = ContractAgreementMessage.Builder.newInstance()
 				.consumerPid(contractNegotiationRequested.getConsumerPid())
 				.providerPid(contractNegotiationRequested.getProviderPid())
-				.callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
 				.agreement(NegotiationMockObjectUtil.AGREEMENT).build();
     	
     	final ResultActions result = mockMvc

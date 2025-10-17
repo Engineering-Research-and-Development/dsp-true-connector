@@ -52,8 +52,8 @@ public class ContractNegotiationConsumerServiceTest {
 
     @Test
     @DisplayName("Process contract offer success")
-    public void processContractOffer_success() {
-        service.processContractOffer(NegotiationMockObjectUtil.CONTRACT_OFFER_MESSAGE);
+    public void handleContractOffer_Message_success() {
+        service.handleContractOfferMessage(null, NegotiationMockObjectUtil.CONTRACT_OFFER_MESSAGE);
         verify(offerRepository).save(any(Offer.class));
         verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
         assertEquals(ContractNegotiationState.OFFERED, argCaptorContractNegotiation.getValue().getState());
@@ -61,11 +61,11 @@ public class ContractNegotiationConsumerServiceTest {
 
     @Test
     @DisplayName("Process agreement message - automatic negotiation - ON success")
-    public void handleAgreement_success() {
+    public void handleContractAgreement_Message_success() {
         when(properties.isAutomaticNegotiation()).thenReturn(true);
         when(contractNegotiationRepository.findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID)).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 
-        service.handleAgreement(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE);
+        service.handleContractAgreementMessage(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE);
 
         verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID);
         verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
@@ -79,11 +79,11 @@ public class ContractNegotiationConsumerServiceTest {
 
     @Test
     @DisplayName("Process agreement message - automatic negotiation OFF - success")
-    public void handleAgreement_off_success() {
+    public void handleContractAgreement_Message_off_success() {
         when(properties.isAutomaticNegotiation()).thenReturn(false);
         when(contractNegotiationRepository.findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID)).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 
-        service.handleAgreement(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE);
+        service.handleContractAgreementMessage(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE);
 
         verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID);
         verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
@@ -97,10 +97,10 @@ public class ContractNegotiationConsumerServiceTest {
 
     @Test
     @DisplayName("Process agreement message - automatic negotiation OFF - negotiation not found")
-    public void handleAgreement_off_negotiationNotFound() {
+    public void handleContractAgreement_Message_off_negotiationNotFound() {
         when(contractNegotiationRepository.findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID)).thenReturn(Optional.ofNullable(null));
 
-        assertThrows(ContractNegotiationNotFoundException.class, () -> service.handleAgreement(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE));
+        assertThrows(ContractNegotiationNotFoundException.class, () -> service.handleContractAgreementMessage(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE));
 
         verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID);
         verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
@@ -109,11 +109,11 @@ public class ContractNegotiationConsumerServiceTest {
 
     @Test
     @DisplayName("Process agreement message - automatic negotiation OFF - wrong negotiation state")
-    public void handleAgreement_off_wrongNegotiationState() {
+    public void handleContractAgreement_Message_off_wrongNegotiationState() {
 
         when(contractNegotiationRepository.findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID)).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_OFFERED));
 
-        assertThrows(ContractNegotiationInvalidStateException.class, () -> service.handleAgreement(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE));
+        assertThrows(ContractNegotiationInvalidStateException.class, () -> service.handleContractAgreementMessage(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE));
 
         verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID);
         verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
@@ -122,11 +122,11 @@ public class ContractNegotiationConsumerServiceTest {
 
     @Test
     @DisplayName("Process agreement message - automatic negotiation OFF - offer not found")
-    public void handleAgreement_off_offerNotFound() {
+    public void handleContractAgreement_Message_off_offerNotFound() {
         when(contractNegotiationRepository.findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID))
                 .thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED_NO_OFFER));
 
-        assertThrows(OfferNotFoundException.class, () -> service.handleAgreement(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE));
+        assertThrows(OfferNotFoundException.class, () -> service.handleContractAgreementMessage(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE));
 
         verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID);
         verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));

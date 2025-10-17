@@ -56,7 +56,6 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
             ContractAgreementMessage agreementMessage = ContractAgreementMessage.Builder.newInstance()
                     .consumerPid(contractNegotiation.getConsumerPid())
                     .providerPid(contractNegotiation.getProviderPid())
-                    .callbackAddress(properties.providerCallbackAddress())
                     .agreement(agreementFromOffer(NegotiationSerializer.deserializePlain(offerResponse.getOffer().toPrettyString(), Offer.class), contractNegotiation.getAssigner()))
                     .build();
 

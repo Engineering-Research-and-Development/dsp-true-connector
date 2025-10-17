@@ -2,13 +2,13 @@ package it.eng.negotiation.rest.protocol;
 
 public class ContractNegotiationCallback {
 
-    private static final String NEGOTIATION_REQUEST = "/negotiations/request";
-    private static final String OFFERS = "/negotiations/offers";
+    private static final String INITIAL_NEGOTIATION_REQUEST = "/negotiations/request";
+    private static final String INITIAL_OFFER_REQUEST = "/negotiations/offers";
     private static final String CONSUMER_OFFERS = ":callback:/negotiations/:consumerPid:/offers";
     private static final String CONSUMER_AGREEMENT = ":callback:/negotiations/:consumerPid:/agreement";
     private static final String CONSUMER_EVENTS = ":callback:/negotiations/:consumerPid:/events";
 
-    private static final String PROVIDER_NEGOTIATION_REQUEST = "/negotiations/:providerPid:/request";
+    private static final String NEGOTIATION_REQUEST = "/negotiations/:providerPid:/request";
     private static final String PROVIDER_EVENTS = "/negotiations/:providerPid:/events";
     private static final String PROVIDER_TERMINATION = "/negotiations/:providerPid:/termination";
     private static final String CONSUMER_TERMINATION = ":callback:/negotiations/:consumerPid:/termination";
@@ -19,12 +19,16 @@ public class ContractNegotiationCallback {
     // /{providerPid}/agreement/verification
     private static final String PROVIDER_AGREEMENT_VERIFICATION = ":callback:/negotiations/:providerPid:/agreement/verification";
 
-    public static String getOffersCallback() {
-        return OFFERS;
+    public static String getInitialOfferCallback(String protocolAddress) {
+        return getValidCallback(protocolAddress) + INITIAL_OFFER_REQUEST;
     }
 
-    public static String getNegotiationRequestURL(String protocolAddress) {
-        return getValidCallback(protocolAddress) + NEGOTIATION_REQUEST;
+    public static String getInitialNegotiationRequestURL(String protocolAddress) {
+        return getValidCallback(protocolAddress) + INITIAL_NEGOTIATION_REQUEST;
+    }
+
+    public static String getNegotiationRequestURL(String protocolAddress, String providerPid) {
+        return getValidCallback(protocolAddress) + NEGOTIATION_REQUEST.replace(":providerPid:", providerPid);
     }
 
     public static String getConsumerOffersCallback(String callback, String consumerPid) {
@@ -46,10 +50,6 @@ public class ContractNegotiationCallback {
     /*
      * Provider
      */
-
-    public static String getProviderNegotiationRequest(String protocolAddress, String providerPid) {
-        return getValidCallback(protocolAddress) + PROVIDER_NEGOTIATION_REQUEST.replace(":providerPid:", providerPid);
-    }
 
     public static String getContractTerminationProvider(String protocolAddress, String providerPid) {
         return getValidCallback(protocolAddress) + PROVIDER_TERMINATION.replace(":providerPid:", providerPid);

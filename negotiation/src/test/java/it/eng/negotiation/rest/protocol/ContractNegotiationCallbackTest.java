@@ -1,10 +1,9 @@
 package it.eng.negotiation.rest.protocol;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
+import it.eng.negotiation.model.NegotiationMockObjectUtil;
 import org.junit.jupiter.api.Test;
 
-import it.eng.negotiation.model.NegotiationMockObjectUtil;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ContractNegotiationCallbackTest {
 	
@@ -13,7 +12,7 @@ public class ContractNegotiationCallbackTest {
  
 	@Test
 	public void getOffersCallback() {
-		assertEquals("/negotiations/offers", ContractNegotiationCallback.getOffersCallback());
+		assertEquals(URL_WITHOUT_SLASH + "/negotiations/offers", ContractNegotiationCallback.getInitialOfferCallback(URL_WITHOUT_SLASH));
 	}
 	
 	@Test
