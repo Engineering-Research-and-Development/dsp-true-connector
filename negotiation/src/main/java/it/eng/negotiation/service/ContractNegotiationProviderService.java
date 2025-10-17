@@ -151,7 +151,15 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
     }
 
     /**
-     *
+     * Handles a counter offer received from the consumer in an existing contract negotiation.
+     * It validates the counter offer against the existing negotiation and updates the negotiation state accordingly.
+     * If the counter offer is valid, the existing contract negotiation is updated with the new offer details.
+     * If the counter offer is invalid or does not match the existing negotiation, an exception is thrown.
+     * @param providerPid            - the provider PID to validate against the contract request message.
+     * @param contractRequestMessage - the contract request message containing the counter offer details.
+     * @return ContractNegotiation - the updated contract negotiation record.
+     * @throws ContractNegotiationNotFoundException if the provider PID is null, does not match,
+     * or if the existing contract negotiation cannot be found or validated.
      */
     public ContractNegotiation handleContractRequestMessageAsCounterOffer(String providerPid, ContractRequestMessage contractRequestMessage) {
         if (contractRequestMessage.getProviderPid() == null) {
