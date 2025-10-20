@@ -348,7 +348,8 @@ public class DataTransferServiceTest {
     public void suspendDataTransfer_fromStarted_provider() {
         when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
-
+        when(transferProcessRepository.save(any(TransferProcess.class))).thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_SUSPENDED_PROVIDER);
+        
         TransferProcess transferProcessSuspended = service.suspendDataTransfer(DataTransferMockObjectUtil.TRANSFER_SUSPENSION_MESSAGE,
                 null, DataTransferMockObjectUtil.PROVIDER_PID);
 
@@ -364,6 +365,8 @@ public class DataTransferServiceTest {
     public void suspendDataTransfer_fromStarted_consumer() {
         when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_SUSPENDED_PROVIDER);
 
         TransferProcess transferProcessSuspended = service.suspendDataTransfer(DataTransferMockObjectUtil.TRANSFER_SUSPENSION_MESSAGE,
                 DataTransferMockObjectUtil.CONSUMER_PID, null);

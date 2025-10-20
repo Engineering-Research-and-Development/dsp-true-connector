@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Support for new Dataspace Protocol version 2025-1
 - New GitHub Action (manually triggered) to run TCK tests against running connector
 - Documentation how to run TCK tests using CMD and GitHub Action
+- Terraform for deploying connector to Kubernetes cluster locally
 
 ### Changed
 
