@@ -16,7 +16,7 @@ import java.util.Collections;
 import java.util.concurrent.ExecutionException;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE)
 @Slf4j
 public class ContractNegotiationConsumerCallbackController {
 
@@ -29,6 +29,18 @@ public class ContractNegotiationConsumerCallbackController {
         this.contractNegotiationConsumerService = contractNegotiationConsumerService;
         this.properties = properties;
     }
+    // https://eclipse-dataspace-protocol-base.github.io/DataspaceProtocol/2025-1/#negotiations-get-consumer
+    // GET
+    // Provider must return an HTTP 200 (OK) response and a body containing the Contract Negotiation
+    @GetMapping(path = "/consumer/negotiations/{consumerPid}")
+    public ResponseEntity<JsonNode> getNegotiationByConsumerPid(@PathVariable String consumerPid) {
+        log.info("Get negotiation by consumer pid");
+
+        ContractNegotiation contractNegotiation = contractNegotiationConsumerService.getNegotiationByConsumerPid(consumerPid);
+
+        return ResponseEntity.ok()
+                .body(NegotiationSerializer.serializeProtocolJsonNode(contractNegotiation));
+    }
 
     //	https://consumer.com/negotiations/offers	POST	ContractOfferMessage
     // returns 201 with body ContractNegotiation - OFFERED
@@ -37,7 +49,7 @@ public class ContractNegotiationConsumerCallbackController {
         ContractOfferMessage contractOfferMessage = NegotiationSerializer.deserializeProtocol(contractOfferMessageJsonNode,
                 ContractOfferMessage.class);
 
-        ContractNegotiation responseNode = contractNegotiationConsumerService.processContractOffer(contractOfferMessage);
+        ContractNegotiation responseNode = contractNegotiationConsumerService.handleContractOfferMessage(null, contractOfferMessage);
         // send OK 201
         log.info("Sending response OK in callback case");
         return ResponseEntity.created(createdURI(responseNode))
@@ -65,9 +77,9 @@ public class ContractNegotiationConsumerCallbackController {
         ContractOfferMessage contractOfferMessage =
                 NegotiationSerializer.deserializeProtocol(contractOfferMessageJsonNode, ContractOfferMessage.class);
 
-        log.info("Received contractOfferMessage {}", contractOfferMessage);
+        log.info("Received contractOfferMessage {}", contractOfferMessageJsonNode);
 
-        ContractNegotiation contractNegotiation = contractNegotiationConsumerService.processContractOffer(contractOfferMessage);
+        ContractNegotiation contractNegotiation = contractNegotiationConsumerService.handleContractOfferMessage(consumerPid, contractOfferMessage);
 
         return ResponseEntity.ok()
                 .body(NegotiationSerializer.serializeProtocolJsonNode(contractNegotiation));
@@ -83,7 +95,7 @@ public class ContractNegotiationConsumerCallbackController {
         ContractAgreementMessage contractAgreementMessage = NegotiationSerializer.deserializeProtocol(contractAgreementMessageJsonNode,
                 ContractAgreementMessage.class);
 
-        contractNegotiationConsumerService.handleAgreement(contractAgreementMessage);
+        contractNegotiationConsumerService.handleContractAgreementMessage(contractAgreementMessage);
 
         log.info("CONSUMER - Sending response OK - agreementMessage received");
         return ResponseEntity.ok()

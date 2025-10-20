@@ -77,7 +77,7 @@ public class ContractNegotiationProviderControllerTest {
     public void createNegotiation_success() {
         when(environment.getActiveProfiles()).thenReturn(new String[]{});
         when(attrs.getRequest()).thenReturn(request);
-        when(contractNegotiationService.startContractNegotiation(any(ContractRequestMessage.class)))
+        when(contractNegotiationService.handleInitialContractRequestMessage(any(ContractRequestMessage.class)))
                 .thenReturn(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED);
 
         ResponseEntity<JsonNode> response = controller.createNegotiation(NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE));
@@ -90,7 +90,7 @@ public class ContractNegotiationProviderControllerTest {
 
     @Test
     public void createNegotiation_failed() {
-        when(contractNegotiationService.startContractNegotiation(any(ContractRequestMessage.class)))
+        when(contractNegotiationService.handleInitialContractRequestMessage(any(ContractRequestMessage.class)))
                 .thenThrow(ProviderPidNotBlankException.class);
 
         assertThrows(ProviderPidNotBlankException.class, () -> controller.createNegotiation(NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE)));

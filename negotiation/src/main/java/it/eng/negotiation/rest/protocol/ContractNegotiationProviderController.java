@@ -5,15 +5,12 @@ import it.eng.negotiation.model.*;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.negotiation.service.ContractNegotiationProviderStrategy;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.core.env.Environment;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
-import java.util.Arrays;
 import java.util.Collections;
 
 @RestController
@@ -22,14 +19,10 @@ import java.util.Collections;
 public class ContractNegotiationProviderController {
 
     private final ContractNegotiationProviderStrategy providerService;
-    private final Environment environment;
-    private final ApplicationEventPublisher applicationEventPublisher;
 
-    public ContractNegotiationProviderController(Environment environment, ContractNegotiationProviderStrategy providerService, ApplicationEventPublisher applicationEventPublisher) {
+    public ContractNegotiationProviderController(ContractNegotiationProviderStrategy providerService) {
         super();
-        this.environment = environment;
         this.providerService = providerService;
-        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     // 2.1 The negotiation endpoint
@@ -52,18 +45,11 @@ public class ContractNegotiationProviderController {
     public ResponseEntity<JsonNode> createNegotiation(@RequestBody JsonNode contractRequestMessageJsonNode) {
         log.info("Creating negotiation");
         ContractRequestMessage crm = NegotiationSerializer.deserializeProtocol(contractRequestMessageJsonNode, ContractRequestMessage.class);
-        ContractNegotiation cn = providerService.startContractNegotiation(crm);
+        ContractNegotiation cn = providerService.handleInitialContractRequestMessage(crm);
 
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest().path("/{id}")
                 .buildAndExpand(cn.getProviderPid()).toUri();
-
-        // publish event only when "tck" profile is active
-        if (Arrays.asList(environment.getActiveProfiles()).contains("tck")) {
-            log.info("TCK profile running - publishing event - {}", cn.getState());
-            log.info("ConsumerPid: {}, ProviderPid: {}", cn.getConsumerPid(), cn.getProviderPid());
-            applicationEventPublisher.publishEvent(cn);
-        }
 
         return ResponseEntity.created(location)
                 .body(NegotiationSerializer.serializeProtocolJsonNode(cn));
@@ -75,12 +61,12 @@ public class ContractNegotiationProviderController {
     @PostMapping(path = "/{providerPid}/request")
     public ResponseEntity<JsonNode> handleConsumerMakesOffer(@PathVariable String providerPid,
                                                              @RequestBody JsonNode contractRequestMessageJsonNode) {
+        log.info("Processing consumer counter-offer");
         ContractRequestMessage crm = NegotiationSerializer.deserializeProtocol(contractRequestMessageJsonNode, ContractRequestMessage.class);
+        ContractNegotiation cn = providerService.handleContractRequestMessageAsCounterOffer(providerPid, crm);
 
-        ContractNegotiationErrorMessage error = methodNotYetImplemented();
-
-        return ResponseEntity.internalServerError()
-                .body(NegotiationSerializer.serializeProtocolJsonNode(error));
+        return ResponseEntity.ok()
+                .body(NegotiationSerializer.serializeProtocolJsonNode(cn));
     }
 
     // 2.4 The provider negotiations/:providerPid/events

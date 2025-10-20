@@ -26,9 +26,6 @@ public class ContractAgreementMessage extends AbstractNegotiationObject {
     private String consumerPid;
 
     @NotNull
-    private String callbackAddress;
-
-    @NotNull
     private Agreement agreement;
 
     @JsonPOJOBuilder(withPrefix = "")
@@ -52,11 +49,6 @@ public class ContractAgreementMessage extends AbstractNegotiationObject {
 
         public Builder providerPid(String providerPid) {
             message.providerPid = providerPid;
-            return this;
-        }
-
-        public Builder callbackAddress(String callbackAddress) {
-            message.callbackAddress = callbackAddress;
             return this;
         }
 

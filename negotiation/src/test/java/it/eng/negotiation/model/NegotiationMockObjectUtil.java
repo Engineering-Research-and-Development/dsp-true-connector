@@ -149,7 +149,6 @@ public class NegotiationMockObjectUtil {
     public static final ContractAgreementMessage CONTRACT_AGREEMENT_MESSAGE = ContractAgreementMessage.Builder.newInstance()
             .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
             .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
-            .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
             .agreement(AGREEMENT)
             .build();
 

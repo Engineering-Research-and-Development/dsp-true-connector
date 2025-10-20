@@ -18,6 +18,7 @@ public enum AuditEventType {
     PROTOCOL_NEGOTIATION_NOT_FOUND("Contract negotiation not found"),
     PROTOCOL_NEGOTIATION_STATE_TRANSITION_ERROR("State transition invalid"),
     PROTOCOL_NEGOTIATION_REQUESTED("Protocol negotiation requested"),
+    PROTOCOL_NEGOTIATION_OFFERED("Protocol negotiation offered"),
     PROTOCOL_NEGOTIATION_ACCEPTED("Protocol negotiation accepted"),
     PROTOCOL_NEGOTIATION_AGREED("Protocol negotiation agreed"),
     PROTOCOL_NEGOTIATION_VERIFIED("Protocol negotiation verified"),

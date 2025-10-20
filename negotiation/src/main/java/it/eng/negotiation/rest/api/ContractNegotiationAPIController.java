@@ -2,6 +2,7 @@ package it.eng.negotiation.rest.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.negotiation.model.ContractNegotiation;
+import it.eng.negotiation.model.ContractRequestMessageRequest;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.negotiation.service.ContractNegotiationAPIService;
 import it.eng.tools.controller.ApiEndpoints;
@@ -103,17 +104,15 @@ public class ContractNegotiationAPIController {
     /**
      * Consumer starts contract negotiation.
      *
-     * @param startNegotiationRequest the request containing the target connector and offer details
+     * @param contractRequestMessageRequest the request containing the target connector and offer details
      * @return ResponseEntity
      */
     @PostMapping
-    public ResponseEntity<GenericApiResponse<JsonNode>> startNegotiation(@RequestBody JsonNode startNegotiationRequest) {
-        String targetConnector = startNegotiationRequest.get("Forward-To").asText();
-        JsonNode offerNode = startNegotiationRequest.get(DSpaceConstants.OFFER);
-        log.info("Consumer starts negotiation with {}", targetConnector);
-        JsonNode response = apiService.startNegotiation(targetConnector, offerNode);
+    public ResponseEntity<GenericApiResponse<JsonNode>> sendContractRequestMessage(@RequestBody ContractRequestMessageRequest contractRequestMessageRequest) {
+        log.info("Sending contract request message");
+        ContractNegotiation response = apiService.sendContractRequestMessage(contractRequestMessageRequest);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(response, "Contract negotiation initiated"));
+                .body(GenericApiResponse.success(NegotiationSerializer.serializePlainJsonNode(response), "Contract negotiation initiated"));
     }
 
     /**
@@ -139,7 +138,7 @@ public class ContractNegotiationAPIController {
      */
     @PutMapping(path = "/{contractNegotiationId}/terminate")
     public ResponseEntity<GenericApiResponse<JsonNode>> terminateContractNegotiation(@PathVariable String contractNegotiationId) {
-        log.info("Handling contract negotiation terminate");
+        log.info("Handling contract negotiation approved");
         ContractNegotiation contractNegotiationTerminated = apiService.terminateContractNegotiation(contractNegotiationId);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
@@ -166,17 +165,14 @@ public class ContractNegotiationAPIController {
     /**
      * Provider sends offer.
      *
-     * @param contractOfferRequest the request containing the target connector and offer details
+     * @param contractRequestMessageRequest the request containing the target connector and offer details
      * @return ResponseEntity
      */
     @PostMapping(path = "/offers")
-    public ResponseEntity<GenericApiResponse<JsonNode>> sendContractOffer(@RequestBody JsonNode contractOfferRequest) {
-        String targetConnector = contractOfferRequest.get("Forward-To").asText();
-        JsonNode offerNode = contractOfferRequest.get(DSpaceConstants.OFFER);
-        log.info("Provider posts offer - starts negotiation with {}", targetConnector);
-        JsonNode response = apiService.sendContractOffer(targetConnector, offerNode);
+    public ResponseEntity<GenericApiResponse<JsonNode>> sendContractOffer(@RequestBody ContractRequestMessageRequest contractRequestMessageRequest) {
+        ContractNegotiation response = apiService.sendContractOfferMessage(contractRequestMessageRequest);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(response, "Contract negotiation posted"));
+                .body(GenericApiResponse.success(NegotiationSerializer.serializeProtocolJsonNode(response), "Contract negotiation posted"));
     }
 
     @Deprecated

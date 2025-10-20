@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import it.eng.tools.model.DSpaceConstants;
+import jakarta.validation.ValidatorFactory;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
@@ -29,12 +30,11 @@ public class ContractRequestMessage {
     @JsonProperty(value = DSpaceConstants.CONTEXT, access = Access.READ_ONLY)
     private List<String> context = List.of(DSpaceConstants.DSPACE_2025_01_CONTEXT);
 
-    private String providerPid;
-
     @NotNull
     private String consumerPid;
 
-    @NotNull
+    //  either providerPid or callbackAddress must be present, but not both!
+    private String providerPid;
     private String callbackAddress;
 
     @NotNull
@@ -75,16 +75,27 @@ public class ContractRequestMessage {
         }
 
         public ContractRequestMessage build() {
-            Set<ConstraintViolation<ContractRequestMessage>> violations
-                    = Validation.buildDefaultValidatorFactory().getValidator().validate(message);
-            if (violations.isEmpty()) {
-                return message;
+            Set<ConstraintViolation<ContractRequestMessage>> violations;
+            try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
+                violations = factory.getValidator().validate(message);
             }
-            throw new ValidationException("ContractRequestMessage - " +
-                    violations
-                            .stream()
-                            .map(v -> v.getPropertyPath() + " " + v.getMessage())
-                            .collect(Collectors.joining(", ")));
+
+             // Collect existing validator messages
+             java.util.List<String> messages = violations
+                     .stream()
+                     .map(v -> v.getPropertyPath() + " " + v.getMessage())
+                     .collect(Collectors.toList());
+
+             // Custom validation: either providerPid or callbackAddress must be present
+             if ((message.getProviderPid() == null && message.getCallbackAddress() == null) ||
+             (message.getProviderPid() != null && message.getCallbackAddress() != null)) {
+                 messages.add("either providerPid or callbackAddress must be present");
+             }
+
+             if (messages.isEmpty()) {
+                 return message;
+             }
+             throw new ValidationException("ContractRequestMessage - " + String.join(", ", messages));
         }
     }
 

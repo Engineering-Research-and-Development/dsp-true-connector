@@ -26,11 +26,7 @@ public class TCKCompliance extends BaseIntegrationTest {
 
         var result = TckRuntime.Builder.newInstance()
                 .properties(properties) // Add any additional properties if needed
-                .addPackage("org.eclipse.dataspacetck.dsp.verification.metadata")
-                .addPackage("org.eclipse.dataspacetck.dsp.verification.catalog")
-                .addPackage("org.eclipse.dataspacetck.dsp.verification.tp")
-                // enable it when ContractNegotiation is completed
-//                .addPackage("org.eclipse.dataspacetck.dsp.verification.cn")
+                .addPackage("org.eclipse.dataspacetck.dsp.verification")
                 .monitor(monitor)
                 .build()
                 .execute();
@@ -55,19 +51,28 @@ public class TCKCompliance extends BaseIntegrationTest {
         properties.put("dataspacetck.dsp.connector.negotiation.initiate.url", "http://localhost:8080/consumer/negotiations/tck");
         properties.put("dataspacetck.dsp.connector.transfer.initiate.url", "http://localhost:8080/consumer/transfers/tck");
 
-        // Contract negotiation provider properties
+        // Sets the dataset and offer ids to use for contract negotiation scenarios
+        // contract negotiation provider
+        // per user's mapping: CN_01_01..04, CN_02_01..07, CN_03_01..04
+        int[] cnProviderMax = {4, 7, 4};
         for (int i = 1; i <= 3; i++) {
-            for (int j = 1; j <= 4; j++) {
+            int max = cnProviderMax[i - 1];
+            for (int j = 1; j <= max; j++) {
                 String prefix = String.format("CN_%02d_%02d_", i, j);
-                properties.put(prefix + "DATASETID", "ACN0%d0%d".formatted(i, j));
-                properties.put(prefix + "OFFERID", "CD123:ACN0%d0%d:456".formatted(i, j));
+                String datasetId = String.format("ACN%02d%02d", i, j);
+                String offerId = String.format("CD123:%s:456", datasetId);
+                properties.put(prefix + "DATASETID", datasetId);
+                properties.put(prefix + "OFFERID", offerId);
             }
         }
 
-        // Contract negotiation consumer properties
+        // contract negotiation consumer
+        // per user's mapping: CN_C_01_01..04, CN_C_02_01..06, CN_C_03_01..06
+        int[] cnConsumerMax = {4, 6, 6};
         for (int i = 1; i <= 3; i++) {
-            for (int j = 1; j <= 6; j++) {
-                properties.put("CN_C_0%d_0%d_DATASETID".formatted(i, j), "ACNC0%d0%d".formatted(i, j));
+            int max = cnConsumerMax[i - 1];
+            for (int j = 1; j <= max; j++) {
+                properties.put(String.format("CN_C_%02d_%02d_DATASETID", i, j), String.format("ACNC%02d%02d", i, j));
             }
         }
 
