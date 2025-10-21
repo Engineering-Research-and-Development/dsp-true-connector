@@ -3,10 +3,7 @@ package it.eng.datatransfer.service.api;
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
-import it.eng.datatransfer.model.DataTransferFormat;
-import it.eng.datatransfer.model.DataTransferRequest;
-import it.eng.datatransfer.model.TransferProcess;
-import it.eng.datatransfer.model.TransferState;
+import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
@@ -719,6 +716,59 @@ class DataTransferAPIServiceTest {
         verify(s3ClientService, times(0)).generateGetPresignedUrl(anyString(), anyString(), any(Duration.class));
     }
 
+    @Test
+    @DisplayName("TCK interaction disabled returns null")
+    void tck_interactionDisabled_returnsNull() {
+        when(properties.tckInteractionEnabled()).thenReturn(false);
+        TCKRequest request = TCKRequest.Builder.newInstance().agreementId("tp0202-test-REQUESTED").build();
+        assertNull(apiService.tck(request));
+    }
+
+    @Test
+    @DisplayName("TCK request with null body throws exception")
+    void tck_nullBody_throwsException() {
+        when(properties.tckInteractionEnabled()).thenReturn(true);
+        assertThrows(DataTransferAPIException.class, () -> apiService.tck(null));
+    }
+
+    @Test
+    @DisplayName("TCK request with missing agreementId throws exception")
+    void tck_missingAgreementId_throwsException() {
+        when(properties.tckInteractionEnabled()).thenReturn(true);
+        TCKRequest request = TCKRequest.Builder.newInstance().agreementId("").build();
+        assertThrows(DataTransferAPIException.class, () -> apiService.tck(request));
+    }
+
+    @Test
+    @DisplayName("TCK request with wrong agreementId format throws exception")
+    void tck_wrongAgreementIdFormat_throwsException() {
+        when(properties.tckInteractionEnabled()).thenReturn(true);
+        TCKRequest request = TCKRequest.Builder.newInstance().agreementId("tp0202-REQUESTED").build();
+        assertThrows(DataTransferAPIException.class, () -> apiService.tck(request));
+    }
+
+    @ParameterizedTest
+    @MethodSource("tck_supportedStates")
+    @DisplayName("TCK request with supported state calls correct method")
+    void tck_supportedState_callsCorrectMethod(String state, String methodName) throws Exception {
+        when(properties.tckInteractionEnabled()).thenReturn(true);
+        String agreementId = "tp0202-test-" + state;
+        TCKRequest request = TCKRequest.Builder.newInstance().agreementId(agreementId).build();
+
+        DataTransferAPIService spyService = spy(apiService);
+
+        // Mock the corresponding method
+        doReturn(null).when(spyService).getClass().getMethod(methodName, String.class)
+                .invoke(spyService, agreementId);
+
+        // Call tck
+        spyService.tck(request);
+
+        // Verify correct method called
+        verify(spyService).getClass().getMethod(methodName, String.class)
+                .invoke(spyService, agreementId);
+    }
+    
     private static Stream<Arguments> startTransfer_wrongStates() {
         return Stream.of(
                 Arguments.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED),
@@ -767,5 +817,14 @@ class DataTransferAPIServiceTest {
             assertEquals(description, descriptionCaptor.getValue());
         }
         assertNotNull(argCaptorAuditEventDetails.getValue());
+    }
+
+    private static Stream<Arguments> tck_supportedStates() {
+        return Stream.of(
+                Arguments.of("STARTED", "startTransfer"),
+                Arguments.of("COMPLETED", "completeTransfer"),
+                Arguments.of("SUSPENDED", "suspendTransfer"),
+                Arguments.of("TERMINATED", "terminateTransfer")
+        );
     }
 }
