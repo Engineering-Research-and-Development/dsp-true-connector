@@ -1,6 +1,7 @@
 package it.eng.negotiation.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
 import it.eng.negotiation.model.*;
 import it.eng.negotiation.policy.service.PolicyAdministrationPoint;
@@ -75,11 +76,14 @@ public class ContractNegotiationAPIServiceTest {
     @InjectMocks
     private ContractNegotiationAPIService service;
 
+    ObjectMapper mapper = new ObjectMapper();
+
     @Test
     @DisplayName("Start contract negotiation success")
     public void sendContractRequestMessage_success() {
-        ContractRequestMessageRequest request = new ContractRequestMessageRequest
-                (null, NegotiationMockObjectUtil.FORWARD_TO, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
+        HashMap<Object, Object> map = new HashMap<>();
+        map.put("Forward-To", NegotiationMockObjectUtil.FORWARD_TO);
+        map.put("offer", NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
 
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
@@ -88,7 +92,7 @@ public class ContractNegotiationAPIServiceTest {
         when(properties.consumerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
         when(offerRepository.save(any(Offer.class))).thenReturn(NegotiationMockObjectUtil.OFFER_WITH_ORIGINAL_ID);
 
-        service.sendContractRequestMessage(request);
+        service.sendContractRequestMessage(mapper.convertValue(map, JsonNode.class));
 
         verify(offerRepository).save(argCaptorOffer.capture());
         verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
@@ -101,15 +105,16 @@ public class ContractNegotiationAPIServiceTest {
     @Test
     @DisplayName("Start contract negotiation failed")
     public void sendContractRequestMessage_failed() {
-        ContractRequestMessageRequest request = new ContractRequestMessageRequest
-                (null, NegotiationMockObjectUtil.FORWARD_TO, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
+        HashMap<Object, Object> map = new HashMap<>();
+        map.put("Forward-To", NegotiationMockObjectUtil.FORWARD_TO);
+        map.put("offer", NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
 
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.getData()).thenReturn(NegotiationSerializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE));
         when(properties.consumerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
 
-        assertThrows(ContractNegotiationAPIException.class, () -> service.sendContractRequestMessage(request));
+        assertThrows(ContractNegotiationAPIException.class, () -> service.sendContractRequestMessage(mapper.convertValue(map, JsonNode.class)));
 
         verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
 
@@ -119,8 +124,9 @@ public class ContractNegotiationAPIServiceTest {
     @Test
     @DisplayName("Start contract negotiation json exception")
     public void sendContractRequestMessage_jsonException() {
-        ContractRequestMessageRequest request = new ContractRequestMessageRequest
-                (null, NegotiationMockObjectUtil.FORWARD_TO, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
+        HashMap<Object, Object> map = new HashMap<>();
+        map.put("Forward-To", NegotiationMockObjectUtil.FORWARD_TO);
+        map.put("offer", NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
 
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
@@ -128,7 +134,7 @@ public class ContractNegotiationAPIServiceTest {
         when(apiResponse.isSuccess()).thenReturn(true);
         when(properties.consumerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
 
-        assertThrows(ContractNegotiationAPIException.class, () -> service.sendContractRequestMessage(request));
+        assertThrows(ContractNegotiationAPIException.class, () -> service.sendContractRequestMessage(mapper.convertValue(map, JsonNode.class)));
 
         verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
     }
@@ -136,8 +142,10 @@ public class ContractNegotiationAPIServiceTest {
     @Test
     @DisplayName("Process posted offer - success")
     public void postContractOffer_success() {
-        ContractRequestMessageRequest request = new ContractRequestMessageRequest
-                (null, NegotiationMockObjectUtil.FORWARD_TO, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
+        HashMap<Object, Object> map = new HashMap<>();
+        map.put("Forward-To", NegotiationMockObjectUtil.FORWARD_TO);
+        map.put("offer", NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
+
         when(properties.providerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
@@ -145,7 +153,7 @@ public class ContractNegotiationAPIServiceTest {
         when(apiResponse.isSuccess()).thenReturn(true);
         when(apiResponse.getData()).thenReturn(NegotiationSerializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_OFFERED));
         // plain jsonNode
-        service.sendContractOfferMessage(request);
+        service.sendContractOfferMessage(mapper.convertValue(map, JsonNode.class));
 
         verify(contractNegotiationRepository).save(any(ContractNegotiation.class));
     }
@@ -153,8 +161,10 @@ public class ContractNegotiationAPIServiceTest {
     @Test
     @DisplayName("Process posted offer - error")
     public void postContractOffer_error() {
-        ContractRequestMessageRequest request = new ContractRequestMessageRequest
-                (null, NegotiationMockObjectUtil.FORWARD_TO, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
+        HashMap<Object, Object> map = new HashMap<>();
+        map.put("Forward-To", NegotiationMockObjectUtil.FORWARD_TO);
+        map.put("offer", NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
+
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(properties.providerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
@@ -162,7 +172,7 @@ public class ContractNegotiationAPIServiceTest {
         when(apiResponse.isSuccess()).thenReturn(false);
 
         assertThrows(ContractNegotiationAPIException.class, () ->
-                service.sendContractOfferMessage(request));
+                service.sendContractOfferMessage(mapper.convertValue(map, JsonNode.class)));
     }
 
     @Test
@@ -172,9 +182,12 @@ public class ContractNegotiationAPIServiceTest {
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
         when(properties.providerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
-        when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+        when(contractNegotiationRepository.findByProviderPidAndConsumerPid(
+                NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getProviderPid(),
+                NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getConsumerPid()))
+                .thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 
-        service.sendAgreement(NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializePlainJsonNode(NegotiationMockObjectUtil.AGREEMENT));
+        service.sendContractAgreementMessage(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId());
 
         verify(contractNegotiationRepository).save(any(ContractNegotiation.class));
         verify(agreementRepository).save(any(Agreement.class));
@@ -187,9 +200,12 @@ public class ContractNegotiationAPIServiceTest {
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
         when(properties.providerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
-        when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
+        when(contractNegotiationRepository.findByProviderPidAndConsumerPid(
+                NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getProviderPid(),
+                NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getConsumerPid()))
+                .thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
 
-        service.sendAgreement(NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializePlainJsonNode(NegotiationMockObjectUtil.AGREEMENT));
+        service.sendContractAgreementMessage(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED.getId());
 
         verify(contractNegotiationRepository).save(any(ContractNegotiation.class));
         verify(agreementRepository).save(any(Agreement.class));
@@ -198,7 +214,7 @@ public class ContractNegotiationAPIServiceTest {
     @Test
     @DisplayName("Send agreement failed - negotiation not found")
     public void sendAgreement_failedNegotiationNotFound() {
-        assertThrows(ContractNegotiationAPIException.class, () -> service.sendAgreement(NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializePlainJsonNode(NegotiationMockObjectUtil.AGREEMENT)));
+        assertThrows(ContractNegotiationAPIException.class, () -> service.sendContractAgreementMessage(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED.getId()));
 
         verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
@@ -209,9 +225,11 @@ public class ContractNegotiationAPIServiceTest {
     @DisplayName("Send agreement failed - wrong negotiation state")
     public void sendAgreement_wrongNegotiationState() {
 
-        when(contractNegotiationRepository.findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID)).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_OFFERED));
+        when(contractNegotiationRepository.findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID,
+                NegotiationMockObjectUtil.CONSUMER_PID))
+                .thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_OFFERED));
 
-        assertThrows(ContractNegotiationAPIException.class, () -> service.sendAgreement(NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializePlainJsonNode(NegotiationMockObjectUtil.AGREEMENT)));
+        assertThrows(ContractNegotiationAPIException.class, () -> service.sendContractAgreementMessage(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_OFFERED.getId()));
 
         verify(contractNegotiationRepository).findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID);
         verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
@@ -224,9 +242,11 @@ public class ContractNegotiationAPIServiceTest {
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(properties.providerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
-        when(contractNegotiationRepository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+        when(contractNegotiationRepository.findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID,
+                NegotiationMockObjectUtil.CONSUMER_PID))
+                .thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 
-        assertThrows(ContractNegotiationAPIException.class, () -> service.sendAgreement(NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializePlainJsonNode(NegotiationMockObjectUtil.AGREEMENT)));
+        assertThrows(ContractNegotiationAPIException.class, () -> service.sendContractAgreementMessage(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId()));
 
         verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
@@ -235,14 +255,14 @@ public class ContractNegotiationAPIServiceTest {
 
     @Test
     @DisplayName("Finalize negotiation success")
-    public void finalizeNegotiation_success_requestedState() {
+    public void sendContractNegotiation_EventMessageFinalize_success_requestedState() {
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
         when(contractNegotiationRepository.findById(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId()))
                 .thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED));
 
-        service.finalizeNegotiation(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId());
+        service.sendContractNegotiationEventMessageFinalize(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId());
 
         verify(contractNegotiationRepository).save(any(ContractNegotiation.class));
         verify(publisher).publishEvent(any(InitializeTransferProcess.class));
@@ -252,8 +272,8 @@ public class ContractNegotiationAPIServiceTest {
 
     @Test
     @DisplayName("Finalize negotiation failed - negotiation not found")
-    public void finalizeNegotiation_failedNegotiationNotFound() {
-        assertThrows(ContractNegotiationAPIException.class, () -> service.finalizeNegotiation(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId()));
+    public void sendContractNegotiation_failedNegotiationEventMessageFinalizeNotFound() {
+        assertThrows(ContractNegotiationAPIException.class, () -> service.sendContractNegotiationEventMessageFinalize(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId()));
 
         verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
@@ -262,12 +282,12 @@ public class ContractNegotiationAPIServiceTest {
 
     @Test
     @DisplayName("Finalize negotiation failed - wrong negotiation state")
-    public void finalizeNegotiation_wrongNegotiationState() {
+    public void sendContractNegotiation_wrongNegotiationEventMessageFinalizeState() {
         when(contractNegotiationRepository.findById(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId()))
                 .thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_OFFERED));
 
         assertThrows(ContractNegotiationAPIException.class,
-                () -> service.finalizeNegotiation(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId()));
+                () -> service.sendContractNegotiationEventMessageFinalize(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId()));
 
         verify(contractNegotiationRepository).findById(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId());
         verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
@@ -276,19 +296,19 @@ public class ContractNegotiationAPIServiceTest {
 
     @Test
     @DisplayName("Finalize negotiation error - already finalized")
-    public void finalizeNegotiation_error_finalized_state() {
+    public void sendContractNegotiation_EventMessageFinalize_error_finalized_state() {
         when(contractNegotiationRepository.findById(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId()))
                 .thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_FINALIZED));
 
         assertThrows(ContractNegotiationAPIException.class,
-                () -> service.finalizeNegotiation(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId()));
+                () -> service.sendContractNegotiationEventMessageFinalize(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId()));
 
         verify(contractNegotiationRepository, times(0)).save(argCaptorContractNegotiation.capture());
     }
 
     @Test
     @DisplayName("Finalize negotiation failed - bad request")
-    public void finalizeNegotiation_failedBadRequest() {
+    public void sendContractNegotiation_EventMessageFinalize_failedBadRequest() {
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(false);
@@ -296,7 +316,7 @@ public class ContractNegotiationAPIServiceTest {
         when(contractNegotiationRepository.findById(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId()))
                 .thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED));
 
-        assertThrows(ContractNegotiationAPIException.class, () -> service.finalizeNegotiation(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId()));
+        assertThrows(ContractNegotiationAPIException.class, () -> service.sendContractNegotiationEventMessageFinalize(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getId()));
 
         verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
@@ -350,7 +370,7 @@ public class ContractNegotiationAPIServiceTest {
 
     @Test
     @DisplayName("Consumer accepts contract negotiation offered by provider")
-    public void handleContractNegotiationAccepted() {
+    public void sendContractNegotiationEventMessageAccepted() {
         String contractNegotiationId = UUID.randomUUID().toString();
         when(contractNegotiationRepository.findById(contractNegotiationId))
                 .thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_OFFERED));
@@ -358,7 +378,7 @@ public class ContractNegotiationAPIServiceTest {
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
 
-        ContractNegotiation response = service.handleContractNegotiationAccepted(contractNegotiationId);
+        ContractNegotiation response = service.sendContractNegotiationEventMessageAccepted(contractNegotiationId);
         assertNotNull(response);
         assertEquals(ContractNegotiationState.ACCEPTED, response.getState());
 
@@ -367,18 +387,18 @@ public class ContractNegotiationAPIServiceTest {
 
     @Test
     @DisplayName("Consumer accepts contract negotiation offered by provider")
-    public void handleContractNegotiationAccepted_invalid_state() {
+    public void sendContractNegotiationEventMessageAccepted_invalid_state() {
         String contractNegotiationId = UUID.randomUUID().toString();
         when(contractNegotiationRepository.findById(contractNegotiationId))
                 .thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 
         assertThrows(ContractNegotiationAPIException.class,
-                () -> service.handleContractNegotiationAccepted(contractNegotiationId));
+                () -> service.sendContractNegotiationEventMessageAccepted(contractNegotiationId));
     }
 
     @Test
     @DisplayName("Consumer accepts contract negotiation offered by provider - error api")
-    public void handleContractNegotiationAccepted_error_api() {
+    public void sendContractNegotiationEventMessageAccepted_error_api() {
         String contractNegotiationId = UUID.randomUUID().toString();
         when(contractNegotiationRepository.findById(contractNegotiationId))
                 .thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_OFFERED));
@@ -388,7 +408,7 @@ public class ContractNegotiationAPIServiceTest {
         when(apiResponse.getMessage()).thenReturn("error");
 
         assertThrows(ContractNegotiationAPIException.class,
-                () -> service.handleContractNegotiationAccepted(contractNegotiationId));
+                () -> service.sendContractNegotiationEventMessageAccepted(contractNegotiationId));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_NEGOTIATION_ACCEPTED, "Contract negotiation accepted failed");
     }
@@ -404,7 +424,7 @@ public class ContractNegotiationAPIServiceTest {
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
 
-        service.approveContractNegotiation(contractNegotiationId);
+        service.sendContractAgreementMessage(contractNegotiationId);
 
         verify(agreementRepository).save(argCaptorAgreement.capture());
         verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
@@ -421,7 +441,7 @@ public class ContractNegotiationAPIServiceTest {
         when(contractNegotiationRepository.findById(contractNegotiationId)).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_AGREED));
 
         assertThrows(ContractNegotiationAPIException.class,
-                () -> service.approveContractNegotiation(contractNegotiationId));
+                () -> service.sendContractAgreementMessage(contractNegotiationId));
     }
 
     @Test
@@ -437,7 +457,7 @@ public class ContractNegotiationAPIServiceTest {
         when(apiResponse.getMessage()).thenReturn("Error while contacting consumer");
 
         assertThrows(ContractNegotiationAPIException.class,
-                () -> service.approveContractNegotiation(contractNegotiationId));
+                () -> service.sendContractAgreementMessage(contractNegotiationId));
 
         verify(contractNegotiationRepository, times(0)).save(argCaptorContractNegotiation.capture());
         verify(agreementRepository, times(0)).save(argCaptorAgreement.capture());
@@ -453,7 +473,7 @@ public class ContractNegotiationAPIServiceTest {
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
 
-        service.verifyNegotiation(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_AGREED.getId());
+        service.sendContractAgreementVerificationMessage(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_AGREED.getId());
 
         verify(contractNegotiationRepository).save(any(ContractNegotiation.class));
 
@@ -465,7 +485,7 @@ public class ContractNegotiationAPIServiceTest {
     public void contractAgreementVerificationMessage_contractNegotiationNotFound() {
         when(contractNegotiationRepository.findById(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId())).thenReturn(Optional.empty());
 
-        assertThrows(ContractNegotiationAPIException.class, () -> service.verifyNegotiation(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId()));
+        assertThrows(ContractNegotiationAPIException.class, () -> service.sendContractAgreementVerificationMessage(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId()));
     }
 
     @Test
@@ -473,7 +493,7 @@ public class ContractNegotiationAPIServiceTest {
     public void contractAgreementVerificationMessage_invalidState() {
         when(contractNegotiationRepository.findById(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId())).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 
-        assertThrows(ContractNegotiationAPIException.class, () -> service.verifyNegotiation(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId()));
+        assertThrows(ContractNegotiationAPIException.class, () -> service.sendContractAgreementVerificationMessage(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId()));
     }
 
     @Test
@@ -484,7 +504,7 @@ public class ContractNegotiationAPIServiceTest {
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.getData()).thenReturn(NegotiationSerializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE));
         assertThrows(ContractNegotiationAPIException.class,
-                () -> service.verifyNegotiation(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId()));
+                () -> service.sendContractAgreementVerificationMessage(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED.getId()));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_NEGOTIATION_VERIFIED, "Contract negotiation verification failed");
     }
@@ -498,7 +518,7 @@ public class ContractNegotiationAPIServiceTest {
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
 
-        service.terminateContractNegotiation(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED_PROVIDER.getId());
+        service.sendContractNegotiationTerminationMessage(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED_PROVIDER.getId());
 
         verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
         assertEquals(ContractNegotiationState.TERMINATED, argCaptorContractNegotiation.getValue().getState());
@@ -515,7 +535,7 @@ public class ContractNegotiationAPIServiceTest {
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
 
-        service.terminateContractNegotiation(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED.getId());
+        service.sendContractNegotiationTerminationMessage(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED.getId());
 
         verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
         assertEquals(ContractNegotiationState.TERMINATED, argCaptorContractNegotiation.getValue().getState());
@@ -530,7 +550,7 @@ public class ContractNegotiationAPIServiceTest {
         when(contractNegotiationRepository.findById(contractNegotiationId)).thenReturn(Optional.empty());
 
         assertThrows(ContractNegotiationAPIException.class,
-                () -> service.terminateContractNegotiation(contractNegotiationId));
+                () -> service.sendContractNegotiationTerminationMessage(contractNegotiationId));
 
         verify(contractNegotiationRepository, times(0)).save(argCaptorContractNegotiation.capture());
     }
@@ -546,7 +566,7 @@ public class ContractNegotiationAPIServiceTest {
         when(apiResponse.getData()).thenReturn(NegotiationSerializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ERROR_MESSAGE));
 
         assertThrows(ContractNegotiationAPIException.class,
-                () -> service.terminateContractNegotiation(contractNegotiationId));
+                () -> service.sendContractNegotiationTerminationMessage(contractNegotiationId));
 
         verify(contractNegotiationRepository, times(0)).save(argCaptorContractNegotiation.capture());
         verifyAuditEvent(AuditEventType.PROTOCOL_NEGOTIATION_TERMINATED, "Contract negotiation termination failed");

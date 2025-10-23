@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
-import java.util.Collections;
 
 @RestController
 @RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE, path = "/negotiations")
@@ -42,14 +41,16 @@ public class ContractNegotiationProviderController {
     // POST
     // The Provider must return an HTTP 201 (Created); "dspace:state" :"REQUESTED"
     @PostMapping(path = "/request")
-    public ResponseEntity<JsonNode> createNegotiation(@RequestBody JsonNode contractRequestMessageJsonNode) {
+    public ResponseEntity<JsonNode> handleContractRequestMessage(@RequestBody JsonNode contractRequestMessageJsonNode) {
         log.info("Creating negotiation");
         ContractRequestMessage crm = NegotiationSerializer.deserializeProtocol(contractRequestMessageJsonNode, ContractRequestMessage.class);
-        ContractNegotiation cn = providerService.handleInitialContractRequestMessage(crm);
+        ContractNegotiation cn = providerService.handleContractRequestMessage(crm);
 
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest().path("/{id}")
                 .buildAndExpand(cn.getProviderPid()).toUri();
+
+        log.info("Initial contract request message successfully processed, contract negotiation with id {} created, sending response 201 Created", cn.getId());
 
         return ResponseEntity.created(location)
                 .body(NegotiationSerializer.serializeProtocolJsonNode(cn));
@@ -59,11 +60,13 @@ public class ContractNegotiationProviderController {
     // POST
     // Provider must return an HTTP 200 (OK) response. The response body is not specified and clients are not required to process it.
     @PostMapping(path = "/{providerPid}/request")
-    public ResponseEntity<JsonNode> handleConsumerMakesOffer(@PathVariable String providerPid,
-                                                             @RequestBody JsonNode contractRequestMessageJsonNode) {
+    public ResponseEntity<JsonNode> handleContractRequestMessageAsCounterOffer(@PathVariable String providerPid,
+                                                                               @RequestBody JsonNode contractRequestMessageJsonNode) {
         log.info("Processing consumer counter-offer");
         ContractRequestMessage crm = NegotiationSerializer.deserializeProtocol(contractRequestMessageJsonNode, ContractRequestMessage.class);
-        ContractNegotiation cn = providerService.handleContractRequestMessageAsCounterOffer(providerPid, crm);
+        ContractNegotiation cn = providerService.handleContractRequestMessageAsCounteroffer(providerPid, crm);
+
+        log.info("Contract request message as counteroffer successfully processed for providerPid {}, sending response 200", providerPid);
 
         return ResponseEntity.ok()
                 .body(NegotiationSerializer.serializeProtocolJsonNode(cn));
@@ -73,12 +76,14 @@ public class ContractNegotiationProviderController {
     // POST
     // provider must return an HTTP code 200 (OK). The response body is not specified and clients are not required to process it.
     @PostMapping(path = "/{providerPid}/events")
-    public ResponseEntity<JsonNode> handleNegotiationEventMessage(@PathVariable String providerPid,
-                                                                  @RequestBody JsonNode contractNegotiationEventMessageJsonNode) {
+    public ResponseEntity<JsonNode> handleContractNegotiationEventMessageAccepted(@PathVariable String providerPid,
+                                                                                  @RequestBody JsonNode contractNegotiationEventMessageJsonNode) {
         ContractNegotiationEventMessage contractNegotiationEventMessage = NegotiationSerializer.deserializeProtocol(contractNegotiationEventMessageJsonNode, ContractNegotiationEventMessage.class);
         log.info(contractNegotiationEventMessage.toString());
 
-        ContractNegotiation contractNegotiation = providerService.handleContractNegotiationEventMessage(contractNegotiationEventMessage);
+        ContractNegotiation contractNegotiation = providerService.handleContractNegotiationEventMessageAccepted(providerPid, contractNegotiationEventMessage);
+
+        log.info("Contract negotiation event message accepted successfully processed for providerPid {}, sending response 200", providerPid);
 
         return ResponseEntity.ok()
                 .body(NegotiationSerializer.serializeProtocolJsonNode(contractNegotiation));
@@ -88,16 +93,17 @@ public class ContractNegotiationProviderController {
     // POST
     // Provider must return an HTTP code 200 (OK). The response body is not specified and clients are not required to process it.
     @PostMapping(path = "/{providerPid}/agreement/verification")
-    public ResponseEntity<Void> handleVerifyAgreement(@PathVariable String providerPid,
-                                                      @RequestBody JsonNode contractAgreementVerificationMessageJsonNode) {
+    public ResponseEntity<Void> handleContractAgreementVerificationMessage(@PathVariable String providerPid,
+                                                                           @RequestBody JsonNode contractAgreementVerificationMessageJsonNode) {
         ContractAgreementVerificationMessage cavm =
                 NegotiationSerializer.deserializeProtocol(contractAgreementVerificationMessageJsonNode, ContractAgreementVerificationMessage.class);
         log.info("Verification message received");
 
-        providerService.verifyNegotiation(cavm);
+        providerService.handleContractAgreementVerificationMessage(providerPid, cavm);
+
+        log.info("Contract agreement verification message successfully processed for providerPid {}", providerPid);
 
         return ResponseEntity.ok()
-//        		.contentType(MediaType.APPLICATION_JSON)
                 .build();
     }
 
@@ -105,26 +111,17 @@ public class ContractNegotiationProviderController {
     // POST
     // Provider must return HTTP code 200 (OK). The response body is not specified and clients are not required to process it.
     @PostMapping(path = "/{providerPid}/termination")
-    public ResponseEntity<Void> handleTerminationMessage(@PathVariable String providerPid,
-                                                         @RequestBody JsonNode contractNegotiationTerminationMessageJsonNode) {
+    public ResponseEntity<Void> handleContractNegotiationTerminationMessage(@PathVariable String providerPid,
+                                                                            @RequestBody JsonNode contractNegotiationTerminationMessageJsonNode) {
         ContractNegotiationTerminationMessage contractNegotiationTerminationMessage =
                 NegotiationSerializer.deserializeProtocol(contractNegotiationTerminationMessageJsonNode, ContractNegotiationTerminationMessage.class);
 
-        providerService.handleTerminationRequest(providerPid, contractNegotiationTerminationMessage);
+        providerService.handleContractNegotiationTerminationMessage(providerPid, contractNegotiationTerminationMessage);
+
+        log.info("Contract negotiation termination message successfully processed for providerPid {}, sending response 200", providerPid);
 
         return ResponseEntity.ok()
-//        		.contentType(MediaType.APPLICATION_JSON)
                 .build();
-    }
-
-    private ContractNegotiationErrorMessage methodNotYetImplemented() {
-        ContractNegotiationErrorMessage cnem = ContractNegotiationErrorMessage.Builder.newInstance()
-                .code("1")
-                .consumerPid("NOT IMPLEMENTED")
-                .providerPid("NOT IMPLEMENTED")
-                .reason(Collections.singletonList("Not implemented"))
-                .build();
-        return cnem;
     }
 
 }

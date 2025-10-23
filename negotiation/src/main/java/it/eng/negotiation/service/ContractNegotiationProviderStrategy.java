@@ -7,15 +7,15 @@ public interface ContractNegotiationProviderStrategy {
 
     ContractNegotiation getNegotiationByProviderPid(String providerPid);
 
-    ContractNegotiation handleInitialContractRequestMessage(ContractRequestMessage contractRequestMessage);
+    ContractNegotiation handleContractRequestMessage(ContractRequestMessage contractRequestMessage);
 
-    ContractNegotiation verifyNegotiation(ContractAgreementVerificationMessage cavm);
+    ContractNegotiation handleContractRequestMessageAsCounteroffer(String providerPid, ContractRequestMessage crm);
 
-    ContractNegotiation handleContractNegotiationEventMessage(
+    ContractNegotiation handleContractNegotiationEventMessageAccepted(String providerPid,
             ContractNegotiationEventMessage contractNegotiationEventMessage);
 
-    void handleTerminationRequest(String providerPid,
-                                  ContractNegotiationTerminationMessage contractNegotiationTerminationMessage);
+    ContractNegotiation handleContractAgreementVerificationMessage(String providerPid, ContractAgreementVerificationMessage cavm);
 
-    ContractNegotiation handleContractRequestMessageAsCounterOffer(String providerPid, ContractRequestMessage crm);
+    void handleContractNegotiationTerminationMessage(String providerPid,
+                                                     ContractNegotiationTerminationMessage contractNegotiationTerminationMessage);
 }

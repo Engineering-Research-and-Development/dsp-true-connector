@@ -58,7 +58,7 @@ public class DSPContractNegotiationProviderServiceTest {
 
     @Test
     @DisplayName("Start contract negotiation success - automatic negotiation ON")
-    public void handleInitialContractRequestMessage_automaticON() throws InterruptedException {
+    public void handleContractRequestMessage_automaticON() {
         when(properties.isAutomaticNegotiation()).thenReturn(true);
         when(credentialUtils.getAPICredentials()).thenReturn("credentials");
         when(connectorProperties.getConnectorURL()).thenReturn("http://test.connector.url");
@@ -67,7 +67,7 @@ public class DSPContractNegotiationProviderServiceTest {
         when(apiResponse.isSuccess()).thenReturn(true);
         when(offerRepository.save(any(Offer.class))).thenReturn(NegotiationMockObjectUtil.OFFER_WITH_ORIGINAL_ID);
 
-        ContractNegotiation result = service.handleInitialContractRequestMessage(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE);
+        ContractNegotiation result = service.handleContractRequestMessage(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE);
 
         assertNotNull(result);
         assertEquals(result.getType(), "ContractNegotiation");
@@ -85,7 +85,7 @@ public class DSPContractNegotiationProviderServiceTest {
 
     @Test
     @DisplayName("Start contract negotiation success - automatic negotiation OFF")
-    public void handleInitialContractRequestMessage_automatic_OFF() throws InterruptedException {
+    public void handleContractRequestMessage_automatic_OFF() {
         when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.ofNullable(null));
         when(credentialUtils.getAPICredentials()).thenReturn("credentials");
         when(connectorProperties.getConnectorURL()).thenReturn("http://test.connector.url");
@@ -93,7 +93,7 @@ public class DSPContractNegotiationProviderServiceTest {
         when(apiResponse.isSuccess()).thenReturn(true);
         when(offerRepository.save(any(Offer.class))).thenReturn(NegotiationMockObjectUtil.OFFER_WITH_ORIGINAL_ID);
 
-        ContractNegotiation result = service.handleInitialContractRequestMessage(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE);
+        ContractNegotiation result = service.handleContractRequestMessage(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE);
 
         assertNotNull(result);
         assertEquals(result.getType(), "ContractNegotiation");
@@ -111,7 +111,7 @@ public class DSPContractNegotiationProviderServiceTest {
 
     @Test
     @DisplayName("Start contract negotiation failed - provider pid not blank")
-    public void handleInitialContractRequestMessage_providerPidNotBlank() throws InterruptedException {
+    public void handleContractRequestMessage_providerPidNotBlank() {
         ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
                 .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
                 .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
@@ -119,29 +119,29 @@ public class DSPContractNegotiationProviderServiceTest {
                 .offer(NegotiationMockObjectUtil.OFFER)
                 .build();
 
-        assertThrows(ProviderPidNotBlankException.class, () -> service.handleInitialContractRequestMessage(contractRequestMessage));
+        assertThrows(ProviderPidNotBlankException.class, () -> service.handleContractRequestMessage(contractRequestMessage));
         verify(repository, times(0)).save(any(ContractNegotiation.class));
     }
 
     @Test
     @DisplayName("Start contract negotiation failed - contract negotiation exists")
-    public void handleInitialContractNegotiation_contractRequestMessageExists() throws InterruptedException {
+    public void handleInitialContractNegotiation_contractRequestMessageExists() {
         when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 
-        assertThrows(ContractNegotiationExistsException.class, () -> service.handleInitialContractRequestMessage(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE));
+        assertThrows(ContractNegotiationExistsException.class, () -> service.handleContractRequestMessage(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE));
         verify(repository, times(0)).save(any(ContractNegotiation.class));
     }
 
     @Test
     @DisplayName("Start contract negotiation failed - offer not valid")
-    public void handleInitialContractRequestMessage_offerNotValid() throws InterruptedException {
+    public void handleContractRequestMessage_offerNotValid() {
         when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.ofNullable(null));
         when(credentialUtils.getAPICredentials()).thenReturn("credentials");
         when(connectorProperties.getConnectorURL()).thenReturn("http://test.connector.url");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(false);
 
-        assertThrows(OfferNotValidException.class, () -> service.handleInitialContractRequestMessage(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE));
+        assertThrows(OfferNotValidException.class, () -> service.handleContractRequestMessage(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE));
         verify(repository, times(0)).save(any(ContractNegotiation.class));
     }
 
@@ -191,10 +191,10 @@ public class DSPContractNegotiationProviderServiceTest {
 
     @Test
     @DisplayName("Verify negotiation - success")
-    public void verifyNegotiation_success() {
+    public void handleContractAgreementVerificationMessage_success() {
         when(repository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_AGREED));
 
-        service.verifyNegotiation(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE);
+        service.handleContractAgreementVerificationMessage(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE);
 
         verify(repository).save(argCaptorContractNegotiation.capture());
 
@@ -204,27 +204,27 @@ public class DSPContractNegotiationProviderServiceTest {
 
     @Test
     @DisplayName("Verify negotiation - negotiation not found")
-    public void verifyNegotiation_negotiationNotFound() {
+    public void handleContractAgreementVerificationMessageNotFound() {
         when(repository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.empty());
 
-        assertThrows(ContractNegotiationNotFoundException.class, () -> service.verifyNegotiation(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE));
+        assertThrows(ContractNegotiationNotFoundException.class, () -> service.handleContractAgreementVerificationMessage(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE));
     }
 
     @Test
     @DisplayName("Verify negotiation - invalid state")
-    public void verifyNegotiation_invalidState() {
+    public void handleContractAgreementVerificationMessage_invalidState() {
         when(repository.findByProviderPidAndConsumerPid(anyString(), anyString())).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 
-        assertThrows(ContractNegotiationInvalidStateException.class, () -> service.verifyNegotiation(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE));
+        assertThrows(ContractNegotiationInvalidStateException.class, () -> service.handleContractAgreementVerificationMessage(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE));
     }
 
     @Test
     @DisplayName("Process termination message success")
-    public void handleTerminationRequest_success() {
+    public void handleContractNegotiationTerminationMessage_success() {
         when(repository.findByProviderPid(any(String.class)))
                 .thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED_PROVIDER));
 
-        service.handleTerminationRequest(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.TERMINATION_MESSAGE);
+        service.handleContractNegotiationTerminationMessage(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.TERMINATION_MESSAGE);
 
         verify(repository).save(argCaptorContractNegotiation.capture());
         assertEquals(ContractNegotiationState.TERMINATED, argCaptorContractNegotiation.getValue().getState());
@@ -232,21 +232,21 @@ public class DSPContractNegotiationProviderServiceTest {
 
     @Test
     @DisplayName("Process termination message failed - negotiation not found")
-    public void handleTerminationRequest_fail() {
+    public void handleContractNegotiationTerminationMessage_fail() {
         when(repository.findByProviderPid(any(String.class)))
                 .thenReturn(Optional.empty());
 
         assertThrows(ContractNegotiationNotFoundException.class,
-                () -> service.handleTerminationRequest(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.TERMINATION_MESSAGE));
+                () -> service.handleContractNegotiationTerminationMessage(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.TERMINATION_MESSAGE));
     }
 
     @Test
     @DisplayName("Process termination message failed - already terminated")
-    public void handleTerminationRequest_fail_alreadyTerminated() {
+    public void handleContractNegotiationTerminationMessage_fail_alreadyTerminated() {
         when(repository.findByProviderPid(any(String.class)))
                 .thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_TERMINATED));
 
         assertThrows(ContractNegotiationInvalidStateException.class,
-                () -> service.handleTerminationRequest(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.TERMINATION_MESSAGE));
+                () -> service.handleContractNegotiationTerminationMessage(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.TERMINATION_MESSAGE));
     }
 }

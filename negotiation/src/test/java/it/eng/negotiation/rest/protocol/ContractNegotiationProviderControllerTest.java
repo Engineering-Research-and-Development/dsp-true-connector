@@ -74,13 +74,13 @@ public class ContractNegotiationProviderControllerTest {
     }
 
     @Test
-    public void createNegotiation_success() {
+    public void handleContractRequestMessage_success() {
         when(environment.getActiveProfiles()).thenReturn(new String[]{});
         when(attrs.getRequest()).thenReturn(request);
-        when(contractNegotiationService.handleInitialContractRequestMessage(any(ContractRequestMessage.class)))
+        when(contractNegotiationService.handleContractRequestMessage(any(ContractRequestMessage.class)))
                 .thenReturn(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED);
 
-        ResponseEntity<JsonNode> response = controller.createNegotiation(NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE));
+        ResponseEntity<JsonNode> response = controller.handleContractRequestMessage(NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE));
 
         assertNotNull(response, "Response is not null");
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
@@ -89,64 +89,64 @@ public class ContractNegotiationProviderControllerTest {
     }
 
     @Test
-    public void createNegotiation_failed() {
-        when(contractNegotiationService.handleInitialContractRequestMessage(any(ContractRequestMessage.class)))
+    public void handleContractRequestMessage_failed() {
+        when(contractNegotiationService.handleContractRequestMessage(any(ContractRequestMessage.class)))
                 .thenThrow(ProviderPidNotBlankException.class);
 
-        assertThrows(ProviderPidNotBlankException.class, () -> controller.createNegotiation(NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE)));
+        assertThrows(ProviderPidNotBlankException.class, () -> controller.handleContractRequestMessage(NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE)));
     }
 
     @Test
-    public void handleConsumerMakesOffer_success() {
-        ResponseEntity<JsonNode> response = controller.handleConsumerMakesOffer(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE));
+    public void handleContractRequestMessageAsCounterOffer_success() {
+        ResponseEntity<JsonNode> response = controller.handleContractRequestMessageAsCounterOffer(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE));
         assertNotNull(response, "Response is not null");
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
     }
 
     @Test
-    public void handleNegotiationEventMessage_success() {
-        when(contractNegotiationService.handleContractNegotiationEventMessage(any(ContractNegotiationEventMessage.class)))
+    public void handleContractNegotiationEventMessage_Accepted_success() {
+        when(contractNegotiationService.handleContractNegotiationEventMessageAccepted(NegotiationMockObjectUtil.PROVIDER_PID, any(ContractNegotiationEventMessage.class)))
                 .thenReturn(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED);
         ResponseEntity<JsonNode> response = controller
-                .handleNegotiationEventMessage(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_EVENT_MESSAGE_ACCEPTED));
+                .handleContractNegotiationEventMessageAccepted(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_EVENT_MESSAGE_ACCEPTED));
         assertNotNull(response, "Response is not null");
         assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
     @Test
-    public void handleVerifyAgreement_success() {
+    public void handleContractAgreement_VerificationMessage_success() {
         ContractAgreementVerificationMessage cavm = ContractAgreementVerificationMessage.Builder.newInstance()
                 .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
                 .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
                 .build();
-        ResponseEntity<Void> response = controller.handleVerifyAgreement(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializeProtocolJsonNode(cavm));
+        ResponseEntity<Void> response = controller.handleContractAgreementVerificationMessage(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializeProtocolJsonNode(cavm));
         assertNotNull(response, "Response is not null");
         assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
     @Test
-    public void handleVerifyAgreement_failed() {
+    public void handleContractAgreement_VerificationMessage_failed() {
         doThrow(ContractNegotiationNotFoundException.class)
-                .when(contractNegotiationService).verifyNegotiation(any(ContractAgreementVerificationMessage.class));
+                .when(contractNegotiationService).handleContractAgreementVerificationMessage(NegotiationMockObjectUtil.PROVIDER_PID, any(ContractAgreementVerificationMessage.class));
 
-        assertThrows(ContractNegotiationNotFoundException.class, () -> controller.handleVerifyAgreement(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE)));
+        assertThrows(ContractNegotiationNotFoundException.class, () -> controller.handleContractAgreementVerificationMessage(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE)));
     }
 
     @Test
-    public void handleTerminationMessage_success() {
+    public void handleContractNegotiationTerminationMessage_success() {
         ContractNegotiationTerminationMessage cntm = ContractNegotiationTerminationMessage.Builder.newInstance()
                 .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
                 .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
                 .code("1")
                 .reason(Collections.singletonList("test"))
                 .build();
-        ResponseEntity<Void> response = controller.handleTerminationMessage(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializeProtocolJsonNode(cntm));
+        ResponseEntity<Void> response = controller.handleContractNegotiationTerminationMessage(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializeProtocolJsonNode(cntm));
         assertNotNull(response, "Response is not null");
         assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
     @Test
-    public void handleTerminationMessage_error() {
+    public void handleContractNegotiationTerminationMessage_error() {
         ContractNegotiationTerminationMessage cntm = ContractNegotiationTerminationMessage.Builder.newInstance()
                 .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
                 .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
@@ -154,8 +154,8 @@ public class ContractNegotiationProviderControllerTest {
                 .reason(Collections.singletonList("test"))
                 .build();
         doThrow(ContractNegotiationNotFoundException.class)
-                .when(contractNegotiationService).handleTerminationRequest(anyString(), any(ContractNegotiationTerminationMessage.class));
+                .when(contractNegotiationService).handleContractNegotiationTerminationMessage(anyString(), any(ContractNegotiationTerminationMessage.class));
         assertThrows(ContractNegotiationNotFoundException.class,
-                () -> controller.handleTerminationMessage(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializeProtocolJsonNode(cntm)));
+                () -> controller.handleContractNegotiationTerminationMessage(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializeProtocolJsonNode(cntm)));
     }
 }

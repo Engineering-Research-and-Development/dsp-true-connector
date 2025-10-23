@@ -82,7 +82,7 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
      * @return ContractNegotiation - the newly created contract negotiation record.
      * @throws ContractNegotiationExistsException if a contract negotiation already exists for the given provider and consumer PID combination.
      */
-    public ContractNegotiation handleInitialContractRequestMessage(ContractRequestMessage contractRequestMessage) {
+    public ContractNegotiation handleContractRequestMessage(ContractRequestMessage contractRequestMessage) {
         log.info("PROVIDER - Starting contract negotiation...");
 
         if (StringUtils.isNotBlank(contractRequestMessage.getProviderPid())) {
@@ -151,24 +151,16 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
     }
 
     /**
-     * Handles a counter offer received from the consumer in an existing contract negotiation.
-     * It validates the counter offer against the existing negotiation and updates the negotiation state accordingly.
-     * If the counter offer is valid, the existing contract negotiation is updated with the new offer details.
-     * If the counter offer is invalid or does not match the existing negotiation, an exception is thrown.
+     * Handles a counteroffer received from the consumer in an existing contract negotiation.
+     * If the counteroffer is valid, the existing contract negotiation is updated with the new offer details.
      * @param providerPid            - the provider PID to validate against the contract request message.
-     * @param contractRequestMessage - the contract request message containing the counter offer details.
+     * @param contractRequestMessage - the contract request message containing the counteroffer details.
      * @return ContractNegotiation - the updated contract negotiation record.
      * @throws ContractNegotiationNotFoundException if the provider PID is null, does not match,
      * or if the existing contract negotiation cannot be found or validated.
      */
-    public ContractNegotiation handleContractRequestMessageAsCounterOffer(String providerPid, ContractRequestMessage contractRequestMessage) {
-        if (contractRequestMessage.getProviderPid() == null) {
-            throw new ContractNegotiationNotFoundException("providerPid in contract request message as counter offer is null", contractRequestMessage.getConsumerPid(), null);
-        }
-
-        if (!providerPid.equals(contractRequestMessage.getProviderPid())) {
-            throw new ContractNegotiationNotFoundException("providerPid in path variable and in contract request message as counter offer do not match", contractRequestMessage.getConsumerPid(), contractRequestMessage.getProviderPid());
-        }
+    public ContractNegotiation handleContractRequestMessageAsCounteroffer(String providerPid, ContractRequestMessage contractRequestMessage) {
+        compareProviderPids(providerPid, contractRequestMessage.getProviderPid());
 
         ContractNegotiation contractNegotiation = findContractNegotiationByPids(contractRequestMessage.getConsumerPid(), contractRequestMessage.getProviderPid());
 
@@ -177,7 +169,7 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
         }
 
         stateTransitionCheck(ContractNegotiationState.REQUESTED, contractNegotiation);
-        log.info("Consumer sent a counter offer for ContractNegotiation with id {}, updating existing one", contractNegotiation.getId());
+        log.info("Consumer sent a counteroffer for ContractNegotiation with id {}, updating existing one", contractNegotiation.getId());
 
         Offer updatedOffer = Offer.Builder.newInstance()
                 .id(contractNegotiation.getOffer().getId())
@@ -205,10 +197,41 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
                 .build();
 
         contractNegotiationRepository.save(updatedContractNegotiation);
+        log.info("PROVIDER - Contract negotiation {} saved", contractNegotiation.getId());
+        publisher.publishEvent(AuditEvent.Builder.newInstance()
+                .description("Contract negotiation requested - counteroffer")
+                .eventType(AuditEventType.PROTOCOL_NEGOTIATION_REQUESTED)
+                .details(Map.of("contractNegotiation", contractNegotiation,
+                        "offer", updatedOffer,
+                        "role", IConstants.ROLE_PROVIDER))
+                .build());
+
         return updatedContractNegotiation;
     }
 
-    public ContractNegotiation verifyNegotiation(ContractAgreementVerificationMessage cavm) {
+    public ContractNegotiation handleContractNegotiationEventMessageAccepted(String providerPid,
+                                                                             ContractNegotiationEventMessage contractNegotiationEventMessage) {
+        compareProviderPids(providerPid, contractNegotiationEventMessage.getProviderPid());
+
+        ContractNegotiation contractNegotiation = findContractNegotiationByPids(contractNegotiationEventMessage.getConsumerPid(), contractNegotiationEventMessage.getProviderPid());
+
+        log.info("Updating state to ACCEPTED for contract negotiation id {}", contractNegotiation.getId());
+        ContractNegotiation contractNegotiationAccepted = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.ACCEPTED);
+
+        publisher.publishEvent(AuditEvent.Builder.newInstance()
+                .eventType(AuditEventType.PROTOCOL_NEGOTIATION_ACCEPTED)
+                .description("Contract negotiation accepted")
+                .details(Map.of("contractNegotiation", contractNegotiationAccepted,
+                        "consumerPid", contractNegotiationAccepted.getConsumerPid(),
+                        "providerPid", contractNegotiationAccepted.getProviderPid(),
+                        "role", IConstants.ROLE_PROVIDER))
+                .build());
+        return contractNegotiationRepository.save(contractNegotiationAccepted);
+    }
+
+    public ContractNegotiation handleContractAgreementVerificationMessage(String providerPid, ContractAgreementVerificationMessage cavm) {
+        compareProviderPids(providerPid, cavm.getProviderPid());
+
         ContractNegotiation contractNegotiation = findContractNegotiationByPids(cavm.getConsumerPid(), cavm.getProviderPid());
 
         stateTransitionCheck(ContractNegotiationState.VERIFIED, contractNegotiation);
@@ -228,33 +251,10 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
         return contractNegotiationUpdated;
     }
 
-    public ContractNegotiation handleContractNegotiationEventMessage(
-            ContractNegotiationEventMessage contractNegotiationEventMessage) {
-        return switch (contractNegotiationEventMessage.getEventType()) {
-            case ACCEPTED -> processAccepted(contractNegotiationEventMessage);
-            case FINALIZED -> null;
-        };
-    }
+    public void handleContractNegotiationTerminationMessage(String providerPid,
+                                                            ContractNegotiationTerminationMessage contractNegotiationTerminationMessage) {
+        compareProviderPids(providerPid, contractNegotiationTerminationMessage.getProviderPid());
 
-    private ContractNegotiation processAccepted(ContractNegotiationEventMessage contractNegotiationEventMessage) {
-        ContractNegotiation contractNegotiation = findContractNegotiationByPids(contractNegotiationEventMessage.getConsumerPid(), contractNegotiationEventMessage.getProviderPid());
-
-        log.info("Updating state to ACCEPTED for contract negotiation id {}", contractNegotiation.getId());
-        ContractNegotiation contractNegotiationAccepted = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.ACCEPTED);
-
-        publisher.publishEvent(AuditEvent.Builder.newInstance()
-                .eventType(AuditEventType.PROTOCOL_NEGOTIATION_ACCEPTED)
-                .description("Contract negotiation accepted")
-                .details(Map.of("contractNegotiation", contractNegotiationAccepted,
-                        "consumerPid", contractNegotiationAccepted.getConsumerPid(),
-                        "providerPid", contractNegotiationAccepted.getProviderPid(),
-                        "role", IConstants.ROLE_PROVIDER))
-                .build());
-        return contractNegotiationRepository.save(contractNegotiationAccepted);
-    }
-
-    public void handleTerminationRequest(String providerPid,
-                                         ContractNegotiationTerminationMessage contractNegotiationTerminationMessage) {
         ContractNegotiation contractNegotiation = contractNegotiationRepository.findByProviderPid(providerPid)
                 .orElseThrow(() -> new ContractNegotiationNotFoundException(
                         "Contract negotiation with providerPid " + providerPid +
@@ -277,5 +277,13 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
         log.info("Contract Negotiation with id {} set to TERMINATED state", contractNegotiation.getId());
 
         publisher.publishEvent(contractNegotiationTerminationMessage);
+    }
+
+    private void compareProviderPids(String providerPid, String providerPidFromMessage) {
+        if (providerPidFromMessage == null || !providerPidFromMessage.equals(providerPid)) {
+            throw new ContractNegotiationNotFoundException(
+                    "The providerPid in the ContractOfferMessage " + providerPidFromMessage
+                            + " is different from the one in the path parameter " + providerPid);
+        }
     }
 }
