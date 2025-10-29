@@ -71,8 +71,7 @@ public class ContractNegotiationEventHandlerServiceTest {
 		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(true);
 		// TODO temporary until figure out how to get assignee and assigner
-		when(properties.providerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
-		
+
 		handlerService.handleContractNegotiationOfferResponse(offerResponse);
 		
 		verify(repository).save(any(ContractNegotiation.class));

@@ -80,7 +80,7 @@ public class ContractOfferMessage extends AbstractNegotiationObject {
             // Custom validation: either consumerPid or callbackAddress must be present
             if ((message.getConsumerPid() == null && message.getCallbackAddress() == null) ||
                     (message.getConsumerPid() != null && message.getCallbackAddress() != null)) {
-                messages.add("either providerPid or callbackAddress must be present");
+                messages.add("either consumerPid or callbackAddress must be present");
             }
 
             if (messages.isEmpty()) {

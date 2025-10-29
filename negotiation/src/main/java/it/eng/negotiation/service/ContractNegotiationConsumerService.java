@@ -104,7 +104,7 @@ public abstract class ContractNegotiationConsumerService extends BaseProtocolSer
      */
     @Override
     public ContractNegotiation handleContractOfferMessageAsCounteroffer(String consumerPid, ContractOfferMessage contractOfferMessage) {
-        compareConsumerPids(consumerPid, contractOfferMessage.getConsumerPid());
+        compareConsumerPids(consumerPid, contractOfferMessage.getConsumerPid(), contractOfferMessage.getProviderPid());
 
         ContractNegotiation existingContractNegotiation = findContractNegotiationByPids(contractOfferMessage.getConsumerPid(), contractOfferMessage.getProviderPid());
 
@@ -166,7 +166,7 @@ public abstract class ContractNegotiationConsumerService extends BaseProtocolSer
 
     @Override
     public ContractNegotiation handleContractAgreementMessage(String consumerPid, ContractAgreementMessage contractAgreementMessage) {
-        compareConsumerPids(consumerPid, contractAgreementMessage.getConsumerPid());
+        compareConsumerPids(consumerPid, contractAgreementMessage.getConsumerPid(), contractAgreementMessage.getProviderPid());
 
         ContractNegotiation contractNegotiation = findContractNegotiationByPids(contractAgreementMessage.getConsumerPid(), contractAgreementMessage.getProviderPid());
 
@@ -231,7 +231,7 @@ public abstract class ContractNegotiationConsumerService extends BaseProtocolSer
      */
     @Override
     public void handleContractNegotiationEventMessageFinalize(String consumerPid, ContractNegotiationEventMessage contractNegotiationEventMessage) {
-        compareConsumerPids(consumerPid, contractNegotiationEventMessage.getConsumerPid());
+        compareConsumerPids(consumerPid, contractNegotiationEventMessage.getConsumerPid(), contractNegotiationEventMessage.getProviderPid());
 
         if (!contractNegotiationEventMessage.getEventType().equals(ContractNegotiationEventType.FINALIZED)) {
             throw new ContractNegotiationInvalidEventTypeException(
@@ -274,7 +274,7 @@ public abstract class ContractNegotiationConsumerService extends BaseProtocolSer
      */
     @Override
     public void handleContractNegotiationTerminationMessage(String consumerPid, ContractNegotiationTerminationMessage contractNegotiationTerminationMessage) {
-        compareConsumerPids(consumerPid, contractNegotiationTerminationMessage.getConsumerPid());
+        compareConsumerPids(consumerPid, contractNegotiationTerminationMessage.getConsumerPid(), contractNegotiationTerminationMessage.getProviderPid());
 
         ContractNegotiation contractNegotiation = contractNegotiationRepository.findByConsumerPid(consumerPid)
                 .orElseThrow(() -> new ContractNegotiationNotFoundException(
@@ -298,11 +298,11 @@ public abstract class ContractNegotiationConsumerService extends BaseProtocolSer
                 .build());
     }
 
-    private void compareConsumerPids(String consumerPid, String consumerPidFromMessage) {
+    private void compareConsumerPids(String consumerPid, String consumerPidFromMessage, String providerPidFromMessage) {
         if (consumerPidFromMessage == null || !consumerPidFromMessage.equals(consumerPid)) {
             throw new ContractNegotiationNotFoundException(
                     "The consumerPid in the ContractOfferMessage " + consumerPidFromMessage
-                            + " is different from the one in the path parameter " + consumerPid);
+                            + " is different from the one in the path parameter " + consumerPid, consumerPidFromMessage, providerPidFromMessage);
         }
     }
 

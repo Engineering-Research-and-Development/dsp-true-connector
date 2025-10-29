@@ -71,13 +71,13 @@ public class ContractNegotiationTerminateIT extends BaseIntegrationTest {
     public void providerTerminateNegotiation_error() throws Exception {
         ContractNegotiation cn = createContractNegotiation();
 
-        ContractNegotiationTerminationMessage terminaionMessage = ContractNegotiationTerminationMessage.Builder.newInstance()
+        ContractNegotiationTerminationMessage terminationMessage = ContractNegotiationTerminationMessage.Builder.newInstance()
                 .consumerPid(cn.getConsumerPid())
                 .providerPid(cn.getProviderPid())
                 .code("test")
                 .reason(Collections.singletonList("test"))
                 .build();
-        String body = NegotiationSerializer.serializeProtocol(terminaionMessage);
+        String body = NegotiationSerializer.serializeProtocol(terminationMessage);
 
         //negotiations/:id/termination resource
         final ResultActions result =
@@ -93,7 +93,7 @@ public class ContractNegotiationTerminateIT extends BaseIntegrationTest {
                 ContractNegotiationErrorMessage.class);
         assertNotNull(erroMessage);
         assertEquals(cn.getConsumerPid(), erroMessage.getConsumerPid());
-        assertEquals(INVALID_PID, erroMessage.getProviderPid());
+        assertEquals(cn.getProviderPid(), erroMessage.getProviderPid());
     }
 
     @Test
@@ -147,7 +147,7 @@ public class ContractNegotiationTerminateIT extends BaseIntegrationTest {
         ContractNegotiationErrorMessage erroMessage = NegotiationSerializer.deserializeProtocol(result.andReturn().getResponse().getContentAsString(),
                 ContractNegotiationErrorMessage.class);
         assertNotNull(erroMessage);
-        assertEquals(INVALID_PID, erroMessage.getConsumerPid());
+        assertEquals(cn.getConsumerPid(), erroMessage.getConsumerPid());
         assertEquals(cn.getProviderPid(), erroMessage.getProviderPid());
     }
 

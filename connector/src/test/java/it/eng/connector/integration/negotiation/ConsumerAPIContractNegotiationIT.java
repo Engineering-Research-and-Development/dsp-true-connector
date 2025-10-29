@@ -71,7 +71,7 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
         Map<String, Object> apiContractNegotiationRequest = new HashMap<>();
         apiContractNegotiationRequest.put("Forward-To", wiremock.baseUrl());
         apiContractNegotiationRequest.put("offer", NegotiationMockObjectUtil.OFFER);
-        final ResultActions result = mockMvc.perform(post(ApiEndpoints.NEGOTIATION_V1)
+        final ResultActions result = mockMvc.perform(post(ApiEndpoints.NEGOTIATION_V1 + "/request")
                 .content(NegotiationSerializer.serializePlain(apiContractNegotiationRequest))
                 .contentType(MediaType.APPLICATION_JSON));
 
@@ -111,7 +111,7 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
         Map<String, Object> apiContractNegotiationRequest = new HashMap<>();
         apiContractNegotiationRequest.put("Forward-To", wiremock.baseUrl());
         apiContractNegotiationRequest.put("offer", NegotiationMockObjectUtil.OFFER);
-        final ResultActions result = mockMvc.perform(post(ApiEndpoints.NEGOTIATION_V1)
+        final ResultActions result = mockMvc.perform(post(ApiEndpoints.NEGOTIATION_V1 + "/request")
                 .content(NegotiationSerializer.serializePlain(apiContractNegotiationRequest))
                 .contentType(MediaType.APPLICATION_JSON));
 

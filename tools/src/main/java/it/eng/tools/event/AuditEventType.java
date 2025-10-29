@@ -28,6 +28,7 @@ public enum AuditEventType {
     PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DISABLED("Policy evaluation disabled"),
     PROTOCOL_NEGOTIATION_POLICY_EVALUATION_APPROVE("Policy evaluation approved"),
     PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DENIED("Policy evaluation denied"),
+    PROTOCOL_NEGOTIATION_INVALID_OFFER("Protocol negotiation offer not valid"),
     PROTOCOL_TRANSFER_NOT_FOUND("Transfer not found"),
     PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR("State transition invalid"),
     PROTOCOL_TRANSFER_REQUESTED("Transfer requested"),

@@ -145,22 +145,6 @@ public class ContractNegotiationAPIController {
     }
 
     /**
-     * Terminate contract negotiation.
-     *
-     * @param contractNegotiationId the ID of the contract negotiation to terminate
-     * @return ResponseEntity
-     */
-    @PutMapping(path = "/{contractNegotiationId}/terminate")
-    public ResponseEntity<GenericApiResponse<JsonNode>> sendContractNegotiationTerminationMessage(@PathVariable String contractNegotiationId) {
-        log.info("Handling contract negotiation approved");
-        ContractNegotiation contractNegotiationTerminated = apiService.sendContractNegotiationTerminationMessage(contractNegotiationId);
-
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(NegotiationSerializer.serializeProtocolJsonNode(contractNegotiationTerminated),
-                        "Contract negotiation terminated"));
-    }
-
-    /**
      * Verify contract negotiation.
      *
      * @param contractNegotiationId the ID of the contract negotiation to verify
@@ -175,8 +159,8 @@ public class ContractNegotiationAPIController {
                 .body(GenericApiResponse.success(null, "Verified negotiation"));
     }
 
-    /********* PROVIDER ***********/
 
+    /********* PROVIDER ***********/
     /**
      * Provider sends offer.
      *
@@ -233,4 +217,19 @@ public class ContractNegotiationAPIController {
                 .body(GenericApiResponse.success(null, "Contract negotiation finalized"));
     }
 
+    /**
+     * Terminate contract negotiation.
+     *
+     * @param contractNegotiationId the ID of the contract negotiation to terminate
+     * @return ResponseEntity
+     */
+    @PutMapping(path = "/{contractNegotiationId}/terminate")
+    public ResponseEntity<GenericApiResponse<JsonNode>> sendContractNegotiationTerminationMessage(@PathVariable String contractNegotiationId) {
+        log.info("Handling contract negotiation approved");
+        ContractNegotiation contractNegotiationTerminated = apiService.sendContractNegotiationTerminationMessage(contractNegotiationId);
+
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(GenericApiResponse.success(NegotiationSerializer.serializeProtocolJsonNode(contractNegotiationTerminated),
+                        "Contract negotiation terminated"));
+    }
 }

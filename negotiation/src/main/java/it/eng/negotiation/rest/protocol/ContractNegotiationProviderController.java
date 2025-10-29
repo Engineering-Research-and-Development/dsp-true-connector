@@ -60,7 +60,7 @@ public class ContractNegotiationProviderController {
     // POST
     // Provider must return an HTTP 200 (OK) response. The response body is not specified and clients are not required to process it.
     @PostMapping(path = "/{providerPid}/request")
-    public ResponseEntity<JsonNode> handleContractRequestMessageAsCounterOffer(@PathVariable String providerPid,
+    public ResponseEntity<JsonNode> handleContractRequestMessageAsCounteroffer(@PathVariable String providerPid,
                                                                                @RequestBody JsonNode contractRequestMessageJsonNode) {
         log.info("Processing consumer counter-offer");
         ContractRequestMessage crm = NegotiationSerializer.deserializeProtocol(contractRequestMessageJsonNode, ContractRequestMessage.class);

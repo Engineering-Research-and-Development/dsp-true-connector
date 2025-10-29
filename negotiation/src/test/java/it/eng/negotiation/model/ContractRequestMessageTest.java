@@ -13,72 +13,76 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class ContractRequestMessageTest {
 
-    private final ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
-            .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
-            .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
-            .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
-            .offer(NegotiationMockObjectUtil.OFFER)
-            .build();
-
     @Test
-    @DisplayName("Verify valid plain object serialization")
-    public void testPlain() {
-        String result = NegotiationSerializer.serializePlain(contractRequestMessage);
+    @DisplayName("Verify valid plain object serialization  - initial ContractRequestMessage")
+    public void testPlain_initial() {
+        String result = NegotiationSerializer.serializePlain(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_INITIAL);
         assertFalse(result.contains(DSpaceConstants.CONTEXT));
         assertFalse(result.contains(DSpaceConstants.TYPE));
         assertTrue(result.contains(DSpaceConstants.ID));
         assertTrue(result.contains(DSpaceConstants.CONSUMER_PID));
         assertTrue(result.contains(DSpaceConstants.PROVIDER_PID));
         assertTrue(result.contains(DSpaceConstants.CALLBACK_ADDRESS));
+        assertTrue(result.contains(DSpaceConstants.OFFER));
+        assertTrue(result.contains(DSpaceConstants.ASSIGNEE));
+        assertTrue(result.contains(DSpaceConstants.ASSIGNER));
+        assertTrue(result.contains(DSpaceConstants.TARGET));
+        assertTrue(result.contains(DSpaceConstants.PERMISSION));
+        assertTrue(result.contains(DSpaceConstants.ACTION));
+        assertTrue(result.contains(DSpaceConstants.CONSTRAINT));
+        assertTrue(result.contains(DSpaceConstants.LEFT_OPERAND));
+        assertTrue(result.contains(DSpaceConstants.OPERATOR));
+        assertTrue(result.contains(DSpaceConstants.RIGHT_OPERAND));
 
         ContractRequestMessage javaObj = NegotiationSerializer.deserializePlain(result, ContractRequestMessage.class);
-        validateJavaObj(javaObj);
+        assertEquals(NegotiationMockObjectUtil.CONSUMER_PID, javaObj.getConsumerPid());
+        assertEquals(NegotiationMockObjectUtil.CALLBACK_ADDRESS, javaObj.getCallbackAddress());
+        assertEquals(NegotiationMockObjectUtil.OFFER.getAssignee(), javaObj.getOffer().getAssignee());
+        assertEquals(NegotiationMockObjectUtil.OFFER.getAssigner(), javaObj.getOffer().getAssigner());
+        assertEquals(NegotiationMockObjectUtil.OFFER.getTarget(), javaObj.getOffer().getTarget());
+        assertEquals(NegotiationMockObjectUtil.PERMISSION.getAction(), javaObj.getOffer().getPermission().get(0).getAction());
+        assertEquals(NegotiationMockObjectUtil.CONSTRAINT.getLeftOperand(), javaObj.getOffer().getPermission().get(0).getConstraint().get(0).getLeftOperand());
+        assertEquals(NegotiationMockObjectUtil.CONSTRAINT.getOperator(), javaObj.getOffer().getPermission().get(0).getConstraint().get(0).getOperator());
+        assertEquals(NegotiationMockObjectUtil.CONSTRAINT.getRightOperand(), javaObj.getOffer().getPermission().get(0).getConstraint().get(0).getRightOperand());
     }
 
     @Test
-    @DisplayName("Verify valid plain object serialization - initial ContractRequestMessage")
-    public void testContractRequest_consumer() {
-        ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
-                .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
-                .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
-                .offer(NegotiationMockObjectUtil.OFFER)
-                .build();
-        String result = NegotiationSerializer.serializePlain(contractRequestMessage);
-        assertFalse(result.contains(DSpaceConstants.CONTEXT));
-        assertFalse(result.contains(DSpaceConstants.TYPE));
-//        assertTrue(result.contains(DSpaceConstants.ID));
-        assertTrue(result.contains(DSpaceConstants.CONSUMER_PID));
-        assertTrue(result.contains(DSpaceConstants.PROVIDER_PID));
-        assertTrue(result.contains(DSpaceConstants.CALLBACK_ADDRESS));
-    }
-
-    @Test
-    @DisplayName("Verify valid plain object serialization - contains offer")
-    public void testPlain_offer() {
-        ContractRequestMessage contractRequestMessageOffer = ContractRequestMessage.Builder.newInstance()
-                .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
-                .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
-                .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
-                .offer(NegotiationMockObjectUtil.OFFER)
-                .build();
-        String result = NegotiationSerializer.serializePlain(contractRequestMessageOffer);
+    @DisplayName("Verify valid plain object serialization - counteroffer ContractRequestMessage")
+    public void testPlain_counteroffer() {
+        String result = NegotiationSerializer.serializePlain(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_COUNTEROFFER);
         assertFalse(result.contains(DSpaceConstants.CONTEXT));
         assertFalse(result.contains(DSpaceConstants.TYPE));
         assertTrue(result.contains(DSpaceConstants.ID));
         assertTrue(result.contains(DSpaceConstants.CONSUMER_PID));
         assertTrue(result.contains(DSpaceConstants.PROVIDER_PID));
         assertTrue(result.contains(DSpaceConstants.CALLBACK_ADDRESS));
+        assertTrue(result.contains(DSpaceConstants.OFFER));
+        assertTrue(result.contains(DSpaceConstants.ASSIGNEE));
+        assertTrue(result.contains(DSpaceConstants.ASSIGNER));
+        assertTrue(result.contains(DSpaceConstants.TARGET));
+        assertTrue(result.contains(DSpaceConstants.PERMISSION));
+        assertTrue(result.contains(DSpaceConstants.ACTION));
+        assertTrue(result.contains(DSpaceConstants.CONSTRAINT));
+        assertTrue(result.contains(DSpaceConstants.LEFT_OPERAND));
+        assertTrue(result.contains(DSpaceConstants.OPERATOR));
+        assertTrue(result.contains(DSpaceConstants.RIGHT_OPERAND));
 
         ContractRequestMessage javaObj = NegotiationSerializer.deserializePlain(result, ContractRequestMessage.class);
-        validateJavaObj(javaObj);
-        assertNotNull(javaObj.getOffer().getId());
-        assertNotNull(javaObj.getOffer().getTarget());
+        assertEquals(NegotiationMockObjectUtil.CONSUMER_PID, javaObj.getConsumerPid());
+        assertEquals(NegotiationMockObjectUtil.PROVIDER_PID, javaObj.getProviderPid());
+        assertEquals(NegotiationMockObjectUtil.OFFER.getAssignee(), javaObj.getOffer().getAssignee());
+        assertEquals(NegotiationMockObjectUtil.OFFER.getAssigner(), javaObj.getOffer().getAssigner());
+        assertEquals(NegotiationMockObjectUtil.OFFER.getTarget(), javaObj.getOffer().getTarget());
+        assertEquals(NegotiationMockObjectUtil.PERMISSION.getAction(), javaObj.getOffer().getPermission().get(0).getAction());
+        assertEquals(NegotiationMockObjectUtil.CONSTRAINT.getLeftOperand(), javaObj.getOffer().getPermission().get(0).getConstraint().get(0).getLeftOperand());
+        assertEquals(NegotiationMockObjectUtil.CONSTRAINT.getOperator(), javaObj.getOffer().getPermission().get(0).getConstraint().get(0).getOperator());
+        assertEquals(NegotiationMockObjectUtil.CONSTRAINT.getRightOperand(), javaObj.getOffer().getPermission().get(0).getConstraint().get(0).getRightOperand());
     }
 
     @Test
     @DisplayName("Verify valid protocol object serialization")
-    public void testProtocol() {
-        JsonNode result = NegotiationSerializer.serializeProtocolJsonNode(contractRequestMessage);
+    public void testProtocol_initial() {
+        JsonNode result = NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_INITIAL);
         JsonNode context = result.get(DSpaceConstants.CONTEXT);
         assertNotNull(context);
         if (context.isArray()) {
@@ -86,15 +90,51 @@ public class ContractRequestMessageTest {
             assertFalse(arrayNode.isEmpty());
             assertEquals(DSpaceConstants.DSPACE_2025_01_CONTEXT, arrayNode.get(0).asText());
         }
-        assertEquals(result.get(DSpaceConstants.TYPE).asText(), contractRequestMessage.getType());
-        assertEquals(result.get(DSpaceConstants.CONSUMER_PID).asText(), contractRequestMessage.getConsumerPid());
-        assertEquals(result.get(DSpaceConstants.PROVIDER_PID).asText(), contractRequestMessage.getProviderPid());
-        assertEquals(result.get(DSpaceConstants.CALLBACK_ADDRESS).asText(), contractRequestMessage.getCallbackAddress());
+        assertEquals(result.get(DSpaceConstants.TYPE).asText(), NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_INITIAL.getType());
+        assertEquals(result.get(DSpaceConstants.CONSUMER_PID).asText(), NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_INITIAL.getConsumerPid());
+        assertEquals(result.get(DSpaceConstants.CALLBACK_ADDRESS).asText(), NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_INITIAL.getCallbackAddress());
 
         validateOfferProtocol(result.get(DSpaceConstants.OFFER));
 
         ContractRequestMessage javaObj = NegotiationSerializer.deserializeProtocol(result, ContractRequestMessage.class);
-        validateJavaObj(javaObj);
+        assertEquals(NegotiationMockObjectUtil.CONSUMER_PID, javaObj.getConsumerPid());
+        assertEquals(NegotiationMockObjectUtil.CALLBACK_ADDRESS, javaObj.getCallbackAddress());
+        assertEquals(NegotiationMockObjectUtil.OFFER.getAssignee(), javaObj.getOffer().getAssignee());
+        assertEquals(NegotiationMockObjectUtil.OFFER.getAssigner(), javaObj.getOffer().getAssigner());
+        assertEquals(NegotiationMockObjectUtil.OFFER.getTarget(), javaObj.getOffer().getTarget());
+        assertEquals(NegotiationMockObjectUtil.PERMISSION.getAction(), javaObj.getOffer().getPermission().get(0).getAction());
+        assertEquals(NegotiationMockObjectUtil.CONSTRAINT.getLeftOperand(), javaObj.getOffer().getPermission().get(0).getConstraint().get(0).getLeftOperand());
+        assertEquals(NegotiationMockObjectUtil.CONSTRAINT.getOperator(), javaObj.getOffer().getPermission().get(0).getConstraint().get(0).getOperator());
+        assertEquals(NegotiationMockObjectUtil.CONSTRAINT.getRightOperand(), javaObj.getOffer().getPermission().get(0).getConstraint().get(0).getRightOperand());
+    }
+
+    @Test
+    @DisplayName("Verify valid protocol object serialization")
+    public void testProtocol_counteroffer() {
+        JsonNode result = NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_COUNTEROFFER);
+        JsonNode context = result.get(DSpaceConstants.CONTEXT);
+        assertNotNull(context);
+        if (context.isArray()) {
+            ArrayNode arrayNode = (ArrayNode) context;
+            assertFalse(arrayNode.isEmpty());
+            assertEquals(DSpaceConstants.DSPACE_2025_01_CONTEXT, arrayNode.get(0).asText());
+        }
+        assertEquals(result.get(DSpaceConstants.TYPE).asText(), NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_COUNTEROFFER.getType());
+        assertEquals(result.get(DSpaceConstants.CONSUMER_PID).asText(), NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_COUNTEROFFER.getConsumerPid());
+        assertEquals(result.get(DSpaceConstants.PROVIDER_PID).asText(), NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_COUNTEROFFER.getProviderPid());
+
+        validateOfferProtocol(result.get(DSpaceConstants.OFFER));
+
+        ContractRequestMessage javaObj = NegotiationSerializer.deserializeProtocol(result, ContractRequestMessage.class);
+        assertEquals(NegotiationMockObjectUtil.CONSUMER_PID, javaObj.getConsumerPid());
+        assertEquals(NegotiationMockObjectUtil.PROVIDER_PID, javaObj.getProviderPid());
+        assertEquals(NegotiationMockObjectUtil.OFFER.getAssignee(), javaObj.getOffer().getAssignee());
+        assertEquals(NegotiationMockObjectUtil.OFFER.getAssigner(), javaObj.getOffer().getAssigner());
+        assertEquals(NegotiationMockObjectUtil.OFFER.getTarget(), javaObj.getOffer().getTarget());
+        assertEquals(NegotiationMockObjectUtil.PERMISSION.getAction(), javaObj.getOffer().getPermission().get(0).getAction());
+        assertEquals(NegotiationMockObjectUtil.CONSTRAINT.getLeftOperand(), javaObj.getOffer().getPermission().get(0).getConstraint().get(0).getLeftOperand());
+        assertEquals(NegotiationMockObjectUtil.CONSTRAINT.getOperator(), javaObj.getOffer().getPermission().get(0).getConstraint().get(0).getOperator());
+        assertEquals(NegotiationMockObjectUtil.CONSTRAINT.getRightOperand(), javaObj.getOffer().getPermission().get(0).getConstraint().get(0).getRightOperand());
     }
 
     @Test
@@ -108,24 +148,24 @@ public class ContractRequestMessageTest {
     @Test
     @DisplayName("Missing @context and @type")
     public void missingContextAndType() {
-        JsonNode result = NegotiationSerializer.serializePlainJsonNode(contractRequestMessage);
+        JsonNode result = NegotiationSerializer.serializePlainJsonNode(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_INITIAL);
         assertThrows(ValidationException.class, () -> NegotiationSerializer.deserializeProtocol(result, ContractRequestMessage.class));
     }
 
     @Test
     @DisplayName("Plain serialize/deserialize")
     public void equalsTestPlain() {
-        String ss = NegotiationSerializer.serializePlain(contractRequestMessage);
+        String ss = NegotiationSerializer.serializePlain(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_INITIAL);
         ContractRequestMessage obj = NegotiationSerializer.deserializePlain(ss, ContractRequestMessage.class);
-        assertThat(contractRequestMessage).usingRecursiveComparison().isEqualTo(obj);
+        assertThat(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_INITIAL).usingRecursiveComparison().isEqualTo(obj);
     }
 
     @Test
     @DisplayName("Protocol serialize/deserialize")
     public void equalsTestProtocol() {
-        String ss = NegotiationSerializer.serializeProtocol(contractRequestMessage);
+        String ss = NegotiationSerializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_INITIAL);
         ContractRequestMessage obj = NegotiationSerializer.deserializeProtocol(ss, ContractRequestMessage.class);
-        assertThat(contractRequestMessage).usingRecursiveComparison().isEqualTo(obj);
+        assertThat(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_INITIAL).usingRecursiveComparison().isEqualTo(obj);
     }
 
     private void validateOfferProtocol(JsonNode offer) {

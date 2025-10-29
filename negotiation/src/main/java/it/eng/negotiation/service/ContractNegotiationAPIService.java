@@ -66,6 +66,23 @@ public class ContractNegotiationAPIService {
     /**
      * Find contract negotiation by id.
      *
+     * @param contractNegotiationId - id of the contract negotiation
+     * @return ContractNegotiation
+     */
+    public ContractNegotiation findContractNegotiationById(String contractNegotiationId) {
+        return contractNegotiationRepository.findById(contractNegotiationId)
+                .orElseThrow(() -> {
+                    auditEventPublisher.publishEvent(AuditEventType.PROTOCOL_NEGOTIATION_NOT_FOUND,
+                            "Contract negotiation not found",
+                            Map.of("contractNegotiationId", contractNegotiationId,
+                                    "role", IConstants.ROLE_API));
+                    return new ContractNegotiationAPIException("Contract negotiation with id " + contractNegotiationId + " not found");
+                });
+    }
+
+    /**
+     * Find contract negotiation by id.
+     *
      * @param filters  - dynamic filters to apply
      * @param pageable - pagination information
      * @return ContractNegotiation
@@ -135,6 +152,12 @@ public class ContractNegotiationAPIService {
                                 "role", IConstants.ROLE_API));
             } catch (JsonProcessingException e) {
                 log.error("Contract negotiation from response not valid");
+                auditEventPublisher.publishEvent(
+                        AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
+                        "Contract negotiation request failed",
+                        Map.of("contractRequestMessage", contractRequestMessage,
+                                "consumerPid", contractRequestMessage.getConsumerPid(),
+                                "role", IConstants.ROLE_API));
                 throw new ContractNegotiationAPIException(e.getLocalizedMessage(), e);
             }
         } else {
@@ -146,13 +169,20 @@ public class ContractNegotiationAPIService {
                     contractNegotiationErrorMessage = NegotiationSerializer.deserializeProtocol(jsonNode, ContractNegotiationErrorMessage.class);
                 }
                 auditEventPublisher.publishEvent(
-                        AuditEventType.PROTOCOL_NEGOTIATION_REQUESTED,
+                        AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
                         "Contract negotiation request failed",
                         Map.of("contractRequestMessage", contractRequestMessage,
-                                "contractNegotiationErrorMessage", contractNegotiationErrorMessage != null ? contractNegotiationErrorMessage : "No message received",
+                                "contractNegotiationErrorMessage", contractNegotiationErrorMessage != null ? contractNegotiationErrorMessage.toString() : "No message received",
+                                "consumerPid", contractRequestMessage.getConsumerPid(),
                                 "role", IConstants.ROLE_API));
                 throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, "Error making request");
             } catch (JsonProcessingException e) {
+                auditEventPublisher.publishEvent(
+                        AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
+                        "Contract negotiation request failed",
+                        Map.of("contractRequestMessage", contractRequestMessage,
+                                "consumerPid", contractRequestMessage.getConsumerPid(),
+                                "role", IConstants.ROLE_API));
                 throw new ContractNegotiationAPIException("Error occurred");
             }
         }
@@ -170,12 +200,9 @@ public class ContractNegotiationAPIService {
     public ContractNegotiation sendContractRequestMessageAsCounteroffer(String contractNegotiationId, JsonNode counteroffer) {
         Offer offerWithoutOriginalId = NegotiationSerializer.deserializePlain(counteroffer.toPrettyString(), Offer.class);
 
-        ContractNegotiation existingContractNegotiation = contractNegotiationRepository.findById(contractNegotiationId)
-                .orElseThrow(() -> new ContractNegotiationAPIException("Contract negotiation with id: " + contractNegotiationId + " not found"));
+        ContractNegotiation existingContractNegotiation = findContractNegotiationById(contractNegotiationId);
 
-        if (!existingContractNegotiation.getOffer().getOriginalId().equals(offerWithoutOriginalId.getId()) || !existingContractNegotiation.getOffer().getTarget().equals(offerWithoutOriginalId.getTarget())) {
-            throw new ContractNegotiationAPIException("New offer must have same offer id and target as the existing one in the contract negotiation with id: " + contractNegotiationId);
-        }
+        checkOfferValidity(existingContractNegotiation, offerWithoutOriginalId);
         stateTransitionCheck(ContractNegotiationState.REQUESTED, existingContractNegotiation);
 
         log.info("Sending ContractRequestMessage as a counter offer to {} to continue existing Contract Negotiation {}", existingContractNegotiation.getCallbackAddress(), contractNegotiationId);
@@ -227,13 +254,20 @@ public class ContractNegotiationAPIService {
                 log.info("Contract negotiation {} saved", contractNegotiationWithOffer.getId());
                 auditEventPublisher.publishEvent(
                         AuditEventType.PROTOCOL_NEGOTIATION_REQUESTED,
-                        "Contract negotiation requested",
+                        "Contract negotiation request as counteroffer successfully processed",
                         Map.of("contractNegotiationFromResponse", contractNegotiationWithOffer,
                                 "offer", offerWithOriginalId,
                                 "callbackAddress", existingContractNegotiation.getCallbackAddress(),
                                 "role", IConstants.ROLE_API));
             } catch (JsonProcessingException e) {
                 log.error("Contract negotiation from response not valid");
+                auditEventPublisher.publishEvent(
+                        AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
+                        "Contract negotiation request as counteroffer failed",
+                        Map.of("contractRequestMessage", contractRequestMessage,
+                                "consumerPid", contractRequestMessage.getConsumerPid(),
+                                "providerPid", contractRequestMessage.getProviderPid(),
+                                "role", IConstants.ROLE_API));
                 throw new ContractNegotiationAPIException(e.getLocalizedMessage(), e);
             }
         } else {
@@ -245,13 +279,22 @@ public class ContractNegotiationAPIService {
                     contractNegotiationErrorMessage = NegotiationSerializer.deserializeProtocol(jsonNode, ContractNegotiationErrorMessage.class);
                 }
                 auditEventPublisher.publishEvent(
-                        AuditEventType.PROTOCOL_NEGOTIATION_REQUESTED,
-                        "Contract negotiation request failed",
+                        AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
+                        "Contract negotiation request as counteroffer failed",
                         Map.of("contractRequestMessage", contractRequestMessage,
-                                "contractNegotiationErrorMessage", contractNegotiationErrorMessage != null ? contractNegotiationErrorMessage : "No message received",
+                                "contractNegotiationErrorMessage", contractNegotiationErrorMessage != null ? contractNegotiationErrorMessage.toString() : "No message received",
+                                "consumerPid", contractRequestMessage.getConsumerPid(),
+                                "providerPid", contractRequestMessage.getProviderPid(),
                                 "role", IConstants.ROLE_API));
                 throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, "Error making request");
             } catch (JsonProcessingException e) {
+                auditEventPublisher.publishEvent(
+                        AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
+                        "Contract negotiation request as counteroffer failed",
+                        Map.of("contractRequestMessage", contractRequestMessage,
+                                "consumerPid", contractRequestMessage.getConsumerPid(),
+                                "providerPid", contractRequestMessage.getProviderPid(),
+                                "role", IConstants.ROLE_API));
                 throw new ContractNegotiationAPIException("Error occurred");
             }
         }
@@ -270,9 +313,9 @@ public class ContractNegotiationAPIService {
 
         Offer offer = NegotiationSerializer.deserializePlain(offerNode.toPrettyString(), Offer.class);
 
-            log.info("Sending ContractOfferMessage to {} to start a new Contract Negotiation", forwardTo);
+        log.info("Sending ContractOfferMessage to {} to start a new Contract Negotiation", forwardTo);
         ContractOfferMessage contractOfferMessage = ContractOfferMessage.Builder.newInstance()
-                .callbackAddress(properties.consumerCallbackAddress())
+                .callbackAddress(properties.providerCallbackAddress())
                 .providerPid(ToolsUtil.generateUniqueId())
                 .offer(offer)
                 .build();
@@ -317,6 +360,12 @@ public class ContractNegotiationAPIService {
                                 "role", IConstants.ROLE_API));
             } catch (JsonProcessingException e) {
                 log.error("Contract negotiation from response not valid");
+                auditEventPublisher.publishEvent(
+                        AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
+                        "Contract negotiation offer failed",
+                        Map.of("ContractOfferMessage", contractOfferMessage,
+                                "providerPid", contractOfferMessage.getProviderPid(),
+                                "role", IConstants.ROLE_API));
                 throw new ContractNegotiationAPIException(e.getLocalizedMessage(), e);
             }
         } else {
@@ -328,13 +377,19 @@ public class ContractNegotiationAPIService {
                     contractNegotiationErrorMessage = NegotiationSerializer.deserializeProtocol(jsonNode, ContractNegotiationErrorMessage.class);
                 }
                 auditEventPublisher.publishEvent(
-                        AuditEventType.PROTOCOL_NEGOTIATION_OFFERED,
+                        AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
                         "Contract negotiation offer failed",
                         Map.of("ContractOfferMessage", contractOfferMessage,
-                                "contractNegotiationErrorMessage", contractNegotiationErrorMessage != null ? contractNegotiationErrorMessage : "No message received",
+                                "contractNegotiationErrorMessage", contractNegotiationErrorMessage != null ? contractNegotiationErrorMessage.toString() : "No message received",
                                 "role", IConstants.ROLE_API));
                 throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, "Error making request");
             } catch (JsonProcessingException e) {
+                auditEventPublisher.publishEvent(
+                        AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
+                        "Contract negotiation offer failed",
+                        Map.of("ContractOfferMessage", contractOfferMessage,
+                                "providerPid", contractOfferMessage.getProviderPid(),
+                                "role", IConstants.ROLE_API));
                 throw new ContractNegotiationAPIException("Error occurred");
             }
         }
@@ -352,13 +407,9 @@ public class ContractNegotiationAPIService {
     public ContractNegotiation sendContractOfferMessageAsCounteroffer(String contractNegotiationId, JsonNode offerNode) {
         Offer offer = NegotiationSerializer.deserializePlain(offerNode.toPrettyString(), Offer.class);
 
-        ContractNegotiation existingContractNegotiation = contractNegotiationRepository.findById(contractNegotiationId)
-                .orElseThrow(() -> new ContractNegotiationAPIException("Contract negotiation with id: " + contractNegotiationId + " not found"));
+        ContractNegotiation existingContractNegotiation = findContractNegotiationById(contractNegotiationId);
 
-        if (!existingContractNegotiation.getOffer().getOriginalId().equals(offer.getId()) || !existingContractNegotiation.getOffer().getTarget().equals(offer.getTarget())) {
-            throw new ContractNegotiationAPIException("New offer must have same offer id and target as the existing one in the contract negotiation with id: " + contractNegotiationId);
-        }
-
+        checkOfferValidity(existingContractNegotiation, offer);
         stateTransitionCheck(ContractNegotiationState.OFFERED, existingContractNegotiation);
 
         log.info("Sending ContractOfferMessage as a counter offer to {} to continue existing Contract Negotiation {}", existingContractNegotiation.getCallbackAddress(), contractNegotiationId);
@@ -409,13 +460,20 @@ public class ContractNegotiationAPIService {
                 log.info("Contract negotiation {} saved", contractNegotiationWithOffer.getId());
                 auditEventPublisher.publishEvent(
                         AuditEventType.PROTOCOL_NEGOTIATION_OFFERED,
-                        "Contract negotiation offered",
+                        "Contract negotiation offer as counteroffer successfully processed",
                         Map.of("contractNegotiationFromResponse", contractNegotiationWithOffer,
                                 "offer", updatedOffer,
                                 "callbackAddress", existingContractNegotiation.getCallbackAddress(),
                                 "role", IConstants.ROLE_API));
             } catch (JsonProcessingException e) {
                 log.error("Contract negotiation from response not valid");
+                auditEventPublisher.publishEvent(
+                        AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
+                        "Contract negotiation offer as counteroffer failed",
+                        Map.of("ContractOfferMessage", contractOfferMessage,
+                                "consumerPid", contractOfferMessage.getConsumerPid(),
+                                "providerPid", contractOfferMessage.getProviderPid(),
+                                "role", IConstants.ROLE_API));
                 throw new ContractNegotiationAPIException(e.getLocalizedMessage(), e);
             }
         } else {
@@ -427,13 +485,22 @@ public class ContractNegotiationAPIService {
                     contractNegotiationErrorMessage = NegotiationSerializer.deserializeProtocol(jsonNode, ContractNegotiationErrorMessage.class);
                 }
                 auditEventPublisher.publishEvent(
-                        AuditEventType.PROTOCOL_NEGOTIATION_OFFERED,
-                        "Contract negotiation offer failed",
+                        AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
+                        "Contract negotiation offer as counteroffer failed",
                         Map.of("ContractOfferMessage", contractOfferMessage,
-                                "contractNegotiationErrorMessage", contractNegotiationErrorMessage != null ? contractNegotiationErrorMessage : "No message received",
+                                "contractNegotiationErrorMessage", contractNegotiationErrorMessage != null ? contractNegotiationErrorMessage.toString() : "No message received",
+                                "consumerPid", contractOfferMessage.getConsumerPid(),
+                                "providerPid", contractOfferMessage.getProviderPid(),
                                 "role", IConstants.ROLE_API));
                 throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, "Error making request");
             } catch (JsonProcessingException e) {
+                auditEventPublisher.publishEvent(
+                        AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
+                        "Contract negotiation offer as counteroffer failed",
+                        Map.of("ContractOfferMessage", contractOfferMessage,
+                                "consumerPid", contractOfferMessage.getConsumerPid(),
+                                "providerPid", contractOfferMessage.getProviderPid(),
+                                "role", IConstants.ROLE_API));
                 throw new ContractNegotiationAPIException("Error occurred");
             }
         }
@@ -484,7 +551,7 @@ public class ContractNegotiationAPIService {
         } else {
             log.error("Error response received!");
             auditEventPublisher.publishEvent(
-                    AuditEventType.PROTOCOL_NEGOTIATION_FINALIZED,
+                    AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
                     "Contract negotiation finalized",
                     Map.of("contractNegotiation", contractNegotiation,
                             "errorMessage", response.getMessage(),
@@ -534,9 +601,8 @@ public class ContractNegotiationAPIService {
             return contractNegotiationAccepted;
         } else {
             log.error("Error response received!");
-            // Create and publish audit event with request information
             auditEventPublisher.publishEvent(
-                    AuditEventType.PROTOCOL_NEGOTIATION_ACCEPTED,
+                    AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
                     "Contract negotiation accepted failed",
                     Map.of("contractNegotiation", contractNegotiation,
                             "errorMessage", response.getMessage(),
@@ -565,7 +631,7 @@ public class ContractNegotiationAPIService {
                 .build();
         // TODO this one will fail because provider does not have consumer callbackAddress for sending agreement
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
-                ContractNegotiationCallback.getContractAgreementCallback(contractNegotiation.getCallbackAddress(), contractNegotiation.getConsumerPid()),
+                ContractNegotiationCallback.getContractAgreementCallback(contractNegotiation.getCallbackAddress(),contractNegotiation.getConsumerPid()),
                 NegotiationSerializer.serializeProtocolJsonNode(agreementMessage),
                 credentialUtils.getConnectorCredentials());
         if (response.isSuccess()) {
@@ -604,9 +670,8 @@ public class ContractNegotiationAPIService {
             return contractNegotiationAgreed;
         } else {
             log.error("Response status not 200 - consumer did not process AgreementMessage correct");
-            // Create and publish audit event with request information
             auditEventPublisher.publishEvent(
-                    AuditEventType.PROTOCOL_NEGOTIATION_AGREED,
+                    AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
                     "Contract negotiation approval failed",
                     Map.of("contractNegotiation", contractNegotiation,
                             "errorMessage", response.getMessage(),
@@ -661,15 +726,22 @@ public class ContractNegotiationAPIService {
                     contractNegotiationErrorMessage = NegotiationSerializer.deserializeProtocol(jsonNode, ContractNegotiationErrorMessage.class);
                 }
                 auditEventPublisher.publishEvent(
-                        AuditEventType.PROTOCOL_NEGOTIATION_VERIFIED,
+                        AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
                         "Contract negotiation verification failed",
                         Map.of("contractNegotiation", contractNegotiation,
-                                "errorMessage", contractNegotiationErrorMessage != null ? contractNegotiationErrorMessage : "No message received",
+                                "errorMessage", contractNegotiationErrorMessage != null ? contractNegotiationErrorMessage.toString() : "No message received",
                                 "consumerPid", contractNegotiation.getConsumerPid(),
                                 "providerPid", contractNegotiation.getProviderPid(),
                                 "role", IConstants.ROLE_API));
                 throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, "Provider did not process Verification message correct");
             } catch (JsonProcessingException e) {
+                auditEventPublisher.publishEvent(
+                        AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
+                        "Contract negotiation verification failed",
+                        Map.of("contractNegotiation", contractNegotiation,
+                                "consumerPid", contractNegotiation.getConsumerPid(),
+                                "providerPid", contractNegotiation.getProviderPid(),
+                                "role", IConstants.ROLE_API));
                 throw new ContractNegotiationAPIException("Provider did not process Verification message correct");
             }
         }
@@ -697,8 +769,7 @@ public class ContractNegotiationAPIService {
             log.info("Terminating negotiation by consumer");
             reason = "Contract negotiation terminated by consumer";
             // send request to protocol address
-            address = ContractNegotiationCallback.getContractTerminationProvider(contractNegotiation.getCallbackAddress(),
-                    contractNegotiation.getProviderPid());
+            address = ContractNegotiationCallback.getContractTerminationProvider(contractNegotiation.getCallbackAddress(), contractNegotiation.getProviderPid());
         }
         ContractNegotiationTerminationMessage negotiationTerminatedEventMessage = ContractNegotiationTerminationMessage.Builder.newInstance()
                 .consumerPid(contractNegotiation.getConsumerPid())
@@ -732,10 +803,10 @@ public class ContractNegotiationAPIService {
                     contractNegotiationErrorMessage = NegotiationSerializer.deserializeProtocol(jsonNode, ContractNegotiationErrorMessage.class);
                 }
                 auditEventPublisher.publishEvent(
-                        AuditEventType.PROTOCOL_NEGOTIATION_TERMINATED,
+                        AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
                         "Contract negotiation termination failed",
                         Map.of("contractNegotiation", contractNegotiation,
-                                "errorMessage", contractNegotiationErrorMessage != null ? contractNegotiationErrorMessage : "No message received",
+                                "errorMessage", contractNegotiationErrorMessage != null ? contractNegotiationErrorMessage.toString() : "No message received",
                                 "consumerPid", contractNegotiation.getConsumerPid(),
                                 "providerPid", contractNegotiation.getProviderPid(),
                                 "role", IConstants.ROLE_API));
@@ -746,34 +817,15 @@ public class ContractNegotiationAPIService {
                     throw new ContractNegotiationAPIException(contractNegotiation.getRole() + " did not process Terminate message correct");
                 }
             } catch (JsonProcessingException e) {
+                auditEventPublisher.publishEvent(
+                        AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
+                        "Contract negotiation termination failed",
+                        Map.of("contractNegotiation", contractNegotiation,
+                                "consumerPid", contractNegotiation.getConsumerPid(),
+                                "providerPid", contractNegotiation.getProviderPid(),
+                                "role", IConstants.ROLE_API));
                 throw new ContractNegotiationAPIException(contractNegotiation.getRole() + " did not process Terminate message correct");
             }
-        }
-    }
-
-    /**
-     * Validate if agreement is valid.
-     *
-     * @param agreementId - id of the agreement to validate
-     */
-    public void validateAgreement(String agreementId) {
-        log.info("Validating agreement {}", agreementId);
-        contractNegotiationRepository.findByAgreement(agreementId)
-                .ifPresentOrElse((cn) -> {
-                            if (!cn.getState().equals(ContractNegotiationState.FINALIZED)) {
-                                throw new ContractNegotiationAPIException("Contract negotiation with Agreement Id " + agreementId + " is not finalized.");
-                            }
-                        },
-                        () -> {
-                            throw new ContractNegotiationAPIException("Contract negotiation with Agreement Id " + agreementId + " not found.");
-                        });
-        // TODO add additional checks like contract dates or else
-        //		LocalDateTime agreementStartDate = LocalDateTime.parse(agreement.getTimestamp(), FORMATTER);
-        //		agreementStartDate.isBefore(LocalDateTime.now());
-        if (!policyAdministrationPoint.policyEnforcementExists(agreementId)) {
-            log.warn("Policy enforcement not created, cannot enforce properly");
-            throw new ContractNegotiationAPIException("Policy enforcement not found for agreement with Id "
-                    + agreementId + " not found.");
         }
     }
 
@@ -804,58 +856,17 @@ public class ContractNegotiationAPIService {
         }
     }
 
-    public ContractNegotiation findContractNegotiationById(String contractNegotiationId) {
-        return contractNegotiationRepository.findById(contractNegotiationId)
-                .orElseThrow(() -> {
-                    auditEventPublisher.publishEvent(AuditEventType.PROTOCOL_NEGOTIATION_NOT_FOUND,
-                            "Contract negotiation not found",
-                            Map.of("contractNegotiationId", contractNegotiationId,
-                                    "role", IConstants.ROLE_API));
-                    return new ContractNegotiationAPIException("Contract negotiation with id " + contractNegotiationId + " not found");
-                });
-    }
-
-    public ContractNegotiation sendContractNegotiationEventMessage(ContractNegotiation contractNegotiation, ContractNegotiationEventType eventType) {
-        ContractNegotiationEventMessage negotiationEventMessage = ContractNegotiationEventMessage.Builder.newInstance()
-                .consumerPid(contractNegotiation.getConsumerPid())
-                .providerPid(contractNegotiation.getProviderPid())
-                .eventType(eventType)
-                .build();
-        String address;
-        if (IConstants.ROLE_PROVIDER.equals(contractNegotiation.getRole())) {
-            address = ContractNegotiationCallback.getContractEventsCallback(contractNegotiation.getCallbackAddress(),
-                    contractNegotiation.getConsumerPid());
-        } else {
-            address = contractNegotiation.getCallbackAddress() + ContractNegotiationCallback.getProviderEventVerificationCallback(contractNegotiation.getCallbackAddress(),
-                    contractNegotiation.getProviderPid());
-        }
-
-        log.info("Sending ContractNegotiationEventMessage.{} to {}", eventType, address);
-
-        GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
-                address,
-                NegotiationSerializer.serializeProtocolJsonNode(negotiationEventMessage),
-                null);  // TCK does not have authentication
-
-        ContractNegotiation contractNegotiationUpdated;
-        if (response.isSuccess()) {
-            // update state to accepted
-            contractNegotiationUpdated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.ACCEPTED);
-            contractNegotiationRepository.save(contractNegotiationUpdated);
-            log.info("Contract negotiation {} saved", contractNegotiation.getId());
-            return contractNegotiationUpdated;
-        } else {
-            log.error("Response status not 200 - {} did not process ContractNegotiationEventMessage correct", contractNegotiation.getRole());
-            try {
-                ContractNegotiationErrorMessage contractNegotiationErrorMessage = null;
-                if (StringUtils.isNotBlank(response.getData())) {
-                    JsonNode jsonNode = mapper.readTree(response.getData());
-                    contractNegotiationErrorMessage = NegotiationSerializer.deserializeProtocol(jsonNode, ContractNegotiationErrorMessage.class);
-                }
-                throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, contractNegotiation.getRole() + " did not process Verification message correct");
-            } catch (JsonProcessingException e) {
-                throw new ContractNegotiationAPIException(contractNegotiation.getRole() + " did not process Verification message correct");
-            }
+    private void checkOfferValidity(ContractNegotiation contractNegotiation, Offer newOffer) {
+        if (!contractNegotiation.getOffer().getOriginalId().equals(newOffer.getId()) ||
+                !contractNegotiation.getOffer().getTarget().equals(newOffer.getTarget())) {
+            auditEventPublisher.publishEvent(
+                    AuditEventType.PROTOCOL_NEGOTIATION_INVALID_OFFER,
+                    "Contract negotiation offer not valid error",
+                    Map.of("contractNegotiation", contractNegotiation,
+                            "consumerPid", contractNegotiation.getConsumerPid(),
+                            "providerPid", contractNegotiation.getProviderPid(),
+                            "role", IConstants.ROLE_API));
+            throw new ContractNegotiationAPIException("New offer must have same offer id and target as the existing one in the contract negotiation with id: " + contractNegotiation.getId());
         }
     }
 }

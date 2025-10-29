@@ -35,7 +35,7 @@ public class ContractNegotiationConsumerCallbackControllerTest {
 
     @Test
     public void handleContractOfferMessage_success() throws JsonProcessingException {
-        String json = NegotiationSerializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_OFFER_MESSAGE);
+        String json = NegotiationSerializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_OFFER_MESSAGE_INITIAL);
         JsonNode jsonNode = mapper.readTree(json);
         when(contractNegotiationConsumerService.handleContractOfferMessage(any(ContractOfferMessage.class)))
                 .thenReturn(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_OFFERED);
@@ -47,7 +47,7 @@ public class ContractNegotiationConsumerCallbackControllerTest {
 
     @Test
     public void handleContractOfferMessageAsCounteroffer_success() throws JsonProcessingException {
-        String json = NegotiationSerializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_OFFER_MESSAGE);
+        String json = NegotiationSerializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_OFFER_MESSAGE_INITIAL);
         JsonNode jsonNode = mapper.readTree(json);
         when(contractNegotiationConsumerService.handleContractOfferMessageAsCounteroffer(anyString(),any(ContractOfferMessage.class)))
                 .thenReturn(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_OFFERED);
@@ -60,7 +60,8 @@ public class ContractNegotiationConsumerCallbackControllerTest {
     public void handleContractAgreement_Message_success() throws JsonProcessingException {
         String json = NegotiationSerializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE);
         JsonNode jsonNode = mapper.readTree(json);
-        doNothing().when(contractNegotiationConsumerService).handleContractAgreementMessage(anyString(), any(ContractAgreementMessage.class));
+        when(contractNegotiationConsumerService.handleContractAgreementMessage(anyString(), any(ContractAgreementMessage.class)))
+                .thenReturn(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_AGREED);;
 
         ResponseEntity<Void> response = controller.handleContractAgreementMessage(NegotiationMockObjectUtil.CONSUMER_PID, jsonNode);
         assertNotNull(response);

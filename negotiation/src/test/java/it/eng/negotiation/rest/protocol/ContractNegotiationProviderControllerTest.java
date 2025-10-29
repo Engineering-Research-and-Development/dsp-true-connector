@@ -75,12 +75,11 @@ public class ContractNegotiationProviderControllerTest {
 
     @Test
     public void handleContractRequestMessage_success() {
-        when(environment.getActiveProfiles()).thenReturn(new String[]{});
         when(attrs.getRequest()).thenReturn(request);
         when(contractNegotiationService.handleContractRequestMessage(any(ContractRequestMessage.class)))
                 .thenReturn(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED);
 
-        ResponseEntity<JsonNode> response = controller.handleContractRequestMessage(NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE));
+        ResponseEntity<JsonNode> response = controller.handleContractRequestMessage(NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_INITIAL));
 
         assertNotNull(response, "Response is not null");
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
@@ -93,19 +92,24 @@ public class ContractNegotiationProviderControllerTest {
         when(contractNegotiationService.handleContractRequestMessage(any(ContractRequestMessage.class)))
                 .thenThrow(ProviderPidNotBlankException.class);
 
-        assertThrows(ProviderPidNotBlankException.class, () -> controller.handleContractRequestMessage(NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE)));
+        assertThrows(ProviderPidNotBlankException.class, () -> controller.handleContractRequestMessage(NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_INITIAL)));
     }
 
     @Test
-    public void handleContractRequestMessageAsCounterOffer_success() {
-        ResponseEntity<JsonNode> response = controller.handleContractRequestMessageAsCounterOffer(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE));
+    public void handleContractRequestMessageAsCounteroffer_success() {
+        when(contractNegotiationService.handleContractRequestMessageAsCounteroffer(anyString(), any(ContractRequestMessage.class)))
+                .thenReturn(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED);
+
+        ResponseEntity<JsonNode> response = controller.handleContractRequestMessageAsCounteroffer(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_COUNTEROFFER));
         assertNotNull(response, "Response is not null");
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(response.getBody().get(DSpaceConstants.TYPE).asText(), ContractNegotiation.class.getSimpleName());
+        assertEquals(response.getBody().get(DSpaceConstants.CONTEXT).get(0).asText(), DSpaceConstants.DSPACE_2025_01_CONTEXT);
     }
 
     @Test
     public void handleContractNegotiationEventMessage_Accepted_success() {
-        when(contractNegotiationService.handleContractNegotiationEventMessageAccepted(NegotiationMockObjectUtil.PROVIDER_PID, any(ContractNegotiationEventMessage.class)))
+        when(contractNegotiationService.handleContractNegotiationEventMessageAccepted(anyString(), any(ContractNegotiationEventMessage.class)))
                 .thenReturn(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED);
         ResponseEntity<JsonNode> response = controller
                 .handleContractNegotiationEventMessageAccepted(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_EVENT_MESSAGE_ACCEPTED));
@@ -127,7 +131,7 @@ public class ContractNegotiationProviderControllerTest {
     @Test
     public void handleContractAgreement_VerificationMessage_failed() {
         doThrow(ContractNegotiationNotFoundException.class)
-                .when(contractNegotiationService).handleContractAgreementVerificationMessage(NegotiationMockObjectUtil.PROVIDER_PID, any(ContractAgreementVerificationMessage.class));
+                .when(contractNegotiationService).handleContractAgreementVerificationMessage(anyString(), any(ContractAgreementVerificationMessage.class));
 
         assertThrows(ContractNegotiationNotFoundException.class, () -> controller.handleContractAgreementVerificationMessage(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_VERIFICATION_MESSAGE)));
     }

@@ -36,9 +36,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
-// -> REQUESTED
-//	@PostMapping(path = "/request")
+public class ContractNegotiationOfferedIT extends BaseIntegrationTest {
+// -> OFFERED
+//	@PostMapping(path = "/negotiations/offers") - initial
+//	@PostMapping("/consumer/negotiations/{consumerPid}/offers") - counteroffer
 
     @Autowired
     private CatalogRepository catalogRepository;
@@ -85,8 +86,8 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
 
     @Test
     @WithUserDetails(TestUtil.CONNECTOR_USER)
-    public void createNegotiation_success() throws Exception {
-        //needs to match offer in catalog
+    public void createNegotiationWithOffer_success() throws Exception {
+        // needs to match offer in catalog
         Permission permission = Permission.Builder.newInstance()
                 .action(Action.USE)
                 .constraint(Collections.singletonList(NegotiationMockObjectUtil.CONSTRAINT_COUNT_5))
@@ -101,8 +102,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
 
         String fileContent = "Hello, World!";
 
-        MockMultipartFile file
-                = new MockMultipartFile(
+        MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "hello.txt",
                 MediaType.TEXT_PLAIN_VALUE,
@@ -123,50 +123,55 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
             throw new Exception("File storing aborted, " + e.getLocalizedMessage());
         }
 
-        ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
+        ContractOfferMessage contractOfferMessage = ContractOfferMessage.Builder.newInstance()
                 .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
-                .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
+                .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
                 .offer(offerRequest)
                 .build();
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/negotiations/request")
-                                .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(contractRequestMessage)))
+                        post("/negotiations/offers")
+                                .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(contractOfferMessage)))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isCreated())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
         String response = result.andReturn().getResponse().getContentAsString();
-        ContractNegotiation contractNegotiationRequested = NegotiationSerializer.deserializeProtocol(response, ContractNegotiation.class);
-        assertNotNull(contractNegotiationRequested);
-        assertEquals(ContractNegotiationState.REQUESTED, contractNegotiationRequested.getState());
+        ContractNegotiation contractNegotiationOffered = NegotiationSerializer.deserializeProtocol(response, ContractNegotiation.class);
+        assertNotNull(contractNegotiationOffered);
+        assertEquals(ContractNegotiationState.OFFERED, contractNegotiationOffered.getState());
 
-        offerCheck(getContractNegotiationOverAPI(contractNegotiationRequested.getConsumerPid(),
-                contractNegotiationRequested.getProviderPid()), dataset.getHasPolicy().stream().findFirst().get().getId());
+        // Verify the negotiation was created with the correct offer target
+        ContractNegotiation savedNegotiation = getContractNegotiationOverAPI(contractNegotiationOffered.getConsumerPid(),
+                contractNegotiationOffered.getProviderPid());
+        assertNotNull(savedNegotiation.getOffer());
+        assertEquals(dataset.getId(), savedNegotiation.getOffer().getTarget());
     }
 
     @Test
     @WithUserDetails(TestUtil.CONNECTOR_USER)
-    public void createNegotiation_negotiation_exists() throws Exception {
-
-        ContractNegotiation contractNegotiationRequested = ContractNegotiation.Builder.newInstance()
+    public void createNegotiationWithOffer_negotiation_exists() throws Exception {
+        // Save an existing negotiation to database first
+        ContractNegotiation contractNegotiationOffered = ContractNegotiation.Builder.newInstance()
                 .consumerPid(createNewId())
-                .providerPid(createNewId())
+                .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
                 .callbackAddress("callbackAddress.test")
-                .state(ContractNegotiationState.REQUESTED)
+                .state(ContractNegotiationState.OFFERED)
+                .role(IConstants.ROLE_CONSUMER)
                 .build();
+        contractNegotiationRepository.save(contractNegotiationOffered);
 
-        ContractRequestMessage crm = ContractRequestMessage.Builder.newInstance()
+        ContractOfferMessage com = ContractOfferMessage.Builder.newInstance()
                 .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
-                .consumerPid(contractNegotiationRequested.getConsumerPid())
+                .providerPid(contractNegotiationOffered.getProviderPid())
                 .offer(NegotiationMockObjectUtil.OFFER)
                 .build();
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/negotiations/request")
-                                .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(crm)))
+                        post("/negotiations/offers")
+                                .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(com)))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -178,82 +183,8 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
 
     @Test
     @WithUserDetails(TestUtil.CONNECTOR_USER)
-    public void createNegotiation_invalid_offer() throws Exception {
-
-        // offer with new UUID as ID, that does not exist in catalog
-        Offer offer = Offer.Builder.newInstance()
-                .target(NegotiationMockObjectUtil.TARGET)
-                .assigner(NegotiationMockObjectUtil.ASSIGNER)
-                .permission(Collections.singletonList(NegotiationMockObjectUtil.PERMISSION_COUNT_5))
-                .build();
-
-        ContractNegotiation contractNegotiationRequested = ContractNegotiation.Builder.newInstance()
-                .consumerPid(createNewId())
-                .providerPid(createNewId())
-                .callbackAddress("callbackAddress.test")
-                .state(ContractNegotiationState.REQUESTED)
-                .build();
-
-        ContractRequestMessage crm = ContractRequestMessage.Builder.newInstance()
-                .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
-                .consumerPid(contractNegotiationRequested.getConsumerPid())
-                .offer(offer)
-                .build();
-
-        final ResultActions result =
-                mockMvc.perform(
-                        post("/negotiations/request")
-                                .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(crm)))
-                                .contentType(MediaType.APPLICATION_JSON));
-        result.andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
-
-        String response = result.andReturn().getResponse().getContentAsString();
-        ContractNegotiationErrorMessage errorMessage = NegotiationSerializer.deserializeProtocol(response, ContractNegotiationErrorMessage.class);
-        assertNotNull(errorMessage);
-    }
-
-    @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
-    public void createNegotiation_invalid_offer_constraint() throws Exception {
-        // offer with dateTime constraint - will not match with one in initial_data
-        Offer offer = Offer.Builder.newInstance()
-                .id("TO BE CHANGED")
-                .target(NegotiationMockObjectUtil.TARGET)
-                .assigner(NegotiationMockObjectUtil.ASSIGNER)
-                .permission(Collections.singletonList(NegotiationMockObjectUtil.PERMISSION))
-                .build();
-
-        ContractNegotiation contractNegotiationRequested = ContractNegotiation.Builder.newInstance()
-                .consumerPid(createNewId())
-                .providerPid(createNewId())
-                .callbackAddress("callbackAddress.test")
-                .state(ContractNegotiationState.REQUESTED)
-                .build();
-
-        ContractRequestMessage crm = ContractRequestMessage.Builder.newInstance()
-                .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
-                .consumerPid(contractNegotiationRequested.getConsumerPid())
-                .offer(offer)
-                .build();
-
-        final ResultActions result =
-                mockMvc.perform(
-                        post("/negotiations/request")
-                                .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(crm)))
-                                .contentType(MediaType.APPLICATION_JSON));
-        result.andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
-
-        String response = result.andReturn().getResponse().getContentAsString();
-        ContractNegotiationErrorMessage errorMessage = NegotiationSerializer.deserializeProtocol(response, ContractNegotiationErrorMessage.class);
-        assertNotNull(errorMessage);
-    }
-
-    @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
-    public void createNegotiationCounteroffer_success() throws Exception {
-        // Setup: Create an existing negotiation in OFFERED state
+    public void createNegotiationOfferCounteroffer_success() throws Exception {
+        // Setup: Create an existing negotiation in REQUESTED state
         Permission permission = Permission.Builder.newInstance()
                 .action(Action.USE)
                 .constraint(Collections.singletonList(NegotiationMockObjectUtil.CONSTRAINT_COUNT_5))
@@ -274,12 +205,12 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
                 .providerPid(createNewId())
                 .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
                 .offer(offer)
-                .state(ContractNegotiationState.OFFERED)
-                .role(IConstants.ROLE_PROVIDER)
+                .state(ContractNegotiationState.REQUESTED)
+                .role(IConstants.ROLE_CONSUMER)
                 .build();
         contractNegotiationRepository.save(existingNegotiation);
 
-        // Consumer sends a counteroffer with the same constraints
+        // Provider sends a counteroffer with the same constraints
         Offer counterOffer = Offer.Builder.newInstance()
                 .id(datasetOfferId)
                 .target(dataset.getId())
@@ -287,14 +218,14 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
                 .permission(Collections.singletonList(permission))
                 .build();
 
-        ContractRequestMessage counterofferMessage = ContractRequestMessage.Builder.newInstance()
+        ContractOfferMessage counterofferMessage = ContractOfferMessage.Builder.newInstance()
                 .consumerPid(existingNegotiation.getConsumerPid())
                 .providerPid(existingNegotiation.getProviderPid())
                 .offer(counterOffer)
                 .build();
 
         final ResultActions result = mockMvc.perform(
-                post("/negotiations/" + existingNegotiation.getProviderPid() + "/request")
+                post("/consumer/negotiations/" + existingNegotiation.getConsumerPid() + "/offers")
                         .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(counterofferMessage)))
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -304,14 +235,14 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
         String response = result.andReturn().getResponse().getContentAsString();
         ContractNegotiation contractNegotiationCounteroffer = NegotiationSerializer.deserializeProtocol(response, ContractNegotiation.class);
         assertNotNull(contractNegotiationCounteroffer);
-        assertEquals(ContractNegotiationState.REQUESTED, contractNegotiationCounteroffer.getState());
+        assertEquals(ContractNegotiationState.OFFERED, contractNegotiationCounteroffer.getState());
         assertEquals(existingNegotiation.getProviderPid(), contractNegotiationCounteroffer.getProviderPid());
         assertEquals(existingNegotiation.getConsumerPid(), contractNegotiationCounteroffer.getConsumerPid());
     }
 
     @Test
     @WithUserDetails(TestUtil.CONNECTOR_USER)
-    public void createNegotiationCounteroffer_providerPidMismatch() throws Exception {
+    public void createNegotiationOfferCounteroffer_consumerPidMismatch() throws Exception {
         // Setup existing negotiation
         Permission permission = Permission.Builder.newInstance()
                 .action(Action.USE)
@@ -333,12 +264,12 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
                 .providerPid(createNewId())
                 .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
                 .offer(offer)
-                .state(ContractNegotiationState.OFFERED)
-                .role(IConstants.ROLE_PROVIDER)
+                .state(ContractNegotiationState.REQUESTED)
+                .role(IConstants.ROLE_CONSUMER)
                 .build();
         contractNegotiationRepository.save(existingNegotiation);
 
-        // Create counteroffer message with mismatched providerPid
+        // Create counteroffer message with mismatched consumerPid
         Offer counterOffer = Offer.Builder.newInstance()
                 .id(datasetOfferId)
                 .target(dataset.getId())
@@ -346,14 +277,14 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
                 .permission(Collections.singletonList(permission))
                 .build();
 
-        ContractRequestMessage counterofferMessage = ContractRequestMessage.Builder.newInstance()
-                .consumerPid(existingNegotiation.getConsumerPid())
-                .providerPid(createNewId()) // Different providerPid
+        ContractOfferMessage counterofferMessage = ContractOfferMessage.Builder.newInstance()
+                .consumerPid(createNewId()) // Different consumerPid
+                .providerPid(existingNegotiation.getProviderPid())
                 .offer(counterOffer)
                 .build();
 
         final ResultActions result = mockMvc.perform(
-                post("/negotiations/" + existingNegotiation.getProviderPid() + "/request")
+                post("/consumer/negotiations/" + existingNegotiation.getConsumerPid() + "/offers")
                         .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(counterofferMessage)))
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -367,14 +298,14 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
 
     @Test
     @WithUserDetails(TestUtil.CONNECTOR_USER)
-    public void createNegotiationCounteroffer_negotiationNotFound() throws Exception {
+    public void createNegotiationOfferCounteroffer_negotiationNotFound() throws Exception {
         // Try to send counteroffer for non-existent negotiation
         Permission permission = Permission.Builder.newInstance()
                 .action(Action.USE)
                 .constraint(Collections.singletonList(NegotiationMockObjectUtil.CONSTRAINT_COUNT_5))
                 .build();
 
-        String nonExistentProviderPid = createNewId();
+        String nonExistentConsumerPid = createNewId();
         String datasetOfferId = dataset.getHasPolicy().stream().findFirst().get().getId();
 
         Offer counterOffer = Offer.Builder.newInstance()
@@ -384,14 +315,14 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
                 .permission(Collections.singletonList(permission))
                 .build();
 
-        ContractRequestMessage counterofferMessage = ContractRequestMessage.Builder.newInstance()
-                .consumerPid(createNewId())
-                .providerPid(nonExistentProviderPid)
+        ContractOfferMessage counterofferMessage = ContractOfferMessage.Builder.newInstance()
+                .consumerPid(nonExistentConsumerPid)
+                .providerPid(createNewId())
                 .offer(counterOffer)
                 .build();
 
         final ResultActions result = mockMvc.perform(
-                post("/negotiations/" + nonExistentProviderPid + "/request")
+                post("/consumer/negotiations/" + nonExistentConsumerPid + "/offers")
                         .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(counterofferMessage)))
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -400,8 +331,8 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
 
     @Test
     @WithUserDetails(TestUtil.CONNECTOR_USER)
-    public void createNegotiationCounteroffer_invalidState() throws Exception {
-        // Setup: Create an existing negotiation in REQUESTED state (invalid for counteroffer)
+    public void createNegotiationOfferCounteroffer_invalidState() throws Exception {
+        // Setup: Create an existing negotiation in OFFERED state (invalid for counteroffer from provider)
         Permission permission = Permission.Builder.newInstance()
                 .action(Action.USE)
                 .constraint(Collections.singletonList(NegotiationMockObjectUtil.CONSTRAINT_COUNT_5))
@@ -422,8 +353,8 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
                 .providerPid(createNewId())
                 .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
                 .offer(offer)
-                .state(ContractNegotiationState.REQUESTED) // Invalid state for counteroffer
-                .role(IConstants.ROLE_PROVIDER)
+                .state(ContractNegotiationState.OFFERED) // Invalid state for counteroffer
+                .role(IConstants.ROLE_CONSUMER)
                 .build();
         contractNegotiationRepository.save(existingNegotiation);
 
@@ -434,14 +365,14 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
                 .permission(Collections.singletonList(permission))
                 .build();
 
-        ContractRequestMessage counterofferMessage = ContractRequestMessage.Builder.newInstance()
+        ContractOfferMessage counterofferMessage = ContractOfferMessage.Builder.newInstance()
                 .consumerPid(existingNegotiation.getConsumerPid())
                 .providerPid(existingNegotiation.getProviderPid())
                 .offer(counterOffer)
                 .build();
 
         final ResultActions result = mockMvc.perform(
-                post("/negotiations/" + existingNegotiation.getProviderPid() + "/request")
+                post("/consumer/negotiations/" + existingNegotiation.getConsumerPid() + "/offers")
                         .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(counterofferMessage)))
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -453,115 +384,6 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
         assertNotNull(errorMessage);
     }
 
-    @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
-    public void createNegotiationCounteroffer_invalidOffer() throws Exception {
-        // Setup existing negotiation
-        Permission permission = Permission.Builder.newInstance()
-                .action(Action.USE)
-                .constraint(Collections.singletonList(NegotiationMockObjectUtil.CONSTRAINT_COUNT_5))
-                .build();
 
-        String datasetOfferId = dataset.getHasPolicy().stream().findFirst().get().getId();
-        Offer offer = Offer.Builder.newInstance()
-                .id(datasetOfferId)
-                .target(dataset.getId())
-                .assigner(NegotiationMockObjectUtil.ASSIGNER)
-                .permission(Collections.singletonList(permission))
-                .originalId(datasetOfferId)
-                .build();
-        offerRepository.save(offer);
-
-        ContractNegotiation existingNegotiation = ContractNegotiation.Builder.newInstance()
-                .consumerPid(createNewId())
-                .providerPid(createNewId())
-                .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
-                .offer(offer)
-                .state(ContractNegotiationState.OFFERED)
-                .role(IConstants.ROLE_PROVIDER)
-                .build();
-        contractNegotiationRepository.save(existingNegotiation);
-
-        // Create counteroffer with invalid offer (non-existent offer ID)
-        Offer counterOffer = Offer.Builder.newInstance()
-                .id(createNewId()) // Non-existent offer ID
-                .target(dataset.getId())
-                .assigner(NegotiationMockObjectUtil.ASSIGNER)
-                .permission(Collections.singletonList(permission))
-                .build();
-
-        ContractRequestMessage counterofferMessage = ContractRequestMessage.Builder.newInstance()
-                .consumerPid(existingNegotiation.getConsumerPid())
-                .providerPid(existingNegotiation.getProviderPid())
-                .offer(counterOffer)
-                .build();
-
-        final ResultActions result = mockMvc.perform(
-                post("/negotiations/" + existingNegotiation.getProviderPid() + "/request")
-                        .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(counterofferMessage)))
-                        .contentType(MediaType.APPLICATION_JSON));
-
-        result.andExpect(status().isNotFound())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
-
-        String response = result.andReturn().getResponse().getContentAsString();
-        ContractNegotiationErrorMessage errorMessage = NegotiationSerializer.deserializeProtocol(response, ContractNegotiationErrorMessage.class);
-        assertNotNull(errorMessage);
-    }
-
-    @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
-    public void createNegotiationCounteroffer_targetMismatch() throws Exception {
-        // Setup existing negotiation
-        Permission permission = Permission.Builder.newInstance()
-                .action(Action.USE)
-                .constraint(Collections.singletonList(NegotiationMockObjectUtil.CONSTRAINT_COUNT_5))
-                .build();
-
-        String datasetOfferId = dataset.getHasPolicy().stream().findFirst().get().getId();
-        Offer offer = Offer.Builder.newInstance()
-                .id(datasetOfferId)
-                .target(dataset.getId())
-                .assigner(NegotiationMockObjectUtil.ASSIGNER)
-                .permission(Collections.singletonList(permission))
-                .originalId(datasetOfferId)
-                .build();
-        offerRepository.save(offer);
-
-        ContractNegotiation existingNegotiation = ContractNegotiation.Builder.newInstance()
-                .consumerPid(createNewId())
-                .providerPid(createNewId())
-                .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
-                .offer(offer)
-                .state(ContractNegotiationState.OFFERED)
-                .role(IConstants.ROLE_PROVIDER)
-                .build();
-        contractNegotiationRepository.save(existingNegotiation);
-
-        // Create counteroffer with different target
-        Offer counterOffer = Offer.Builder.newInstance()
-                .id(datasetOfferId)
-                .target("different-target-dataset-id") // Different target
-                .assigner(NegotiationMockObjectUtil.ASSIGNER)
-                .permission(Collections.singletonList(permission))
-                .build();
-
-        ContractRequestMessage counterofferMessage = ContractRequestMessage.Builder.newInstance()
-                .consumerPid(existingNegotiation.getConsumerPid())
-                .providerPid(existingNegotiation.getProviderPid())
-                .offer(counterOffer)
-                .build();
-
-        final ResultActions result = mockMvc.perform(
-                post("/negotiations/" + existingNegotiation.getProviderPid() + "/request")
-                        .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(counterofferMessage)))
-                        .contentType(MediaType.APPLICATION_JSON));
-
-        result.andExpect(status().isNotFound())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
-
-        String response = result.andReturn().getResponse().getContentAsString();
-        ContractNegotiationErrorMessage errorMessage = NegotiationSerializer.deserializeProtocol(response, ContractNegotiationErrorMessage.class);
-        assertNotNull(errorMessage);
-    }
 }
+

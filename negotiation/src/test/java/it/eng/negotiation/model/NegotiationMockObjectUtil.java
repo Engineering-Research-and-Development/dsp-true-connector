@@ -124,10 +124,15 @@ public class NegotiationMockObjectUtil {
             .permission(Arrays.asList(NegotiationMockObjectUtil.PERMISSION_COUNT_5))
             .build();
 
-    public static final ContractOfferMessage CONTRACT_OFFER_MESSAGE = ContractOfferMessage.Builder.newInstance()
-            .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
+    public static final ContractOfferMessage CONTRACT_OFFER_MESSAGE_INITIAL = ContractOfferMessage.Builder.newInstance()
             .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
             .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
+            .offer(NegotiationMockObjectUtil.OFFER)
+            .build();
+
+    public static final ContractOfferMessage CONTRACT_OFFER_MESSAGE_COUNTEROFFER = ContractOfferMessage.Builder.newInstance()
+            .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
+            .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
             .offer(NegotiationMockObjectUtil.OFFER)
             .build();
 
@@ -140,9 +145,15 @@ public class NegotiationMockObjectUtil {
             .permission(Arrays.asList(PERMISSION_COUNT_5))
             .build();
 
-    public static final ContractRequestMessage CONTRACT_REQUEST_MESSAGE = ContractRequestMessage.Builder.newInstance()
+    public static final ContractRequestMessage CONTRACT_REQUEST_MESSAGE_INITIAL = ContractRequestMessage.Builder.newInstance()
             .callbackAddress(CALLBACK_ADDRESS)
             .consumerPid(CONSUMER_PID)
+            .offer(OFFER)
+            .build();
+
+    public static final ContractRequestMessage CONTRACT_REQUEST_MESSAGE_COUNTEROFFER = ContractRequestMessage.Builder.newInstance()
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
             .offer(OFFER)
             .build();
 
