@@ -65,7 +65,22 @@
         {
           "$ref": "datasets",
           "$id": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
-        }
+        },
+        {"$ref": "datasets","$id": "ACN0101"},
+        {"$ref": "datasets","$id": "ACN0102"},
+        {"$ref": "datasets","$id": "ACN0103"},
+        {"$ref": "datasets","$id": "ACN0104"},
+        {"$ref": "datasets","$id": "ACN0201"},
+        {"$ref": "datasets","$id": "ACN0202"},
+        {"$ref": "datasets","$id": "ACN0203"},
+        {"$ref": "datasets","$id": "ACN0204"},
+        {"$ref": "datasets","$id": "ACN0205"},
+        {"$ref": "datasets","$id": "ACN0206"},
+        {"$ref": "datasets","$id": "ACN0207"},
+        {"$ref": "datasets","$id": "ACN0301"},
+        {"$ref": "datasets","$id": "ACN0302"},
+        {"$ref": "datasets","$id": "ACN0303"},
+        {"$ref": "datasets","$id": "ACN0304"}
       ],
       "service": [
         {
@@ -139,6 +154,801 @@
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0101",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0101:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0102",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0102:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0103",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0103:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0104",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0104:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0201",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0201:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0202",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0202:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0203",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0203:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0204",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0204:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0205",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0205:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0206",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0206:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0207",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0207:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0301",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0301:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0302",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0302:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0303",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0303:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
+    },
+    {
+      "_class": "it.eng.catalog.model.Dataset",
+      "_id": "ACN0304",
+      "keyword": [
+        "Personal information",
+        "Employee",
+        "TRUEConnector team",
+        "REST"
+      ],
+      "theme": [
+        "Data"
+      ],
+      "description": [
+        {
+          "value": "Dataset offering TRUEConnector team information",
+          "language": "en"
+        }
+      ],
+      "conformsTo": "conformsToSomething",
+      "creator": "Engineering Informatica S.p.A.",
+      "identifier": "Unique identifier for test Dataset",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "title": "TRUEConnector team information dataset",
+      "hasPolicy": [
+        {
+          "_id": "CD123:ACN0304:456",
+          "_class": "it.eng.catalog.model.Offer",
+          "permission": [
+            {
+              "action": "use"
+            }
+          ]
+        }
+      ],
+      "distribution": [
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        }
+      ],
+      "artifact": {
+        "$ref": "artifacts",
+        "$id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0
     }
   ],
   "dataservices": [
@@ -164,7 +974,7 @@
       "issued": "2024-04-23T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
       "title": "DSP TRUE Connector",
-      "endpointDescription": "connector",
+      "endpointDescription": "dspace:connector",
       "endpointURL": "http://localhost:8090/",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
@@ -209,6 +1019,24 @@
       "artifactType": "FILE",
       "filename": "ENG employee.json",
       "value": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "contentType": "application/json",
+      "created": {
+        "$date": "2024-12-10T16:04:59.358Z"
+      },
+      "lastModifiedDate": {
+        "$date": "2024-12-10T16:04:59.358Z"
+      },
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": {
+        "$numberLong": "0"
+      },
+      "_class": "it.eng.tools.model.Artifact"
+    },
+    {
+      "_id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8",
+      "artifactType": "EXTERNAL",
+      "value": "http://example.com/ENG employee.json",
       "contentType": "application/json",
       "created": {
         "$date": "2024-12-10T16:04:59.358Z"
@@ -1067,7 +1895,7 @@
       "_id": "urn:uuid:ATP0101-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "temporary_consumer_pid",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATP0101",
       "state": "INITIALIZED",
       "role": "provider",
@@ -1082,7 +1910,7 @@
       "_id": "urn:uuid:ATP0102-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "temporary_consumer_pid",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATP0102",
       "state": "INITIALIZED",
       "role": "provider",
@@ -1097,7 +1925,7 @@
       "_id": "urn:uuid:ATP0103-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "temporary_consumer_pid",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATP0103",
       "state": "INITIALIZED",
       "role": "provider",
@@ -1112,7 +1940,7 @@
       "_id": "urn:uuid:ATP0104-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "temporary_consumer_pid",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATP0104",
       "state": "INITIALIZED",
       "role": "provider",
@@ -1127,7 +1955,7 @@
       "_id": "urn:uuid:ATP0105-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "temporary_consumer_pid",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATP0105",
       "state": "INITIALIZED",
       "role": "provider",
@@ -1142,7 +1970,7 @@
       "_id": "urn:uuid:ATP0201-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "temporary_consumer_pid",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATP0201",
       "state": "INITIALIZED",
       "role": "provider",
@@ -1157,7 +1985,7 @@
       "_id": "urn:uuid:ATP0202-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "temporary_consumer_pid",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATP0202",
       "state": "INITIALIZED",
       "role": "provider",
@@ -1172,7 +2000,7 @@
       "_id": "urn:uuid:ATP0203-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "temporary_consumer_pid",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATP0203",
       "state": "INITIALIZED",
       "role": "provider",
@@ -1187,7 +2015,7 @@
       "_id": "urn:uuid:ATP0204-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "temporary_consumer_pid",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATP0204",
       "state": "INITIALIZED",
       "role": "provider",
@@ -1202,7 +2030,7 @@
       "_id": "urn:uuid:ATP0205-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "temporary_consumer_pid",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATP0205",
       "state": "INITIALIZED",
       "role": "provider",
@@ -1217,7 +2045,7 @@
       "_id": "urn:uuid:ATP0301-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "temporary_consumer_pid",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATP0301",
       "state": "INITIALIZED",
       "role": "provider",
@@ -1232,7 +2060,7 @@
       "_id": "urn:uuid:ATP0302-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "temporary_consumer_pid",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATP0302",
       "state": "INITIALIZED",
       "role": "provider",
@@ -1247,7 +2075,7 @@
       "_id": "urn:uuid:ATP0303-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "temporary_consumer_pid",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATP0303",
       "state": "INITIALIZED",
       "role": "provider",
@@ -1262,7 +2090,7 @@
       "_id": "urn:uuid:ATP0304-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "temporary_consumer_pid",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATP0304",
       "state": "INITIALIZED",
       "role": "provider",
@@ -1277,7 +2105,7 @@
       "_id": "urn:uuid:ATP0305-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "temporary_consumer_pid",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATP0305",
       "state": "INITIALIZED",
       "role": "provider",
@@ -1292,7 +2120,7 @@
       "_id": "urn:uuid:ATP0306-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "temporary_consumer_pid",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATP0306",
       "state": "INITIALIZED",
       "role": "provider",
@@ -1307,7 +2135,7 @@
       "_id": "urn:uuid:ATP0101-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "temporary_consumer_pid",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATP0101",
       "state": "INITIALIZED",
       "role": "provider",
@@ -1322,7 +2150,7 @@
       "_id": "urn:uuid:ATPC0101-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "39d3a8a9-a047-4226-8604-6c7618377f6a",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATPC0101",
       "state": "INITIALIZED",
       "role": "consumer",
@@ -1337,7 +2165,7 @@
       "_id": "urn:uuid:ATPC0102-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "e8c4c298-7e3a-4062-82ec-f2b6e13f409f",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATPC0102",
       "state": "INITIALIZED",
       "role": "consumer",
@@ -1352,7 +2180,7 @@
       "_id": "urn:uuid:ATPC0103-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "f3e7deda-09f2-4406-858d-d90dda52bb86",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATPC0103",
       "state": "INITIALIZED",
       "role": "consumer",
@@ -1367,7 +2195,7 @@
       "_id": "urn:uuid:ATPC0104-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "297e56af-4a5f-49aa-b747-577d0a239354",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATPC0104",
       "state": "INITIALIZED",
       "role": "consumer",
@@ -1382,7 +2210,7 @@
       "_id": "urn:uuid:ATPC0105-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "724578ba-ace9-46d7-8d49-327353247707",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATPC0105",
       "state": "INITIALIZED",
       "role": "consumer",
@@ -1397,7 +2225,7 @@
       "_id": "urn:uuid:ATPC0201-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "3f17dbb4-b46c-4ef4-b60e-bb67248a64df",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATPC0201",
       "state": "INITIALIZED",
       "role": "consumer",
@@ -1412,7 +2240,7 @@
       "_id": "urn:uuid:ATPC0202-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "aec9462f-e55d-4e48-aa47-687d7a7be50f",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATPC0202",
       "state": "INITIALIZED",
       "role": "consumer",
@@ -1427,7 +2255,7 @@
       "_id": "urn:uuid:ATPC0203-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "00233881-7ecd-4c3f-a469-ea84b59d4013",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATPC0203",
       "state": "INITIALIZED",
       "role": "consumer",
@@ -1442,7 +2270,7 @@
       "_id": "urn:uuid:ATPC0204-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "26532346-9907-416f-b31a-c674cb749e74",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATPC0204",
       "state": "INITIALIZED",
       "role": "consumer",
@@ -1457,7 +2285,7 @@
       "_id": "urn:uuid:ATPC0205-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "02966c9f-3997-42d1-94bd-98e5d00d071b",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATPC0205",
       "state": "INITIALIZED",
       "role": "consumer",
@@ -1472,7 +2300,7 @@
       "_id": "urn:uuid:ATPC0301-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "4659244b-71eb-47c6-941d-200e1cb5c932",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATPC0301",
       "state": "INITIALIZED",
       "role": "consumer",
@@ -1487,7 +2315,7 @@
       "_id": "urn:uuid:ATPC0302-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "d7f8e8f0-8bba-4ba8-a9e1-06383f723b1b",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATPC0302",
       "state": "INITIALIZED",
       "role": "consumer",
@@ -1502,7 +2330,7 @@
       "_id": "urn:uuid:ATPC0303-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "2248efc7-a254-4fd5-90df-e66d6b79624b",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATPC0303",
       "state": "INITIALIZED",
       "role": "consumer",
@@ -1517,7 +2345,7 @@
       "_id": "urn:uuid:ATPC0304-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "d9b013c9-e1eb-4fbd-b994-5dd339721c67",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATPC0304",
       "state": "INITIALIZED",
       "role": "consumer",
@@ -1532,7 +2360,7 @@
       "_id": "urn:uuid:ATPC0305-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "173e6cbd-c675-4c20-8674-8d1c818bc3fa",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATPC0305",
       "state": "INITIALIZED",
       "role": "consumer",
@@ -1547,7 +2375,7 @@
       "_id": "urn:uuid:ATPC0306-1434-1234-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "8fd8ff1f-d307-46c1-9fa9-28313fcddfcf",
-      "callbackAddress": "http://dsp-tck:8083/",
+      "callbackAddress": "http://localhost:8083/",
       "agreementId": "ATPC0306",
       "state": "INITIALIZED",
       "role": "consumer",
