@@ -2,7 +2,8 @@ name: TCK compliance test
 run-name: TCK compliance test
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ "feature/dsp-2025-01-catalog" ]
 
 jobs:
   tckComplianceTest:
