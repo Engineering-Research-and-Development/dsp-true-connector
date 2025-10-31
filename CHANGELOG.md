@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [0.5.5-SNAPSHOT]
 
 ### Added
 
@@ -15,6 +15,17 @@ All notable changes to this project will be documented in this file.
 
 - Renamed integration test classes to have IT suffix
 - Configured maven surefire and failsafe plugins to have different includes for unit and integration tests
+
+## [0.5.4-SNAPSHOT] - 24.09.2025.
+
+### Added
+
+- GHA Build update, branches can also have fix/ prefix
+
+### Changed
+
+- Fixed serializers to have correct error message in case of validation error (missing dspace prefix in some cases)
+- Serializers now throw ValidationException instead of e.printStackTrace()
 
 ## [0.5.3-SNAPSHOT] - 18.09.2025.
 
