@@ -36,7 +36,8 @@ jobs:
       - name: Increment version in pom.xml
         run: |
           current_version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
-          new_version=$(echo $current_version | awk -F. -v OFS=. '{$NF++;print}')
+          base_version=${current_version%-SNAPSHOT}
+          new_version=$(echo $base_version | awk -F. -v OFS=. '{$NF++;print}')
           mvn versions:set-property -Dproperty=revision -DnewVersion=$new_version-SNAPSHOT
 
       - name: Setup Git credentials
@@ -96,9 +97,9 @@ jobs:
       - name: Set SNAPSHOT version in pom.xml
         run: |
           current_version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
-          new_snapshot_version = "$(current_version)-SNAPSHOT"
-          echo "New snapshot version: ${new_snapshot_version}"
-          mvn versions:set-property -Dproperty=revision -DnewVersion=$new_snapshot_version
+          base_version=${current_version%-SNAPSHOT}
+          new_version=$(echo $base_version | awk -F. -v OFS=. '{$NF++;print}')
+          mvn versions:set-property -Dproperty=revision -DnewVersion=$new_version-SNAPSHOT
 
       - name: Setup Git credentials
         run: |
@@ -110,5 +111,5 @@ jobs:
         run: |
           mvn -B clean verify --file pom.xml
           git add pom.xml
-          git commit -m "SNAPSHOT development version $new_snapshot_version"
+          git commit -m "New development version $new_version"
           git push

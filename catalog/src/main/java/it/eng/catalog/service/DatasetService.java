@@ -165,7 +165,7 @@ public class DatasetService {
                 updatedDataset = addArtifactToDataset(updatedDataset, newArtifact);
                 // remove old artifact
                 if (oldArtifact != null) {
-                    artifactService.deleteOldArtifact(oldArtifact);
+                    artifactService.deleteArtifactAfterDatasetUpdate(oldArtifact, newArtifact);
                 }
             }
             storedDataset = repository.save(updatedDataset);
@@ -187,7 +187,7 @@ public class DatasetService {
     public void deleteDataset(String id) {
         Dataset ds = getDatasetByIdForApi(id);
         try {
-            artifactService.deleteOldArtifact(ds.getArtifact());
+            artifactService.deleteArtifact(ds.getArtifact());
             repository.deleteById(id);
         } catch (Exception e) {
             log.error(e.getMessage(), e);

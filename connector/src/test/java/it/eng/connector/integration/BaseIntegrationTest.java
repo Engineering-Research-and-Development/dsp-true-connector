@@ -13,6 +13,8 @@ import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.IConstants;
+import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.serializer.InstantDeserializer;
 import it.eng.tools.serializer.InstantSerializer;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +35,7 @@ import org.wiremock.spring.EnableWireMock;
 
 import java.io.UnsupportedEncodingException;
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -59,6 +62,8 @@ public class BaseIntegrationTest {
 
     @Autowired
     protected MockMvc mockMvc;
+    @Autowired
+    protected S3Properties s3Properties;
     protected JsonMapper jsonMapper;
 
     protected String createNewId() {
@@ -146,5 +151,16 @@ public class BaseIntegrationTest {
 
     protected void agreementCheck(ContractNegotiation contractNegotiation) {
         assertNotNull(contractNegotiation.getAgreement());
+    }
+
+    protected Map<String, String> createS3EndpointProperties(String objectKey) {
+        return Map.of(
+                S3Utils.OBJECT_KEY, objectKey,
+                S3Utils.BUCKET_NAME, s3Properties.getBucketName(),
+                S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
+                S3Utils.REGION, s3Properties.getRegion(),
+                S3Utils.ACCESS_KEY, s3Properties.getAccessKey(),
+                S3Utils.SECRET_KEY, s3Properties.getSecretKey()
+        );
     }
 }

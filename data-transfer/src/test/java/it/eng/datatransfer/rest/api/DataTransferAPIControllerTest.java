@@ -37,6 +37,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -333,29 +334,35 @@ class DataTransferAPIControllerTest {
     @Test
     @DisplayName("Download data - success")
     public void downloadData_success() throws IllegalStateException {
-        ArgumentCaptor<AuditEvent> eventCaptor = ArgumentCaptor.forClass(AuditEvent.class);
-        when(apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
+        String id = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId();
+        when(apiService.downloadData(id))
                 .thenReturn(CompletableFuture.completedFuture(null));
 
-        assertDoesNotThrow(() -> controller.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+        ResponseEntity<GenericApiResponse<String>> response = controller.downloadData(id);
 
-        verifyAuditEvent(AuditEventType.TRANSFER_COMPLETED,
-                "Download completed successfully for process " + DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+        assertNotNull(response);
+        assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().isSuccess());
+        assertEquals("Download started for transfer process " + id, response.getBody().getData());
+
+        verify(apiService).downloadData(eq(id));
+
     }
 
     @Test
     @DisplayName("Download data - fail")
     public void downloadData_fail() throws IllegalStateException {
-        ArgumentCaptor<AuditEvent> eventCaptor = ArgumentCaptor.forClass(AuditEvent.class);
         DataTransferAPIException exception = new DataTransferAPIException("message");
 
         when(apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(CompletableFuture.failedFuture(exception));
 
-        controller.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
-
-        verifyAuditEvent(AuditEventType.TRANSFER_FAILED,
-                "Download failed for process " + DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+        CompletionException thrown = assertThrows(CompletionException.class,
+                () -> controller.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+        assertNotNull(thrown.getCause());
+        assertTrue(thrown.getCause() instanceof DataTransferAPIException);
+        assertEquals("message", thrown.getCause().getMessage());
     }
 
     @Test

@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "39470e70-d3e3-4530-a0dc-73e12c447a43",
+		"_postman_id": "307af2b9-83c8-4d4c-adb2-7deb397fd747",
 		"name": "True_connector_DSP",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "36278855"
@@ -14,43 +14,6 @@
 					"item": [
 						{
 							"name": "Get All Application Properties",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Check if status code is 200\", function () {\r",
-											"    pm.response.to.have.status(200);\r",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"url": {
-									"raw": "{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}/",
-									"host": [
-										"{{CONSUMER_SERVER_API_APPLICATION_PROPERTY}}"
-									],
-									"path": [
-										""
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Get All Application Properties Copy",
 							"event": [
 								{
 									"listen": "test",
@@ -586,7 +549,7 @@
 									"formdata": [
 										{
 											"key": "dataset",
-											"value": "{\n    \"@id\": \"dataset_uuid_test\",\n    \"artifact\": null,\n    \"conformsTo\": \"conformsToSomething\",\n    \"createdBy\": null,\n    \"creator\": \"Chuck_Norris\",\n    \"description\": [{\n            \"value\": \"For test\",\n            \"language\": \"en\"\n        }\n    ],\n    \"distribution\": [{\n            \"@id\": \"urn:uuid:128a7504-989f-4f5e-8e19-694e0bdacbd7\",\n            \"accessService\": [{\n                    \"@id\": \"e84adca0-eb09-47b0-975c-f182aac8377f\",\n                    \"conformsTo\": \"conformsToSomething\",\n                    \"createdBy\": null,\n                    \"creator\": \"Chuck_Norris\",\n                    \"description\": [{\n                            \"value\": \"For test\",\n                            \"language\": \"en\"\n                        }\n                    ],\n                    \"endpointDescription\": \"endpoint description\",\n                    \"endpointURL\": \"http://dataservice.com\",\n                    \"identifier\": \"Unique_identifier_for_tests\",\n                    \"issued\": \"2024-04-23T18:26:00+02:00\",\n                    \"keyword\": [\"DataService keyword1\", \"DataService keyword2\"],\n                    \"lastModifiedBy\": null,\n                    \"modified\": \"2024-04-23T18:26:00+02:00\",\n                    \"theme\": [\"DataService theme1\", \"DataService theme2\"],\n                    \"title\": \"Title_for_test\",\n                    \"type\": \"dcat:DataService\",\n                    \"version\": null\n                }\n            ],\n            \"createdBy\": null,\n            \"description\": [{\n                    \"value\": \"For test\",\n                    \"language\": \"en\"\n                }\n            ],\n            \"format\": {\n                \"@id\": \"HTTP:PULL\"\n            },\n            \"hasPolicy\": [{\n                    \"@id\": \"urn:offer_id\",\n                    \"assignee\": null,\n                    \"assigner\": null,\n                    \"permission\": [{\n                            \"assigner\": null,\n                            \"assignee\": null,\n                            \"target\": null,\n                            \"action\": \"USE\",\n                            \"constraint\": [{\n                                    \"leftOperand\": \"COUNT\",\n                                    \"operator\": \"EQ\",\n                                    \"rightOperand\": \"5\"\n                                }\n                            ]\n                        }\n                    ],\n                    \"target\": null\n                }\n            ],\n            \"issued\": \"2024-04-23T18:26:00+02:00\",\n            \"lastModifiedBy\": null,\n            \"modified\": \"2024-04-23T18:26:00+02:00\",\n            \"title\": \"Title_for_test\",\n            \"type\": \"dspace:Distribution\",\n            \"version\": null\n        }\n    ],\n    \"hasPolicy\": [{\n            \"@id\": \"urn:offer_id\",\n            \"assignee\": null,\n            \"assigner\": null,\n            \"permission\": [{\n                    \"assigner\": null,\n                    \"assignee\": null,\n                    \"target\": null,\n                    \"action\": \"USE\",\n                    \"constraint\": [{\n                            \"leftOperand\": \"COUNT\",\n                            \"operator\": \"EQ\",\n                            \"rightOperand\": \"5\"\n                        }\n                    ]\n                }\n            ],\n            \"target\": null\n        }\n    ],\n    \"identifier\": \"Unique_identifier_for_tests\",\n    \"issued\": \"2024-04-23T18:26:00+02:00\",\n    \"keyword\": [\"keyword1\", \"keyword2\"],\n    \"lastModifiedBy\": null,\n    \"modified\": \"2024-04-23T18:26:00+02:00\",\n    \"theme\": [\"aqua\", \"white\", \"blue\"],\n    \"title\": \"Title_for_test\",\n    \"type\": \"dcat:Dataset\",\n    \"version\": null\n}\n",
+											"value": "{\n      \"_class\": \"it.eng.catalog.model.Dataset\",\n      \"_id\": \"urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5\",\n      \"keyword\": [\n        \"Personal information\",\n        \"Employee\",\n        \"TRUEConnector team\",\n        \"REST\"\n      ],\n      \"theme\": [\n        \"Data\"\n      ],\n      \"description\": [\n        {\n          \"value\": \"Dataset offering TRUEConnector team information\",\n          \"language\": \"en\"\n        }\n      ],\n      \"conformsTo\": \"conformsToSomething\",\n      \"creator\": \"Engineering Informatica S.p.A.\",\n      \"identifier\": \"Unique identifier for test Dataset\",\n      \"issued\": \"2024-04-23T16:26:00.000Z\",\n      \"modified\": \"2024-04-23T16:26:00.000Z\",\n      \"title\": \"TRUEConnector team information dataset\",\n      \"hasPolicy\": [\n        {\n          \"_id\": \"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\n          \"_class\": \"it.eng.catalog.model.Offer\",\n          \"permission\": [\n            {\n              \"action\": \"USE\",\n              \"constraint\": [\n                {\n                  \"leftOperand\": \"COUNT\",\n                  \"operator\": \"LTEQ\",\n                  \"rightOperand\": \"5\"\n                }\n              ]\n            }\n          ]\n        }\n      ],\n      \"distribution\": [\n        {\n          \"$ref\": \"distributions\",\n          \"$id\": \"urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5\"\n        },\n        {\n          \"$ref\": \"distributions\",\n          \"$id\": \"urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5\"\n        }\n      ],\n      \"artifact\": {\n        \"$ref\": \"artifacts\",\n        \"$id\": \"urn:uuid:fdc45798-a123-4955-8baf-vc3gh22qh3j8\"\n      },\n      \"createdBy\": \"admin@mail.com\",\n      \"lastModifiedBy\": \"admin@mail.com\",\n      \"version\": 0\n    }",
 											"description": "Dataset to insert",
 											"type": "text"
 										},
@@ -594,7 +557,8 @@
 											"key": "file",
 											"description": "File for upload",
 											"type": "file",
-											"src": []
+											"src": [],
+											"disabled": true
 										},
 										{
 											"key": "url",
@@ -606,12 +570,12 @@
 									]
 								},
 								"url": {
-									"raw": "{{PROVIDER_SERVER_API_DATASET}}/urn:uuid:14e2f313-49c2-4f33-8926-57cb69eb484a",
+									"raw": "{{PROVIDER_SERVER_API_DATASET}}/urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
 									"host": [
 										"{{PROVIDER_SERVER_API_DATASET}}"
 									],
 									"path": [
-										"urn:uuid:14e2f313-49c2-4f33-8926-57cb69eb484a"
+										"urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
 									]
 								}
 							},
@@ -748,7 +712,7 @@
 											"\r",
 											"pm.test(\"Retrieve contract negotiation id\", function () {\r",
 											"    var jsonData = pm.response.json();\r",
-											"    pm.collectionVariables.set(\"provider_contractNegotiationId\", jsonData[\"data\"][jsonData.data.length-1][\"@id\"])\r",
+											"    pm.collectionVariables.set(\"provider_contractNegotiationId\", jsonData.response.data.content[jsonData.response.data.content.length -1][\"@id\"])\r",
 											"});"
 										],
 										"type": "text/javascript",
@@ -766,7 +730,7 @@
 									}
 								],
 								"url": {
-									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}?role=provider",
+									"raw": "{{PROVIDER_SERVER_API_NEGOTIATION}}?role=provider&state=REQUESTED",
 									"host": [
 										"{{PROVIDER_SERVER_API_NEGOTIATION}}"
 									],
@@ -774,6 +738,10 @@
 										{
 											"key": "role",
 											"value": "provider"
+										},
+										{
+											"key": "state",
+											"value": "REQUESTED"
 										}
 									]
 								}
@@ -1129,7 +1097,7 @@
 					]
 				},
 				{
-					"name": "DataTransfer",
+					"name": "DataTransfer-PULL",
 					"item": [
 						{
 							"name": "[C] Find Initialized Transfer Process",
@@ -1144,7 +1112,7 @@
 											"\r",
 											"pm.test(\"Retrieve contract negotiation id\", function () {\r",
 											"    var jsonData = pm.response.json();\r",
-											"    pm.collectionVariables.set(\"consumer_transferProcessId\", jsonData[\"data\"][jsonData.data.length-1][\"@id\"])\r",
+											"    pm.collectionVariables.set(\"consumer_transferProcessId\", jsonData.response.data.content[jsonData.response.data.content.length -1][\"@id\"])\r",
 											"});"
 										],
 										"type": "text/javascript",
@@ -1235,7 +1203,7 @@
 											"\r",
 											"pm.test(\"Retrieve contract negotiation id\", function () {\r",
 											"    var jsonData = pm.response.json();\r",
-											"    pm.collectionVariables.set(\"provider_transferProcessId\", jsonData[\"data\"][jsonData.data.length-1][\"@id\"])\r",
+											"    pm.collectionVariables.set(\"provider_transferProcessId\", jsonData.response.data.content[jsonData.response.data.content.length -1][\"@id\"])\r",
 											"});"
 										],
 										"type": "text/javascript",
@@ -1326,8 +1294,8 @@
 									"listen": "test",
 									"script": {
 										"exec": [
-											"pm.test(\"Status code is 200\", function () {\r",
-											"    pm.response.to.have.status(200);\r",
+											"pm.test(\"Status code is 202\", function () {\r",
+											"    pm.response.to.have.status(202);\r",
 											"});"
 										],
 										"type": "text/javascript",
@@ -1366,7 +1334,9 @@
 										"exec": [
 											"pm.test(\"Status code is 200\", function () {\r",
 											"    pm.response.to.have.status(200);\r",
-											"});"
+											"    pm.collectionVariables.set(\"consumer_presignedGetUrl\", pm.response.text());\r",
+											"});\r",
+											""
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -1390,6 +1360,484 @@
 									"path": [
 										"{{consumer_transferProcessId}}",
 										"view"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[C] PresignedGETUrl",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.expect(pm.response.code).to.equal(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response body contains 'John Doe'\", function () {\r",
+											"    pm.expect(pm.response.text()).to.include(\"John Doe\");\r",
+											"});\r",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{consumer_presignedGetUrl}}",
+									"host": [
+										"{{consumer_presignedGetUrl}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[C] Complete transfer",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_TRANSFERS}}/{{consumer_transferProcessId}}/complete",
+									"host": [
+										"{{CONSUMER_SERVER_API_TRANSFERS}}"
+									],
+									"path": [
+										"{{consumer_transferProcessId}}",
+										"complete"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Suspend transfer",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}/{{provider_transferProcessId}}/suspend",
+									"host": [
+										"{{PROVIDER_SERVER_API_TRANSFERS}}"
+									],
+									"path": [
+										"{{provider_transferProcessId}}",
+										"suspend"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Terminate transfer",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}/{{provider_transferProcessId}}/terminate",
+									"host": [
+										"{{PROVIDER_SERVER_API_TRANSFERS}}"
+									],
+									"path": [
+										"{{provider_transferProcessId}}",
+										"terminate"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "DataTransfer-PUSH",
+					"item": [
+						{
+							"name": "[C] Find Initialized Transfer Process",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"consumer_transferProcessId\", jsonData.response.data.content[jsonData.response.data.content.length -1][\"@id\"])\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_TRANSFERS}}?state=INITIALIZED&role=consumer",
+									"host": [
+										"{{CONSUMER_SERVER_API_TRANSFERS}}"
+									],
+									"query": [
+										{
+											"key": "state",
+											"value": "INITIALIZED"
+										},
+										{
+											"key": "role",
+											"value": "consumer"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[C] Request transfer",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"consumer_transferProcessId\", jsonData[\"data\"][\"@id\"])\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"transferProcessId\": \"{{consumer_transferProcessId}}\",\r\n    \"format\": \"HttpData-PUSH\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_TRANSFERS}}",
+									"host": [
+										"{{CONSUMER_SERVER_API_TRANSFERS}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Find Transfer Process",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"provider_transferProcessId\", jsonData.response.data.content[jsonData.response.data.content.length -1][\"@id\"])\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}?role=provider",
+									"host": [
+										"{{PROVIDER_SERVER_API_TRANSFERS}}"
+									],
+									"query": [
+										{
+											"key": "role",
+											"value": "provider"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Start transfer",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Retrieve data address endpoint\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"dataAddress_endpoint\", jsonData[\"data\"][\"dataAddress\"][\"endpoint\"])\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}/{{provider_transferProcessId}}/start",
+									"host": [
+										"{{PROVIDER_SERVER_API_TRANSFERS}}"
+									],
+									"path": [
+										"{{provider_transferProcessId}}",
+										"start"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Push data",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 202\", function () {\r",
+											"    pm.response.to.have.status(202);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
+									"host": [
+										"{{CONSUMER_SERVER_API_TRANSFERS}}"
+									],
+									"path": [
+										"{{consumer_transferProcessId}}",
+										"download"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[C] View data",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"    pm.collectionVariables.set(\"consumer_presignedGetUrl\", pm.response.text());\r",
+											"});\r",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view",
+									"host": [
+										"{{CONSUMER_SERVER_API_TRANSFERS}}"
+									],
+									"path": [
+										"{{consumer_transferProcessId}}",
+										"view"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[C] PresignedGETUrl",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.expect(pm.response.code).to.equal(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response body contains 'John Doe'\", function () {\r",
+											"    pm.expect(pm.response.text()).to.include(\"John Doe\");\r",
+											"});\r",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{consumer_presignedGetUrl}}",
+									"host": [
+										"{{consumer_presignedGetUrl}}"
 									]
 								}
 							},
@@ -1665,104 +2113,6 @@
 									"raw": "{{PROVIDER_SERVER_API_ARTIFACTS}}",
 									"host": [
 										"{{PROVIDER_SERVER_API_ARTIFACTS}}"
-									]
-								}
-							},
-							"response": []
-						}
-					]
-				},
-				{
-					"name": "Audit",
-					"item": [
-						{
-							"name": "Get all audit events",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Response status is 200\", function () {\r",
-											"    pm.response.to.have.status(200);\r",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"protocolProfileBehavior": {
-								"disableBodyPruning": true
-							},
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"body": {
-									"mode": "urlencoded",
-									"urlencoded": []
-								},
-								"url": {
-									"raw": "{{CONSUMER}}/api/v1/audit?details.contractNegotiation.state=FINALIZED",
-									"host": [
-										"{{CONSUMER}}"
-									],
-									"path": [
-										"api",
-										"v1",
-										"audit"
-									],
-									"query": [
-										{
-											"key": "details.contractNegotiation.state",
-											"value": "FINALIZED"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Get all audit event types",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Response status is 200\", function () {\r",
-											"    pm.response.to.have.status(200);\r",
-											"});\r",
-											""
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"url": {
-									"raw": "{{CONSUMER}}/api/v1/audit/types",
-									"host": [
-										"{{CONSUMER}}"
-									],
-									"path": [
-										"api",
-										"v1",
-										"audit",
-										"types"
 									]
 								}
 							},
@@ -2556,6 +2906,66 @@
 					}
 				}
 			]
+		},
+		{
+			"name": "Connector",
+			"item": [
+				{
+					"name": "well.known",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {\r",
+									"    pm.expect(pm.response.code).to.equal(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response is JSON\", function () {\r",
+									"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response contains expected version and bindings\", function () {\r",
+									"    const jsonResponse = pm.response.json();\r",
+									"    pm.expect(jsonResponse).to.have.property(\"protocolVersions\").that.is.an('array').and.is.not.empty;\r",
+									"\r",
+									"    jsonResponse.protocolVersions.forEach(version => {\r",
+									"        pm.expect(version).to.have.property(\"version\", \"2024-01\");\r",
+									"        pm.expect(version).to.have.property(\"binding\").that.equals(\"HTTPS\");\r",
+									"        pm.expect(version).to.have.property(\"path\", \"/\");\r",
+									"        \r",
+									"        pm.expect(version).to.have.property(\"auth\");\r",
+									"        pm.expect(version.auth).to.have.property(\"protocol\", \"https\");\r",
+									"        pm.expect(version.auth).to.have.property(\"version\", \"2024-01\");\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{CONSUMER}}/.well-known/dspace-version",
+							"host": [
+								"{{CONSUMER}}"
+							],
+							"path": [
+								".well-known",
+								"dspace-version"
+							]
+						}
+					},
+					"response": []
+				}
+			]
 		}
 	],
 	"event": [
@@ -2623,6 +3033,10 @@
 		},
 		{
 			"key": "provider_offerId",
+			"value": ""
+		},
+		{
+			"key": "consumer_presignedGetUrl",
 			"value": ""
 		}
 	]

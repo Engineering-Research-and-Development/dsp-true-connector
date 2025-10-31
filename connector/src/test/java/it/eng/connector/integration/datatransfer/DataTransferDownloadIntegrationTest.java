@@ -36,10 +36,7 @@ import org.wiremock.spring.InjectWireMock;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -158,10 +155,13 @@ public class DataTransferDownloadIntegrationTest extends BaseIntegrationTest {
         ContentDisposition contentDisposition = ContentDisposition.attachment()
                 .filename(FILE_NAME)
                 .build();
+
+        Map<String, String> destinationS3Properties = createS3EndpointProperties(dataset.getId());
+
         try (InputStream inputStream = new ByteArrayInputStream(fileContent.getBytes())) {
-            s3ClientService.uploadFile(inputStream,
-                            s3Properties.getBucketName(),
-                            datasetId,
+            s3ClientService.uploadFile(
+                            inputStream,
+                            destinationS3Properties,
                             MediaType.TEXT_PLAIN_VALUE,
                             contentDisposition.toString())
                     .get();

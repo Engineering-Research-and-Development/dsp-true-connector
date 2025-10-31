@@ -38,11 +38,10 @@ public class DataTransferStrategyFactoryTest {
     }
 
     @Test
-    @DisplayName("Should throw exception for supported format not in map (HTTP_PUSH)")
-    void getStrategy_HttpPush_NotInMap() {
-        DataTransferAPIException ex = assertThrows(DataTransferAPIException.class,
-                () -> factory.getStrategy("HttpData-PUSH"));
-        assertTrue(ex.getMessage().contains("Invalid endpoint type:"));
+    @DisplayName("Should return HTTP_PUSH strategy for supported format")
+    void getStrategy_HttpPush_Success() {
+        var strategy = factory.getStrategy(DataTransferFormat.HTTP_PUSH.format());
+        assertSame(httpPushStrategy, strategy);
     }
 
     @Test

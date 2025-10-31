@@ -1,6 +1,6 @@
 @startuml
 
-TITLE Pull
+TITLE Pull data transfer
 
 participant CONSUMER_S3 as cs3
 participant CONSUMER as c
@@ -96,4 +96,10 @@ ps3->ps3: performs checks
 return download artifact
 ps3->cs3 : upload artifact to S3 bucket
 end
+
+== TransferCompletionMessage ==
+
+c->p: after successful download the consumer sends TransferCompletionMessage automatically
+p->c: 200 OK, TransferProcess
+
 @enduml

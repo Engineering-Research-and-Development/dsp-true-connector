@@ -7,6 +7,7 @@ import it.eng.tools.event.AuditEventType;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3BucketProvisionService;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.AuditEventPublisher;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
@@ -24,6 +25,7 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.MediaType;
 
 import java.io.InputStream;
+import java.util.Map;
 
 /**
  * InitialDataLoader is responsible for loading initial data into MongoDB and uploading mock data to S3.
@@ -139,8 +141,20 @@ public class InitialDataLoader {
                         .build()
                         .toString();
 
-                s3ClientService.uploadFile(FileUtils.openInputStream(file.getFile()), bucketName, fileKey,
-                                MediaType.APPLICATION_JSON_VALUE, contentDisposition)
+                Map<String, String> destinationS3Properties = Map.of(
+                        S3Utils.OBJECT_KEY, fileKey,
+                        S3Utils.BUCKET_NAME, s3Properties.getBucketName(),
+                        S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
+                        S3Utils.REGION, s3Properties.getRegion(),
+                        S3Utils.ACCESS_KEY, s3Properties.getAccessKey(),
+                        S3Utils.SECRET_KEY, s3Properties.getSecretKey()
+                );
+
+                s3ClientService.uploadFile(
+                                FileUtils.openInputStream(file.getFile()),
+                                destinationS3Properties,
+                                MediaType.APPLICATION_JSON_VALUE,
+                                contentDisposition)
                         .get();
             }
         } catch (Exception e) {
