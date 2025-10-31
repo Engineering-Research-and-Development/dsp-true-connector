@@ -55,7 +55,7 @@ public class ContractNegotiationAPIController {
         ContractNegotiation contractNegotiation = apiService.findContractNegotiationById(contractNegotiationId);
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(NegotiationSerializer.serializeProtocolJsonNode(contractNegotiation),
+                .body(GenericApiResponse.success(NegotiationSerializer.serializePlainJsonNode(contractNegotiation),
                         String.format("Contract negotiation with id %s found", contractNegotiationId)));
     }
 
@@ -110,7 +110,7 @@ public class ContractNegotiationAPIController {
         log.info("Sending contract request message");
         ContractNegotiation response = apiService.sendContractRequestMessage(contractRequestMessageRequest);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(NegotiationSerializer.serializeProtocolJsonNode(response), "Contract negotiation initiated"));
+                .body(GenericApiResponse.success(NegotiationSerializer.serializePlainJsonNode(response), "Contract negotiation initiated"));
     }
 
     /**
@@ -126,7 +126,7 @@ public class ContractNegotiationAPIController {
         log.info("Sending contract request message as counteroffer");
         ContractNegotiation response = apiService.sendContractRequestMessageAsCounteroffer(contractNegotiationId, counteroffer);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(NegotiationSerializer.serializeProtocolJsonNode(response), "Counter offer sent"));
+                .body(GenericApiResponse.success(NegotiationSerializer.serializePlainJsonNode(response), "Counter offer sent"));
     }
 
     /**
@@ -140,7 +140,7 @@ public class ContractNegotiationAPIController {
         log.info("Handling contract negotiation accepted by consumer");
         ContractNegotiation contractNegotiationApproved = apiService.sendContractNegotiationEventMessageAccepted(contractNegotiationId);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(NegotiationSerializer.serializeProtocolJsonNode(contractNegotiationApproved),
+                .body(GenericApiResponse.success(NegotiationSerializer.serializePlainJsonNode(contractNegotiationApproved),
                         "Contract negotiation approved"));
     }
 
@@ -171,7 +171,7 @@ public class ContractNegotiationAPIController {
     public ResponseEntity<GenericApiResponse<JsonNode>> sendContractOfferMessage(@RequestBody JsonNode contractOfferMessageRequest) {
         ContractNegotiation response = apiService.sendContractOfferMessage(contractOfferMessageRequest);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(NegotiationSerializer.serializeProtocolJsonNode(response), "Contract negotiation initiated"));
+                .body(GenericApiResponse.success(NegotiationSerializer.serializePlainJsonNode(response), "Contract negotiation initiated"));
     }
 
     /**
@@ -186,7 +186,7 @@ public class ContractNegotiationAPIController {
                                                                           @RequestBody JsonNode counteroffer) {
         ContractNegotiation response = apiService.sendContractOfferMessageAsCounteroffer(contractNegotiationId, counteroffer);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(NegotiationSerializer.serializeProtocolJsonNode(response), "Counter offer sent"));
+                .body(GenericApiResponse.success(NegotiationSerializer.serializePlainJsonNode(response), "Counter offer sent"));
     }
 
     /**
@@ -200,7 +200,7 @@ public class ContractNegotiationAPIController {
         log.info("Handling contract negotiation agreed");
         ContractNegotiation contractNegotiationAgreed = apiService.sendContractAgreementMessage(contractNegotiationId);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(NegotiationSerializer.serializeProtocolJsonNode(contractNegotiationAgreed),
+                .body(GenericApiResponse.success(NegotiationSerializer.serializePlainJsonNode(contractNegotiationAgreed),
                         "Contract negotiation agreed"));
     }
 
@@ -229,7 +229,7 @@ public class ContractNegotiationAPIController {
         ContractNegotiation contractNegotiationTerminated = apiService.sendContractNegotiationTerminationMessage(contractNegotiationId);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(NegotiationSerializer.serializeProtocolJsonNode(contractNegotiationTerminated),
+                .body(GenericApiResponse.success(NegotiationSerializer.serializePlainJsonNode(contractNegotiationTerminated),
                         "Contract negotiation terminated"));
     }
 }

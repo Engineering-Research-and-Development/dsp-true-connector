@@ -237,7 +237,8 @@
 									"});"
 								],
 								"type": "text/javascript",
-								"packages": {}
+								"packages": {},
+								"requests": {}
 							}
 						}
 					],
@@ -267,13 +268,13 @@
 							}
 						},
 						"url": {
-							"raw": "{{PROVIDER_API_ENDPOINT}}/{{provider_contractNegotiationId}}/approve",
+							"raw": "{{PROVIDER_API_ENDPOINT}}/{{provider_contractNegotiationId}}/agree",
 							"host": [
 								"{{PROVIDER_API_ENDPOINT}}"
 							],
 							"path": [
 								"{{provider_contractNegotiationId}}",
-								"approve"
+								"agree"
 							]
 						}
 					},
@@ -870,6 +871,30 @@
 			"key": "PROVIDER_SERVER_API_TRANSFERS",
 			"value": "http://localhost:8090/api/v1/transfers",
 			"type": "default"
+		},
+		{
+			"key": "consumer_contractNegotiationId",
+			"value": ""
+		},
+		{
+			"key": "consumerPid",
+			"value": ""
+		},
+		{
+			"key": "providerPid",
+			"value": ""
+		},
+		{
+			"key": "provider_contractNegotiationId",
+			"value": ""
+		},
+		{
+			"key": "consumer_agreementId",
+			"value": ""
+		},
+		{
+			"key": "provider_agreementId",
+			"value": ""
 		}
 	]
 }

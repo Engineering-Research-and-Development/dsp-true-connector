@@ -123,7 +123,7 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
                 .state(ContractNegotiationState.REQUESTED)
                 .consumerPid(contractRequestMessage.getConsumerPid())
                 .callbackAddress(contractRequestMessage.getCallbackAddress())
-                .assigner(contractRequestMessage.getOffer().getAssigner())
+                .assigner(offerToBeInserted.getAssigner())
                 .role(IConstants.ROLE_PROVIDER)
                 .offer(offerToBeInserted)
                 .build();
