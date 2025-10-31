@@ -15,5 +15,4 @@ RUN chown -R nobody:nogroup /home/nobody
 USER 65534
 
 # Run the jar file using JSON array format
-ENTRYPOINT ["java", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005", "-jar", "/home/nobody/app/dsp-true-connector.jar"]
-
+ENTRYPOINT ["java", "-jar", "/home/nobody/app/dsp-true-connector.jar"]

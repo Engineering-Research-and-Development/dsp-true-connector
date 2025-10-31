@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.5-SNAPSHOT] - 31.10.2025.
+
+### Changed
+
+- GitHub Copilot suggestions before release
+
 ## [0.5.4-SNAPSHOT] - 24.09.2025.
 
 ### Added
