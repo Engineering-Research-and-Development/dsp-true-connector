@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.5.5-SNAPSHOT]
+## [0.5.6-SNAPSHOT]
 
 ### Added
 
@@ -16,6 +16,12 @@ All notable changes to this project will be documented in this file.
 
 - Renamed integration test classes to have IT suffix
 - Configured maven surefire and failsafe plugins to have different includes for unit and integration tests
+
+## [0.5.5-SNAPSHOT] - 31.10.2025.
+
+### Changed
+
+- GitHub Copilot suggestions before release
 
 ## [0.5.4-SNAPSHOT] - 24.09.2025.
 
