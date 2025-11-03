@@ -30,20 +30,20 @@ public class NegotiationMockObjectUtil {
 
     public static ContractNegotiationEventMessage getEventMessage(ContractNegotiationEventType eventType) {
         return ContractNegotiationEventMessage.Builder.newInstance()
-                .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
-                .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
+                .consumerPid(CONSUMER_PID)
+                .providerPid(PROVIDER_PID)
                 .eventType(eventType)
                 .build();
     }
 
     public static final ContractAgreementVerificationMessage CONTRACT_AGREEMENT_VERIFICATION_MESSAGE = ContractAgreementVerificationMessage.Builder.newInstance()
-            .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
-            .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
             .build();
 
     public static final ContractNegotiationTerminationMessage TERMINATION_MESSAGE = ContractNegotiationTerminationMessage.Builder.newInstance()
-            .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
-            .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
             .code("Test")
             .reason(Collections.singletonList("test"))
             .build();
@@ -80,67 +80,67 @@ public class NegotiationMockObjectUtil {
 
     public static final Permission PERMISSION = Permission.Builder.newInstance()
             .action(Action.USE)
-            .target(NegotiationMockObjectUtil.TARGET)
-            .constraint(Collections.singletonList(NegotiationMockObjectUtil.CONSTRAINT))
+            .target(TARGET)
+            .constraint(Collections.singletonList(CONSTRAINT))
             .build();
 
     public static final Permission PERMISSION_COUNT_5 = Permission.Builder.newInstance()
             .action(Action.USE)
-            .target(NegotiationMockObjectUtil.TARGET)
-            .constraint(Arrays.asList(NegotiationMockObjectUtil.CONSTRAINT_COUNT_5))
+            .target(TARGET)
+            .constraint(Arrays.asList(CONSTRAINT_COUNT_5))
             .build();
 
     public static final Permission PERMISSION_SPATIAL = Permission.Builder.newInstance()
             .action(Action.USE)
-            .target(NegotiationMockObjectUtil.TARGET)
-            .constraint(Arrays.asList(NegotiationMockObjectUtil.CONSTRAINT_SPATIAL))
+            .target(TARGET)
+            .constraint(Arrays.asList(CONSTRAINT_SPATIAL))
             .build();
 
     public static final Permission PERMISSION_PURPOSE = Permission.Builder.newInstance()
             .action(Action.USE)
-            .target(NegotiationMockObjectUtil.TARGET)
-            .constraint(Arrays.asList(NegotiationMockObjectUtil.CONSTRAINT_PURPOSE))
+            .target(TARGET)
+            .constraint(Arrays.asList(CONSTRAINT_PURPOSE))
             .build();
 
     public static final Offer OFFER = Offer.Builder.newInstance()
-            .target(NegotiationMockObjectUtil.TARGET)
-            .assignee(NegotiationMockObjectUtil.ASSIGNEE)
-            .assigner(NegotiationMockObjectUtil.ASSIGNER)
-            .permission(Arrays.asList(NegotiationMockObjectUtil.PERMISSION))
+            .target(TARGET)
+            .assignee(ASSIGNEE)
+            .assigner(ASSIGNER)
+            .permission(Arrays.asList(PERMISSION))
             .build();
 
     public static final Offer OFFER_WITH_ORIGINAL_ID = Offer.Builder.newInstance()
-            .target(NegotiationMockObjectUtil.TARGET)
-            .assignee(NegotiationMockObjectUtil.ASSIGNEE)
-            .assigner(NegotiationMockObjectUtil.ASSIGNER)
-            .permission(Arrays.asList(NegotiationMockObjectUtil.PERMISSION))
+            .target(TARGET)
+            .assignee(ASSIGNEE)
+            .assigner(ASSIGNER)
+            .permission(Arrays.asList(PERMISSION))
             .originalId("some-original-id")
             .build();
 
     public static final Offer OFFER_COUNT_5 = Offer.Builder.newInstance()
-            .target(NegotiationMockObjectUtil.TARGET)
-            .assignee(NegotiationMockObjectUtil.ASSIGNEE)
-            .assigner(NegotiationMockObjectUtil.ASSIGNER)
-            .permission(Arrays.asList(NegotiationMockObjectUtil.PERMISSION_COUNT_5))
+            .target(TARGET)
+            .assignee(ASSIGNEE)
+            .assigner(ASSIGNER)
+            .permission(Arrays.asList(PERMISSION_COUNT_5))
             .build();
 
     public static final ContractOfferMessage CONTRACT_OFFER_MESSAGE_INITIAL = ContractOfferMessage.Builder.newInstance()
-            .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
-            .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
-            .offer(NegotiationMockObjectUtil.OFFER)
+            .providerPid(PROVIDER_PID)
+            .callbackAddress(CALLBACK_ADDRESS)
+            .offer(OFFER)
             .build();
 
     public static final ContractOfferMessage CONTRACT_OFFER_MESSAGE_COUNTEROFFER = ContractOfferMessage.Builder.newInstance()
-            .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
-            .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
-            .offer(NegotiationMockObjectUtil.OFFER)
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
+            .offer(OFFER)
             .build();
 
     public static final Agreement AGREEMENT = Agreement.Builder.newInstance()
-            .id(NegotiationMockObjectUtil.generateUUID())
-            .assignee(NegotiationMockObjectUtil.ASSIGNEE)
-            .assigner(NegotiationMockObjectUtil.ASSIGNER)
-            .target(NegotiationMockObjectUtil.TARGET)
+            .id(generateUUID())
+            .assignee(ASSIGNEE)
+            .assigner(ASSIGNER)
+            .target(TARGET)
             .timestamp(ZonedDateTime.now().minusDays(2).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
             .permission(Arrays.asList(PERMISSION_COUNT_5))
             .build();
@@ -158,20 +158,20 @@ public class NegotiationMockObjectUtil {
             .build();
 
     public static final ContractAgreementMessage CONTRACT_AGREEMENT_MESSAGE = ContractAgreementMessage.Builder.newInstance()
-            .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
-            .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
             .agreement(AGREEMENT)
             .build();
 
     public static final ContractNegotiationEventMessage CONTRACT_NEGOTIATION_EVENT_MESSAGE = ContractNegotiationEventMessage.Builder.newInstance()
-            .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
-            .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
             .eventType(ContractNegotiationEventType.FINALIZED)
             .build();
 
     public static final ContractNegotiationEventMessage CONTRACT_NEGOTIATION_EVENT_MESSAGE_ACCEPTED = ContractNegotiationEventMessage.Builder.newInstance()
-            .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
-            .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
             .eventType(ContractNegotiationEventType.ACCEPTED)
             .build();
 
@@ -183,25 +183,25 @@ public class NegotiationMockObjectUtil {
             .build();
 
     public static final ContractNegotiation CONTRACT_NEGOTIATION_ACCEPTED = ContractNegotiation.Builder.newInstance()
-            .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
-            .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
             .callbackAddress(CALLBACK_ADDRESS)
             .state(ContractNegotiationState.ACCEPTED)
-            .offer(NegotiationMockObjectUtil.OFFER_COUNT_5)
+            .offer(OFFER_COUNT_5)
             .assigner(ASSIGNER)
             .role(IConstants.ROLE_CONSUMER)
             .build();
 
     public static final ContractNegotiation CONTRACT_NEGOTIATION_ACCEPTED_NO_OFFER = ContractNegotiation.Builder.newInstance()
-            .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
-            .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
             .callbackAddress(CALLBACK_ADDRESS)
             .state(ContractNegotiationState.ACCEPTED)
             .build();
 
     public static final ContractNegotiation CONTRACT_NEGOTIATION_REQUESTED = ContractNegotiation.Builder.newInstance()
-            .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
-            .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
             .callbackAddress(CALLBACK_ADDRESS)
             .state(ContractNegotiationState.REQUESTED)
             .offer(OFFER)
@@ -210,8 +210,8 @@ public class NegotiationMockObjectUtil {
             .build();
 
     public static final ContractNegotiation CONTRACT_NEGOTIATION_REQUESTED_PROVIDER = ContractNegotiation.Builder.newInstance()
-            .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
-            .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
             .callbackAddress(CALLBACK_ADDRESS)
             .state(ContractNegotiationState.REQUESTED)
             .offer(OFFER)
@@ -220,40 +220,40 @@ public class NegotiationMockObjectUtil {
             .build();
 
     public static final ContractNegotiation CONTRACT_NEGOTIATION_AGREED = ContractNegotiation.Builder.newInstance()
-            .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
-            .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
             .callbackAddress(CALLBACK_ADDRESS)
             .state(ContractNegotiationState.AGREED)
             .build();
 
     public static final ContractNegotiation CONTRACT_NEGOTIATION_OFFERED = ContractNegotiation.Builder.newInstance()
-            .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
-            .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
             .callbackAddress(CALLBACK_ADDRESS)
             .state(ContractNegotiationState.OFFERED)
             .build();
 
     public static final ContractNegotiation CONTRACT_NEGOTIATION_VERIFIED = ContractNegotiation.Builder.newInstance()
-            .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
-            .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
             .callbackAddress(CALLBACK_ADDRESS)
             .state(ContractNegotiationState.VERIFIED)
             .agreement(AGREEMENT)
             .build();
 
     public static final ContractNegotiation CONTRACT_NEGOTIATION_FINALIZED = ContractNegotiation.Builder.newInstance()
-            .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
-            .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
             .callbackAddress(CALLBACK_ADDRESS)
             .state(ContractNegotiationState.FINALIZED)
             .build();
 
     public static final ContractNegotiation CONTRACT_NEGOTIATION_TERMINATED = ContractNegotiation.Builder.newInstance()
-            .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
-            .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
             .callbackAddress(CALLBACK_ADDRESS)
             .state(ContractNegotiationState.TERMINATED)
-            .offer(NegotiationMockObjectUtil.OFFER_COUNT_5)
+            .offer(OFFER_COUNT_5)
             .assigner(ASSIGNER)
             .build();
 }

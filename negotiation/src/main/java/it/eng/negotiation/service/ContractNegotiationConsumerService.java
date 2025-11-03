@@ -70,17 +70,25 @@ public abstract class ContractNegotiationConsumerService extends BaseProtocolSer
 
         log.info("No ContractNegotiation found with providerPid {}, creating a new one", contractOfferMessage.getProviderPid());
 
+        Offer offerToBeInserted = Offer.Builder.newInstance()
+                .assignee(contractOfferMessage.getOffer().getAssignee() == null ? properties.connectorId() : contractOfferMessage.getOffer().getAssignee())
+                .assigner(contractOfferMessage.getOffer().getAssigner() == null ? contractOfferMessage.getCallbackAddress() : contractOfferMessage.getOffer().getAssigner())
+                .originalId(contractOfferMessage.getOffer().getId())
+                .permission(contractOfferMessage.getOffer().getPermission())
+                .target(contractOfferMessage.getOffer().getTarget())
+                .build();
+
         ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
                 .consumerPid(ToolsUtil.generateUniqueId())
                 .providerPid(contractOfferMessage.getProviderPid())
                 .state(ContractNegotiationState.OFFERED)
                 .role(IConstants.ROLE_CONSUMER)
-                .offer(contractOfferMessage.getOffer())
+                .offer(offerToBeInserted)
                 .assigner(contractOfferMessage.getOffer().getAssigner())
                 .callbackAddress(contractOfferMessage.getCallbackAddress())
                 .build();
 
-        offerRepository.save(contractNegotiation.getOffer());
+        offerRepository.save(offerToBeInserted);
         contractNegotiationRepository.save(contractNegotiation);
 
         publisher.publishEvent(AuditEvent.Builder.newInstance()
