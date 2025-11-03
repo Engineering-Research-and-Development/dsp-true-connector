@@ -252,9 +252,9 @@
 							}
 						},
 						"url": {
-							"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/{{consumer_contractNegotiationId}}/request",
+							"raw": "{{CONSUMER_API_ENDPOINT}}/{{consumer_contractNegotiationId}}/request",
 							"host": [
-								"{{CONSUMER_SERVER_API_NEGOTIATION}}"
+								"{{CONSUMER_API_ENDPOINT}}"
 							],
 							"path": [
 								"{{consumer_contractNegotiationId}}",
@@ -395,9 +395,9 @@
 							}
 						},
 						"url": {
-							"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/{{provider_contractNegotiationId}}/offer",
+							"raw": "{{PROVIDER_API_ENDPOINT}}/{{provider_contractNegotiationId}}/offer",
 							"host": [
-								"{{CONSUMER_SERVER_API_NEGOTIATION}}"
+								"{{PROVIDER_API_ENDPOINT}}"
 							],
 							"path": [
 								"{{provider_contractNegotiationId}}",
@@ -543,9 +543,9 @@
 							}
 						},
 						"url": {
-							"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/{{consumer_contractNegotiationId}}/accept",
+							"raw": "{{CONSUMER_API_ENDPOINT}}/{{consumer_contractNegotiationId}}/accept",
 							"host": [
-								"{{CONSUMER_SERVER_API_NEGOTIATION}}"
+								"{{CONSUMER_API_ENDPOINT}}"
 							],
 							"path": [
 								"{{consumer_contractNegotiationId}}",
