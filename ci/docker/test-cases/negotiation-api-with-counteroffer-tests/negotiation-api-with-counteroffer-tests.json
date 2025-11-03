@@ -11,7 +11,7 @@
 			"name": "Negotiation",
 			"item": [
 				{
-					"name": "[P] Send Contract Offer Message Copy",
+					"name": "[P] Send Contract Offer Message",
 					"event": [
 						{
 							"listen": "test",
@@ -240,7 +240,7 @@
 						}
 					],
 					"request": {
-						"method": "POST",
+						"method": "PUT",
 						"header": [],
 						"body": {
 							"mode": "raw",
@@ -383,7 +383,7 @@
 						}
 					],
 					"request": {
-						"method": "POST",
+						"method": "PUT",
 						"header": [],
 						"body": {
 							"mode": "raw",
