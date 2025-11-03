@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - New GitHub Action (manually triggered) to run TCK tests against running connector
 - Documentation how to run TCK tests using CMD and GitHub Action
 - Terraform for deploying connector to Kubernetes cluster locally
+- GitHub Action tests for Contract Negotiation with counteroffer flow
 
 ### Changed
 

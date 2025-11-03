@@ -164,7 +164,7 @@
       "issued": "2024-04-23T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
       "title": "DSP TRUE Connector",
-      "endpointDescription": "dspace:connector",
+      "endpointDescription": "connector",
       "endpointURL": "http://connector-b:8080/",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",

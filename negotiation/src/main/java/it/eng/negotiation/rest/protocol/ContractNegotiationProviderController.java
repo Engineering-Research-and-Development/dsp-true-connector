@@ -39,7 +39,7 @@ public class ContractNegotiationProviderController {
 
     // 2.2 The provider negotiations/request resource
     // POST
-    // The Provider must return an HTTP 201 (Created); "dspace:state" :"REQUESTED"
+    // The Provider must return an HTTP 201 (Created); "state" :"REQUESTED"
     @PostMapping(path = "/request")
     public ResponseEntity<JsonNode> handleContractRequestMessage(@RequestBody JsonNode contractRequestMessageJsonNode) {
         log.info("Creating negotiation");

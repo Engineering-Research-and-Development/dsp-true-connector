@@ -4,7 +4,7 @@
   "title" : "Test dataset title",
   "description" : "Description Dataset title example",
   "keywords" : ["abc", "123"],
-  "distributionFormat" : "dspace:s3+push",
+  "distributionFormat" : "s3+push",
   "distributionService" : "d847eafe-4665-11ee-be56-0242ac120002"
 },
 {
@@ -22,5 +22,5 @@
 ]
 
 INSERT INTO DATASET_ENTITY  (id,title,description,keywords,distributionFormat,distributionService) VALUES
-  ('3f051304-28f4-4885-9ae3-14de89aa1aaa','Test dataset title','Description Dataset title example',['abc', '123'], 'dspace:s3+push','d847eafe-4665-11ee-be56-0242ac120002'),
+  ('3f051304-28f4-4885-9ae3-14de89aa1aaa','Test dataset title','Description Dataset title example',['abc', '123'], 's3+push','d847eafe-4665-11ee-be56-0242ac120002'),
   ('cab7b27b-f810-457d-b900-368994f6a640',true,'orkestarzasvadbeisahrane@krajina.rs','Stevan', 'Mokranjac','$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q','ADMIN');

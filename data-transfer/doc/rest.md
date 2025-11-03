@@ -8,11 +8,11 @@ Consumer initiates flow by sending TransferRequestMessage to provider endpoint h
 ```
 {
 "@context":  "https://w3id.org/dspace/2024/1/context.json",
-"@type": "dspace:TransferRequestMessage",
-"dspace:consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
-"dspace:agreementId": "urn:uuid:AGREEMENT_ID",
+"@type": "TransferRequestMessage",
+"consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+"agreementId": "urn:uuid:AGREEMENT_ID",
 "dct:format": "HttpData-PULL",
-"dspace:callbackAddress": "https://consumer.callback.url"
+"callbackAddress": "https://consumer.callback.url"
 }
 ```
 After processing message, (validate if such agreement exists), provider will create TransferProcess response and send it to consumer.
@@ -20,10 +20,10 @@ After processing message, (validate if such agreement exists), provider will cre
 ```
 {
 "@context":  "https://w3id.org/dspace/2024/1/context.json",
-"@type": "dspace:TransferProcess",
-"dspace:consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
-"dspace:providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
-"dspace:state": "dspace:REQUESTED"
+"@type": "TransferProcess",
+"consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+"providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
+"state": "REQUESTED"
 }
 ```
 In case that agreement with such id is not found, provider will send TransferError message
@@ -31,11 +31,11 @@ In case that agreement with such id is not found, provider will send TransferErr
 ```
 {
 "@context":  "https://w3id.org/dspace/2024/1/context.json",
-"@type": "dspace:TransferError",
-"dspace:consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
-"dspace:providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
-"dspace:code": "...",
-"dspace:reason": [
+"@type": "TransferError",
+"consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+"providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
+"code": "...",
+"reason": [
 {},
 {}
 ]
@@ -111,13 +111,13 @@ url = "/artifact/" + encoded + "/1"
 ```
 {
   "@context":  "https://w3id.org/dspace/2024/1/context.json",
-  "@type": "dspace:TransferStartMessage",
+  "@type": "TransferStartMessage",
   "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
   "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",  
-  "dspace:dataAddress": {
-    "@type": "dspace:DataAddress",
-    "dspace:endpointType": "https://w3id.org/idsa/v4.1/HTTP",
-    "dspace:endpoint": "http://localhost:8090/artifact/encoded_value/artifact_id",
+  "dataAddress": {
+    "@type": "DataAddress",
+    "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
+    "endpoint": "http://localhost:8090/artifact/encoded_value/artifact_id",
   }
 }
 

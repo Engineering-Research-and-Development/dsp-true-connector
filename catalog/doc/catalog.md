@@ -15,7 +15,7 @@ Example catalog (from init_data)
             "@language": "en"
         }
     ],
-    "dspace:participantId": "urn:example:DataProviderA",
+    "participantId": "urn:example:DataProviderA",
     "dcat:keyword": [
         "Employee",
         "Information",
@@ -63,7 +63,7 @@ Example catalog (from init_data)
             ],
             "dcat:distribution": [
                 {
-                    "@type": "dspace:Distribution",
+                    "@type": "Distribution",
                     "dct:format": {
                         "@id": "HTTP-pull"
                     },
@@ -72,7 +72,7 @@ Example catalog (from init_data)
                             "@id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5",
                             "@type": "dcat:DataService",
                             "dcat:creator": "Engineering Informatica S.p.A.",
-                            "dcat:endpointDescription": "dspace:connector",
+                            "dcat:endpointDescription": "connector",
                             "dcat:endpointURL": "http://localhost:8090/",
                             "dcat:identifier": "DSP TRUE Connector Unique identifier for testing",
                             "dcat:issued": "2024-04-23T18:26:00+02:00",
@@ -102,7 +102,7 @@ Example catalog (from init_data)
                     "dct:title": "PDF file"
                 },
                 {
-                    "@type": "dspace:Distribution",
+                    "@type": "Distribution",
                     "dct:format": {
                         "@id": "HTTP-pull"
                     },
@@ -111,7 +111,7 @@ Example catalog (from init_data)
                             "@id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5",
                             "@type": "dcat:DataService",
                             "dcat:creator": "Engineering Informatica S.p.A.",
-                            "dcat:endpointDescription": "dspace:connector",
+                            "dcat:endpointDescription": "connector",
                             "dcat:endpointURL": "http://localhost:8090/",
                             "dcat:identifier": "DSP TRUE Connector Unique identifier for testing",
                             "dcat:issued": "2024-04-23T18:26:00+02:00",
@@ -154,7 +154,7 @@ Example catalog (from init_data)
     ],
     "dcat:distribution": [
         {
-            "@type": "dspace:Distribution",
+            "@type": "Distribution",
             "dct:format": {
                 "@id": "HTTP-pull"
             },
@@ -163,7 +163,7 @@ Example catalog (from init_data)
                     "@id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5",
                     "@type": "dcat:DataService",
                     "dcat:creator": "Engineering Informatica S.p.A.",
-                    "dcat:endpointDescription": "dspace:connector",
+                    "dcat:endpointDescription": "connector",
                     "dcat:endpointURL": "http://localhost:8090/",
                     "dcat:identifier": "DSP TRUE Connector Unique identifier for testing",
                     "dcat:issued": "2024-04-23T18:26:00+02:00",
@@ -193,7 +193,7 @@ Example catalog (from init_data)
             "dct:title": "PDF file"
         },
         {
-            "@type": "dspace:Distribution",
+            "@type": "Distribution",
             "dct:format": {
                 "@id": "HTTP-pull"
             },
@@ -202,7 +202,7 @@ Example catalog (from init_data)
                     "@id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5",
                     "@type": "dcat:DataService",
                     "dcat:creator": "Engineering Informatica S.p.A.",
-                    "dcat:endpointDescription": "dspace:connector",
+                    "dcat:endpointDescription": "connector",
                     "dcat:endpointURL": "http://localhost:8090/",
                     "dcat:identifier": "DSP TRUE Connector Unique identifier for testing",
                     "dcat:issued": "2024-04-23T18:26:00+02:00",
@@ -237,7 +237,7 @@ Example catalog (from init_data)
             "@id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5",
             "@type": "dcat:DataService",
             "dcat:creator": "Engineering Informatica S.p.A.",
-            "dcat:endpointDescription": "dspace:connector",
+            "dcat:endpointDescription": "connector",
             "dcat:endpointURL": "http://localhost:8090/",
             "dcat:identifier": "DSP TRUE Connector Unique identifier for testing",
             "dcat:issued": "2024-04-23T18:26:00+02:00",

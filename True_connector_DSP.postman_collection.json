@@ -649,7 +649,7 @@
 							"response": []
 						},
 						{
-							"name": "[C] Start negotiation",
+							"name": "[C] Send Contract Request Message",
 							"event": [
 								{
 									"listen": "test",
@@ -698,6 +698,63 @@
 										"{{CONSUMER_SERVER_API_NEGOTIATION}}"
 									],
 									"path": [
+										"request"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[C] Send Contract Request Message as counteroffer",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"consumer_contractNegotiationId\", jsonData[\"data\"][\"@id\"])\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Retrieve consumer pid\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"consumerPid\", jsonData[\"data\"][\"consumerPid\"])\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Retrieve provider pid\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"providerPid\", jsonData[\"data\"][\"providerPid\"])\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {},
+										"requests": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"offer\": {\r\n        \"@id\": \"{{provider_offerId}}\",\r\n        \"target\": \"{{provider_datasetId}}\",\r\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"LTEQ\",\r\n                        \"rightOperand\": \"15\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/{{consumer_contractNegotiationId}}/request",
+									"host": [
+										"{{CONSUMER_SERVER_API_NEGOTIATION}}"
+									],
+									"path": [
+										"{{consumer_contractNegotiationId}}",
 										"request"
 									]
 								}
@@ -754,7 +811,167 @@
 							"response": []
 						},
 						{
-							"name": "[P] Approve negotiation",
+							"name": "[P] Send Contract Offer Message",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"provider_contractNegotiationId\", jsonData[\"data\"][\"@id\"])\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Retrieve consumer pid\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"consumerPid\", jsonData[\"data\"][\"consumerPid\"])\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Retrieve provider pid\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"providerPid\", jsonData[\"data\"][\"providerPid\"])\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {},
+										"requests": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER}}\",\r\n    \"offer\": {\r\n        \"@id\": \"{{provider_offerId}}\",\r\n        \"target\": \"{{provider_datasetId}}\",\r\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"LTEQ\",\r\n                        \"rightOperand\": \"5\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/offer",
+									"host": [
+										"{{CONSUMER_SERVER_API_NEGOTIATION}}"
+									],
+									"path": [
+										"offer"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Send Contract Offer Message as counteroffer",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Retrieve contract negotiation id\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"provider_contractNegotiationId\", jsonData[\"data\"][\"@id\"])\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Retrieve consumer pid\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"consumerPid\", jsonData[\"data\"][\"consumerPid\"])\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Retrieve provider pid\", function () {\r",
+											"    var jsonData = pm.response.json();\r",
+											"    pm.collectionVariables.set(\"providerPid\", jsonData[\"data\"][\"providerPid\"])\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {},
+										"requests": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"Forward-To\": \"{{PROVIDER}}\",\r\n    \"offer\": {\r\n        \"@id\": \"{{provider_offerId}}\",\r\n        \"target\": \"{{provider_datasetId}}\",\r\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"LTEQ\",\r\n                        \"rightOperand\": \"25\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/{{provider_contractNegotiationId}}/offer",
+									"host": [
+										"{{CONSUMER_SERVER_API_NEGOTIATION}}"
+									],
+									"path": [
+										"{{provider_contractNegotiationId}}",
+										"offer"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[C] Send Contract Negotiation Event Message Accepted",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Check if status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {},
+										"requests": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_SERVER_API_NEGOTIATION}}/{{consumer_contractNegotiationId}}/accept",
+									"host": [
+										"{{CONSUMER_SERVER_API_NEGOTIATION}}"
+									],
+									"path": [
+										"{{consumer_contractNegotiationId}}",
+										"accept"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Send Contract Agreement Message",
 							"event": [
 								{
 									"listen": "test",
@@ -793,7 +1010,7 @@
 							"response": []
 						},
 						{
-							"name": "[C] Verify negotiation",
+							"name": "[C] Send Contract Agreement Verification Message",
 							"event": [
 								{
 									"listen": "test",
@@ -839,7 +1056,7 @@
 							"response": []
 						},
 						{
-							"name": "[P] Finalize negotiation",
+							"name": "[P] Send Contract Negotiation Event Message Finalize",
 							"event": [
 								{
 									"listen": "test",
@@ -963,17 +1180,6 @@
 											"value": "consumer"
 										}
 									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Check if agreement is valid",
-							"request": {
-								"method": "POST",
-								"header": [],
-								"url": {
-									"raw": ""
 								}
 							},
 							"response": []
