@@ -21,6 +21,7 @@ import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.util.CredentialUtils;
 import it.eng.tools.util.ToolsUtil;
+import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
@@ -150,7 +151,7 @@ public class ContractNegotiationAPIService {
                                 "offer", offerWithOriginalId,
                                 "callbackAddress", forwardTo,
                                 "role", IConstants.ROLE_API));
-            } catch (JsonProcessingException e) {
+            } catch (JsonProcessingException | ValidationException e) {
                 log.error("Contract negotiation from response not valid");
                 auditEventPublisher.publishEvent(
                         AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
@@ -176,7 +177,7 @@ public class ContractNegotiationAPIService {
                                 "consumerPid", contractRequestMessage.getConsumerPid(),
                                 "role", IConstants.ROLE_API));
                 throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, "Error making request");
-            } catch (JsonProcessingException e) {
+            } catch (JsonProcessingException | ValidationException e) {
                 auditEventPublisher.publishEvent(
                         AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
                         "Contract negotiation request failed",
@@ -259,7 +260,7 @@ public class ContractNegotiationAPIService {
                                 "offer", offerWithOriginalId,
                                 "callbackAddress", existingContractNegotiation.getCallbackAddress(),
                                 "role", IConstants.ROLE_API));
-            } catch (JsonProcessingException e) {
+            } catch (JsonProcessingException | ValidationException e) {
                 log.error("Contract negotiation from response not valid");
                 auditEventPublisher.publishEvent(
                         AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
@@ -287,7 +288,7 @@ public class ContractNegotiationAPIService {
                                 "providerPid", contractRequestMessage.getProviderPid(),
                                 "role", IConstants.ROLE_API));
                 throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, "Error making request");
-            } catch (JsonProcessingException e) {
+            } catch (JsonProcessingException | ValidationException e) {
                 auditEventPublisher.publishEvent(
                         AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
                         "Contract negotiation request as counteroffer failed",
@@ -358,7 +359,7 @@ public class ContractNegotiationAPIService {
                                 "offer", updatedOffer,
                                 "callbackAddress", forwardTo,
                                 "role", IConstants.ROLE_API));
-            } catch (JsonProcessingException e) {
+            } catch (JsonProcessingException | ValidationException e) {
                 log.error("Contract negotiation from response not valid");
                 auditEventPublisher.publishEvent(
                         AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
@@ -383,7 +384,7 @@ public class ContractNegotiationAPIService {
                                 "contractNegotiationErrorMessage", contractNegotiationErrorMessage != null ? contractNegotiationErrorMessage.toString() : "No message received",
                                 "role", IConstants.ROLE_API));
                 throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, "Error making request");
-            } catch (JsonProcessingException e) {
+            } catch (JsonProcessingException | ValidationException e) {
                 auditEventPublisher.publishEvent(
                         AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
                         "Contract negotiation offer failed",
@@ -465,7 +466,7 @@ public class ContractNegotiationAPIService {
                                 "offer", updatedOffer,
                                 "callbackAddress", existingContractNegotiation.getCallbackAddress(),
                                 "role", IConstants.ROLE_API));
-            } catch (JsonProcessingException e) {
+            } catch (JsonProcessingException | ValidationException e) {
                 log.error("Contract negotiation from response not valid");
                 auditEventPublisher.publishEvent(
                         AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
@@ -493,7 +494,7 @@ public class ContractNegotiationAPIService {
                                 "providerPid", contractOfferMessage.getProviderPid(),
                                 "role", IConstants.ROLE_API));
                 throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, "Error making request");
-            } catch (JsonProcessingException e) {
+            } catch (JsonProcessingException | ValidationException e) {
                 auditEventPublisher.publishEvent(
                         AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
                         "Contract negotiation offer as counteroffer failed",

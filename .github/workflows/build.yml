@@ -83,33 +83,38 @@ jobs:
       - name: Stop docker container negotiation-api-without-counteroffer-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
 
-  negotiation-api-with-counteroffer-tests:
-    needs: build-and-push-image
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Git Checkout
-        uses: actions/checkout@v4
-
-      - name: Run docker container for negotiation-api-with-counteroffer-tests
-        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
-
-      - name: Wait for container starting
-        run: sleep 30
-
-      - name: Check if the container is up and running
-        run: docker ps -a
-
-      - uses: matt-ball/newman-action@v2.0.0
-        with:
-          collection: ./ci/docker/test-cases/negotiation-api-with-counteroffer-tests/negotiation-api-with-counteroffer-tests.json
-
-      - name: Dump docker negotiation-api-with-counteroffer-tests
-        if: failure()
-        uses: jwalton/gh-docker-logs@v2
-
-      - name: Stop docker container negotiation-api-with-counteroffer-tests
-        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
+#  This test suite is temporarily disabled. The Contract Negotiation flow where the provider
+#  initiates the Contract Negotiation has issues. By specification, the :callback MAY be chosen freely by the implementations
+#  https://eclipse-dataspace-protocol-base.github.io/DataspaceProtocol/2025-1/#prerequisites-1  . And since counteroffer messages do not allow
+#  to have the callbackAddress the provider does not know where to send the next message.
+#
+#  negotiation-api-with-counteroffer-tests:
+#    needs: build-and-push-image
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#      - name: Git Checkout
+#        uses: actions/checkout@v4
+#
+#      - name: Run docker container for negotiation-api-with-counteroffer-tests
+#        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
+#
+#      - name: Wait for container starting
+#        run: sleep 30
+#
+#      - name: Check if the container is up and running
+#        run: docker ps -a
+#
+#      - uses: matt-ball/newman-action@v2.0.0
+#        with:
+#          collection: ./ci/docker/test-cases/negotiation-api-with-counteroffer-tests/negotiation-api-with-counteroffer-tests.json
+#
+#      - name: Dump docker negotiation-api-with-counteroffer-tests
+#        if: failure()
+#        uses: jwalton/gh-docker-logs@v2
+#
+#      - name: Stop docker container negotiation-api-with-counteroffer-tests
+#        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
 
   datatransfer-api-http-pull-tests:
     needs: build-and-push-image
