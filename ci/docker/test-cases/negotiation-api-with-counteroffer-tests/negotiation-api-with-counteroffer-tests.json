@@ -244,7 +244,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"offer\": {\r\n        \"@id\": \"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"{{datasetId}}\",\r\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"LTEQ\",\r\n                        \"rightOperand\": \"15\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+							"raw": "{\r\n    \"@id\": \"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n    \"target\": \"{{datasetId}}\",\r\n    \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n    \"permission\": [\r\n        {\r\n            \"action\": \"USE\",\r\n            \"constraint\": [\r\n                {\r\n                    \"leftOperand\": \"COUNT\",\r\n                    \"operator\": \"LTEQ\",\r\n                    \"rightOperand\": \"15\"\r\n                }\r\n            ]\r\n        }\r\n    ]\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -387,7 +387,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"offer\": {\r\n        \"@id\": \"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n        \"target\": \"{{datasetId}}\",\r\n        \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n        \"permission\": [\r\n            {\r\n                \"action\": \"USE\",\r\n                \"constraint\": [\r\n                    {\r\n                        \"leftOperand\": \"COUNT\",\r\n                        \"operator\": \"LTEQ\",\r\n                        \"rightOperand\": \"8\"\r\n                    }\r\n                ]\r\n            }\r\n        ]\r\n    }\r\n}",
+							"raw": "{\r\n    \"@id\": \"urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5\",\r\n    \"target\": \"{{datasetId}}\",\r\n    \"assigner\": \"urn:uuid:ASSIGNER_PROVIDER\",\r\n    \"permission\": [\r\n        {\r\n            \"action\": \"USE\",\r\n            \"constraint\": [\r\n                {\r\n                    \"leftOperand\": \"COUNT\",\r\n                    \"operator\": \"LTEQ\",\r\n                    \"rightOperand\": \"8\"\r\n                }\r\n            ]\r\n        }\r\n    ]\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"

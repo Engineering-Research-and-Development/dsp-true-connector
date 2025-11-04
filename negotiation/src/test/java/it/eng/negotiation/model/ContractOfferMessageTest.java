@@ -146,18 +146,4 @@ public class ContractOfferMessageTest {
         assertEquals(NegotiationMockObjectUtil.CONSTRAINT.getOperator().toString(), constraintNode.get(DSpaceConstants.OPERATOR).asText());
         assertEquals(NegotiationMockObjectUtil.CONSTRAINT.getRightOperand(), constraintNode.get(DSpaceConstants.RIGHT_OPERAND).asText());
     }
-
-    private void validateJavaObj(ContractOfferMessage javaObj) {
-        assertEquals(NegotiationMockObjectUtil.CONSUMER_PID, javaObj.getConsumerPid());
-        assertEquals(NegotiationMockObjectUtil.PROVIDER_PID, javaObj.getProviderPid());
-        assertEquals(NegotiationMockObjectUtil.CALLBACK_ADDRESS, javaObj.getCallbackAddress());
-        assertEquals(NegotiationMockObjectUtil.OFFER.getAssignee(), javaObj.getOffer().getAssignee());
-        assertEquals(NegotiationMockObjectUtil.OFFER.getAssigner(), javaObj.getOffer().getAssigner());
-        assertEquals(NegotiationMockObjectUtil.OFFER.getTarget(), javaObj.getOffer().getTarget());
-        assertEquals(NegotiationMockObjectUtil.PERMISSION.getAction(), javaObj.getOffer().getPermission().get(0).getAction());
-        assertEquals(NegotiationMockObjectUtil.CONSTRAINT.getLeftOperand(), javaObj.getOffer().getPermission().get(0).getConstraint().get(0).getLeftOperand());
-        assertEquals(NegotiationMockObjectUtil.CONSTRAINT.getOperator(), javaObj.getOffer().getPermission().get(0).getConstraint().get(0).getOperator());
-        assertEquals(NegotiationMockObjectUtil.CONSTRAINT.getRightOperand(), javaObj.getOffer().getPermission().get(0).getConstraint().get(0).getRightOperand());
-    }
-
 }
