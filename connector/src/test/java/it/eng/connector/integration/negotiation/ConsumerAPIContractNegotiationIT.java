@@ -128,7 +128,7 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("Consumer initiates contract negotiation - provider error with wring message")
+    @DisplayName("Consumer initiates contract negotiation - provider error with wrong message")
     @WithUserDetails(TestUtil.ADMIN_USER)
     public void consumerInitiatesContractNegotiation_providerErrorWithInvalidMessage() throws Exception {
         WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/negotiations/request")
@@ -247,7 +247,7 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("Consumer verify contract negotiation - provider error with wring message")
+    @DisplayName("Consumer verify contract negotiation - provider error with wrong message")
     @WithUserDetails(TestUtil.ADMIN_USER)
     public void consumerVerifyContractNegotiation_providerErrorWithInvalidMessage() throws Exception {
         // insert data into consumer DB
@@ -323,7 +323,7 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
         assertNotNull(genericApiResponse);
         assertTrue(genericApiResponse.isSuccess());
 
-        // state TERMIANTED
+        // state TERMINATED
         assertEquals(ContractNegotiationState.TERMINATED, contractNegotiationRepository.findById(contractNegotiation.getId()).get().getState());
     }
 
@@ -380,7 +380,7 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("Consumer terminates contract negotiation - provider error with wring message")
+    @DisplayName("Consumer terminates contract negotiation - provider error with wrong message")
     @WithUserDetails(TestUtil.ADMIN_USER)
     public void consumerTerminatesContractNegotiation_providerErrorWithInvalidMessage() throws Exception {
         // insert data into consumer DB
