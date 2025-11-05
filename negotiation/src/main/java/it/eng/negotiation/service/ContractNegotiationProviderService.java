@@ -286,8 +286,6 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
                 .build());
 
         log.info("Contract Negotiation with id {} set to TERMINATED state", contractNegotiation.getId());
-
-        publisher.publishEvent(contractNegotiationTerminationMessage);
     }
 
     private void compareProviderPids(String providerPid, String providerPidFromMessage, String consumerPidFromMessage) {

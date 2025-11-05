@@ -295,7 +295,6 @@ public abstract class ContractNegotiationConsumerService extends BaseProtocolSer
         contractNegotiationRepository.save(contractNegotiationTerminated);
         log.info("Contract Negotiation with id {} set to TERMINATED state", contractNegotiation.getId());
 
-        publisher.publishEvent(contractNegotiationTerminationMessage);
         publisher.publishEvent(AuditEvent.Builder.newInstance()
                 .eventType(AuditEventType.PROTOCOL_NEGOTIATION_TERMINATED)
                 .description("Contract negotiation terminated")

@@ -44,7 +44,7 @@ public class DataTransferProcessTerminatedIT extends BaseIntegrationTest {
     @ParameterizedTest
     @MethodSource("getTransferStates")
     @WithUserDetails(TestUtil.CONNECTOR_USER)
-    public void termianteTransferProcess_provider(TransferState state) throws Exception {
+    public void terminateTransferProcess_provider(TransferState state) throws Exception {
 
         TransferProcess transferProcessRequested = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())
@@ -77,7 +77,7 @@ public class DataTransferProcessTerminatedIT extends BaseIntegrationTest {
     @ParameterizedTest
     @MethodSource("getTransferStates")
     @WithUserDetails(TestUtil.CONNECTOR_USER)
-    public void termianteTransferProcess_consumer(TransferState state) throws Exception {
+    public void terminateTransferProcess_consumer(TransferState state) throws Exception {
 
         TransferProcess transferProcessRequested = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())

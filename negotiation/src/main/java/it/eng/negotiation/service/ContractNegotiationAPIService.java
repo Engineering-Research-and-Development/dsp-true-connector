@@ -735,7 +735,7 @@ public class ContractNegotiationAPIService {
                                 "providerPid", contractNegotiation.getProviderPid(),
                                 "role", IConstants.ROLE_API));
                 throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, "Provider did not process Verification message correct");
-            } catch (JsonProcessingException e) {
+            } catch (JsonProcessingException | ValidationException e) {
                 auditEventPublisher.publishEvent(
                         AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
                         "Contract negotiation verification failed",
@@ -817,7 +817,7 @@ public class ContractNegotiationAPIService {
                 } else {
                     throw new ContractNegotiationAPIException(contractNegotiation.getRole() + " did not process Terminate message correct");
                 }
-            } catch (JsonProcessingException e) {
+            } catch (JsonProcessingException | ValidationException e) {
                 auditEventPublisher.publishEvent(
                         AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
                         "Contract negotiation termination failed",

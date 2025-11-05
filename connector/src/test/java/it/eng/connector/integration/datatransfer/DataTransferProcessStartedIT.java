@@ -224,7 +224,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
     @Test
     @DisplayName("Start transfer process - from suspended - provider - invalid state")
     @WithUserDetails(TestUtil.CONNECTOR_USER)
-    public void startTransferProcess_suspended_ivalid_state() throws Exception {
+    public void startTransferProcess_suspended_invalid_state() throws Exception {
         TransferProcess transferProcessSuspended = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())
                 .providerPid(createNewId())

@@ -127,6 +127,36 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
         assertEquals(ContractNegotiationErrorMessage.class, genericApiResponse.getData().getClass());
     }
 
+    @Test
+    @DisplayName("Consumer initiates contract negotiation - provider error with wring message")
+    @WithUserDetails(TestUtil.ADMIN_USER)
+    public void consumerInitiatesContractNegotiation_providerErrorWithInvalidMessage() throws Exception {
+        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/negotiations/request")
+                .withBasicAuth("connector@mail.com", "password")
+                .withRequestBody(WireMock.containing("ContractRequestMessage"))
+                .willReturn(
+                        aResponse().withHeader("Content-Type", "application/json")
+                                .withStatus(400)
+                                .withBody("{\"SomeJson\":\"Not a valid message\"}")));
+
+        // send API request
+        Map<String, Object> apiContractNegotiationRequest = new HashMap<>();
+        apiContractNegotiationRequest.put("Forward-To", wiremock.baseUrl());
+        apiContractNegotiationRequest.put("offer", NegotiationMockObjectUtil.OFFER);
+        final ResultActions result = mockMvc.perform(post(ApiEndpoints.NEGOTIATION_V1 + "/request")
+                .content(NegotiationSerializer.serializePlain(apiContractNegotiationRequest))
+                .contentType(MediaType.APPLICATION_JSON));
+
+        // verify expected behavior
+        result.andExpect(status().is4xxClientError())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+        String json = result.andReturn().getResponse().getContentAsString();
+        JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, ContractNegotiationErrorMessage.class);
+        GenericApiResponse<ContractNegotiationErrorMessage> genericApiResponse = jsonMapper.readValue(json, javaType);
+        assertNotNull(genericApiResponse);
+        assertFalse(genericApiResponse.isSuccess());
+    }
+
     // verify negotiation
     @Test
     @DisplayName("Consumer verify contract negotiation")
@@ -211,6 +241,47 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
         assertFalse(genericApiResponse.isSuccess());
         assertNotNull(genericApiResponse.getData());
         assertEquals(ContractNegotiationErrorMessage.class, genericApiResponse.getData().getClass());
+
+        // state NOT changed
+        assertEquals(ContractNegotiationState.AGREED, contractNegotiationRepository.findById(contractNegotiation.getId()).get().getState());
+    }
+
+    @Test
+    @DisplayName("Consumer verify contract negotiation - provider error with wring message")
+    @WithUserDetails(TestUtil.ADMIN_USER)
+    public void consumerVerifyContractNegotiation_providerErrorWithInvalidMessage() throws Exception {
+        // insert data into consumer DB
+        ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .state(ContractNegotiationState.AGREED)
+                // wiremock acts as provider
+                .callbackAddress(wiremock.baseUrl())
+                .build();
+        contractNegotiationRepository.save(contractNegotiation);
+
+        // prepare provider/wiremock response
+        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/negotiations/" + contractNegotiation.getProviderPid() + "/agreement/verification")
+                .withBasicAuth("connector@mail.com", "password")
+                .withRequestBody(WireMock.containing("ContractAgreementVerificationMessage"))
+                .willReturn(
+                        aResponse().withHeader("Content-Type", "application/json")
+                                .withStatus(400)
+                                .withBody("{\"SomeJson\":\"Not a valid message\"}")));
+
+        // send API request
+        //{contractNegotiationId}/verify
+        final ResultActions result = mockMvc.perform(put(ApiEndpoints.NEGOTIATION_V1 + "/" + contractNegotiation.getId() + "/verify")
+                .contentType(MediaType.APPLICATION_JSON));
+
+        // verify expected behavior
+        result.andExpect(status().is4xxClientError())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+        String json = result.andReturn().getResponse().getContentAsString();
+        JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, ContractNegotiationErrorMessage.class);
+        GenericApiResponse<ContractNegotiationErrorMessage> genericApiResponse = jsonMapper.readValue(json, javaType);
+        assertNotNull(genericApiResponse);
+        assertFalse(genericApiResponse.isSuccess());
 
         // state NOT changed
         assertEquals(ContractNegotiationState.AGREED, contractNegotiationRepository.findById(contractNegotiation.getId()).get().getState());
@@ -303,6 +374,48 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
         assertFalse(genericApiResponse.isSuccess());
         assertNotNull(genericApiResponse.getData());
         assertEquals(ContractNegotiationErrorMessage.class, genericApiResponse.getData().getClass());
+
+        // state NOT changed
+        assertEquals(ContractNegotiationState.AGREED, contractNegotiationRepository.findById(contractNegotiation.getId()).get().getState());
+    }
+
+    @Test
+    @DisplayName("Consumer terminates contract negotiation - provider error with wring message")
+    @WithUserDetails(TestUtil.ADMIN_USER)
+    public void consumerTerminatesContractNegotiation_providerErrorWithInvalidMessage() throws Exception {
+        // insert data into consumer DB
+        ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .state(ContractNegotiationState.AGREED)
+                // wiremock acts as provider
+                .callbackAddress(wiremock.baseUrl())
+                .role(IConstants.ROLE_CONSUMER)
+                .build();
+        contractNegotiationRepository.save(contractNegotiation);
+
+        // prepare provider/wiremock response
+        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/negotiations/" + contractNegotiation.getProviderPid() + "/termination")
+                .withBasicAuth("connector@mail.com", "password")
+                .withRequestBody(WireMock.containing("ContractNegotiationTerminationMessage"))
+                .willReturn(
+                        aResponse().withHeader("Content-Type", "application/json")
+                                .withStatus(400)
+                                .withBody("{\"SomeJson\":\"Not a valid message\"}")));
+
+        // send API request
+        //{contractNegotiationId}/terminate
+        final ResultActions result = mockMvc.perform(put(ApiEndpoints.NEGOTIATION_V1 + "/" + contractNegotiation.getId() + "/terminate")
+                .contentType(MediaType.APPLICATION_JSON));
+
+        // verify expected behavior
+        result.andExpect(status().is4xxClientError())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+        String json = result.andReturn().getResponse().getContentAsString();
+        JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, ContractNegotiationErrorMessage.class);
+        GenericApiResponse<ContractNegotiationErrorMessage> genericApiResponse = jsonMapper.readValue(json, javaType);
+        assertNotNull(genericApiResponse);
+        assertFalse(genericApiResponse.isSuccess());
 
         // state NOT changed
         assertEquals(ContractNegotiationState.AGREED, contractNegotiationRepository.findById(contractNegotiation.getId()).get().getState());

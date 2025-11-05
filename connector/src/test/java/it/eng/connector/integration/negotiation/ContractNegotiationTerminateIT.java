@@ -45,13 +45,13 @@ public class ContractNegotiationTerminateIT extends BaseIntegrationTest {
     public void providerTerminateNegotiation_success() throws Exception {
         ContractNegotiation cn = createContractNegotiation();
 
-        ContractNegotiationTerminationMessage terminaionMessage = ContractNegotiationTerminationMessage.Builder.newInstance()
+        ContractNegotiationTerminationMessage terminationMessage = ContractNegotiationTerminationMessage.Builder.newInstance()
                 .consumerPid(cn.getConsumerPid())
                 .providerPid(cn.getProviderPid())
                 .code("test")
                 .reason(Collections.singletonList("test"))
                 .build();
-        String body = NegotiationSerializer.serializeProtocol(terminaionMessage);
+        String body = NegotiationSerializer.serializeProtocol(terminationMessage);
 
         //negotiations/:id/termination resource
         final ResultActions result =
@@ -89,11 +89,11 @@ public class ContractNegotiationTerminateIT extends BaseIntegrationTest {
         result.andExpect(status().is4xxClientError())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
-        ContractNegotiationErrorMessage erroMessage = NegotiationSerializer.deserializeProtocol(result.andReturn().getResponse().getContentAsString(),
+        ContractNegotiationErrorMessage errorMessage = NegotiationSerializer.deserializeProtocol(result.andReturn().getResponse().getContentAsString(),
                 ContractNegotiationErrorMessage.class);
-        assertNotNull(erroMessage);
-        assertEquals(cn.getConsumerPid(), erroMessage.getConsumerPid());
-        assertEquals(cn.getProviderPid(), erroMessage.getProviderPid());
+        assertNotNull(errorMessage);
+        assertEquals(cn.getConsumerPid(), errorMessage.getConsumerPid());
+        assertEquals(cn.getProviderPid(), errorMessage.getProviderPid());
     }
 
     @Test
@@ -102,13 +102,13 @@ public class ContractNegotiationTerminateIT extends BaseIntegrationTest {
     public void consumerTerminateNegotiation_success() throws Exception {
         ContractNegotiation cn = createContractNegotiation();
 
-        ContractNegotiationTerminationMessage terminaionMessage = ContractNegotiationTerminationMessage.Builder.newInstance()
+        ContractNegotiationTerminationMessage terminationMessage = ContractNegotiationTerminationMessage.Builder.newInstance()
                 .consumerPid(cn.getConsumerPid())
                 .providerPid(cn.getProviderPid())
                 .code("test")
                 .reason(Collections.singletonList("test"))
                 .build();
-        String body = NegotiationSerializer.serializeProtocol(terminaionMessage);
+        String body = NegotiationSerializer.serializeProtocol(terminationMessage);
 
         // /consumer/negotiations/{consumerPid}/termination
         final ResultActions result =
@@ -127,13 +127,13 @@ public class ContractNegotiationTerminateIT extends BaseIntegrationTest {
     public void consumerTerminateNegotiation_error() throws Exception {
         ContractNegotiation cn = createContractNegotiation();
 
-        ContractNegotiationTerminationMessage terminaionMessage = ContractNegotiationTerminationMessage.Builder.newInstance()
+        ContractNegotiationTerminationMessage terminationMessage = ContractNegotiationTerminationMessage.Builder.newInstance()
                 .consumerPid(cn.getConsumerPid())
                 .providerPid(cn.getProviderPid())
                 .code("test")
                 .reason(Collections.singletonList("test"))
                 .build();
-        String body = NegotiationSerializer.serializeProtocol(terminaionMessage);
+        String body = NegotiationSerializer.serializeProtocol(terminationMessage);
 
         // /consumer/negotiations/{consumerPid}/termination
         final ResultActions result =
@@ -144,11 +144,11 @@ public class ContractNegotiationTerminateIT extends BaseIntegrationTest {
         // result is 400 error
         result.andExpect(status().is4xxClientError())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
-        ContractNegotiationErrorMessage erroMessage = NegotiationSerializer.deserializeProtocol(result.andReturn().getResponse().getContentAsString(),
+        ContractNegotiationErrorMessage errorMessage = NegotiationSerializer.deserializeProtocol(result.andReturn().getResponse().getContentAsString(),
                 ContractNegotiationErrorMessage.class);
-        assertNotNull(erroMessage);
-        assertEquals(cn.getConsumerPid(), erroMessage.getConsumerPid());
-        assertEquals(cn.getProviderPid(), erroMessage.getProviderPid());
+        assertNotNull(errorMessage);
+        assertEquals(cn.getConsumerPid(), errorMessage.getConsumerPid());
+        assertEquals(cn.getProviderPid(), errorMessage.getProviderPid());
     }
 
     private ContractNegotiation createContractNegotiation() {
