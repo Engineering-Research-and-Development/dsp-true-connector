@@ -2,7 +2,8 @@ name: TCK compliance test
 run-name: TCK compliance test
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ "feature/dsp-2025-01-catalog"]
 
 jobs:
   tckComplianceTest:
@@ -21,10 +22,39 @@ jobs:
         run: docker ps -a
 
       - name: Run docker container for TCK Runtime
-        run: docker compose -f ./ci/tck/docker-compose-tck.yml up
+        id: tck_runtime
+        run: |
+          docker compose -f ./ci/tck/docker-compose-tck.yml up > tck_runtime.log 2>&1
+        continue-on-error: true
+
+      - name: Check TCK test results
+        id: check_results
+        run: |
+          echo "Checking TCK Runtime logs for test results..."
+          cat tck_runtime.log
+          if grep -q "Failed tests: 0" tck_runtime.log; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "color=brightgreen" >> $GITHUB_OUTPUT
+            echo "message=passing" >> $GITHUB_OUTPUT
+            echo "✅ TCK tests passed"
+            exit 0
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "color=red" >> $GITHUB_OUTPUT
+            echo "message=failing" >> $GITHUB_OUTPUT
+            echo "❌ TCK tests failed"
+            exit 1
+          fi
 
       - name: Stop docker container TCK Runtime
+        if: always()
         run: docker compose -f ./ci/tck/docker-compose-tck.yml down -v
 
       - name: Stop docker container DSPTRUEConnector as TCK profile
+        if: always()
         run: docker compose -f ./ci/tck/docker-compose.yml down -v
+
+      - name: Fail workflow if tests failed
+        if: steps.check_results.outcome == 'failure'
+        run: exit 1
+

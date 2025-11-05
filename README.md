@@ -1,19 +1,25 @@
 # TRUE Connector
 
-Implementation of the new [Dataspace protocol](https://docs.internationaldataspaces.org/ids-knowledgebase/v/dataspace-protocol/overview/readme) (current version 2024-1)
+<p align='left'>
+  <a href="https://github.com/Engineering-Research-and-Development/dsp-true-connector/actions/workflows/build.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/Engineering-Research-and-Development/dsp-true-connector/build.yml?branch=develop&label=Build" /></a>
+  &nbsp;
+  <a href="https://github.com/Engineering-Research-and-Development/dsp-true-connector/actions/workflows/tck_compliance.yml"><img alt="TCK compliance" src="https://img.shields.io/github/actions/workflow/status/Engineering-Research-and-Development/dsp-true-connector/tck_compliance.yml?branch=main&label=TCK%20compliance" /></a>
+  &nbsp;
+  <a href="https://eclipse-dataspace-protocol-base.github.io/DataspaceProtocol/2025-1/"><img alt="Dataspace protocol" src="https://img.shields.io/badge/Dataspace%20protocol-2025--1-blue" /></a>
+</p>
 
 ## Development requirements
 
- - IDE : Eclipse STS, IntelliJ, VS Code
- - Resources: 16Gb RAM, 5Gb of disk space, 8 thread Processor
+ - IDE : Eclipse STS, IntelliJ, VS Code etc.
+  - Resources: 16 GB RAM, 5 GB of disk space, 8-thread processor
  - Languages/Frameworks: Java 17, Maven 3.9.4 (compatible with java 17), SpringBoot 3.1.2 (Spring framework 6)
  - Database: MongoDB 7.0.12
  - Libraries: lombok, fasterxml.jackson, okhttp3, com.auth0:java-jwt, org.apache.commons:commons-lang3, org.apache.sshd:sshd-core, org.apache.sshd:sshd-sftp
   - Testing: Junit, Mockito; integration tests - MockMvc, Test Containers, Docker
   - Debugging tools: IDE debug
-  - FE Technologies: Angular 17
+  - FE Technologies: Angular 19
   - Other technologies/Protocols used: Dataspace Protocol, HTTPS, sftp, DCAT-AP
-  - Useful Tools: Postman, Robo 3T (or any other MongoDb visualization tool)
+    - Useful Tools: Postman, Robo 3T (or any other MongoDB visualization tool)
   - [Repository source code and versioning](https://github.com/Engineering-Research-and-Development/dsp-true-connector)
   - [Task Management and Monitoring](https://github.com/users/Engineering-Research-and-Development/projects/2)
   - [CI/CD](https://github.com/Engineering-Research-and-Development/dsp-true-connector/actions)
@@ -23,7 +29,7 @@ Please refer to the [development procedure](doc/development_procedure.md) for mo
 	
 ## Project structure
 
-Project is structured as multi module maven project: 
+Project is structured as multi-module maven project: 
 
 * catalog - module containing logic for processing catalog document
 * negotiation - module containing logic for performing contract negotiation
