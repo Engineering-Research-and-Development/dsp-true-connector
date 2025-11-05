@@ -1,0 +1,29 @@
+package it.eng.dcp.autoconfigure;
+
+import it.eng.dcp.config.DCPMongoConfig;
+import it.eng.dcp.config.DcpProperties;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+
+/**
+ * Auto-configuration for the DCP module.
+ *
+ * This configuration is registered using the Spring Boot auto-configuration discovery
+ * mechanism. It enables the DCP properties binding, imports the Mongo configuration
+ * and component-scans only the `it.eng.dcp` package so the main application doesn't
+ * need to scan broad package roots.
+ *
+ * It is conditional on the property `dcp.enabled` (defaults to enabled).
+ */
+@Configuration
+@ConditionalOnProperty(prefix = "dcp", name = "enabled", havingValue = "true", matchIfMissing = true)
+@EnableConfigurationProperties(DcpProperties.class)
+@Import({DCPMongoConfig.class})
+@ComponentScan("it.eng.dcp")
+public class DcpAutoConfiguration {
+
+}
+

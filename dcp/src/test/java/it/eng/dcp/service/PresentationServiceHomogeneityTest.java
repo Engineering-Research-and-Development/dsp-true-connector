@@ -1,0 +1,85 @@
+package it.eng.dcp.service;
+
+import it.eng.dcp.model.VerifiableCredential;
+import it.eng.dcp.repository.VerifiableCredentialRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+
+import java.time.Instant;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
+
+class PresentationServiceHomogeneityTest {
+
+    private VerifiableCredentialRepository repo;
+    private BasicVerifiablePresentationSigner signer;
+    private PresentationService svc;
+
+    @BeforeEach
+    void setup() {
+        repo = Mockito.mock(VerifiableCredentialRepository.class);
+        signer = new BasicVerifiablePresentationSigner();
+        svc = new PresentationService(repo, signer);
+    }
+
+    @Test
+    void mixedProfilesProduceMultiplePresentations() {
+        VerifiableCredential a = VerifiableCredential.Builder.newInstance()
+                .holderDid("did:holder:1")
+                .credentialType("typeA")
+                .profileId("profile1")
+                .issuanceDate(Instant.now())
+                .credentialIds(List.of("c1"))
+                .build();
+
+        VerifiableCredential b = VerifiableCredential.Builder.newInstance()
+                .holderDid("did:holder:1")
+                .credentialType("typeB")
+                .profileId("profile2")
+                .issuanceDate(Instant.now())
+                .credentialIds(List.of("c2"))
+                .build();
+
+        when(repo.findByCredentialTypeIn(List.of("typeA", "typeB"))).thenReturn(List.of(a, b));
+
+        var query = it.eng.dcp.model.PresentationQueryMessage.Builder.newInstance()
+                .scope(List.of("typeA", "typeB"))
+                .build();
+
+        var resp = svc.createPresentation(query);
+        assertNotNull(resp);
+        assertTrue(resp.getPresentation().size() >= 2, "Should produce separate presentations for different profiles");
+    }
+
+    @Test
+    void singleProfileGroupsAll() {
+        VerifiableCredential a = VerifiableCredential.Builder.newInstance()
+                .holderDid("did:holder:1")
+                .credentialType("typeA")
+                .profileId("profile1")
+                .issuanceDate(Instant.now())
+                .credentialIds(List.of("c1"))
+                .build();
+
+        VerifiableCredential b = VerifiableCredential.Builder.newInstance()
+                .holderDid("did:holder:1")
+                .credentialType("typeA")
+                .profileId("profile1")
+                .issuanceDate(Instant.now())
+                .credentialIds(List.of("c2"))
+                .build();
+
+        when(repo.findByCredentialTypeIn(List.of("typeA"))).thenReturn(List.of(a, b));
+
+        var query = it.eng.dcp.model.PresentationQueryMessage.Builder.newInstance()
+                .scope(List.of("typeA"))
+                .build();
+
+        var resp = svc.createPresentation(query);
+        assertNotNull(resp);
+        assertEquals(1, resp.getPresentation().size(), "Single profile should yield one presentation grouping both creds");
+    }
+}

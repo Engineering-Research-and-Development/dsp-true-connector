@@ -34,6 +34,9 @@ public interface DSpaceConstants {
 	public static final String ID = "@id";
 	public static final String DATASPACE_CONTEXT_0_8_VALUE = "https://w3id.org/dspace/2024/1/context.json";
 	public static final String DATASET_CONTEXT_VALUE =       "https://w3id.org/dspace/1/0/context.json";
+	public static final String DCP_CONTEXT = "https://w3id.org/dspace-dcp/v1.0/dcp.jsonld";
+	public static final String DID_CONTEXT = "https://www.w3.org/ns/did/v1";
+	public static final String DCP_NAMESPACE = "https://w3id.org/dspace-dcp/v1.0";
 	public static final String TYPE = "@type";
 	public static final String VALUE = "@value";
 	public static final String LANGUAGE = "@language";
