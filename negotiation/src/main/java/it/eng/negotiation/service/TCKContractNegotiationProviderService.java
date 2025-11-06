@@ -151,26 +151,26 @@ public class TCKContractNegotiationProviderService extends ContractNegotiationPr
             }
         }
 
-//        if (target.equalsIgnoreCase("ACN0103")) {
-//            switch (contractNegotiation.getState()) {
-//                case REQUESTED:
-//                    log.info("Processing ACN0103 - REQUESTED -> OFFERED : {}", contractNegotiation.getId());
-//                    ContractNegotiation result = apiService.sendContractOfferMessageAsCounteroffer(contractNegotiation.getId(), NegotiationSerializer.serializePlainJsonNode(swapOfferIdWithOriginalId(contractNegotiation.getOffer())));
-//                    applicationEventPublisher.publishEvent(result);
-//                    break;
-//                case ACCEPTED:
-//                    log.info("Processing ACN0103 - ACCEPTED -> AGREED : {}", contractNegotiation.getId());
-//                    ContractNegotiation result2 = apiService.sendContractAgreementMessage(contractNegotiation.getId());
-//                    applicationEventPublisher.publishEvent(result2);
-//                    break;
-//                case VERIFIED:
-//                    log.info("Processing ACN0103 - VERIFIED -> FINALIZED : {}", contractNegotiation.getId());
-//                    apiService.sendContractNegotiationEventMessageFinalize(contractNegotiation.getId());
-//                    break;
-//                default:
-//                    log.info("No action for ACN0103 in state: {}", contractNegotiation.getState());
-//            }
-//        }
+        if (target.equalsIgnoreCase("ACN0103")) {
+            switch (contractNegotiation.getState()) {
+                case REQUESTED:
+                    log.info("Processing ACN0103 - REQUESTED -> OFFERED : {}", contractNegotiation.getId());
+                    ContractNegotiation result = apiService.sendContractOfferMessageAsCounteroffer(contractNegotiation.getId(), NegotiationSerializer.serializePlainJsonNode(swapOfferIdWithOriginalId(contractNegotiation.getOffer())));
+                    applicationEventPublisher.publishEvent(result);
+                    break;
+                case ACCEPTED:
+                    log.info("Processing ACN0103 - ACCEPTED -> AGREED : {}", contractNegotiation.getId());
+                    ContractNegotiation result2 = apiService.sendContractAgreementMessage(contractNegotiation.getId());
+                    applicationEventPublisher.publishEvent(result2);
+                    break;
+                case VERIFIED:
+                    log.info("Processing ACN0103 - VERIFIED -> FINALIZED : {}", contractNegotiation.getId());
+                    apiService.sendContractNegotiationEventMessageFinalize(contractNegotiation.getId());
+                    break;
+                default:
+                    log.info("No action for ACN0103 in state: {}", contractNegotiation.getState());
+            }
+        }
 
         if (target.equalsIgnoreCase("ACN0104")) {
             switch (contractNegotiation.getState()) {
