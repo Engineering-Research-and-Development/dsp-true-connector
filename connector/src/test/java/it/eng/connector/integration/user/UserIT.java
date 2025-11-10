@@ -55,7 +55,7 @@ public class UserIT extends BaseIntegrationTest {
     @Test
     @WithUserDetails(TestUtil.ADMIN_USER)
     public void createUser() throws Exception {
-        UserDTO userDTO = new UserDTO("firstName", "lastName", "test@mail.com", "StrongPasswrd12!", null, Role.ROLE_ADMIN);
+        UserDTO userDTO = new UserDTO("firstName", "lastName", "test@mail.com", "StrongPassword12!", null, Role.ROLE_ADMIN);
 
         final ResultActions result = mockMvc.perform(post(ApiEndpoints.USERS_V1)
                 .content(ToolsSerializer.serializePlain(userDTO))
@@ -203,7 +203,7 @@ public class UserIT extends BaseIntegrationTest {
     }
 
     @Test
-    public void updatePassword_othe_user() throws Exception {
+    public void updatePassword_other_user() throws Exception {
         User user = new User(createNewId(), "FirstNameTest", "LastNameTest", "otherUser4@mail.com",
                 passwordEncoder.encode("password"), true, false, false, Role.ROLE_ADMIN);
         userRepository.save(user);

@@ -422,7 +422,7 @@ public class ContractNegotiationAPIService {
                 .build();
 
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
-                ContractNegotiationCallback.getConsumerOffersCallback(existingContractNegotiation.getCallbackAddress(), existingContractNegotiation.getProviderPid()),
+                ContractNegotiationCallback.getConsumerOffersCallback(existingContractNegotiation.getCallbackAddress(), existingContractNegotiation.getConsumerPid()),
                 NegotiationSerializer.serializeProtocolJsonNode(contractOfferMessage),
                 credentialUtils.getConnectorCredentials());
         log.info("Response received {}", response);
@@ -775,7 +775,7 @@ public class ContractNegotiationAPIService {
         ContractNegotiationTerminationMessage negotiationTerminatedEventMessage = ContractNegotiationTerminationMessage.Builder.newInstance()
                 .consumerPid(contractNegotiation.getConsumerPid())
                 .providerPid(contractNegotiation.getProviderPid())
-                .code(contractNegotiationId)
+                .code("400")
                 .reason(Collections.singletonList(reason))
                 .build();
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(

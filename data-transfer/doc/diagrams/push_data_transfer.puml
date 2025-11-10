@@ -24,11 +24,34 @@ TransferRequestMessage
   "@type": "TransferRequestMessage",
   "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
   "agreementId": "urn:uuid:e8dc8655-44c2-46ef-b701-4cffdc2faa44",
-  "dct:format": "HttpData-PUSH",
-  "dst:dataAddress": {
-    "@type": "DataAddress",
-    "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
-    "endpoint": "http://localhost:9000/dsp-true-connector-consumer-bucket/..."
+  "format": "HttpData-PUSH",
+  "dataAddress": {
+    "endpointProperties": [
+      {
+        "name": "bucketName",
+        "value": "dsp-true-connector-consumer"
+      },
+      {
+        "name": "region",
+        "value": "us-east-1"
+      },
+      {
+        "name": "objectKey",
+        "value": "urn:uuid:22644978-9b3d-4907-828f-7cb79d489996"
+      },
+      {
+        "name": "accessKey",
+        "value": "GetBucketUser-ece8f0de"
+      },
+      {
+        "name": "secretKey",
+        "value": "f0ca1d01-fd18-4168-b58a-81f6c1cf92dc"
+      },
+      {
+        "name": "endpointOverride",
+        "value": "http://localhost:9000"
+      }
+    ]
   },
   "callbackAddress": "https://......"
 }
@@ -49,11 +72,34 @@ note right
   "@type": "TransferStartMessage",
   "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
   "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
-  "dst:dataAddress": {
-      "@type": "DataAddress",
-      "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
-      "endpoint": "http://localhost:9000/dsp-true-connector-consumer-bucket/..."
-    },
+  "dataAddress": {
+      "endpointProperties": [
+        {
+          "name": "bucketName",
+          "value": "dsp-true-connector-consumer"
+        },
+        {
+          "name": "region",
+          "value": "us-east-1"
+        },
+        {
+          "name": "objectKey",
+          "value": "urn:uuid:22644978-9b3d-4907-828f-7cb79d489996"
+        },
+        {
+          "name": "accessKey",
+          "value": "GetBucketUser-ece8f0de"
+        },
+        {
+          "name": "secretKey",
+          "value": "f0ca1d01-fd18-4168-b58a-81f6c1cf92dc"
+        },
+        {
+          "name": "endpointOverride",
+          "value": "http://localhost:9000"
+        }
+      ]
+   }
 }
 end note
 

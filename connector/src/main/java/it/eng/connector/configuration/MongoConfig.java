@@ -29,41 +29,6 @@ public class MongoConfig {
         return new AuditorAwareImpl();
     }
 
-//    @Bean
-//    public MongoCustomConversions mongoCustomConversions() {
-//        return new MongoCustomConversions.MongoConverterBuilder()
-//                .registerConverter(new StringToActionConverter())
-//                .registerConverter(new ActionToStringConverter())
-//                .registerConverter(new StringToLeftOperandConverter())
-//                .registerConverter(new LeftOperandToStringConverter())
-//                .registerConverter(new StringToOperatorConverter())
-//                .registerConverter(new OperatorToStringConverter())
-//                .build();
-//    }
-
-//    @Bean
-//    public MongoCustomConversions mongoCustomConversions() {
-//        return MongoCustomConversions.create(builder -> {
-//            builder.configureConverters(adapter -> {
-//                // Register converters with type hints to prevent unwanted conversions
-//                adapter.registerConverter(new StringToActionConverter(),
-//                        TypeDescriptor.valueOf(String.class),
-//                        TypeDescriptor.valueOf(Action.class));
-//                adapter.registerConverter(new ActionToStringConverter());
-//
-//                adapter.registerConverter(new StringToLeftOperandConverter(),
-//                        TypeDescriptor.valueOf(String.class),
-//                        TypeDescriptor.valueOf(LeftOperand.class));
-//                adapter.registerConverter(new LeftOperandToStringConverter());
-//
-//                adapter.registerConverter(new StringToOperatorConverter(),
-//                        TypeDescriptor.valueOf(String.class),
-//                        TypeDescriptor.valueOf(Operator.class));
-//                adapter.registerConverter(new OperatorToStringConverter());
-//            });
-//        });
-//    }
-
     @Bean
     public MongoCustomConversions mongoCustomConversions() {
         return new MongoCustomConversions(Arrays.asList(

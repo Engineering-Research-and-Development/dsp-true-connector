@@ -66,66 +66,21 @@
           "$ref": "datasets",
           "$id": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
         },
-        {
-          "$ref": "datasets",
-          "$id": "ACN0101"
-        },
-        {
-          "$ref": "datasets",
-          "$id": "ACN0102"
-        },
-        {
-          "$ref": "datasets",
-          "$id": "ACN0103"
-        },
-        {
-          "$ref": "datasets",
-          "$id": "ACN0104"
-        },
-        {
-          "$ref": "datasets",
-          "$id": "ACN0201"
-        },
-        {
-          "$ref": "datasets",
-          "$id": "ACN0202"
-        },
-        {
-          "$ref": "datasets",
-          "$id": "ACN0203"
-        },
-        {
-          "$ref": "datasets",
-          "$id": "ACN0204"
-        },
-        {
-          "$ref": "datasets",
-          "$id": "ACN0205"
-        },
-        {
-          "$ref": "datasets",
-          "$id": "ACN0206"
-        },
-        {
-          "$ref": "datasets",
-          "$id": "ACN0207"
-        },
-        {
-          "$ref": "datasets",
-          "$id": "ACN0301"
-        },
-        {
-          "$ref": "datasets",
-          "$id": "ACN0302"
-        },
-        {
-          "$ref": "datasets",
-          "$id": "ACN0303"
-        },
-        {
-          "$ref": "datasets",
-          "$id": "ACN0304"
-        }
+        {"$ref": "datasets","$id": "ACN0101"},
+        {"$ref": "datasets","$id": "ACN0102"},
+        {"$ref": "datasets","$id": "ACN0103"},
+        {"$ref": "datasets","$id": "ACN0104"},
+        {"$ref": "datasets","$id": "ACN0201"},
+        {"$ref": "datasets","$id": "ACN0202"},
+        {"$ref": "datasets","$id": "ACN0203"},
+        {"$ref": "datasets","$id": "ACN0204"},
+        {"$ref": "datasets","$id": "ACN0205"},
+        {"$ref": "datasets","$id": "ACN0206"},
+        {"$ref": "datasets","$id": "ACN0207"},
+        {"$ref": "datasets","$id": "ACN0301"},
+        {"$ref": "datasets","$id": "ACN0302"},
+        {"$ref": "datasets","$id": "ACN0303"},
+        {"$ref": "datasets","$id": "ACN0304"}
       ],
       "service": [
         {
@@ -1020,7 +975,7 @@
       "modified": "2024-04-23T16:26:00.000Z",
       "title": "DSP TRUE Connector",
       "endpointDescription": "connector",
-      "endpointURL": "http://localhost:8090/",
+      "endpointURL": "http://localhost:8080/",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": 0
@@ -1925,7 +1880,7 @@
       "_id": "urn:uuid:abc45798-1434-4932-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "temporary_consumer_pid",
-      "callbackAddress": "http://localhost:8090/",
+      "callbackAddress": "http://localhost:8080/",
       "agreementId": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
       "state": "INITIALIZED",
       "role": "provider",

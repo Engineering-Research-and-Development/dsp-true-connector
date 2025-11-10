@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = DataService.Builder.class)
-@JsonPropertyOrder(value = {"@id", "@type"}, alphabetic = true)
+@JsonPropertyOrder(value = {DSpaceConstants.TYPE,DSpaceConstants.ID}, alphabetic = true)
 @Document(collection = "dataservices")
 public class DataService implements Serializable {
 

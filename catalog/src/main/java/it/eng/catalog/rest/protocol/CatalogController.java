@@ -33,7 +33,6 @@ public class CatalogController {
     protected ResponseEntity<JsonNode> getCatalog(@RequestHeader(required = false) String authorization,
                                                   @RequestBody JsonNode jsonBody) {
         log.info("Handling catalog request \n{}", CatalogSerializer.serializeProtocol(jsonBody));
-        //TODO don't show datasets which don't have artifacts
         CatalogSerializer.deserializeProtocol(jsonBody, CatalogRequestMessage.class);
         Catalog catalog = catalogService.getCatalog();
         return ResponseEntity.ok()
@@ -42,7 +41,7 @@ public class CatalogController {
 
     }
 
-    @GetMapping(path = "/datasets/{id}", consumes = MediaType.ALL_VALUE)
+    @GetMapping(path = "/datasets/{id}")
     public ResponseEntity<JsonNode> getDataset(@RequestHeader(required = false) String authorization,
                                                @PathVariable String id) {
 

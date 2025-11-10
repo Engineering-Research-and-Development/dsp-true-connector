@@ -21,11 +21,8 @@ import java.util.Arrays;
 @Slf4j
 public class ProviderDataTransferController {
 
-    //    @Autowired
     private final Environment environment;
-
     private final TransferProcessStrategy dataTransferService;
-    //    @Autowired
     private final ApplicationEventPublisher applicationEventPublisher;
 
     public ProviderDataTransferController(Environment environment, TransferProcessStrategy dataTransferService, ApplicationEventPublisher applicationEventPublisher) {

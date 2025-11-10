@@ -214,17 +214,4 @@ public class DataTransferAPIController {
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(GenericApiResponse.success(response, "Data transfer terminated"));
     }
-
-
-    @PostMapping(path = {"/tck"}, consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<GenericApiResponse<JsonNode>> tck(@RequestBody TCKRequest body) {
-        log.info("TCK request");
-        JsonNode response = apiService.tck(body);
-        if (response == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(GenericApiResponse.success(response, "TCK request processed successfully"));
-    }
-
 }

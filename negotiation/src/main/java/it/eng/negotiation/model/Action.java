@@ -9,10 +9,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 
 public enum Action {
+    USE("use"),
+    ANONYMIZE("anonymize");
+    /*
     DELETE("delete"),
     EXECUTE("execute"),
     SOURCE_CODE("SourceCode"),
-    ANONYMIZE("anonymize"),
     EXTRACT("extract"),
     READ("read"),
     INDEX("index"),
@@ -26,7 +28,7 @@ public enum Action {
     INCLUDE("include"),
     DERIVATIVE_WORKS("DerivativeWorks"),
     DISTRIBUTION("Distribution"),
-    TEXT_TO_SPEECH("textToSpeech"),
+        TEXT_TO_SPEECH("textToSpeech"),
     INFORM("inform"),
     GRANT_USE("grantUse"),
     ARCHIVE("archive"),
@@ -57,8 +59,8 @@ public enum Action {
     SHARE_ALIKE_CC("ShareAlike"),
     ACCEPT_TRACKING("acceptTracking"),
     COMMERCIAL_USE_CC("CommercialUse"),
-    PRESENT("present"),
-    USE("use");
+    PRESENT("present");
+     */
 
     private final String action;
     private static final Map<String, Action> BY_LABEL;

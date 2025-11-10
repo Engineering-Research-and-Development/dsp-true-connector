@@ -4,12 +4,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
 import it.eng.tools.model.DSpaceConstants;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 import java.util.UUID;
 
 public abstract class AbstractCatalogObject implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 6931659075077465603L;
 
     @JsonProperty(value = DSpaceConstants.CONTEXT, access = Access.READ_ONLY)

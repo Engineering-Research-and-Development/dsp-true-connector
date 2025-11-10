@@ -266,17 +266,7 @@ public class CatalogService {
 
             log.debug("Offer with id '{}' {}", offer.getId(), existingOffer != null ? " found." : "not found.");
 
-            if (existingOffer == null) {
-                log.warn("Offer with id {} not found in catalog", offer.getId());
-            } else {
-//                old logic until we started TCK integration
-//                 check if offers are equals
-//                if (offer.equals(existingOffer)) {
-//                    log.debug("Existing and provided offers are same");
-//                    valid = true;
-//                }
-//              new logic for TCK integration - only checks if offer ids and target are the same (already done above)
-                log.debug("Existing and provided offers are same");
+            if (existingOffer != null) {
                 valid = true;
             }
         }

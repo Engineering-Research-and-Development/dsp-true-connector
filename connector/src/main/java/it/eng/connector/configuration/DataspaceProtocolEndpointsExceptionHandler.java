@@ -39,11 +39,11 @@ public class DataspaceProtocolEndpointsExceptionHandler extends ResponseEntityEx
             if (StringUtils.isNotBlank(body)) {
                 // TODO maybe use plain jsonMapper here and not one from sub modules
                 JsonNode node = CatalogSerializer.deserializeProtocol(body, JsonNode.class);
-                consumerPid = node.get(DSpaceConstants.DSPACE_CONSUMER_PID) != null ?
-                        node.get(DSpaceConstants.DSPACE_CONSUMER_PID).asText() :
+                consumerPid = node.get(DSpaceConstants.CONSUMER_PID) != null ?
+                        node.get(DSpaceConstants.CONSUMER_PID).asText() :
                         "NA";
-                providerPid = node.get(DSpaceConstants.DSPACE_PROVIDER_PID) != null ?
-                        node.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText() :
+                providerPid = node.get(DSpaceConstants.PROVIDER_PID) != null ?
+                        node.get(DSpaceConstants.PROVIDER_PID).asText() :
                         "NA";
             } else {
                 log.debug("No body to parse");
