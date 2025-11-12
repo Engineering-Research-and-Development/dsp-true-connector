@@ -55,7 +55,7 @@ public class UserIT extends BaseIntegrationTest {
     @Test
     @WithUserDetails(TestUtil.ADMIN_USER)
     public void createUser() throws Exception {
-        UserDTO userDTO = new UserDTO("firstName", "lastName", "test@mail.com", "StrongPassword12!", null, Role.ROLE_ADMIN);
+        UserDTO userDTO = new UserDTO("firstName", "lastName", "test@mail.com", "StrongPassword1!", null, Role.ROLE_ADMIN);
 
         final ResultActions result = mockMvc.perform(post(ApiEndpoints.USERS_V1)
                 .content(ToolsSerializer.serializePlain(userDTO))

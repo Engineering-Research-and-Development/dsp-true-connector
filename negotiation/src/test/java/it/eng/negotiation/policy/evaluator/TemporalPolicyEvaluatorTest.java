@@ -51,7 +51,7 @@ class TemporalPolicyEvaluatorTest {
                 .agreementId("agreement-123")
                 .resourceId("resource-123")
                 .userId("user-123")
-                .action(Action.READ)
+                .action(Action.USE)
                 .build();
         
         // Evaluate the policy
@@ -85,7 +85,7 @@ class TemporalPolicyEvaluatorTest {
                 .agreementId("agreement-123")
                 .resourceId("resource-123")
                 .userId("user-123")
-                .action(Action.READ)
+                .action(Action.USE)
                 .attribute(PolicyConstants.ACCESS_TIME, now)
                 .build();
         
@@ -119,7 +119,7 @@ class TemporalPolicyEvaluatorTest {
                 .agreementId("agreement-123")
                 .resourceId("resource-123")
                 .userId("user-123")
-                .action(Action.READ)
+                .action(Action.USE)
                 .build();
         
         // Evaluate the policy
@@ -153,7 +153,7 @@ class TemporalPolicyEvaluatorTest {
                 .agreementId("agreement-123")
                 .resourceId("resource-123")
                 .userId("user-123")
-                .action(Action.READ)
+                .action(Action.USE)
                 .attribute(PolicyConstants.ACCESS_TIME, now)
                 .build();
         
@@ -188,7 +188,7 @@ class TemporalPolicyEvaluatorTest {
                 .agreementId("agreement-123")
                 .resourceId("resource-123")
                 .userId("user-123")
-                .action(Action.READ)
+                .action(Action.USE)
                 .attribute(PolicyConstants.ACCESS_TIME, now)
                 .build();
         
@@ -222,7 +222,7 @@ class TemporalPolicyEvaluatorTest {
                 .agreementId("agreement-123")
                 .resourceId("resource-123")
                 .userId("user-123")
-                .action(Action.READ)
+                .action(Action.USE)
                 .attribute(PolicyConstants.ACCESS_TIME, now)
                 .build();
         
@@ -252,7 +252,7 @@ class TemporalPolicyEvaluatorTest {
                 .agreementId("agreement-123")
                 .resourceId("resource-123")
                 .userId("user-123")
-                .action(Action.READ)
+                .action(Action.USE)
                 .build();
         
         // Evaluate the policy

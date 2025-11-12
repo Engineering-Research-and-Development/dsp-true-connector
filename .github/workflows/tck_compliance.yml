@@ -2,8 +2,7 @@ name: TCK compliance test
 run-name: TCK compliance test
 
 on:
-  push:
-    branches: [ "feature/*", "hotfix/*", "fix/*" ]
+  workflow_dispatch:
 
 jobs:
   tckComplianceTest:

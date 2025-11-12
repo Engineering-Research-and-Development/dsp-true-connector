@@ -40,7 +40,7 @@ class PolicyDecisionPointTest {
         PolicyRequest request = PolicyRequest.Builder.newInstance()
                 .resourceId("resourceId")
                 .userId("userId")
-                .action(Action.READ)
+                .action(Action.USE)
                 .build();
 
         PolicyDecision policyDecision = policyDecisionPoint.evaluate(request, null);
@@ -56,7 +56,7 @@ class PolicyDecisionPointTest {
                 .agreementId("agreementId")
                 .resourceId("resourceId")
                 .userId("userId")
-                .action(Action.READ)
+                .action(Action.USE)
                 .attribute(PolicyConstants.CURRENT_COUNT, 3)
                 .build();
 
@@ -72,7 +72,7 @@ class PolicyDecisionPointTest {
                 .agreementId("agreementId")
                 .resourceId("resourceId")
                 .userId("userId")
-                .action(Action.READ)
+                .action(Action.USE)
                 .attribute(PolicyConstants.CURRENT_COUNT, 6)
                 .build();
 
@@ -98,7 +98,7 @@ class PolicyDecisionPointTest {
                 .agreementId(agreement.getId())
                 .resourceId(agreement.getTarget())
                 .userId("userId")
-                .action(Action.READ)
+                .action(Action.USE)
                 // accessTime is now
                 .build();
 
@@ -135,7 +135,7 @@ class PolicyDecisionPointTest {
                 .agreementId(agreement.getId())
                 .resourceId(agreement.getTarget())
                 .userId("userId")
-                .action(Action.READ)
+                .action(Action.USE)
                 .build();
 
         PolicyDecision policyDecision = policyDecisionPoint.evaluate(request, agreement);
@@ -169,7 +169,7 @@ class PolicyDecisionPointTest {
         PolicyRequest request = PolicyRequest.Builder.newInstance()
                 .agreementId(agreement.getId())
                 .resourceId(agreement.getTarget())
-                .userId("userId").action(Action.READ)
+                .userId("userId").action(Action.USE)
                 .attribute(PolicyConstants.PURPOSE, "dsp_test")
                 .build();
 
@@ -204,7 +204,7 @@ class PolicyDecisionPointTest {
         PolicyRequest request = PolicyRequest.Builder.newInstance()
                 .agreementId(agreement.getId())
                 .resourceId(agreement.getTarget())
-                .userId("userId").action(Action.READ)
+                .userId("userId").action(Action.USE)
                 .attribute(PolicyConstants.PURPOSE, "dsp_test")
                 .build();
 
@@ -241,7 +241,7 @@ class PolicyDecisionPointTest {
         PolicyRequest request = PolicyRequest.Builder.newInstance()
                 .agreementId(agreement.getId())
                 .resourceId(agreement.getTarget())
-                .userId("userId").action(Action.READ)
+                .userId("userId").action(Action.USE)
                 .attribute(PolicyConstants.LOCATION, "spatial_test")
                 .build();
 
@@ -276,7 +276,7 @@ class PolicyDecisionPointTest {
         PolicyRequest request = PolicyRequest.Builder.newInstance()
                 .agreementId(agreement.getId())
                 .resourceId(agreement.getTarget())
-                .userId("userId").action(Action.READ)
+                .userId("userId").action(Action.USE)
                 .attribute(PolicyConstants.LOCATION, "spatial_test")
                 .build();
 

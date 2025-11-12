@@ -49,7 +49,7 @@ public class SpatialPolicyEvaluatorTest {
 	                .agreementId("agreement-123")
 	                .resourceId("resource-123")
 	                .userId("user-123")
-	                .action(Action.READ)
+	                .action(Action.USE)
 	                .build();
 	        
 	        // Evaluate the policy
@@ -78,7 +78,7 @@ public class SpatialPolicyEvaluatorTest {
 	                .agreementId("agreement-123")
 	                .resourceId("resource-123")
 	                .userId("user-123")
-	                .action(Action.READ)
+	                .action(Action.USE)
 	                .build();
 	        
 	        // Evaluate the policy
@@ -109,7 +109,7 @@ public class SpatialPolicyEvaluatorTest {
 	                .agreementId("agreement-123")
 	                .resourceId("resource-123")
 	                .userId("user-123")
-	                .action(Action.READ)
+	                .action(Action.USE)
 	                .attribute("location", "Asia")
 	                .build();
 	        
@@ -141,7 +141,7 @@ public class SpatialPolicyEvaluatorTest {
 	                .agreementId("agreement-123")
 	                .resourceId("resource-123")
 	                .userId("user-123")
-	                .action(Action.READ)
+	                .action(Action.USE)
 	                .attribute("location", "Asia")
 	                .build();
 	        
@@ -173,7 +173,7 @@ public class SpatialPolicyEvaluatorTest {
 	                .agreementId("agreement-123")
 	                .resourceId("resource-123")
 	                .userId("user-123")
-	                .action(Action.READ)
+	                .action(Action.USE)
 	                .attribute("location", "EU")
 	                .build();
 	        
@@ -205,7 +205,7 @@ public class SpatialPolicyEvaluatorTest {
 	                .agreementId("agreement-123")
 	                .resourceId("resource-123")
 	                .userId("user-123")
-	                .action(Action.READ)
+	                .action(Action.USE)
 	                .attribute("location", "EU")
 	                .build();
 	        
@@ -237,7 +237,7 @@ public class SpatialPolicyEvaluatorTest {
 	                .agreementId("agreement-123")
 	                .resourceId("resource-123")
 	                .userId("user-123")
-	                .action(Action.READ)
+	                .action(Action.USE)
 	                .attribute("location", "EU")
 	                .build();
 	        
@@ -268,7 +268,7 @@ public class SpatialPolicyEvaluatorTest {
 	                .agreementId("agreement-123")
 	                .resourceId("resource-123")
 	                .userId("user-123")
-	                .action(Action.READ)
+	                .action(Action.USE)
 	                .attribute("location", "EU")
 	                .build();
 	        
