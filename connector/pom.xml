@@ -29,7 +29,7 @@
             <version>${revision}</version>
         </dependency>
         <dependency>
-            <groupId>it.eng.dcp</groupId>
+            <groupId>it.eng</groupId>
             <artifactId>dcp</artifactId>
             <version>${revision}</version>
         </dependency>
