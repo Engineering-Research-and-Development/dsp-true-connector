@@ -1,5 +1,9 @@
 package it.eng.negotiation.service;
 
+import it.eng.dcp.service.DcpVerifierClient;
+import it.eng.dcp.service.PresentationValidationService;
+import it.eng.dcp.model.PresentationResponseMessage;
+import it.eng.dcp.model.ValidationReport;
 import it.eng.negotiation.event.ContractNegotiationEvent;
 import it.eng.negotiation.exception.ContractNegotiationExistsException;
 import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
@@ -24,7 +28,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Map;
+
+import it.eng.dcp.service.RemoteHolderAuthException;
 
 @Service
 @Slf4j
@@ -34,13 +41,21 @@ public class ContractNegotiationProviderService extends BaseProtocolService {
 
     protected final CredentialUtils credentialUtils;
 
+    private final DcpVerifierClient dcpVerifierClient;
+    private final PresentationValidationService presentationValidationService;
+    private final PolicyCredentialExtractor policyCredentialExtractor;
+
     public ContractNegotiationProviderService(AuditEventPublisher publisher, ConnectorProperties connectorProperties,
                                               ContractNegotiationRepository contractNegotiationRepository, OkHttpRestClient okHttpRestClient,
                                               ContractNegotiationProperties properties, OfferRepository offerRepository,
-                                              CredentialUtils credentialUtils) {
+                                              CredentialUtils credentialUtils, DcpVerifierClient dcpVerifierClient,
+                                              PresentationValidationService presentationValidationService) {
         super(publisher, contractNegotiationRepository, okHttpRestClient, properties, offerRepository);
         this.credentialUtils = credentialUtils;
         this.connectorProperties = connectorProperties;
+        this.dcpVerifierClient = dcpVerifierClient;
+        this.presentationValidationService = presentationValidationService;
+        this.policyCredentialExtractor = new PolicyCredentialExtractor();
     }
 
     /**
@@ -146,14 +161,116 @@ public class ContractNegotiationProviderService extends BaseProtocolService {
 
         if (properties.isAutomaticNegotiation()) {
             log.debug("PROVIDER - Performing automatic negotiation");
-            publisher.publishEvent(new ContractNegotationOfferRequestEvent(
-                    contractNegotiation.getConsumerPid(),
-                    contractNegotiation.getProviderPid(),
-                    NegotiationSerializer.serializeProtocolJsonNode(contractRequestMessage.getOffer())));
+            // Before publishing the offer request event, attempt to verify holder presentations if possible
+            try {
+                // extract required credential types from the offer
+                var required = policyCredentialExtractor.extractCredentialTypes(
+                    contractRequestMessage.getOffer(),
+                    contractRequestMessage.getConsumerPid(),
+                    contractRequestMessage.getProviderPid()
+                );
+
+                // attempt to fetch presentations from holder callbackAddress
+                String holderEndpoint = contractRequestMessage.getCallbackAddress();
+                if (holderEndpoint != null && !required.isEmpty()) {
+                    log.info("PROVIDER - Fetching presentations from holder {} for credential types: {}", holderEndpoint, required);
+
+                    PresentationResponseMessage resp = dcpVerifierClient.fetchPresentations(
+                        holderEndpoint,
+                        List.copyOf(required),
+                        null
+                    );
+
+                    ValidationReport report = presentationValidationService.validate(
+                        resp,
+                        List.copyOf(required),
+                        null
+                    );
+
+                    if (!report.getErrors().isEmpty()) {
+                        // publish presentation invalid and abort
+                        log.warn("PROVIDER - Presentation validation failed: {}", report.getErrors());
+                        publisher.publishEvent(AuditEvent.Builder.newInstance()
+                                .eventType(AuditEventType.PRESENTATION_INVALID)
+                                .description("Presentation invalid during automatic negotiation")
+                                .details(Map.of(
+                                    "negotiationId", contractNegotiation.getId(),
+                                    "errors", report.getErrors(),
+                                    "consumerPid", contractRequestMessage.getConsumerPid(),
+                                    "providerPid", contractNegotiation.getProviderPid()
+                                ))
+                                .build());
+                        throw new OfferNotValidException("Presentation validation failed", contractRequestMessage.getConsumerPid(), contractRequestMessage.getProviderPid());
+                    }
+
+                    log.info("PROVIDER - Presentation validation successful");
+                } else {
+                    log.debug("PROVIDER - No holder endpoint or no required credentials, skipping presentation validation");
+                }
+
+                publisher.publishEvent(new ContractNegotationOfferRequestEvent(
+                        contractNegotiation.getConsumerPid(),
+                        contractNegotiation.getProviderPid(),
+                        NegotiationSerializer.serializeProtocolJsonNode(contractRequestMessage.getOffer())));
+
+            } catch (RemoteHolderAuthException e) {
+                log.error("PROVIDER - Remote holder authentication failed: {}", e.getMessage());
+                publisher.publishEvent(AuditEvent.Builder.newInstance()
+                        .eventType(AuditEventType.TOKEN_VALIDATION_FAILED)
+                        .description("Remote holder authentication failed during presentation fetch")
+                        .details(Map.of(
+                            "negotiationId", contractNegotiation.getId(),
+                            "reason", e.getMessage(),
+                            "consumerPid", contractRequestMessage.getConsumerPid(),
+                            "providerPid", contractNegotiation.getProviderPid()
+                        ))
+                        .build());
+                throw new OfferNotValidException("Remote holder auth failed", contractRequestMessage.getConsumerPid(), contractRequestMessage.getProviderPid());
+            } catch (it.eng.negotiation.exception.PolicyParseException e) {
+                log.error("PROVIDER - Policy parsing failed: {}", e.getMessage());
+                publisher.publishEvent(AuditEvent.Builder.newInstance()
+                        .eventType(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DENIED)
+                        .description("Policy parsing failed - no credential types found")
+                        .details(Map.of(
+                            "negotiationId", contractNegotiation.getId(),
+                            "reason", e.getMessage(),
+                            "consumerPid", contractRequestMessage.getConsumerPid(),
+                            "providerPid", contractNegotiation.getProviderPid()
+                        ))
+                        .build());
+                throw new OfferNotValidException("Policy parsing failed", contractRequestMessage.getConsumerPid(), contractRequestMessage.getProviderPid());
+            }
         } else {
             log.debug("PROVIDER - Offer evaluation will have to be done by human");
         }
         return contractNegotiation;
+    }
+
+    /**
+     * Publish a presentation invalid event for a negotiation. This helper will be used by DCP wiring
+     * when presentation validation fails during inbound negotiation acceptance.
+     * @param negotiationId the negotiation id
+     * @param details additional details about the invalid presentation
+     */
+    public void publishPresentationInvalidEvent(String negotiationId, Object details) {
+        publisher.publishEvent(AuditEvent.Builder.newInstance()
+                .eventType(AuditEventType.PRESENTATION_INVALID)
+                .description("Presentation invalid for negotiation " + negotiationId)
+                .details(Map.of("negotiationId", negotiationId, "details", details))
+                .build());
+    }
+
+    /**
+     * Publish token validation failed event for a negotiation. Use when inbound token validation fails.
+     * @param negotiationId the negotiation id
+     * @param reason the reason for the failure
+     */
+    public void publishTokenValidationFailedEvent(String negotiationId, String reason) {
+        publisher.publishEvent(AuditEvent.Builder.newInstance()
+                .eventType(AuditEventType.TOKEN_VALIDATION_FAILED)
+                .description("Token validation failed for negotiation " + negotiationId)
+                .details(Map.of("negotiationId", negotiationId, "reason", reason))
+                .build());
     }
 
     public void verifyNegotiation(ContractAgreementVerificationMessage cavm) {

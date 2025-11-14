@@ -7,7 +7,6 @@
         <artifactId>trueconnector</artifactId>
         <version>${revision}</version>
     </parent>
-    <groupId>it.eng.dcp</groupId>
     <artifactId>dcp</artifactId>
     <name>Decentralized claims protocol</name>
 

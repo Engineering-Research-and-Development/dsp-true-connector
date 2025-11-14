@@ -116,7 +116,7 @@ public class PresentationValidationServiceTest {
 
         var report = validationService.validate(rsp, List.of("TestCredentialType"), null);
         assertFalse(report.isValid());
-        assertTrue(report.getErrors().stream().anyMatch(e -> "VC_EXPIRED".equals(e.getCode())));
+        assertTrue(report.getErrors().stream().anyMatch(e -> "VC_EXPIRED".equals(e.code())));
     }
 
     @Test
@@ -129,7 +129,7 @@ public class PresentationValidationServiceTest {
 
         var report = validationService.validate(rsp, List.of("TestCredentialType"), null);
         assertFalse(report.isValid());
-        assertTrue(report.getErrors().stream().anyMatch(e -> "ISSUER_UNTRUSTED".equals(e.getCode())));
+        assertTrue(report.getErrors().stream().anyMatch(e -> "ISSUER_UNTRUSTED".equals(e.code())));
     }
 
     @Test
@@ -142,7 +142,7 @@ public class PresentationValidationServiceTest {
 
         var report = validationService.validate(rsp, List.of("TestCredentialType"), null);
         assertFalse(report.isValid());
-        assertTrue(report.getErrors().stream().anyMatch(e -> "REQUIREMENT_UNMET".equals(e.getCode())));
+        assertTrue(report.getErrors().stream().anyMatch(e -> "REQUIREMENT_UNMET".equals(e.code())));
     }
 
     @Test
@@ -161,6 +161,6 @@ public class PresentationValidationServiceTest {
         PresentationResponseMessage rsp = PresentationResponseMessage.Builder.newInstance().presentation(List.of(vpObj)).build();
         var report = validationService.validate(rsp, List.of("TestCredentialType"), null);
         assertFalse(report.isValid());
-        assertTrue(report.getErrors().stream().anyMatch(e -> "PROFILE_MIXED".equals(e.getCode())));
+        assertTrue(report.getErrors().stream().anyMatch(e -> "PROFILE_MIXED".equals(e.code())));
     }
 }

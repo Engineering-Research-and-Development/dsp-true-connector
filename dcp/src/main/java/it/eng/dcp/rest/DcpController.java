@@ -12,6 +12,9 @@ import it.eng.dcp.service.PresentationService;
 import it.eng.dcp.service.SelfIssuedIdTokenService;
 import it.eng.dcp.service.PresentationRateLimiter;
 import it.eng.dcp.repository.VerifiableCredentialRepository;
+import it.eng.dcp.repository.CredentialStatusRepository;
+import it.eng.dcp.model.CredentialStatusRecord;
+import it.eng.dcp.model.CredentialStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +31,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Minimal DCP REST controller implementing presentation query endpoint and reception endpoints for credentials/offers.
@@ -43,15 +47,17 @@ public class DcpController {
     private final ConsentService consentService;
     private final PresentationRateLimiter rateLimiter;
     private final VerifiableCredentialRepository credentialRepository;
+    private final CredentialStatusRepository credentialStatusRepository;
     private final ObjectMapper mapper;
 
     @Autowired
-    public DcpController(SelfIssuedIdTokenService tokenService, PresentationService presentationService, ConsentService consentService, PresentationRateLimiter rateLimiter, VerifiableCredentialRepository credentialRepository, ObjectMapper mapper) {
+    public DcpController(SelfIssuedIdTokenService tokenService, PresentationService presentationService, ConsentService consentService, PresentationRateLimiter rateLimiter, VerifiableCredentialRepository credentialRepository, CredentialStatusRepository credentialStatusRepository, ObjectMapper mapper) {
         this.tokenService = tokenService;
         this.presentationService = presentationService;
         this.consentService = consentService;
         this.rateLimiter = rateLimiter;
         this.credentialRepository = credentialRepository;
+        this.credentialStatusRepository = credentialStatusRepository;
         this.mapper = mapper;
     }
 
@@ -162,9 +168,47 @@ public class DcpController {
                     LOG.warn("Failed to persist credential container: {}", e.getMessage());
                 }
             }
+            // Persist issuance status record keyed by issuer's request id (issuerPid). If not provided, generate one.
+            try {
+                // Prefer explicit requestId provided by issuer; fall back to issuerPid then generate one
+                String requestId = msg.getRequestId();
+                if (requestId == null || requestId.isBlank()) requestId = msg.getIssuerPid();
+                if (requestId == null || requestId.isBlank()) requestId = "req-" + UUID.randomUUID();
+                CredentialStatusRecord rec = CredentialStatusRecord.Builder.newInstance()
+                        .requestId(requestId)
+                        .issuerPid(msg.getIssuerPid())
+                        .holderPid(msg.getHolderPid())
+                        .status(CredentialStatus.ISSUED)
+                        .savedCount(saved.size())
+                        .createdAt(Instant.now())
+                        .updatedAt(Instant.now())
+                        .build();
+                credentialStatusRepository.save(rec);
+            } catch (Exception e) {
+                LOG.warn("Failed to persist credential status record: {}", e.getMessage());
+            }
             return ResponseEntity.ok(Map.of("saved", saved.size()));
         } else if ("REJECTED".equalsIgnoreCase(status)) {
             LOG.info("Received rejected credentials message from issuer {}: reason={}", msg.getIssuerPid(), msg.getRejectionReason());
+            // Persist rejected status
+            try {
+                // Prefer explicit requestId provided by issuer; fall back to issuerPid then generate one
+                String requestId = msg.getRequestId();
+                if (requestId == null || requestId.isBlank()) requestId = msg.getIssuerPid();
+                if (requestId == null || requestId.isBlank()) requestId = "req-" + UUID.randomUUID();
+                CredentialStatusRecord rec = CredentialStatusRecord.Builder.newInstance()
+                        .requestId(requestId)
+                        .issuerPid(msg.getIssuerPid())
+                        .holderPid(msg.getHolderPid())
+                        .status(CredentialStatus.REJECTED)
+                        .rejectionReason(msg.getRejectionReason())
+                        .createdAt(Instant.now())
+                        .updatedAt(Instant.now())
+                        .build();
+                credentialStatusRepository.save(rec);
+            } catch (Exception e) {
+                LOG.warn("Failed to persist rejected credential status record: {}", e.getMessage());
+            }
             return ResponseEntity.ok(Map.of("status", "rejected"));
         } else {
             return ResponseEntity.badRequest().body("Unknown status: " + status);

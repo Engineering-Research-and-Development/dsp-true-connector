@@ -1,6 +1,10 @@
 package it.eng.negotiation.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import it.eng.dcp.model.PresentationResponseMessage;
+import it.eng.dcp.model.ValidationReport;
+import it.eng.dcp.service.DcpVerifierClient;
+import it.eng.dcp.service.PresentationValidationService;
 import it.eng.negotiation.exception.*;
 import it.eng.negotiation.model.*;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
@@ -22,6 +26,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Collections;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -47,6 +52,10 @@ public class ContractNegotiationProviderServiceTest {
     private CredentialUtils credentialUtils;
     @Mock
     private ConnectorProperties connectorProperties;
+    @Mock
+    private DcpVerifierClient dcpVerifierClient;
+    @Mock
+    private PresentationValidationService presentationValidationService;
 
     @InjectMocks
     private ContractNegotiationProviderService service;
@@ -58,19 +67,31 @@ public class ContractNegotiationProviderServiceTest {
 
     @Test
     @DisplayName("Start contract negotiation success - automatic negotiation ON")
-    public void startContractNegotiation_automaticON() throws InterruptedException {
+    public void startContractNegotiation_automaticON() {
         when(properties.isAutomaticNegotiation()).thenReturn(true);
         when(credentialUtils.getAPICredentials()).thenReturn("credentials");
         when(connectorProperties.getConnectorURL()).thenReturn("http://test.connector.url");
-        when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.ofNullable(null));
+        when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.empty());
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
-        when(offerRepository.save(any(Offer.class))).thenReturn(NegotiationMockObjectUtil.OFFER_WITH_ORIGINAL_ID);
+        when(offerRepository.save(any(Offer.class))).thenReturn(NegotiationMockObjectUtil.OFFER_WITH_CREDENTIAL_AND_ORIGINAL_ID);
 
-        ContractNegotiation result = service.startContractNegotiation(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE);
+        // Mock DCP services for automatic negotiation
+        PresentationResponseMessage presentationResponse = PresentationResponseMessage.Builder.newInstance()
+                .presentation(Collections.emptyList())
+                .build();
+        when(dcpVerifierClient.fetchPresentations(anyString(), anyList(), any())).thenReturn(presentationResponse);
+
+        ValidationReport validReport = ValidationReport.Builder.newInstance()
+                .valid(true)
+                .errors(Collections.emptyList())
+                .build();
+        when(presentationValidationService.validate(any(), anyList(), any())).thenReturn(validReport);
+
+        ContractNegotiation result = service.startContractNegotiation(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_WITH_CREDENTIAL);
 
         assertNotNull(result);
-        assertEquals(result.getType(), "dspace:ContractNegotiation");
+        assertEquals("dspace:ContractNegotiation", result.getType());
         verify(repository).save(argCaptorContractNegotiation.capture());
         verify(offerRepository).save(argCaptorOffer.capture());
         //verify that status is updated to REQUESTED
@@ -78,15 +99,15 @@ public class ContractNegotiationProviderServiceTest {
         assertEquals(NegotiationMockObjectUtil.CALLBACK_ADDRESS, argCaptorContractNegotiation.getValue().getCallbackAddress());
         assertEquals(NegotiationMockObjectUtil.CONSUMER_PID, argCaptorContractNegotiation.getValue().getConsumerPid());
         assertEquals(IConstants.ROLE_PROVIDER, argCaptorContractNegotiation.getValue().getRole());
-        assertEquals(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE.getOffer().getId(), argCaptorOffer.getValue().getOriginalId());
+        assertEquals(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_WITH_CREDENTIAL.getOffer().getId(), argCaptorOffer.getValue().getOriginalId());
         assertNotNull(argCaptorContractNegotiation.getValue().getProviderPid());
         verify(publisher).publishEvent(any(ContractNegotationOfferRequestEvent.class));
     }
 
     @Test
     @DisplayName("Start contract negotiation success - automatic negotiation OFF")
-    public void startContractNegotiation_automatic_OFF() throws InterruptedException {
-        when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.ofNullable(null));
+    public void startContractNegotiation_automatic_OFF() {
+        when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.empty());
         when(credentialUtils.getAPICredentials()).thenReturn("credentials");
         when(connectorProperties.getConnectorURL()).thenReturn("http://test.connector.url");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
@@ -96,7 +117,7 @@ public class ContractNegotiationProviderServiceTest {
         ContractNegotiation result = service.startContractNegotiation(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE);
 
         assertNotNull(result);
-        assertEquals(result.getType(), "dspace:ContractNegotiation");
+        assertEquals("dspace:ContractNegotiation", result.getType());
         verify(repository).save(argCaptorContractNegotiation.capture());
         verify(offerRepository).save(argCaptorOffer.capture());
         //verify that status is updated to REQUESTED
@@ -111,7 +132,7 @@ public class ContractNegotiationProviderServiceTest {
 
     @Test
     @DisplayName("Start contract negotiation failed - provider pid not blank")
-    public void startContractNegotiation_providerPidNotBlank() throws InterruptedException {
+    public void startContractNegotiation_providerPidNotBlank() {
         ContractRequestMessage contractRequestMessage = ContractRequestMessage.Builder.newInstance()
                 .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
                 .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
@@ -125,7 +146,7 @@ public class ContractNegotiationProviderServiceTest {
 
     @Test
     @DisplayName("Start contract negotiation failed - contract negotiation exists")
-    public void startContractNegotiation_contractNegotiationExists() throws InterruptedException {
+    public void startContractNegotiation_contractNegotiationExists() {
         when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 
         assertThrows(ContractNegotiationExistsException.class, () -> service.startContractNegotiation(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE));
@@ -134,8 +155,8 @@ public class ContractNegotiationProviderServiceTest {
 
     @Test
     @DisplayName("Start contract negotiation failed - offer not valid")
-    public void startContractNegotiation_offerNotValid() throws InterruptedException {
-        when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.ofNullable(null));
+    public void startContractNegotiation_offerNotValid() {
+        when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.empty());
         when(credentialUtils.getAPICredentials()).thenReturn("credentials");
         when(connectorProperties.getConnectorURL()).thenReturn("http://test.connector.url");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
@@ -154,15 +175,15 @@ public class ContractNegotiationProviderServiceTest {
 
         assertNotNull(result);
 
-        assertEquals(result.getConsumerPid(), NegotiationMockObjectUtil.CONSUMER_PID);
-        assertEquals(result.getProviderPid(), NegotiationMockObjectUtil.PROVIDER_PID);
-        assertEquals(result.getState(), ContractNegotiationState.ACCEPTED);
+        assertEquals(NegotiationMockObjectUtil.CONSUMER_PID, result.getConsumerPid());
+        assertEquals(NegotiationMockObjectUtil.PROVIDER_PID, result.getProviderPid());
+        assertEquals(ContractNegotiationState.ACCEPTED, result.getState());
     }
 
     @Test
     @DisplayName("Get negotiation by provider pid - negotiation not found")
     public void getNegotiationByProviderPid_notFound() {
-        when(repository.findByProviderPid(anyString())).thenReturn(Optional.ofNullable(null));
+        when(repository.findByProviderPid(anyString())).thenReturn(Optional.empty());
         assertThrows(ContractNegotiationNotFoundException.class, () -> service.getNegotiationByProviderPid(NegotiationMockObjectUtil.PROVIDER_PID),
                 "Expected getNegotiationByProviderPid to throw, but it didn't");
     }
@@ -176,9 +197,9 @@ public class ContractNegotiationProviderServiceTest {
 
         assertNotNull(result);
 
-        assertEquals(result.getConsumerPid(), NegotiationMockObjectUtil.CONSUMER_PID);
-        assertEquals(result.getProviderPid(), NegotiationMockObjectUtil.PROVIDER_PID);
-        assertEquals(result.getState(), ContractNegotiationState.ACCEPTED);
+        assertEquals(NegotiationMockObjectUtil.CONSUMER_PID, result.getConsumerPid());
+        assertEquals(NegotiationMockObjectUtil.PROVIDER_PID, result.getProviderPid());
+        assertEquals(ContractNegotiationState.ACCEPTED, result.getState());
     }
 
     @Test

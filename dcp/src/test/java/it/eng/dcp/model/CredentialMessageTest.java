@@ -23,6 +23,7 @@ class CredentialMessageTest {
         CredentialMessage msg = CredentialMessage.Builder.newInstance()
                 .issuerPid("did:web:example:issuer")
                 .holderPid("did:web:example:holder")
+                .requestId("req-12345")
                 .status("ISSUED")
                 .credentials(List.of(container))
                 .build();
@@ -30,6 +31,7 @@ class CredentialMessageTest {
         assertEquals("CredentialMessage", msg.getType());
         assertEquals("did:web:example:issuer", msg.getIssuerPid());
         assertEquals("did:web:example:holder", msg.getHolderPid());
+        assertEquals("req-12345", msg.getRequestId());
         assertEquals("ISSUED", msg.getStatus());
         assertEquals(1, msg.getCredentials().size());
 

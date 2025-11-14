@@ -38,7 +38,12 @@ public enum AuditEventType {
     TRANSFER_COMPLETED("Transfer completed"),
     TRANSFER_FAILED("Transfer failed"),
 
-    NEGOTIATION_ACCESS_COUNT_INCREASE("Access count increase");
+    NEGOTIATION_ACCESS_COUNT_INCREASE("Access count increase"),
+
+    // New DCP-related events
+    TOKEN_VALIDATION_FAILED("Token validation failed"),
+    PRESENTATION_INVALID("Presentation validation failed"),
+    CREDENTIAL_REVOKED("Credential revoked");
 
     private final String auditEventType;
     private static final Map<String, AuditEventType> BY_LABEL;

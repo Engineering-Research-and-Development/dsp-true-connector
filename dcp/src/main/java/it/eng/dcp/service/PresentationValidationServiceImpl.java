@@ -7,6 +7,9 @@ import it.eng.dcp.model.ValidationError;
 import it.eng.dcp.model.ValidationReport;
 import it.eng.dcp.model.VerifiableCredential;
 import it.eng.dcp.model.VerifiablePresentation;
+import it.eng.tools.event.AuditEvent;
+import it.eng.tools.event.AuditEventType;
+import it.eng.tools.service.AuditEventPublisher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -20,32 +23,27 @@ public class PresentationValidationServiceImpl implements PresentationValidation
     private final IssuerTrustService issuerTrustService;
     private final SchemaRegistryService schemaRegistryService;
 
-    @Autowired(required = false)
-    private RevocationService revocationService;
+    private final RevocationService revocationService;
+
+    private final AuditEventPublisher publisher;
 
     @Autowired
     public PresentationValidationServiceImpl(ProfileResolver profileResolver,
                                              IssuerTrustService issuerTrustService,
-                                             SchemaRegistryService schemaRegistryService) {
+                                             SchemaRegistryService schemaRegistryService,
+                                             RevocationService revocationService,
+                                             AuditEventPublisher publisher) {
         this.profileResolver = profileResolver;
         this.issuerTrustService = issuerTrustService;
         this.schemaRegistryService = schemaRegistryService;
-    }
-
-    // Package-visible constructor useful for tests to inject an explicit RevocationService without reflection
-    PresentationValidationServiceImpl(ProfileResolver profileResolver,
-                                       IssuerTrustService issuerTrustService,
-                                       SchemaRegistryService schemaRegistryService,
-                                       RevocationService revocationService) {
-        this.profileResolver = profileResolver;
-        this.issuerTrustService = issuerTrustService;
-        this.schemaRegistryService = schemaRegistryService;
+        // optional collaborators may be null in some test contexts; keep them nullable
         this.revocationService = revocationService;
+        this.publisher = publisher;
     }
 
     @Override
     public ValidationReport validate(PresentationResponseMessage rsp, List<String> requiredCredentialTypes, TokenContext tokenCtx) {
-        ValidationReport report = new ValidationReport();
+        ValidationReport report = ValidationReport.Builder.newInstance().build();
         if (rsp == null) {
             report.addError(new ValidationError("RSP_NULL", "PresentationResponseMessage is null", ValidationError.Severity.ERROR));
             return report;
@@ -59,12 +57,11 @@ public class PresentationValidationServiceImpl implements PresentationValidation
 
         // For each presentation (assume either VerifiablePresentation object or raw Json)
         for (Object pObj : presentations) {
-            VerifiablePresentation vp = null;
+            VerifiablePresentation vp;
             if (pObj instanceof VerifiablePresentation) {
                 vp = (VerifiablePresentation) pObj;
-            } else if (pObj instanceof JsonNode) {
-                // try to map minimal fields
-                JsonNode node = (JsonNode) pObj;
+            } else if (pObj instanceof JsonNode node) {
+                // try to map minimal fields using pattern variable
                 vp = jsonToVp(node);
             } else if (pObj instanceof Map) {
                 // conservative handling: try to extract fields
@@ -101,7 +98,6 @@ public class PresentationValidationServiceImpl implements PresentationValidation
             }
 
             // Enforce homogeneity by resolving profile for each credential via profileResolver (format + attributes)
-            String expectedProfile = profileId;
             boolean mixed = false;
             for (VerifiableCredential vc : creds) {
                 String format = determineFormat(vc);
@@ -114,7 +110,7 @@ public class PresentationValidationServiceImpl implements PresentationValidation
                     mixed = true;
                     break;
                 }
-                if (!resolved.name().equals(expectedProfile)) {
+                if (!resolved.name().equals(profileId)) {
                     mixed = true;
                     break;
                 }
@@ -134,6 +130,19 @@ public class PresentationValidationServiceImpl implements PresentationValidation
                 }
                 if (!issuerTrustService.isTrusted(vc.getCredentialType(), issuer)) {
                     report.addError(new ValidationError("ISSUER_UNTRUSTED", "Issuer not trusted: " + issuer + " for type " + vc.getCredentialType(), ValidationError.Severity.ERROR));
+                    if (publisher != null) {
+                        publisher.publishEvent(AuditEvent.Builder.newInstance()
+                                .eventType(AuditEventType.PRESENTATION_INVALID)
+                                .description("Untrusted issuer detected during presentation validation")
+                                .details(Map.of(
+                                        "errorCode", "ISSUER_UNTRUSTED",
+                                        "credentialId", vc.getId(),
+                                        "credentialType", vc.getCredentialType(),
+                                        "issuerDid", issuer,
+                                        "trustedIssuers", issuerTrustService.getTrustedIssuers(vc.getCredentialType())
+                                ))
+                                .build());
+                    }
                 }
 
                 // dates
@@ -149,6 +158,12 @@ public class PresentationValidationServiceImpl implements PresentationValidation
                 try {
                     if (revocationService != null && revocationService.isRevoked(vc)) {
                         report.addError(new ValidationError("VC_REVOKED", "Credential revoked: " + vc.getId(), ValidationError.Severity.ERROR));
+                        // publish credential revoked event
+                        if (publisher != null) {
+                            publisher.publishEvent(AuditEventType.CREDENTIAL_REVOKED,
+                                    "Credential revoked detected during presentation validation",
+                                    Map.of("credentialId", vc.getId(), "credentialType", vc.getCredentialType()));
+                        }
                     }
                 } catch (Exception e) {
                     report.addError(new ValidationError("REVOCATION_CHECK_FAILED", "Failed to check revocation for " + vc.getId() + ": " + e.getMessage(), ValidationError.Severity.WARNING));
@@ -176,6 +191,17 @@ public class PresentationValidationServiceImpl implements PresentationValidation
                 if (!report.getAcceptedCredentialTypes().contains(req)) {
                     report.addError(new ValidationError("REQUIREMENT_UNMET", "Required credential type not satisfied: " + req, ValidationError.Severity.ERROR));
                 }
+            }
+        }
+
+        // If validation produced any errors, publish a PRESENTATION_INVALID audit event with details
+        if (!report.getErrors().isEmpty()) {
+            if (publisher != null) {
+                publisher.publishEvent(AuditEvent.Builder.newInstance()
+                        .eventType(AuditEventType.PRESENTATION_INVALID)
+                        .description("Presentation validation produced errors")
+                        .details(Map.of("errors", report.getErrors(), "accepted", report.getAcceptedCredentialTypes()))
+                        .build());
             }
         }
 

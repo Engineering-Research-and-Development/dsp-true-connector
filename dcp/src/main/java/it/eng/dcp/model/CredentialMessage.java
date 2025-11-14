@@ -12,7 +12,6 @@ import lombok.NoArgsConstructor;
 import java.io.Serial;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import jakarta.validation.ValidationException;
@@ -43,6 +42,9 @@ public class CredentialMessage extends BaseDcpMessage {
     private String status; // e.g., ISSUED or REJECTED
 
     private String rejectionReason;
+
+    // New: optional requestId coming from issuer to correlate requests
+    private String requestId;
 
     @NotNull
     @Size(min = 1)
@@ -89,6 +91,12 @@ public class CredentialMessage extends BaseDcpMessage {
 
         public Builder rejectionReason(String rejectionReason) {
             msg.rejectionReason = rejectionReason;
+            return this;
+        }
+
+        // New builder property for requestId
+        public Builder requestId(String requestId) {
+            msg.requestId = requestId;
             return this;
         }
 

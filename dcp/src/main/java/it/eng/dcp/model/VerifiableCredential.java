@@ -84,6 +84,12 @@ public class VerifiableCredential implements Serializable {
      */
     private String issuerDid;
 
+    /**
+     * Optional credentialStatus for revocation checking (StatusList2021).
+     * Structure: { type, statusListCredential, statusListIndex }
+     */
+    private JsonNode credentialStatus;
+
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Builder {
@@ -139,6 +145,23 @@ public class VerifiableCredential implements Serializable {
             }
             return this;
         }
+        public Builder credentialStatus(JsonNode credentialStatus) {
+            vc.credentialStatus = credentialStatus;
+            return this;
+        }
+
+        public Builder type(String type) {
+            // Alias for credentialType for convenience
+            vc.credentialType = type;
+            return this;
+        }
+
+        public Builder issuer(String issuer) {
+            // Alias for issuerDid for convenience
+            vc.issuerDid = issuer;
+            return this;
+        }
+
 
         public Builder issuerDid(String issuerDid) {
             vc.issuerDid = issuerDid;

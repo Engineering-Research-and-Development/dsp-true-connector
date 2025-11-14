@@ -46,7 +46,7 @@ public class NegotiationMockObjectUtil {
 			.consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
 			.providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
 			.code("Test")
-			.reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("test").build()))
+			.reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value("test").build()))
 			.build();
 	
 	public static final Constraint CONSTRAINT = Constraint.Builder.newInstance()
@@ -79,50 +79,77 @@ public class NegotiationMockObjectUtil {
 			.rightOperand("5")
 			.build();
 	
+	public static final Constraint CONSTRAINT_CREDENTIAL = Constraint.Builder.newInstance()
+			.leftOperand(LeftOperand.PURPOSE)
+			.operator(Operator.EQ)
+			.rightOperand("VerifiableCredential")
+			.build();
+
 	public static final Permission PERMISSION = Permission.Builder.newInstance()
 			.action(Action.USE)
 			.target(NegotiationMockObjectUtil.TARGET)
-			.constraint(Arrays.asList(NegotiationMockObjectUtil.CONSTRAINT))
+			.constraint(Collections.singletonList(NegotiationMockObjectUtil.CONSTRAINT))
 			.build();
 	
 	public static final Permission PERMISSION_COUNT_5 = Permission.Builder.newInstance()
 			.action(Action.USE)
 			.target(NegotiationMockObjectUtil.TARGET)
-			.constraint(Arrays.asList(NegotiationMockObjectUtil.CONSTRAINT_COUNT_5))
+			.constraint(Collections.singletonList(NegotiationMockObjectUtil.CONSTRAINT_COUNT_5))
 			.build();
 	
 	public static final Permission PERMISSION_SPATIAL = Permission.Builder.newInstance()
 			.action(Action.USE)
 			.target(NegotiationMockObjectUtil.TARGET)
-			.constraint(Arrays.asList(NegotiationMockObjectUtil.CONSTRAINT_SPATIAL))
+			.constraint(Collections.singletonList(NegotiationMockObjectUtil.CONSTRAINT_SPATIAL))
 			.build();
 	
 	public static final Permission PERMISSION_PURPOSE = Permission.Builder.newInstance()
 			.action(Action.USE)
 			.target(NegotiationMockObjectUtil.TARGET)
-			.constraint(Arrays.asList(NegotiationMockObjectUtil.CONSTRAINT_PURPOSE))
+			.constraint(Collections.singletonList(NegotiationMockObjectUtil.CONSTRAINT_PURPOSE))
 			.build();
-	
+
+	public static final Permission PERMISSION_CREDENTIAL = Permission.Builder.newInstance()
+			.action(Action.USE)
+			.target(NegotiationMockObjectUtil.TARGET)
+			.constraint(Collections.singletonList(NegotiationMockObjectUtil.CONSTRAINT_CREDENTIAL))
+			.build();
+
 	public static final Offer OFFER = Offer.Builder.newInstance()
 			.target(NegotiationMockObjectUtil.TARGET)
 			.assignee(NegotiationMockObjectUtil.ASSIGNEE)
 			.assigner(NegotiationMockObjectUtil.ASSIGNER)
-			.permission(Arrays.asList(NegotiationMockObjectUtil.PERMISSION))
+			.permission(Collections.singletonList(NegotiationMockObjectUtil.PERMISSION))
 			.build();
 	
 	public static final Offer OFFER_WITH_ORIGINAL_ID = Offer.Builder.newInstance()
 			.target(NegotiationMockObjectUtil.TARGET)
 			.assignee(NegotiationMockObjectUtil.ASSIGNEE)
 			.assigner(NegotiationMockObjectUtil.ASSIGNER)
-			.permission(Arrays.asList(NegotiationMockObjectUtil.PERMISSION))
+			.permission(Collections.singletonList(NegotiationMockObjectUtil.PERMISSION))
 			.originalId("some-original-id")
 			.build();
-	
+
+	public static final Offer OFFER_WITH_CREDENTIAL = Offer.Builder.newInstance()
+			.target(NegotiationMockObjectUtil.TARGET)
+			.assignee(NegotiationMockObjectUtil.ASSIGNEE)
+			.assigner(NegotiationMockObjectUtil.ASSIGNER)
+			.permission(Collections.singletonList(NegotiationMockObjectUtil.PERMISSION_CREDENTIAL))
+			.build();
+
+	public static final Offer OFFER_WITH_CREDENTIAL_AND_ORIGINAL_ID = Offer.Builder.newInstance()
+			.target(NegotiationMockObjectUtil.TARGET)
+			.assignee(NegotiationMockObjectUtil.ASSIGNEE)
+			.assigner(NegotiationMockObjectUtil.ASSIGNER)
+			.permission(Collections.singletonList(NegotiationMockObjectUtil.PERMISSION_CREDENTIAL))
+			.originalId("some-original-id")
+			.build();
+
 	public static final Offer OFFER_COUNT_5 = Offer.Builder.newInstance()
 			.target(NegotiationMockObjectUtil.TARGET)
 			.assignee(NegotiationMockObjectUtil.ASSIGNEE)
 			.assigner(NegotiationMockObjectUtil.ASSIGNER)
-			.permission(Arrays.asList(NegotiationMockObjectUtil.PERMISSION_COUNT_5))
+			.permission(Collections.singletonList(NegotiationMockObjectUtil.PERMISSION_COUNT_5))
 			.build();
 
 	public static final ContractOfferMessage CONTRACT_OFFER_MESSAGE = ContractOfferMessage.Builder.newInstance()
@@ -138,7 +165,7 @@ public class NegotiationMockObjectUtil {
 			.assigner(NegotiationMockObjectUtil.ASSIGNER)
 			.target(NegotiationMockObjectUtil.TARGET)
 			.timestamp(ZonedDateTime.now().minusDays(2).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
-			.permission(Arrays.asList(PERMISSION_COUNT_5))
+			.permission(Collections.singletonList(PERMISSION_COUNT_5))
 			.build();
 	
 	public static final ContractRequestMessage CONTRACT_REQUEST_MESSAGE = ContractRequestMessage.Builder.newInstance()
@@ -146,7 +173,13 @@ public class NegotiationMockObjectUtil {
 			.consumerPid(CONSUMER_PID)
 			.offer(OFFER)
 			.build();
-	
+
+	public static final ContractRequestMessage CONTRACT_REQUEST_MESSAGE_WITH_CREDENTIAL = ContractRequestMessage.Builder.newInstance()
+			.callbackAddress(CALLBACK_ADDRESS)
+			.consumerPid(CONSUMER_PID)
+			.offer(OFFER_WITH_CREDENTIAL)
+			.build();
+
 	public static final ContractAgreementMessage CONTRACT_AGREEMENT_MESSAGE = ContractAgreementMessage.Builder.newInstance()
 			.consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
 			.providerPid(NegotiationMockObjectUtil.PROVIDER_PID)

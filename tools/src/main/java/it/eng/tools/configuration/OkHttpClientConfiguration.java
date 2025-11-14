@@ -16,6 +16,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
+import it.eng.tools.client.rest.CorrelationIdInterceptor;
 import it.eng.tools.ssl.ocsp.OcspProperties;
 import it.eng.tools.ssl.ocsp.OcspTrustManagerFactory;
 import lombok.extern.slf4j.Slf4j;
@@ -75,6 +76,7 @@ public class OkHttpClientConfiguration {
 		        .writeTimeout(60, TimeUnit.SECONDS)
 		        .readTimeout(60, TimeUnit.SECONDS)
 		        .sslSocketFactory(sslContext.getSocketFactory(), (X509TrustManager) trustManagers[0])
+		        .addInterceptor(new CorrelationIdInterceptor())
 		        .hostnameVerifier(OkHostnameVerifier.INSTANCE)
 		        .build();
 		//@formatter:on
@@ -118,6 +120,7 @@ public class OkHttpClientConfiguration {
 				.connectTimeout(60, TimeUnit.SECONDS)
 		        .writeTimeout(60, TimeUnit.SECONDS)
 		        .readTimeout(60, TimeUnit.SECONDS)
+		        .addInterceptor(new CorrelationIdInterceptor())
 		        .sslSocketFactory(sslContextTrustAllCerts.getSocketFactory(), (X509TrustManager) trustAllCerts[0])
 		        .hostnameVerifier((hostname, session) -> true)
 		        .build();

@@ -56,6 +56,11 @@
 				<artifactId>tools</artifactId>
 				<version>${revision}</version>
 			</dependency>
+			<dependency>
+				<groupId>it.eng</groupId>
+				<artifactId>dcp</artifactId>
+				<version>${revision}</version>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 

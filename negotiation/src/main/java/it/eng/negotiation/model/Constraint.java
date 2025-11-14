@@ -30,7 +30,7 @@ public class Constraint {
 	@JsonIgnoreProperties(ignoreUnknown = true)
 	public static class Builder {
 		
-		private Constraint constraint;
+		private final Constraint constraint;
 
 		private Builder() {
 			constraint = new Constraint();
