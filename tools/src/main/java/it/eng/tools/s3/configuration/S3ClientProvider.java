@@ -151,6 +151,7 @@ public class S3ClientProvider {
         var builder = S3AsyncClient.builder()
                 .asyncConfiguration(b -> b.advancedOption(FUTURE_COMPLETION_EXECUTOR, executor))
                 .credentialsProvider(credentialsProvider)
+                .multipartEnabled(true)
                 .region(Region.of(region))
                 .crossRegionAccessEnabled(true);
 
