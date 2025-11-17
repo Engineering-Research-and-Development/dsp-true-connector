@@ -1,4 +1,4 @@
-# REST Pull (download)
+# Data Transfer
 ## Consumer initiates transfer
 
 **Assumption:** contract negotiation is successfully completed between consumer and provider and agreement is stored.
@@ -63,13 +63,12 @@ Internally, provider will store callbackAddress and agreementId into TransferPro
 ```
 
 Here the path branches and depending on the data storage solution the DataAddress is different:
- - the data can be stored in a S3 bucket, in which case the DataAddress will contain the presignedURL to the S3 object
+ - the data can be stored in a S3 bucket
  - the data can be stored using another external storage solution, in which case the DataAddress will contain the URL to that file in the external storage
 
+## Http-PULL
 
-![REST pull flow](diagrams/download_artifact.png "REST pull flow").
-
-## S3 storage
+![http pull flow](diagrams/pull_data_transfer.png "http pull flow")
 
 Connector will generate a presignedURL(download link), in following format:
 
@@ -78,15 +77,57 @@ http://localhost:9000/dsp-true-connector-provider-bucket/urn%3Auuid%3A71053997-0
 
 ```
 
-### Consumer triggers download link
+### Consumer triggers download
 
-Upon initiating, the data will be directly downloaded from S3 bucket, using presigned URL. The consumer will receive the data and store it in S3 locally(Minio) or AWS.
+Upon initiating, the data will be directly downloaded from S3 bucket, using presigned URL. The consumer will receive the data and store it in S3.
+
+
+## Http-PUSH
+
+![http push flow](diagrams/push_data_transfer.png "http push flow")
+
+Connector acting as consumer will generate the DataAddress with S3 credentials that the connector acting as provider will use to upload the data in following format:
+
+```
+"dataAddress": {
+    "endpointProperties": [
+      {
+        "name": "bucketName",
+        "value": "dsp-true-connector-consumer"
+      },
+      {
+        "name": "region",
+        "value": "us-east-1"
+      },
+      {
+        "name": "objectKey",
+        "value": "urn:uuid:22644978-9b3d-4907-828f-7cb79d489996"
+      },
+      {
+        "name": "accessKey",
+        "value": "GetBucketUser-ece8f0de"
+      },
+      {
+        "name": "secretKey",
+        "value": "f0ca1d01-fd18-4168-b58a-81f6c1cf92dc"
+      },
+      {
+        "name": "endpointOverride",
+        "value": "http://localhost:9000"
+      }
+    ]
+  }
+```
+
+### Provider triggers upload
+
+Upon initiating, the data will be directly downloaded from S3 bucket, using presigned URL and then uploaded to the S3 bucket specified in the DataAddress.
 
 ## External storage
 
 **NOTE** This solution downloads the data through the provider connector, which then forwards the data to the consumer. This is not a direct download from the external storage.
 
-Connector exposes rest endpoint for "downloading" artifacts, in following format:
+Connector exposes REST endpoint for "downloading" artifacts, in following format:
 
 ```
 https://conenctor.provider:port/artifact/encoded(consumerPid|providerPid)/artifactId

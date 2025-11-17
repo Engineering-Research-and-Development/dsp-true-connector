@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = Distribution.Builder.class)
-@JsonPropertyOrder(value = {DSpaceConstants.TYPE, DSpaceConstants.FORMAT, DSpaceConstants.ACCESS_SERVICE}, alphabetic = true)
+@JsonPropertyOrder(value = {DSpaceConstants.TYPE, DSpaceConstants.ID, DSpaceConstants.FORMAT, DSpaceConstants.ACCESS_SERVICE}, alphabetic = true)
 @Document(collection = "distributions")
 public class Distribution implements Serializable {
 

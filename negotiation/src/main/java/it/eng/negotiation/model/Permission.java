@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
  * allOf #/definitions/AbstractPolicyRule
  *
  * definitions/Constraint min 1
- * "required": "odrl:action"
+ * "required": "action"
  */
 @Getter
 @EqualsAndHashCode

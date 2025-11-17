@@ -20,7 +20,6 @@ import java.util.stream.Collectors;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = CatalogRequestMessage.Builder.class)
-@JsonPropertyOrder(value = {"@context", "@type"}, alphabetic = true)
 public class CatalogRequestMessage extends AbstractCatalogObject {
 
     @Serial

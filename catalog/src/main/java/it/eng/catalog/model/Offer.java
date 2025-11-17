@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 @EqualsAndHashCode(exclude = {"target", "assigner", "assignee"}) // requires for offer check in negotiation flow
 @JsonDeserialize(builder = Offer.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-@JsonPropertyOrder(value = {"@context", "@type", "@id"}, alphabetic = true)
+@JsonPropertyOrder(value = {DSpaceConstants.TYPE,DSpaceConstants.ID}, alphabetic = true)
 public class Offer implements Serializable {
 
     @Serial
@@ -37,7 +37,7 @@ public class Offer implements Serializable {
     @JsonProperty(DSpaceConstants.ID)
     private String id;
 
-    // Different to a Catalog or Dataset, the Offer inside a Contract Request Message must have an odrl:target attribute.
+    // Different to a Catalog or Dataset, the Offer inside a Contract Request Message must have an target attribute.
     // not mandatory for Catalog or Dataset offer to have target field - different from the Offer in negotiation module
     private String target;
 

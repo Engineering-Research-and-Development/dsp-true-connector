@@ -26,9 +26,6 @@ import java.util.stream.Collectors;
 @Getter
 @JsonDeserialize(builder = Catalog.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-@JsonPropertyOrder(value = {DSpaceConstants.CONTEXT, DSpaceConstants.ID, DSpaceConstants.TYPE, DSpaceConstants.TITLE,
-        DSpaceConstants.DESCRIPTION, DSpaceConstants.PARTICIPANT_ID, DSpaceConstants.KEYWORD,
-        DSpaceConstants.DATASET, DSpaceConstants.DISTRIBUTION, DSpaceConstants.SERVICE}, alphabetic = true)
 @Document(collection = "catalogs")
 public class Catalog extends AbstractCatalogObject {
 

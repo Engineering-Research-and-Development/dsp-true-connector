@@ -21,7 +21,6 @@ import java.util.stream.Collectors;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = DatasetRequestMessage.Builder.class)
-@JsonPropertyOrder(value = {DSpaceConstants.CONTEXT, DSpaceConstants.TYPE,DSpaceConstants.ID}, alphabetic = true)
 public class DatasetRequestMessage extends AbstractCatalogObject {
 
     @Serial

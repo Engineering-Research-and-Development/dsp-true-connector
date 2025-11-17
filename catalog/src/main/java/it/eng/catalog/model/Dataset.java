@@ -27,9 +27,6 @@ import java.util.stream.Collectors;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = Dataset.Builder.class)
-@JsonPropertyOrder(value = {DSpaceConstants.CONTEXT, DSpaceConstants.ID, DSpaceConstants.TYPE, DSpaceConstants.TITLE,
-        DSpaceConstants.DESCRIPTION, DSpaceConstants.KEYWORD, DSpaceConstants.HAS_POLICY,
-        DSpaceConstants.DISTRIBUTION}, alphabetic = true)
 @Document(collection = "datasets")
 public class Dataset extends AbstractCatalogObject {
 

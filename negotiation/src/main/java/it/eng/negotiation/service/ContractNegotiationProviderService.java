@@ -1,7 +1,10 @@
 package it.eng.negotiation.service;
 
 import it.eng.negotiation.event.ContractNegotiationEvent;
-import it.eng.negotiation.exception.*;
+import it.eng.negotiation.exception.ContractNegotiationExistsException;
+import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
+import it.eng.negotiation.exception.OfferNotValidException;
+import it.eng.negotiation.exception.ProviderPidNotBlankException;
 import it.eng.negotiation.model.*;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
@@ -12,6 +15,7 @@ import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
+import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.property.ConnectorProperties;
 import it.eng.tools.response.GenericApiResponse;
@@ -66,7 +70,7 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
         publisher.publishEvent(AuditEvent.Builder.newInstance()
                 .eventType(AuditEventType.PROTOCOL_NEGOTIATION_CONTRACT_NEGOTIATION)
                 .description("Searching with provider pid " + providerPid)
-                .details(Map.of("providerPid", providerPid, "role", IConstants.ROLE_PROVIDER))
+                .details(Map.of(DSpaceConstants.PROVIDER_PID, providerPid, "role", IConstants.ROLE_PROVIDER))
                 .build());
         return contractNegotiationRepository.findByProviderPid(providerPid)
                 .orElseThrow(() ->
@@ -101,7 +105,7 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
                     .description("Contract negotiation request - validation failed")
                     .eventType(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DENIED)
                     .details(Map.of("contractRequestMessage", contractRequestMessage,
-                            "consumerPid", contractRequestMessage.getConsumerPid(),
+                            DSpaceConstants.CONSUMER_PID, contractRequestMessage.getConsumerPid(),
                             "response", response,
                             "role", IConstants.ROLE_PROVIDER))
                     .build());
@@ -134,7 +138,7 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
                 .description("Contract negotiation requested")
                 .eventType(AuditEventType.PROTOCOL_NEGOTIATION_REQUESTED)
                 .details(Map.of("contractNegotiation", contractNegotiation,
-                        "offer", offerToBeInserted,
+                        DSpaceConstants.OFFER, offerToBeInserted,
                         "role", IConstants.ROLE_PROVIDER))
                 .build());
 
@@ -170,8 +174,8 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
                     AuditEventType.PROTOCOL_NEGOTIATION_INVALID_OFFER,
                     "Contract negotiation offer not valid error",
                     Map.of("contractNegotiation", contractNegotiation,
-                            "consumerPid", contractNegotiation.getConsumerPid(),
-                            "providerPid", contractNegotiation.getProviderPid(),
+                            DSpaceConstants.CONSUMER_PID, contractNegotiation.getConsumerPid(),
+                            DSpaceConstants.PROVIDER_PID, contractNegotiation.getProviderPid(),
                             "role", IConstants.ROLE_API));
             throw new ContractNegotiationNotFoundException("New offer must have same offer id and target" +
                     " as the existing one in the contract negotiation with id: " + contractNegotiation.getId());
@@ -211,7 +215,7 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
                 .description("Contract negotiation requested - counteroffer")
                 .eventType(AuditEventType.PROTOCOL_NEGOTIATION_REQUESTED)
                 .details(Map.of("contractNegotiation", contractNegotiation,
-                        "offer", updatedOffer,
+                        DSpaceConstants.OFFER, updatedOffer,
                         "role", IConstants.ROLE_PROVIDER))
                 .build());
 
@@ -233,8 +237,8 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
                 .eventType(AuditEventType.PROTOCOL_NEGOTIATION_ACCEPTED)
                 .description("Contract negotiation accepted")
                 .details(Map.of("contractNegotiation", contractNegotiationAccepted,
-                        "consumerPid", contractNegotiationAccepted.getConsumerPid(),
-                        "providerPid", contractNegotiationAccepted.getProviderPid(),
+                        DSpaceConstants.CONSUMER_PID, contractNegotiationAccepted.getConsumerPid(),
+                        DSpaceConstants.PROVIDER_PID, contractNegotiationAccepted.getProviderPid(),
                         "role", IConstants.ROLE_PROVIDER))
                 .build());
         return contractNegotiationRepository.save(contractNegotiationAccepted);
@@ -254,8 +258,8 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
                 .description("Contract negotiation verified")
                 .details(Map.of("contractNegotiation", contractNegotiationUpdated,
                         "role", IConstants.ROLE_PROVIDER,
-                        "consumerPid", contractNegotiationUpdated.getConsumerPid(),
-                        "providerPid", contractNegotiationUpdated.getProviderPid()))
+                        DSpaceConstants.CONSUMER_PID, contractNegotiationUpdated.getConsumerPid(),
+                        DSpaceConstants.PROVIDER_PID, contractNegotiationUpdated.getProviderPid()))
                 .build());
         log.info("Contract negotiation with providerPid {} and consumerPid {} changed state to VERIFIED and saved", cavm.getProviderPid(), cavm.getConsumerPid());
 
@@ -280,8 +284,8 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
                 .eventType(AuditEventType.PROTOCOL_NEGOTIATION_TERMINATED)
                 .description("Contract negotiation terminated")
                 .details(Map.of("contractNegotiation", contractNegotiationTerminated,
-                        "consumerPid", contractNegotiationTerminated.getConsumerPid(),
-                        "providerPid", contractNegotiationTerminated.getProviderPid(),
+                        DSpaceConstants.CONSUMER_PID, contractNegotiationTerminated.getConsumerPid(),
+                        DSpaceConstants.PROVIDER_PID, contractNegotiationTerminated.getProviderPid(),
                         "role", IConstants.ROLE_PROVIDER))
                 .build());
 
@@ -293,8 +297,8 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
             publisher.publishEvent(
                     AuditEventType.PROTOCOL_NEGOTIATION_INVALID_OFFER,
                     "Contract negotiation offer not valid error",
-                    Map.of("consumerPid", consumerPidFromMessage,
-                            "providerPid", providerPidFromMessage,
+                    Map.of(DSpaceConstants.CONSUMER_PID, consumerPidFromMessage,
+                            DSpaceConstants.PROVIDER_PID, providerPidFromMessage,
                             "role", IConstants.ROLE_API));
             throw new ContractNegotiationNotFoundException(
                     "The providerPid from the message " + providerPidFromMessage

@@ -2,6 +2,7 @@ package it.eng.catalog.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import it.eng.tools.model.DSpaceConstants;
 
 import java.io.Serial;
@@ -9,6 +10,9 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.UUID;
 
+@JsonPropertyOrder(value = {DSpaceConstants.CONTEXT, DSpaceConstants.TYPE, DSpaceConstants.ID, DSpaceConstants.TITLE,
+        DSpaceConstants.DESCRIPTION, DSpaceConstants.PARTICIPANT_ID, DSpaceConstants.KEYWORD,
+        DSpaceConstants.DATASET, DSpaceConstants.DISTRIBUTION, DSpaceConstants.SERVICE}, alphabetic = true)
 public abstract class AbstractCatalogObject implements Serializable {
 
     @Serial

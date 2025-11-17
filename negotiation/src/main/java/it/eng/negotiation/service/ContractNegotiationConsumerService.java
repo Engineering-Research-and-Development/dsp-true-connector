@@ -11,6 +11,7 @@ import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.datatransfer.InitializeTransferProcess;
+import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.util.ToolsUtil;
@@ -47,7 +48,7 @@ public abstract class ContractNegotiationConsumerService extends BaseProtocolSer
         publisher.publishEvent(AuditEvent.Builder.newInstance()
                 .eventType(AuditEventType.PROTOCOL_NEGOTIATION_CONTRACT_NEGOTIATION)
                 .description("Searching with consumer pid " + consumerPid)
-                .details(Map.of("consumerPid", consumerPid, "role", IConstants.ROLE_CONSUMER))
+                .details(Map.of(DSpaceConstants.CONSUMER_PID, consumerPid, "role", IConstants.ROLE_CONSUMER))
                 .build());
         return contractNegotiationRepository.findByConsumerPid(consumerPid)
                 .orElseThrow(() ->
@@ -94,10 +95,10 @@ public abstract class ContractNegotiationConsumerService extends BaseProtocolSer
         publisher.publishEvent(AuditEvent.Builder.newInstance()
                 .eventType(AuditEventType.PROTOCOL_NEGOTIATION_REQUESTED)
                 .description("Contract negotiation requested")
-                .details(Map.of("consumerPid", contractNegotiation.getConsumerPid(),
-                        "providerPid", contractNegotiation.getProviderPid(),
+                .details(Map.of(DSpaceConstants.CONSUMER_PID, contractNegotiation.getConsumerPid(),
+                        DSpaceConstants.PROVIDER_PID, contractNegotiation.getProviderPid(),
                         "contractNegotiation", contractNegotiation,
-                        "offer", contractNegotiation.getOffer(),
+                        DSpaceConstants.OFFER, contractNegotiation.getOffer(),
                         "role", IConstants.ROLE_CONSUMER))
                 .build());
         return contractNegotiation;
@@ -156,10 +157,10 @@ public abstract class ContractNegotiationConsumerService extends BaseProtocolSer
         publisher.publishEvent(AuditEvent.Builder.newInstance()
                 .eventType(AuditEventType.PROTOCOL_NEGOTIATION_REQUESTED)
                 .description("Contract negotiation requested - counteroffer")
-                .details(Map.of("consumerPid", contractNegotiation.getConsumerPid(),
-                        "providerPid", contractNegotiation.getProviderPid(),
+                .details(Map.of(DSpaceConstants.CONSUMER_PID, contractNegotiation.getConsumerPid(),
+                        DSpaceConstants.PROVIDER_PID, contractNegotiation.getProviderPid(),
                         "contractNegotiation", contractNegotiation,
-                        "offer", contractNegotiation.getOffer(),
+                        DSpaceConstants.OFFER, contractNegotiation.getOffer(),
                         "role", IConstants.ROLE_CONSUMER))
                 .build());
         return contractNegotiation;
@@ -210,8 +211,8 @@ public abstract class ContractNegotiationConsumerService extends BaseProtocolSer
         publisher.publishEvent(AuditEvent.Builder.newInstance()
                 .eventType(AuditEventType.PROTOCOL_NEGOTIATION_AGREED)
                 .description("Contract negotiation agreed")
-                .details(Map.of("consumerPid", contractNegotiationAgreed.getConsumerPid(),
-                        "providerPid", contractNegotiationAgreed.getProviderPid(),
+                .details(Map.of(DSpaceConstants.CONSUMER_PID, contractNegotiationAgreed.getConsumerPid(),
+                        DSpaceConstants.PROVIDER_PID, contractNegotiationAgreed.getProviderPid(),
                         "contractNegotiation", contractNegotiationAgreed,
                         "agreement", contractAgreementMessage.getAgreement(),
                         "role", IConstants.ROLE_CONSUMER))
@@ -267,8 +268,8 @@ public abstract class ContractNegotiationConsumerService extends BaseProtocolSer
         publisher.publishEvent(AuditEvent.Builder.newInstance()
                 .eventType(AuditEventType.PROTOCOL_NEGOTIATION_FINALIZED)
                 .description("Contract negotiation finalized")
-                .details(Map.of("consumerPid", contractNegotiationUpdated.getConsumerPid(),
-                        "providerPid", contractNegotiationUpdated.getProviderPid(),
+                .details(Map.of(DSpaceConstants.CONSUMER_PID, contractNegotiationUpdated.getConsumerPid(),
+                        DSpaceConstants.PROVIDER_PID, contractNegotiationUpdated.getProviderPid(),
                         "contractNegotiation", contractNegotiationUpdated,
                         "role", IConstants.ROLE_CONSUMER))
                 .build());
@@ -298,8 +299,8 @@ public abstract class ContractNegotiationConsumerService extends BaseProtocolSer
         publisher.publishEvent(AuditEvent.Builder.newInstance()
                 .eventType(AuditEventType.PROTOCOL_NEGOTIATION_TERMINATED)
                 .description("Contract negotiation terminated")
-                .details(Map.of("consumerPid", contractNegotiationTerminated.getConsumerPid(),
-                        "providerPid", contractNegotiationTerminated.getProviderPid(),
+                .details(Map.of(DSpaceConstants.CONSUMER_PID, contractNegotiationTerminated.getConsumerPid(),
+                        DSpaceConstants.PROVIDER_PID, contractNegotiationTerminated.getProviderPid(),
                         "contractNegotiation", contractNegotiationTerminated,
                         "role", IConstants.ROLE_CONSUMER))
                 .build());

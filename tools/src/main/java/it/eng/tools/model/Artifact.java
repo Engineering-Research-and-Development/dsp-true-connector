@@ -64,7 +64,7 @@ public class Artifact implements Serializable{
 	@JsonIgnoreProperties(ignoreUnknown = true)
 	public static class Builder {
 		
-		private Artifact artifact;
+		private final Artifact artifact;
 		
 		private Builder() {
 			artifact = new Artifact();

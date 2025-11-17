@@ -5,13 +5,15 @@ import com.fasterxml.jackson.annotation.JsonProperty.Access;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.constraints.NotNull;
+import lombok.Getter;
 
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 import java.util.UUID;
 
-@JsonPropertyOrder(value = {DSpaceConstants.CONTEXT, DSpaceConstants.TYPE, DSpaceConstants.CONSUMER_PID, DSpaceConstants.PROVIDER_PID}, alphabetic = true)
+@Getter
+@JsonPropertyOrder(value = {DSpaceConstants.CONTEXT, DSpaceConstants.TYPE, DSpaceConstants.ID, DSpaceConstants.CONSUMER_PID, DSpaceConstants.PROVIDER_PID}, alphabetic = true)
 public abstract class AbstractTransferMessage implements Serializable {
 
     @Serial
@@ -25,10 +27,6 @@ public abstract class AbstractTransferMessage implements Serializable {
 
     @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
     public abstract String getType();
-
-    public String getConsumerPid() {
-        return consumerPid;
-    }
 
     protected String createNewId() {
         return UUID.randomUUID().toString();

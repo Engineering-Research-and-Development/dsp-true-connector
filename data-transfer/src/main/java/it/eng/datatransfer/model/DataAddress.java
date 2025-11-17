@@ -37,7 +37,7 @@ public class DataAddress implements Serializable {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Builder {
 
-        private DataAddress dataAddress;
+        private final DataAddress dataAddress;
 
         private Builder() {
             dataAddress = new DataAddress();
