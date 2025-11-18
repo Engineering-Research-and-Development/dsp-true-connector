@@ -1,15 +1,21 @@
 package it.eng.tools.configuration;
 
+import java.security.KeyManagementException;
 import java.security.KeyPair;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.UnrecoverableKeyException;
+import java.security.cert.X509Certificate;
 
+import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ssl.NoSuchSslBundleException;
 import org.springframework.boot.ssl.SslBundles;
 import org.springframework.context.annotation.Configuration;
@@ -25,10 +31,13 @@ public class GlobalSSLConfiguration {
 
 	private final SslBundles sslBundles;
 	
+	@Value("${connector.ssl.insecure:true}")
+	private boolean insecure;
+
 	private PublicKey publicKey;
 	private PrivateKey privateKey;
 	private KeyPair keyPair;
-	private String BUNDLE = "connector";
+	private static final String BUNDLE = "connector";
 
 	public GlobalSSLConfiguration(SslBundles sslBundles) {
 		super();
@@ -37,11 +46,29 @@ public class GlobalSSLConfiguration {
 	
 	@PostConstruct
 	public void globalSslConfig() {
-		log.info("Configuring global SSL context - using configured connector key and truststore");
-		SSLContext sslContext = sslBundles.getBundle(BUNDLE).createSslContext();
-		HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
+		if(insecure) {
+			log.warn("Configuring INSECURE global SSL context - bypassing all certificate checks");
+			setupInsecureSsl();
+		} else {
+			log.info("Configuring global SSL context - using configured connector key and truststore");
+			SSLContext sslContext = sslBundles.getBundle(BUNDLE).createSslContext();
+			HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
+		}
 		loadKeys();
 		loadKeyPair();
+	}
+
+	private void setupInsecureSsl() {
+		try {
+			SSLContext sslContext = SSLContext.getInstance("TLS");
+			TrustManager[] trustAllCerts = new TrustManager[] { new InsecureTrustManager() };
+			sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
+			HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
+			HostnameVerifier allHostsValid = (hostname, session) -> true;
+			HttpsURLConnection.setDefaultHostnameVerifier(allHostsValid);
+		} catch (NoSuchAlgorithmException | KeyManagementException e) {
+			log.error("Failed to create insecure SSL context", e);
+		}
 	}
 
 	private void loadKeys() {
@@ -61,4 +88,20 @@ public class GlobalSSLConfiguration {
 		keyPair = new KeyPair(getPublicKey(), getPrivateKey());
 	}
 
+	private static class InsecureTrustManager implements X509TrustManager {
+		@Override
+		public void checkClientTrusted(X509Certificate[] chain, String authType) {
+			// Accept all client certificates
+		}
+
+		@Override
+		public void checkServerTrusted(X509Certificate[] chain, String authType) {
+			// Accept all server certificates
+		}
+
+		@Override
+		public X509Certificate[] getAcceptedIssuers() {
+			return new X509Certificate[0];
+		}
+	}
 }
