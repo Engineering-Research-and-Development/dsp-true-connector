@@ -4,11 +4,14 @@ import it.eng.tools.s3.model.S3ClientRequest;
 import it.eng.tools.s3.properties.S3Properties;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.boot.ssl.SslBundles;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.http.apache.ApacheHttpClient;
+import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3BaseClientBuilder;
@@ -26,6 +29,8 @@ import static software.amazon.awssdk.core.client.config.SdkAdvancedAsyncClientOp
 @Slf4j
 public class S3ClientProvider {
 
+    private static final String SSL_BUNDLE_NAME = "connector";
+
     private final Executor executor;
     private final S3Properties s3Properties;
     private final AwsCredentialsProvider credentialsProvider;
@@ -33,10 +38,11 @@ public class S3ClientProvider {
     private final ConcurrentHashMap<String, S3Client> s3ClientCache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, S3AsyncClient> asyncS3ClientCache = new ConcurrentHashMap<>();
     private final ThreadLocal<S3Client> adminS3ClientCache = ThreadLocal.withInitial(() -> null);
+    private final SslBundles sslBundles;
 
-
-    public S3ClientProvider(S3Properties s3Properties) {
+    public S3ClientProvider(S3Properties s3Properties, SslBundles sslBundles) {
         this.s3Properties = s3Properties;
+        this.sslBundles = sslBundles;
         this.executor = Executors.newCachedThreadPool(new ThreadFactoryBuilder()
                 .threadNamePrefix("aws-client")
                 .build());
@@ -55,6 +61,10 @@ public class S3ClientProvider {
         S3Client cached = adminS3ClientCache.get();
         if (cached == null) {
             cached = S3Client.builder()
+                    .httpClient(ApacheHttpClient.builder()
+                            .tlsKeyManagersProvider(() -> sslBundles.getBundle(SSL_BUNDLE_NAME).getManagers().getKeyManagerFactory().getKeyManagers())
+                            .tlsTrustManagersProvider(() -> sslBundles.getBundle(SSL_BUNDLE_NAME).getManagers().getTrustManagerFactory().getTrustManagers())
+                            .build())
                     .endpointOverride(URI.create(s3Properties.getEndpoint()))
                     .credentialsProvider(StaticCredentialsProvider.create(
                             AwsBasicCredentials.create(s3Properties.getAccessKey(), s3Properties.getSecretKey())))
@@ -122,6 +132,10 @@ public class S3ClientProvider {
 
     private S3Client createS3Client(AwsCredentialsProvider credentialsProvider, String region, String endpointOverride) {
         var builder = S3Client.builder()
+                .httpClient(ApacheHttpClient.builder()
+                        .tlsKeyManagersProvider(() -> sslBundles.getBundle(SSL_BUNDLE_NAME).getManagers().getKeyManagerFactory().getKeyManagers())
+                        .tlsTrustManagersProvider(() -> sslBundles.getBundle(SSL_BUNDLE_NAME).getManagers().getTrustManagerFactory().getTrustManagers())
+                        .build())
                 .credentialsProvider(credentialsProvider)
                 .region(Region.of(region))
                 .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
@@ -149,9 +163,12 @@ public class S3ClientProvider {
 
     private S3AsyncClient createS3AsyncClient(AwsCredentialsProvider credentialsProvider, String region, String endpointOverride) {
         var builder = S3AsyncClient.builder()
+                .httpClient(NettyNioAsyncHttpClient.builder()
+                        .tlsKeyManagersProvider(() -> sslBundles.getBundle(SSL_BUNDLE_NAME).getManagers().getKeyManagerFactory().getKeyManagers())
+                        .tlsTrustManagersProvider(() -> sslBundles.getBundle(SSL_BUNDLE_NAME).getManagers().getTrustManagerFactory().getTrustManagers())
+                        .build())
                 .asyncConfiguration(b -> b.advancedOption(FUTURE_COMPLETION_EXECUTOR, executor))
                 .credentialsProvider(credentialsProvider)
-                .multipartEnabled(true)
                 .region(Region.of(region))
                 .crossRegionAccessEnabled(true);
 

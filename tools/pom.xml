@@ -119,6 +119,18 @@
             <artifactId>failsafe</artifactId>
             <version>3.3.2</version>
         </dependency>
+        <!-- AWS SDK Apache HTTP Client for SSL/TLS configuration -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>apache-client</artifactId>
+            <version>${aws.sdk.version}</version>
+        </dependency>
+        <!-- AWS SDK Netty HTTP Client for async operations with SSL/TLS -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>netty-nio-client</artifactId>
+            <version>${aws.sdk.version}</version>
+        </dependency>
 
 
         <!-- Test -->
