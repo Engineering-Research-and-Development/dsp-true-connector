@@ -46,16 +46,16 @@ public class GlobalSSLConfiguration {
 	
 	@PostConstruct
 	public void globalSslConfig() {
-		if(insecure) {
+//		if(true) {
 			log.warn("Configuring INSECURE global SSL context - bypassing all certificate checks");
 			setupInsecureSsl();
-		} else {
-			log.info("Configuring global SSL context - using configured connector key and truststore");
-			SSLContext sslContext = sslBundles.getBundle(BUNDLE).createSslContext();
-			HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
-		}
-		loadKeys();
-		loadKeyPair();
+//		} else {
+//			log.info("Configuring global SSL context - using configured connector key and truststore");
+//			SSLContext sslContext = sslBundles.getBundle(BUNDLE).createSslContext();
+//			HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
+//		}
+//		loadKeys();
+//		loadKeyPair();
 	}
 
 	private void setupInsecureSsl() {
