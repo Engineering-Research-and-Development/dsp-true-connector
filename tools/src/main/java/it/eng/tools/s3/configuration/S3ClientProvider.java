@@ -262,6 +262,7 @@ public class S3ClientProvider {
 //                .forcePathStyle(true)
                 .crossRegionAccessEnabled(true);
 
+
         handleBaseEndpointOverride(builder, endpointOverride);
 
         return builder.build();
