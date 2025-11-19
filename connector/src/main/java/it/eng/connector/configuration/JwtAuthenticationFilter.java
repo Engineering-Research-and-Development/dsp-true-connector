@@ -34,6 +34,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
 			throws ServletException, IOException {
 		
+		// Skip JWT validation for /issuer/** endpoints (they use Self-Issued ID Tokens)
+		String requestPath = request.getRequestURI();
+		if (requestPath != null && (requestPath.startsWith("/issuer") || requestPath.startsWith("/api/dev/token"))) {
+			filterChain.doFilter(request, response);
+			return;
+		}
+
 		String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
 		if (!StringUtils.hasText(authHeader) || !authHeader.startsWith("Bearer ")) {
 			filterChain.doFilter(request, response);

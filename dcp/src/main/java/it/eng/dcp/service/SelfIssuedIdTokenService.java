@@ -11,6 +11,7 @@ import it.eng.dcp.config.DcpProperties;
 import it.eng.dcp.core.DidResolverService;
 import it.eng.dcp.core.DidResolutionException;
 import it.eng.dcp.core.JtiReplayCache;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +23,7 @@ import java.util.UUID;
  * Self-Issued ID Token service using EC keys from `KeyService` for signing.
  */
 @Service
+@Slf4j
 public class SelfIssuedIdTokenService {
 
     private final DcpProperties props;
@@ -46,7 +48,20 @@ public class SelfIssuedIdTokenService {
     }
 
     public String createAndSignToken(String audienceDid, String accessToken) {
-        if (audienceDid == null || audienceDid.isBlank()) throw new IllegalArgumentException("audienceDid required");
+        if (audienceDid == null || audienceDid.isBlank()) {
+            throw new IllegalArgumentException("audienceDid required");
+        }
+
+        log.debug("Creating token for audience: {}", audienceDid);
+        log.debug("DcpProperties instance: {}", props);
+
+        String connectorDid = props.getConnectorDid();
+        log.debug("Retrieved connectorDid: {}", connectorDid);
+
+        if (connectorDid == null || connectorDid.isBlank()) {
+            log.error("connectorDid is null or blank! DcpProperties: {}", props);
+            throw new IllegalStateException("connectorDid is not configured. Please set dcp.connector.did property");
+        }
 
         try {
             Instant now = Instant.now();
@@ -54,7 +69,7 @@ public class SelfIssuedIdTokenService {
             String jti = UUID.randomUUID().toString();
 
             JWTClaimsSet.Builder cb = new JWTClaimsSet.Builder();
-            cb.issuer(props.getConnectorDid()).subject(props.getConnectorDid());
+            cb.issuer(connectorDid).subject(connectorDid);
             cb.audience(audienceDid);
             cb.issueTime(Date.from(now));
             cb.expirationTime(Date.from(exp));

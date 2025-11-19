@@ -70,17 +70,60 @@ public class HttpDidResolverService implements DidResolverService {
             String path = did.substring("did:web:".length());
             // percent-decode first
             String decoded = URLDecoder.decode(path, StandardCharsets.UTF_8);
-            // map colons to slashes to produce host/path
-            String mapped = decoded.replace(':', '/');
-            String url;
-            int idx = mapped.indexOf('/');
-            if (idx < 0) {
-                // host only
-                url = "https://" + mapped + "/.well-known/did.json";
+
+            // DID Web format: did:web:domain[:port][:path][:segments]
+            // After decoding, we need to:
+            // 1. Extract domain and optional port (first segment before any path)
+            // 2. Convert remaining colons to path separators
+
+            String[] segments = decoded.split(":", -1);
+            if (segments.length == 0) {
+                return null;
+            }
+
+            String hostPort;
+            String pathSegments = null;
+
+            if (segments.length == 1) {
+                // Just domain: did:web:example.com
+                hostPort = segments[0];
+            } else if (segments.length == 2) {
+                // Could be domain:port OR domain:path
+                // Check if second segment is numeric (port) or not (path)
+                String secondSegment = segments[1];
+                if (secondSegment.matches("\\d+")) {
+                    // It's a port: did:web:localhost:8080
+                    hostPort = segments[0] + ":" + segments[1];
+                } else {
+                    // It's a path: did:web:example.com:users
+                    hostPort = segments[0];
+                    pathSegments = secondSegment;
+                }
             } else {
-                String host = mapped.substring(0, idx);
-                String rest = mapped.substring(idx + 1);
-                url = "https://" + host + "/" + rest + "/did.json";
+                // 3+ segments: did:web:example.com:8080:path:to:resource
+                // OR: did:web:example.com:path:to:resource
+                // Check if second segment is numeric (port)
+                if (segments[1].matches("\\d+")) {
+                    // Has port: domain:port:path:segments
+                    hostPort = segments[0] + ":" + segments[1];
+                    // Join remaining segments with /
+                    pathSegments = String.join("/", java.util.Arrays.copyOfRange(segments, 2, segments.length));
+                } else {
+                    // No port: domain:path:segments
+                    hostPort = segments[0];
+                    // Join remaining segments with /
+                    pathSegments = String.join("/", java.util.Arrays.copyOfRange(segments, 1, segments.length));
+                }
+            }
+
+            // Build the URL
+            String url;
+            if (pathSegments == null || pathSegments.isEmpty()) {
+                // No path segments: https://host[:port]/.well-known/did.json
+                url = "https://" + hostPort + "/.well-known/did.json";
+            } else {
+                // Has path segments: https://host[:port]/path/segments/did.json
+                url = "https://" + hostPort + "/" + pathSegments + "/did.json";
             }
 
             JsonNode root = null;

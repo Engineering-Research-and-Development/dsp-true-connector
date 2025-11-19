@@ -145,7 +145,11 @@ public class WebSecurityConfig {
                                     new AntPathRequestMatcher("/catalog/**"),
                                     new AntPathRequestMatcher("/transfers/**"))
                             .hasRole("CONNECTOR")
+                            // Development/Testing token generator (disable in production)
+                            .requestMatchers(new AntPathRequestMatcher("/api/dev/token/**")).permitAll()
                             .requestMatchers(new AntPathRequestMatcher("/api/**")).hasRole("ADMIN")
+                            // Verifiable Credentials endpoints handle their own authentication (Self-Issued ID Tokens)
+                            .requestMatchers(new AntPathRequestMatcher("/issuer/**")).permitAll()
                             .anyRequest().permitAll();
                 })
                 .addFilterBefore(protocolEndpointsAuthenticationFilter(applicationPropertiesService), UsernamePasswordAuthenticationFilter.class)
