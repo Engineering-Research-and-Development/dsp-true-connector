@@ -258,6 +258,8 @@ public class S3ClientProvider {
                 .asyncConfiguration(b -> b.advancedOption(FUTURE_COMPLETION_EXECUTOR, executor))
                 .credentialsProvider(credentialsProvider)
                 .region(Region.of(region))
+                .multipartEnabled(true)
+                .forcePathStyle(true)
                 .crossRegionAccessEnabled(true);
 
         handleBaseEndpointOverride(builder, endpointOverride);
@@ -276,6 +278,7 @@ public class S3ClientProvider {
 
         builder.serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
                         .pathStyleAccessEnabled(true)
+                        .checksumValidationEnabled(false)
                         .build())
                 .endpointOverride(endpointOverrideUri);
     }
