@@ -259,7 +259,7 @@ public class S3ClientProvider {
                 .credentialsProvider(credentialsProvider)
                 .region(Region.of(region))
                 .multipartEnabled(true)
-                .forcePathStyle(true)
+//                .forcePathStyle(true)
                 .crossRegionAccessEnabled(true);
 
         handleBaseEndpointOverride(builder, endpointOverride);
