@@ -259,7 +259,7 @@ public class S3ClientProvider {
                 .credentialsProvider(credentialsProvider)
                 .region(Region.of(region))
                 .multipartEnabled(true)
-//                .forcePathStyle(true)
+                .forcePathStyle(true)
                 .crossRegionAccessEnabled(true);
 
 
@@ -278,8 +278,8 @@ public class S3ClientProvider {
         }
 
         builder.serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
-                        .pathStyleAccessEnabled(true)
-                        .checksumValidationEnabled(false)
+//                        .pathStyleAccessEnabled(true)
+//                        .checksumValidationEnabled(false)
                         .build())
                 .endpointOverride(endpointOverrideUri);
     }
