@@ -21,6 +21,7 @@ public class S3Configuration {
 
     @Bean
     public MinioAdminClient minioAdminClient() {
+        log.debug("Creating MinioAdminClient with OkHttpClient from OkHttpClientConfiguration");
         return MinioAdminClient.builder()
                 .endpoint(s3Properties.getEndpoint())
                 .credentials(s3Properties.getAccessKey(), s3Properties.getSecretKey())

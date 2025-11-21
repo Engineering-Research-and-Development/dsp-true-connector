@@ -4,26 +4,20 @@ import it.eng.tools.s3.model.S3ClientRequest;
 import it.eng.tools.s3.properties.S3Properties;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.boot.ssl.SslBundles;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.http.SdkHttpClient;
-import software.amazon.awssdk.http.apache.ApacheHttpClient;
-import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
+import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3BaseClientBuilder;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.utils.ThreadFactoryBuilder;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import java.net.URI;
-import java.security.cert.X509Certificate;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -34,20 +28,23 @@ import static software.amazon.awssdk.core.client.config.SdkAdvancedAsyncClientOp
 @Slf4j
 public class S3ClientProvider {
 
-    private static final String SSL_BUNDLE_NAME = "connector";
-
     private final Executor executor;
     private final S3Properties s3Properties;
     private final AwsCredentialsProvider credentialsProvider;
+    private final SdkHttpClient sdkHttpClient;
+    private final SdkAsyncHttpClient sdkAsyncHttpClient;
 
     private final ConcurrentHashMap<String, S3Client> s3ClientCache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, S3AsyncClient> asyncS3ClientCache = new ConcurrentHashMap<>();
     private final ThreadLocal<S3Client> adminS3ClientCache = ThreadLocal.withInitial(() -> null);
-    private final SslBundles sslBundles;
 
-    public S3ClientProvider(S3Properties s3Properties, SslBundles sslBundles) {
+    public S3ClientProvider(
+            S3Properties s3Properties,
+            SdkHttpClient sdkHttpClient,
+            SdkAsyncHttpClient sdkAsyncHttpClient) {
         this.s3Properties = s3Properties;
-        this.sslBundles = sslBundles;
+        this.sdkHttpClient = sdkHttpClient;
+        this.sdkAsyncHttpClient = sdkAsyncHttpClient;
         this.executor = Executors.newCachedThreadPool(new ThreadFactoryBuilder()
                 .threadNamePrefix("aws-client")
                 .build());
@@ -66,7 +63,7 @@ public class S3ClientProvider {
         S3Client cached = adminS3ClientCache.get();
         if (cached == null) {
             cached = S3Client.builder()
-                    .httpClient(getSdkHttpClient())
+                    .httpClient(sdkHttpClient)
                     .endpointOverride(URI.create(s3Properties.getEndpoint()))
                     .credentialsProvider(StaticCredentialsProvider.create(
                             AwsBasicCredentials.create(s3Properties.getAccessKey(), s3Properties.getSecretKey())))
@@ -134,7 +131,7 @@ public class S3ClientProvider {
 
     private S3Client createS3Client(AwsCredentialsProvider credentialsProvider, String region, String endpointOverride) {
         var builder = S3Client.builder()
-                .httpClient(getSdkHttpClient())
+                .httpClient(sdkHttpClient)
                 .credentialsProvider(credentialsProvider)
                 .region(Region.of(region))
                 .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
@@ -144,54 +141,6 @@ public class S3ClientProvider {
         handleBaseEndpointOverride(builder, endpointOverride);
 
         return builder.build();
-    }
-
-    private SdkHttpClient getSdkHttpClient() {
-        return getSdkHttpClient(false);
-    }
-
-    private SdkHttpClient getSdkHttpClient(boolean secure) {
-        if (secure) {
-            // Secure client with proper SSL certificate validation
-            return ApacheHttpClient.builder()
-                    .tlsKeyManagersProvider(() -> sslBundles.getBundle(SSL_BUNDLE_NAME).getManagers().getKeyManagerFactory().getKeyManagers())
-                    .tlsTrustManagersProvider(() -> sslBundles.getBundle(SSL_BUNDLE_NAME).getManagers().getTrustManagerFactory().getTrustManagers())
-                    .build();
-        } else {
-            // Insecure client that accepts all certificates (for testing/development only)
-            log.warn("Creating insecure S3 HTTP client that accepts all certificates. This should only be used in development/testing environments.");
-            try {
-                TrustManager[] trustAllCerts = new TrustManager[]{
-                        new X509TrustManager() {
-                            @Override
-                            public X509Certificate[] getAcceptedIssuers() {
-                                return new X509Certificate[0];
-                            }
-
-                            @Override
-                            public void checkClientTrusted(X509Certificate[] certs, String authType) {
-                                // Accept all
-                            }
-
-                            @Override
-                            public void checkServerTrusted(X509Certificate[] certs, String authType) {
-                                // Accept all
-                            }
-                        }
-                };
-
-                SSLContext sslContext = SSLContext.getInstance("TLS");
-                sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
-
-                return ApacheHttpClient.builder()
-//                        .tlsKeyManagersProvider(() -> sslBundles.getBundle(SSL_BUNDLE_NAME).getManagers().getKeyManagerFactory().getKeyManagers())
-                        .tlsTrustManagersProvider(() -> trustAllCerts)
-                        .build();
-            } catch (Exception e) {
-                log.error("Failed to create insecure HTTP client, falling back to secure client", e);
-                return getSdkHttpClient(true);
-            }
-        }
     }
 
     private S3AsyncClient createS3AsyncClient(S3ClientRequest s3ClientRequest) {
@@ -208,60 +157,13 @@ public class S3ClientProvider {
         }
     }
 
-    private software.amazon.awssdk.http.async.SdkAsyncHttpClient getAsyncHttpClient() {
-        return getAsyncHttpClient(false);
-    }
-
-    private software.amazon.awssdk.http.async.SdkAsyncHttpClient getAsyncHttpClient(boolean secure) {
-        if (secure) {
-            // Secure async client with proper SSL certificate validation
-            return NettyNioAsyncHttpClient.builder()
-                    .tlsKeyManagersProvider(() -> sslBundles.getBundle(SSL_BUNDLE_NAME).getManagers().getKeyManagerFactory().getKeyManagers())
-                    .tlsTrustManagersProvider(() -> sslBundles.getBundle(SSL_BUNDLE_NAME).getManagers().getTrustManagerFactory().getTrustManagers())
-                    .build();
-        } else {
-            // Insecure async client that accepts all certificates (for testing/development only)
-            log.warn("Creating insecure S3 Async HTTP client that accepts all certificates. This should only be used in development/testing environments.");
-            try {
-                TrustManager[] trustAllCerts = new TrustManager[]{
-                        new X509TrustManager() {
-                            @Override
-                            public X509Certificate[] getAcceptedIssuers() {
-                                return new X509Certificate[0];
-                            }
-
-                            @Override
-                            public void checkClientTrusted(X509Certificate[] certs, String authType) {
-                                // Accept all
-                            }
-
-                            @Override
-                            public void checkServerTrusted(X509Certificate[] certs, String authType) {
-                                // Accept all
-                            }
-                        }
-                };
-
-                return NettyNioAsyncHttpClient.builder()
-                        .tlsTrustManagersProvider(() -> trustAllCerts)
-                        .build();
-            } catch (Exception e) {
-                log.error("Failed to create insecure Async HTTP client, falling back to secure client", e);
-                return getAsyncHttpClient(true);
-            }
-        }
-    }
-
     private S3AsyncClient createS3AsyncClient(AwsCredentialsProvider credentialsProvider, String region, String endpointOverride) {
         var builder = S3AsyncClient.builder()
-                .httpClient(getAsyncHttpClient())
+                .httpClient(sdkAsyncHttpClient)
                 .asyncConfiguration(b -> b.advancedOption(FUTURE_COMPLETION_EXECUTOR, executor))
                 .credentialsProvider(credentialsProvider)
                 .region(Region.of(region))
-                .multipartEnabled(true)
-                .forcePathStyle(true)
                 .crossRegionAccessEnabled(true);
-
 
         handleBaseEndpointOverride(builder, endpointOverride);
 
@@ -278,8 +180,7 @@ public class S3ClientProvider {
         }
 
         builder.serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
-//                        .pathStyleAccessEnabled(true)
-//                        .checksumValidationEnabled(false)
+                        .pathStyleAccessEnabled(true)
                         .build())
                 .endpointOverride(endpointOverrideUri);
     }
