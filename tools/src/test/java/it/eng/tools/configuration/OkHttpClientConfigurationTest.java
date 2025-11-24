@@ -2,84 +2,96 @@ package it.eng.tools.configuration;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.when;
 
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 
-import org.junit.jupiter.api.BeforeEach;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+
+import it.eng.tools.ssl.ocsp.OcspTrustManagerFactory;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.ssl.NoSuchSslBundleException;
-import org.springframework.boot.ssl.SslBundles;
 
-import it.eng.tools.ssl.ocsp.OcspProperties;
 import okhttp3.OkHttpClient;
 
 @ExtendWith(MockitoExtension.class)
 class OkHttpClientConfigurationTest {
 
-    @InjectMocks
     private OkHttpClientConfiguration configuration;
-    
-    @Mock
-    private OcspProperties ocspProperties;
 
     @Mock
-    private SslBundles sslBundles;
-
-    @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
-    }
+    private OcspTrustManagerFactory ocspTrustManagerFactory;
 
     @Test
     @DisplayName("Should create OkHttpClient")
     void testOkHttpClient() throws KeyStoreException, NoSuchSslBundleException, KeyManagementException, NoSuchAlgorithmException {
+        configuration = new OkHttpClientConfiguration(ocspTrustManagerFactory, false);
+
         // Act
         OkHttpClient client = configuration.okHttpClient();
 
         // Assert
         assertNotNull(client);
-        
+        assertNotNull(client.sslSocketFactory(), "SSL socket factory should be set");
+
         // Verify timeouts are set correctly
-        assertEquals(60, getTimeoutMillis(client, "connect") / 1000);
-        assertEquals(60, getTimeoutMillis(client, "write") / 1000);
-        assertEquals(60, getTimeoutMillis(client, "read") / 1000);
+        assertEquals(60, client.connectTimeoutMillis() / 1000);
+        assertEquals(60, client.writeTimeoutMillis() / 1000);
+        assertEquals(60, client.readTimeoutMillis() / 1000);
+
+        // Verify hostname verifier accepts any hostname (insecure)
+        assertTrue(client.hostnameVerifier().verify("any-hostname", null), "Insecure client should accept any hostname");
+        assertTrue(client.hostnameVerifier().verify("test.example.com", null), "Insecure client should accept any hostname");
     }
     
     @Test
     @DisplayName("Should handle SSL configuration")
     void testSslConfiguration() throws KeyStoreException, NoSuchSslBundleException, KeyManagementException, NoSuchAlgorithmException {
+        // Create a mock trust manager
+        X509TrustManager mockTrustManager = new X509TrustManager() {
+            @Override
+            public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) {
+            }
+
+            @Override
+            public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) {
+            }
+
+            @Override
+            public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                return new java.security.cert.X509Certificate[]{};
+            }
+        };
+
+        // Mock the ocspTrustManagerFactory to return the mock trust manager
+        when(ocspTrustManagerFactory.createTrustManagers()).thenReturn(new TrustManager[]{mockTrustManager});
+
+        configuration = new OkHttpClientConfiguration(ocspTrustManagerFactory, true);
+
         // Act
         OkHttpClient client = configuration.okHttpClient();
 
         // Assert
         assertNotNull(client);
-        assertNotNull(client.sslSocketFactory());
-        
-        // Verify hostname verifier is set (it's set to accept all hostnames in the insecure client)
-        assertTrue(client.hostnameVerifier().verify("any-host", null));
-    }
-    
-    private void assertEquals(long expected, long actual) {
-        assertTrue(expected == actual, "Expected " + expected + " but was " + actual);
-    }
-    
-    // Helper method to avoid direct access to private fields
-    private long getTimeoutMillis(OkHttpClient client, String timeoutType) {
-        if ("connect".equals(timeoutType)) {
-            return client.connectTimeoutMillis();
-        } else if ("write".equals(timeoutType)) {
-            return client.writeTimeoutMillis();
-        } else if ("read".equals(timeoutType)) {
-            return client.readTimeoutMillis();
-        }
-        return 0;
+        assertNotNull(client.sslSocketFactory(), "SSL socket factory should be set for secure client");
+
+        // Verify timeouts are set correctly
+        assertEquals(60, client.connectTimeoutMillis() / 1000);
+        assertEquals(60, client.writeTimeoutMillis() / 1000);
+        assertEquals(60, client.readTimeoutMillis() / 1000);
+
+        // Verify hostname verifier is set (for secure client, it should NOT be the trust-all lambda)
+        assertNotNull(client.hostnameVerifier(), "Hostname verifier should be set");
+        // The secure client should use OkHostnameVerifier which is more strict
+        // We can't directly verify the class due to it being an internal OkHttp class,
+        // but we verified that when SSL is enabled, the code sets it to OkHostnameVerifier.INSTANCE
     }
 }

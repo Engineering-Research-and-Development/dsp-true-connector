@@ -2,12 +2,10 @@ package it.eng.tools.client.rest;
 
 import java.io.IOException;
 
-import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -84,9 +82,9 @@ public class OkHttpRestClient {
 			if(response.isSuccessful()) { // code in 200..299
 				return GenericApiResponse.success(resp, "Response received from " + targetAddress);
 			} else {
-				return GenericApiResponse.error(resp, "Error while making request");
+                return GenericApiResponse.error(resp, "Error while making request: " + resp);
 			}
-        } catch (IOException e) {
+		} catch (IOException e) {
 			log.error(e.getLocalizedMessage());
 			return GenericApiResponse.error(e.getLocalizedMessage());
 		}

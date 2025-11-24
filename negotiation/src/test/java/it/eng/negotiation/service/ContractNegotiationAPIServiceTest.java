@@ -125,6 +125,22 @@ public class ContractNegotiationAPIServiceTest {
     }
 
     @Test
+    @DisplayName("Start contract negotiation server error")
+    public void startNegotiation_serverError() {
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(apiResponse.getData()).thenReturn("not a JSON");
+        when(apiResponse.isSuccess()).thenReturn(false);
+        when(properties.consumerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
+
+          ContractNegotiationAPIException exception = assertThrows(ContractNegotiationAPIException.class, () -> service.startNegotiation(NegotiationMockObjectUtil.FORWARD_TO, NegotiationSerializer.serializePlainJsonNode(NegotiationMockObjectUtil.OFFER)));
+          assertNotNull(exception);
+          assertTrue(exception.getMessage().contains("Error occurred while making call to"));
+
+        verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
+    }
+
+    @Test
     @DisplayName("Process posted offer - success")
     public void postContractOffer_success() {
         when(properties.providerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);

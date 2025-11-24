@@ -110,7 +110,7 @@ public class ContractNegotiationAPIController {
     public ResponseEntity<GenericApiResponse<JsonNode>> startNegotiation(@RequestBody JsonNode startNegotiationRequest) {
         String targetConnector = startNegotiationRequest.get("Forward-To").asText();
         JsonNode offerNode = startNegotiationRequest.get(DSpaceConstants.OFFER);
-        log.info("Consumer starts negotaition with {}", targetConnector);
+        log.info("Consumer starts negotiation with {}", targetConnector);
         JsonNode response = apiService.startNegotiation(targetConnector, offerNode);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(GenericApiResponse.success(response, "Contract negotiation initiated"));

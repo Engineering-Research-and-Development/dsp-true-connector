@@ -29,9 +29,9 @@ import okhttp3.Response;
 @Slf4j
 public class DapsServiceOmejdn implements DapsService {
 
-	private DapsProperties dapsProperties;
-	private DapsCertificateProviderOmejdn dapsCertificateProvider;
-	private OkHttpRestClient client;
+	private final DapsProperties dapsProperties;
+	private final DapsCertificateProviderOmejdn dapsCertificateProvider;
+	private final OkHttpRestClient client;
 
 	public DapsServiceOmejdn(DapsProperties dapsProperties, DapsCertificateProviderOmejdn dapsCertificateProvider,
 			OkHttpRestClient client) {
@@ -113,9 +113,9 @@ public class DapsServiceOmejdn implements DapsService {
 //				}
 //			}
 		} catch (SignatureVerificationException | NullPointerException e) {
-			log.info("Token did not get verified, {}", e);
+			log.info("Token did not get verified", e);
 		} catch (JWTDecodeException e) {
-			log.error("Invalid token, {}", e);
+			log.error("Invalid token", e);
 		}
 		return valid;
 	}

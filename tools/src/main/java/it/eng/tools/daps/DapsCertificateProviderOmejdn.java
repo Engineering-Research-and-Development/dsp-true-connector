@@ -34,10 +34,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class DapsCertificateProviderOmejdn {
 
-	private String targetAudience = "idsc:IDS_CONNECTORS_ALL";
+	private static final String TARGET_AUDIENCE = "idsc:IDS_CONNECTORS_ALL";
 
-	private DapsProperties dapsProperties;
-	private SslBundles sslBundles;
+	private final DapsProperties dapsProperties;
+	private final SslBundles sslBundles;
 
 	private KeyStore dapsKeystore;
 
@@ -82,7 +82,7 @@ public class DapsCertificateProviderOmejdn {
 					.withClaim("@type", "ids:DatRequestToken")
 					.withExpiresAt(expiryDate)
 					.withIssuedAt(Date.from(Instant.now()))
-					.withAudience(targetAudience)
+					.withAudience(TARGET_AUDIENCE)
 					.withNotBefore(Date.from(Instant.now()))
 					.sign(algorithm);
 		} catch (JWTCreationException | KeyStoreException exception) {

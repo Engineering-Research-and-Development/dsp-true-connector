@@ -39,42 +39,31 @@ public class OcspTrustManagerFactory {
     }
 
     /**
-     * Creates a new OCSP-enabled trust manager using the default trust store.
-     * 
-     * @return The OCSP-enabled trust manager
-     * @throws NoSuchAlgorithmException If the algorithm is not available
-     * @throws KeyStoreException If there's an error accessing the key store
+     * Creates OCSP-enabled trust managers using the trust managers from the SSL bundle.
+     * The truststore is configured in the Spring SSL bundle named "connector".
+     *
+     * @return The OCSP-enabled trust managers
      */
-    public TrustManager[] createTrustManagers() throws NoSuchAlgorithmException, KeyStoreException {
-        return createTrustManagers(null);
-    }
+    public TrustManager[] createTrustManagers() {
+        // Get trust managers from SSL bundle (which has your custom truststore configured)
+        TrustManager[] trustManagers = sslBundles.getBundle("connector").getManagers().getTrustManagers();
 
-    /**
-     * Creates a new OCSP-enabled trust manager using the specified trust store.
-     * 
-     * @param trustStore The trust store to use, or null for the default
-     * @return The OCSP-enabled trust manager
-     * @throws NoSuchAlgorithmException If the algorithm is not available
-     * @throws KeyStoreException If there's an error accessing the key store
-     */
-    public TrustManager[] createTrustManagers(KeyStore trustStore) throws NoSuchAlgorithmException, KeyStoreException {
-        // Create the default trust manager factory
-    	TrustManager[] trustManagers = sslBundles.getBundle("connector").getManagers().getTrustManagers();
-        TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-        tmf.init(trustStore);
-        
-        // Create OCSP-enabled trust managers
+        log.debug("Creating OCSP-enabled trust managers from {} base trust managers", trustManagers.length);
+
+        // Create OCSP-enabled trust managers by wrapping the SSL bundle's trust managers
         TrustManager[] ocspTrustManagers = new TrustManager[trustManagers.length];
         
         for (int i = 0; i < trustManagers.length; i++) {
             TrustManager tm = trustManagers[i];
             
             if (tm instanceof X509ExtendedTrustManager) {
+                log.debug("Wrapping X509ExtendedTrustManager with OCSP validation (enabled: {})", ocspProperties.isEnabled());
                 ocspTrustManagers[i] = new OcspX509TrustManager(
                         (X509ExtendedTrustManager) tm, 
                         ocspValidator, 
                         ocspProperties);
             } else {
+                log.debug("Keeping non-X509 trust manager as-is: {}", tm.getClass().getName());
                 ocspTrustManagers[i] = tm;
             }
         }
