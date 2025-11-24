@@ -36,6 +36,8 @@ REM Each server should only have the SANs it actually needs for security best pr
 set SAN_CONNECTOR_A=DNS:localhost,DNS:connector-a,IP:127.0.0.1
 set SAN_CONNECTOR_B=DNS:localhost,DNS:connector-b,IP:127.0.0.1
 set SAN_MINIO=DNS:localhost,DNS:minio,IP:127.0.0.1
+set SAN_UI_A=DNS:localhost,DNS:ui-a,IP:127.0.0.1
+set SAN_UI_B=DNS:localhost,DNS:ui-b,IP:127.0.0.1
 
 REM Legacy: All SANs combined (for backward compatibility or development)
 REM set SAN_LIST=DNS:localhost,DNS:connector-a,DNS:connector-b,DNS:minio,DNS:mongodb-a,DNS:mongodb-b,DNS:ui-a,DNS:ui-b,IP:127.0.0.1
@@ -67,6 +69,8 @@ echo Configuration:
 echo   - connector-a SANs: %SAN_CONNECTOR_A%
 echo   - connector-b SANs: %SAN_CONNECTOR_B%
 echo   - MinIO SANs: %SAN_MINIO%
+echo   - ui-a SANs: %SAN_UI_A%
+echo   - ui-b SANs: %SAN_UI_B%
 echo   - Key Algorithm: %KEY_ALG% %KEY_SIZE% bits
 echo   - Root CA Validity: %ROOT_VALIDITY% days
 echo   - Intermediate CA Validity: %INTERMEDIATE_VALIDITY% days
@@ -84,8 +88,14 @@ if exist %INTERMEDIATE_KEYSTORE% del %INTERMEDIATE_KEYSTORE%
 if exist connector-a.p12 del connector-a.p12
 if exist connector-b.p12 del connector-b.p12
 if exist minio-temp.p12 del minio-temp.p12
+if exist ui-a-temp.p12 del ui-a-temp.p12
+if exist ui-b-temp.p12 del ui-b-temp.p12
 if exist private.key del private.key
 if exist public.crt del public.crt
+if exist ui-a-cert.key del ui-a-cert.key
+if exist ui-a-cert.crt del ui-a-cert.crt
+if exist ui-b-cert.key del ui-b-cert.key
+if exist ui-b-cert.crt del ui-b-cert.crt
 if exist %TRUSTSTORE% del %TRUSTSTORE%
 if exist *.csr del *.csr
 if exist *.crt del *.crt
@@ -427,6 +437,318 @@ echo   - minio-temp.p12 (Temporary PKCS12 keystore, can be deleted)
 echo.
 
 REM ==================================================================
+REM STEP 4b: Generate UI-A Certificate (PEM format for nginx)
+REM ==================================================================
+
+echo ==================================================================
+echo STEP 4b: Generating UI-A Certificate (PEM format for nginx)
+echo ==================================================================
+echo.
+
+set UI_A_NAME=ui-a
+set UI_A_DN=CN=ui-a, OU=UI, O=DSP True Connector, L=Belgrade, ST=Serbia, C=RS
+set UI_A_KEYSTORE=ui-a-temp.p12
+set UI_A_ALIAS=ui-a
+
+echo Generating key pair for UI-A...
+keytool -genkeypair ^
+    -alias %UI_A_ALIAS% ^
+    -keyalg %KEY_ALG% ^
+    -keysize %KEY_SIZE% ^
+    -dname "%UI_A_DN%" ^
+    -validity %SERVER_VALIDITY% ^
+    -keystore %UI_A_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %SERVER_PASSWORD% ^
+    -keypass %SERVER_PASSWORD% ^
+    -ext KeyUsage:critical=digitalSignature,keyEncipherment ^
+    -ext ExtendedKeyUsage=serverAuth,clientAuth ^
+    -ext "SAN=%SAN_UI_A%"
+
+if %ERRORLEVEL% NEQ 0 (
+    echo ERROR: Failed to generate key pair for UI-A
+    exit /b 1
+)
+echo Done.
+echo.
+
+echo Generating Certificate Signing Request for UI-A...
+keytool -certreq ^
+    -alias %UI_A_ALIAS% ^
+    -keystore %UI_A_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %SERVER_PASSWORD% ^
+    -file ui-a.csr ^
+    -ext KeyUsage:critical=digitalSignature,keyEncipherment ^
+    -ext ExtendedKeyUsage=serverAuth,clientAuth ^
+    -ext "SAN=%SAN_UI_A%"
+
+if %ERRORLEVEL% NEQ 0 (
+    echo ERROR: Failed to generate CSR for UI-A
+    exit /b 1
+)
+echo Done.
+echo.
+
+echo Signing UI-A certificate with Intermediate CA...
+keytool -gencert ^
+    -alias %INTERMEDIATE_ALIAS% ^
+    -keystore %INTERMEDIATE_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %INTERMEDIATE_PASSWORD% ^
+    -infile ui-a.csr ^
+    -outfile ui-a-signed.crt ^
+    -validity %SERVER_VALIDITY% ^
+    -ext KeyUsage:critical=digitalSignature,keyEncipherment ^
+    -ext ExtendedKeyUsage=serverAuth,clientAuth ^
+    -ext "SAN=%SAN_UI_A%" ^
+    -rfc
+
+if %ERRORLEVEL% NEQ 0 (
+    echo ERROR: Failed to sign certificate for UI-A
+    exit /b 1
+)
+echo Done.
+echo.
+
+echo Importing certificate chain for UI-A...
+echo   - Importing Root CA...
+keytool -importcert ^
+    -alias %ROOT_ALIAS% ^
+    -keystore %UI_A_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %SERVER_PASSWORD% ^
+    -file root-ca.crt ^
+    -noprompt
+
+echo   - Importing Intermediate CA...
+keytool -importcert ^
+    -alias %INTERMEDIATE_ALIAS% ^
+    -keystore %UI_A_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %SERVER_PASSWORD% ^
+    -file intermediate-ca.crt ^
+    -noprompt
+
+echo   - Importing signed UI-A certificate...
+keytool -importcert ^
+    -alias %UI_A_ALIAS% ^
+    -keystore %UI_A_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %SERVER_PASSWORD% ^
+    -file ui-a-signed.crt ^
+    -noprompt
+
+if %ERRORLEVEL% NEQ 0 (
+    echo ERROR: Failed to import certificate chain for UI-A
+    exit /b 1
+)
+echo Done.
+echo.
+
+echo Exporting UI-A private key to PEM format (ui-a-cert.key)...
+openssl pkcs12 -in %UI_A_KEYSTORE% -nocerts -nodes -passin pass:%SERVER_PASSWORD% -out ui-a-cert.key 2>nul
+
+if %ERRORLEVEL% NEQ 0 (
+    echo WARNING: OpenSSL not found. Using alternative method...
+    echo You will need to manually convert ui-a-temp.p12 to ui-a-cert.key
+    echo Command: openssl pkcs12 -in ui-a-temp.p12 -nocerts -nodes -passin pass:%SERVER_PASSWORD% -out ui-a-cert.key
+    echo.
+    echo Creating placeholder ui-a-cert.key file...
+    echo # UI-A Private Key > ui-a-cert.key
+    echo # Convert from ui-a-temp.p12 using OpenSSL >> ui-a-cert.key
+    echo # Command: openssl pkcs12 -in ui-a-temp.p12 -nocerts -nodes -passin pass:%SERVER_PASSWORD% -out ui-a-cert.key >> ui-a-cert.key
+) else (
+    echo Done.
+)
+echo.
+
+echo Exporting UI-A certificate to PEM format (ui-a-cert.crt)...
+openssl pkcs12 -in %UI_A_KEYSTORE% -clcerts -nokeys -passin pass:%SERVER_PASSWORD% -out ui-a-cert.crt 2>nul
+
+if %ERRORLEVEL% NEQ 0 (
+    echo WARNING: OpenSSL not found. Using keytool export...
+    keytool -exportcert ^
+        -alias %UI_A_ALIAS% ^
+        -keystore %UI_A_KEYSTORE% ^
+        -storetype PKCS12 ^
+        -storepass %SERVER_PASSWORD% ^
+        -file ui-a-cert.crt ^
+        -rfc
+
+    if %ERRORLEVEL% NEQ 0 (
+        echo ERROR: Failed to export UI-A certificate
+        exit /b 1
+    )
+) else (
+    echo Done.
+)
+echo.
+
+echo UI-A certificate files generated:
+echo   - ui-a-cert.key (Private key in PEM format)
+echo   - ui-a-cert.crt (Certificate in PEM format, signed by Intermediate CA)
+echo   - SAN: %SAN_UI_A%
+echo   - ui-a-temp.p12 (Temporary PKCS12 keystore, can be deleted)
+echo.
+
+REM ==================================================================
+REM STEP 4c: Generate UI-B Certificate (PEM format for nginx)
+REM ==================================================================
+
+echo ==================================================================
+echo STEP 4c: Generating UI-B Certificate (PEM format for nginx)
+echo ==================================================================
+echo.
+
+set UI_B_NAME=ui-b
+set UI_B_DN=CN=ui-b, OU=UI, O=DSP True Connector, L=Belgrade, ST=Serbia, C=RS
+set UI_B_KEYSTORE=ui-b-temp.p12
+set UI_B_ALIAS=ui-b
+
+echo Generating key pair for UI-B...
+keytool -genkeypair ^
+    -alias %UI_B_ALIAS% ^
+    -keyalg %KEY_ALG% ^
+    -keysize %KEY_SIZE% ^
+    -dname "%UI_B_DN%" ^
+    -validity %SERVER_VALIDITY% ^
+    -keystore %UI_B_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %SERVER_PASSWORD% ^
+    -keypass %SERVER_PASSWORD% ^
+    -ext KeyUsage:critical=digitalSignature,keyEncipherment ^
+    -ext ExtendedKeyUsage=serverAuth,clientAuth ^
+    -ext "SAN=%SAN_UI_B%"
+
+if %ERRORLEVEL% NEQ 0 (
+    echo ERROR: Failed to generate key pair for UI-B
+    exit /b 1
+)
+echo Done.
+echo.
+
+echo Generating Certificate Signing Request for UI-B...
+keytool -certreq ^
+    -alias %UI_B_ALIAS% ^
+    -keystore %UI_B_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %SERVER_PASSWORD% ^
+    -file ui-b.csr ^
+    -ext KeyUsage:critical=digitalSignature,keyEncipherment ^
+    -ext ExtendedKeyUsage=serverAuth,clientAuth ^
+    -ext "SAN=%SAN_UI_B%"
+
+if %ERRORLEVEL% NEQ 0 (
+    echo ERROR: Failed to generate CSR for UI-B
+    exit /b 1
+)
+echo Done.
+echo.
+
+echo Signing UI-B certificate with Intermediate CA...
+keytool -gencert ^
+    -alias %INTERMEDIATE_ALIAS% ^
+    -keystore %INTERMEDIATE_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %INTERMEDIATE_PASSWORD% ^
+    -infile ui-b.csr ^
+    -outfile ui-b-signed.crt ^
+    -validity %SERVER_VALIDITY% ^
+    -ext KeyUsage:critical=digitalSignature,keyEncipherment ^
+    -ext ExtendedKeyUsage=serverAuth,clientAuth ^
+    -ext "SAN=%SAN_UI_B%" ^
+    -rfc
+
+if %ERRORLEVEL% NEQ 0 (
+    echo ERROR: Failed to sign certificate for UI-B
+    exit /b 1
+)
+echo Done.
+echo.
+
+echo Importing certificate chain for UI-B...
+echo   - Importing Root CA...
+keytool -importcert ^
+    -alias %ROOT_ALIAS% ^
+    -keystore %UI_B_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %SERVER_PASSWORD% ^
+    -file root-ca.crt ^
+    -noprompt
+
+echo   - Importing Intermediate CA...
+keytool -importcert ^
+    -alias %INTERMEDIATE_ALIAS% ^
+    -keystore %UI_B_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %SERVER_PASSWORD% ^
+    -file intermediate-ca.crt ^
+    -noprompt
+
+echo   - Importing signed UI-B certificate...
+keytool -importcert ^
+    -alias %UI_B_ALIAS% ^
+    -keystore %UI_B_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %SERVER_PASSWORD% ^
+    -file ui-b-signed.crt ^
+    -noprompt
+
+if %ERRORLEVEL% NEQ 0 (
+    echo ERROR: Failed to import certificate chain for UI-B
+    exit /b 1
+)
+echo Done.
+echo.
+
+echo Exporting UI-B private key to PEM format (ui-b-cert.key)...
+openssl pkcs12 -in %UI_B_KEYSTORE% -nocerts -nodes -passin pass:%SERVER_PASSWORD% -out ui-b-cert.key 2>nul
+
+if %ERRORLEVEL% NEQ 0 (
+    echo WARNING: OpenSSL not found. Using alternative method...
+    echo You will need to manually convert ui-b-temp.p12 to ui-b-cert.key
+    echo Command: openssl pkcs12 -in ui-b-temp.p12 -nocerts -nodes -passin pass:%SERVER_PASSWORD% -out ui-b-cert.key
+    echo.
+    echo Creating placeholder ui-b-cert.key file...
+    echo # UI-B Private Key > ui-b-cert.key
+    echo # Convert from ui-b-temp.p12 using OpenSSL >> ui-b-cert.key
+    echo # Command: openssl pkcs12 -in ui-b-temp.p12 -nocerts -nodes -passin pass:%SERVER_PASSWORD% -out ui-b-cert.key >> ui-b-cert.key
+) else (
+    echo Done.
+)
+echo.
+
+echo Exporting UI-B certificate to PEM format (ui-b-cert.crt)...
+openssl pkcs12 -in %UI_B_KEYSTORE% -clcerts -nokeys -passin pass:%SERVER_PASSWORD% -out ui-b-cert.crt 2>nul
+
+if %ERRORLEVEL% NEQ 0 (
+    echo WARNING: OpenSSL not found. Using keytool export...
+    keytool -exportcert ^
+        -alias %UI_B_ALIAS% ^
+        -keystore %UI_B_KEYSTORE% ^
+        -storetype PKCS12 ^
+        -storepass %SERVER_PASSWORD% ^
+        -file ui-b-cert.crt ^
+        -rfc
+
+    if %ERRORLEVEL% NEQ 0 (
+        echo ERROR: Failed to export UI-B certificate
+        exit /b 1
+    )
+) else (
+    echo Done.
+)
+echo.
+
+echo UI-B certificate files generated:
+echo   - ui-b-cert.key (Private key in PEM format)
+echo   - ui-b-cert.crt (Certificate in PEM format, signed by Intermediate CA)
+echo   - SAN: %SAN_UI_B%
+echo   - ui-b-temp.p12 (Temporary PKCS12 keystore, can be deleted)
+echo.
+
+REM ==================================================================
 REM STEP 5: Create Truststore with Intermediate CA
 REM ==================================================================
 
@@ -523,8 +845,12 @@ del *.csr
 del root-ca.crt
 del intermediate-ca.crt
 del minio-signed.crt
+del ui-a-signed.crt
+del ui-b-signed.crt
 REM Keep public.crt for MinIO
 REM Keep private.key for MinIO
+REM Keep ui-a-cert.crt and ui-a-cert.key for UI-A
+REM Keep ui-b-cert.crt and ui-b-cert.key for UI-B
 if exist connector-a.crt del connector-a.crt
 if exist connector-b.crt del connector-b.crt
 del *.cer
@@ -548,7 +874,13 @@ echo   4. connector-b.p12 - Server certificate for connector-b
 echo   5. private.key - MinIO private key in PEM format (for MinIO certs/private.key)
 echo   6. public.crt - MinIO certificate in PEM format (for MinIO certs/public.crt)
 echo   7. minio-temp.p12 - MinIO certificate in PKCS12 format (optional, can be deleted)
-echo   8. %TRUSTSTORE% - Truststore with Intermediate CA (use for TLS validation)
+echo   8. ui-a-cert.key - UI-A private key in PEM format (for nginx)
+echo   9. ui-a-cert.crt - UI-A certificate in PEM format (for nginx, signed by Intermediate CA)
+echo   10. ui-a-temp.p12 - UI-A certificate in PKCS12 format (optional, can be deleted)
+echo   11. ui-b-cert.key - UI-B private key in PEM format (for nginx)
+echo   12. ui-b-cert.crt - UI-B certificate in PEM format (for nginx, signed by Intermediate CA)
+echo   13. ui-b-temp.p12 - UI-B certificate in PKCS12 format (optional, can be deleted)
+echo   14. %TRUSTSTORE% - Truststore with Intermediate CA (use for TLS validation)
 echo.
 echo Certificate Chain:
 echo   Root CA --signs--^> Intermediate CA --signs--^> Server Certificates (including MinIO)
@@ -564,6 +896,18 @@ echo     - public.crt --^> /root/.minio/certs/public.crt
 echo   Or mount as Docker volume:
 echo     - ./private.key:/root/.minio/certs/private.key
 echo     - ./public.crt:/root/.minio/certs/public.crt
+echo.
+echo For nginx (UI-A and UI-B) Docker setup:
+echo   Copy to nginx ssl directory or mount as Docker volume:
+echo   UI-A:
+echo     - ./ui-a-cert.crt:/etc/nginx/ssl/ui-a-cert.crt
+echo     - ./ui-a-cert.key:/etc/nginx/ssl/ui-a-cert.key
+echo   UI-B:
+echo     - ./ui-b-cert.crt:/etc/nginx/ssl/ui-b-cert.crt
+echo     - ./ui-b-cert.key:/etc/nginx/ssl/ui-b-cert.key
+echo   Configure in nginx.conf:
+echo     ssl_certificate /etc/nginx/ssl/ui-a-cert.crt;
+echo     ssl_certificate_key /etc/nginx/ssl/ui-a-cert.key;
 echo.
 echo Update your application.properties:
 echo   spring.ssl.bundle.jks.connector.keystore.location=classpath:connector-a.p12 (or connector-b.p12)
