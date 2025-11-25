@@ -585,9 +585,19 @@ if %ERRORLEVEL% NEQ 0 (
 )
 echo.
 
+REM Create fullchain certificate for UI-A (server cert + intermediate CA)
+if exist ui-a-cert.crt if exist intermediate-ca.crt (
+    type ui-a-cert.crt intermediate-ca.crt > ui-a-fullchain.crt
+    echo Created ui-a-fullchain.crt (server cert + intermediate CA)
+) else (
+    echo WARNING: Could not create ui-a-fullchain.crt (missing ui-a-cert.crt or intermediate-ca.crt)
+)
+echo.
+
 echo UI-A certificate files generated:
 echo   - ui-a-cert.key (Private key in PEM format)
 echo   - ui-a-cert.crt (Certificate in PEM format, signed by Intermediate CA)
+echo   - ui-a-fullchain.crt (Fullchain certificate in PEM format)
 echo   - SAN: %SAN_UI_A%
 echo   - ui-a-temp.p12 (Temporary PKCS12 keystore, can be deleted)
 echo.
@@ -741,9 +751,19 @@ if %ERRORLEVEL% NEQ 0 (
 )
 echo.
 
+REM Create fullchain certificate for UI-B (server cert + intermediate CA)
+if exist ui-b-cert.crt if exist intermediate-ca.crt (
+    type ui-b-cert.crt intermediate-ca.crt > ui-b-fullchain.crt
+    echo Created ui-b-fullchain.crt (server cert + intermediate CA)
+) else (
+    echo WARNING: Could not create ui-b-fullchain.crt (missing ui-b-cert.crt or intermediate-ca.crt)
+)
+echo.
+
 echo UI-B certificate files generated:
 echo   - ui-b-cert.key (Private key in PEM format)
 echo   - ui-b-cert.crt (Certificate in PEM format, signed by Intermediate CA)
+echo   - ui-b-fullchain.crt (Fullchain certificate in PEM format)
 echo   - SAN: %SAN_UI_B%
 echo   - ui-b-temp.p12 (Temporary PKCS12 keystore, can be deleted)
 echo.
@@ -876,11 +896,13 @@ echo   6. public.crt - MinIO certificate in PEM format (for MinIO certs/public.c
 echo   7. minio-temp.p12 - MinIO certificate in PKCS12 format (optional, can be deleted)
 echo   8. ui-a-cert.key - UI-A private key in PEM format (for nginx)
 echo   9. ui-a-cert.crt - UI-A certificate in PEM format (for nginx, signed by Intermediate CA)
-echo   10. ui-a-temp.p12 - UI-A certificate in PKCS12 format (optional, can be deleted)
-echo   11. ui-b-cert.key - UI-B private key in PEM format (for nginx)
-echo   12. ui-b-cert.crt - UI-B certificate in PEM format (for nginx, signed by Intermediate CA)
-echo   13. ui-b-temp.p12 - UI-B certificate in PKCS12 format (optional, can be deleted)
-echo   14. %TRUSTSTORE% - Truststore with Intermediate CA (use for TLS validation)
+echo   10. ui-a-fullchain.crt - UI-A fullchain certificate in PEM format (server cert + intermediate CA)
+echo   11. ui-a-temp.p12 - UI-A certificate in PKCS12 format (optional, can be deleted)
+echo   12. ui-b-cert.key - UI-B private key in PEM format (for nginx)
+echo   13. ui-b-cert.crt - UI-B certificate in PEM format (for nginx, signed by Intermediate CA)
+echo   14. ui-b-fullchain.crt - UI-B fullchain certificate in PEM format (server cert + intermediate CA)
+echo   15. ui-b-temp.p12 - UI-B certificate in PKCS12 format (optional, can be deleted)
+echo   16. %TRUSTSTORE% - Truststore with Intermediate CA (use for TLS validation)
 echo.
 echo Certificate Chain:
 echo   Root CA --signs--^> Intermediate CA --signs--^> Server Certificates (including MinIO)

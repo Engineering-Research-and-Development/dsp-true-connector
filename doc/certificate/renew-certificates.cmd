@@ -54,18 +54,22 @@ echo.
 echo   1. Renew connector-a certificate
 echo   2. Renew connector-b certificate
 echo   3. Renew minio certificate (PKCS12 + PEM)
-echo   4. Renew ALL server certificates
-echo   5. Exit
+echo   4. Renew ui-a certificate (PEM + fullchain for nginx)
+echo   5. Renew ui-b certificate (PEM + fullchain for nginx)
+echo   6. Renew ALL server certificates
+echo   7. Exit
 echo.
 echo ==================================================================
 
-set /p choice="Enter your choice (1-5): "
+set /p choice="Enter your choice (1-7): "
 
 if "%choice%"=="1" goto RENEW_CONNECTOR_A
 if "%choice%"=="2" goto RENEW_CONNECTOR_B
 if "%choice%"=="3" goto RENEW_MINIO
-if "%choice%"=="4" goto RENEW_ALL
-if "%choice%"=="5" goto END
+if "%choice%"=="4" goto RENEW_UI_A
+if "%choice%"=="5" goto RENEW_UI_B
+if "%choice%"=="6" goto RENEW_ALL
+if "%choice%"=="7" goto END
 
 echo Invalid choice. Please try again.
 goto MENU
@@ -337,6 +341,38 @@ pause
 goto MENU
 
 REM ==================================================================
+REM RENEW UI-A
+REM ==================================================================
+
+:RENEW_UI_A
+call :CHECK_PREREQUISITES
+echo.
+echo ==================================================================
+echo Renewing ui-a certificate (PEM + fullchain for nginx)
+echo ==================================================================
+echo.
+call :RenewUICert ui-a "CN=ui-a, OU=UI, O=DSP True Connector, L=Belgrade, ST=Serbia, C=RS" "%SAN_UI_A%"
+pause
+goto MENU
+
+REM ==================================================================
+REM RENEW UI-B
+REM ==================================================================
+
+:RENEW_UI_B
+call :CHECK_PREREQUISITES
+echo.
+echo ==================================================================
+echo Renewing ui-b certificate (PEM + fullchain for nginx)
+echo ==================================================================
+echo.
+
+call :RenewUICert ui-b "CN=ui-b, OU=UI, O=DSP True Connector, L=Belgrade, ST=Serbia, C=RS" "%SAN_UI_B%"
+
+pause
+goto MENU
+
+REM ==================================================================
 REM RENEW ALL
 REM ==================================================================
 
@@ -364,7 +400,6 @@ echo.
 echo ------------------------------------------------------------------
 echo Renewing MinIO
 echo ------------------------------------------------------------------
-
 REM Renew MinIO using the same logic as RENEW_MINIO
 set MINIO_NAME=minio
 set MINIO_DN=CN=minio, OU=Storage, O=DSP True Connector, L=Belgrade, ST=Serbia, C=RS
@@ -425,6 +460,17 @@ del minio.csr >nul 2>&1
 del minio-signed.crt >nul 2>&1
 
 echo MinIO certificate renewed successfully!
+
+echo.
+echo ------------------------------------------------------------------
+echo Renewing ui-a
+echo ------------------------------------------------------------------
+call :RenewUICert ui-a "CN=ui-a, OU=UI, O=DSP True Connector, L=Belgrade, ST=Serbia, C=RS" "%SAN_UI_A%"
+echo.
+echo ------------------------------------------------------------------
+echo Renewing ui-b
+echo ------------------------------------------------------------------
+call :RenewUICert ui-b "CN=ui-b, OU=UI, O=DSP True Connector, L=Belgrade, ST=Serbia, C=RS" "%SAN_UI_B%"
 
 echo.
 echo ==================================================================
@@ -595,6 +641,126 @@ echo Verifying certificate...
 keytool -list -v -keystore %SERVER_KEYSTORE% -storepass %SERVER_PASSWORD% -storetype PKCS12 | findstr "Valid Alias Owner DNS"
 echo.
 
+endlocal
+goto :EOF
+
+REM ==================================================================
+REM SUBROUTINE: Renew UI Certificate
+REM Parameters: %1=ui name, %2=DN, %3=SAN list
+REM ==================================================================
+:RenewUICert
+setlocal
+set UI_NAME=%~1
+set UI_DN=%~2
+set UI_SAN=%~3
+set UI_KEYSTORE=%UI_NAME%-temp.p12
+set UI_ALIAS=%UI_NAME%
+
+echo.
+echo Renewing %UI_NAME% certificate (PEM + fullchain for nginx)
+echo.
+REM Delete old UI certificate files
+if exist %UI_KEYSTORE% del %UI_KEYSTORE%
+if exist %UI_NAME%.csr del %UI_NAME%.csr
+if exist %UI_NAME%-signed.crt del %UI_NAME%-signed.crt
+if exist %UI_NAME%-cert.key del %UI_NAME%-cert.key
+if exist %UI_NAME%-cert.crt del %UI_NAME%-cert.crt
+if exist %UI_NAME%-fullchain.crt del %UI_NAME%-fullchain.crt
+echo Done.
+echo.
+REM Generate UI key pair
+keytool -genkeypair ^
+    -alias %UI_ALIAS% ^
+    -keyalg %KEY_ALG% ^
+    -keysize %KEY_SIZE% ^
+    -dname "%UI_DN%" ^
+    -validity %SERVER_VALIDITY% ^
+    -keystore %UI_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %SERVER_PASSWORD% ^
+    -keypass %SERVER_PASSWORD% ^
+    -ext KeyUsage:critical=digitalSignature,keyEncipherment ^
+    -ext ExtendedKeyUsage=serverAuth,clientAuth ^
+    -ext "SAN=%UI_SAN%"
+echo Done.
+echo.
+REM Generate CSR
+keytool -certreq ^
+    -alias %UI_ALIAS% ^
+    -keystore %UI_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %SERVER_PASSWORD% ^
+    -file %UI_NAME%.csr ^
+    -ext KeyUsage:critical=digitalSignature,keyEncipherment ^
+    -ext ExtendedKeyUsage=serverAuth,clientAuth ^
+    -ext "SAN=%UI_SAN%"
+echo Done.
+echo.
+REM Sign with Intermediate CA
+keytool -gencert ^
+    -alias %INTERMEDIATE_ALIAS% ^
+    -keystore %INTERMEDIATE_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %INTERMEDIATE_PASSWORD% ^
+    -infile %UI_NAME%.csr ^
+    -outfile %UI_NAME%-signed.crt ^
+    -validity %SERVER_VALIDITY% ^
+    -ext KeyUsage:critical=digitalSignature,keyEncipherment ^
+    -ext ExtendedKeyUsage=serverAuth,clientAuth ^
+    -ext "SAN=%UI_SAN%" ^
+    -rfc
+echo Done.
+echo.
+REM Import certificate chain
+echo Importing certificate chain for %UI_NAME%...
+echo   - Importing Root CA...
+keytool -importcert ^
+    -alias dsp-root-ca ^
+    -keystore %UI_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %SERVER_PASSWORD% ^
+    -file root-ca.crt ^
+    -noprompt >nul 2>&1
+echo   - Importing Intermediate CA...
+keytool -importcert ^
+    -alias %INTERMEDIATE_ALIAS% ^
+    -keystore %UI_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %SERVER_PASSWORD% ^
+    -file intermediate-ca.crt ^
+    -noprompt
+echo   - Importing signed %UI_NAME% certificate...
+keytool -importcert ^
+    -alias %UI_ALIAS% ^
+    -keystore %UI_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %SERVER_PASSWORD% ^
+    -file %UI_NAME%-signed.crt ^
+    -noprompt
+echo Done.
+echo.
+REM Export to PEM format
+echo Exporting %UI_NAME% private key to PEM format (%UI_NAME%-cert.key)...
+openssl pkcs12 -in %UI_KEYSTORE% -nocerts -nodes -passin pass:%SERVER_PASSWORD% -out %UI_NAME%-cert.key 2>nul
+echo Exporting %UI_NAME% certificate to PEM format (%UI_NAME%-cert.crt)...
+openssl pkcs12 -in %UI_KEYSTORE% -clcerts -nokeys -passin pass:%SERVER_PASSWORD% -out %UI_NAME%-cert.crt 2>nul
+echo Creating fullchain certificate for %UI_NAME% (server cert + intermediate CA)...
+if exist %UI_NAME%-cert.crt if exist intermediate-ca.crt (
+    type %UI_NAME%-cert.crt intermediate-ca.crt > %UI_NAME%-fullchain.crt
+    echo Created %UI_NAME%-fullchain.crt (server cert + intermediate CA)
+) else (
+    echo WARNING: Could not create %UI_NAME%-fullchain.crt (missing %UI_NAME%-cert.crt or intermediate-ca.crt)
+)
+echo.
+REM Cleanup temporary files
+del %UI_NAME%.csr >nul 2>&1
+del %UI_NAME%-signed.crt >nul 2>&1
+echo %UI_NAME% certificate renewed successfully!
+echo   - %UI_KEYSTORE% (PKCS12 format)
+echo   - %UI_NAME%-cert.key (PEM format, private key for nginx)
+echo   - %UI_NAME%-cert.crt (PEM format, server certificate)
+echo   - %UI_NAME%-fullchain.crt (PEM format, fullchain for nginx - USE THIS)
+echo   - SANs: %UI_SAN%
 endlocal
 goto :EOF
 
