@@ -153,7 +153,7 @@ public class ContractNegotiationAPIService {
                                 "role", IConstants.ROLE_API));
                 throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, "Error making request");
             } catch (JsonProcessingException e) {
-                throw new ContractNegotiationAPIException("Error occurred");
+                throw new ContractNegotiationAPIException("Error occurred while making call to " +  forwardTo + " : " + response.getMessage());
             }
         }
         return NegotiationSerializer.serializePlainJsonNode(contractNegotiationWithOffer);

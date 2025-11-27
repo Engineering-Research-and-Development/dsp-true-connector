@@ -207,7 +207,8 @@
                     <excludes>
                         <exclude>**/*.p12</exclude>
                         <exclude>**/*.jks</exclude>
-                        <exclude>**/*.sql</exclude>
+                        <exclude>**/*.key</exclude>
+                        <exclude>**/certs/**</exclude>
                         <exclude>*.properties</exclude>
                         <exclude>*.json</exclude>
                     </excludes>

@@ -78,29 +78,34 @@
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>iam</artifactId>
             <version>${aws.sdk.version}</version>
-            <!--            <version>2.31.7</version>-->
-            <!--            <scope>test</scope>-->
+        </dependency>
+        <!-- AWS SDK Apache HTTP Client for SSL/TLS configuration -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>apache-client</artifactId>
+            <version>${aws.sdk.version}</version>
+        </dependency>
+        <!-- AWS SDK Netty HTTP Client for async operations with SSL/TLS -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>netty-nio-client</artifactId>
+            <version>${aws.sdk.version}</version>
         </dependency>
         <!--  AWS Security Token Service -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>sts</artifactId>
             <version>${aws.sdk.version}</version>
-            <!--            <version>2.31.10</version>-->
-            <!--            <scope>compile</scope>-->
         </dependency>
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>transfer</artifactId>
             <version>${aws.sdk.version}</version>
-            <!--            <version>2.14.3</version>-->
         </dependency>
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3-transfer-manager</artifactId>
             <version>${aws.sdk.version}</version>
-            <!--            <version>2.31.10</version>-->
-            <!--            <scope>compile</scope>-->
         </dependency>
         <!-- needed for TransferManager-->
         <dependency>
@@ -119,7 +124,6 @@
             <artifactId>failsafe</artifactId>
             <version>3.3.2</version>
         </dependency>
-
 
         <!-- Test -->
         <dependency>
