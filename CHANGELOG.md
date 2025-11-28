@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Support for TLS communication (enabling TLS for OkHttpClient and S3 clients)
-- Scripts for generating and renewing self-signed certificates for connector
+- Scripts for generating self-signed certificates for connector
 - Documentation for setting up TLS communication between connectors
 
 ## [0.5.5-SNAPSHOT] - 31.10.2025.
