@@ -13,20 +13,17 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE,
-        path = "/catalog")
+@RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE, path = "/catalog")
 @Slf4j
 public class CatalogController {
 
     private final CatalogService catalogService;
     private final DatasetService datasetService;
 
-
     public CatalogController(CatalogService catalogService, DatasetService datasetService) {
         super();
         this.catalogService = catalogService;
         this.datasetService = datasetService;
-
     }
 
     @PostMapping(path = "/request")
@@ -38,7 +35,6 @@ public class CatalogController {
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(CatalogSerializer.serializeProtocolJsonNode(catalog));
-
     }
 
     @GetMapping(path = "/datasets/{id}")
