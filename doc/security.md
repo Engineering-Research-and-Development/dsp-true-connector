@@ -26,10 +26,11 @@ server.ssl.key-store-password=password
 
 Make sure to update values with correct one, provided keystore files are self signed and should not be used in production.
 
+More information on how to generate keystore and truststore files can be found [here](./certificate/PKI_CERTIFICATE_GUIDE.md).
 
 ## OCSP
 
-For more information how to verify OCSP certifcate and generate new ones, revoke and invalidate, please check following [link.](ocsp/OCSP_GUIDE.md)
+For more information how to verify OCSP certificate and generate new ones, revoke and invalidate, please check following [link.](ocsp/OCSP_GUIDE.md)
 
 Following set of properties will configure OCSP validation for TLS certificate:
 
