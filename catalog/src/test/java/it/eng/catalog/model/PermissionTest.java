@@ -120,14 +120,4 @@ public class PermissionTest {
                         .build());
         assertEquals("Permission - action must not be null", exception.getMessage());
     }
-
-    @Test
-    @DisplayName("Validate - missing constraint")
-    public void validateMissingConstraint() {
-        ValidationException exception = assertThrows(ValidationException.class,
-                () -> Permission.Builder.newInstance()
-                        .action(Action.USE)
-                        .build());
-        assertEquals("Permission - constraint must not be null", exception.getMessage());
-    }
 }

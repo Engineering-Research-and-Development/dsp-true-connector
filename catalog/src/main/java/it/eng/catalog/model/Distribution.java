@@ -18,9 +18,9 @@ import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -28,33 +28,27 @@ import java.util.stream.Collectors;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = Distribution.Builder.class)
-@JsonPropertyOrder(value = {DSpaceConstants.TYPE, DSpaceConstants.DCT_FORMAT, DSpaceConstants.DCAT_ACCESS_SERVICE}
-        , alphabetic = true)
+@JsonPropertyOrder(value = {DSpaceConstants.TYPE, DSpaceConstants.ID, DSpaceConstants.FORMAT, DSpaceConstants.ACCESS_SERVICE}, alphabetic = true)
 @Document(collection = "distributions")
 public class Distribution implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     @Id
     @JsonProperty(DSpaceConstants.ID)
     private String id;
 
-    @JsonProperty(DSpaceConstants.DCT_TITLE)
     private String title;
-    @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
     private Set<Multilanguage> description;
-    @JsonProperty(DSpaceConstants.DCT_ISSUED)
     @CreatedDate
     private Instant issued;
-    @JsonProperty(DSpaceConstants.DCT_MODIFIED)
     @LastModifiedDate
     private Instant modified;
 
-    @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
     private Set<Offer> hasPolicy;
 
-    @JsonProperty(DSpaceConstants.DCT_FORMAT)
-    private Reference format;
+    private String format;
 
     @JsonIgnore
     @CreatedBy
@@ -69,8 +63,7 @@ public class Distribution implements Serializable {
 
     @NotNull
     @DBRef
-    @JsonProperty(DSpaceConstants.DCAT_ACCESS_SERVICE)
-    private Set<DataService> accessService;
+    private DataService accessService;
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -92,46 +85,37 @@ public class Distribution implements Serializable {
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCT_TITLE)
         public Builder title(String title) {
             distribution.title = title;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
         @JsonDeserialize(as = Set.class)
         public Builder description(Set<Multilanguage> description) {
             distribution.description = description;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCT_ISSUED)
         public Builder issued(Instant issued) {
             distribution.issued = issued;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCT_MODIFIED)
         public Builder modified(Instant modified) {
             distribution.modified = modified;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCAT_ACCESS_SERVICE)
-        @JsonDeserialize(as = Set.class)
-        public Builder accessService(Set<DataService> dataService) {
+        public Builder accessService(DataService dataService) {
             distribution.accessService = dataService;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCT_FORMAT)
-        @JsonDeserialize(as = Reference.class)
-        public Builder format(Reference format) {
+        public Builder format(String format) {
             distribution.format = format;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.ODRL_HAS_POLICY)
         @JsonDeserialize(as = Set.class)
         @JsonSerialize(as = Set.class)
         public Builder hasPolicy(Set<Offer> hasPolicy) {
@@ -139,19 +123,16 @@ public class Distribution implements Serializable {
             return this;
         }
 
-        @JsonProperty("createdBy")
         public Distribution.Builder createdBy(String createdBy) {
             distribution.createdBy = createdBy;
             return this;
         }
 
-        @JsonProperty("lastModifiedBy")
         public Distribution.Builder lastModifiedBy(String lastModifiedBy) {
             distribution.lastModifiedBy = lastModifiedBy;
             return this;
         }
 
-        @JsonProperty("version")
         public Distribution.Builder version(Long version) {
             distribution.version = version;
             return this;
@@ -176,14 +157,14 @@ public class Distribution implements Serializable {
 
     @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
     public String getType() {
-        return DSpaceConstants.DSPACE + Distribution.class.getSimpleName();
+        return Distribution.class.getSimpleName();
     }
 
     /**
      * Create new updated instance with new values from passed Distribution parameter.<br>
      * If fields are not present in updatedDistribution, existing values will remain
      *
-     * @param updatedDistribution
+     * @param updatedDistribution distribution with new values
      * @return new updated distribution instance
      */
     public Distribution updateInstance(Distribution updatedDistribution) {
@@ -204,22 +185,16 @@ public class Distribution implements Serializable {
 
     public void validateProtocol() {
         // Validate AccessService collection
-        if (this.getAccessService() == null || this.getAccessService().isEmpty()) {
-            throw new ValidationException("Distribution must have at least one AccessService");
+        if (this.getAccessService() == null) {
+            throw new ValidationException("Distribution must have AccessService");
         }
 
-        // Check if there's at least one non-null AccessService
-        if (this.getAccessService().stream().noneMatch(Objects::nonNull)) {
-            throw new ValidationException("Distribution must have at least one non-null AccessService");
-        }
-
-        // Validate each AccessService in collection
-        for (DataService dataService : this.getAccessService()) {
-            try {
-                dataService.validateProtocol();
-            } catch (ValidationException e) {
-                throw new ValidationException("Invalid AccessService in Distribution: " + e.getMessage());
-            }
+        // Validate AccessService
+        DataService dataService = this.getAccessService();
+        try {
+            dataService.validateProtocol();
+        } catch (ValidationException e) {
+            throw new ValidationException("Invalid AccessService in Distribution: " + e.getMessage());
         }
     }
 }

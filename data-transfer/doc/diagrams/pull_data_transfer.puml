@@ -14,11 +14,11 @@ note over c
 TransferRequestMessage
 {
   "@context":  "https://w3id.org/dspace/2024/1/context.json",
-  "@type": "dspace:TransferRequestMessage",
-  "dspace:consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
-  "dspace:agreementId": "urn:uuid:e8dc8655-44c2-46ef-b701-4cffdc2faa44",
+  "@type": "TransferRequestMessage",
+  "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+  "agreementId": "urn:uuid:e8dc8655-44c2-46ef-b701-4cffdc2faa44",
   "dct:format": "HttpData-PULL",
-  "dspace:callbackAddress": "https://......"
+  "callbackAddress": "https://......"
 }
 end note
 
@@ -58,13 +58,13 @@ p->c : callbackUrl + transfers/:consumerPid/start
 note right
 {
   "@context":  "https://w3id.org/dspace/2024/1/context.json",
-  "@type": "dspace:TransferStartMessage",
-  "dspace:providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
-  "dspace:consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
-  "dspace:dataAddress": {
-    "@type": "dspace:DataAddress",
-    "dspace:endpointType": "https://w3id.org/idsa/v4.1/HTTP",
-    "dspace:endpoint": "http://localhost:8080/artifact/encodedValue/1",
+  "@type": "TransferStartMessage",
+  "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
+  "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+  "dataAddress": {
+    "@type": "DataAddress",
+    "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
+    "endpoint": "http://localhost:8080/artifact/encodedValue/1",
   }
 }
 end note

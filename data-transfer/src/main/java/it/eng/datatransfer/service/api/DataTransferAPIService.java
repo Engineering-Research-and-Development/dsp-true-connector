@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
+import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
@@ -20,7 +21,6 @@ import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.BucketCredentialsService;
-import it.eng.tools.s3.service.S3BucketProvisionService;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.serializer.ToolsSerializer;
@@ -37,10 +37,12 @@ import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -254,7 +256,7 @@ public class DataTransferAPIService {
         }
         if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
             address = DataTransferCallback.getConsumerDataTransferStart(transferProcess.getCallbackAddress(), transferProcess.getConsumerPid());
-            if ( DataTransferFormat.HTTP_PULL.format().equals(transferProcess.getFormat())) {
+            if (DataTransferFormat.HTTP_PULL.format().equals(transferProcess.getFormat())) {
                 String artifactURL = switch (artifact.getArtifactType()) {
                     case FILE ->
                     // Generate a presigned URL for S3 with 7 days duration, which will be used as the endpoint for the data transfer
@@ -664,8 +666,11 @@ public class DataTransferAPIService {
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid(),
                             "role", IConstants.ROLE_API));
-            throw new DataTransferAPIException("State transition aborted, " + transferProcess.getState().name()
-                    + " state can not transition to " + newState.name());
+            // Changed from API ex to TransferProcessInvalidStateException!!!
+            throw new TransferProcessInvalidStateException("State transition aborted, " + transferProcess.getState().name()
+                    + " state can not transition to " + newState.name(),
+                    transferProcess.getConsumerPid(),
+                    transferProcess.getProviderPid());
         }
     }
 

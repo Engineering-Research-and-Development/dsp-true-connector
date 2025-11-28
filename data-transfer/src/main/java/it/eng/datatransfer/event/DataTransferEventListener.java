@@ -52,7 +52,7 @@ public class DataTransferEventListener {
 
     @EventListener
     public void handleTransferProcessChange(TransferProcessChangeEvent transferProcessEvent) {
-        log.info("Transfering process {} from state '{}' to '{}'",
+        log.info("Transferring process {} from state '{}' to '{}'",
                 transferProcessEvent.getOldTransferProcess().getId(), transferProcessEvent.getOldTransferProcess().getState(),
                 transferProcessEvent.getNewTransferProcess().getState());
     }

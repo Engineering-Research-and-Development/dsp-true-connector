@@ -4,7 +4,7 @@ Classes used to represent Json document are located in model package.
 
 General rule for creating this classes are following:
   - if possible, class should extend AbstractNegotiationModel, which has @context, @type and providerPid as mandatory fields, since those fields are mandatory for almost all Json documents
-  - annotations like @JsonProperty, @JsonPOJOBuilder and @JsonSetter are used to modify how java pojo class is serialized to protocol format (using prefixes like dpsace:, odrl: and such). For more details check Serializer class.
+  - annotations like @JsonProperty, @JsonPOJOBuilder and @JsonSetter are used to modify how java pojo class is serialized to protocol format. For more details check Serializer class.
   - constructor should be private (handled by annotation)
   - jakarta.validation.constraints.NotNull annotation should be set on mandatory fields
   - builder should be used as patter for creating new instances

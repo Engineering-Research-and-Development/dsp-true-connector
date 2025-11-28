@@ -30,6 +30,15 @@ public interface TransferProcessRepository extends MongoRepository<TransferProce
      */
     Optional<TransferProcess> findByProviderPid(String providerPid);
 
+
+    /**
+     * Finds a transfer process by ConsumerPid.
+     *
+     * @param consumerPid the consumerPid of the transfer process
+     * @return an Optional containing the TransferProcess if found, or empty if not found
+     */
+    Optional<TransferProcess> findByConsumerPid(String consumerPid);
+
     /**
      * Finds a transfer process by agreementId.
      *

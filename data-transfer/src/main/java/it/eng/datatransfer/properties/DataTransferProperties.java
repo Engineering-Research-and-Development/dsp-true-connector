@@ -6,16 +6,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class DataTransferProperties {
 
-	@Value("${server.port}")
-	private String serverPort;
-	
 	@Value("${application.callback.address}")
 	private String callbackAddress;
-	
-	public String serverPort() {
-		return serverPort;
-	}
-	
+
 	public String providerCallbackAddress() {
 		return callbackAddress;
 	}

@@ -149,7 +149,7 @@
     },
     {
       "_id": "application.dspace.version.auth.version",
-      "value": "2024-01",
+      "value": "2025-1",
       "label": "Dspace Version Auth version",
       "group": "DspaceVersion",
       "tooltip": "Dspace Version Authentication version",

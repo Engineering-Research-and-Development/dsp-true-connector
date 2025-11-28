@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.jsontype.TypeResolverBuilder;
 import com.fasterxml.jackson.databind.jsontype.impl.StdTypeResolverBuilder;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import it.eng.catalog.model.*;
 import it.eng.tools.model.DSpaceConstants;
@@ -126,7 +127,7 @@ public class CatalogSerializer {
      *
      * @param <T>             Type of class
      * @param jsonStringPlain json string
-     * @param clazz           Class to convert
+     * @param clazz           Class to deserialize
      * @return Java object converted from json
      */
     public static <T> T deserializePlain(String jsonStringPlain, Class<T> clazz) {
@@ -151,7 +152,7 @@ public class CatalogSerializer {
      *
      * @param <T>      Type of class
      * @param jsonNode jsonNode
-     * @param clazz    Class to convert
+     * @param clazz    Class to deserialize
      * @return Java object converted from json
      */
     public static <T> T deserializePlain(JsonNode jsonNode, Class<T> clazz) {
@@ -202,7 +203,7 @@ public class CatalogSerializer {
      * Convert object to JsonNode with prefixes. <br>
      * Used in tests
      *
-     * @param toSerialize java object to serialize
+     * @param toSerialize
      * @return JsonNode
      */
     public static JsonNode serializeProtocolJsonNode(Object toSerialize) {
@@ -216,7 +217,7 @@ public class CatalogSerializer {
      *
      * @param <T>      Type of class to deserialize
      * @param jsonNode JsonNode to deserialize
-     * @param clazz    Class to deserialize
+     * @param clazz    Class to deserialzie
      * @return Java object
      */
     public static <T> T deserializeProtocol(JsonNode jsonNode, Class<T> clazz) {
@@ -261,17 +262,17 @@ public class CatalogSerializer {
         try {
             Objects.requireNonNull(jsonNode.get(DSpaceConstants.TYPE));
             if (clazz.equals(Offer.class)) {
-                if (!Objects.equals(DSpaceConstants.ODRL + clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
-                    throw new ValidationException("@type field not correct, expected " + DSpaceConstants.ODRL + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
+                if (!Objects.equals(clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
+                    throw new ValidationException("@type field not correct, expected " + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
                 }
             } else {
                 if (clazz.equals(Catalog.class) || clazz.equals(Dataset.class) || clazz.equals(DataService.class)) {
-                    if (!Objects.equals(DSpaceConstants.DCAT + clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
-                        throw new ValidationException("@type field not correct, expected " + DSpaceConstants.DSPACE + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
+                    if (!Objects.equals(clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
+                        throw new ValidationException("@type field not correct, expected " + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
                     }
                 } else {
-                    if (!Objects.equals(DSpaceConstants.DSPACE + clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
-                        throw new ValidationException("@type field not correct, expected " + DSpaceConstants.DSPACE + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
+                    if (!Objects.equals(clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
+                        throw new ValidationException("@type field not correct, expected " + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
                     }
                 }
             }
@@ -280,9 +281,17 @@ public class CatalogSerializer {
             // skip context check if not one of following
             if (!(clazz.equals(Distribution.class) || clazz.equals(DataService.class) || clazz.equals(Offer.class))) {
                 Objects.requireNonNull(jsonNode.get(DSpaceConstants.CONTEXT));
-                if (!Objects.equals(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE, jsonNode.get(DSpaceConstants.CONTEXT).asText())) {
-                    throw new ValidationException("@context field not valid - was " + jsonNode.get(DSpaceConstants.CONTEXT).asText());
+                JsonNode context = jsonNode.get(DSpaceConstants.CONTEXT);
+                if (context.isArray()) {
+                    ArrayNode arrayNode = (ArrayNode) context;
+                    String contextFromJson = arrayNode.get(0).asText();
+                    if (!Objects.equals(DSpaceConstants.DSPACE_2025_01_CONTEXT, contextFromJson)) {
+                        throw new ValidationException("@context field not valid - was " + contextFromJson);
+                    }
+                } else {
+                    // TODO check if context can be single value!!!!
                 }
+
             }
         } catch (NullPointerException npe) {
             throw new ValidationException("Missing mandatory protocol fields @context and/or @type or value not correct");

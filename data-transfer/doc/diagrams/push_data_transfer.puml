@@ -21,16 +21,39 @@ note over c
 TransferRequestMessage
 {
   "@context":  "https://w3id.org/dspace/2024/1/context.json",
-  "@type": "dspace:TransferRequestMessage",
-  "dspace:consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
-  "dspace:agreementId": "urn:uuid:e8dc8655-44c2-46ef-b701-4cffdc2faa44",
-  "dct:format": "HttpData-PUSH",
-  "dst:dataAddress": {
-    "@type": "dspace:DataAddress",
-    "dspace:endpointType": "https://w3id.org/idsa/v4.1/HTTP",
-    "dspace:endpoint": "http://localhost:9000/dsp-true-connector-consumer-bucket/..."
+  "@type": "TransferRequestMessage",
+  "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+  "agreementId": "urn:uuid:e8dc8655-44c2-46ef-b701-4cffdc2faa44",
+  "format": "HttpData-PUSH",
+  "dataAddress": {
+    "endpointProperties": [
+      {
+        "name": "bucketName",
+        "value": "dsp-true-connector-consumer"
+      },
+      {
+        "name": "region",
+        "value": "us-east-1"
+      },
+      {
+        "name": "objectKey",
+        "value": "urn:uuid:22644978-9b3d-4907-828f-7cb79d489996"
+      },
+      {
+        "name": "accessKey",
+        "value": "GetBucketUser-ece8f0de"
+      },
+      {
+        "name": "secretKey",
+        "value": "f0ca1d01-fd18-4168-b58a-81f6c1cf92dc"
+      },
+      {
+        "name": "endpointOverride",
+        "value": "http://localhost:9000"
+      }
+    ]
   },
-  "dspace:callbackAddress": "https://......"
+  "callbackAddress": "https://......"
 }
 end note
 
@@ -46,14 +69,37 @@ p->c : callbackUrl + transfers/:consumerPid/start
 note right
 {
   "@context":  "https://w3id.org/dspace/2024/1/context.json",
-  "@type": "dspace:TransferStartMessage",
-  "dspace:providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
-  "dspace:consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
-  "dst:dataAddress": {
-      "@type": "dspace:DataAddress",
-      "dspace:endpointType": "https://w3id.org/idsa/v4.1/HTTP",
-      "dspace:endpoint": "http://localhost:9000/dsp-true-connector-consumer-bucket/..."
-    },
+  "@type": "TransferStartMessage",
+  "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
+  "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+  "dataAddress": {
+      "endpointProperties": [
+        {
+          "name": "bucketName",
+          "value": "dsp-true-connector-consumer"
+        },
+        {
+          "name": "region",
+          "value": "us-east-1"
+        },
+        {
+          "name": "objectKey",
+          "value": "urn:uuid:22644978-9b3d-4907-828f-7cb79d489996"
+        },
+        {
+          "name": "accessKey",
+          "value": "GetBucketUser-ece8f0de"
+        },
+        {
+          "name": "secretKey",
+          "value": "f0ca1d01-fd18-4168-b58a-81f6c1cf92dc"
+        },
+        {
+          "name": "endpointOverride",
+          "value": "http://localhost:9000"
+        }
+      ]
+   }
 }
 end note
 

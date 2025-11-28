@@ -28,7 +28,7 @@ public class Multilanguage {
 	@JsonIgnoreProperties(ignoreUnknown = true)
 	public static class Builder {
 		
-		private Multilanguage message;
+		private final Multilanguage message;
 		
 		private Builder() {
 			message = new Multilanguage();

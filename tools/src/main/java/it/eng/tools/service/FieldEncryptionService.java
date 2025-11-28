@@ -23,7 +23,7 @@ public class FieldEncryptionService {
     private final byte[] iv;
 
     public FieldEncryptionService(
-            @Value("${application.encyption.key}") String encryptionKey)
+            @Value("${application.encryption.key}") String encryptionKey)
             throws NoSuchAlgorithmException {
         try {
             // Generate a consistent 256-bit key from the encryption key

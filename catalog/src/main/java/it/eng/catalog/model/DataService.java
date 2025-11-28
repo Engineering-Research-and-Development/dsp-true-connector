@@ -15,6 +15,7 @@ import org.springframework.data.annotation.*;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.Set;
@@ -24,40 +25,30 @@ import java.util.stream.Collectors;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = DataService.Builder.class)
-@JsonPropertyOrder(value = {"@id", "@type"}, alphabetic = true)
+@JsonPropertyOrder(value = {DSpaceConstants.TYPE,DSpaceConstants.ID}, alphabetic = true)
 @Document(collection = "dataservices")
 public class DataService implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = -7490596351222880611L;
 
     @JsonProperty(DSpaceConstants.ID)
     @Id
     private String id;
     // Resource
-    @JsonProperty(DSpaceConstants.DCAT_KEYWORD)
     private Set<String> keyword;
-    @JsonProperty(DSpaceConstants.DCAT_THEME)
     private Set<String> theme;
-    @JsonProperty(DSpaceConstants.DCT_CONFORMSTO)
     private String conformsTo;
-    @JsonProperty(DSpaceConstants.DCT_CREATOR)
     private String creator;
-    @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
     private Set<Multilanguage> description;
-    @JsonProperty(DSpaceConstants.DCT_IDENTIFIER)
     private String identifier;
-    @JsonProperty(DSpaceConstants.DCT_ISSUED)
     @CreatedDate
     private Instant issued;
     @LastModifiedDate
-    @JsonProperty(DSpaceConstants.DCT_MODIFIED)
     private Instant modified;
-    @JsonProperty(DSpaceConstants.DCT_TITLE)
     private String title;
 
-    @JsonProperty(DSpaceConstants.DCAT_ENDPOINT_DESCRIPTION)
     private String endpointDescription;
-    @JsonProperty(DSpaceConstants.DCAT_ENDPOINT_URL)
     private String endpointURL;
 
     @JsonIgnore
@@ -74,7 +65,7 @@ public class DataService implements Serializable {
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Builder {
-        private DataService service;
+        private final DataService service;
 
         private Builder() {
             service = new DataService();
@@ -91,85 +82,71 @@ public class DataService implements Serializable {
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCAT_KEYWORD)
         public Builder keyword(Set<String> keyword) {
             service.keyword = keyword;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCAT_THEME)
         public Builder theme(Set<String> theme) {
             service.theme = theme;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCT_CONFORMSTO)
         public Builder conformsTo(String conformsTo) {
             service.conformsTo = conformsTo;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCT_CREATOR)
         public Builder creator(String creator) {
             service.creator = creator;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCT_DESCRIPTION)
         public Builder description(Set<Multilanguage> description) {
             service.description = description;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCT_IDENTIFIER)
         public Builder identifier(String identifier) {
             service.identifier = identifier;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCT_ISSUED)
         public Builder issued(Instant issued) {
             service.issued = issued;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCT_MODIFIED)
         public Builder modified(Instant modified) {
             service.modified = modified;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCT_TITLE)
         public Builder title(String title) {
             service.title = title;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCAT_ENDPOINT_DESCRIPTION)
         public Builder endpointDescription(String endpointDescription) {
             service.endpointDescription = endpointDescription;
             return this;
         }
 
-        @JsonProperty(DSpaceConstants.DCAT_ENDPOINT_URL)
         public Builder endpointURL(String endpointURL) {
             service.endpointURL = endpointURL;
             return this;
         }
 
-        @JsonProperty("createdBy")
         public Builder createdBy(String createdBy) {
             service.createdBy = createdBy;
             return this;
         }
 
-        @JsonProperty("lastModifiedBy")
         public Builder lastModifiedBy(String lastModifiedBy) {
             service.lastModifiedBy = lastModifiedBy;
             return this;
         }
 
-        @JsonProperty("version")
         public Builder version(Long version) {
             service.version = version;
             return this;
@@ -194,7 +171,7 @@ public class DataService implements Serializable {
 
     @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
     public String getType() {
-        return DSpaceConstants.DCAT + DataService.class.getSimpleName();
+        return DataService.class.getSimpleName();
     }
 
     /**
