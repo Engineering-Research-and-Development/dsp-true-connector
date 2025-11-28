@@ -184,7 +184,7 @@ public class ContractNegotiationAPIService {
                         Map.of("contractRequestMessage", contractRequestMessage,
                                 "consumerPid", contractRequestMessage.getConsumerPid(),
                                 "role", IConstants.ROLE_API));
-                throw new ContractNegotiationAPIException("Error occurred");
+                throw new ContractNegotiationAPIException("Error occurred while making call to " +  forwardTo + " : " + response.getMessage());
             }
         }
         return contractNegotiationWithOffer;
@@ -296,7 +296,7 @@ public class ContractNegotiationAPIService {
                                 "consumerPid", contractRequestMessage.getConsumerPid(),
                                 "providerPid", contractRequestMessage.getProviderPid(),
                                 "role", IConstants.ROLE_API));
-                throw new ContractNegotiationAPIException("Error occurred");
+                throw new ContractNegotiationAPIException("Error occurred while making call : " + response.getMessage());
             }
         }
         return contractNegotiationWithOffer;
@@ -391,7 +391,7 @@ public class ContractNegotiationAPIService {
                         Map.of("ContractOfferMessage", contractOfferMessage,
                                 "providerPid", contractOfferMessage.getProviderPid(),
                                 "role", IConstants.ROLE_API));
-                throw new ContractNegotiationAPIException("Error occurred");
+                throw new ContractNegotiationAPIException("Error occurred while making call to " +  forwardTo + " : " + response.getMessage());
             }
         }
         return contractNegotiationWithOffer;
@@ -502,7 +502,7 @@ public class ContractNegotiationAPIService {
                                 "consumerPid", contractOfferMessage.getConsumerPid(),
                                 "providerPid", contractOfferMessage.getProviderPid(),
                                 "role", IConstants.ROLE_API));
-                throw new ContractNegotiationAPIException("Error occurred");
+                throw new ContractNegotiationAPIException("Error occurred while making call : " + response.getMessage());
             }
         }
         return contractNegotiationWithOffer;

@@ -169,6 +169,27 @@ public class ContractNegotiationAPIServiceTest {
     }
 
     @Test
+    @DisplayName("Start contract negotiation server error")
+    public void startNegotiation_serverError() {
+        HashMap<Object, Object> map = new HashMap<>();
+        map.put("Forward-To", NegotiationMockObjectUtil.FORWARD_TO);
+        map.put(DSpaceConstants.OFFER, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(apiResponse.getData()).thenReturn("not a JSON");
+        when(apiResponse.isSuccess()).thenReturn(false);
+        when(properties.consumerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
+
+        ContractNegotiationAPIException exception = assertThrows(ContractNegotiationAPIException.class,
+                () -> service.sendContractRequestMessage(mapper.convertValue(map, JsonNode.class)));
+
+        assertNotNull(exception);
+        assertTrue(exception.getMessage().contains("Error occurred while making call"));
+
+        verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
+    }
+
+    @Test
     @DisplayName("Start contract negotiation json exception")
     public void sendContractRequestMessage_jsonException() {
         HashMap<Object, Object> map = new HashMap<>();
