@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.wiremock.spring.InjectWireMock;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
@@ -184,7 +185,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .consumerPid(transferProcessInitialized.getId())
                 .providerPid(createNewId())
                 .code("TEST")
-                .reason(Arrays.asList(Reason.Builder.newInstance().language("en").value("TEST").build()))
+                .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value("TEST").build()))
                 .build();
 
         WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/transfers/request")

@@ -16,6 +16,8 @@ services:
       - "9001:9001"
     volumes:
       - minio_data:/data
+      # Enable below line to use custom SSL certificates
+      #- ./src/main/resources/certs/minio_certs:/root/.minio/certs:ro
     environment:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin

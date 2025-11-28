@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.5.6-SNAPSHOT]
+## [0.6.0-SNAPSHOT] - 28.11.2025.
 
 ### Added
 
@@ -16,6 +16,14 @@ All notable changes to this project will be documented in this file.
 
 - Renamed integration test classes to have IT suffix
 - Configured maven surefire and failsafe plugins to have different includes for unit and integration tests
+
+## [0.5.6-SNAPSHOT] - 24.11.2025.
+
+### Added
+
+- Support for TLS communication (enabling TLS for OkHttpClient and S3 clients)
+- Scripts for generating self-signed certificates for connector
+- Documentation for setting up TLS communication between connectors
 
 ## [0.5.5-SNAPSHOT] - 31.10.2025.
 
