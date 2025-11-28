@@ -1,0 +1,103 @@
+[2025-11-05T13:34:16.818567432] Running DSP TCK v2025.1
+
+SLF4J(W): No SLF4J providers were found.
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+
+[2025-11-05T13:34:17.946986806] Started: TP:03-01: Verify transfer request, consumer completed
+[2025-11-05T13:34:17.987983839] Sending transfer request
+[2025-11-05T13:34:19.633265158] Received transfer request response
+[2025-11-05T13:34:19.773600996] Done waiting for state to transition to REQUESTED
+[2025-11-05T13:34:20.118052077] Received transfer status response with state https://w3id.org/dspace/2025/1/REQUESTED: urn:uuid:4814b7b5-917e-4d81-8213-dc63dc300f02
+[2025-11-05T13:34:20.118610273] Done waiting for for provider transfer process state to be REQUESTED
+[2025-11-05T13:34:20.118929891] Sending transfer completion
+[2025-11-05T13:34:20.407691674] Received completion request response
+[2025-11-05T13:34:20.51188728] Done waiting for state to transition to REQUESTED
+[2025-11-05T13:34:20.816885469] Received transfer status response with state https://w3id.org/dspace/2025/1/REQUESTED: urn:uuid:4814b7b5-917e-4d81-8213-dc63dc300f02
+[2025-11-05T13:34:20.817512814] Done waiting for for provider transfer process state to be REQUESTED
+[2025-11-05T13:34:20.823533156] SUCCESSFUL: TP:03-01
+
+
+[2025-11-05T13:34:20.825506832] Started: TP:03-02: Verify transfer request, consumer suspended
+[2025-11-05T13:34:20.828163316] Sending transfer request
+[2025-11-05T13:34:21.398604615] Received transfer request response
+[2025-11-05T13:34:21.509450927] Done waiting for state to transition to REQUESTED
+[2025-11-05T13:34:21.80299583] Received transfer status response with state https://w3id.org/dspace/2025/1/REQUESTED: urn:uuid:b70ed204-076d-41c7-b602-4bd2590eb63c
+[2025-11-05T13:34:21.803650276] Done waiting for for provider transfer process state to be REQUESTED
+[2025-11-05T13:34:21.80409612] Sending transfer suspension
+[2025-11-05T13:34:22.01486692] Received suspension request response
+[2025-11-05T13:34:22.11746211] Done waiting for state to transition to REQUESTED
+[2025-11-05T13:34:22.308743887] Received transfer status response with state https://w3id.org/dspace/2025/1/REQUESTED: urn:uuid:b70ed204-076d-41c7-b602-4bd2590eb63c
+[2025-11-05T13:34:22.312331016] Done waiting for for provider transfer process state to be REQUESTED
+[2025-11-05T13:34:22.313098112] SUCCESSFUL: TP:03-02
+
+
+[2025-11-05T13:34:22.315900397] Started: TP:03-03: Verify transfer request, provider started, consumer suspended, consumer completed
+[2025-11-05T13:34:22.318975147] Sending transfer request
+[2025-11-05T13:34:22.7117066] Received transfer request response
+[2025-11-05T13:34:25.045616795] Received start message: f192200b-8305-4620-b06c-7eb457d136d6 with correlation id urn:uuid:106c2c78-d981-4896-88c4-ae561e15679f
+[2025-11-05T13:34:25.147955372] Done waiting for state to transition to STARTED
+[2025-11-05T13:34:25.338881506] Received transfer status response with state https://w3id.org/dspace/2025/1/STARTED: urn:uuid:106c2c78-d981-4896-88c4-ae561e15679f
+[2025-11-05T13:34:25.339681464] Done waiting for for provider transfer process state to be STARTED
+[2025-11-05T13:34:25.339968582] Sending transfer suspension
+[2025-11-05T13:34:25.504768805] Received suspension request response
+[2025-11-05T13:34:25.606275326] Done waiting for state to transition to SUSPENDED
+[2025-11-05T13:34:25.796482789] Received transfer status response with state https://w3id.org/dspace/2025/1/SUSPENDED: urn:uuid:106c2c78-d981-4896-88c4-ae561e15679f
+[2025-11-05T13:34:25.797516317] Done waiting for for provider transfer process state to be SUSPENDED
+[2025-11-05T13:34:25.797747209] Sending transfer completion
+[2025-11-05T13:34:25.916665702] Received completion request response
+[2025-11-05T13:34:26.019104678] Done waiting for state to transition to SUSPENDED
+[2025-11-05T13:34:26.214607717] Received transfer status response with state https://w3id.org/dspace/2025/1/SUSPENDED: urn:uuid:106c2c78-d981-4896-88c4-ae561e15679f
+[2025-11-05T13:34:26.215094648] Done waiting for for provider transfer process state to be SUSPENDED
+[2025-11-05T13:34:26.215951293] SUCCESSFUL: TP:03-03
+
+
+[2025-11-05T13:34:26.216726153] Started: TP:03-04: Verify transfer request, provider started, consumer terminated, consumer started
+[2025-11-05T13:34:26.219027433] Sending transfer request
+[2025-11-05T13:34:26.513347524] Received transfer request response
+[2025-11-05T13:34:28.637169142] Received start message: 6332f69e-8302-4235-a593-24db847c9846 with correlation id urn:uuid:6d43b93b-ca51-4929-9033-ba6717ec4241
+[2025-11-05T13:34:28.738406681] Done waiting for state to transition to STARTED
+[2025-11-05T13:34:29.012439073] Received transfer status response with state https://w3id.org/dspace/2025/1/STARTED: urn:uuid:6d43b93b-ca51-4929-9033-ba6717ec4241
+[2025-11-05T13:37:13.162391423] Accepting offer: urn:uuid:0d5afbea-03d9-4f3a-a991-d425dce7c801
+[2025-11-05T13:37:13.253065764] Received accept response: urn:uuid:0d5afbea-03d9-4f3a-a991-d425dce7c801
+[2025-11-05T13:37:13.353914506] Sending verification: urn:uuid:0d5afbea-03d9-4f3a-a991-d425dce7c801
+[2025-11-05T13:37:13.442109491] Received verification response: urn:uuid:0d5afbea-03d9-4f3a-a991-d425dce7c801
+[2025-11-05T13:37:13.443272029] SUCCESSFUL: CN:03-03
+
+
+[2025-11-05T13:37:13.443695883] Started: CN:03-04: Verify contract request, offer received, consumer counter-offer (x2), provider terminated
+[2025-11-05T13:37:13.444952555] Sending contract request
+[2025-11-05T13:37:13.90691825] Received contract request response
+[2025-11-05T13:37:15.917271808] Received provider offer: urn:uuid:e04f3d33-e998-460d-b41f-21b547a84012
+[2025-11-05T13:37:16.018263265] Done waiting for state to transition to OFFERED
+[2025-11-05T13:37:16.018508685] Sending counter offer: urn:uuid:e04f3d33-e998-460d-b41f-21b547a84012
+[2025-11-05T13:37:16.115352927] Received contract offer request response
+[2025-11-05T13:37:16.116164068] Sending counter offer: urn:uuid:e04f3d33-e998-460d-b41f-21b547a84012
+[2025-11-05T13:37:16.205492734] Received contract offer request response
+[2025-11-05T13:37:16.206643317] SUCCESSFUL: CN:03-04
+
+
+[2025-11-05T13:37:16.207850026] Started: CAT:01-01: Verify catalog request
+[2025-11-05T13:37:16.52716724] Received catalog request response
+[2025-11-05T13:37:16.557613327] SUCCESSFUL: CAT:01-01
+
+
+[2025-11-05T13:37:16.558071574] Started: CAT:01-02: Verify dataset request
+[2025-11-05T13:37:16.702838647] Received dataset request response
+[2025-11-05T13:37:16.707513055] SUCCESSFUL: CAT:01-02
+
+
+[2025-11-05T13:37:16.707952878] Started: CAT:01-03: Verify dataset request not found
+[2025-11-05T13:37:16.801277618] Received dataset request response
+[2025-11-05T13:37:16.804572956] SUCCESSFUL: CAT:01-03
+
+[2025-11-05T13:37:16.806510192] Passed tests: 65
+[2025-11-05T13:37:16.806608045] Failed tests: 0
+
+[2025-11-05T13:37:16.806710567] 🎉😃🚀All tests passed
+
+
+[2025-11-05T13:37:16.807031527] Test run complete
+
+dsp-tck exited with code 0
+✅ TCK tests passed

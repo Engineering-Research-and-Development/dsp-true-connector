@@ -2,6 +2,7 @@ package it.eng.datatransfer.rest.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.model.DataTransferRequest;
+import it.eng.datatransfer.model.TCKRequest;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
@@ -213,5 +214,4 @@ public class DataTransferAPIController {
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(GenericApiResponse.success(response, "Data transfer terminated"));
     }
-
 }

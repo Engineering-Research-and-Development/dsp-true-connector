@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.jsontype.TypeResolverBuilder;
 import com.fasterxml.jackson.databind.jsontype.impl.StdTypeResolverBuilder;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import it.eng.negotiation.model.Offer;
 import it.eng.tools.model.DSpaceConstants;
@@ -93,7 +94,7 @@ public class NegotiationSerializer {
     /**
      * Serialize java object to json.
      *
-     * @param toSerialize java object to serialize
+     * @param toSerialize - java object to serialize
      * @return Json string - plain
      */
     public static String serializePlain(Object toSerialize) {
@@ -108,7 +109,7 @@ public class NegotiationSerializer {
      * Convert object to jsonNode, without annotations.<br>
      * Used in tests
      *
-     * @param toSerialize java object to serialize
+     * @param toSerialize - object to convert
      * @return JsonNode
      */
     public static JsonNode serializePlainJsonNode(Object toSerialize) {
@@ -120,7 +121,7 @@ public class NegotiationSerializer {
      *
      * @param <T>             Type of class
      * @param jsonStringPlain json string
-     * @param clazz           Class to convert
+     * @param clazz           - Class to convert
      * @return Java object converted from json
      */
     public static <T> T deserializePlain(String jsonStringPlain, Class<T> clazz) {
@@ -175,7 +176,7 @@ public class NegotiationSerializer {
      * Convert object to JsonNode with prefixes.<br>
      * Used in tests
      *
-     * @param toSerialize java object to serialize
+     * @param toSerialize - object to convert
      * @return JsonNode
      */
     public static JsonNode serializeProtocolJsonNode(Object toSerialize) {
@@ -209,36 +210,35 @@ public class NegotiationSerializer {
     /**
      * Checks for @context and @type if present and if values are correct.
      *
-     * @param <T>      Type of class to validate
-     * @param jsonNode JsonNode to validate
-     * @param clazz    Class to validate
-     * @throws ValidationException if validation fails
+     * @param <T>      - Type of class to validate
+     * @param jsonNode - JsonNode to validate
+     * @param clazz    - Class to validate
+     * @throws ValidationException - if validation fails
      */
     private static <T> void validateProtocol(JsonNode jsonNode, Class<T> clazz) {
         try {
             Objects.requireNonNull(jsonNode.get(DSpaceConstants.TYPE));
-            // odrl:Offer
-            if (clazz.equals(Offer.class)) {
-                if (!Objects.equals(DSpaceConstants.ODRL + clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
-                    throw new ValidationException("@type field not correct, expected " + DSpaceConstants.ODRL + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
+            if (!Objects.equals(clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
+                throw new ValidationException("@type field not correct, expected " + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
+            }
+            JsonNode context = jsonNode.get(DSpaceConstants.CONTEXT);
+            if (context.isArray()) {
+                ArrayNode arrayNode = (ArrayNode) context;
+                String contextFromJson = arrayNode.get(0).asText();
+                if (!Objects.equals(DSpaceConstants.DSPACE_2025_01_CONTEXT, contextFromJson)) {
+                    throw new ValidationException("@context field not valid - was " + contextFromJson);
                 }
             } else {
-                if (!Objects.equals(DSpaceConstants.DSPACE + clazz.getSimpleName(), jsonNode.get(DSpaceConstants.TYPE).asText())) {
-                    throw new ValidationException("@type field not correct, expected " + DSpaceConstants.DSPACE + clazz.getSimpleName() + " but was " + jsonNode.get(DSpaceConstants.TYPE).asText());
-                }
-                Objects.requireNonNull(jsonNode.get(DSpaceConstants.CONTEXT));
-                if (!Objects.equals(DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE, jsonNode.get(DSpaceConstants.CONTEXT).asText())) {
-                    throw new ValidationException("@context field not valid - was " + jsonNode.get(DSpaceConstants.CONTEXT).asText());
-                }
+                // TODO check if context can be single value!!!!
             }
         } catch (NullPointerException npe) {
             throw new ValidationException("Missing mandatory protocol fields @context and/or @type or value not correct");
         }
     }
 
-    public static <T> T deserializeProtocol(String jsonStringPlain, Class<T> clazz) {
+    public static <T> T deserializeProtocol(String jsonStringProtocol, Class<T> clazz) {
         try {
-            T obj = jsonMapper.readValue(jsonStringPlain, clazz);
+            T obj = jsonMapper.readValue(jsonStringProtocol, clazz);
             Set<ConstraintViolation<T>> violations = validator.validate(obj);
             if (violations.isEmpty()) {
                 return obj;
@@ -250,6 +250,7 @@ public class NegotiationSerializer {
                             .collect(Collectors.joining(",")));
         } catch (JsonProcessingException e) {
             throw new ValidationException(e);
+
         }
     }
 }

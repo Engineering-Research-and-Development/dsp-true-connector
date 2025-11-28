@@ -1,10 +1,6 @@
 package it.eng.datatransfer.model;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -13,6 +9,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class TransferErrorTest {
 	TransferError transferError = TransferError.Builder.newInstance()
@@ -39,10 +38,16 @@ public class TransferErrorTest {
 	@DisplayName("Verify valid protocol object serialization")
 	public void testPlain_protocol() {
 		JsonNode result = TransferSerializer.serializeProtocolJsonNode(transferError);
-		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
-		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
-		assertNotNull(result.get(DSpaceConstants.DSPACE_CONSUMER_PID).asText());
-		assertNotNull(result.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText());
+		JsonNode context = result.get(DSpaceConstants.CONTEXT);
+		assertNotNull(context);
+		if (context.isArray()) {
+			ArrayNode arrayNode = (ArrayNode) context;
+			assertFalse(arrayNode.isEmpty());
+			assertEquals(DSpaceConstants.DSPACE_2025_01_CONTEXT, arrayNode.get(0).asText());
+		}
+		assertEquals(result.get(DSpaceConstants.TYPE).asText(), transferError.getType());
+		assertEquals(result.get(DSpaceConstants.CONSUMER_PID).asText(), transferError.getConsumerPid());
+		assertEquals(result.get(DSpaceConstants.PROVIDER_PID).asText(), transferError.getProviderPid());
 		
 		TransferError javaObj = TransferSerializer.deserializeProtocol(result, TransferError.class);
 		validateJavaObject(javaObj);

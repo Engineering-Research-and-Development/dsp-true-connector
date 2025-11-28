@@ -49,7 +49,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(
         webEnvironment = WebEnvironment.DEFINED_PORT,
         properties = {
-                "server.port=8090"
+                "server.port=8080"
         })
 @AutoConfigureMockMvc
 @EnableWireMock

@@ -83,7 +83,7 @@ public class ApplicationProperty {
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Builder {
-        private ApplicationProperty property;
+        private final ApplicationProperty property;
 
         private Builder() {
             property = new ApplicationProperty();

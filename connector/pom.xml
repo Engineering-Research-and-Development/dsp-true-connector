@@ -11,6 +11,9 @@
     <artifactId>connector</artifactId>
     <name>Connector module</name>
     <description>Wrapper module - assemble and run connector</description>
+    <properties>
+        <dsp.tck.version>1.0.0-RC5</dsp.tck.version>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -160,6 +163,50 @@
             <classifier>tests</classifier>
             <type>test-jar</type>
             <version>${revision}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- TCK-->
+        <dependency>
+            <groupId>org.eclipse.dataspacetck.dsp</groupId>
+            <artifactId>tck-runtime</artifactId>
+            <version>${dsp.tck.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.dataspacetck.dsp</groupId>
+            <artifactId>core</artifactId>
+            <version>${dsp.tck.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.dataspacetck.dsp</groupId>
+            <artifactId>dsp-system</artifactId>
+            <version>${dsp.tck.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.dataspacetck.dsp</groupId>
+            <artifactId>dsp-metadata</artifactId>
+            <version>${dsp.tck.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.dataspacetck.dsp</groupId>
+            <artifactId>dsp-catalog</artifactId>
+            <version>${dsp.tck.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.dataspacetck.dsp</groupId>
+            <artifactId>dsp-transfer-process</artifactId>
+            <version>${dsp.tck.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.dataspacetck.dsp</groupId>
+            <artifactId>dsp-contract-negotiation</artifactId>
+            <version>${dsp.tck.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

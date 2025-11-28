@@ -20,7 +20,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -35,7 +38,7 @@ public class CatalogServiceTest {
     private static final String BUCKET_NAME = "bucket-name";
 
     private Catalog catalog;
-    
+
     @Mock
     private CatalogRepository repository;
     @Mock
@@ -53,7 +56,7 @@ public class CatalogServiceTest {
 
     @InjectMocks
     private CatalogService service;
-    
+
     @BeforeEach
     public void setUp() {
         catalog = CatalogMockObjectUtil.createNewCatalog();

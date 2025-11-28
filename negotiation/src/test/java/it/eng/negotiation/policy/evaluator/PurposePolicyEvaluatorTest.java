@@ -50,7 +50,7 @@ public class PurposePolicyEvaluatorTest {
                 .agreementId("agreement-123")
                 .resourceId("resource-123")
                 .userId("user-123")
-                .action(Action.READ)
+                .action(Action.USE)
                 .build();
         
         // Evaluate the policy
@@ -79,7 +79,7 @@ public class PurposePolicyEvaluatorTest {
                 .agreementId("agreement-123")
                 .resourceId("resource-123")
                 .userId("user-123")
-                .action(Action.READ)
+                .action(Action.USE)
                 .build();
         
         // Evaluate the policy
@@ -110,7 +110,7 @@ public class PurposePolicyEvaluatorTest {
                 .agreementId("agreement-123")
                 .resourceId("resource-123")
                 .userId("user-123")
-                .action(Action.READ)
+                .action(Action.USE)
                 .attribute(PolicyConstants.PURPOSE, "commercial")
                 .build();
         
@@ -142,7 +142,7 @@ public class PurposePolicyEvaluatorTest {
                 .agreementId("agreement-123")
                 .resourceId("resource-123")
                 .userId("user-123")
-                .action(Action.READ)
+                .action(Action.USE)
                 .attribute(PolicyConstants.PURPOSE, "research")
                 .build();
         
@@ -174,7 +174,7 @@ public class PurposePolicyEvaluatorTest {
                 .agreementId("agreement-123")
                 .resourceId("resource-123")
                 .userId("user-123")
-                .action(Action.READ)
+                .action(Action.USE)
                 .attribute(PolicyConstants.PURPOSE, "commercial")
                 .build();
         
@@ -206,7 +206,7 @@ public class PurposePolicyEvaluatorTest {
                 .agreementId("agreement-123")
                 .resourceId("resource-123")
                 .userId("user-123")
-                .action(Action.READ)
+                .action(Action.USE)
                 .attribute(PolicyConstants.PURPOSE, "research")
                 .build();
         
@@ -238,7 +238,7 @@ public class PurposePolicyEvaluatorTest {
                 .agreementId("agreement-123")
                 .resourceId("resource-123")
                 .userId("user-123")
-                .action(Action.READ)
+                .action(Action.USE)
                 .attribute(PolicyConstants.PURPOSE, "research")
                 .build();
         
@@ -269,7 +269,7 @@ public class PurposePolicyEvaluatorTest {
                 .agreementId("agreement-123")
                 .resourceId("resource-123")
                 .userId("user-123")
-                .action(Action.READ)
+                .action(Action.USE)
                 .attribute(PolicyConstants.PURPOSE, "research")
                 .build();
         

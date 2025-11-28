@@ -11,7 +11,7 @@ public class TransferProcessChangeEvent {
 	
 	public static class Builder {
 		
-		private TransferProcessChangeEvent event;
+		private final TransferProcessChangeEvent event;
 		
 		public static Builder newInstance() {
 			return new Builder();

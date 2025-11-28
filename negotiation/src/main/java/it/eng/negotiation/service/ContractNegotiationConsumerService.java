@@ -1,33 +1,30 @@
 package it.eng.negotiation.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import it.eng.negotiation.exception.ContractNegotiationInvalidEventTypeException;
-import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
-import it.eng.negotiation.exception.OfferNotFoundException;
+import it.eng.negotiation.exception.*;
 import it.eng.negotiation.model.*;
 import it.eng.negotiation.policy.service.PolicyAdministrationPoint;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
-import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.datatransfer.InitializeTransferProcess;
+import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.util.ToolsUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
-import java.util.UUID;
 
 @Service
 @Slf4j
-public class ContractNegotiationConsumerService extends BaseProtocolService {
-
+public abstract class ContractNegotiationConsumerService extends BaseProtocolService implements ContractNegotiationConsumerStrategy {
     private final AgreementRepository agreementRepository;
+
     private final PolicyAdministrationPoint policyAdministrationPoint;
 
     public ContractNegotiationConsumerService(AuditEventPublisher publisher,
@@ -39,61 +36,147 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
         this.policyAdministrationPoint = policyAdministrationPoint;
     }
 
-    /*
-     * {
-     * "@context": "https://w3id.org/dspace/v0.8/context.json",
-     * "@type": "dspace:ContractNegotiation",
-     * "dspace:providerPid": "urn:uuid:dcbf434c-eacf-4582-9a02-f8dd50120fd3",
-     * "dspace:consumerPid": "urn:uuid:32541fe6-c580-409e-85a8-8a9a32fbe833",
-     * "dspace:state" :"OFFERED"
-     * }
+    /**
+     * Method to get contract negotiation by consumer pid.
      *
-     * @param contractOfferMessage
-     * @return
+     * @param consumerPid - provider pid
+     * @return ContractNegotiation - contract negotiation from DB
+     * @throws ContractNegotiationNotFoundException if no contract negotiation is found with the specified provider pid.
      */
+    public ContractNegotiation getNegotiationByConsumerPid(String consumerPid) {
+        log.info("Getting contract negotiation by consumer pid: {}", consumerPid);
+        publisher.publishEvent(AuditEvent.Builder.newInstance()
+                .eventType(AuditEventType.PROTOCOL_NEGOTIATION_CONTRACT_NEGOTIATION)
+                .description("Searching with consumer pid " + consumerPid)
+                .details(Map.of(DSpaceConstants.CONSUMER_PID, consumerPid, "role", IConstants.ROLE_CONSUMER))
+                .build());
+        return contractNegotiationRepository.findByConsumerPid(consumerPid)
+                .orElseThrow(() ->
+                        new ContractNegotiationNotFoundException("Contract negotiation with consumer pid " + consumerPid + " not found", consumerPid));
+    }
 
     /**
      * Process contract offer.
      *
-     * @param contractOfferMessage
+     * @param contractOfferMessage - contract offer message
      * @return ContractNegotiation as JsonNode
      */
-    public JsonNode processContractOffer(ContractOfferMessage contractOfferMessage) {
-        checkIfContractNegotiationExists(contractOfferMessage.getConsumerPid(), contractOfferMessage.getProviderPid());
+    @Override
+    public ContractNegotiation handleContractOfferMessage(ContractOfferMessage contractOfferMessage) {
+        contractNegotiationRepository.findByProviderPid(contractOfferMessage.getProviderPid())
+                .ifPresent(existingContractNegotiation -> {
+                    throw new ContractNegotiationExistsException("Contract negotiation with providerPid " + contractOfferMessage.getProviderPid() +
+                            " already exists");
+                });
 
-        processContractOffer(contractOfferMessage.getOffer());
+        log.info("No ContractNegotiation found with providerPid {}, creating a new one", contractOfferMessage.getProviderPid());
+
+        Offer offerToBeInserted = Offer.Builder.newInstance()
+                .assignee(contractOfferMessage.getOffer().getAssignee() == null ? properties.connectorId() : contractOfferMessage.getOffer().getAssignee())
+                .assigner(contractOfferMessage.getOffer().getAssigner() == null ? contractOfferMessage.getCallbackAddress() : contractOfferMessage.getOffer().getAssigner())
+                .originalId(contractOfferMessage.getOffer().getId())
+                .permission(contractOfferMessage.getOffer().getPermission())
+                .target(contractOfferMessage.getOffer().getTarget())
+                .build();
 
         ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
-                .consumerPid("urn:uuid:" + UUID.randomUUID())
+                .consumerPid(ToolsUtil.generateUniqueId())
                 .providerPid(contractOfferMessage.getProviderPid())
                 .state(ContractNegotiationState.OFFERED)
                 .role(IConstants.ROLE_CONSUMER)
-                .offer(contractOfferMessage.getOffer())
+                .offer(offerToBeInserted)
                 .assigner(contractOfferMessage.getOffer().getAssigner())
                 .callbackAddress(contractOfferMessage.getCallbackAddress())
                 .build();
+
+        offerRepository.save(offerToBeInserted);
         contractNegotiationRepository.save(contractNegotiation);
-        return NegotiationSerializer.serializeProtocolJsonNode(contractNegotiation);
+
+        publisher.publishEvent(AuditEvent.Builder.newInstance()
+                .eventType(AuditEventType.PROTOCOL_NEGOTIATION_REQUESTED)
+                .description("Contract negotiation requested")
+                .details(Map.of(DSpaceConstants.CONSUMER_PID, contractNegotiation.getConsumerPid(),
+                        DSpaceConstants.PROVIDER_PID, contractNegotiation.getProviderPid(),
+                        "contractNegotiation", contractNegotiation,
+                        DSpaceConstants.OFFER, contractNegotiation.getOffer(),
+                        "role", IConstants.ROLE_CONSUMER))
+                .build());
+        return contractNegotiation;
     }
 
-    private void processContractOffer(Offer offer) {
-        offerRepository.findById(offer.getId()).ifPresentOrElse(
-                o -> log.info("Offer already exists"), () -> offerRepository.save(offer));
-        log.info("CONSUMER - Offer {} saved", offer.getId());
-    }
+    /**
+     * Process contract offer.
+     *
+     * @param consumerPid    - consumer pid
+     * @param contractOfferMessage - contract offer message
+     * @return ContractNegotiation as JsonNode
+     */
+    @Override
+    public ContractNegotiation handleContractOfferMessageAsCounteroffer(String consumerPid, ContractOfferMessage contractOfferMessage) {
+        compareConsumerPids(consumerPid, contractOfferMessage.getConsumerPid(), contractOfferMessage.getProviderPid());
 
-    protected String createNewPid() {
-        return "urn:uuid:" + UUID.randomUUID();
+        ContractNegotiation existingContractNegotiation = findContractNegotiationByPids(contractOfferMessage.getConsumerPid(), contractOfferMessage.getProviderPid());
+
+
+        if (!existingContractNegotiation.getOffer().getOriginalId().equals(contractOfferMessage.getOffer().getId())
+                || !existingContractNegotiation.getOffer().getTarget().equals(contractOfferMessage.getOffer().getTarget())) {
+            throw new ContractNegotiationAPIException("New offer must have same offer id and target as the existing one in the contract negotiation with id: " + existingContractNegotiation.getId());
+        }
+
+        stateTransitionCheck(ContractNegotiationState.OFFERED, existingContractNegotiation);
+
+        Offer updatedOffer = Offer.Builder.newInstance()
+                .id(existingContractNegotiation.getOffer().getId())
+                .originalId(existingContractNegotiation.getOffer().getOriginalId())
+                .permission(contractOfferMessage.getOffer().getPermission())
+                .assigner(contractOfferMessage.getOffer().getAssigner())
+                .assignee(contractOfferMessage.getOffer().getAssignee())
+                .target(contractOfferMessage.getOffer().getTarget())
+                .build();
+        offerRepository.save(updatedOffer);
+
+        log.info("Provider sent a counter offer for ContractNegotiation with id {}, updating existing one", existingContractNegotiation.getId());
+        ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
+                .id(existingContractNegotiation.getId())
+                .consumerPid(contractOfferMessage.getConsumerPid())
+                .providerPid(contractOfferMessage.getProviderPid())
+                .state(ContractNegotiationState.OFFERED)
+                .role(IConstants.ROLE_CONSUMER)
+                .offer(updatedOffer)
+                .assigner(contractOfferMessage.getOffer().getAssigner())
+                .callbackAddress(contractOfferMessage.getCallbackAddress() != null ? contractOfferMessage.getCallbackAddress() : existingContractNegotiation.getCallbackAddress())
+                .agreement(existingContractNegotiation.getAgreement())
+                .created(existingContractNegotiation.getCreated())
+                .createdBy(existingContractNegotiation.getCreatedBy())
+                .version(existingContractNegotiation.getVersion())
+                .build();
+
+        offerRepository.save(contractNegotiation.getOffer());
+        contractNegotiationRepository.save(contractNegotiation);
+
+        publisher.publishEvent(AuditEvent.Builder.newInstance()
+                .eventType(AuditEventType.PROTOCOL_NEGOTIATION_REQUESTED)
+                .description("Contract negotiation requested - counteroffer")
+                .details(Map.of(DSpaceConstants.CONSUMER_PID, contractNegotiation.getConsumerPid(),
+                        DSpaceConstants.PROVIDER_PID, contractNegotiation.getProviderPid(),
+                        "contractNegotiation", contractNegotiation,
+                        DSpaceConstants.OFFER, contractNegotiation.getOffer(),
+                        "role", IConstants.ROLE_CONSUMER))
+                .build());
+        return contractNegotiation;
     }
 
     /**
      * The response body is not specified and clients are not required to process it.
      *
-     * @param contractAgreementMessage
+     * @param contractAgreementMessage - contract agreement message
+     * @return ContractNegotiation
      */
 
-    public void handleAgreement(ContractAgreementMessage contractAgreementMessage) {
-        // save callbackAddress into ContractNegotiation - used for sending ContractNegotiationEventMessage.FINALIZED
+    @Override
+    public ContractNegotiation handleContractAgreementMessage(String consumerPid, ContractAgreementMessage contractAgreementMessage) {
+        compareConsumerPids(consumerPid, contractAgreementMessage.getConsumerPid(), contractAgreementMessage.getProviderPid());
+
         ContractNegotiation contractNegotiation = findContractNegotiationByPids(contractAgreementMessage.getConsumerPid(), contractAgreementMessage.getProviderPid());
 
         stateTransitionCheck(ContractNegotiationState.AGREED, contractNegotiation);
@@ -103,12 +186,11 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
                     contractNegotiation.getConsumerPid(), contractNegotiation.getProviderPid());
         }
 
-//    	Must do like this since callbackAddress might be null
         ContractNegotiation contractNegotiationAgreed = ContractNegotiation.Builder.newInstance()
                 .id(contractNegotiation.getId())
                 .consumerPid(contractNegotiation.getConsumerPid())
                 .providerPid(contractNegotiation.getProviderPid())
-                .callbackAddress(contractAgreementMessage.getCallbackAddress())
+                .callbackAddress(contractNegotiation.getCallbackAddress())
                 .assigner(contractNegotiation.getAssigner())
                 .state(ContractNegotiationState.AGREED)
                 .role(contractNegotiation.getRole())
@@ -120,41 +202,46 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
                 .lastModifiedBy(contractNegotiation.getLastModifiedBy())
                 .version(contractNegotiation.getVersion())
                 .build();
-        log.info("CONSUMER - updating negotiation with state AGREED");
-        contractNegotiationRepository.save(contractNegotiationAgreed);
-        log.info("CONSUMER - negotiation {} updated with state AGREED", contractNegotiationAgreed.getId());
         log.info("CONSUMER - saving agreement");
         agreementRepository.save(contractAgreementMessage.getAgreement());
         log.info("CONSUMER - agreement {} saved", contractAgreementMessage.getAgreement().getId());
+        log.info("CONSUMER - updating negotiation with state AGREED");
+        contractNegotiationRepository.save(contractNegotiationAgreed);
+        log.info("CONSUMER - negotiation {} updated with state AGREED", contractNegotiationAgreed.getId());
         publisher.publishEvent(AuditEvent.Builder.newInstance()
                 .eventType(AuditEventType.PROTOCOL_NEGOTIATION_AGREED)
                 .description("Contract negotiation agreed")
-                .details(Map.of("consumerPid", contractNegotiationAgreed.getConsumerPid(),
-                        "providerPid", contractNegotiationAgreed.getProviderPid(),
+                .details(Map.of(DSpaceConstants.CONSUMER_PID, contractNegotiationAgreed.getConsumerPid(),
+                        DSpaceConstants.PROVIDER_PID, contractNegotiationAgreed.getProviderPid(),
                         "contractNegotiation", contractNegotiationAgreed,
                         "agreement", contractAgreementMessage.getAgreement(),
                         "role", IConstants.ROLE_CONSUMER))
                 .build());
+
+        return contractNegotiationAgreed;
         // sends verification message to provider
         // TODO add error handling in case not correct
-        if (properties.isAutomaticNegotiation()) {
-            log.debug("Automatic negotiation - processing sending ContractAgreementVerificationMessage");
-            ContractAgreementVerificationMessage verificationMessage = ContractAgreementVerificationMessage.Builder.newInstance()
-                    .consumerPid(contractAgreementMessage.getConsumerPid())
-                    .providerPid(contractAgreementMessage.getProviderPid())
-                    .build();
-            publisher.publishEvent(verificationMessage);
-        } else {
-            log.debug("Sending only 200 if agreement is valid, ContractAgreementVerificationMessage must be manually sent");
-        }
+//        if (properties.isAutomaticNegotiation()) {
+//            log.debug("Automatic negotiation - processing sending ContractAgreementVerificationMessage");
+//            ContractAgreementVerificationMessage verificationMessage = ContractAgreementVerificationMessage.Builder.newInstance()
+//                    .consumerPid(contractAgreementMessage.getConsumerPid())
+//                    .providerPid(contractAgreementMessage.getProviderPid())
+//                    .build();
+//            publisher.publishEvent(verificationMessage);
+//        } else {
+//            log.debug("Sending only 200 if agreement is valid, ContractAgreementVerificationMessage must be manually sent");
+//        }
     }
 
     /**
      * The response body is not specified and clients are not required to process it.
      *
-     * @param contractNegotiationEventMessage
+     * @param contractNegotiationEventMessage - contract negotiation event message
      */
-    public void handleFinalizeEvent(ContractNegotiationEventMessage contractNegotiationEventMessage) {
+    @Override
+    public void handleContractNegotiationEventMessageFinalize(String consumerPid, ContractNegotiationEventMessage contractNegotiationEventMessage) {
+        compareConsumerPids(consumerPid, contractNegotiationEventMessage.getConsumerPid(), contractNegotiationEventMessage.getProviderPid());
+
         if (!contractNegotiationEventMessage.getEventType().equals(ContractNegotiationEventType.FINALIZED)) {
             throw new ContractNegotiationInvalidEventTypeException(
                     "Contract negotiation event message with providerPid " + contractNegotiationEventMessage.getProviderPid() +
@@ -170,7 +257,7 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
         log.info("CONSUMER - saving updated contract negotiation");
         contractNegotiationRepository.save(contractNegotiationUpdated);
 
-        log.debug("Creating polcyEnforcement for agreementId {}", contractNegotiation.getAgreement().getId());
+        log.debug("Creating policy enforcement for agreementId {}", contractNegotiation.getAgreement().getId());
         policyAdministrationPoint.createPolicyEnforcement(contractNegotiation.getAgreement().getId());
         publisher.publishEvent(new InitializeTransferProcess(
                 contractNegotiationUpdated.getCallbackAddress(),
@@ -181,8 +268,8 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
         publisher.publishEvent(AuditEvent.Builder.newInstance()
                 .eventType(AuditEventType.PROTOCOL_NEGOTIATION_FINALIZED)
                 .description("Contract negotiation finalized")
-                .details(Map.of("consumerPid", contractNegotiationUpdated.getConsumerPid(),
-                        "providerPid", contractNegotiationUpdated.getProviderPid(),
+                .details(Map.of(DSpaceConstants.CONSUMER_PID, contractNegotiationUpdated.getConsumerPid(),
+                        DSpaceConstants.PROVIDER_PID, contractNegotiationUpdated.getProviderPid(),
                         "contractNegotiation", contractNegotiationUpdated,
                         "role", IConstants.ROLE_CONSUMER))
                 .build());
@@ -194,7 +281,10 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
      * @param consumerPid                           consumer PID
      * @param contractNegotiationTerminationMessage contract negotiation termination message
      */
-    public void handleTerminationRequest(String consumerPid, ContractNegotiationTerminationMessage contractNegotiationTerminationMessage) {
+    @Override
+    public void handleContractNegotiationTerminationMessage(String consumerPid, ContractNegotiationTerminationMessage contractNegotiationTerminationMessage) {
+        compareConsumerPids(consumerPid, contractNegotiationTerminationMessage.getConsumerPid(), contractNegotiationTerminationMessage.getProviderPid());
+
         ContractNegotiation contractNegotiation = contractNegotiationRepository.findByConsumerPid(consumerPid)
                 .orElseThrow(() -> new ContractNegotiationNotFoundException(
                         "Contract negotiation with providerPid " + contractNegotiationTerminationMessage.getProviderPid() +
@@ -206,14 +296,26 @@ public class ContractNegotiationConsumerService extends BaseProtocolService {
         contractNegotiationRepository.save(contractNegotiationTerminated);
         log.info("Contract Negotiation with id {} set to TERMINATED state", contractNegotiation.getId());
 
-        publisher.publishEvent(contractNegotiationTerminationMessage);
         publisher.publishEvent(AuditEvent.Builder.newInstance()
                 .eventType(AuditEventType.PROTOCOL_NEGOTIATION_TERMINATED)
                 .description("Contract negotiation terminated")
-                .details(Map.of("consumerPid", contractNegotiationTerminated.getConsumerPid(),
-                        "providerPid", contractNegotiationTerminated.getProviderPid(),
+                .details(Map.of(DSpaceConstants.CONSUMER_PID, contractNegotiationTerminated.getConsumerPid(),
+                        DSpaceConstants.PROVIDER_PID, contractNegotiationTerminated.getProviderPid(),
                         "contractNegotiation", contractNegotiationTerminated,
                         "role", IConstants.ROLE_CONSUMER))
                 .build());
+    }
+
+    private void compareConsumerPids(String consumerPid, String consumerPidFromMessage, String providerPidFromMessage) {
+        if (consumerPidFromMessage == null || !consumerPidFromMessage.equals(consumerPid)) {
+            throw new ContractNegotiationNotFoundException(
+                    "The consumerPid in the ContractOfferMessage " + consumerPidFromMessage
+                            + " is different from the one in the path parameter " + consumerPid, consumerPidFromMessage, providerPidFromMessage);
+        }
+    }
+
+    @Override
+    public ContractNegotiation processTCKRequest(TCKContractNegotiationRequest contractNegotiationRequest) {
+        return null;
     }
 }

@@ -52,7 +52,7 @@ public class BucketCredentialsEntity {
     @JsonPOJOBuilder(withPrefix = "")
     public static class Builder {
 
-        private BucketCredentialsEntity bucketCredentials;
+        private final BucketCredentialsEntity bucketCredentials;
 
         private Builder() {
             bucketCredentials = new BucketCredentialsEntity();

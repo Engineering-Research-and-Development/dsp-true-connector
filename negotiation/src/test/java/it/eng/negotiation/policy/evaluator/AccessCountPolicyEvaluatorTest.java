@@ -48,7 +48,7 @@ class AccessCountPolicyEvaluatorTest {
                 .agreementId("agreement-123")
                 .resourceId("resource-123")
                 .userId("user-123")
-                .action(Action.READ)
+                .action(Action.ANONYMIZE)
                 .build();
         
         // Evaluate the policy
@@ -63,7 +63,7 @@ class AccessCountPolicyEvaluatorTest {
 	}
 	
 	@Test
-	public void evaluteAccessCountAllowed_LT() {
+	public void evaluateAccessCountAllowed_LT() {
 		  Policy policy = Policy.Builder.newInstance()
 	                .id("policy-123")
 	                .type(LeftOperand.COUNT)
@@ -80,7 +80,7 @@ class AccessCountPolicyEvaluatorTest {
 	                .resourceId("resource-123")
 	                .userId("user-123")
 	                .attribute(PolicyConstants.CURRENT_COUNT, 2) // Current count
-	                .action(Action.READ)
+	                .action(Action.ANONYMIZE)
 	                .build();
 	        
 	        // Evaluate the policy
@@ -95,7 +95,7 @@ class AccessCountPolicyEvaluatorTest {
 	}
 	
 	@Test
-	public void evaluteAccessCountExceeded_LT() {
+	public void evaluateAccessCountExceeded_LT() {
 		  Policy policy = Policy.Builder.newInstance()
 	                .id("policy-123")
 	                .type(LeftOperand.COUNT)
@@ -112,7 +112,7 @@ class AccessCountPolicyEvaluatorTest {
 	                .resourceId("resource-123")
 	                .userId("user-123")
 	                .attribute(PolicyConstants.CURRENT_COUNT, 3) // Current count
-	                .action(Action.READ)
+	                .action(Action.ANONYMIZE)
 	                .build();
 	        
 	        // Evaluate the policy
@@ -127,7 +127,7 @@ class AccessCountPolicyEvaluatorTest {
 	}
 
 	@Test
-	public void evaluteAccessCountAllowed_LTEQ() {
+	public void evaluateAccessCountAllowed_LTEQ() {
 		  Policy policy = Policy.Builder.newInstance()
 	                .id("policy-123")
 	                .type(LeftOperand.COUNT)
@@ -144,7 +144,7 @@ class AccessCountPolicyEvaluatorTest {
 	                .resourceId("resource-123")
 	                .userId("user-123")
 	                .attribute(PolicyConstants.CURRENT_COUNT, 2) // Current count
-	                .action(Action.READ)
+	                .action(Action.ANONYMIZE)
 	                .build();
 	        
 	        // Evaluate the policy
@@ -159,7 +159,7 @@ class AccessCountPolicyEvaluatorTest {
 	}
 	
 	@Test
-	public void evaluteAccessCountExceeded_LTEQ() {
+	public void evaluateAccessCountExceeded_LTEQ() {
 		  Policy policy = Policy.Builder.newInstance()
 	                .id("policy-123")
 	                .type(LeftOperand.COUNT)
@@ -176,7 +176,7 @@ class AccessCountPolicyEvaluatorTest {
 	                .resourceId("resource-123")
 	                .userId("user-123")
 	                .attribute(PolicyConstants.CURRENT_COUNT, 4) // Current count
-	                .action(Action.READ)
+	                .action(Action.ANONYMIZE)
 	                .build();
 	        
 	        // Evaluate the policy
