@@ -9,6 +9,7 @@ import org.apache.sshd.server.auth.AsyncAuthException;
 import org.apache.sshd.server.auth.pubkey.PublickeyAuthenticator;
 import org.apache.sshd.server.session.ServerSession;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.ssl.NoSuchSslBundleException;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 @Slf4j
 @Qualifier(value = "FTPAuthenticator")
+@ConditionalOnProperty(name = "server.ssl.enabled", havingValue = "true")
 public class FTPAuthenticator implements PublickeyAuthenticator {
 
 	private final GlobalSSLConfiguration sslConfiguration;
@@ -30,7 +32,7 @@ public class FTPAuthenticator implements PublickeyAuthenticator {
 	@Override
 	public boolean authenticate(String username, PublicKey key, ServerSession session) throws AsyncAuthException {
 		boolean isAuthenticated = false;
-		Iterator<String> aliases = null;
+		Iterator<String> aliases;
 		try {
 			aliases = sslConfiguration.getSslBundles().getBundle("connector").getStores().getTrustStore().aliases()
 					.asIterator();
@@ -39,9 +41,9 @@ public class FTPAuthenticator implements PublickeyAuthenticator {
 						sslConfiguration.getSslBundles().getBundle("connector").getStores().getTrustStore().getCertificate(aliases.next()).getPublicKey());
 			}
 		} catch (KeyStoreException e) {
-			log.error("Problem with Truststore: ", e.getMessage());
+			log.error("Problem with Truststore: {}", e.getMessage());
 		} catch (NoSuchSslBundleException e) {
-			log.error("SSL error occurred: ", e.getMessage());;
+			log.error("SSL error occurred: {}", e.getMessage());
 		}
 		return isAuthenticated;
 	}

@@ -95,7 +95,7 @@ public class FTPClientIT {
     @Test
     public void downloadFile_ConnectionFailed(@TempDir Path tempDir) {
         when(ftpConfiguration.getDownloadFolder()).thenReturn(tempDir.toString());
-        assertThrows(NullPointerException.class, () -> ftpClient.downloadArtifact("test1.csv", "localhost", 5555));
+        assertFalse(ftpClient.downloadArtifact("test1.csv", "localhost", 5555));
         assertFalse(checkIfFileIsDownloaded(tempDir + "/test1.csv"));
     }
 

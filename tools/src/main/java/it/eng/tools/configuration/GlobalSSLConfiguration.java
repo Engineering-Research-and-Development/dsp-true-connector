@@ -10,6 +10,7 @@ import java.security.UnrecoverableKeyException;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.ssl.NoSuchSslBundleException;
 import org.springframework.boot.ssl.SslBundles;
 import org.springframework.context.annotation.Configuration;
@@ -19,6 +20,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 @Configuration
+@ConditionalOnProperty(name = "server.ssl.enabled", havingValue = "true")
 @Slf4j
 @Getter
 public class GlobalSSLConfiguration {
@@ -28,7 +30,7 @@ public class GlobalSSLConfiguration {
 	private PublicKey publicKey;
 	private PrivateKey privateKey;
 	private KeyPair keyPair;
-	private String BUNDLE = "connector";
+	private final String BUNDLE = "connector";
 
 	public GlobalSSLConfiguration(SslBundles sslBundles) {
 		super();

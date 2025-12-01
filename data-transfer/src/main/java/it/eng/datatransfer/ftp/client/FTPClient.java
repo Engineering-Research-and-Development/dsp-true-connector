@@ -12,6 +12,7 @@ import org.apache.sshd.client.session.ClientSession;
 import org.apache.sshd.common.keyprovider.KeyIdentityProvider;
 import org.apache.sshd.scp.client.DefaultScpClientCreator;
 import org.apache.sshd.scp.client.ScpClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import it.eng.datatransfer.ftp.configuration.FTPConfiguration;
@@ -25,7 +26,7 @@ public class FTPClient {
 	private final GlobalSSLConfiguration sslConfiguration;
 	private final FTPConfiguration ftpConfiguration;
 	
-	public FTPClient(GlobalSSLConfiguration sslConfiguration, FTPConfiguration ftpConfiguration) {
+	public FTPClient(@Autowired(required = false) GlobalSSLConfiguration sslConfiguration, FTPConfiguration ftpConfiguration) {
 		super();
 		this.sslConfiguration = sslConfiguration;
 		this.ftpConfiguration = ftpConfiguration;
@@ -35,6 +36,13 @@ public class FTPClient {
 	public boolean downloadArtifact(String artifact, String serverHost, int serverPort) {
 		SshClient client = startClient();
 		ClientSession clientSession = startClientSession(client, serverHost, serverPort);
+
+		if (clientSession == null) {
+			log.error("Failed to establish client session - cannot download artifact");
+			client.stop();
+			client.close(false);
+			return false;
+		}
 
 		boolean downloadSuccess = false;
 		Instant start = Instant.now(); // Start time measurement
@@ -64,11 +72,18 @@ public class FTPClient {
 	private SshClient startClient() {
 		log.info("Starting SFTP client...");
 		SshClient client = SshClient.setUpDefaultClient();
-		client.addPublicKeyIdentity(sslConfiguration.getKeyPair());
-		client.addPasswordIdentity(
-				sslConfiguration.getSslBundles().getBundle("connector").getStores().getKeyStorePassword());
-		client.setServerKeyVerifier(new RequiredServerKeyVerifier(sslConfiguration.getPublicKey()));
-		client.setKeyIdentityProvider(KeyIdentityProvider.wrapKeyPairs(sslConfiguration.getKeyPair()));
+		
+		if (sslConfiguration != null) {
+			log.info("Using SSL configuration for SFTP client");
+			client.addPublicKeyIdentity(sslConfiguration.getKeyPair());
+			client.addPasswordIdentity(
+					sslConfiguration.getSslBundles().getBundle("connector").getStores().getKeyStorePassword());
+			client.setServerKeyVerifier(new RequiredServerKeyVerifier(sslConfiguration.getPublicKey()));
+			client.setKeyIdentityProvider(KeyIdentityProvider.wrapKeyPairs(sslConfiguration.getKeyPair()));
+		} else {
+			log.warn("SSL configuration not available - SFTP client will use default configuration without SSL");
+		}
+		
 		client.start();
 		log.info("SFTP client started");
 		return client;
@@ -81,7 +96,11 @@ public class FTPClient {
 			ClientSession clientSession = client
 					.connect(ftpConfiguration.getClientUsername(), serverHost, serverPort)
 					.verify(ftpConfiguration.getDefaultTimeoutSeconds(), TimeUnit.SECONDS).getSession();
-			clientSession.addPublicKeyIdentity(sslConfiguration.getKeyPair());
+			
+			if (sslConfiguration != null) {
+				clientSession.addPublicKeyIdentity(sslConfiguration.getKeyPair());
+			}
+			
 			clientSession.auth().verify(ftpConfiguration.getDefaultTimeoutSeconds(), TimeUnit.SECONDS);
 			log.info("Connection established");
 			return clientSession;

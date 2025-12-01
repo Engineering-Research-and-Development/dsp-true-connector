@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.3-SNAPSHOT] - 01.12.2025.
+
+### Changed
+
+- Conditional GlobalSSLConfiguration creation based on ssl.enabled property (FTP impact)
+
 ## [0.6.0-SNAPSHOT] - 28.11.2025.
 
 ### Added
