@@ -13,9 +13,8 @@ import org.springframework.stereotype.Service;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.ResponseInputStream;
-import software.amazon.awssdk.core.async.AsyncRequestBody;
+import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -91,9 +90,8 @@ public class S3ClientServiceImpl implements S3ClientService {
                         .build();
 
                 log.info("Creating multipart upload for key: {}", destinationS3Properties.get(S3Utils.OBJECT_KEY));
-                S3AsyncClient s3AsyncClient = s3ClientProvider.s3AsyncClient(s3ClientRequest);
-                String uploadId = s3AsyncClient.createMultipartUpload(createMultipartUploadRequest)
-                        .join()
+                S3Client s3Client = s3ClientProvider.s3Client(s3ClientRequest);
+                String uploadId = s3Client.createMultipartUpload(createMultipartUploadRequest)
                         .uploadId();
 
                 log.info("Created multipart upload for key: {} with uploadId: {}", destinationS3Properties.get(S3Utils.OBJECT_KEY), uploadId);
@@ -111,7 +109,7 @@ public class S3ClientServiceImpl implements S3ClientService {
                     // Upload part when accumulator reaches buffer size or on last part
                     if (accumulator.size() >= CHUNK_SIZE) {
                         byte[] partData = accumulator.toByteArray();
-                        String eTag = uploadPart(s3AsyncClient, destinationS3Properties.get(S3Utils.BUCKET_NAME), destinationS3Properties.get(S3Utils.OBJECT_KEY), uploadId, partNumber, partData);
+                        String eTag = uploadPart(s3Client, destinationS3Properties.get(S3Utils.BUCKET_NAME), destinationS3Properties.get(S3Utils.OBJECT_KEY), uploadId, partNumber, partData);
 
                         completedParts.add(CompletedPart.builder()
                                 .partNumber(partNumber)
@@ -126,7 +124,7 @@ public class S3ClientServiceImpl implements S3ClientService {
                 // Upload any remaining data as the last part
                 if (accumulator.size() > 0) {
                     byte[] partData = accumulator.toByteArray();
-                    String eTag = uploadPart(s3AsyncClient, destinationS3Properties.get(S3Utils.BUCKET_NAME), destinationS3Properties.get(S3Utils.OBJECT_KEY), uploadId, partNumber, partData);
+                    String eTag = uploadPart(s3Client, destinationS3Properties.get(S3Utils.BUCKET_NAME), destinationS3Properties.get(S3Utils.OBJECT_KEY), uploadId, partNumber, partData);
 
                     completedParts.add(CompletedPart.builder()
                             .partNumber(partNumber)
@@ -147,8 +145,7 @@ public class S3ClientServiceImpl implements S3ClientService {
                                 .build();
 
                 log.info("Completing multipart upload for key: {} with uploadId: {}", destinationS3Properties.get(S3Utils.OBJECT_KEY), uploadId);
-                return s3AsyncClient.completeMultipartUpload(completeMultipartUploadRequest)
-                        .join()
+                return s3Client.completeMultipartUpload(completeMultipartUploadRequest)
                         .eTag();
 
             } catch (IOException e) {
@@ -319,7 +316,7 @@ public class S3ClientServiceImpl implements S3ClientService {
         }
     }
 
-    private String uploadPart(S3AsyncClient s3AsyncClient, String bucketName, String key, String uploadId,
+    private String uploadPart(S3Client s3Client, String bucketName, String key, String uploadId,
                               int partNumber, byte[] partData) {
         UploadPartRequest uploadPartRequest = UploadPartRequest.builder()
                 .bucket(bucketName)
@@ -328,9 +325,8 @@ public class S3ClientServiceImpl implements S3ClientService {
                 .partNumber(partNumber)
                 .build();
         log.info("Uploading part {} for key: {} with uploadId: {}", partNumber, key, uploadId);
-        return s3AsyncClient.uploadPart(uploadPartRequest,
-                        AsyncRequestBody.fromBytes(partData))
-                .join()
+        return s3Client.uploadPart(uploadPartRequest,
+                        RequestBody.fromBytes(partData))
                 .eTag();
     }
 

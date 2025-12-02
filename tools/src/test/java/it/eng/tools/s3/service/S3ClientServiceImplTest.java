@@ -18,7 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import software.amazon.awssdk.core.ResponseInputStream;
-import software.amazon.awssdk.core.async.AsyncRequestBody;
+import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
@@ -95,15 +95,21 @@ public class S3ClientServiceImplTest {
     void uploadFile_Success(){
         // Arrange
         String expectedETag = "test-etag";
-        when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
-                .thenReturn(CompletableFuture.completedFuture(
-                        CreateMultipartUploadResponse.builder().uploadId("test-upload-id").build()));
-        when(s3AsyncClient.uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class)))
-                .thenReturn(CompletableFuture.completedFuture(
-                        UploadPartResponse.builder().eTag(expectedETag).build()));
-        when(s3AsyncClient.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
-                .thenReturn(CompletableFuture.completedFuture(
-                        CompleteMultipartUploadResponse.builder().eTag(expectedETag).build()));
+//        when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+//                .thenReturn(CompletableFuture.completedFuture(
+//                        CreateMultipartUploadResponse.builder().uploadId("test-upload-id").build()));
+//        when(s3AsyncClient.uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class)))
+//                .thenReturn(CompletableFuture.completedFuture(
+//                        UploadPartResponse.builder().eTag(expectedETag).build()));
+//        when(s3AsyncClient.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+//                .thenReturn(CompletableFuture.completedFuture(
+//                        CompleteMultipartUploadResponse.builder().eTag(expectedETag).build()));
+        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+                .thenReturn(CreateMultipartUploadResponse.builder().uploadId("test-upload-id").build());
+        when(s3Client.uploadPart(any(UploadPartRequest.class), any(RequestBody.class)))
+                .thenReturn(UploadPartResponse.builder().eTag(expectedETag).build());
+        when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+                .thenReturn(CompleteMultipartUploadResponse.builder().eTag(expectedETag).build());
 
         // Act
         CompletableFuture<String> result = s3ClientService.uploadFile(
@@ -111,17 +117,19 @@ public class S3ClientServiceImplTest {
 
         // Assert
         assertEquals(expectedETag, result.join());
-        verify(s3AsyncClient).createMultipartUpload(any(CreateMultipartUploadRequest.class));
-        verify(s3AsyncClient).completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
+        verify(s3Client).createMultipartUpload(any(CreateMultipartUploadRequest.class));
+        verify(s3Client).completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
     }
 
     @Test
     @DisplayName("Should throw exception when upload fails")
     void uploadFile_UploadFails() {
         // Arrange
-        when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
-                .thenReturn(CompletableFuture.failedFuture(
-                        S3Exception.builder().message("Upload failed").build()));
+//        when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+//                .thenReturn(CompletableFuture.failedFuture(
+//                        S3Exception.builder().message("Upload failed").build()));
+        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+                .thenThrow(S3Exception.builder().message("Upload failed").build());
 
         // Act & Assert
         CompletableFuture<String> result = s3ClientService.uploadFile(
