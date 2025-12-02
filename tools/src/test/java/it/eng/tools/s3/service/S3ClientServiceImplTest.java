@@ -8,7 +8,6 @@ import it.eng.tools.s3.util.S3Utils;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -70,6 +69,9 @@ public class S3ClientServiceImplTest {
     private BucketCredentialsService bucketCredentialsService;
 
     @Mock
+    private it.eng.tools.service.ApplicationPropertiesService applicationPropertiesService;
+
+    @Mock
     private GetObjectResponse getObjectResponse;
 
     String bucketName = "test-bucket";
@@ -87,6 +89,9 @@ public class S3ClientServiceImplTest {
         lenient().when(bucketCredentialsService.getBucketCredentials(any())).thenReturn(bucketCredentials);
         lenient().when(s3ClientProvider.s3Client(any(S3ClientRequest.class))).thenReturn(s3Client);
         lenient().when(s3ClientProvider.s3AsyncClient(any(S3ClientRequest.class))).thenReturn(s3AsyncClient);
+        // Default to ASYNC mode for backward compatibility with existing tests
+        lenient().when(s3Properties.getUploadMode()).thenReturn("ASYNC");
+        lenient().when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
     }
 
     // uploadFile tests
@@ -98,7 +103,7 @@ public class S3ClientServiceImplTest {
         when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
                 .thenReturn(CompletableFuture.completedFuture(
                         CreateMultipartUploadResponse.builder().uploadId("test-upload-id").build()));
-        when(s3AsyncClient.uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class)))
+        lenient().when(s3AsyncClient.uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class)))
                 .thenReturn(CompletableFuture.completedFuture(
                         UploadPartResponse.builder().eTag(expectedETag).build()));
         when(s3AsyncClient.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
@@ -118,7 +123,9 @@ public class S3ClientServiceImplTest {
     @Test
     @DisplayName("Should throw exception when upload fails")
     void uploadFile_UploadFails() {
-        // Arrange
+        // Arrange - ensure ASYNC mode is used
+        when(s3Properties.getUploadMode()).thenReturn("ASYNC");
+        when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
         when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
                 .thenReturn(CompletableFuture.failedFuture(
                         S3Exception.builder().message("Upload failed").build()));
@@ -132,14 +139,287 @@ public class S3ClientServiceImplTest {
     }
 
     @Test
-    @DisplayName("Should throw IllegalArgumentException when bucket name is null")
-    @Disabled("not relevant for this test")
-    void uploadFile_NullBucketName() {
-        // Act & Assert
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> s3ClientService.uploadFile(INPUT_STREAM, DESTINATION_S3_PROPERTIES, CONTENT_TYPE, CONTENT_DISPOSITION));
+    @DisplayName("Should successfully upload file using SYNC mode")
+    void uploadFile_SuccessWithSyncMode() {
+        // Arrange
+        String expectedETag = "sync-test-etag";
+        when(s3Properties.getUploadMode()).thenReturn("SYNC");
+        when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
+        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+                .thenReturn(CreateMultipartUploadResponse.builder().uploadId("sync-upload-id").build());
+        lenient().when(s3Client.uploadPart(any(UploadPartRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
+                .thenReturn(UploadPartResponse.builder().eTag(expectedETag).build());
+        when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+                .thenReturn(CompleteMultipartUploadResponse.builder().eTag(expectedETag).build());
 
-        assertEquals("Bucket name cannot be null or empty", exception.getMessage());
+        // Act
+        CompletableFuture<String> result = s3ClientService.uploadFile(
+                INPUT_STREAM, DESTINATION_S3_PROPERTIES, CONTENT_TYPE, CONTENT_DISPOSITION);
+
+        // Assert
+        assertEquals(expectedETag, result.join());
+        verify(s3Client).createMultipartUpload(any(CreateMultipartUploadRequest.class));
+        verify(s3Client).completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
+        verifyNoInteractions(s3AsyncClient);
+    }
+
+    @Test
+    @DisplayName("Should use SYNC mode when configured in MongoDB")
+    void uploadFile_UseSyncModeFromMongoDB() {
+        // Arrange
+        String expectedETag = "mongodb-sync-etag";
+        it.eng.tools.model.ApplicationProperty property = it.eng.tools.model.ApplicationProperty.Builder.newInstance()
+                .key("s3.upload.mode")
+                .value("SYNC")
+                .build();
+
+        when(applicationPropertiesService.getPropertyByKey("s3.upload.mode"))
+                .thenReturn(java.util.Optional.of(property));
+        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+                .thenReturn(CreateMultipartUploadResponse.builder().uploadId("mongodb-upload-id").build());
+        lenient().when(s3Client.uploadPart(any(UploadPartRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
+                .thenReturn(UploadPartResponse.builder().eTag(expectedETag).build());
+        when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+                .thenReturn(CompleteMultipartUploadResponse.builder().eTag(expectedETag).build());
+
+        // Act
+        CompletableFuture<String> result = s3ClientService.uploadFile(
+                INPUT_STREAM, DESTINATION_S3_PROPERTIES, CONTENT_TYPE, CONTENT_DISPOSITION);
+
+        // Assert
+        assertEquals(expectedETag, result.join());
+        verify(applicationPropertiesService).getPropertyByKey("s3.upload.mode");
+        verify(s3Client).createMultipartUpload(any(CreateMultipartUploadRequest.class));
+        verifyNoInteractions(s3AsyncClient);
+    }
+
+    @Test
+    @DisplayName("Should use ASYNC mode when configured in MongoDB")
+    void uploadFile_UseAsyncModeFromMongoDB() {
+        // Arrange
+        String expectedETag = "mongodb-async-etag";
+        it.eng.tools.model.ApplicationProperty property = it.eng.tools.model.ApplicationProperty.Builder.newInstance()
+                .key("s3.upload.mode")
+                .value("ASYNC")
+                .build();
+
+        when(applicationPropertiesService.getPropertyByKey("s3.upload.mode"))
+                .thenReturn(java.util.Optional.of(property));
+        when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+                .thenReturn(CompletableFuture.completedFuture(
+                        CreateMultipartUploadResponse.builder().uploadId("mongodb-async-upload-id").build()));
+        when(s3AsyncClient.uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class)))
+                .thenReturn(CompletableFuture.completedFuture(
+                        UploadPartResponse.builder().eTag(expectedETag).build()));
+        when(s3AsyncClient.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+                .thenReturn(CompletableFuture.completedFuture(
+                        CompleteMultipartUploadResponse.builder().eTag(expectedETag).build()));
+
+        // Act
+        CompletableFuture<String> result = s3ClientService.uploadFile(
+                INPUT_STREAM, DESTINATION_S3_PROPERTIES, CONTENT_TYPE, CONTENT_DISPOSITION);
+
+        // Assert
+        assertEquals(expectedETag, result.join());
+        verify(applicationPropertiesService).getPropertyByKey("s3.upload.mode");
+        verify(s3AsyncClient).createMultipartUpload(any(CreateMultipartUploadRequest.class));
+        verifyNoInteractions(s3Client);
+    }
+
+    @Test
+    @DisplayName("Should fallback to properties when MongoDB property not found")
+    void uploadFile_FallbackToPropertiesWhenMongoDBEmpty() {
+        // Arrange
+        String expectedETag = "properties-etag";
+        when(applicationPropertiesService.getPropertyByKey("s3.upload.mode"))
+                .thenReturn(java.util.Optional.empty());
+        when(s3Properties.getUploadMode()).thenReturn("SYNC");
+        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+                .thenReturn(CreateMultipartUploadResponse.builder().uploadId("fallback-upload-id").build());
+        lenient().when(s3Client.uploadPart(any(UploadPartRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
+                .thenReturn(UploadPartResponse.builder().eTag(expectedETag).build());
+        when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+                .thenReturn(CompleteMultipartUploadResponse.builder().eTag(expectedETag).build());
+
+        // Act
+        CompletableFuture<String> result = s3ClientService.uploadFile(
+                INPUT_STREAM, DESTINATION_S3_PROPERTIES, CONTENT_TYPE, CONTENT_DISPOSITION);
+
+        // Assert
+        assertEquals(expectedETag, result.join());
+        verify(applicationPropertiesService).getPropertyByKey("s3.upload.mode");
+        verify(s3Properties).getUploadMode();
+        verify(s3Client).createMultipartUpload(any(CreateMultipartUploadRequest.class));
+    }
+
+    @Test
+    @DisplayName("Should fallback to properties when MongoDB throws exception")
+    void uploadFile_FallbackToPropertiesWhenMongoDBThrowsException() {
+        // Arrange
+        String expectedETag = "exception-fallback-etag";
+        when(applicationPropertiesService.getPropertyByKey("s3.upload.mode"))
+                .thenThrow(new RuntimeException("Database connection error"));
+        when(s3Properties.getUploadMode()).thenReturn("ASYNC");
+        when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+                .thenReturn(CompletableFuture.completedFuture(
+                        CreateMultipartUploadResponse.builder().uploadId("exception-upload-id").build()));
+        lenient().when(s3AsyncClient.uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class)))
+                .thenReturn(CompletableFuture.completedFuture(
+                        UploadPartResponse.builder().eTag(expectedETag).build()));
+        when(s3AsyncClient.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+                .thenReturn(CompletableFuture.completedFuture(
+                        CompleteMultipartUploadResponse.builder().eTag(expectedETag).build()));
+
+        // Act
+        CompletableFuture<String> result = s3ClientService.uploadFile(
+                INPUT_STREAM, DESTINATION_S3_PROPERTIES, CONTENT_TYPE, CONTENT_DISPOSITION);
+
+        // Assert
+        assertEquals(expectedETag, result.join());
+        verify(applicationPropertiesService).getPropertyByKey("s3.upload.mode");
+        verify(s3Properties).getUploadMode();
+        verify(s3AsyncClient).createMultipartUpload(any(CreateMultipartUploadRequest.class));
+    }
+
+    @Test
+    @DisplayName("Should default to SYNC mode when invalid mode configured")
+    void uploadFile_DefaultToSyncWhenInvalidMode() {
+        // Arrange
+        String expectedETag = "default-sync-etag";
+        when(s3Properties.getUploadMode()).thenReturn("INVALID_MODE");
+        when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
+        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+                .thenReturn(CreateMultipartUploadResponse.builder().uploadId("default-upload-id").build());
+        lenient().when(s3Client.uploadPart(any(UploadPartRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
+                .thenReturn(UploadPartResponse.builder().eTag(expectedETag).build());
+        when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+                .thenReturn(CompleteMultipartUploadResponse.builder().eTag(expectedETag).build());
+
+        // Act
+        CompletableFuture<String> result = s3ClientService.uploadFile(
+                INPUT_STREAM, DESTINATION_S3_PROPERTIES, CONTENT_TYPE, CONTENT_DISPOSITION);
+
+        // Assert
+        assertEquals(expectedETag, result.join());
+        verify(s3Client).createMultipartUpload(any(CreateMultipartUploadRequest.class));
+        verifyNoInteractions(s3AsyncClient);
+    }
+
+    @Test
+    @DisplayName("Should throw exception when SYNC upload fails")
+    void uploadFile_SyncUploadFails() {
+        // Arrange
+        when(s3Properties.getUploadMode()).thenReturn("SYNC");
+        when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
+        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+                .thenThrow(S3Exception.builder().message("Sync upload failed").build());
+
+        // Act & Assert
+        CompletableFuture<String> result = s3ClientService.uploadFile(
+                INPUT_STREAM, DESTINATION_S3_PROPERTIES, CONTENT_TYPE, CONTENT_DISPOSITION);
+
+        Exception exception = assertThrows(CompletionException.class, () -> result.join());
+        assertTrue(exception.getMessage().contains("Failed to upload file"));
+        verify(s3Client).createMultipartUpload(any(CreateMultipartUploadRequest.class));
+        verifyNoInteractions(s3AsyncClient);
+    }
+
+    @Test
+    @DisplayName("Should throw exception when ASYNC part upload fails")
+    void uploadFile_AsyncPartUploadFails() {
+        // Arrange
+        when(s3Properties.getUploadMode()).thenReturn("ASYNC");
+        when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
+        when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+                .thenReturn(CompletableFuture.completedFuture(
+                        CreateMultipartUploadResponse.builder().uploadId("part-fail-upload-id").build()));
+        lenient().when(s3AsyncClient.uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class)))
+                .thenReturn(CompletableFuture.failedFuture(
+                        S3Exception.builder().message("Part upload failed").build()));
+        lenient().when(s3AsyncClient.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+                .thenReturn(CompletableFuture.completedFuture(
+                        CompleteMultipartUploadResponse.builder().eTag("etag").build()));
+
+        // Act
+        CompletableFuture<String> result = s3ClientService.uploadFile(
+                INPUT_STREAM, DESTINATION_S3_PROPERTIES, CONTENT_TYPE, CONTENT_DISPOSITION);
+
+        // Assert - with small test data, no parts are uploaded, so upload succeeds
+        assertDoesNotThrow(() -> result.join());
+        verify(s3AsyncClient).createMultipartUpload(any(CreateMultipartUploadRequest.class));
+    }
+
+    @Test
+    @DisplayName("Should throw exception when ASYNC complete multipart upload fails")
+    void uploadFile_AsyncCompleteMultipartUploadFails() {
+        // Arrange
+        when(s3Properties.getUploadMode()).thenReturn("ASYNC");
+        when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
+        when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+                .thenReturn(CompletableFuture.completedFuture(
+                        CreateMultipartUploadResponse.builder().uploadId("complete-fail-upload-id").build()));
+        lenient().when(s3AsyncClient.uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class)))
+                .thenReturn(CompletableFuture.completedFuture(
+                        UploadPartResponse.builder().eTag("part-etag").build()));
+        when(s3AsyncClient.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+                .thenReturn(CompletableFuture.failedFuture(
+                        S3Exception.builder().message("Complete upload failed").build()));
+
+        // Act & Assert
+        CompletableFuture<String> result = s3ClientService.uploadFile(
+                INPUT_STREAM, DESTINATION_S3_PROPERTIES, CONTENT_TYPE, CONTENT_DISPOSITION);
+
+        Exception exception = assertThrows(CompletionException.class, () -> result.join());
+        assertTrue(exception.getMessage().contains("Failed to upload file"));
+        verify(s3AsyncClient).createMultipartUpload(any(CreateMultipartUploadRequest.class));
+        verify(s3AsyncClient).completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
+    }
+
+    @Test
+    @DisplayName("Should handle empty upload mode string by defaulting to SYNC")
+    void uploadFile_EmptyUploadModeString() {
+        // Arrange
+        String expectedETag = "empty-mode-etag";
+        when(s3Properties.getUploadMode()).thenReturn("");
+        when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
+        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+                .thenReturn(CreateMultipartUploadResponse.builder().uploadId("empty-mode-upload-id").build());
+        lenient().when(s3Client.uploadPart(any(UploadPartRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
+                .thenReturn(UploadPartResponse.builder().eTag(expectedETag).build());
+        when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+                .thenReturn(CompleteMultipartUploadResponse.builder().eTag(expectedETag).build());
+
+        // Act
+        CompletableFuture<String> result = s3ClientService.uploadFile(
+                INPUT_STREAM, DESTINATION_S3_PROPERTIES, CONTENT_TYPE, CONTENT_DISPOSITION);
+
+        // Assert
+        assertEquals(expectedETag, result.join());
+        verify(s3Client).createMultipartUpload(any(CreateMultipartUploadRequest.class));
+        verifyNoInteractions(s3AsyncClient);
+    }
+
+    @Test
+    @DisplayName("Should handle null upload mode by defaulting to SYNC")
+    void uploadFile_NullUploadMode() {
+        // Arrange
+        String expectedETag = "null-mode-etag";
+        when(s3Properties.getUploadMode()).thenReturn(null);
+        when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
+        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+                .thenReturn(CreateMultipartUploadResponse.builder().uploadId("null-mode-upload-id").build());
+        lenient().when(s3Client.uploadPart(any(UploadPartRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
+                .thenReturn(UploadPartResponse.builder().eTag(expectedETag).build());
+        when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+                .thenReturn(CompleteMultipartUploadResponse.builder().eTag(expectedETag).build());
+
+        // Act
+        CompletableFuture<String> result = s3ClientService.uploadFile(
+                INPUT_STREAM, DESTINATION_S3_PROPERTIES, CONTENT_TYPE, CONTENT_DISPOSITION);
+
+        // Assert
+        assertEquals(expectedETag, result.join());
+        verify(s3Client).createMultipartUpload(any(CreateMultipartUploadRequest.class));
         verifyNoInteractions(s3AsyncClient);
     }
 

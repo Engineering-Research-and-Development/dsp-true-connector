@@ -72,7 +72,7 @@ class GlobalSSLConfigurationTest {
 
     @BeforeEach
     void setUp() throws NoSuchSslBundleException, KeyStoreException, UnrecoverableKeyException, NoSuchAlgorithmException {
-        // Setup mocks with lenient stubbings to avoid UnnecessaryStubbingException
+        // Setup mocks with lenient stubbing to avoid UnnecessaryStubbingException
         Mockito.lenient().when(sslBundles.getBundle("connector")).thenReturn(sslBundle);
         Mockito.lenient().when(sslBundle.createSslContext()).thenReturn(sslContext);
         Mockito.lenient().when(sslContext.getSocketFactory()).thenReturn(socketFactory);
@@ -86,7 +86,7 @@ class GlobalSSLConfigurationTest {
         Mockito.lenient().when(keyStore.getKey(anyString(), any(char[].class))).thenReturn(privateKey);
         
         // Create configuration instance after mocks are set up
-        configuration = new GlobalSSLConfiguration(sslBundles);
+        configuration = new GlobalSSLConfiguration(sslBundles, true);
     }
 
     @Test

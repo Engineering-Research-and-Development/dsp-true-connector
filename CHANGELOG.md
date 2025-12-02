@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [0.6.3-SNAPSHOT] - 01.12.2025.
 
+### Added
+
+- Logic for deciding which S3 client to use - synchronous or asynchronous based on s3.upload.mode property 
+or ApplicationProperty in Mongo
+
 ### Changed
 
 - Conditional GlobalSSLConfiguration creation based on ssl.enabled property (FTP impact)

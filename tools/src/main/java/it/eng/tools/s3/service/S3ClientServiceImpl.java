@@ -3,8 +3,10 @@ package it.eng.tools.s3.service;
 import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.model.S3ClientRequest;
+import it.eng.tools.s3.model.S3UploadMode;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.util.S3Utils;
+import it.eng.tools.service.ApplicationPropertiesService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -43,8 +45,10 @@ public class S3ClientServiceImpl implements S3ClientService {
     private final S3ClientProvider s3ClientProvider;
     private final S3Properties s3Properties;
     private final BucketCredentialsService bucketCredentialsService;
+    private final ApplicationPropertiesService applicationPropertiesService;
 
     private static final int CHUNK_SIZE = 50 * 1024 * 1024; // 50MB chunks
+    private static final String S3_UPLOAD_MODE_PROPERTY_KEY = "s3.upload.mode";
 
     /**
      * Constructor for S3ClientServiceImpl.
@@ -52,13 +56,16 @@ public class S3ClientServiceImpl implements S3ClientService {
      * @param s3ClientProvider         provider for S3 client (sync and async)
      * @param s3Properties             the S3 properties
      * @param bucketCredentialsService service for managing bucket credentials
+     * @param applicationPropertiesService service for reading application properties from MongoDB
      */
     public S3ClientServiceImpl(S3ClientProvider s3ClientProvider,
                                S3Properties s3Properties,
-                               BucketCredentialsService bucketCredentialsService) {
+                               BucketCredentialsService bucketCredentialsService,
+                               ApplicationPropertiesService applicationPropertiesService) {
         this.s3ClientProvider = s3ClientProvider;
         this.s3Properties = s3Properties;
         this.bucketCredentialsService = bucketCredentialsService;
+        this.applicationPropertiesService = applicationPropertiesService;
     }
 
     @Override
@@ -66,7 +73,6 @@ public class S3ClientServiceImpl implements S3ClientService {
                                                 Map<String, String> destinationS3Properties,
                                                 String contentType,
                                                 String contentDisposition) {
-
 
         BucketCredentialsEntity bucketCredentials = BucketCredentialsEntity.Builder.newInstance()
                     .bucketName(destinationS3Properties.get(S3Utils.BUCKET_NAME))
@@ -77,15 +83,207 @@ public class S3ClientServiceImpl implements S3ClientService {
         String bucketName = destinationS3Properties.get(S3Utils.BUCKET_NAME);
         String objectKey = destinationS3Properties.get(S3Utils.OBJECT_KEY);
 
-        log.info("Uploading file {} to bucket {}", objectKey, bucketName);
+        // Determine upload mode from configuration
+        S3UploadMode uploadMode = getUploadMode();
 
-        S3ClientRequest s3ClientRequest = S3ClientRequest.from(destinationS3Properties.get(S3Utils.REGION),
+        log.info("Uploading file {} to bucket {} using {} mode", objectKey, bucketName, uploadMode);
+
+        S3ClientRequest s3ClientRequest = S3ClientRequest.from(
+                destinationS3Properties.get(S3Utils.REGION),
                 destinationS3Properties.get(S3Utils.ENDPOINT_OVERRIDE),
                 bucketCredentials);
 
+        // Delegate to appropriate implementation based on upload mode
+        if (uploadMode == S3UploadMode.ASYNC) {
+            return uploadFileAsync(inputStream, s3ClientRequest, bucketName, objectKey, contentType, contentDisposition);
+        } else {
+            return uploadFileSync(inputStream, s3ClientRequest, bucketName, objectKey, contentType, contentDisposition);
+        }
+    }
+
+    /**
+     * Determines the S3 upload mode from configuration.
+     * Priority: 1. MongoDB property, 2. application.properties, 3. default (SYNC)
+     *
+     * @return the configured S3UploadMode
+     */
+    private S3UploadMode getUploadMode() {
+        try {
+            // First, try to get from MongoDB
+            return applicationPropertiesService.getPropertyByKey(S3_UPLOAD_MODE_PROPERTY_KEY)
+                    .map(property -> {
+                        String value = property.getValue();
+                        log.debug("Using S3 upload mode from MongoDB: {}", value);
+                        return S3UploadMode.fromString(value);
+                    })
+                    .orElseGet(() -> {
+                        // Fall back to application.properties
+                        String value = s3Properties.getUploadMode();
+                        log.debug("Using S3 upload mode from application.properties: {}", value);
+                        return S3UploadMode.fromString(value);
+                    });
+        } catch (Exception e) {
+            // If any error occurs, fall back to application.properties or default
+            log.warn("Error reading upload mode from MongoDB, falling back to application.properties: {}", e.getMessage());
+            return S3UploadMode.fromString(s3Properties.getUploadMode());
+        }
+    }
+
+    /**
+     * Uploads file using synchronous S3Client.
+     * More compatible with Minio behind reverse proxies like Caddy.
+     *
+     * @param inputStream        the input stream to upload
+     * @param s3ClientRequest    the S3 client request configuration
+     * @param bucketName         the bucket name
+     * @param objectKey          the object key
+     * @param contentType        the content type
+     * @param contentDisposition the content disposition
+     * @return a CompletableFuture with the ETag
+     */
+    private CompletableFuture<String> uploadFileSync(InputStream inputStream,
+                                                     S3ClientRequest s3ClientRequest,
+                                                     String bucketName,
+                                                     String objectKey,
+                                                     String contentType,
+                                                     String contentDisposition) {
+        return CompletableFuture.supplyAsync(() -> {
+            S3Client s3Client = s3ClientProvider.s3Client(s3ClientRequest);
+
+            try {
+                log.info("Creating multipart upload (SYNC) for key: {}", objectKey);
+
+                CreateMultipartUploadRequest createRequest = CreateMultipartUploadRequest.builder()
+                        .bucket(bucketName)
+                        .contentType(contentType)
+                        .contentDisposition(contentDisposition)
+                        .key(objectKey)
+                        .build();
+
+                CreateMultipartUploadResponse createResponse = s3Client.createMultipartUpload(createRequest);
+                String uploadId = createResponse.uploadId();
+
+                log.info("Created multipart upload (SYNC) for key: {} with uploadId: {}", objectKey, uploadId);
+
+                List<CompletedPart> completedParts = new ArrayList<>();
+                int partNumber = 1;
+                byte[] buffer = new byte[CHUNK_SIZE];
+                int bytesRead;
+                ByteArrayOutputStream accumulator = new ByteArrayOutputStream();
+
+                while ((bytesRead = inputStream.read(buffer)) > 0) {
+                    accumulator.write(buffer, 0, bytesRead);
+
+                    if (accumulator.size() >= CHUNK_SIZE) {
+                        byte[] partData = accumulator.toByteArray();
+                        CompletedPart part = uploadPartSync(s3Client, bucketName, objectKey, uploadId, partNumber, partData);
+                        completedParts.add(part);
+                        partNumber++;
+                        accumulator.reset();
+                    }
+                }
+
+                if (accumulator.size() > 0) {
+                    byte[] partData = accumulator.toByteArray();
+                    CompletedPart part = uploadPartSync(s3Client, bucketName, objectKey, uploadId, partNumber, partData);
+                    completedParts.add(part);
+                }
+
+                log.info("All {} parts uploaded successfully (SYNC) for key: {}", completedParts.size(), objectKey);
+
+                CompletedMultipartUpload completedUpload = CompletedMultipartUpload.builder()
+                        .parts(completedParts)
+                        .build();
+
+                CompleteMultipartUploadRequest completeRequest = CompleteMultipartUploadRequest.builder()
+                        .bucket(bucketName)
+                        .key(objectKey)
+                        .uploadId(uploadId)
+                        .multipartUpload(completedUpload)
+                        .build();
+
+                log.info("Completing multipart upload (SYNC) for key: {} with uploadId: {}", objectKey, uploadId);
+
+                CompleteMultipartUploadResponse completeResponse = s3Client.completeMultipartUpload(completeRequest);
+                String eTag = completeResponse.eTag();
+
+                log.info("Upload completed successfully (SYNC) for key: {} with ETag: {}", objectKey, eTag);
+
+                return eTag;
+
+            } catch (IOException e) {
+                log.error("Failed to upload file (SYNC) {}: {}", objectKey, e.getMessage());
+                throw new CompletionException("Failed to upload file", e);
+            } catch (Exception e) {
+                log.error("Failed to upload file (SYNC) {}: {}", objectKey, e.getMessage());
+                throw new CompletionException("Failed to upload file", e);
+            } finally {
+                try {
+                    inputStream.close();
+                } catch (IOException e) {
+                    log.error("Failed to close input stream: {}", e.getMessage());
+                }
+            }
+        });
+    }
+
+    /**
+     * Uploads a single part synchronously using S3Client.
+     *
+     * @param s3Client   the S3 client
+     * @param bucketName the bucket name
+     * @param objectKey  the object key
+     * @param uploadId   the upload ID
+     * @param partNumber the part number
+     * @param partData   the part data
+     * @return the completed part
+     */
+    private CompletedPart uploadPartSync(S3Client s3Client,
+                                        String bucketName,
+                                        String objectKey,
+                                        String uploadId,
+                                        int partNumber,
+                                        byte[] partData) {
+        UploadPartRequest uploadPartRequest = UploadPartRequest.builder()
+                .bucket(bucketName)
+                .key(objectKey)
+                .uploadId(uploadId)
+                .partNumber(partNumber)
+                .build();
+
+        log.debug("Uploading part {} (SYNC) for key: {} ({} bytes)", partNumber, objectKey, partData.length);
+
+        UploadPartResponse response = s3Client.uploadPart(uploadPartRequest,
+                software.amazon.awssdk.core.sync.RequestBody.fromBytes(partData));
+
+        log.debug("Part {} uploaded successfully (SYNC) with ETag: {}", partNumber, response.eTag());
+
+        return CompletedPart.builder()
+                .partNumber(partNumber)
+                .eTag(response.eTag())
+                .build();
+    }
+
+    /**
+     * Uploads file using asynchronous S3AsyncClient with parallel part uploads.
+     * Faster but may have issues with Minio behind reverse proxies.
+     *
+     * @param inputStream        the input stream to upload
+     * @param s3ClientRequest    the S3 client request configuration
+     * @param bucketName         the bucket name
+     * @param objectKey          the object key
+     * @param contentType        the content type
+     * @param contentDisposition the content disposition
+     * @return a CompletableFuture with the ETag
+     */
+    private CompletableFuture<String> uploadFileAsync(InputStream inputStream,
+                                                      S3ClientRequest s3ClientRequest,
+                                                      String bucketName,
+                                                      String objectKey,
+                                                      String contentType,
+                                                      String contentDisposition) {
         S3AsyncClient s3AsyncClient = s3ClientProvider.s3AsyncClient(s3ClientRequest);
 
-        // Step 1: Create multipart upload asynchronously
         CreateMultipartUploadRequest createMultipartUploadRequest = CreateMultipartUploadRequest.builder()
                 .bucket(bucketName)
                 .contentType(contentType)
@@ -93,12 +291,12 @@ public class S3ClientServiceImpl implements S3ClientService {
                 .key(objectKey)
                 .build();
 
-        log.info("Creating multipart upload for key: {}", objectKey);
+        log.info("Creating multipart upload (ASYNC) for key: {}", objectKey);
 
         return s3AsyncClient.createMultipartUpload(createMultipartUploadRequest)
                 .thenComposeAsync(response -> {
                     String uploadId = response.uploadId();
-                    log.info("Created multipart upload for key: {} with uploadId: {}", objectKey, uploadId);
+                    log.info("Created multipart upload (ASYNC) for key: {} with uploadId: {}", objectKey, uploadId);
 
                     // Step 2: Read stream and upload parts in parallel
                     return uploadPartsAsync(inputStream, s3AsyncClient, bucketName, objectKey, uploadId);
@@ -113,7 +311,7 @@ public class S3ClientServiceImpl implements S3ClientService {
                             uploadResult.completedParts());
                 })
                 .exceptionally(throwable -> {
-                    log.error("Failed to upload file {}: {}", objectKey, throwable.getMessage());
+                    log.error("Failed to upload file (ASYNC) {}: {}", objectKey, throwable.getMessage());
                     throw new CompletionException("Failed to upload file", throwable);
                 })
                 .whenComplete((result, throwable) -> {

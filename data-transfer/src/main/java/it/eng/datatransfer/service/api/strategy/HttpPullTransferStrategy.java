@@ -51,10 +51,9 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
     private CompletableFuture<String> downloadAndUploadToS3(String presignedUrl,
                                                             String authorization,
                                                             String key) {
-        HttpURLConnection connection;
         try {
             URL url = new URL(presignedUrl);
-            connection = (HttpURLConnection) url.openConnection();
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
             // Configure connection
             connection.setRequestMethod("GET");
@@ -62,6 +61,13 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
             connection.setReadTimeout(DEFAULT_TIMEOUT);
             if (StringUtils.isNotBlank(authorization)) {
                 connection.setRequestProperty(HttpHeaders.AUTHORIZATION, authorization);
+            }
+
+            // Log connection type for debugging
+            if (connection instanceof javax.net.ssl.HttpsURLConnection) {
+                log.debug("Using HTTPS connection to: {}", presignedUrl);
+            } else {
+                log.debug("Using HTTP connection to: {}", presignedUrl);
             }
 
             // Check if the request was successful
@@ -92,7 +98,7 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
                     contentDisposition
             );
         } catch (IOException e) {
-            log.error("Failed to download stream", e);
+            log.error("Failed to download stream from URL: {}", presignedUrl, e);
             throw new DataTransferAPIException(e.getMessage());
         }
     }

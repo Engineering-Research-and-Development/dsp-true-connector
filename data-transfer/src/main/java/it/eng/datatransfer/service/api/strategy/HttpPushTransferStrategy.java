@@ -46,15 +46,21 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
     }
 
     private CompletableFuture<String> transfer(String presignedUrl, Map<String, String> destinationS3Properties) {
-        HttpURLConnection connection;
         try {
             URL url = new URL(presignedUrl);
-            connection = (HttpURLConnection) url.openConnection();
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
             // Configure connection
             connection.setRequestMethod("GET");
             connection.setConnectTimeout(DEFAULT_TIMEOUT);
             connection.setReadTimeout(DEFAULT_TIMEOUT);
+
+            // Log connection type for debugging
+            if (connection instanceof javax.net.ssl.HttpsURLConnection) {
+                log.debug("Using HTTPS connection to: {}", presignedUrl);
+            } else {
+                log.debug("Using HTTP connection to: {}", presignedUrl);
+            }
 
             // Check if the request was successful
             int responseCode = connection.getResponseCode();
@@ -72,7 +78,7 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
                     connection.getContentType(),
                     connection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION));
         } catch (IOException e) {
-            log.error("Failed to download stream", e);
+            log.error("Failed to download stream from URL: {}", presignedUrl, e);
             throw new DataTransferAPIException(e.getMessage());
         }
     }
