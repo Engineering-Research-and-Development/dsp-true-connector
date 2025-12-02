@@ -8,12 +8,21 @@ import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.security.GeneralSecurityException;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -26,11 +35,14 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
     private final S3Properties s3Properties;
     private final S3ClientService s3ClientService;
     private static final int DEFAULT_TIMEOUT = 10000; // 10 seconds
+    private final boolean serverSslEnabled;
 
     public HttpPushTransferStrategy(S3Properties s3Properties,
-                                    S3ClientService s3ClientService) {
+                                    S3ClientService s3ClientService,
+                                    @Value("${server.ssl.enabled:false}") boolean serverSslEnabled) {
         this.s3Properties = s3Properties;
         this.s3ClientService = s3ClientService;
+        this.serverSslEnabled = serverSslEnabled;
     }
 
     @Override
@@ -50,6 +62,11 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
         try {
             URL url = new URL(presignedUrl);
             connection = (HttpURLConnection) url.openConnection();
+
+            if (!serverSslEnabled && connection instanceof HttpsURLConnection httpsURLConnection) {
+                log.warn("server.ssl.enabled=false - trusting all certificates for presigned URL download");
+                configureTrustAllCertificates(httpsURLConnection);
+            }
 
             // Configure connection
             connection.setRequestMethod("GET");
@@ -71,9 +88,37 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
                     destinationS3Properties,
                     connection.getContentType(),
                     connection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION));
-        } catch (IOException e) {
+        } catch (IOException | GeneralSecurityException e) {
             log.error("Failed to download stream", e);
             throw new DataTransferAPIException(e.getMessage());
         }
+    }
+
+    private void configureTrustAllCertificates(HttpsURLConnection httpsURLConnection) throws GeneralSecurityException {
+        TrustManager[] trustAllCerts = new TrustManager[]{
+                new X509TrustManager() {
+                    @Override
+                    public void checkClientTrusted(X509Certificate[] chain, String authType) {
+                        // Trust all client certificates
+                    }
+
+                    @Override
+                    public void checkServerTrusted(X509Certificate[] chain, String authType) {
+                        // Trust all server certificates
+                    }
+
+                    @Override
+                    public X509Certificate[] getAcceptedIssuers() {
+                        return new X509Certificate[0];
+                    }
+                }
+        };
+
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        sslContext.init(null, trustAllCerts, new SecureRandom());
+
+        HostnameVerifier trustAllHostnames = (hostname, session) -> true;
+        httpsURLConnection.setSSLSocketFactory(sslContext.getSocketFactory());
+        httpsURLConnection.setHostnameVerifier(trustAllHostnames);
     }
 }

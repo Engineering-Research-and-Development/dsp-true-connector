@@ -31,7 +31,7 @@ public class OkHttpRestClient {
 	private static final String ATTACHMENT_FILENAME = "attachment;filename=";
 
 	public OkHttpRestClient(OkHttpClient okHttpClient, CredentialUtils credentialUtils,
-			@Value("${server.port}") String serverPort, @Value("${server.ssl.enabled}") boolean sslEnabled) {
+			@Value("${server.port}") String serverPort, @Value("${server.ssl.enabled:false}") boolean sslEnabled) {
 		this.okHttpClient = okHttpClient;
 		this.credentialUtils = credentialUtils;
 		this.serverPort = serverPort;

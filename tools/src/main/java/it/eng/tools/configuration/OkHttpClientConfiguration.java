@@ -29,7 +29,7 @@ public class OkHttpClientConfiguration {
 
 	private final OcspTrustManagerFactory ocspTrustManagerFactory;
 	private final boolean isSSLEnabled;
-	
+
 	public OkHttpClientConfiguration(OcspTrustManagerFactory ocspTrustManagerFactory,
 									 @Value("${server.ssl.enabled:false}") boolean isSSLEnabled) {
 		super();

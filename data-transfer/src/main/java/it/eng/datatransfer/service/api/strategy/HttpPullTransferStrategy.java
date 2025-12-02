@@ -10,12 +10,21 @@ import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.security.GeneralSecurityException;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -27,10 +36,14 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
     private final S3ClientService s3ClientService;
     private final S3Properties s3Properties;
     private static final int DEFAULT_TIMEOUT = 10000; // 10 seconds
+    private final boolean serverSslEnabled;
 
-    public HttpPullTransferStrategy(S3ClientService s3ClientService, S3Properties s3Properties) {
+    public HttpPullTransferStrategy(S3ClientService s3ClientService,
+                                    S3Properties s3Properties,
+                                    @Value("${server.ssl.enabled:false}") boolean serverSslEnabled) {
         this.s3ClientService = s3ClientService;
         this.s3Properties = s3Properties;
+        this.serverSslEnabled = serverSslEnabled;
     }
 
     @Override
@@ -55,6 +68,11 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
         try {
             URL url = new URL(presignedUrl);
             connection = (HttpURLConnection) url.openConnection();
+
+            if (!serverSslEnabled && connection instanceof HttpsURLConnection httpsURLConnection) {
+                log.warn("server.ssl.enabled=false - trusting all certificates for HTTP pull download");
+                configureTrustAllCertificates(httpsURLConnection);
+            }
 
             // Configure connection
             connection.setRequestMethod("GET");
@@ -91,10 +109,38 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
                     contentType,
                     contentDisposition
             );
-        } catch (IOException e) {
+        } catch (IOException | GeneralSecurityException e) {
             log.error("Failed to download stream", e);
             throw new DataTransferAPIException(e.getMessage());
         }
+    }
+
+    private void configureTrustAllCertificates(HttpsURLConnection httpsURLConnection) throws GeneralSecurityException {
+        TrustManager[] trustAllCerts = new TrustManager[]{
+                new X509TrustManager() {
+                    @Override
+                    public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) {
+                        // Trust all client certificates
+                    }
+
+                    @Override
+                    public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) {
+                        // Trust all server certificates
+                    }
+
+                    @Override
+                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                        return new X509Certificate[0];
+                    }
+                }
+        };
+
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        sslContext.init(null, trustAllCerts, new SecureRandom());
+
+        HostnameVerifier trustAllHostnames = (hostname, session) -> true;
+        httpsURLConnection.setSSLSocketFactory(sslContext.getSocketFactory());
+        httpsURLConnection.setHostnameVerifier(trustAllHostnames);
     }
 
     private String extractAuthorization(TransferProcess transferProcess) {
