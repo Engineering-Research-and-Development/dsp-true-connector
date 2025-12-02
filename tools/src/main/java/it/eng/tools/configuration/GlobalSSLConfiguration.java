@@ -1,22 +1,15 @@
 package it.eng.tools.configuration;
 
-import java.security.KeyPair;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.UnrecoverableKeyException;
-
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-
+import jakarta.annotation.PostConstruct;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ssl.NoSuchSslBundleException;
 import org.springframework.boot.ssl.SslBundles;
 import org.springframework.context.annotation.Configuration;
 
-import jakarta.annotation.PostConstruct;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import java.security.*;
 
 @Configuration
 @Slf4j

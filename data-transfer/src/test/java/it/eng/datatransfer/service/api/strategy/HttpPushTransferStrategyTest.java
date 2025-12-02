@@ -8,11 +8,10 @@ import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.util.ToolsUtil;
-import org.bson.types.ObjectId;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -27,7 +26,8 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,7 +40,6 @@ public class HttpPushTransferStrategyTest {
     @Mock
     private HttpURLConnection mockConnection;
 
-    @InjectMocks
     private HttpPushTransferStrategy strategy;
 
     private static final String TEST_DATASET_ID = "test-dataset-id";
@@ -53,6 +52,11 @@ public class HttpPushTransferStrategyTest {
     private static final String TEST_CONTENT = "test-content";
     private static final String TEST_CONTENT_TYPE = "application/json";
     private static final String TEST_CONTENT_DISPOSITION = "attachment; filename=test.json";
+
+    @BeforeEach
+    void setUp() {
+        strategy = new HttpPushTransferStrategy(s3Properties, s3ClientService, false);
+    }
 
     @Test
     @DisplayName("Should execute transfer successfully")

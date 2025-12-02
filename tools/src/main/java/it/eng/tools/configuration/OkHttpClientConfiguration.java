@@ -1,27 +1,25 @@
 package it.eng.tools.configuration;
 
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.concurrent.TimeUnit;
-
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
-
+import it.eng.tools.ssl.ocsp.OcspTrustManagerFactory;
+import lombok.extern.slf4j.Slf4j;
+import okhttp3.ConnectionSpec;
+import okhttp3.OkHttpClient;
+import okhttp3.internal.tls.OkHostnameVerifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ssl.NoSuchSslBundleException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
-import it.eng.tools.ssl.ocsp.OcspTrustManagerFactory;
-import lombok.extern.slf4j.Slf4j;
-import okhttp3.ConnectionSpec;
-import okhttp3.OkHttpClient;
-import okhttp3.internal.tls.OkHostnameVerifier;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.concurrent.TimeUnit;
 
 @Configuration
 @Slf4j

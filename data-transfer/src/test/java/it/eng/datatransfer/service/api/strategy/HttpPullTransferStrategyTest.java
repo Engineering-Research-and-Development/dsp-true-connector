@@ -8,10 +8,10 @@ import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
 import org.bson.types.ObjectId;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -39,7 +39,6 @@ public class HttpPullTransferStrategyTest {
     @Mock
     private HttpURLConnection mockConnection;
 
-    @InjectMocks
     private HttpPullTransferStrategy strategy;
 
     private static final String TEST_BUCKET = "test-bucket";
@@ -50,6 +49,11 @@ public class HttpPullTransferStrategyTest {
     private static final String TEST_REGION = "us-east-1";
     private static final String TEST_ACCESS_KEY = "access-key";
     private static final String TEST_SECRET_KEY = "secret-key";
+
+    @BeforeEach
+    void setUp() {
+        strategy = new HttpPullTransferStrategy(s3ClientService, s3Properties, false);
+    }
 
     @Test
     @DisplayName("Should execute transfer successfully")
