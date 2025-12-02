@@ -74,50 +74,101 @@ public class S3ClientServiceImpl implements S3ClientService {
                     .secretKey(destinationS3Properties.get(S3Utils.SECRET_KEY))
                     .build();
 
-        log.info("Uploading file {} to bucket {}", destinationS3Properties.get(S3Utils.OBJECT_KEY), destinationS3Properties.get(S3Utils.BUCKET_NAME));
+        String bucketName = destinationS3Properties.get(S3Utils.BUCKET_NAME);
+        String objectKey = destinationS3Properties.get(S3Utils.OBJECT_KEY);
+
+        log.info("Uploading file {} to bucket {}", objectKey, bucketName);
 
         S3ClientRequest s3ClientRequest = S3ClientRequest.from(destinationS3Properties.get(S3Utils.REGION),
                 destinationS3Properties.get(S3Utils.ENDPOINT_OVERRIDE),
                 bucketCredentials);
 
+        S3AsyncClient s3AsyncClient = s3ClientProvider.s3AsyncClient(s3ClientRequest);
+
+        // Step 1: Create multipart upload asynchronously
+        CreateMultipartUploadRequest createMultipartUploadRequest = CreateMultipartUploadRequest.builder()
+                .bucket(bucketName)
+                .contentType(contentType)
+                .contentDisposition(contentDisposition)
+                .key(objectKey)
+                .build();
+
+        log.info("Creating multipart upload for key: {}", objectKey);
+
+        return s3AsyncClient.createMultipartUpload(createMultipartUploadRequest)
+                .thenComposeAsync(response -> {
+                    String uploadId = response.uploadId();
+                    log.info("Created multipart upload for key: {} with uploadId: {}", objectKey, uploadId);
+
+                    // Step 2: Read stream and upload parts in parallel
+                    return uploadPartsAsync(inputStream, s3AsyncClient, bucketName, objectKey, uploadId);
+                })
+                .thenComposeAsync(uploadResult -> {
+                    // Step 3: Complete multipart upload
+                    return completeMultipartUpload(
+                            s3AsyncClient,
+                            bucketName,
+                            objectKey,
+                            uploadResult.uploadId(),
+                            uploadResult.completedParts());
+                })
+                .exceptionally(throwable -> {
+                    log.error("Failed to upload file {}: {}", objectKey, throwable.getMessage());
+                    throw new CompletionException("Failed to upload file", throwable);
+                })
+                .whenComplete((result, throwable) -> {
+                    try {
+                        inputStream.close();
+                    } catch (IOException e) {
+                        log.error("Failed to close input stream: {}", e.getMessage());
+                    }
+                });
+    }
+
+    /**
+     * Reads the input stream and uploads parts asynchronously in parallel.
+     *
+     * @param inputStream   the input stream to read from
+     * @param s3AsyncClient the S3 async client
+     * @param bucketName    the bucket name
+     * @param objectKey     the object key
+     * @param uploadId      the upload ID
+     * @return a CompletableFuture with the upload result
+     */
+    private CompletableFuture<UploadResult> uploadPartsAsync(InputStream inputStream,
+                                                              S3AsyncClient s3AsyncClient,
+                                                              String bucketName,
+                                                              String objectKey,
+                                                              String uploadId) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                log.info("Starting multipart upload for key: {}", destinationS3Properties.get(S3Utils.OBJECT_KEY));
-                CreateMultipartUploadRequest createMultipartUploadRequest = CreateMultipartUploadRequest.builder()
-                        .bucket(destinationS3Properties.get(S3Utils.BUCKET_NAME))
-                        .contentType(contentType)
-                        .contentDisposition(contentDisposition)
-                        .key(destinationS3Properties.get(S3Utils.OBJECT_KEY))
-                        .build();
-
-                log.info("Creating multipart upload for key: {}", destinationS3Properties.get(S3Utils.OBJECT_KEY));
-                S3AsyncClient s3AsyncClient = s3ClientProvider.s3AsyncClient(s3ClientRequest);
-                String uploadId = s3AsyncClient.createMultipartUpload(createMultipartUploadRequest)
-                        .join()
-                        .uploadId();
-
-                log.info("Created multipart upload for key: {} with uploadId: {}", destinationS3Properties.get(S3Utils.OBJECT_KEY), uploadId);
-                List<CompletedPart> completedParts = new ArrayList<>();
+                List<CompletableFuture<CompletedPart>> partFutures = new ArrayList<>();
                 int partNumber = 1;
                 byte[] buffer = new byte[CHUNK_SIZE];
                 int bytesRead;
 
                 ByteArrayOutputStream accumulator = new ByteArrayOutputStream();
 
-                log.debug("Opening stream...");
+                log.debug("Reading stream and initiating parallel uploads...");
+                // Read stream and create upload futures for each part
                 while ((bytesRead = inputStream.read(buffer)) > 0) {
                     accumulator.write(buffer, 0, bytesRead);
 
-                    // Upload part when accumulator reaches buffer size or on last part
+                    // Upload part when accumulator reaches buffer size
                     if (accumulator.size() >= CHUNK_SIZE) {
                         byte[] partData = accumulator.toByteArray();
-                        String eTag = uploadPart(s3AsyncClient, destinationS3Properties.get(S3Utils.BUCKET_NAME), destinationS3Properties.get(S3Utils.OBJECT_KEY), uploadId, partNumber, partData);
+                        final int currentPartNumber = partNumber;
 
-                        completedParts.add(CompletedPart.builder()
-                                .partNumber(partNumber)
-                                .eTag(eTag)
-                                .build());
+                        // Create async upload for this part (non-blocking)
+                        CompletableFuture<CompletedPart> partFuture = uploadPartAsync(
+                                s3AsyncClient,
+                                bucketName,
+                                objectKey,
+                                uploadId,
+                                currentPartNumber,
+                                partData);
 
+                        partFutures.add(partFuture);
                         partNumber++;
                         accumulator.reset();
                     }
@@ -126,41 +177,114 @@ public class S3ClientServiceImpl implements S3ClientService {
                 // Upload any remaining data as the last part
                 if (accumulator.size() > 0) {
                     byte[] partData = accumulator.toByteArray();
-                    String eTag = uploadPart(s3AsyncClient, destinationS3Properties.get(S3Utils.BUCKET_NAME), destinationS3Properties.get(S3Utils.OBJECT_KEY), uploadId, partNumber, partData);
+                    final int currentPartNumber = partNumber;
 
-                    completedParts.add(CompletedPart.builder()
-                            .partNumber(partNumber)
-                            .eTag(eTag)
-                            .build());
+                    CompletableFuture<CompletedPart> partFuture = uploadPartAsync(
+                            s3AsyncClient,
+                            bucketName,
+                            objectKey,
+                            uploadId,
+                            currentPartNumber,
+                            partData);
+
+                    partFutures.add(partFuture);
                 }
 
-                CompletedMultipartUpload completedMultipartUpload = CompletedMultipartUpload.builder()
-                        .parts(completedParts)
-                        .build();
+                // Wait for all parts to complete in parallel
+                CompletableFuture<Void> allParts = CompletableFuture.allOf(
+                        partFutures.toArray(new CompletableFuture[0]));
 
-                CompleteMultipartUploadRequest completeMultipartUploadRequest =
-                        CompleteMultipartUploadRequest.builder()
-                                .bucket(destinationS3Properties.get(S3Utils.BUCKET_NAME))
-                                .key(destinationS3Properties.get(S3Utils.OBJECT_KEY))
-                                .uploadId(uploadId)
-                                .multipartUpload(completedMultipartUpload)
-                                .build();
+                return allParts.thenApply(v -> {
+                    // Collect all completed parts
+                    List<CompletedPart> completedParts = partFutures.stream()
+                            .map(CompletableFuture::join)
+                            .toList();
 
-                log.info("Completing multipart upload for key: {} with uploadId: {}", destinationS3Properties.get(S3Utils.OBJECT_KEY), uploadId);
-                return s3AsyncClient.completeMultipartUpload(completeMultipartUploadRequest)
-                        .join()
-                        .eTag();
+                    log.info("All {} parts uploaded successfully for key: {}", completedParts.size(), objectKey);
+                    return new UploadResult(uploadId, completedParts);
+                }).join();
 
             } catch (IOException e) {
-                throw new CompletionException("Failed to upload large stream to S3", e);
-            } finally {
-                try {
-                    inputStream.close();
-                } catch (IOException e) {
-                    log.error("Failed to close input stream: {}", e.getMessage());
-                }
+                throw new CompletionException("Failed to read input stream", e);
             }
         });
+    }
+
+    /**
+     * Uploads a single part asynchronously.
+     *
+     * @param s3AsyncClient the S3 async client
+     * @param bucketName    the bucket name
+     * @param objectKey     the object key
+     * @param uploadId      the upload ID
+     * @param partNumber    the part number
+     * @param partData      the part data
+     * @return a CompletableFuture with the completed part
+     */
+    private CompletableFuture<CompletedPart> uploadPartAsync(S3AsyncClient s3AsyncClient,
+                                                              String bucketName,
+                                                              String objectKey,
+                                                              String uploadId,
+                                                              int partNumber,
+                                                              byte[] partData) {
+        UploadPartRequest uploadPartRequest = UploadPartRequest.builder()
+                .bucket(bucketName)
+                .key(objectKey)
+                .uploadId(uploadId)
+                .partNumber(partNumber)
+                .build();
+
+        log.debug("Uploading part {} for key: {} ({} bytes)", partNumber, objectKey, partData.length);
+
+        return s3AsyncClient.uploadPart(uploadPartRequest, AsyncRequestBody.fromBytes(partData))
+                .thenApply(response -> {
+                    log.debug("Part {} uploaded successfully with ETag: {}", partNumber, response.eTag());
+                    return CompletedPart.builder()
+                            .partNumber(partNumber)
+                            .eTag(response.eTag())
+                            .build();
+                });
+    }
+
+    /**
+     * Completes the multipart upload.
+     *
+     * @param s3AsyncClient  the S3 async client
+     * @param bucketName     the bucket name
+     * @param objectKey      the object key
+     * @param uploadId       the upload ID
+     * @param completedParts the list of completed parts
+     * @return a CompletableFuture with the ETag of the completed upload
+     */
+    private CompletableFuture<String> completeMultipartUpload(S3AsyncClient s3AsyncClient,
+                                                               String bucketName,
+                                                               String objectKey,
+                                                               String uploadId,
+                                                               List<CompletedPart> completedParts) {
+        CompletedMultipartUpload completedMultipartUpload = CompletedMultipartUpload.builder()
+                .parts(completedParts)
+                .build();
+
+        CompleteMultipartUploadRequest completeRequest = CompleteMultipartUploadRequest.builder()
+                .bucket(bucketName)
+                .key(objectKey)
+                .uploadId(uploadId)
+                .multipartUpload(completedMultipartUpload)
+                .build();
+
+        log.info("Completing multipart upload for key: {} with uploadId: {}", objectKey, uploadId);
+
+        return s3AsyncClient.completeMultipartUpload(completeRequest)
+                .thenApply(response -> {
+                    log.info("Upload completed successfully for key: {} with ETag: {}", objectKey, response.eTag());
+                    return response.eTag();
+                });
+    }
+
+    /**
+     * Helper record for passing upload state between async stages.
+     */
+    private record UploadResult(String uploadId, List<CompletedPart> completedParts) {
     }
 
     @Override
@@ -319,20 +443,6 @@ public class S3ClientServiceImpl implements S3ClientService {
         }
     }
 
-    private String uploadPart(S3AsyncClient s3AsyncClient, String bucketName, String key, String uploadId,
-                              int partNumber, byte[] partData) {
-        UploadPartRequest uploadPartRequest = UploadPartRequest.builder()
-                .bucket(bucketName)
-                .key(key)
-                .uploadId(uploadId)
-                .partNumber(partNumber)
-                .build();
-        log.info("Uploading part {} for key: {} with uploadId: {}", partNumber, key, uploadId);
-        return s3AsyncClient.uploadPart(uploadPartRequest,
-                        AsyncRequestBody.fromBytes(partData))
-                .join()
-                .eTag();
-    }
 
     private void validateBucketName(String bucketName) {
         if (bucketName == null || bucketName.isEmpty()) {

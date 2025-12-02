@@ -128,7 +128,7 @@ public class S3ClientServiceImplTest {
                 INPUT_STREAM, DESTINATION_S3_PROPERTIES, CONTENT_TYPE, CONTENT_DISPOSITION);
 
         Exception exception = assertThrows(CompletionException.class, () -> result.join());
-        assertTrue(exception.getMessage().contains("Upload failed"));
+        assertTrue(exception.getMessage().contains("Failed to upload file"));
     }
 
     @Test

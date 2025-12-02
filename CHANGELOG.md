@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Conditional GlobalSSLConfiguration creation based on ssl.enabled property (FTP impact)
+- Improved logic for async S3 Multipart upload - now using CompletableFuture.supplyAsync for each part upload
+- testcontainers version bumped to 2.0.2 (docker 4.53.0 compliance)
 
 ## [0.6.0-SNAPSHOT] - 28.11.2025.
 
