@@ -6,7 +6,6 @@ import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.service.api.DataTransferStrategy;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
-import it.eng.tools.s3.util.S3Utils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
@@ -46,9 +45,10 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
     }
 
     private CompletableFuture<String> transfer(String presignedUrl, Map<String, String> destinationS3Properties) {
+        HttpURLConnection connection = null;
         try {
             URL url = new URL(presignedUrl);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection = (HttpURLConnection) url.openConnection();
 
             // Configure connection
             connection.setRequestMethod("GET");
@@ -78,6 +78,9 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
                     connection.getContentType(),
                     connection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION));
         } catch (IOException e) {
+            if (connection != null) {
+                connection.disconnect();
+            }
             log.error("Failed to download stream from URL: {}", presignedUrl, e);
             throw new DataTransferAPIException(e.getMessage());
         }

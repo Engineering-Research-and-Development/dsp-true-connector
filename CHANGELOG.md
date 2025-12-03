@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - Logic for deciding which S3 client to use - synchronous or asynchronous based on s3.upload.mode property 
 or ApplicationProperty in Mongo
+- New S3UploadStrategy and implementation classes for synchronous and asynchronous upload
 
 ### Changed
 

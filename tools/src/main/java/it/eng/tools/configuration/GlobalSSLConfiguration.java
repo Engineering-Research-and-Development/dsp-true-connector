@@ -35,7 +35,7 @@ public class GlobalSSLConfiguration {
 	private PublicKey publicKey;
 	private PrivateKey privateKey;
 	private KeyPair keyPair;
-	private final String BUNDLE = "connector";
+	private static final String BUNDLE = "connector";
 
 	public GlobalSSLConfiguration(SslBundles sslBundles,
 								  @Value("${server.ssl.enabled:false}") boolean isSSLEnabled) {
