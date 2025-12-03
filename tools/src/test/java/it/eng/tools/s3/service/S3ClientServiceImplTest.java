@@ -17,7 +17,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import software.amazon.awssdk.core.ResponseInputStream;
-import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
@@ -72,6 +71,12 @@ public class S3ClientServiceImplTest {
     private it.eng.tools.service.ApplicationPropertiesService applicationPropertiesService;
 
     @Mock
+    private it.eng.tools.s3.service.upload.S3UploadStrategyFactory uploadStrategyFactory;
+
+    @Mock
+    private it.eng.tools.s3.service.upload.S3UploadStrategy mockUploadStrategy;
+
+    @Mock
     private GetObjectResponse getObjectResponse;
 
     String bucketName = "test-bucket";
@@ -89,9 +94,17 @@ public class S3ClientServiceImplTest {
         lenient().when(bucketCredentialsService.getBucketCredentials(any())).thenReturn(bucketCredentials);
         lenient().when(s3ClientProvider.s3Client(any(S3ClientRequest.class))).thenReturn(s3Client);
         lenient().when(s3ClientProvider.s3AsyncClient(any(S3ClientRequest.class))).thenReturn(s3AsyncClient);
+        lenient().when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
         // Default to ASYNC mode for backward compatibility with existing tests
         lenient().when(s3Properties.getUploadMode()).thenReturn("ASYNC");
         lenient().when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
+
+        // Configure factory to return mock strategy
+        lenient().when(uploadStrategyFactory.getStrategy(any())).thenReturn(mockUploadStrategy);
+
+        // Configure default behavior for mock upload strategy
+        lenient().when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture("test-etag"));
     }
 
     // uploadFile tests
@@ -100,15 +113,8 @@ public class S3ClientServiceImplTest {
     void uploadFile_Success(){
         // Arrange
         String expectedETag = "test-etag";
-        when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
-                .thenReturn(CompletableFuture.completedFuture(
-                        CreateMultipartUploadResponse.builder().uploadId("test-upload-id").build()));
-        lenient().when(s3AsyncClient.uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class)))
-                .thenReturn(CompletableFuture.completedFuture(
-                        UploadPartResponse.builder().eTag(expectedETag).build()));
-        when(s3AsyncClient.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
-                .thenReturn(CompletableFuture.completedFuture(
-                        CompleteMultipartUploadResponse.builder().eTag(expectedETag).build()));
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(expectedETag));
 
         // Act
         CompletableFuture<String> result = s3ClientService.uploadFile(
@@ -116,8 +122,8 @@ public class S3ClientServiceImplTest {
 
         // Assert
         assertEquals(expectedETag, result.join());
-        verify(s3AsyncClient).createMultipartUpload(any(CreateMultipartUploadRequest.class));
-        verify(s3AsyncClient).completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
+        verify(uploadStrategyFactory).getStrategy(any());
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -126,9 +132,10 @@ public class S3ClientServiceImplTest {
         // Arrange - ensure ASYNC mode is used
         when(s3Properties.getUploadMode()).thenReturn("ASYNC");
         when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
-        when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
                 .thenReturn(CompletableFuture.failedFuture(
-                        S3Exception.builder().message("Upload failed").build()));
+                        new CompletionException("Failed to upload file",
+                                S3Exception.builder().message("Upload failed").build())));
 
         // Act & Assert
         CompletableFuture<String> result = s3ClientService.uploadFile(
@@ -145,12 +152,8 @@ public class S3ClientServiceImplTest {
         String expectedETag = "sync-test-etag";
         when(s3Properties.getUploadMode()).thenReturn("SYNC");
         when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
-        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
-                .thenReturn(CreateMultipartUploadResponse.builder().uploadId("sync-upload-id").build());
-        lenient().when(s3Client.uploadPart(any(UploadPartRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
-                .thenReturn(UploadPartResponse.builder().eTag(expectedETag).build());
-        when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
-                .thenReturn(CompleteMultipartUploadResponse.builder().eTag(expectedETag).build());
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(expectedETag));
 
         // Act
         CompletableFuture<String> result = s3ClientService.uploadFile(
@@ -158,9 +161,8 @@ public class S3ClientServiceImplTest {
 
         // Assert
         assertEquals(expectedETag, result.join());
-        verify(s3Client).createMultipartUpload(any(CreateMultipartUploadRequest.class));
-        verify(s3Client).completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
-        verifyNoInteractions(s3AsyncClient);
+        verify(uploadStrategyFactory).getStrategy(it.eng.tools.s3.model.S3UploadMode.SYNC);
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -175,12 +177,8 @@ public class S3ClientServiceImplTest {
 
         when(applicationPropertiesService.getPropertyByKey("s3.upload.mode"))
                 .thenReturn(java.util.Optional.of(property));
-        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
-                .thenReturn(CreateMultipartUploadResponse.builder().uploadId("mongodb-upload-id").build());
-        lenient().when(s3Client.uploadPart(any(UploadPartRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
-                .thenReturn(UploadPartResponse.builder().eTag(expectedETag).build());
-        when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
-                .thenReturn(CompleteMultipartUploadResponse.builder().eTag(expectedETag).build());
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(expectedETag));
 
         // Act
         CompletableFuture<String> result = s3ClientService.uploadFile(
@@ -189,8 +187,8 @@ public class S3ClientServiceImplTest {
         // Assert
         assertEquals(expectedETag, result.join());
         verify(applicationPropertiesService).getPropertyByKey("s3.upload.mode");
-        verify(s3Client).createMultipartUpload(any(CreateMultipartUploadRequest.class));
-        verifyNoInteractions(s3AsyncClient);
+        verify(uploadStrategyFactory).getStrategy(it.eng.tools.s3.model.S3UploadMode.SYNC);
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -205,15 +203,8 @@ public class S3ClientServiceImplTest {
 
         when(applicationPropertiesService.getPropertyByKey("s3.upload.mode"))
                 .thenReturn(java.util.Optional.of(property));
-        when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
-                .thenReturn(CompletableFuture.completedFuture(
-                        CreateMultipartUploadResponse.builder().uploadId("mongodb-async-upload-id").build()));
-        when(s3AsyncClient.uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class)))
-                .thenReturn(CompletableFuture.completedFuture(
-                        UploadPartResponse.builder().eTag(expectedETag).build()));
-        when(s3AsyncClient.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
-                .thenReturn(CompletableFuture.completedFuture(
-                        CompleteMultipartUploadResponse.builder().eTag(expectedETag).build()));
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(expectedETag));
 
         // Act
         CompletableFuture<String> result = s3ClientService.uploadFile(
@@ -222,8 +213,8 @@ public class S3ClientServiceImplTest {
         // Assert
         assertEquals(expectedETag, result.join());
         verify(applicationPropertiesService).getPropertyByKey("s3.upload.mode");
-        verify(s3AsyncClient).createMultipartUpload(any(CreateMultipartUploadRequest.class));
-        verifyNoInteractions(s3Client);
+        verify(uploadStrategyFactory).getStrategy(it.eng.tools.s3.model.S3UploadMode.ASYNC);
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -234,12 +225,8 @@ public class S3ClientServiceImplTest {
         when(applicationPropertiesService.getPropertyByKey("s3.upload.mode"))
                 .thenReturn(java.util.Optional.empty());
         when(s3Properties.getUploadMode()).thenReturn("SYNC");
-        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
-                .thenReturn(CreateMultipartUploadResponse.builder().uploadId("fallback-upload-id").build());
-        lenient().when(s3Client.uploadPart(any(UploadPartRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
-                .thenReturn(UploadPartResponse.builder().eTag(expectedETag).build());
-        when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
-                .thenReturn(CompleteMultipartUploadResponse.builder().eTag(expectedETag).build());
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(expectedETag));
 
         // Act
         CompletableFuture<String> result = s3ClientService.uploadFile(
@@ -249,7 +236,8 @@ public class S3ClientServiceImplTest {
         assertEquals(expectedETag, result.join());
         verify(applicationPropertiesService).getPropertyByKey("s3.upload.mode");
         verify(s3Properties).getUploadMode();
-        verify(s3Client).createMultipartUpload(any(CreateMultipartUploadRequest.class));
+        verify(uploadStrategyFactory).getStrategy(it.eng.tools.s3.model.S3UploadMode.SYNC);
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -260,15 +248,8 @@ public class S3ClientServiceImplTest {
         when(applicationPropertiesService.getPropertyByKey("s3.upload.mode"))
                 .thenThrow(new RuntimeException("Database connection error"));
         when(s3Properties.getUploadMode()).thenReturn("ASYNC");
-        when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
-                .thenReturn(CompletableFuture.completedFuture(
-                        CreateMultipartUploadResponse.builder().uploadId("exception-upload-id").build()));
-        lenient().when(s3AsyncClient.uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class)))
-                .thenReturn(CompletableFuture.completedFuture(
-                        UploadPartResponse.builder().eTag(expectedETag).build()));
-        when(s3AsyncClient.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
-                .thenReturn(CompletableFuture.completedFuture(
-                        CompleteMultipartUploadResponse.builder().eTag(expectedETag).build()));
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(expectedETag));
 
         // Act
         CompletableFuture<String> result = s3ClientService.uploadFile(
@@ -278,7 +259,8 @@ public class S3ClientServiceImplTest {
         assertEquals(expectedETag, result.join());
         verify(applicationPropertiesService).getPropertyByKey("s3.upload.mode");
         verify(s3Properties).getUploadMode();
-        verify(s3AsyncClient).createMultipartUpload(any(CreateMultipartUploadRequest.class));
+        verify(uploadStrategyFactory).getStrategy(it.eng.tools.s3.model.S3UploadMode.ASYNC);
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -288,12 +270,8 @@ public class S3ClientServiceImplTest {
         String expectedETag = "default-sync-etag";
         when(s3Properties.getUploadMode()).thenReturn("INVALID_MODE");
         when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
-        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
-                .thenReturn(CreateMultipartUploadResponse.builder().uploadId("default-upload-id").build());
-        lenient().when(s3Client.uploadPart(any(UploadPartRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
-                .thenReturn(UploadPartResponse.builder().eTag(expectedETag).build());
-        when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
-                .thenReturn(CompleteMultipartUploadResponse.builder().eTag(expectedETag).build());
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(expectedETag));
 
         // Act
         CompletableFuture<String> result = s3ClientService.uploadFile(
@@ -301,8 +279,8 @@ public class S3ClientServiceImplTest {
 
         // Assert
         assertEquals(expectedETag, result.join());
-        verify(s3Client).createMultipartUpload(any(CreateMultipartUploadRequest.class));
-        verifyNoInteractions(s3AsyncClient);
+        verify(uploadStrategyFactory).getStrategy(it.eng.tools.s3.model.S3UploadMode.SYNC);
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -311,8 +289,10 @@ public class S3ClientServiceImplTest {
         // Arrange
         when(s3Properties.getUploadMode()).thenReturn("SYNC");
         when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
-        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
-                .thenThrow(S3Exception.builder().message("Sync upload failed").build());
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.failedFuture(
+                        new CompletionException("Failed to upload file",
+                                S3Exception.builder().message("Sync upload failed").build())));
 
         // Act & Assert
         CompletableFuture<String> result = s3ClientService.uploadFile(
@@ -320,8 +300,8 @@ public class S3ClientServiceImplTest {
 
         Exception exception = assertThrows(CompletionException.class, () -> result.join());
         assertTrue(exception.getMessage().contains("Failed to upload file"));
-        verify(s3Client).createMultipartUpload(any(CreateMultipartUploadRequest.class));
-        verifyNoInteractions(s3AsyncClient);
+        verify(uploadStrategyFactory).getStrategy(it.eng.tools.s3.model.S3UploadMode.SYNC);
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -330,23 +310,17 @@ public class S3ClientServiceImplTest {
         // Arrange
         when(s3Properties.getUploadMode()).thenReturn("ASYNC");
         when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
-        when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
-                .thenReturn(CompletableFuture.completedFuture(
-                        CreateMultipartUploadResponse.builder().uploadId("part-fail-upload-id").build()));
-        lenient().when(s3AsyncClient.uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class)))
-                .thenReturn(CompletableFuture.failedFuture(
-                        S3Exception.builder().message("Part upload failed").build()));
-        lenient().when(s3AsyncClient.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
-                .thenReturn(CompletableFuture.completedFuture(
-                        CompleteMultipartUploadResponse.builder().eTag("etag").build()));
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture("test-etag"));
 
         // Act
         CompletableFuture<String> result = s3ClientService.uploadFile(
                 INPUT_STREAM, DESTINATION_S3_PROPERTIES, CONTENT_TYPE, CONTENT_DISPOSITION);
 
-        // Assert - with small test data, no parts are uploaded, so upload succeeds
+        // Assert - with strategy pattern, upload succeeds
         assertDoesNotThrow(() -> result.join());
-        verify(s3AsyncClient).createMultipartUpload(any(CreateMultipartUploadRequest.class));
+        verify(uploadStrategyFactory).getStrategy(it.eng.tools.s3.model.S3UploadMode.ASYNC);
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -355,15 +329,10 @@ public class S3ClientServiceImplTest {
         // Arrange
         when(s3Properties.getUploadMode()).thenReturn("ASYNC");
         when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
-        when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
-                .thenReturn(CompletableFuture.completedFuture(
-                        CreateMultipartUploadResponse.builder().uploadId("complete-fail-upload-id").build()));
-        lenient().when(s3AsyncClient.uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class)))
-                .thenReturn(CompletableFuture.completedFuture(
-                        UploadPartResponse.builder().eTag("part-etag").build()));
-        when(s3AsyncClient.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
                 .thenReturn(CompletableFuture.failedFuture(
-                        S3Exception.builder().message("Complete upload failed").build()));
+                        new CompletionException("Failed to upload file",
+                                S3Exception.builder().message("Complete upload failed").build())));
 
         // Act & Assert
         CompletableFuture<String> result = s3ClientService.uploadFile(
@@ -371,8 +340,8 @@ public class S3ClientServiceImplTest {
 
         Exception exception = assertThrows(CompletionException.class, () -> result.join());
         assertTrue(exception.getMessage().contains("Failed to upload file"));
-        verify(s3AsyncClient).createMultipartUpload(any(CreateMultipartUploadRequest.class));
-        verify(s3AsyncClient).completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
+        verify(uploadStrategyFactory).getStrategy(it.eng.tools.s3.model.S3UploadMode.ASYNC);
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -382,12 +351,8 @@ public class S3ClientServiceImplTest {
         String expectedETag = "empty-mode-etag";
         when(s3Properties.getUploadMode()).thenReturn("");
         when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
-        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
-                .thenReturn(CreateMultipartUploadResponse.builder().uploadId("empty-mode-upload-id").build());
-        lenient().when(s3Client.uploadPart(any(UploadPartRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
-                .thenReturn(UploadPartResponse.builder().eTag(expectedETag).build());
-        when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
-                .thenReturn(CompleteMultipartUploadResponse.builder().eTag(expectedETag).build());
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(expectedETag));
 
         // Act
         CompletableFuture<String> result = s3ClientService.uploadFile(
@@ -395,8 +360,8 @@ public class S3ClientServiceImplTest {
 
         // Assert
         assertEquals(expectedETag, result.join());
-        verify(s3Client).createMultipartUpload(any(CreateMultipartUploadRequest.class));
-        verifyNoInteractions(s3AsyncClient);
+        verify(uploadStrategyFactory).getStrategy(it.eng.tools.s3.model.S3UploadMode.SYNC);
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -406,12 +371,8 @@ public class S3ClientServiceImplTest {
         String expectedETag = "null-mode-etag";
         when(s3Properties.getUploadMode()).thenReturn(null);
         when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
-        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
-                .thenReturn(CreateMultipartUploadResponse.builder().uploadId("null-mode-upload-id").build());
-        lenient().when(s3Client.uploadPart(any(UploadPartRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
-                .thenReturn(UploadPartResponse.builder().eTag(expectedETag).build());
-        when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
-                .thenReturn(CompleteMultipartUploadResponse.builder().eTag(expectedETag).build());
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(expectedETag));
 
         // Act
         CompletableFuture<String> result = s3ClientService.uploadFile(
@@ -419,8 +380,8 @@ public class S3ClientServiceImplTest {
 
         // Assert
         assertEquals(expectedETag, result.join());
-        verify(s3Client).createMultipartUpload(any(CreateMultipartUploadRequest.class));
-        verifyNoInteractions(s3AsyncClient);
+        verify(uploadStrategyFactory).getStrategy(it.eng.tools.s3.model.S3UploadMode.SYNC);
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
     }
 
     // downloadFile tests
