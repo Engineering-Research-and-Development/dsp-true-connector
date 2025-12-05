@@ -13,6 +13,7 @@
     <description>Wrapper module - assemble and run connector</description>
     <properties>
         <dsp.tck.version>1.0.0-RC5</dsp.tck.version>
+        <testcontainer.version>2.0.2</testcontainer.version>
     </properties>
 
     <dependencies>
@@ -113,13 +114,18 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
-            <version>1.20.5</version>
+            <version>${testcontainer.version}</version>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>minio</artifactId>
+            <version>1.20.5</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>mongodb</artifactId>
             <version>1.20.5</version>
             <scope>test</scope>
         </dependency>
@@ -130,14 +136,6 @@
             <version>1.20.5</version>
             <scope>test</scope>
         </dependency>
-
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>mongodb</artifactId>
-            <version>1.20.5</version>
-            <scope>test</scope>
-        </dependency>
-
 
         <dependency>
             <groupId>it.eng.catalog</groupId>

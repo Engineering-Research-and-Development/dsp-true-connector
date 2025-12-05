@@ -3,8 +3,12 @@ package it.eng.tools.s3.service;
 import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.model.S3ClientRequest;
+import it.eng.tools.s3.model.S3UploadMode;
 import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.upload.S3UploadStrategy;
+import it.eng.tools.s3.service.upload.S3UploadStrategyFactory;
 import it.eng.tools.s3.util.S3Utils;
+import it.eng.tools.service.ApplicationPropertiesService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -13,25 +17,19 @@ import org.springframework.stereotype.Service;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.ResponseInputStream;
-import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 
 /**
  * Implementation of the S3 client service.
@@ -43,8 +41,10 @@ public class S3ClientServiceImpl implements S3ClientService {
     private final S3ClientProvider s3ClientProvider;
     private final S3Properties s3Properties;
     private final BucketCredentialsService bucketCredentialsService;
+    private final ApplicationPropertiesService applicationPropertiesService;
+    private final S3UploadStrategyFactory uploadStrategyFactory;
 
-    private static final int CHUNK_SIZE = 50 * 1024 * 1024; // 50MB chunks
+    private static final String S3_UPLOAD_MODE_PROPERTY_KEY = "s3.upload.mode";
 
     /**
      * Constructor for S3ClientServiceImpl.
@@ -52,13 +52,19 @@ public class S3ClientServiceImpl implements S3ClientService {
      * @param s3ClientProvider         provider for S3 client (sync and async)
      * @param s3Properties             the S3 properties
      * @param bucketCredentialsService service for managing bucket credentials
+     * @param applicationPropertiesService service for reading application properties from MongoDB
+     * @param uploadStrategyFactory    factory for creating upload strategy instances
      */
     public S3ClientServiceImpl(S3ClientProvider s3ClientProvider,
                                S3Properties s3Properties,
-                               BucketCredentialsService bucketCredentialsService) {
+                               BucketCredentialsService bucketCredentialsService,
+                               ApplicationPropertiesService applicationPropertiesService,
+                               S3UploadStrategyFactory uploadStrategyFactory) {
         this.s3ClientProvider = s3ClientProvider;
         this.s3Properties = s3Properties;
         this.bucketCredentialsService = bucketCredentialsService;
+        this.applicationPropertiesService = applicationPropertiesService;
+        this.uploadStrategyFactory = uploadStrategyFactory;
     }
 
     @Override
@@ -67,101 +73,59 @@ public class S3ClientServiceImpl implements S3ClientService {
                                                 String contentType,
                                                 String contentDisposition) {
 
-
         BucketCredentialsEntity bucketCredentials = BucketCredentialsEntity.Builder.newInstance()
                     .bucketName(destinationS3Properties.get(S3Utils.BUCKET_NAME))
                     .accessKey(destinationS3Properties.get(S3Utils.ACCESS_KEY))
                     .secretKey(destinationS3Properties.get(S3Utils.SECRET_KEY))
                     .build();
 
-        log.info("Uploading file {} to bucket {}", destinationS3Properties.get(S3Utils.OBJECT_KEY), destinationS3Properties.get(S3Utils.BUCKET_NAME));
+        String bucketName = destinationS3Properties.get(S3Utils.BUCKET_NAME);
+        String objectKey = destinationS3Properties.get(S3Utils.OBJECT_KEY);
 
-        S3ClientRequest s3ClientRequest = S3ClientRequest.from(destinationS3Properties.get(S3Utils.REGION),
+        // Determine upload mode from configuration
+        S3UploadMode uploadMode = getUploadMode();
+
+        log.info("Uploading file {} to bucket {} using {} mode", objectKey, bucketName, uploadMode);
+
+        S3ClientRequest s3ClientRequest = S3ClientRequest.from(
+                destinationS3Properties.get(S3Utils.REGION),
                 destinationS3Properties.get(S3Utils.ENDPOINT_OVERRIDE),
                 bucketCredentials);
 
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                log.info("Starting multipart upload for key: {}", destinationS3Properties.get(S3Utils.OBJECT_KEY));
-                CreateMultipartUploadRequest createMultipartUploadRequest = CreateMultipartUploadRequest.builder()
-                        .bucket(destinationS3Properties.get(S3Utils.BUCKET_NAME))
-                        .contentType(contentType)
-                        .contentDisposition(contentDisposition)
-                        .key(destinationS3Properties.get(S3Utils.OBJECT_KEY))
-                        .build();
+        // Get appropriate strategy from factory based on upload mode
+        S3UploadStrategy strategy = uploadStrategyFactory.getStrategy(uploadMode);
 
-                log.info("Creating multipart upload for key: {}", destinationS3Properties.get(S3Utils.OBJECT_KEY));
-                S3AsyncClient s3AsyncClient = s3ClientProvider.s3AsyncClient(s3ClientRequest);
-                String uploadId = s3AsyncClient.createMultipartUpload(createMultipartUploadRequest)
-                        .join()
-                        .uploadId();
-
-                log.info("Created multipart upload for key: {} with uploadId: {}", destinationS3Properties.get(S3Utils.OBJECT_KEY), uploadId);
-                List<CompletedPart> completedParts = new ArrayList<>();
-                int partNumber = 1;
-                byte[] buffer = new byte[CHUNK_SIZE];
-                int bytesRead;
-
-                ByteArrayOutputStream accumulator = new ByteArrayOutputStream();
-
-                log.debug("Opening stream...");
-                while ((bytesRead = inputStream.read(buffer)) > 0) {
-                    accumulator.write(buffer, 0, bytesRead);
-
-                    // Upload part when accumulator reaches buffer size or on last part
-                    if (accumulator.size() >= CHUNK_SIZE) {
-                        byte[] partData = accumulator.toByteArray();
-                        String eTag = uploadPart(s3AsyncClient, destinationS3Properties.get(S3Utils.BUCKET_NAME), destinationS3Properties.get(S3Utils.OBJECT_KEY), uploadId, partNumber, partData);
-
-                        completedParts.add(CompletedPart.builder()
-                                .partNumber(partNumber)
-                                .eTag(eTag)
-                                .build());
-
-                        partNumber++;
-                        accumulator.reset();
-                    }
-                }
-
-                // Upload any remaining data as the last part
-                if (accumulator.size() > 0) {
-                    byte[] partData = accumulator.toByteArray();
-                    String eTag = uploadPart(s3AsyncClient, destinationS3Properties.get(S3Utils.BUCKET_NAME), destinationS3Properties.get(S3Utils.OBJECT_KEY), uploadId, partNumber, partData);
-
-                    completedParts.add(CompletedPart.builder()
-                            .partNumber(partNumber)
-                            .eTag(eTag)
-                            .build());
-                }
-
-                CompletedMultipartUpload completedMultipartUpload = CompletedMultipartUpload.builder()
-                        .parts(completedParts)
-                        .build();
-
-                CompleteMultipartUploadRequest completeMultipartUploadRequest =
-                        CompleteMultipartUploadRequest.builder()
-                                .bucket(destinationS3Properties.get(S3Utils.BUCKET_NAME))
-                                .key(destinationS3Properties.get(S3Utils.OBJECT_KEY))
-                                .uploadId(uploadId)
-                                .multipartUpload(completedMultipartUpload)
-                                .build();
-
-                log.info("Completing multipart upload for key: {} with uploadId: {}", destinationS3Properties.get(S3Utils.OBJECT_KEY), uploadId);
-                return s3AsyncClient.completeMultipartUpload(completeMultipartUploadRequest)
-                        .join()
-                        .eTag();
-
-            } catch (IOException e) {
-                throw new CompletionException("Failed to upload large stream to S3", e);
-            } finally {
-                try {
-                    inputStream.close();
-                } catch (IOException e) {
-                    log.error("Failed to close input stream: {}", e.getMessage());
-                }
-            }
-        });
+        return strategy.uploadFile(inputStream, s3ClientRequest, bucketName, objectKey, contentType, contentDisposition);
     }
+
+    /**
+     * Determines the S3 upload mode from configuration.
+     * Priority: 1. MongoDB property, 2. application.properties, 3. default (SYNC)
+     *
+     * @return the configured S3UploadMode
+     */
+    private S3UploadMode getUploadMode() {
+        try {
+            // First, try to get from MongoDB
+            return applicationPropertiesService.getPropertyByKey(S3_UPLOAD_MODE_PROPERTY_KEY)
+                    .map(property -> {
+                        String value = property.getValue();
+                        log.debug("Using S3 upload mode from MongoDB: {}", value);
+                        return S3UploadMode.fromString(value);
+                    })
+                    .orElseGet(() -> {
+                        // Fall back to application.properties
+                        String value = s3Properties.getUploadMode();
+                        log.debug("Using S3 upload mode from application.properties: {}", value);
+                        return S3UploadMode.fromString(value);
+                    });
+        } catch (Exception e) {
+            // If any error occurs, fall back to application.properties or default
+            log.warn("Error reading upload mode from MongoDB, falling back to application.properties: {}", e.getMessage());
+            return S3UploadMode.fromString(s3Properties.getUploadMode());
+        }
+    }
+
 
     @Override
     public void downloadFile(String bucketName, String objectKey, HttpServletResponse response) {
@@ -319,20 +283,6 @@ public class S3ClientServiceImpl implements S3ClientService {
         }
     }
 
-    private String uploadPart(S3AsyncClient s3AsyncClient, String bucketName, String key, String uploadId,
-                              int partNumber, byte[] partData) {
-        UploadPartRequest uploadPartRequest = UploadPartRequest.builder()
-                .bucket(bucketName)
-                .key(key)
-                .uploadId(uploadId)
-                .partNumber(partNumber)
-                .build();
-        log.info("Uploading part {} for key: {} with uploadId: {}", partNumber, key, uploadId);
-        return s3AsyncClient.uploadPart(uploadPartRequest,
-                        AsyncRequestBody.fromBytes(partData))
-                .join()
-                .eTag();
-    }
 
     private void validateBucketName(String bucketName) {
         if (bucketName == null || bucketName.isEmpty()) {
