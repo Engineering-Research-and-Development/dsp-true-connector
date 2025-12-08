@@ -3,7 +3,7 @@ package it.eng.datatransfer.service.api;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.exceptions.DownloadException;
 import it.eng.datatransfer.model.TransferProcess;
-import it.eng.datatransfer.service.DataTransferService;
+import it.eng.datatransfer.service.TransferProcessStrategy;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.Artifact;
@@ -26,14 +26,14 @@ import java.nio.charset.StandardCharsets;
 @Slf4j
 public class RestArtifactService {
 
-    private final DataTransferService dataTransferService;
+    private final TransferProcessStrategy dataTransferService;
     private final OkHttpRestClient okHttpRestClient;
     private final AuditEventPublisher publisher;
     private final S3ClientService s3ClientService;
     private final S3Properties s3Properties;
     private final ArtifactTransferService artifactTransferService;
 
-    public RestArtifactService(DataTransferService dataTransferService,
+    public RestArtifactService(TransferProcessStrategy dataTransferService,
                                OkHttpRestClient okHttpRestClient,
                                AuditEventPublisher publisher,
                                S3ClientService s3ClientService,

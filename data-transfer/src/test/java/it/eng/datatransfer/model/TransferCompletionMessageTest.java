@@ -1,10 +1,6 @@
 package it.eng.datatransfer.model;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -14,13 +10,15 @@ import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 public class TransferCompletionMessageTest {
 
 	private TransferCompletionMessage transferCompletionMessage = TransferCompletionMessage.Builder.newInstance()
 			.consumerPid(ModelUtil.CONSUMER_PID)
 			.providerPid(ModelUtil.PROVIDER_PID)
 			.build();
-	
+
 	@Test
 	@DisplayName("Verify valid plain object serialization")
 	public void testPlain() {
@@ -29,24 +27,30 @@ public class TransferCompletionMessageTest {
 		assertFalse(result.contains(DSpaceConstants.TYPE));
 		assertTrue(result.contains(DSpaceConstants.CONSUMER_PID));
 		assertTrue(result.contains(DSpaceConstants.PROVIDER_PID));
-		
+
 		TransferCompletionMessage javaObj = TransferSerializer.deserializePlain(result, TransferCompletionMessage.class);
 		validateJavaObject(javaObj);
 	}
-	
+
 	@Test
 	@DisplayName("Verify valid protocol object serialization")
 	public void testPlain_protocol() {
 		JsonNode result = TransferSerializer.serializeProtocolJsonNode(transferCompletionMessage);
-		assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
-		assertNotNull(result.get(DSpaceConstants.TYPE).asText());
-		assertNotNull(result.get(DSpaceConstants.DSPACE_CONSUMER_PID).asText());
-		assertNotNull(result.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText());
-		
+		JsonNode context = result.get(DSpaceConstants.CONTEXT);
+		assertNotNull(context);
+		if (context.isArray()) {
+			ArrayNode arrayNode = (ArrayNode) context;
+			assertFalse(arrayNode.isEmpty());
+			assertEquals(DSpaceConstants.DSPACE_2025_01_CONTEXT, arrayNode.get(0).asText());
+		}
+		assertEquals(result.get(DSpaceConstants.TYPE).asText(), transferCompletionMessage.getType());
+		assertEquals(result.get(DSpaceConstants.CONSUMER_PID).asText(), transferCompletionMessage.getConsumerPid());
+		assertEquals(result.get(DSpaceConstants.PROVIDER_PID).asText(), transferCompletionMessage.getProviderPid());
+
 		TransferCompletionMessage javaObj = TransferSerializer.deserializeProtocol(result, TransferCompletionMessage.class);
 		validateJavaObject(javaObj);
 	}
-	
+
 	@Test
 	@DisplayName("No required fields")
 	public void validateInvalid() {
@@ -54,7 +58,7 @@ public class TransferCompletionMessageTest {
 				() -> TransferCompletionMessage.Builder.newInstance()
 				.build());
 	}
-	
+
 	@Test
 	@DisplayName("Missing @context and @type")
 	public void missingContextAndType() {
@@ -64,7 +68,8 @@ public class TransferCompletionMessageTest {
 
 	private void validateJavaObject(TransferCompletionMessage javaObj) {
 		assertNotNull(javaObj);
-		assertNotNull(javaObj.getConsumerPid());
-		assertNotNull(javaObj.getProviderPid());
+		assertEquals(transferCompletionMessage.getConsumerPid(), javaObj.getConsumerPid());
+		assertEquals(transferCompletionMessage.getProviderPid(), javaObj.getProviderPid());
+
 	}
 }

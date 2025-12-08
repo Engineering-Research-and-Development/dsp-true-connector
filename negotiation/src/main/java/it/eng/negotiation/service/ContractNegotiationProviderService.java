@@ -1,9 +1,5 @@
 package it.eng.negotiation.service;
 
-import it.eng.dcp.service.DcpVerifierClient;
-import it.eng.dcp.service.PresentationValidationService;
-import it.eng.dcp.model.PresentationResponseMessage;
-import it.eng.dcp.model.ValidationReport;
 import it.eng.negotiation.event.ContractNegotiationEvent;
 import it.eng.negotiation.exception.ContractNegotiationExistsException;
 import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
@@ -19,6 +15,7 @@ import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
+import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.property.ConnectorProperties;
 import it.eng.tools.response.GenericApiResponse;
@@ -28,34 +25,23 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Map;
-
-import it.eng.dcp.service.RemoteHolderAuthException;
 
 @Service
 @Slf4j
-public class ContractNegotiationProviderService extends BaseProtocolService {
+public abstract class ContractNegotiationProviderService extends BaseProtocolService implements ContractNegotiationProviderStrategy {
 
     private final ConnectorProperties connectorProperties;
 
     protected final CredentialUtils credentialUtils;
 
-    private final DcpVerifierClient dcpVerifierClient;
-    private final PresentationValidationService presentationValidationService;
-    private final PolicyCredentialExtractor policyCredentialExtractor;
-
     public ContractNegotiationProviderService(AuditEventPublisher publisher, ConnectorProperties connectorProperties,
                                               ContractNegotiationRepository contractNegotiationRepository, OkHttpRestClient okHttpRestClient,
                                               ContractNegotiationProperties properties, OfferRepository offerRepository,
-                                              CredentialUtils credentialUtils, DcpVerifierClient dcpVerifierClient,
-                                              PresentationValidationService presentationValidationService) {
+                                              CredentialUtils credentialUtils) {
         super(publisher, contractNegotiationRepository, okHttpRestClient, properties, offerRepository);
         this.credentialUtils = credentialUtils;
         this.connectorProperties = connectorProperties;
-        this.dcpVerifierClient = dcpVerifierClient;
-        this.presentationValidationService = presentationValidationService;
-        this.policyCredentialExtractor = new PolicyCredentialExtractor();
     }
 
     /**
@@ -80,11 +66,11 @@ public class ContractNegotiationProviderService extends BaseProtocolService {
      */
     public ContractNegotiation getNegotiationByProviderPid(String providerPid) {
         log.info("Getting contract negotiation by provider pid: {}", providerPid);
-        publisher.publishEvent(ContractNegotiationEvent.builder().action("Find by provider pid").description("Searching with provider pid ").build());
+//        publisher.publishEvent(ContractNegotiationEvent.builder().action("Find by provider pid").description("Searching with provider pid ").build());
         publisher.publishEvent(AuditEvent.Builder.newInstance()
                 .eventType(AuditEventType.PROTOCOL_NEGOTIATION_CONTRACT_NEGOTIATION)
                 .description("Searching with provider pid " + providerPid)
-                .details(Map.of("providerPid", providerPid, "role", IConstants.ROLE_PROVIDER))
+                .details(Map.of(DSpaceConstants.PROVIDER_PID, providerPid, "role", IConstants.ROLE_PROVIDER))
                 .build());
         return contractNegotiationRepository.findByProviderPid(providerPid)
                 .orElseThrow(() ->
@@ -100,7 +86,7 @@ public class ContractNegotiationProviderService extends BaseProtocolService {
      * @return ContractNegotiation - the newly created contract negotiation record.
      * @throws ContractNegotiationExistsException if a contract negotiation already exists for the given provider and consumer PID combination.
      */
-    public ContractNegotiation startContractNegotiation(ContractRequestMessage contractRequestMessage) {
+    public ContractNegotiation handleContractRequestMessage(ContractRequestMessage contractRequestMessage) {
         log.info("PROVIDER - Starting contract negotiation...");
 
         if (StringUtils.isNotBlank(contractRequestMessage.getProviderPid())) {
@@ -119,7 +105,7 @@ public class ContractNegotiationProviderService extends BaseProtocolService {
                     .description("Contract negotiation request - validation failed")
                     .eventType(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DENIED)
                     .details(Map.of("contractRequestMessage", contractRequestMessage,
-                            "consumerPid", contractRequestMessage.getConsumerPid(),
+                            DSpaceConstants.CONSUMER_PID, contractRequestMessage.getConsumerPid(),
                             "response", response,
                             "role", IConstants.ROLE_PROVIDER))
                     .build());
@@ -127,119 +113,41 @@ public class ContractNegotiationProviderService extends BaseProtocolService {
         }
 
         Offer offerToBeInserted = Offer.Builder.newInstance()
-                .assignee(contractRequestMessage.getOffer().getAssignee())
-                .assigner(contractRequestMessage.getOffer().getAssigner())
+                .assignee(contractRequestMessage.getOffer().getAssignee() == null ? contractRequestMessage.getCallbackAddress() : contractRequestMessage.getOffer().getAssignee())
+                .assigner(contractRequestMessage.getOffer().getAssigner() == null ? properties.connectorId() : contractRequestMessage.getOffer().getAssigner())
                 .originalId(contractRequestMessage.getOffer().getId())
                 .permission(contractRequestMessage.getOffer().getPermission())
                 .target(contractRequestMessage.getOffer().getTarget())
                 .build();
 
-        Offer savedOffer = offerRepository.save(offerToBeInserted);
-        log.info("PROVIDER - Offer {} saved", savedOffer.getId());
+        offerRepository.save(offerToBeInserted);
+        log.info("PROVIDER - Offer {} saved", offerToBeInserted.getId());
 
         ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
                 .state(ContractNegotiationState.REQUESTED)
                 .consumerPid(contractRequestMessage.getConsumerPid())
                 .callbackAddress(contractRequestMessage.getCallbackAddress())
-                .assigner(contractRequestMessage.getOffer().getAssigner())
+                .assigner(offerToBeInserted.getAssigner())
                 .role(IConstants.ROLE_PROVIDER)
-                .offer(savedOffer)
+                .offer(offerToBeInserted)
                 .build();
 
         contractNegotiationRepository.save(contractNegotiation);
         log.info("PROVIDER - Contract negotiation {} saved", contractNegotiation.getId());
-//        offerRepository.findById(contractRequestMessage.getOffer().getId())
-//        	.ifPresentOrElse(o -> log.info("Offer already exists"),
-//        		() -> offerRepository.save(contractRequestMessage.getOffer()));
         publisher.publishEvent(AuditEvent.Builder.newInstance()
                 .description("Contract negotiation requested")
                 .eventType(AuditEventType.PROTOCOL_NEGOTIATION_REQUESTED)
                 .details(Map.of("contractNegotiation", contractNegotiation,
-                        "offer", savedOffer,
+                        DSpaceConstants.OFFER, offerToBeInserted,
                         "role", IConstants.ROLE_PROVIDER))
                 .build());
 
         if (properties.isAutomaticNegotiation()) {
             log.debug("PROVIDER - Performing automatic negotiation");
-            // Before publishing the offer request event, attempt to verify holder presentations if possible
-            try {
-                // extract required credential types from the offer
-                var required = policyCredentialExtractor.extractCredentialTypes(
-                    contractRequestMessage.getOffer(),
-                    contractRequestMessage.getConsumerPid(),
-                    contractRequestMessage.getProviderPid()
-                );
-
-                // attempt to fetch presentations from holder callbackAddress
-                String holderEndpoint = contractRequestMessage.getCallbackAddress();
-                if (holderEndpoint != null && !required.isEmpty()) {
-                    log.info("PROVIDER - Fetching presentations from holder {} for credential types: {}", holderEndpoint, required);
-
-                    PresentationResponseMessage resp = dcpVerifierClient.fetchPresentations(
-                        holderEndpoint,
-                        List.copyOf(required),
-                        null
-                    );
-
-                    ValidationReport report = presentationValidationService.validate(
-                        resp,
-                        List.copyOf(required),
-                        null
-                    );
-
-                    if (!report.getErrors().isEmpty()) {
-                        // publish presentation invalid and abort
-                        log.warn("PROVIDER - Presentation validation failed: {}", report.getErrors());
-                        publisher.publishEvent(AuditEvent.Builder.newInstance()
-                                .eventType(AuditEventType.PRESENTATION_INVALID)
-                                .description("Presentation invalid during automatic negotiation")
-                                .details(Map.of(
-                                    "negotiationId", contractNegotiation.getId(),
-                                    "errors", report.getErrors(),
-                                    "consumerPid", contractRequestMessage.getConsumerPid(),
-                                    "providerPid", contractNegotiation.getProviderPid()
-                                ))
-                                .build());
-                        throw new OfferNotValidException("Presentation validation failed", contractRequestMessage.getConsumerPid(), contractRequestMessage.getProviderPid());
-                    }
-
-                    log.info("PROVIDER - Presentation validation successful");
-                } else {
-                    log.debug("PROVIDER - No holder endpoint or no required credentials, skipping presentation validation");
-                }
-
-                publisher.publishEvent(new ContractNegotationOfferRequestEvent(
-                        contractNegotiation.getConsumerPid(),
-                        contractNegotiation.getProviderPid(),
-                        NegotiationSerializer.serializeProtocolJsonNode(contractRequestMessage.getOffer())));
-
-            } catch (RemoteHolderAuthException e) {
-                log.error("PROVIDER - Remote holder authentication failed: {}", e.getMessage());
-                publisher.publishEvent(AuditEvent.Builder.newInstance()
-                        .eventType(AuditEventType.TOKEN_VALIDATION_FAILED)
-                        .description("Remote holder authentication failed during presentation fetch")
-                        .details(Map.of(
-                            "negotiationId", contractNegotiation.getId(),
-                            "reason", e.getMessage(),
-                            "consumerPid", contractRequestMessage.getConsumerPid(),
-                            "providerPid", contractNegotiation.getProviderPid()
-                        ))
-                        .build());
-                throw new OfferNotValidException("Remote holder auth failed", contractRequestMessage.getConsumerPid(), contractRequestMessage.getProviderPid());
-            } catch (it.eng.negotiation.exception.PolicyParseException e) {
-                log.error("PROVIDER - Policy parsing failed: {}", e.getMessage());
-                publisher.publishEvent(AuditEvent.Builder.newInstance()
-                        .eventType(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DENIED)
-                        .description("Policy parsing failed - no credential types found")
-                        .details(Map.of(
-                            "negotiationId", contractNegotiation.getId(),
-                            "reason", e.getMessage(),
-                            "consumerPid", contractRequestMessage.getConsumerPid(),
-                            "providerPid", contractNegotiation.getProviderPid()
-                        ))
-                        .build());
-                throw new OfferNotValidException("Policy parsing failed", contractRequestMessage.getConsumerPid(), contractRequestMessage.getProviderPid());
-            }
+            publisher.publishEvent(new ContractNegotationOfferRequestEvent(
+                    contractNegotiation.getConsumerPid(),
+                    contractNegotiation.getProviderPid(),
+                    NegotiationSerializer.serializeProtocolJsonNode(contractRequestMessage.getOffer())));
         } else {
             log.debug("PROVIDER - Offer evaluation will have to be done by human");
         }
@@ -247,33 +155,98 @@ public class ContractNegotiationProviderService extends BaseProtocolService {
     }
 
     /**
-     * Publish a presentation invalid event for a negotiation. This helper will be used by DCP wiring
-     * when presentation validation fails during inbound negotiation acceptance.
-     * @param negotiationId the negotiation id
-     * @param details additional details about the invalid presentation
+     * Handles a counteroffer received from the consumer in an existing contract negotiation.
+     * If the counteroffer is valid, the existing contract negotiation is updated with the new offer details.
+     * @param providerPid            - the provider PID to validate against the contract request message.
+     * @param contractRequestMessage - the contract request message containing the counteroffer details.
+     * @return ContractNegotiation - the updated contract negotiation record.
+     * @throws ContractNegotiationNotFoundException if the provider PID is null, does not match,
+     * or if the existing contract negotiation cannot be found or validated.
      */
-    public void publishPresentationInvalidEvent(String negotiationId, Object details) {
+    public ContractNegotiation handleContractRequestMessageAsCounteroffer(String providerPid, ContractRequestMessage contractRequestMessage) {
+        compareProviderPids(providerPid, contractRequestMessage.getProviderPid(), contractRequestMessage.getConsumerPid());
+
+        ContractNegotiation contractNegotiation = findContractNegotiationByPids(contractRequestMessage.getConsumerPid(), contractRequestMessage.getProviderPid());
+
+        if (!contractNegotiation.getOffer().getOriginalId().equals(contractRequestMessage.getOffer().getId()) ||
+                !contractNegotiation.getOffer().getTarget().equals(contractRequestMessage.getOffer().getTarget())) {
+            publisher.publishEvent(
+                    AuditEventType.PROTOCOL_NEGOTIATION_INVALID_OFFER,
+                    "Contract negotiation offer not valid error",
+                    Map.of("contractNegotiation", contractNegotiation,
+                            DSpaceConstants.CONSUMER_PID, contractNegotiation.getConsumerPid(),
+                            DSpaceConstants.PROVIDER_PID, contractNegotiation.getProviderPid(),
+                            "role", IConstants.ROLE_API));
+            throw new ContractNegotiationNotFoundException("New offer must have same offer id and target" +
+                    " as the existing one in the contract negotiation with id: " + contractNegotiation.getId());
+        }
+
+        stateTransitionCheck(ContractNegotiationState.REQUESTED, contractNegotiation);
+        log.info("Consumer sent a counteroffer for ContractNegotiation with id {}, updating existing one", contractNegotiation.getId());
+
+        Offer updatedOffer = Offer.Builder.newInstance()
+                .id(contractNegotiation.getOffer().getId())
+                .originalId(contractNegotiation.getOffer().getOriginalId())
+                .assignee(contractRequestMessage.getOffer().getAssignee())
+                .assigner(contractRequestMessage.getOffer().getAssigner())
+                .permission(contractRequestMessage.getOffer().getPermission())
+                .target(contractRequestMessage.getOffer().getTarget())
+                .build();
+        offerRepository.save(updatedOffer);
+
+        ContractNegotiation updatedContractNegotiation = ContractNegotiation.Builder.newInstance()
+                .id(contractNegotiation.getId())
+                .consumerPid(contractNegotiation.getConsumerPid())
+                .providerPid(contractNegotiation.getProviderPid())
+                .state(ContractNegotiationState.REQUESTED)
+                .role(IConstants.ROLE_PROVIDER)
+                .offer(updatedOffer)
+                .assigner(contractRequestMessage.getOffer().getAssigner())
+                .callbackAddress(contractNegotiation.getCallbackAddress())
+                .agreement(contractNegotiation.getAgreement())
+                .created(contractNegotiation.getCreated())
+                .createdBy(contractNegotiation.getCreatedBy())
+                .version(contractNegotiation.getVersion())
+                .build();
+
+        contractNegotiationRepository.save(updatedContractNegotiation);
+        log.info("PROVIDER - Contract negotiation {} saved", contractNegotiation.getId());
         publisher.publishEvent(AuditEvent.Builder.newInstance()
-                .eventType(AuditEventType.PRESENTATION_INVALID)
-                .description("Presentation invalid for negotiation " + negotiationId)
-                .details(Map.of("negotiationId", negotiationId, "details", details))
+                .description("Contract negotiation requested - counteroffer")
+                .eventType(AuditEventType.PROTOCOL_NEGOTIATION_REQUESTED)
+                .details(Map.of("contractNegotiation", contractNegotiation,
+                        DSpaceConstants.OFFER, updatedOffer,
+                        "role", IConstants.ROLE_PROVIDER))
                 .build());
+
+        return updatedContractNegotiation;
     }
 
-    /**
-     * Publish token validation failed event for a negotiation. Use when inbound token validation fails.
-     * @param negotiationId the negotiation id
-     * @param reason the reason for the failure
-     */
-    public void publishTokenValidationFailedEvent(String negotiationId, String reason) {
+    public ContractNegotiation handleContractNegotiationEventMessageAccepted(String providerPid,
+                                                                             ContractNegotiationEventMessage contractNegotiationEventMessage) {
+        compareProviderPids(providerPid, contractNegotiationEventMessage.getProviderPid(), contractNegotiationEventMessage.getConsumerPid());
+
+        ContractNegotiation contractNegotiation = findContractNegotiationByPids(contractNegotiationEventMessage.getConsumerPid(), contractNegotiationEventMessage.getProviderPid());
+
+        stateTransitionCheck(ContractNegotiationState.ACCEPTED, contractNegotiation);
+
+        log.info("Updating state to ACCEPTED for contract negotiation id {}", contractNegotiation.getId());
+        ContractNegotiation contractNegotiationAccepted = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.ACCEPTED);
+
         publisher.publishEvent(AuditEvent.Builder.newInstance()
-                .eventType(AuditEventType.TOKEN_VALIDATION_FAILED)
-                .description("Token validation failed for negotiation " + negotiationId)
-                .details(Map.of("negotiationId", negotiationId, "reason", reason))
+                .eventType(AuditEventType.PROTOCOL_NEGOTIATION_ACCEPTED)
+                .description("Contract negotiation accepted")
+                .details(Map.of("contractNegotiation", contractNegotiationAccepted,
+                        DSpaceConstants.CONSUMER_PID, contractNegotiationAccepted.getConsumerPid(),
+                        DSpaceConstants.PROVIDER_PID, contractNegotiationAccepted.getProviderPid(),
+                        "role", IConstants.ROLE_PROVIDER))
                 .build());
+        return contractNegotiationRepository.save(contractNegotiationAccepted);
     }
 
-    public void verifyNegotiation(ContractAgreementVerificationMessage cavm) {
+    public ContractNegotiation handleContractAgreementVerificationMessage(String providerPid, ContractAgreementVerificationMessage cavm) {
+        compareProviderPids(providerPid, cavm.getProviderPid(), cavm.getConsumerPid());
+
         ContractNegotiation contractNegotiation = findContractNegotiationByPids(cavm.getConsumerPid(), cavm.getProviderPid());
 
         stateTransitionCheck(ContractNegotiationState.VERIFIED, contractNegotiation);
@@ -285,39 +258,18 @@ public class ContractNegotiationProviderService extends BaseProtocolService {
                 .description("Contract negotiation verified")
                 .details(Map.of("contractNegotiation", contractNegotiationUpdated,
                         "role", IConstants.ROLE_PROVIDER,
-                        "consumerPid", contractNegotiationUpdated.getConsumerPid(),
-                        "providerPid", contractNegotiationUpdated.getProviderPid()))
+                        DSpaceConstants.CONSUMER_PID, contractNegotiationUpdated.getConsumerPid(),
+                        DSpaceConstants.PROVIDER_PID, contractNegotiationUpdated.getProviderPid()))
                 .build());
         log.info("Contract negotiation with providerPid {} and consumerPid {} changed state to VERIFIED and saved", cavm.getProviderPid(), cavm.getConsumerPid());
+
+        return contractNegotiationUpdated;
     }
 
-    public ContractNegotiation handleContractNegotiationEventMessage(
-            ContractNegotiationEventMessage contractNegotiationEventMessage) {
-        return switch (contractNegotiationEventMessage.getEventType()) {
-            case ACCEPTED -> processAccepted(contractNegotiationEventMessage);
-            case FINALIZED -> null;
-        };
-    }
+    public void handleContractNegotiationTerminationMessage(String providerPid,
+                                                            ContractNegotiationTerminationMessage contractNegotiationTerminationMessage) {
+        compareProviderPids(providerPid, contractNegotiationTerminationMessage.getProviderPid(), contractNegotiationTerminationMessage.getConsumerPid());
 
-    private ContractNegotiation processAccepted(ContractNegotiationEventMessage contractNegotiationEventMessage) {
-        ContractNegotiation contractNegotiation = findContractNegotiationByPids(contractNegotiationEventMessage.getConsumerPid(), contractNegotiationEventMessage.getProviderPid());
-
-        log.info("Updating state to ACCEPTED for contract negotiation id {}", contractNegotiation.getId());
-        ContractNegotiation contractNegotiationAccepted = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.ACCEPTED);
-
-        publisher.publishEvent(AuditEvent.Builder.newInstance()
-                .eventType(AuditEventType.PROTOCOL_NEGOTIATION_ACCEPTED)
-                .description("Contract negotiation accepted")
-                .details(Map.of("contractNegotiation", contractNegotiationAccepted,
-                        "consumerPid", contractNegotiationAccepted.getConsumerPid(),
-                        "providerPid", contractNegotiationAccepted.getProviderPid(),
-                        "role", IConstants.ROLE_PROVIDER))
-                .build());
-        return contractNegotiationRepository.save(contractNegotiationAccepted);
-    }
-
-    public void handleTerminationRequest(String providerPid,
-                                         ContractNegotiationTerminationMessage contractNegotiationTerminationMessage) {
         ContractNegotiation contractNegotiation = contractNegotiationRepository.findByProviderPid(providerPid)
                 .orElseThrow(() -> new ContractNegotiationNotFoundException(
                         "Contract negotiation with providerPid " + providerPid +
@@ -332,13 +284,25 @@ public class ContractNegotiationProviderService extends BaseProtocolService {
                 .eventType(AuditEventType.PROTOCOL_NEGOTIATION_TERMINATED)
                 .description("Contract negotiation terminated")
                 .details(Map.of("contractNegotiation", contractNegotiationTerminated,
-                        "consumerPid", contractNegotiationTerminated.getConsumerPid(),
-                        "providerPid", contractNegotiationTerminated.getProviderPid(),
+                        DSpaceConstants.CONSUMER_PID, contractNegotiationTerminated.getConsumerPid(),
+                        DSpaceConstants.PROVIDER_PID, contractNegotiationTerminated.getProviderPid(),
                         "role", IConstants.ROLE_PROVIDER))
                 .build());
 
         log.info("Contract Negotiation with id {} set to TERMINATED state", contractNegotiation.getId());
+    }
 
-        publisher.publishEvent(contractNegotiationTerminationMessage);
+    private void compareProviderPids(String providerPid, String providerPidFromMessage, String consumerPidFromMessage) {
+        if (providerPidFromMessage == null || !providerPidFromMessage.equals(providerPid)) {
+            publisher.publishEvent(
+                    AuditEventType.PROTOCOL_NEGOTIATION_INVALID_OFFER,
+                    "Contract negotiation offer not valid error",
+                    Map.of(DSpaceConstants.CONSUMER_PID, consumerPidFromMessage,
+                            DSpaceConstants.PROVIDER_PID, providerPidFromMessage,
+                            "role", IConstants.ROLE_API));
+            throw new ContractNegotiationNotFoundException(
+                    "The providerPid from the message " + providerPidFromMessage
+                            + " is different from the one in the path parameter " + providerPid, consumerPidFromMessage, providerPidFromMessage);
+        }
     }
 }

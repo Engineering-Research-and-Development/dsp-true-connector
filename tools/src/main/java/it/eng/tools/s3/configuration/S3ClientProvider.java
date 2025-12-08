@@ -9,6 +9,8 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.http.SdkHttpClient;
+import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3BaseClientBuilder;
@@ -29,14 +31,20 @@ public class S3ClientProvider {
     private final Executor executor;
     private final S3Properties s3Properties;
     private final AwsCredentialsProvider credentialsProvider;
+    private final SdkHttpClient sdkHttpClient;
+    private final SdkAsyncHttpClient sdkAsyncHttpClient;
 
     private final ConcurrentHashMap<String, S3Client> s3ClientCache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, S3AsyncClient> asyncS3ClientCache = new ConcurrentHashMap<>();
     private final ThreadLocal<S3Client> adminS3ClientCache = ThreadLocal.withInitial(() -> null);
 
-
-    public S3ClientProvider(S3Properties s3Properties) {
+    public S3ClientProvider(
+            S3Properties s3Properties,
+            SdkHttpClient sdkHttpClient,
+            SdkAsyncHttpClient sdkAsyncHttpClient) {
         this.s3Properties = s3Properties;
+        this.sdkHttpClient = sdkHttpClient;
+        this.sdkAsyncHttpClient = sdkAsyncHttpClient;
         this.executor = Executors.newCachedThreadPool(new ThreadFactoryBuilder()
                 .threadNamePrefix("aws-client")
                 .build());
@@ -54,16 +62,24 @@ public class S3ClientProvider {
     public S3Client adminS3Client() {
         S3Client cached = adminS3ClientCache.get();
         if (cached == null) {
+            log.info("Creating new admin S3Client with endpoint: {}, region: {}, pathStyle: true, chunkedEncoding: false",
+                    s3Properties.getEndpoint(), s3Properties.getRegion());
+            log.debug("Admin S3Client using accessKey: {}", s3Properties.getAccessKey());
+
             cached = S3Client.builder()
+                    .httpClient(sdkHttpClient)
                     .endpointOverride(URI.create(s3Properties.getEndpoint()))
                     .credentialsProvider(StaticCredentialsProvider.create(
                             AwsBasicCredentials.create(s3Properties.getAccessKey(), s3Properties.getSecretKey())))
                     .region(Region.of(s3Properties.getRegion()))
                     .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
                             .pathStyleAccessEnabled(true)
+//                            .chunkedEncodingEnabled(false)
+//                            .checksumValidationEnabled(false)
                             .build())
                     .build();
             adminS3ClientCache.set(cached);
+            log.info("Admin S3Client created successfully");
         }
         return cached;
     }
@@ -121,11 +137,17 @@ public class S3ClientProvider {
     }
 
     private S3Client createS3Client(AwsCredentialsProvider credentialsProvider, String region, String endpointOverride) {
+        log.info("Creating S3Client with region: {}, endpointOverride: {}, pathStyle: true, chunkedEncoding: false",
+                region, endpointOverride);
+
         var builder = S3Client.builder()
+                .httpClient(sdkHttpClient)
                 .credentialsProvider(credentialsProvider)
                 .region(Region.of(region))
                 .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
                         .pathStyleAccessEnabled(true)
+//                        .checksumValidationEnabled(false)
+//                        .chunkedEncodingEnabled(false)
                         .build());
 
         handleBaseEndpointOverride(builder, endpointOverride);
@@ -142,17 +164,22 @@ public class S3ClientProvider {
             var credentials = AwsBasicCredentials.create(bucketCredentials.getAccessKey(), bucketCredentials.getSecretKey());
             return createS3AsyncClient(StaticCredentialsProvider.create(credentials), region, endpointOverride);
         } else {
-            var key = s3ClientRequest.region() + "/" + s3ClientRequest.endpointOverride();
             return createS3AsyncClient(credentialsProvider, region, endpointOverride);
         }
     }
 
     private S3AsyncClient createS3AsyncClient(AwsCredentialsProvider credentialsProvider, String region, String endpointOverride) {
         var builder = S3AsyncClient.builder()
+                .httpClient(sdkAsyncHttpClient)
                 .asyncConfiguration(b -> b.advancedOption(FUTURE_COMPLETION_EXECUTOR, executor))
                 .credentialsProvider(credentialsProvider)
                 .region(Region.of(region))
                 .crossRegionAccessEnabled(true);
+//                .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
+//                        .pathStyleAccessEnabled(true)
+//                        .chunkedEncodingEnabled(false)
+//                        .checksumValidationEnabled(false)
+//                        .build());
 
         handleBaseEndpointOverride(builder, endpointOverride);
 
@@ -164,8 +191,10 @@ public class S3ClientProvider {
 
         if (StringUtils.isNotBlank(endpointOverride)) {
             endpointOverrideUri = URI.create(endpointOverride);
+            log.debug("Using provided endpoint override: {}", endpointOverrideUri);
         } else {
             endpointOverrideUri = URI.create(s3Properties.getEndpoint());
+            log.debug("Using default endpoint from properties: {}", endpointOverrideUri);
         }
 
         builder.serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()

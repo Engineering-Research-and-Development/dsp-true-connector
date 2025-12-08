@@ -2,32 +2,32 @@ package it.eng.negotiation.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.constraints.NotNull;
+import lombok.Getter;
 
+import java.io.Serial;
+import java.io.Serializable;
+import java.util.List;
 import java.util.UUID;
 
-public abstract class AbstractNegotiationObject {
+@JsonPropertyOrder(value = {DSpaceConstants.CONTEXT, DSpaceConstants.TYPE, DSpaceConstants.ID, DSpaceConstants.CONSUMER_PID, DSpaceConstants.PROVIDER_PID}, alphabetic = true)
+public abstract class AbstractNegotiationObject implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     @JsonProperty(value = DSpaceConstants.CONTEXT, access = Access.READ_ONLY)
-    private String context = DSpaceConstants.DATASPACE_CONTEXT_0_8_VALUE;
+    private List<String> context = List.of(DSpaceConstants.DSPACE_2025_01_CONTEXT);
 
-    /**
-     * Can be optional.
-     * If the message does not include a consumerPid, a new contract negotiation will be created on consumer
-     * side and the consumer selects an appropriate consumerPid
-     */
-
+    @Getter
     @NotNull
-    @JsonProperty(DSpaceConstants.DSPACE_PROVIDER_PID)
     protected String providerPid;
 
+    @NotNull
     @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
     public abstract String getType();
-
-    public String getProviderPid() {
-        return providerPid;
-    }
 
     protected String createNewPid() {
         return "urn:uuid:" + UUID.randomUUID();

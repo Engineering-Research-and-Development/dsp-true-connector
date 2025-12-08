@@ -19,10 +19,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -204,8 +201,8 @@ public class DatasetService {
         }
 
         List<String> formats = distributions.stream()
-                .filter(dist -> dist.getFormat() != null)
-                .map(dist -> dist.getFormat().getId())
+                .map(Distribution::getFormat)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
         if (formats == null || formats.isEmpty()) {

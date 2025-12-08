@@ -31,6 +31,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.testcontainers.containers.MinIOContainer;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 import org.wiremock.spring.EnableWireMock;
 
 import java.io.UnsupportedEncodingException;
@@ -49,7 +50,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(
         webEnvironment = WebEnvironment.DEFINED_PORT,
         properties = {
-                "server.port=8090"
+                "server.port=8080"
         })
 @AutoConfigureMockMvc
 @EnableWireMock
@@ -57,8 +58,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class BaseIntegrationTest {
 
     // starts a mongodb and s3 simulated cloud storage container; the containers are shared among all tests; docker must be running
-    protected static final MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:7.0.12");
-    protected static final MinIOContainer minIOContainer = new MinIOContainer("minio/minio");
+    protected static final MongoDBContainer mongoDBContainer =
+            new MongoDBContainer(DockerImageName.parse("mongo:7.0.12"))
+                    .withReuse(false);
+    protected static final MinIOContainer minIOContainer =
+            new MinIOContainer(DockerImageName.parse("minio/minio"))
+                    .withReuse(false);
 
     @Autowired
     protected MockMvc mockMvc;

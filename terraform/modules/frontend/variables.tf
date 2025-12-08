@@ -1,0 +1,9 @@
+variable "name" { type = string }
+variable "image" { type = string }
+variable "container_port" { type = number }
+variable "service_port" { type = number }
+variable "target_port" { type = number }
+variable "node_port" { type = number }
+variable "tc_root_api_url" { type = string }
+variable "nginx_conf_config_map" { type = string }
+variable "ssl_secret" { type = string }

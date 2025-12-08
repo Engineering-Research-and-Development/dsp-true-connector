@@ -39,8 +39,8 @@ public class TransferProcessTest {
         assertNull(result.get(DSpaceConstants.ID));
         assertNotNull(result.get(DSpaceConstants.CONTEXT).asText());
         assertNotNull(result.get(DSpaceConstants.TYPE).asText());
-        assertNotNull(result.get(DSpaceConstants.DSPACE_CONSUMER_PID).asText());
-        assertNotNull(result.get(DSpaceConstants.DSPACE_PROVIDER_PID).asText());
+        assertNotNull(result.get(DSpaceConstants.CONSUMER_PID).asText());
+        assertNotNull(result.get(DSpaceConstants.PROVIDER_PID).asText());
 
         TransferProcess javaObj = TransferSerializer.deserializeProtocol(result, TransferProcess.class);
         validateJavaObject(javaObj);

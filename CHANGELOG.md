@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.3-SNAPSHOT] - 01.12.2025.
+
+### Added
+
+- Logic for deciding which S3 client to use - synchronous or asynchronous based on s3.upload.mode property 
+or ApplicationProperty in Mongo
+- New S3UploadStrategy and implementation classes for synchronous and asynchronous upload
+
+### Changed
+
+- Conditional GlobalSSLConfiguration creation based on ssl.enabled property (FTP impact)
+- Improved logic for async S3 Multipart upload - now using CompletableFuture.supplyAsync for each part upload
+- testcontainers version bumped to 2.0.2 (docker 4.53.0 compliance)
+
+## [0.6.0-SNAPSHOT] - 28.11.2025.
+
+### Added
+
+- Support for new Dataspace Protocol version 2025-1
+- New GitHub Action (manually triggered) to run TCK tests against running connector
+- Documentation how to run TCK tests using CMD and GitHub Action
+- Terraform for deploying connector to Kubernetes cluster locally
+- GitHub Action tests for Contract Negotiation with counteroffer flow
+
+### Changed
+
+- Renamed integration test classes to have IT suffix
+- Configured maven surefire and failsafe plugins to have different includes for unit and integration tests
+
+## [0.5.6-SNAPSHOT] - 24.11.2025.
+
+### Added
+
+- Support for TLS communication (enabling TLS for OkHttpClient and S3 clients)
+- Scripts for generating self-signed certificates for connector
+- Documentation for setting up TLS communication between connectors
+
 ## [0.5.5-SNAPSHOT] - 31.10.2025.
 
 ### Changed

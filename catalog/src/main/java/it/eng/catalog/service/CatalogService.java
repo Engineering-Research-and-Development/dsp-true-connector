@@ -266,14 +266,8 @@ public class CatalogService {
 
             log.debug("Offer with id '{}' {}", offer.getId(), existingOffer != null ? " found." : "not found.");
 
-            if (existingOffer == null) {
-                log.warn("Offer with id {} not found in catalog", offer.getId());
-            } else {
-                // check if offers are equals
-                if (offer.equals(existingOffer)) {
-                    log.debug("Existing and provided offers are same");
-                    valid = true;
-                }
+            if (existingOffer != null) {
+                valid = true;
             }
         }
         log.info("Offer evaluated as {}", valid ? "valid" : "invalid");

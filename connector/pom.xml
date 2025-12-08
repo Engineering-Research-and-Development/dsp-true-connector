@@ -11,6 +11,10 @@
     <artifactId>connector</artifactId>
     <name>Connector module</name>
     <description>Wrapper module - assemble and run connector</description>
+    <properties>
+        <dsp.tck.version>1.0.0-RC5</dsp.tck.version>
+        <testcontainer.version>2.0.2</testcontainer.version>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -115,13 +119,18 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
-            <version>1.20.5</version>
+            <version>${testcontainer.version}</version>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>minio</artifactId>
+            <version>1.20.5</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>mongodb</artifactId>
             <version>1.20.5</version>
             <scope>test</scope>
         </dependency>
@@ -132,14 +141,6 @@
             <version>1.20.5</version>
             <scope>test</scope>
         </dependency>
-
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>mongodb</artifactId>
-            <version>1.20.5</version>
-            <scope>test</scope>
-        </dependency>
-
 
         <dependency>
             <groupId>it.eng.catalog</groupId>
@@ -165,6 +166,50 @@
             <classifier>tests</classifier>
             <type>test-jar</type>
             <version>${revision}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- TCK-->
+        <dependency>
+            <groupId>org.eclipse.dataspacetck.dsp</groupId>
+            <artifactId>tck-runtime</artifactId>
+            <version>${dsp.tck.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.dataspacetck.dsp</groupId>
+            <artifactId>core</artifactId>
+            <version>${dsp.tck.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.dataspacetck.dsp</groupId>
+            <artifactId>dsp-system</artifactId>
+            <version>${dsp.tck.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.dataspacetck.dsp</groupId>
+            <artifactId>dsp-metadata</artifactId>
+            <version>${dsp.tck.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.dataspacetck.dsp</groupId>
+            <artifactId>dsp-catalog</artifactId>
+            <version>${dsp.tck.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.dataspacetck.dsp</groupId>
+            <artifactId>dsp-transfer-process</artifactId>
+            <version>${dsp.tck.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.dataspacetck.dsp</groupId>
+            <artifactId>dsp-contract-negotiation</artifactId>
+            <version>${dsp.tck.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -212,7 +257,8 @@
                     <excludes>
                         <exclude>**/*.p12</exclude>
                         <exclude>**/*.jks</exclude>
-                        <exclude>**/*.sql</exclude>
+                        <exclude>**/*.key</exclude>
+                        <exclude>**/certs/**</exclude>
                         <exclude>*.properties</exclude>
                         <exclude>*.json</exclude>
                     </excludes>

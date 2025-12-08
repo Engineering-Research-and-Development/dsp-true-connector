@@ -13,6 +13,7 @@ import org.apache.sshd.server.auth.keyboard.KeyboardInteractiveAuthenticator;
 import org.apache.sshd.server.auth.pubkey.PublickeyAuthenticator;
 import org.apache.sshd.sftp.server.SftpSubsystemFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
@@ -25,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
+@ConditionalOnProperty(name = "server.ssl.enabled", havingValue = "true")
 public class FTPServer {
 	
 	private final GlobalSSLConfiguration sslConfiguration;
@@ -33,7 +35,7 @@ public class FTPServer {
 	
 	SshServer sshd;
 	
-	public FTPServer(GlobalSSLConfiguration sslConfiguration, @Qualifier(value = "FTPAuthenticator") PublickeyAuthenticator authenticator, FTPConfiguration ftpConfiguration) throws IOException, URISyntaxException {
+	public FTPServer(GlobalSSLConfiguration sslConfiguration, @Qualifier(value = "FTPAuthenticator") PublickeyAuthenticator authenticator, FTPConfiguration ftpConfiguration) {
 		super();
 		this.sslConfiguration = sslConfiguration;
 		this.ftpConfiguration = ftpConfiguration;

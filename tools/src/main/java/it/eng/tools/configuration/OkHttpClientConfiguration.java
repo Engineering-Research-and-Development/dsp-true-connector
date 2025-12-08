@@ -11,13 +11,12 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ssl.NoSuchSslBundleException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
-import it.eng.tools.client.rest.CorrelationIdInterceptor;
-import it.eng.tools.ssl.ocsp.OcspProperties;
 import it.eng.tools.ssl.ocsp.OcspTrustManagerFactory;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.ConnectionSpec;
@@ -29,23 +28,25 @@ import okhttp3.internal.tls.OkHostnameVerifier;
 public class OkHttpClientConfiguration {
 
 	private final OcspTrustManagerFactory ocspTrustManagerFactory;
-	private final OcspProperties ocspProperties;
+	private final boolean isSSLEnabled;
 	
-	public OkHttpClientConfiguration(OcspTrustManagerFactory ocspTrustManagerFactory, OcspProperties ocspProperties) {
+	public OkHttpClientConfiguration(OcspTrustManagerFactory ocspTrustManagerFactory,
+									 @Value("${server.ssl.enabled:false}") boolean isSSLEnabled) {
 		super();
 		this.ocspTrustManagerFactory = ocspTrustManagerFactory;
-		this.ocspProperties = ocspProperties;
+		this.isSSLEnabled = isSSLEnabled;
 	}
 
 	@Bean
 	@Primary
 	OkHttpClient okHttpClient() throws KeyStoreException, NoSuchSslBundleException, KeyManagementException, NoSuchAlgorithmException {
-		if (ocspProperties.isEnabled()) {
-			log.info("Creating OkHttpClient with OCSP validation");
-			return okHttpClientWithOcspValidation();
-		} else {
-			log.info("OCSP validation is disabled, using insecure OkHttpClient");
+		if (!isSSLEnabled) {
+			log.warn("Creating insecure OkHttpClient (server.ssl.enabled=false)");
+			log.warn("This client will accept ALL certificates without validation - use only in development!");
 			return okHttpClientInsecure();
+		} else {
+			log.info("Creating secure OkHttpClient with OCSP validation (server.ssl.enabled=true)");
+			return okHttpClientWithOcspValidation();
 		}
 	}
 	
@@ -58,15 +59,24 @@ public class OkHttpClientConfiguration {
 	 * @throws KeyManagementException If there's an error managing keys
 	 */
 	private OkHttpClient okHttpClientWithOcspValidation() throws KeyStoreException, NoSuchAlgorithmException, KeyManagementException {
-		log.info("Creating OkHttpClient with OCSP validation");
-		
+		log.info("Creating secured OkHttpClient - remote certificates will be validated");
+
 		// Create OCSP-enabled trust managers
 		TrustManager[] trustManagers = ocspTrustManagerFactory.createTrustManagers();
-		
+		log.debug("Created {} trust manager(s) from OCSP factory", trustManagers.length);
+
+		if (trustManagers.length > 0 && trustManagers[0] instanceof X509TrustManager) {
+			X509TrustManager x509TrustManager = (X509TrustManager) trustManagers[0];
+			int acceptedIssuersCount = x509TrustManager.getAcceptedIssuers() != null
+				? x509TrustManager.getAcceptedIssuers().length : 0;
+			log.info("Trust manager has {} accepted issuer(s) in truststore", acceptedIssuersCount);
+		}
+
 		// Create SSL context with OCSP-enabled trust managers
 		SSLContext sslContext = SSLContext.getInstance("TLS");
 		sslContext.init(null, trustManagers, new java.security.SecureRandom());
-		
+		log.debug("SSLContext initialized with TLS protocol");
+
 		// Create OkHttpClient with OCSP validation
 		OkHttpClient client;
 		//@formatter:off
@@ -76,11 +86,11 @@ public class OkHttpClientConfiguration {
 		        .writeTimeout(60, TimeUnit.SECONDS)
 		        .readTimeout(60, TimeUnit.SECONDS)
 		        .sslSocketFactory(sslContext.getSocketFactory(), (X509TrustManager) trustManagers[0])
-		        .addInterceptor(new CorrelationIdInterceptor())
 		        .hostnameVerifier(OkHostnameVerifier.INSTANCE)
 		        .build();
 		//@formatter:on
 		
+		log.info("Secure OkHttpClient created successfully with hostname verification enabled");
 		return client;
 	}
 	
@@ -120,7 +130,6 @@ public class OkHttpClientConfiguration {
 				.connectTimeout(60, TimeUnit.SECONDS)
 		        .writeTimeout(60, TimeUnit.SECONDS)
 		        .readTimeout(60, TimeUnit.SECONDS)
-		        .addInterceptor(new CorrelationIdInterceptor())
 		        .sslSocketFactory(sslContextTrustAllCerts.getSocketFactory(), (X509TrustManager) trustAllCerts[0])
 		        .hostnameVerifier((hostname, session) -> true)
 		        .build();

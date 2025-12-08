@@ -56,7 +56,6 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
             ContractAgreementMessage agreementMessage = ContractAgreementMessage.Builder.newInstance()
                     .consumerPid(contractNegotiation.getConsumerPid())
                     .providerPid(contractNegotiation.getProviderPid())
-                    .callbackAddress(properties.providerCallbackAddress())
                     .agreement(agreementFromOffer(NegotiationSerializer.deserializePlain(offerResponse.getOffer().toPrettyString(), Offer.class), contractNegotiation.getAssigner()))
                     .build();
 
@@ -97,7 +96,7 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
                 .consumerPid(contractNegotiation.getConsumerPid())
                 .providerPid(contractNegotiation.getProviderPid())
                 .code(contractNegotiationId)
-                .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value("Contract negotiation terminated by provider").build()))
+                .reason(Collections.singletonList("Contract negotiation terminated by provider"))
                 .build();
 
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
