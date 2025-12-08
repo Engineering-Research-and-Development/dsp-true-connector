@@ -27,6 +27,7 @@
         <module>tools</module>
         <module>negotiation</module>
         <module>data-transfer</module>
+        <module>dcp</module>
     </modules>
 
     <dependencyManagement>
@@ -53,6 +54,11 @@
             <dependency>
                 <groupId>it.eng</groupId>
                 <artifactId>tools</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>it.eng</groupId>
+                <artifactId>dcp</artifactId>
                 <version>${revision}</version>
             </dependency>
         </dependencies>
