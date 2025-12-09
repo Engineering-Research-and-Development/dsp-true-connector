@@ -36,7 +36,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		
 		// Skip JWT validation for /issuer/** endpoints (they use Self-Issued ID Tokens)
 		String requestPath = request.getRequestURI();
-		if (requestPath != null && (requestPath.startsWith("/issuer") || requestPath.startsWith("/api/dev/token"))) {
+		if (requestPath != null && (requestPath.startsWith("/issuer") || requestPath.startsWith("/dcp") || requestPath.startsWith("/api/dev/token"))) {
 			filterChain.doFilter(request, response);
 			return;
 		}

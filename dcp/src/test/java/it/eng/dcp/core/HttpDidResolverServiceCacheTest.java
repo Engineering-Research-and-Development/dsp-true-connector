@@ -28,7 +28,7 @@ class HttpDidResolverServiceCacheTest {
                 "}";
 
         AtomicInteger calls = new AtomicInteger(0);
-        HttpDidResolverService svc = new HttpDidResolverService() {
+        HttpDidResolverService svc = new HttpDidResolverService(null) {
             @Override
             protected String fetchDidDocument(String url) {
                 calls.incrementAndGet();

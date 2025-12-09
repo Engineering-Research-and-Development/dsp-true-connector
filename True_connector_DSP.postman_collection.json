@@ -1,10 +1,9 @@
 {
 	"info": {
-		"_postman_id": "7c503262-f8f4-4b17-b1d7-51701031bc1f",
+		"_postman_id": "7dd26c5d-08f1-4402-810d-63f02e2839e5",
 		"name": "True_connector_DSP",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "21815221",
-		"_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-7c503262-f8f4-4b17-b1d7-51701031bc1f?action=share&source=collection_link&creator=21815221"
+		"_exporter_id": "36278855"
 	},
 	"item": [
 		{
@@ -3172,6 +3171,272 @@
 							"path": [
 								".well-known",
 								"dspace-version"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "DCP",
+			"item": [
+				{
+					"name": "Generate accessToken",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Parse the JSON response",
+									"var jsonData = pm.response.json();",
+									"",
+									"// Extract the token field and save it to environment variable",
+									"pm.environment.set(\"authToken\", jsonData.token);",
+									"",
+									"// Extract the authorization field and save it to environment variable",
+									"pm.environment.set(\"authorizationHeader\", jsonData.authorization);"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"audienceDid\": \"did:web:localhost:8080\"}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://localhost:8080/api/dev/token/generate",
+							"protocol": "https",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"dev",
+								"token",
+								"generate"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Credential Request API - POST a CredentialRequestMessage",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Get the Location header from the response",
+									"const locationHeader = pm.response.headers.get(\"Location\");",
+									"",
+									"// Store the full Location header in an environment variable",
+									"pm.environment.set(\"location\", locationHeader);",
+									"",
+									"// Log the captured full Location header",
+									"console.log(\"Location header captured:\", locationHeader);",
+									"",
+									"// Extract the last segment after the final \"/\"",
+									"if (locationHeader) {",
+									"    const segments = locationHeader.split(\"/\");",
+									"    const requestId = segments[segments.length - 1];",
+									"    ",
+									"    // Store the extracted request-id in an environment variable",
+									"    pm.environment.set(\"request-id\", requestId);",
+									"    ",
+									"    // Log the extracted request-id",
+									"    console.log(\"Extracted request-id:\", requestId);",
+									"} else {",
+									"    console.log(\"Location header not found in response\");",
+									"}"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"@context\": [\r\n        \"https://w3id.org/dspace/2024/1/context.json\"\r\n    ],\r\n    \"holderPid\": \"did:web:localhost:8080\",\r\n    \"requestId\": \"req-12345\",\r\n    \"credentials\": [\r\n        {\r\n            \"id\": \"MembershipCredential\"\r\n        },\r\n        {\r\n            \"id\": \"ComplianceCredential\"\r\n        }\r\n    ]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://localhost:8080/issuer/credentials",
+							"protocol": "https",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"issuer",
+								"credentials"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Credential Request API - GET status of a previously created credential request",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://localhost:8080{{location}}",
+							"protocol": "https",
+							"host": [
+								"localhost"
+							],
+							"port": "8080{{location}}"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Credentials Request API - POST CredentialMessage",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"@context\": [\"https://w3id.org/dspace-dcp/v1.0/dcp.jsonld\"],\r\n  \"type\": \"CredentialMessage\",\r\n  \"issuerPid\": \"issuer-pid-12345\",\r\n  \"holderPid\": \"did:example:holder123\",\r\n  \"status\": \"ISSUED\",\r\n  \"requestId\": \"request-67890\",\r\n  \"credentials\": [{\r\n    \"credentialType\": \"MembershipCredential\",\r\n    \"payload\": \"eyJraWQiOiJkaWQ6ZXhhbXBsZTppc3N1ZXI0NTYja2V5LTEiLCJhbGciOiJFUzI1NiJ9.eyJzdWIiOiJkaWQ6ZXhhbXBsZTpob2xkZXIxMjMiLCJleHAiOjE3NjQ4OTk0MzEsImlzcyI6ImRpZDpleGFtcGxlOmlzc3VlcjQ1NiIsImp0aSI6InVybjp1dWlkOmNyZWRlbnRpYWwtMTIzNDU2NzgtMTIzNC0xMjM0LTEyMzQtMTIzNDU2Nzg5MGFiIiwiaWF0IjoxNzMzMzYzNDMxLCJ2YyI6eyJjcmVkZW50aWFsU3ViamVjdCI6eyJzdGF0dXMiOiJBY3RpdmUiLCJtZW1iZXJzaGlwVHlwZSI6IlByZW1pdW0iLCJpZCI6ImRpZDpleGFtcGxlOmhvbGRlcjEyMyIsIm1lbWJlcnNoaXBJZCI6Ik1FTUJFUi0yMDI0LTAwMSJ9LCJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSIsImh0dHBzOi8vZXhhbXBsZS5vcmcvY3JlZGVudGlhbHMvdjEiXSwidHlwZSI6WyJWZXJpZmlhYmxlQ3JlZGVudGlhbCIsIk1lbWJlcnNoaXBDcmVkZW50aWFsIl19fQ.J7kD9xQ2MpLwN5vR3tY6uF8sA1bC4eG9hI2jK3lM4nO5pQ6rS7tU8vW9xY0zA1bC2dE3fG4hI5jK6lM7nO8pQ\",\r\n    \"format\": \"jwt\"\r\n  }]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://localhost:8080/dcp/credentials",
+							"protocol": "https",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"dcp",
+								"credentials"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Credentials Request API - Approve Credentials",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"credentials\": [\r\n    {\r\n      \"credentialType\": \"MembershipCredential\",\r\n      \"payload\": \"eyJraWQiOiJkaWQ6ZXhhbXBsZTppc3N1ZXI0NTYja2V5LTEiLCJhbGciOiJFUzI1NiJ9.eyJzdWIiOiJkaWQ6ZXhhbXBsZTpob2xkZXIxMjMiLCJpc3MiOiJkaWQ6ZXhhbXBsZTppc3N1ZXI0NTYiLCJleHAiOjE3OTY3NDA4OTYsImlhdCI6MTc2NTIwNDg5NiwidmMiOnsiQGNvbnRleHQiOlsiaHR0cHM6Ly93d3cudzMub3JnLzIwMTgvY3JlZGVudGlhbHMvdjEiLCJodHRwczovL2V4YW1wbGUub3JnL2NyZWRlbnRpYWxzL3YxIl0sInR5cGUiOlsiVmVyaWZpYWJsZUNyZWRlbnRpYWwiLCJNZW1iZXJzaGlwQ3JlZGVudGlhbCJdLCJjcmVkZW50aWFsU3ViamVjdCI6eyJpZCI6ImRpZDpleGFtcGxlOmhvbGRlcjEyMyIsInN0YXR1cyI6IkFjdGl2ZSIsIm1lbWJlcnNoaXBJZCI6Ik1FTUJFUi0yMDI0LTAwMSIsIm1lbWJlcnNoaXBUeXBlIjoiUHJlbWl1bSJ9fSwianRpIjoidXJuOnV1aWQ6Y3JlZGVudGlhbC02ZTE3MWNiNS0xODQ5LTQ1YWItYTgyNy1kNWZkNDRjODY2ZjUifQ.mHLPbCQmQb4gn9kvdjNMHuuOGWPHoN-ZmufAmNZH2sLKrnuepFPy3qkAG55qQWcDEdEwLzeIb7AHIB0oPdXMaA\",\r\n      \"format\": \"jwt\"\r\n    }\r\n  ]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://localhost:8080/issuer/requests/{{request-id}}/approve",
+							"protocol": "https",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"issuer",
+								"requests",
+								"{{request-id}}",
+								"approve"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get did-json",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8080/.well-known/did.json",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								".well-known",
+								"did.json"
 							]
 						}
 					},

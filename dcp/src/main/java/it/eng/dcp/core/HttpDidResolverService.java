@@ -3,39 +3,38 @@ package it.eng.dcp.core;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.jwk.JWK;
+import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.response.GenericApiResponse;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
+import java.text.ParseException;
 import java.time.Instant;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.text.ParseException;
 
 /**
  * HTTP-backed DID resolver for did:web documents. It fetches the DID document and returns the JWK matching the kid.
  * It enforces that the matching verificationMethod is referenced in the requested verification relationship array
  * (e.g., "capabilityInvocation").
  *
- * Enhancements: simple in-memory caching with TTL, request timeout and retry logic.
+ * Enhancements: simple in-memory caching with TTL and retry logic.
+ * Uses OkHttpRestClient for HTTP requests with SSL/TLS support.
  */
 @Service
 @Primary
+@Slf4j
 public class HttpDidResolverService implements DidResolverService {
 
     private final ObjectMapper mapper = new ObjectMapper();
-    private final HttpClient httpClient = HttpClient.newBuilder().build();
+    private final OkHttpRestClient httpClient;
 
     // Simple cache: map URL -> cached JSON and expiry
     private static class CachedDoc {
@@ -56,8 +55,16 @@ public class HttpDidResolverService implements DidResolverService {
     private long cacheTtlSeconds = 300; // 5 minutes
     @Setter
     private int maxRetries = 2;
-    @Setter
-    private Duration requestTimeout = Duration.ofSeconds(2);
+
+    /**
+     * Constructor with OkHttpRestClient injection.
+     * @param httpClient The OkHttpRestClient to use for HTTP requests
+     */
+    public HttpDidResolverService(OkHttpRestClient httpClient) {
+        log.info("HttpDidResolverService initialized with OkHttpRestClient");
+        this.httpClient = httpClient;
+    }
+
 
     @Override
     public JWK resolvePublicKey(String did, String kid, String verificationRelationship) throws DidResolutionException {
@@ -203,12 +210,12 @@ public class HttpDidResolverService implements DidResolverService {
             }
 
             return null;
-        } catch (IOException | URISyntaxException e) {
+        } catch (IOException e) {
             throw new DidResolutionException("Failed to fetch or parse DID document", e);
         }
     }
 
-    private String fetchDidDocumentWithRetries(String url) throws IOException, URISyntaxException {
+    private String fetchDidDocumentWithRetries(String url) throws IOException {
         int attempts = 0;
         IOException lastIoEx = null;
         while (attempts <= maxRetries) {
@@ -230,21 +237,20 @@ public class HttpDidResolverService implements DidResolverService {
         return null;
     }
 
-    private String fetchDidDocumentWithTimeout(String url) throws IOException, URISyntaxException {
-        try {
-            HttpRequest req = HttpRequest.newBuilder(new URI(url))
-                    .timeout(requestTimeout)
-                    .GET()
-                    .build();
-            HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
-            if (resp.statusCode() >= 200 && resp.statusCode() < 300) {
-                return resp.body();
-            }
-            throw new IOException("Non-2xx response: " + resp.statusCode());
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IOException(e);
+    private String fetchDidDocumentWithTimeout(String url) throws IOException {
+        GenericApiResponse<String> response = httpClient.sendGETRequest(url, null);
+
+        if (response == null) {
+            throw new IOException("No response received from " + url);
         }
+
+        if (response.isSuccess()) {
+            return response.getData();
+        }
+
+        // Extract error message
+        String errorMsg = response.getMessage() != null ? response.getMessage() : "Unknown error";
+        throw new IOException("Failed to fetch DID document from " + url + ": " + errorMsg);
     }
 
     /**
@@ -252,9 +258,8 @@ public class HttpDidResolverService implements DidResolverService {
      * @param url The DID document URL
      * @return The document content, or null if not found
      * @throws IOException on IO errors
-     * @throws URISyntaxException on invalid URL
      */
-    protected String fetchDidDocument(String url) throws IOException, URISyntaxException {
+    protected String fetchDidDocument(String url) throws IOException {
         // kept for backward compatibility; delegates to fetch with timeout and retries
         return fetchDidDocumentWithRetries(url);
     }

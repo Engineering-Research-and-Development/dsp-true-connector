@@ -11,6 +11,7 @@ import java.io.Serializable;
  */
 public enum CredentialStatus implements Serializable {
     PENDING,
+    RECEIVED,
     ISSUED,
     REJECTED;
 

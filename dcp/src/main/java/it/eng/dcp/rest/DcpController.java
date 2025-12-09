@@ -129,43 +129,95 @@ public class DcpController {
                 return ResponseEntity.badRequest().body("ISSUED status requires non-empty credentials array");
             }
             List<VerifiableCredential> saved = new ArrayList<>();
+            int skipped = 0;
             for (CredentialMessage.CredentialContainer c : msg.getCredentials()) {
                 try {
-                    JsonNode payloadNode = null;
                     Object payload = c.getPayload();
-                    if (payload instanceof JsonNode) {
-                        payloadNode = (JsonNode) payload;
-                    } else if (payload instanceof Map) {
-                        payloadNode = mapper.convertValue(payload, JsonNode.class);
-                    } else if (payload instanceof String) {
-                        payloadNode = mapper.readTree((String) payload);
+
+                    // Validate that payload is not empty/null
+                    if (payload == null || (payload instanceof String && ((String) payload).trim().isEmpty())) {
+                        LOG.warn("Skipping credential with type '{}' - payload is empty or null. Per DCP spec 6.5.2, payload must contain a Verifiable Credential.",
+                                 c.getCredentialType());
+                        skipped++;
+                        continue;
                     }
 
-                    // payload must be a JSON object containing the VC
-                    if (payloadNode == null || !payloadNode.isObject()) {
-                        return ResponseEntity.badRequest().body("Each credential payload must be a JSON object (Verifiable Credential)");
+                    String format = c.getFormat();
+                    if (format == null) {
+                        LOG.warn("Skipping credential with type '{}' - format is missing", c.getCredentialType());
+                        skipped++;
+                        continue;
                     }
 
                     VerifiableCredential.Builder cb = VerifiableCredential.Builder.newInstance();
-                    if (payloadNode.has("id")) cb.id(payloadNode.get("id").asText());
+
+                    // Handle JWT format credentials
+                    if ("jwt".equalsIgnoreCase(format)) {
+                        if (!(payload instanceof String jwtString)) {
+                            LOG.warn("Skipping JWT credential - payload must be a JWT string, got: {}", payload.getClass().getSimpleName());
+                            skipped++;
+                            continue;
+                        }
+                        // For JWT format, store the JWT string directly and decode header/payload for metadata
+                        // Create a minimal JSON representation for storage
+                        JsonNode jwtNode = mapper.createObjectNode()
+                                .put("type", c.getCredentialType())
+                                .put("format", "jwt")
+                                .put("jwt", jwtString);
+                        cb.credential(jwtNode);
+                        // Extract metadata from JWT if needed (decode without verification for metadata extraction)
+                        // For now, use credentialType from container
+                    } else if ("json-ld".equalsIgnoreCase(format) || "ldp_vc".equalsIgnoreCase(format)) {
+                        // Handle JSON-LD format credentials
+                        JsonNode payloadNode = null;
+                        if (payload instanceof JsonNode) {
+                            payloadNode = (JsonNode) payload;
+                        } else if (payload instanceof Map) {
+                            payloadNode = mapper.convertValue(payload, JsonNode.class);
+                        } else if (payload instanceof String) {
+                            try {
+                                payloadNode = mapper.readTree((String) payload);
+                            } catch (Exception e) {
+                                LOG.warn("Skipping credential - failed to parse JSON-LD payload: {}", e.getMessage());
+                                skipped++;
+                                continue;
+                            }
+                        }
+
+                        // payload must be a JSON object containing the VC
+                        if (payloadNode == null || !payloadNode.isObject()) {
+                            LOG.warn("Skipping credential - JSON-LD payload must be a JSON object (Verifiable Credential)");
+                            skipped++;
+                            continue;
+                        }
+
+                        if (payloadNode.has("id")) cb.id(payloadNode.get("id").asText());
+                        // set payload as credential JSON
+                        cb.credential(payloadNode);
+                        // attempt to set issuance/expiration if present
+                        try {
+                            if (payloadNode.has("issuanceDate")) cb.issuanceDate(Instant.parse(payloadNode.get("issuanceDate").asText()));
+                            if (payloadNode.has("expirationDate")) cb.expirationDate(Instant.parse(payloadNode.get("expirationDate").asText()));
+                        } catch (Exception ignored) {}
+                    } else {
+                        LOG.warn("Skipping credential with type '{}' - unsupported format: {}", c.getCredentialType(), format);
+                        skipped++;
+                        continue;
+                    }
+
+                    // Common properties for both formats
                     // set holderDid from message holderPid only if looks like a DID
                     if (msg.getHolderPid() != null && msg.getHolderPid().startsWith("did:")) cb.holderDid(msg.getHolderPid());
                     // credentialType from container
                     if (c.getCredentialType() != null) cb.credentialType(c.getCredentialType());
-                    // set payload as credential JSON
-                    cb.credential(payloadNode);
                     // record the asserting issuer DID (from validated token) on the stored VC for audit/trust checks
                     cb.issuerDid(issuerDid);
-                    // attempt to set issuance/expiration if present
-                    try {
-                        if (payloadNode.has("issuanceDate")) cb.issuanceDate(Instant.parse(payloadNode.get("issuanceDate").asText()));
-                        if (payloadNode.has("expirationDate")) cb.expirationDate(Instant.parse(payloadNode.get("expirationDate").asText()));
-                    } catch (Exception ignored) {}
 
                     VerifiableCredential vc = cb.build();
                     saved.add(credentialRepository.save(vc));
                 } catch (Exception e) {
-                    LOG.warn("Failed to persist credential container: {}", e.getMessage());
+                    LOG.warn("Failed to persist credential container with type '{}': {}", c.getCredentialType(), e.getMessage());
+                    skipped++;
                 }
             }
             // Persist issuance status record keyed by issuer's request id (issuerPid). If not provided, generate one.
@@ -186,6 +238,20 @@ public class DcpController {
                 credentialStatusRepository.save(rec);
             } catch (Exception e) {
                 LOG.warn("Failed to persist credential status record: {}", e.getMessage());
+            }
+
+            if (saved.isEmpty() && skipped > 0) {
+                LOG.warn("No credentials were saved. All {} credentials were skipped due to validation errors. Check logs for details.", skipped);
+                return ResponseEntity.status(400).body(Map.of(
+                    "saved", 0,
+                    "skipped", skipped,
+                    "error", "All credentials had empty or invalid payloads. Per DCP spec 6.5.2, payload must contain a Verifiable Credential."
+                ));
+            }
+
+            if (skipped > 0) {
+                LOG.info("Saved {} credentials, skipped {} credentials", saved.size(), skipped);
+                return ResponseEntity.ok(Map.of("saved", saved.size(), "skipped", skipped));
             }
             return ResponseEntity.ok(Map.of("saved", saved.size()));
         } else if ("REJECTED".equalsIgnoreCase(status)) {

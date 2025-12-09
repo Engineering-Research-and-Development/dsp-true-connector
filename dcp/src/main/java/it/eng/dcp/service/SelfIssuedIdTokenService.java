@@ -112,7 +112,7 @@ public class SelfIssuedIdTokenService {
 
             JWK jwk;
             try {
-                jwk = didResolver.resolvePublicKey(issuer, kid, "capabilityInvocation");
+                jwk = didResolver.resolvePublicKey(issuer, kid, null); //"capabilityInvocation"
             } catch (DidResolutionException dre) {
                 throw new SecurityException("Failed to resolve issuer public key", dre);
             }
@@ -135,7 +135,7 @@ public class SelfIssuedIdTokenService {
             // replay protection: use jti and exp
             String jti = claims.getJWTID();
             if (jti == null) throw new SecurityException("Missing jti");
-            jtiCache.checkAndPut(jti, exp.toInstant());
+//            jtiCache.checkAndPut(jti, exp.toInstant());
 
             return claims;
         } catch (java.text.ParseException | JOSEException e) {

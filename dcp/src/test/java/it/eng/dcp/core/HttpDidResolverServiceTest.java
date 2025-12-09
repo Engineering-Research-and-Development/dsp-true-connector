@@ -28,7 +28,7 @@ class HttpDidResolverServiceTest {
                 "\"capabilityInvocation\": [ \"" + vmId + "\" ]" +
                 "}";
 
-        HttpDidResolverService svc = new HttpDidResolverService() {
+        HttpDidResolverService svc = new HttpDidResolverService(null) {
             @Override
             protected String fetchDidDocument(String url) {
                 return didDoc;
@@ -54,7 +54,7 @@ class HttpDidResolverServiceTest {
                 "\"capabilityInvocation\": [ \"did:web:example.com:connector#other\" ]" +
                 "}";
 
-        HttpDidResolverService svc = new HttpDidResolverService() {
+        HttpDidResolverService svc = new HttpDidResolverService(null) {
             @Override
             protected String fetchDidDocument(String url) {
                 return didDoc;

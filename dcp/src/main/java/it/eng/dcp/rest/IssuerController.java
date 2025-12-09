@@ -2,8 +2,11 @@ package it.eng.dcp.rest;
 
 import it.eng.dcp.model.CredentialRequest;
 import it.eng.dcp.model.CredentialRequestMessage;
+import it.eng.dcp.model.CredentialMessage;
 import it.eng.dcp.repository.CredentialRequestRepository;
 import it.eng.dcp.service.SelfIssuedIdTokenService;
+import it.eng.dcp.service.CredentialDeliveryService;
+import it.eng.tools.response.GenericApiResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
+import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -28,11 +32,15 @@ public class IssuerController {
 
     private final SelfIssuedIdTokenService tokenService;
     private final CredentialRequestRepository requestRepository;
+    private final CredentialDeliveryService deliveryService;
 
     @Autowired
-    public IssuerController(SelfIssuedIdTokenService tokenService, CredentialRequestRepository requestRepository) {
+    public IssuerController(SelfIssuedIdTokenService tokenService,
+                           CredentialRequestRepository requestRepository,
+                           CredentialDeliveryService deliveryService) {
         this.tokenService = tokenService;
         this.requestRepository = requestRepository;
+        this.deliveryService = deliveryService;
     }
 
     /**
@@ -59,7 +67,7 @@ public class IssuerController {
             String subject = claims.getSubject();
             if (subject == null || !subject.equals(msg.getHolderPid())) {
                 LOG.warn("Holder PID in message does not match token subject: msg={}, sub={}", msg.getHolderPid(), subject);
-                return ResponseEntity.status(401).body("Token subject does not match holderPid");
+                return ResponseEntity.status(401).body(GenericApiResponse.error("Token subject does not match holderPid"));
             }
 
             // persist request and return Location header
@@ -69,10 +77,10 @@ public class IssuerController {
             return ResponseEntity.created(URI.create(location)).header(HttpHeaders.LOCATION, location).build();
 
         } catch (SecurityException se) {
-            return ResponseEntity.status(401).body("Invalid token");
+            return ResponseEntity.status(401).body(GenericApiResponse.error("Invalid token"));
         } catch (Exception e) {
             LOG.error("Failed to create credential request: {}", e.getMessage());
-            return ResponseEntity.status(500).body("Internal error");
+            return ResponseEntity.status(500).body(GenericApiResponse.error("Internal error"));
         }
     }
 
@@ -96,5 +104,116 @@ public class IssuerController {
                     return ResponseEntity.ok(body);
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Approve and deliver credentials for a pending credential request.
+     * This endpoint triggers Step 3 of the DCP credential issuance flow:
+     * - Resolves the holder's DID to find their Credential Service endpoint
+     * - Sends a CredentialMessage with the issued credentials to the holder
+     * - Updates the request status to ISSUED
+     *
+     * @param requestId The issuerPid identifier of the credential request
+     * @param request Request body containing the credentials to deliver
+     * @return 200 on success, 404 if request not found, 400 if already processed
+     */
+    @PostMapping(path = "/requests/{requestId}/approve", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> approveAndDeliverCredentials(
+            @org.springframework.web.bind.annotation.PathVariable String requestId,
+            @RequestBody Map<String, Object> request) {
+
+        if (requestId == null || requestId.isBlank()) {
+            return ResponseEntity.badRequest().body(GenericApiResponse.error("requestId required"));
+        }
+
+        try {
+            // Extract credentials from request body
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> credentialsData = (List<Map<String, Object>>) request.get("credentials");
+
+            if (credentialsData == null || credentialsData.isEmpty()) {
+                return ResponseEntity.badRequest().body(GenericApiResponse.error("credentials array is required and must not be empty"));
+            }
+
+            // Convert to CredentialContainer objects
+            List<CredentialMessage.CredentialContainer> credentials = new java.util.ArrayList<>();
+            for (Map<String, Object> credData : credentialsData) {
+                String credentialType = (String) credData.get("credentialType");
+                Object payload = credData.get("payload");
+                String format = (String) credData.get("format");
+
+                if (credentialType == null || payload == null || format == null) {
+                    return ResponseEntity.badRequest().body(GenericApiResponse.error("Each credential must have credentialType, payload, and format"));
+                }
+
+                CredentialMessage.CredentialContainer container = CredentialMessage.CredentialContainer.Builder.newInstance()
+                        .credentialType(credentialType)
+                        .payload(payload)
+                        .format(format)
+                        .build();
+                credentials.add(container);
+            }
+
+            // Deliver credentials to holder
+            boolean success = deliveryService.deliverCredentials(requestId, credentials);
+
+            if (success) {
+                return ResponseEntity.ok(Map.of(
+                    "status", "delivered",
+                    "message", "Credentials successfully delivered to holder",
+                    "credentialsCount", credentials.size()
+                ));
+            } else {
+                return ResponseEntity.status(500).body(GenericApiResponse.error("Failed to deliver credentials to holder"));
+            }
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            LOG.error("Error approving credential request {}: {}", requestId, e.getMessage(), e);
+            return ResponseEntity.status(500).body(GenericApiResponse.error("Internal error: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Reject a credential request.
+     * This endpoint allows rejecting a pending credential request and notifying the holder.
+     *
+     * @param requestId The issuerPid identifier of the credential request
+     * @param request Request body containing the rejection reason
+     * @return 200 on success, 404 if request not found, 400 if already processed
+     */
+    @PostMapping(path = "/requests/{requestId}/reject", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> rejectCredentialRequest(
+            @org.springframework.web.bind.annotation.PathVariable String requestId,
+            @RequestBody Map<String, String> request) {
+
+        if (requestId == null || requestId.isBlank()) {
+            return ResponseEntity.badRequest().body(GenericApiResponse.error("requestId required"));
+        }
+
+        String rejectionReason = request.get("rejectionReason");
+        if (rejectionReason == null || rejectionReason.isBlank()) {
+            return ResponseEntity.badRequest().body(GenericApiResponse.error("rejectionReason is required"));
+        }
+
+        try {
+            boolean success = deliveryService.rejectCredentialRequest(requestId, rejectionReason);
+
+            if (success) {
+                return ResponseEntity.ok(Map.of(
+                    "status", "rejected",
+                    "message", "Credential request rejected and holder notified"
+                ));
+            } else {
+                return ResponseEntity.status(500).body(GenericApiResponse.error("Failed to process rejection"));
+            }
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            LOG.error("Error rejecting credential request {}: {}", requestId, e.getMessage(), e);
+            return ResponseEntity.status(500).body(GenericApiResponse.error("Internal error: " + e.getMessage()));
+        }
     }
 }

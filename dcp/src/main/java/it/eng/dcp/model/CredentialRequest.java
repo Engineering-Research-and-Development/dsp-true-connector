@@ -47,7 +47,7 @@ public class CredentialRequest {
     private List<String> credentialIds = new ArrayList<>();
 
     /**
-     * Current status of the request (PENDING/ISSUED/REJECTED).
+     * Current status of the request (PENDING/RECEIVED/ISSUED/REJECTED).
      */
     private CredentialStatus status = CredentialStatus.PENDING;
 
@@ -65,7 +65,7 @@ public class CredentialRequest {
                 req.credentialIds.add(cr.getId());
             }
         }
-        req.status = CredentialStatus.PENDING;
+        req.status = CredentialStatus.RECEIVED;
         req.createdAt = Instant.now();
         return req;
     }
