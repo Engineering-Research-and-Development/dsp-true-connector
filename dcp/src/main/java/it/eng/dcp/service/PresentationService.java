@@ -2,6 +2,7 @@ package it.eng.dcp.service;
 
 import it.eng.dcp.model.PresentationQueryMessage;
 import it.eng.dcp.model.PresentationResponseMessage;
+import it.eng.dcp.model.ProfileId;
 import it.eng.dcp.model.VerifiableCredential;
 import it.eng.dcp.model.VerifiablePresentation;
 import it.eng.dcp.repository.VerifiableCredentialRepository;
@@ -54,7 +55,7 @@ public class PresentationService {
 
             // Build a VerifiablePresentation containing the group's credential ids
             List<String> credentialIds = groupCreds.stream().map(VerifiableCredential::getId).collect(Collectors.toList());
-            String profile = e.getKey().isEmpty() ? null : e.getKey();
+            String profile = e.getKey().isEmpty() ? ProfileId.VC11_SL2021_JWT.toString() : e.getKey();
             VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
                     .holderDid(groupCreds.get(0).getHolderDid())
                     .credentialIds(credentialIds)

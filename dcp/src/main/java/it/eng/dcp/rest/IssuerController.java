@@ -4,8 +4,9 @@ import it.eng.dcp.model.CredentialRequest;
 import it.eng.dcp.model.CredentialRequestMessage;
 import it.eng.dcp.model.CredentialMessage;
 import it.eng.dcp.repository.CredentialRequestRepository;
-import it.eng.dcp.service.SelfIssuedIdTokenService;
 import it.eng.dcp.service.CredentialDeliveryService;
+import it.eng.dcp.service.CredentialIssuanceService;
+import it.eng.dcp.service.SelfIssuedIdTokenService;
 import it.eng.tools.response.GenericApiResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,14 +34,17 @@ public class IssuerController {
     private final SelfIssuedIdTokenService tokenService;
     private final CredentialRequestRepository requestRepository;
     private final CredentialDeliveryService deliveryService;
+    private final CredentialIssuanceService issuanceService;
 
     @Autowired
     public IssuerController(SelfIssuedIdTokenService tokenService,
                            CredentialRequestRepository requestRepository,
-                           CredentialDeliveryService deliveryService) {
+                           CredentialDeliveryService deliveryService,
+                           CredentialIssuanceService issuanceService) {
         this.tokenService = tokenService;
         this.requestRepository = requestRepository;
         this.deliveryService = deliveryService;
+        this.issuanceService = issuanceService;
     }
 
     /**
@@ -109,49 +113,69 @@ public class IssuerController {
     /**
      * Approve and deliver credentials for a pending credential request.
      * This endpoint triggers Step 3 of the DCP credential issuance flow:
+     * - Retrieves the credential request from the database
+     * - Generates credentials based on the requested credential types (or uses provided credentials)
      * - Resolves the holder's DID to find their Credential Service endpoint
      * - Sends a CredentialMessage with the issued credentials to the holder
      * - Updates the request status to ISSUED
      *
      * @param requestId The issuerPid identifier of the credential request
-     * @param request Request body containing the credentials to deliver
+     * @param request Optional request body containing custom credentials to deliver (if not provided, credentials are auto-generated)
      * @return 200 on success, 404 if request not found, 400 if already processed
      */
     @PostMapping(path = "/requests/{requestId}/approve", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> approveAndDeliverCredentials(
             @org.springframework.web.bind.annotation.PathVariable String requestId,
-            @RequestBody Map<String, Object> request) {
+            @RequestBody(required = false) Map<String, Object> request) {
 
         if (requestId == null || requestId.isBlank()) {
             return ResponseEntity.badRequest().body(GenericApiResponse.error("requestId required"));
         }
 
         try {
-            // Extract credentials from request body
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> credentialsData = (List<Map<String, Object>>) request.get("credentials");
+            // Retrieve the credential request from database
+            CredentialRequest credentialRequest = requestRepository.findByIssuerPid(requestId)
+                    .orElseThrow(() -> new IllegalArgumentException("Credential request not found: " + requestId));
 
-            if (credentialsData == null || credentialsData.isEmpty()) {
-                return ResponseEntity.badRequest().body(GenericApiResponse.error("credentials array is required and must not be empty"));
-            }
+            List<CredentialMessage.CredentialContainer> credentials;
 
-            // Convert to CredentialContainer objects
-            List<CredentialMessage.CredentialContainer> credentials = new java.util.ArrayList<>();
-            for (Map<String, Object> credData : credentialsData) {
-                String credentialType = (String) credData.get("credentialType");
-                Object payload = credData.get("payload");
-                String format = (String) credData.get("format");
+            // Option 1: Use provided credentials from request body (for custom/manual issuance)
+            if (request != null && request.containsKey("credentials")) {
+                LOG.info("Using manually provided credentials for request {}", requestId);
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> credentialsData = (List<Map<String, Object>>) request.get("credentials");
 
-                if (credentialType == null || payload == null || format == null) {
-                    return ResponseEntity.badRequest().body(GenericApiResponse.error("Each credential must have credentialType, payload, and format"));
+                if (credentialsData == null || credentialsData.isEmpty()) {
+                    return ResponseEntity.badRequest().body(GenericApiResponse.error("credentials array must not be empty when provided"));
                 }
 
-                CredentialMessage.CredentialContainer container = CredentialMessage.CredentialContainer.Builder.newInstance()
-                        .credentialType(credentialType)
-                        .payload(payload)
-                        .format(format)
-                        .build();
-                credentials.add(container);
+                // Convert to CredentialContainer objects
+                credentials = new java.util.ArrayList<>();
+                for (Map<String, Object> credData : credentialsData) {
+                    String credentialType = (String) credData.get("credentialType");
+                    Object payload = credData.get("payload");
+                    String format = (String) credData.get("format");
+
+                    if (credentialType == null || payload == null || format == null) {
+                        return ResponseEntity.badRequest().body(GenericApiResponse.error("Each credential must have credentialType, payload, and format"));
+                    }
+
+                    CredentialMessage.CredentialContainer container = CredentialMessage.CredentialContainer.Builder.newInstance()
+                            .credentialType(credentialType)
+                            .payload(payload)
+                            .format(format)
+                            .build();
+                    credentials.add(container);
+                }
+            } else {
+                // Option 2: Auto-generate credentials based on the credential request (recommended for UI)
+                LOG.info("Auto-generating credentials for request {} based on requested credential IDs: {}",
+                        requestId, credentialRequest.getCredentialIds());
+                credentials = issuanceService.generateCredentials(credentialRequest);
+
+                if (credentials.isEmpty()) {
+                    return ResponseEntity.status(500).body(GenericApiResponse.error("Failed to generate credentials for the requested types"));
+                }
             }
 
             // Deliver credentials to holder
@@ -161,7 +185,10 @@ public class IssuerController {
                 return ResponseEntity.ok(Map.of(
                     "status", "delivered",
                     "message", "Credentials successfully delivered to holder",
-                    "credentialsCount", credentials.size()
+                    "credentialsCount", credentials.size(),
+                    "credentialTypes", credentials.stream()
+                            .map(CredentialMessage.CredentialContainer::getCredentialType)
+                            .toList()
                 ));
             } else {
                 return ResponseEntity.status(500).body(GenericApiResponse.error("Failed to deliver credentials to holder"));

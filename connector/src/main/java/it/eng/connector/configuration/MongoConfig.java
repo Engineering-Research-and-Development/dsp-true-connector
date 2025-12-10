@@ -1,8 +1,11 @@
 package it.eng.connector.configuration;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.catalog.model.Action;
 import it.eng.catalog.model.LeftOperand;
 import it.eng.catalog.model.Operator;
+import org.bson.Document;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
@@ -43,7 +46,10 @@ public class MongoConfig {
                 new StringToLeftOperandConverterCN(),
                 new LeftOperandToStringConverterCN(),
                 new StringToOperatorConverterCN(),
-                new OperatorToStringConverterCN()
+                new OperatorToStringConverterCN(),
+                // JsonNode converters for DCP module
+                new JsonNodeToDocumentConverter(),
+                new DocumentToJsonNodeConverter()
         ));
     }
 
@@ -142,6 +148,48 @@ public class MongoConfig {
             return source.toString();
         }
     }
-}
 
+    /**
+     * Converts JsonNode to MongoDB Document for storage.
+     * Required for DCP module's VerifiableCredential entity.
+     */
+    @WritingConverter
+    public static class JsonNodeToDocumentConverter implements Converter<JsonNode, Document> {
+        private static final ObjectMapper MAPPER = new ObjectMapper();
+
+        @Override
+        public Document convert(JsonNode source) {
+            if (source == null) {
+                return null;
+            }
+            try {
+                return Document.parse(MAPPER.writeValueAsString(source));
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to convert JsonNode to Document", e);
+            }
+        }
+    }
+
+    /**
+     * Converts MongoDB Document to JsonNode for reading.
+     * Required for DCP module's VerifiableCredential entity.
+     */
+    @ReadingConverter
+    public static class DocumentToJsonNodeConverter implements Converter<Document, JsonNode> {
+        private static final ObjectMapper MAPPER = new ObjectMapper();
+
+        @Override
+        public JsonNode convert(Document source) {
+            if (source == null) {
+                return null;
+            }
+            try {
+                String json = source.toJson();
+                return MAPPER.readTree(json);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to convert Document to JsonNode", e);
+            }
+        }
+    }
+}
 
