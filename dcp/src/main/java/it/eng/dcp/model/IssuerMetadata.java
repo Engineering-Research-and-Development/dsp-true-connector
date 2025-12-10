@@ -32,6 +32,7 @@ public class IssuerMetadata extends BaseDcpMessage {
     // public static final String MESSAGE_TYPE = "IssuerMetadata";
 
     @Override
+    @JsonProperty(value = DSpaceConstants.TYPE, access = JsonProperty.Access.READ_ONLY)
     public String getType() {
         return IssuerMetadata.class.getSimpleName();
     }

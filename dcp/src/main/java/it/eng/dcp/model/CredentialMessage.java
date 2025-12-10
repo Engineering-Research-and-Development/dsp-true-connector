@@ -29,6 +29,7 @@ public class CredentialMessage extends BaseDcpMessage {
     // public static final String MESSAGE_TYPE = "CredentialMessage";
 
     @Override
+    @JsonProperty(value = DSpaceConstants.TYPE, access = JsonProperty.Access.READ_ONLY)
     public String getType() {
         return CredentialMessage.class.getSimpleName();
     }

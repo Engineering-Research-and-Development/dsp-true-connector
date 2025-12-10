@@ -1,5 +1,8 @@
 package it.eng.dcp.service;
 
+import it.eng.dcp.exception.InsecureEndpointException;
+import it.eng.dcp.exception.RemoteHolderAuthException;
+import it.eng.dcp.exception.RemoteHolderClientException;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.response.GenericApiResponse;
 import org.junit.jupiter.api.BeforeEach;

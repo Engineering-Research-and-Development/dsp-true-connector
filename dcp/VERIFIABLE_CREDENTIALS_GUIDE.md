@@ -230,13 +230,13 @@ Content-Type: application/json
   "@context": ["https://w3id.org/dspace-dcp/v1.0/dcp.jsonld"],
   "type": "PresentationQueryMessage",
   "scope": [
-    "org.eclipse.dspace.dcp.vc.type:MembershipCredential"
+    "MembershipCredential"
   ]
 }
 ```
 
 **Scope Options**:
-- `org.eclipse.dspace.dcp.vc.type:MembershipCredential` - Request credential by type
+- `MembershipCredential` - Request credential by type
 - `org.eclipse.dspace.dcp.vc.id:8247b87d-...` - Request credential by ID
 
 **Response**:

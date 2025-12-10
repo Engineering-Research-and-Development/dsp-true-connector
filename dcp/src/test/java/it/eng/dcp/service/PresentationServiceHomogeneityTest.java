@@ -1,5 +1,8 @@
 package it.eng.dcp.service;
 
+import com.nimbusds.jose.jwk.Curve;
+import com.nimbusds.jose.jwk.ECKey;
+import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import it.eng.dcp.model.VerifiableCredential;
 import it.eng.dcp.repository.VerifiableCredentialRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,13 +18,24 @@ import static org.mockito.Mockito.when;
 class PresentationServiceHomogeneityTest {
 
     private VerifiableCredentialRepository repo;
+    private KeyService keyService;
     private BasicVerifiablePresentationSigner signer;
     private PresentationService svc;
 
     @BeforeEach
-    void setup() {
+    void setup() throws Exception {
         repo = Mockito.mock(VerifiableCredentialRepository.class);
-        signer = new BasicVerifiablePresentationSigner();
+        keyService = Mockito.mock(KeyService.class);
+
+        // Generate a test EC key for signing
+        ECKey testKey = new ECKeyGenerator(Curve.P_256)
+                .keyID("test-key-id")
+                .generate();
+
+        // Mock KeyService to return test key
+        when(keyService.getSigningJwk()).thenReturn(testKey);
+
+        signer = new BasicVerifiablePresentationSigner(keyService);
         svc = new PresentationService(repo, signer);
     }
 

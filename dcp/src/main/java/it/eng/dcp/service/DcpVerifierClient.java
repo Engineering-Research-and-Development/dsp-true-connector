@@ -2,6 +2,9 @@ package it.eng.dcp.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dcp.exception.InsecureEndpointException;
+import it.eng.dcp.exception.RemoteHolderAuthException;
+import it.eng.dcp.exception.RemoteHolderClientException;
 import it.eng.dcp.model.PresentationQueryMessage;
 import it.eng.dcp.model.PresentationResponseMessage;
 import it.eng.tools.client.rest.OkHttpRestClient;

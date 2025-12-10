@@ -2,7 +2,7 @@ package it.eng.dcp.rest;
 
 import it.eng.dcp.model.CredentialRequest;
 import it.eng.dcp.model.CredentialStatus;
-import it.eng.dcp.repository.CredentialRequestRepository;
+import it.eng.dcp.service.IssuerService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -21,7 +21,7 @@ import static org.mockito.Mockito.when;
 public class IssuerControllerTest {
 
     @Mock
-    private CredentialRequestRepository requestRepository;
+    private IssuerService issuerService;
 
     @InjectMocks
     private IssuerController controller;
@@ -36,10 +36,10 @@ public class IssuerControllerTest {
                 .credentialIds(java.util.List.of("d5c77b0e-7f4e-4fd5-8c5f-28b5fc3f96d1"))
                 .build();
 
-        when(requestRepository.findByIssuerPid("req-123")).thenReturn(Optional.of(req));
+        when(issuerService.getRequestByIssuerPid("req-123")).thenReturn(Optional.of(req));
 
         var resp = controller.getRequestStatus("req-123");
-        assertEquals( HttpStatusCode.valueOf(200), resp.getStatusCode());
+        assertEquals(HttpStatusCode.valueOf(200), resp.getStatusCode());
         assertInstanceOf(Map.class, resp.getBody());
         Map<?, ?> body = (Map<?, ?>) resp.getBody();
         assertEquals("req-123", body.get("issuerPid"));
@@ -49,9 +49,10 @@ public class IssuerControllerTest {
 
     @Test
     public void getRequestStatus_notFound() {
-        when(requestRepository.findByIssuerPid("req-404")).thenReturn(Optional.empty());
+        when(issuerService.getRequestByIssuerPid("req-404")).thenReturn(Optional.empty());
 
         var resp = controller.getRequestStatus("req-404");
-        assertEquals( HttpStatusCode.valueOf(404), resp.getStatusCode());
+        assertEquals(HttpStatusCode.valueOf(404), resp.getStatusCode());
     }
 }
+

@@ -1,6 +1,14 @@
 package it.eng.dcp.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.JWSSigner;
+import com.nimbusds.jose.crypto.ECDSASigner;
+import com.nimbusds.jose.jwk.ECKey;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import it.eng.dcp.config.DcpProperties;
 import it.eng.dcp.model.CredentialMessage;
 import it.eng.dcp.model.CredentialRequest;
@@ -23,11 +31,13 @@ public class CredentialIssuanceService {
 
     private final DcpProperties dcpProperties;
     private final ObjectMapper mapper;
+    private final KeyService keyService;
 
     @Autowired
-    public CredentialIssuanceService(DcpProperties dcpProperties, ObjectMapper mapper) {
+    public CredentialIssuanceService(DcpProperties dcpProperties, ObjectMapper mapper, KeyService keyService) {
         this.dcpProperties = dcpProperties;
         this.mapper = mapper;
+        this.keyService = keyService;
     }
 
     /**
@@ -115,19 +125,19 @@ public class CredentialIssuanceService {
     }
 
     /**
-     * STUB: Generate a MembershipCredential.
+     * Generate a MembershipCredential with proper JWT signing.
      *
      * In production, this would:
      * - Query database for organization details
      * - Validate membership status
      * - Create proper JWT with all required claims
      * - Sign with issuer's private key
+     *
      * @param request The credential request
-     * @return A credential container with the membership credential
+     * @return A credential container with the signed membership credential
      */
     private CredentialMessage.CredentialContainer generateMembershipCredential(CredentialRequest request) {
-        // This is a STUB JWT - in production, use proper JWT library to sign
-        String stubJwt = generateStubJWT(request.getHolderPid(), "MembershipCredential", Map.of(
+        String signedJwt = generateSignedJWT(request.getHolderPid(), "MembershipCredential", Map.of(
                 "membershipType", "Premium",
                 "status", "Active",
                 "membershipId", "MEMBER-" + UUID.randomUUID().toString().substring(0, 8)
@@ -136,17 +146,18 @@ public class CredentialIssuanceService {
         return CredentialMessage.CredentialContainer.Builder.newInstance()
                 .credentialType("MembershipCredential")
                 .format("jwt")
-                .payload(stubJwt)
+                .payload(signedJwt)
                 .build();
     }
 
     /**
-     * STUB: Generate an OrganizationCredential.
+     * Generate an OrganizationCredential with proper JWT signing.
+     *
      * @param request The credential request
-     * @return A credential container with the organization credential
+     * @return A credential container with the signed organization credential
      */
     private CredentialMessage.CredentialContainer generateOrganizationCredential(CredentialRequest request) {
-        String stubJwt = generateStubJWT(request.getHolderPid(), "OrganizationCredential", Map.of(
+        String signedJwt = generateSignedJWT(request.getHolderPid(), "OrganizationCredential", Map.of(
                 "organizationName", "Example Organization",
                 "organizationType", "Corporation",
                 "status", "Verified"
@@ -155,18 +166,19 @@ public class CredentialIssuanceService {
         return CredentialMessage.CredentialContainer.Builder.newInstance()
                 .credentialType("OrganizationCredential")
                 .format("jwt")
-                .payload(stubJwt)
+                .payload(signedJwt)
                 .build();
     }
 
     /**
-     * STUB: Generate a generic credential.
+     * Generate a generic credential with proper JWT signing.
+     *
      * @param credentialType The type of credential to generate
      * @param request The credential request
-     * @return A credential container with the generic credential
+     * @return A credential container with the signed generic credential
      */
     private CredentialMessage.CredentialContainer generateGenericCredential(String credentialType, CredentialRequest request) {
-        String stubJwt = generateStubJWT(request.getHolderPid(), credentialType, Map.of(
+        String signedJwt = generateSignedJWT(request.getHolderPid(), credentialType, Map.of(
                 "status", "Active",
                 "issuedBy", dcpProperties.getConnectorDid()
         ));
@@ -174,57 +186,63 @@ public class CredentialIssuanceService {
         return CredentialMessage.CredentialContainer.Builder.newInstance()
                 .credentialType(credentialType)
                 .format("jwt")
-                .payload(stubJwt)
+                .payload(signedJwt)
                 .build();
     }
 
     /**
-     * STUB: Generate a JWT string.
+     * Generate a properly signed JWT Verifiable Credential using ES256.
      *
-     * WARNING: This is NOT a real JWT! It's a placeholder.
-     * In production, use com.auth0.jwt or similar to properly sign JWTs.
+     * Per W3C VC Data Model, the JWT contains:
+     * - Standard JWT claims (iss, sub, iat, exp, jti)
+     * - vc claim containing the Verifiable Credential structure
      *
-     * TODO: Replace with real JWT signing using issuer's private key
      * @param holderDid The holder's DID
      * @param credentialType The type of credential
      * @param claims Additional claims to include in the credential subject
-     * @return A stub JWT string (NOT properly signed)
+     * @return A properly signed JWT VC string
      */
-    private String generateStubJWT(String holderDid, String credentialType, Map<String, String> claims) {
-        // Create JWT payload
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("iss", dcpProperties.getConnectorDid()); // Issuer
-        payload.put("sub", holderDid); // Subject (holder)
-        payload.put("iat", Instant.now().getEpochSecond());
-        payload.put("exp", Instant.now().plusSeconds(365 * 24 * 60 * 60).getEpochSecond()); // 1 year
-        payload.put("jti", "urn:uuid:" + UUID.randomUUID());
-
-        // Add credential subject
-        Map<String, Object> vc = new HashMap<>();
-        vc.put("@context", List.of(
-                "https://www.w3.org/2018/credentials/v1",
-                "https://example.org/credentials/v1"
-        ));
-        vc.put("type", List.of("VerifiableCredential", credentialType));
-
-        Map<String, Object> credentialSubject = new HashMap<>(claims);
-        credentialSubject.put("id", holderDid);
-        vc.put("credentialSubject", credentialSubject);
-
-        payload.put("vc", vc);
-
-        // STUB: Return base64-encoded JSON as placeholder
-        // Real implementation must use proper JWT signing
+    private String generateSignedJWT(String holderDid, String credentialType, Map<String, String> claims) {
         try {
-            String payloadJson = mapper.writeValueAsString(payload);
-            String header = "{\"kid\":\"" + dcpProperties.getConnectorDid() + "#key-1\",\"alg\":\"ES256\"}";
-            String encodedHeader = Base64.getUrlEncoder().withoutPadding().encodeToString(header.getBytes());
-            String encodedPayload = Base64.getUrlEncoder().withoutPadding().encodeToString(payloadJson.getBytes());
-            String stubSignature = Base64.getUrlEncoder().withoutPadding().encodeToString("STUB_SIGNATURE_REPLACE_WITH_REAL_SIGNATURE".getBytes());
+            // Get the signing key from KeyService
+            ECKey signingKey = keyService.getSigningJwk();
 
-            return encodedHeader + "." + encodedPayload + "." + stubSignature;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to generate stub JWT", e);
+            // Build the VC structure
+            Map<String, Object> vc = new HashMap<>();
+            vc.put("@context", List.of(
+                    "https://www.w3.org/2018/credentials/v1",
+                    "https://example.org/credentials/v1"
+            ));
+            vc.put("type", List.of("VerifiableCredential", credentialType));
+
+            // Build credential subject
+            Map<String, Object> credentialSubject = new HashMap<>(claims);
+            credentialSubject.put("id", holderDid);
+            vc.put("credentialSubject", credentialSubject);
+
+            // Build JWT claims set
+            JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+                    .issuer(dcpProperties.getConnectorDid())
+                    .subject(holderDid)
+                    .issueTime(Date.from(Instant.now()))
+                    .expirationTime(Date.from(Instant.now().plusSeconds(365 * 24 * 60 * 60))) // 1 year
+                    .jwtID("urn:uuid:" + UUID.randomUUID())
+                    .claim("vc", vc)
+                    .build();
+
+            // Create JWS header with key ID
+            JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.ES256)
+                    .keyID(signingKey.getKeyID())
+                    .build();
+
+            // Create and sign the JWT
+            SignedJWT signedJWT = new SignedJWT(header, claimsSet);
+            JWSSigner signer = new ECDSASigner(signingKey);
+            signedJWT.sign(signer);
+
+            return signedJWT.serialize();
+        } catch (JOSEException e) {
+            throw new RuntimeException("Failed to sign JWT VC", e);
         }
     }
 }

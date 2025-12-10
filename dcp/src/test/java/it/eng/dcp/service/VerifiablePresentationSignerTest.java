@@ -2,15 +2,40 @@ package it.eng.dcp.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jose.jwk.Curve;
+import com.nimbusds.jose.jwk.ECKey;
+import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import it.eng.dcp.model.VerifiablePresentation;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
 
 public class VerifiablePresentationSignerTest {
 
-    private final BasicVerifiablePresentationSigner signer = new BasicVerifiablePresentationSigner();
+    @Mock
+    private KeyService keyService;
+    
+    private BasicVerifiablePresentationSigner signer;
     private final ObjectMapper mapper = new ObjectMapper();
+
+    @BeforeEach
+    void setUp() throws Exception {
+        MockitoAnnotations.openMocks(this);
+        
+        // Generate a test EC key for signing
+        ECKey testKey = new ECKeyGenerator(Curve.P_256)
+                .keyID("test-key-id")
+                .generate();
+        
+        // Mock KeyService to return test key
+        when(keyService.getSigningJwk()).thenReturn(testKey);
+        
+        signer = new BasicVerifiablePresentationSigner(keyService);
+    }
 
     @Test
     void jwtFormatProducesCompactString() {

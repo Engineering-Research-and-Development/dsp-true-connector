@@ -28,6 +28,7 @@ public class CredentialRequestMessage extends BaseDcpMessage {
     private static final long serialVersionUID = 1L;
 
     @Override
+    @JsonProperty(value = DSpaceConstants.TYPE, access = JsonProperty.Access.READ_ONLY)
     public String getType() {
         return CredentialRequestMessage.class.getSimpleName();
     }

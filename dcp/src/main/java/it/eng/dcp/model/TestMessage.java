@@ -1,5 +1,6 @@
 package it.eng.dcp.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import it.eng.tools.model.DSpaceConstants;
@@ -21,6 +22,7 @@ public class TestMessage extends BaseDcpMessage {
     private String payload;
 
     @Override
+    @JsonProperty(value = DSpaceConstants.TYPE, access = JsonProperty.Access.READ_ONLY)
     public String getType() {
         return typeOverride; // intentionally null when not set so builders must provide type to pass validation
     }

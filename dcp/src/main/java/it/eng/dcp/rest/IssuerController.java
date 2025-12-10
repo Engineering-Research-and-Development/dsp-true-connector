@@ -2,11 +2,7 @@ package it.eng.dcp.rest;
 
 import it.eng.dcp.model.CredentialRequest;
 import it.eng.dcp.model.CredentialRequestMessage;
-import it.eng.dcp.model.CredentialMessage;
-import it.eng.dcp.repository.CredentialRequestRepository;
-import it.eng.dcp.service.CredentialDeliveryService;
-import it.eng.dcp.service.CredentialIssuanceService;
-import it.eng.dcp.service.SelfIssuedIdTokenService;
+import it.eng.dcp.service.IssuerService;
 import it.eng.tools.response.GenericApiResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,11 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.util.List;
@@ -31,20 +23,11 @@ public class IssuerController {
 
     private static final Logger LOG = LoggerFactory.getLogger(IssuerController.class);
 
-    private final SelfIssuedIdTokenService tokenService;
-    private final CredentialRequestRepository requestRepository;
-    private final CredentialDeliveryService deliveryService;
-    private final CredentialIssuanceService issuanceService;
+    private final IssuerService issuerService;
 
     @Autowired
-    public IssuerController(SelfIssuedIdTokenService tokenService,
-                           CredentialRequestRepository requestRepository,
-                           CredentialDeliveryService deliveryService,
-                           CredentialIssuanceService issuanceService) {
-        this.tokenService = tokenService;
-        this.requestRepository = requestRepository;
-        this.deliveryService = deliveryService;
-        this.issuanceService = issuanceService;
+    public IssuerController(IssuerService issuerService) {
+        this.issuerService = issuerService;
     }
 
     /**
@@ -66,22 +49,16 @@ public class IssuerController {
         String token = authorization.substring("Bearer ".length());
 
         try {
-            var claims = tokenService.validateToken(token);
-            // we trust the validated token; the holderPid provided in the message should match sub claim
-            String subject = claims.getSubject();
-            if (subject == null || !subject.equals(msg.getHolderPid())) {
-                LOG.warn("Holder PID in message does not match token subject: msg={}, sub={}", msg.getHolderPid(), subject);
-                return ResponseEntity.status(401).body(GenericApiResponse.error("Token subject does not match holderPid"));
-            }
+            // Authorize request and validate token
+            issuerService.authorizeRequest(token, msg.getHolderPid());
 
-            // persist request and return Location header
-            CredentialRequest req = CredentialRequest.fromMessage(msg);
-            requestRepository.save(req);
+            // Create and persist credential request
+            CredentialRequest req = issuerService.createCredentialRequest(msg);
             String location = "/issuer/requests/" + req.getIssuerPid();
             return ResponseEntity.created(URI.create(location)).header(HttpHeaders.LOCATION, location).build();
 
         } catch (SecurityException se) {
-            return ResponseEntity.status(401).body(GenericApiResponse.error("Invalid token"));
+            return ResponseEntity.status(401).body(GenericApiResponse.error("Invalid token: " + se.getMessage()));
         } catch (Exception e) {
             LOG.error("Failed to create credential request: {}", e.getMessage());
             return ResponseEntity.status(500).body(GenericApiResponse.error("Internal error"));
@@ -97,7 +74,7 @@ public class IssuerController {
     @org.springframework.web.bind.annotation.GetMapping(path = "/requests/{requestId}")
     public ResponseEntity<?> getRequestStatus(@org.springframework.web.bind.annotation.PathVariable String requestId) {
         if (requestId == null || requestId.isBlank()) return ResponseEntity.badRequest().body("requestId required");
-        return requestRepository.findByIssuerPid(requestId)
+        return issuerService.getRequestByIssuerPid(requestId)
                 .map(r -> {
                     Map<String, Object> body = new HashMap<>();
                     body.put("issuerPid", r.getIssuerPid());
@@ -124,8 +101,7 @@ public class IssuerController {
      * @return 200 on success, 404 if request not found, 400 if already processed
      */
     @PostMapping(path = "/requests/{requestId}/approve", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> approveAndDeliverCredentials(
-            @org.springframework.web.bind.annotation.PathVariable String requestId,
+    public ResponseEntity<?> approveAndDeliverCredentials(@PathVariable String requestId,
             @RequestBody(required = false) Map<String, Object> request) {
 
         if (requestId == null || requestId.isBlank()) {
@@ -133,69 +109,35 @@ public class IssuerController {
         }
 
         try {
-            // Retrieve the credential request from database
-            CredentialRequest credentialRequest = requestRepository.findByIssuerPid(requestId)
-                    .orElseThrow(() -> new IllegalArgumentException("Credential request not found: " + requestId));
-
-            List<CredentialMessage.CredentialContainer> credentials;
-
-            // Option 1: Use provided credentials from request body (for custom/manual issuance)
+            // Extract credentials if provided
+            List<Map<String, Object>> providedCredentials = null;
             if (request != null && request.containsKey("credentials")) {
-                LOG.info("Using manually provided credentials for request {}", requestId);
                 @SuppressWarnings("unchecked")
                 List<Map<String, Object>> credentialsData = (List<Map<String, Object>>) request.get("credentials");
 
-                if (credentialsData == null || credentialsData.isEmpty()) {
+                if (credentialsData != null && credentialsData.isEmpty()) {
                     return ResponseEntity.badRequest().body(GenericApiResponse.error("credentials array must not be empty when provided"));
                 }
 
-                // Convert to CredentialContainer objects
-                credentials = new java.util.ArrayList<>();
-                for (Map<String, Object> credData : credentialsData) {
-                    String credentialType = (String) credData.get("credentialType");
-                    Object payload = credData.get("payload");
-                    String format = (String) credData.get("format");
-
-                    if (credentialType == null || payload == null || format == null) {
-                        return ResponseEntity.badRequest().body(GenericApiResponse.error("Each credential must have credentialType, payload, and format"));
-                    }
-
-                    CredentialMessage.CredentialContainer container = CredentialMessage.CredentialContainer.Builder.newInstance()
-                            .credentialType(credentialType)
-                            .payload(payload)
-                            .format(format)
-                            .build();
-                    credentials.add(container);
-                }
-            } else {
-                // Option 2: Auto-generate credentials based on the credential request (recommended for UI)
-                LOG.info("Auto-generating credentials for request {} based on requested credential IDs: {}",
-                        requestId, credentialRequest.getCredentialIds());
-                credentials = issuanceService.generateCredentials(credentialRequest);
-
-                if (credentials.isEmpty()) {
-                    return ResponseEntity.status(500).body(GenericApiResponse.error("Failed to generate credentials for the requested types"));
-                }
+                providedCredentials = credentialsData;
             }
 
-            // Deliver credentials to holder
-            boolean success = deliveryService.deliverCredentials(requestId, credentials);
+            // Delegate to service
+            IssuerService.ApprovalResult result = issuerService.approveAndDeliverCredentials(requestId, providedCredentials);
 
-            if (success) {
-                return ResponseEntity.ok(Map.of(
-                    "status", "delivered",
-                    "message", "Credentials successfully delivered to holder",
-                    "credentialsCount", credentials.size(),
-                    "credentialTypes", credentials.stream()
-                            .map(CredentialMessage.CredentialContainer::getCredentialType)
-                            .toList()
-                ));
-            } else {
-                return ResponseEntity.status(500).body(GenericApiResponse.error("Failed to deliver credentials to holder"));
-            }
+            return ResponseEntity.ok(Map.of(
+                "status", "delivered",
+                "message", "Credentials successfully delivered to holder",
+                "credentialsCount", result.getCredentialsCount(),
+                "credentialTypes", result.getCredentialTypes()
+            ));
 
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
+            LOG.error("Invalid request for approving credential request {}: {}", requestId, e.getMessage());
+            return ResponseEntity.status(400).body(GenericApiResponse.error(e.getMessage()));
+        } catch (IllegalStateException e) {
+            LOG.error("Error processing approval for credential request {}: {}", requestId, e.getMessage());
+            return ResponseEntity.status(500).body(GenericApiResponse.error(e.getMessage()));
         } catch (Exception e) {
             LOG.error("Error approving credential request {}: {}", requestId, e.getMessage(), e);
             return ResponseEntity.status(500).body(GenericApiResponse.error("Internal error: " + e.getMessage()));
@@ -225,7 +167,7 @@ public class IssuerController {
         }
 
         try {
-            boolean success = deliveryService.rejectCredentialRequest(requestId, rejectionReason);
+            boolean success = issuerService.rejectCredentialRequest(requestId, rejectionReason);
 
             if (success) {
                 return ResponseEntity.ok(Map.of(
@@ -237,7 +179,8 @@ public class IssuerController {
             }
 
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
+            LOG.error("Invalid request for rejecting credential request {}: {}", requestId, e.getMessage());
+            return ResponseEntity.status(400).body(GenericApiResponse.error(e.getMessage()));
         } catch (Exception e) {
             LOG.error("Error rejecting credential request {}: {}", requestId, e.getMessage(), e);
             return ResponseEntity.status(500).body(GenericApiResponse.error("Internal error: " + e.getMessage()));

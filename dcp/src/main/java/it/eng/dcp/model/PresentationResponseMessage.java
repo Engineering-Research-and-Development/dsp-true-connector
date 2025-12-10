@@ -32,6 +32,7 @@ public class PresentationResponseMessage extends BaseDcpMessage implements Seria
     private static final long serialVersionUID = 1L;
 
     @Override
+    @JsonProperty(value = DSpaceConstants.TYPE, access = JsonProperty.Access.READ_ONLY)
     public String getType() {
         return PresentationResponseMessage.class.getSimpleName();
     }

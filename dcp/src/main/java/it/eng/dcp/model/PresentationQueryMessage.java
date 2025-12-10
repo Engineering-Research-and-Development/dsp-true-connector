@@ -26,6 +26,7 @@ public class PresentationQueryMessage extends BaseDcpMessage {
     private static final long serialVersionUID = 1L;
 
     @Override
+    @JsonProperty(value = DSpaceConstants.TYPE, access = JsonProperty.Access.READ_ONLY)
     public String getType() {
         return PresentationQueryMessage.class.getSimpleName();
     }
@@ -81,6 +82,7 @@ public class PresentationQueryMessage extends BaseDcpMessage {
         }
 
         public PresentationQueryMessage build() {
+
             try {
                 msg.validateBase();
                 if (msg.scope == null) msg.scope = new ArrayList<>();
