@@ -47,7 +47,7 @@ class DidDocumentServiceTest {
         DidDocument doc = didDocumentService.provideDidDocument();
 
         assertEquals("did:web:localhost%3A8083:holder", doc.getId());
-        assertEquals(1, doc.getServices().size());
+        assertEquals(2, doc.getServices().size());
         ServiceEntry service = doc.getServices().get(0);
         assertEquals("TRUEConnector-Credential-Service", service.id());
         assertEquals("CredentialService", service.type());

@@ -91,11 +91,15 @@ public class IssuerService {
      * Approve and deliver credentials for a pending credential request.
      *
      * @param requestId The issuerPid identifier of the credential request
+     * @param customClaims Optional custom claims to include in generated credentials (e.g., country_code, role)
+     * @param constraintsData Optional constraints to verify before issuance
      * @param providedCredentials Optional list of manually provided credentials (can be null for auto-generation)
      * @return ApprovalResult containing success status and metadata
-     * @throws IllegalArgumentException if request not found
+     * @throws IllegalArgumentException if request not found or constraint verification fails
      */
     public ApprovalResult approveAndDeliverCredentials(String requestId,
+                                                       Map<String, Object> customClaims,
+                                                       List<Map<String, Object>> constraintsData,
                                                        List<Map<String, Object>> providedCredentials) {
         if (requestId == null || requestId.isBlank()) {
             throw new IllegalArgumentException("requestId is required");
@@ -111,10 +115,23 @@ public class IssuerService {
             log.info("Using manually provided credentials for request {}", requestId);
             credentials = convertToCredentialContainers(providedCredentials);
         } else {
-            // Auto-generate credentials
+            // Auto-generate credentials with custom claims and constraints
             log.info("Auto-generating credentials for request {} based on requested credential IDs: {}",
                     requestId, credentialRequest.getCredentialIds());
-            credentials = issuanceService.generateCredentials(credentialRequest);
+
+            if (customClaims != null && !customClaims.isEmpty()) {
+                log.info("Including custom claims in credentials: {}", customClaims.keySet());
+            }
+
+            if (constraintsData != null && !constraintsData.isEmpty()) {
+                log.info("Applying {} constraints to credential generation", constraintsData.size());
+            }
+
+            credentials = issuanceService.generateCredentials(
+                credentialRequest,
+                customClaims,
+                constraintsData
+            );
 
             if (credentials.isEmpty()) {
                 throw new IllegalStateException("Failed to generate credentials for the requested types");

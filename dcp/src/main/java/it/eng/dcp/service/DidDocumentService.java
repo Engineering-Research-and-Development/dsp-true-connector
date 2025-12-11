@@ -32,7 +32,8 @@ public class DidDocumentService {
         return DidDocument.Builder.newInstance()
                 .id(did)
                 .service(List.of(
-                        new ServiceEntry(serviceId, "CredentialService", baseEndpoint)
+                        new ServiceEntry(serviceId, "CredentialService", baseEndpoint),
+                        new ServiceEntry(serviceId, "IssuerService", baseEndpoint)
                 ))
                 .verificationMethod(List.of(
                         VerificationMethod.Builder.newInstance()

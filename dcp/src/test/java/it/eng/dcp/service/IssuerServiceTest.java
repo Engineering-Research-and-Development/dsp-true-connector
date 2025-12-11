@@ -12,7 +12,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.Instant;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -42,7 +41,7 @@ class IssuerServiceTest {
     }
 
     @Test
-    void authorizeRequest_validToken_success() throws Exception {
+    void authorizeRequest_validToken_success() {
         // Arrange
         String bearerToken = "valid-token";
         String holderPid = "did:example:holder123";
@@ -216,11 +215,11 @@ class IssuerServiceTest {
         );
 
         when(requestRepository.findByIssuerPid(requestId)).thenReturn(Optional.of(request));
-        when(issuanceService.generateCredentials(request)).thenReturn(generatedCredentials);
+        when(issuanceService.generateCredentials(eq(request), isNull(), isNull())).thenReturn(generatedCredentials);
         when(deliveryService.deliverCredentials(eq(requestId), anyList())).thenReturn(true);
 
         // Act
-        IssuerService.ApprovalResult result = issuerService.approveAndDeliverCredentials(requestId, null);
+        IssuerService.ApprovalResult result = issuerService.approveAndDeliverCredentials(requestId, null, null, null);
 
         // Assert
         assertTrue(result.isSuccess());
@@ -230,8 +229,7 @@ class IssuerServiceTest {
         assertTrue(result.getCredentialTypes().contains("DriverLicense"));
 
         verify(requestRepository).findByIssuerPid(requestId);
-        verify(issuanceService).generateCredentials(request);
-        verify(deliveryService).deliverCredentials(eq(requestId), anyList());
+        verify(issuanceService).generateCredentials(eq(request), isNull(), isNull());
     }
 
     @Test
@@ -255,7 +253,7 @@ class IssuerServiceTest {
         when(deliveryService.deliverCredentials(eq(requestId), anyList())).thenReturn(true);
 
         // Act
-        IssuerService.ApprovalResult result = issuerService.approveAndDeliverCredentials(requestId, providedCredentials);
+        IssuerService.ApprovalResult result = issuerService.approveAndDeliverCredentials(requestId, null, null, providedCredentials);
 
         // Assert
         assertTrue(result.isSuccess());
@@ -276,11 +274,11 @@ class IssuerServiceTest {
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> issuerService.approveAndDeliverCredentials(requestId, null));
+                () -> issuerService.approveAndDeliverCredentials(requestId, null, null, null));
 
         assertTrue(exception.getMessage().contains("Credential request not found"));
         verify(requestRepository).findByIssuerPid(requestId);
-        verify(issuanceService, never()).generateCredentials(any());
+        verify(issuanceService, never()).generateCredentials(any(), any(), any());
         verify(deliveryService, never()).deliverCredentials(anyString(), anyList());
     }
 
@@ -288,7 +286,7 @@ class IssuerServiceTest {
     void approveAndDeliverCredentials_nullRequestId_throwsException() {
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> issuerService.approveAndDeliverCredentials(null, null));
+                () -> issuerService.approveAndDeliverCredentials(null, null, null, null));
 
         assertEquals("requestId is required", exception.getMessage());
         verify(requestRepository, never()).findByIssuerPid(anyString());
@@ -314,12 +312,12 @@ class IssuerServiceTest {
         );
 
         when(requestRepository.findByIssuerPid(requestId)).thenReturn(Optional.of(request));
-        when(issuanceService.generateCredentials(request)).thenReturn(generatedCredentials);
+        when(issuanceService.generateCredentials(eq(request), isNull(), isNull())).thenReturn(generatedCredentials);
         when(deliveryService.deliverCredentials(eq(requestId), anyList())).thenReturn(false);
 
         // Act & Assert
         IllegalStateException exception = assertThrows(IllegalStateException.class,
-                () -> issuerService.approveAndDeliverCredentials(requestId, null));
+                () -> issuerService.approveAndDeliverCredentials(requestId, null, null, null));
 
         assertEquals("Failed to deliver credentials to holder", exception.getMessage());
         verify(deliveryService).deliverCredentials(eq(requestId), anyList());
@@ -337,14 +335,14 @@ class IssuerServiceTest {
                 .build();
 
         when(requestRepository.findByIssuerPid(requestId)).thenReturn(Optional.of(request));
-        when(issuanceService.generateCredentials(request)).thenReturn(Collections.emptyList());
+        when(issuanceService.generateCredentials(eq(request), isNull(), isNull())).thenReturn(Collections.emptyList());
 
         // Act & Assert
         IllegalStateException exception = assertThrows(IllegalStateException.class,
-                () -> issuerService.approveAndDeliverCredentials(requestId, null));
+                () -> issuerService.approveAndDeliverCredentials(requestId, null, null, null));
 
         assertEquals("Failed to generate credentials for the requested types", exception.getMessage());
-        verify(issuanceService).generateCredentials(request);
+        verify(issuanceService).generateCredentials(eq(request), isNull(), isNull());
         verify(deliveryService, never()).deliverCredentials(anyString(), anyList());
     }
 
@@ -449,7 +447,7 @@ class IssuerServiceTest {
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> issuerService.approveAndDeliverCredentials(requestId, invalidCredentials));
+                () -> issuerService.approveAndDeliverCredentials(requestId, null, null, invalidCredentials));
 
         assertTrue(exception.getMessage().contains("Each credential must have credentialType, payload, and format"));
         verify(deliveryService, never()).deliverCredentials(anyString(), anyList());

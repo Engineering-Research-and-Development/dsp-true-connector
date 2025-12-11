@@ -109,7 +109,23 @@ public class IssuerController {
         }
 
         try {
-            // Extract credentials if provided
+            // Extract custom claims if provided
+            Map<String, Object> customClaims = null;
+            if (request != null && request.containsKey("claims")) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> claimsData = (Map<String, Object>) request.get("claims");
+                customClaims = claimsData;
+            }
+
+            // Extract constraints if provided
+            List<Map<String, Object>> constraintsData = null;
+            if (request != null && request.containsKey("constraints")) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> constraintsList = (List<Map<String, Object>>) request.get("constraints");
+                constraintsData = constraintsList;
+            }
+
+            // Extract credentials if provided (legacy support for manual credentials)
             List<Map<String, Object>> providedCredentials = null;
             if (request != null && request.containsKey("credentials")) {
                 @SuppressWarnings("unchecked")
@@ -123,7 +139,12 @@ public class IssuerController {
             }
 
             // Delegate to service
-            IssuerService.ApprovalResult result = issuerService.approveAndDeliverCredentials(requestId, providedCredentials);
+            IssuerService.ApprovalResult result = issuerService.approveAndDeliverCredentials(
+                requestId,
+                customClaims,
+                constraintsData,
+                providedCredentials
+            );
 
             return ResponseEntity.ok(Map.of(
                 "status", "delivered",

@@ -44,6 +44,7 @@ public class CredentialRequest {
      * List of credential object ids requested (references into credentialsSupported).
      * Each id references an entry in the Issuer's credentialsSupported list.
      */
+
     private List<String> credentialIds = new ArrayList<>();
 
     /**

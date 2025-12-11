@@ -90,6 +90,13 @@ public class VerifiableCredential implements Serializable {
      */
     private JsonNode credentialStatus;
 
+    /**
+     * Optional JWT representation of this credential (compact JWT format).
+     * When present, this can be embedded directly in a VP's verifiableCredential array
+     * per DCP spec Section 5.4.2 Example 5 (path_nested with format jwt_vc).
+     */
+    private String jwtRepresentation;
+
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Builder {
@@ -161,7 +168,10 @@ public class VerifiableCredential implements Serializable {
             vc.issuerDid = issuer;
             return this;
         }
-
+        public Builder jwtRepresentation(String jwtRepresentation) {
+            vc.jwtRepresentation = jwtRepresentation;
+            return this;
+        }
 
         public Builder issuerDid(String issuerDid) {
             vc.issuerDid = issuerDid;

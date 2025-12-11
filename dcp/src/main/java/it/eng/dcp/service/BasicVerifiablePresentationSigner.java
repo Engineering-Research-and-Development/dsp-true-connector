@@ -133,6 +133,11 @@ public class BasicVerifiablePresentationSigner implements VerifiablePresentation
      * - type: VerifiablePresentation
      * - verifiableCredential: array of credential references (URIs or embedded VCs)
      *
+     * Per DCP spec Section 5.4.2 and Example 5, verifiableCredential can contain:
+     * - Credential IDs (URIs): ["urn:uuid:abc-123"]
+     * - Full JWT VCs: ["eyJhbGc...JWT..."]
+     * - JSON-LD VCs: [{...credential object...}]
+     *
      * @param vp The VerifiablePresentation model
      * @return Map representing the VP claim
      */
@@ -143,7 +148,14 @@ public class BasicVerifiablePresentationSigner implements VerifiablePresentation
                     .add("https://www.w3.org/2018/credentials/v1");
             vpClaim.putArray("type")
                     .add("VerifiablePresentation");
-            vpClaim.putPOJO("verifiableCredential", vp.getCredentialIds());
+
+            // Per DCP spec: use full credentials if available, otherwise use credential IDs
+            // This enables the verifier to validate VC signatures without additional fetch
+            if (vp.getCredentials() != null && !vp.getCredentials().isEmpty()) {
+                vpClaim.putPOJO("verifiableCredential", vp.getCredentials());
+            } else {
+                vpClaim.putPOJO("verifiableCredential", vp.getCredentialIds());
+            }
 
             // Add profileId as metadata if present
             if (vp.getProfileId() != null) {

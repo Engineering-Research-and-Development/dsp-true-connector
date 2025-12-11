@@ -52,6 +52,16 @@ public class VerifiablePresentation implements Serializable {
     private List<String> credentialIds = new ArrayList<>();
 
     /**
+     * Full credentials to be embedded in the presentation.
+     * Can contain JWT strings (for jwt format) or JSON objects (for json-ld format).
+     * Per W3C VC Data Model and DCP spec, verifiableCredential can be:
+     * - URIs/IDs: ["urn:uuid:abc"]
+     * - Embedded VCs: ["eyJhbGc...JWT...", {...JSON-LD VC...}]
+     * If present, this takes precedence over credentialIds in the VP claim.
+     */
+    private List<Object> credentials = new ArrayList<>();
+
+    /**
      * Profile identifier used for homogeneity (e.g. VC11_SL2021_JWT).
      */
     @NotNull
@@ -89,6 +99,14 @@ public class VerifiablePresentation implements Serializable {
 
         public Builder holderDid(String holderDid) {
             vp.holderDid = holderDid;
+            return this;
+        }
+
+        public Builder credentials(List<Object> credentials) {
+            if (credentials != null) {
+                vp.credentials.clear();
+                vp.credentials.addAll(credentials);
+            }
             return this;
         }
 

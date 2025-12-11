@@ -53,12 +53,32 @@ public class PresentationService {
             List<VerifiableCredential> groupCreds = e.getValue();
             if (groupCreds.isEmpty()) continue;
 
-            // Build a VerifiablePresentation containing the group's credential ids
+            // Collect credential IDs for reference
             List<String> credentialIds = groupCreds.stream().map(VerifiableCredential::getId).collect(Collectors.toList());
+
+            // Collect full credentials for embedding in VP per DCP spec Section 5.4.2
+            // This allows the verifier to validate VC signatures without additional fetch
+            List<Object> fullCredentials = groupCreds.stream()
+                    .map(vc -> {
+                        // If VC already has JWT representation, use it
+                        if (vc.getJwtRepresentation() != null && !vc.getJwtRepresentation().isBlank()) {
+                            return vc.getJwtRepresentation();
+                        }
+                        // Otherwise, if credential JSON is available, use it
+                        // (For JSON-LD format or if JWT needs to be generated on-the-fly)
+                        if (vc.getCredential() != null) {
+                            return vc.getCredential();
+                        }
+                        // Fallback to credential ID
+                        return vc.getId();
+                    })
+                    .collect(Collectors.toList());
+
             String profile = e.getKey().isEmpty() ? ProfileId.VC11_SL2021_JWT.toString() : e.getKey();
             VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
                     .holderDid(groupCreds.get(0).getHolderDid())
-                    .credentialIds(credentialIds)
+                    .credentialIds(credentialIds)  // Keep IDs for reference/tracking
+                    .credentials(fullCredentials)   // Embed full VCs per DCP spec
                     .profileId(profile)
                     .build();
 
