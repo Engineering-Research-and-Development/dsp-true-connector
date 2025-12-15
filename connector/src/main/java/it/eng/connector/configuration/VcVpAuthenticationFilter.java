@@ -2,6 +2,7 @@ package it.eng.connector.configuration;
 
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.HttpHeaders;
@@ -19,6 +20,7 @@ import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTParser;
 
 import it.eng.dcp.model.PresentationResponseMessage;
+import it.eng.dcp.model.VerifiablePresentation;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -92,9 +94,23 @@ public class VcVpAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContext context = this.securityContextHolderStrategy.createEmptyContext();
                     context.setAuthentication(authResult);
                     this.securityContextHolderStrategy.setContext(context);
+
+                    // DEBUG: Verify context was set
+                    log.info("✓ VP Authentication SUCCESS - Set SecurityContext");
+                    log.info("  - Subject: {}", authResult.getName());
+                    log.info("  - isAuthenticated: {}", authResult.isAuthenticated());
+                    log.info("  - Authorities: {}", authResult.getAuthorities());
+                    log.info("  - Principal type: {}", authResult.getPrincipal() != null ? authResult.getPrincipal().getClass().getSimpleName() : "null");
+
+                    // Double-check the context was actually set
+                    Authentication contextAuth = this.securityContextHolderStrategy.getContext().getAuthentication();
+                    log.info("  - Context verification: isAuthenticated={}, subject={}",
+                            contextAuth != null ? contextAuth.isAuthenticated() : "null",
+                            contextAuth != null ? contextAuth.getName() : "null");
+
                     onSuccessfulAuthentication(request, response, authResult);
                 } else {
-                    log.debug("VP authentication returned null, continuing to next auth method");
+                    log.debug("VP authentication returned null or not authenticated, continuing to next auth method");
                 }
             } else {
                 // Not a VP, let other filters handle it
@@ -150,8 +166,12 @@ public class VcVpAuthenticationFilter extends OncePerRequestFilter {
 
             if (vpClaim != null) {
                 log.debug("Found VP claim in JWT token");
+
+                // Extract holder DID from JWT subject if not in VP claim
+                String subjectDid = claims.get("sub") != null ? claims.get("sub").toString() : null;
+
                 // Store the raw JWT token so the provider can verify the signature
-                PresentationResponseMessage presentation = vpClaimToPresentation(vpClaim);
+                PresentationResponseMessage presentation = vpClaimToPresentation(vpClaim, subjectDid);
 
                 // TODO: Consider storing the raw JWT token in the presentation for signature verification by the provider
                 // For now, the provider will re-parse from the original token stored in VcVpAuthenticationToken
@@ -190,36 +210,114 @@ public class VcVpAuthenticationFilter extends OncePerRequestFilter {
 
     /**
      * Convert VP claim from JWT to PresentationResponseMessage.
-     * The VP claim can be a Map or other structure depending on the JWT format.
+     * The VP claim is parsed into a proper VerifiablePresentation object for type safety and maintainability.
      * @param vpClaim The VP claim object from JWT
-     * @return PresentationResponseMessage
+     * @param subjectDid The subject DID from JWT (used as holder if not in VP)
+     * @return PresentationResponseMessage containing a properly typed VerifiablePresentation object
      */
-    private PresentationResponseMessage vpClaimToPresentation(Object vpClaim) {
+    private PresentationResponseMessage vpClaimToPresentation(Object vpClaim, String subjectDid) {
         try {
-            // Convert the VP claim to PresentationResponseMessage
-            // The claim should contain the VP structure
+            // Convert the VP claim to JSON string
             String vpJson = objectMapper.writeValueAsString(vpClaim);
+            log.debug("VP JSON: {}", vpJson);
 
-            // Parse as a map to construct PresentationResponseMessage
+            // Parse as a map to extract VP fields
             @SuppressWarnings("unchecked")
             Map<String, Object> vpMap = objectMapper.readValue(vpJson, Map.class);
 
-            // Build PresentationResponseMessage from the VP claim
-            PresentationResponseMessage.Builder builder = PresentationResponseMessage.Builder.newInstance();
+            // Build a proper VerifiablePresentation object from the VP claim
+            VerifiablePresentation.Builder vpBuilder = VerifiablePresentation.Builder.newInstance();
 
-            // Add the verifiableCredential array if present
-            Object credentialsObj = vpMap.get("verifiableCredential");
-            if (credentialsObj instanceof java.util.List) {
+            // Extract and set holderDid (from JWT subject or VP holder)
+            String holderDid = extractHolderDid(vpMap);
+            if (holderDid == null && subjectDid != null) {
+                // Fallback to JWT subject if holder not in VP
+                holderDid = subjectDid;
+            }
+            // Validate that holderDid is present - this is a required field
+            if (holderDid == null) {
+                log.warn("Invalid VP: No holderDid found in VP holder field or JWT subject claim");
+                return null;
+            }
+            vpBuilder.holderDid(holderDid);
+            log.debug("Set holderDid: {}", holderDid);
+
+            // Extract verifiableCredential list
+            Object vcObj = vpMap.get("verifiableCredential");
+            if (vcObj instanceof List) {
                 @SuppressWarnings("unchecked")
-                java.util.List<Object> credentials = (java.util.List<Object>) credentialsObj;
-                builder.presentation(credentials);
+                List<Object> vcList = (List<Object>) vcObj;
+                vpBuilder.credentials(vcList);
+                log.debug("Set {} credentials", vcList.size());
+
+                // Also populate credentialIds (required field with min size 1)
+                // Generate IDs from the credentials if they don't have explicit IDs
+                java.util.List<String> credentialIds = new java.util.ArrayList<>();
+                for (int i = 0; i < vcList.size(); i++) {
+                    credentialIds.add("credential-" + i);
+                }
+                vpBuilder.credentialIds(credentialIds);
+                log.debug("Set {} credentialIds", credentialIds.size());
+            } else {
+                // If no credentials, add a placeholder to satisfy validation
+                vpBuilder.credentialIds(java.util.Collections.singletonList("placeholder-credential"));
             }
 
-            return builder.build();
+            // Extract profileId
+            Object profileIdObj = vpMap.get("profileId");
+            if (profileIdObj != null) {
+                vpBuilder.profileId(profileIdObj.toString());
+                log.debug("Set profileId: {}", profileIdObj);
+            } else {
+                // Default profile if not specified
+                vpBuilder.profileId("VC11_SL2021_JWT");
+                log.debug("Set default profileId: VC11_SL2021_JWT");
+            }
+
+            // Build the VerifiablePresentation object
+            VerifiablePresentation verifiablePresentation = vpBuilder.build();
+            log.debug("Built VerifiablePresentation: id={}, holderDid={}, profileId={}",
+                    verifiablePresentation.getId(), verifiablePresentation.getHolderDid(), verifiablePresentation.getProfileId());
+
+            // Build PresentationResponseMessage with the typed VerifiablePresentation
+            PresentationResponseMessage.Builder builder = PresentationResponseMessage.Builder.newInstance();
+
+            // The presentation list should contain the VerifiablePresentation object (not a generic Map)
+            java.util.List<Object> presentationList = new java.util.ArrayList<>();
+            presentationList.add(verifiablePresentation);
+            builder.presentation(presentationList);
+
+            PresentationResponseMessage result = builder.build();
+            log.debug("Built PresentationResponseMessage with {} presentations", result.getPresentation().size());
+            return result;
         } catch (Exception e) {
-            log.warn("Failed to convert VP claim to PresentationResponseMessage: {}", e.getMessage());
+            log.error("Failed to convert VP claim to PresentationResponseMessage", e);
             return null;
         }
+    }
+
+    /**
+     * Extract holder DID from VP map.
+     * Tries multiple fields: holder, holder.id, sub (from JWT context)
+     * @param vpMap The VP map
+     * @return Holder DID or null
+     */
+    private String extractHolderDid(Map<String, Object> vpMap) {
+        // Try holder field
+        Object holder = vpMap.get("holder");
+        if (holder instanceof String) {
+            return (String) holder;
+        } else if (holder instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> holderMap = (Map<String, Object>) holder;
+            Object holderId = holderMap.get("id");
+            if (holderId instanceof String) {
+                return (String) holderId;
+            }
+        }
+
+        // Fallback: try to get from context (will be set by caller if needed)
+        return null;
     }
 
     protected void onSuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response,

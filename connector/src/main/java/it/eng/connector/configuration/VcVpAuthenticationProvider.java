@@ -100,7 +100,21 @@ public class VcVpAuthenticationProvider implements AuthenticationProvider {
             String subject = extractSubject(presentation);
 
             log.info("VC/VP authentication successful for subject: {}", subject);
-            return new VcVpAuthenticationToken(presentation, true, subject);
+
+            // Create authenticated token with authorities
+            VcVpAuthenticationToken authenticatedToken = new VcVpAuthenticationToken(
+                presentation,
+                true,
+                subject
+            );
+
+            log.debug("Created authenticated token: isAuthenticated={}, authorities={}, subject={}",
+                    authenticatedToken.isAuthenticated(),
+                    authenticatedToken.getAuthorities(),
+                    authenticatedToken.getName());
+
+            // Set the authentication in SecurityContext
+            return authenticatedToken;
         } catch (Exception e) {
             log.warn("VC/VP authentication failed with exception: {}, allowing fallback to next authentication provider", e.getMessage());
             return null; // Allow fallback to next provider on any exception
@@ -204,55 +218,64 @@ public class VcVpAuthenticationProvider implements AuthenticationProvider {
 
     /**
      * SECURITY: Verify inner VC JWT signatures.
-     * Each verifiableCredential in the VP can be:
+     * The PresentationResponseMessage contains a list of VerifiablePresentation objects.
+     * Each VerifiablePresentation has a profileId that indicates the format (e.g., VC11_SL2021_JWT for JWT format).
+     * The credentials list in each VP contains the actual credentials:
      * 1. JWT format: {"type": "...", "format": "jwt", "jwt": "eyJ..."}
      * 2. JSON format: {"type": "...", "format": "json", "credentialSubject": {...}} (no signature to verify)
      *
-     * @param presentation The presentation containing credentials
+     * @param presentationMsg The presentation message containing VP objects
      * @return true if all credential signatures are valid, false otherwise
      */
-    private boolean verifyInnerCredentialSignatures(PresentationResponseMessage presentation) {
+    private boolean verifyInnerCredentialSignatures(PresentationResponseMessage presentationMsg) {
         try {
-            List<Object> credentialsList = presentation.getPresentation();
-            if (credentialsList == null || credentialsList.isEmpty()) {
-                log.warn("No credentials found in PresentationResponseMessage");
+            List<Object> presentationsList = presentationMsg.getPresentation();
+            if (presentationsList == null || presentationsList.isEmpty()) {
+                log.warn("No presentations found in PresentationResponseMessage");
                 return false;
             }
 
-            // Each object in the list is a credential (not a wrapper containing credentials)
-            // Credential structure: {"type": "...", "format": "jwt|json", "jwt": "..." | ...credential fields...}
-            for (Object credObj : credentialsList) {
-                if (credObj instanceof java.util.Map) {
-                    @SuppressWarnings("unchecked")
-                    java.util.Map<String, Object> credMap = (java.util.Map<String, Object>) credObj;
-
-                    // Check the format field
-                    Object formatObj = credMap.get("format");
-                    String format = formatObj != null ? formatObj.toString() : "unknown";
-
-                    if ("jwt".equalsIgnoreCase(format)) {
-                        // JWT format - verify signature
-                        Object jwtObj = credMap.get("jwt");
-                        if (jwtObj instanceof String jwtString) {
-                            if (!verifyCredentialJwt(jwtString)) {
-                                log.warn("Inner credential JWT signature verification failed");
-                                return false;
-                            }
-                        } else {
-                            log.warn("Credential has format='jwt' but no 'jwt' field or is not a string");
-                            return false;
-                        }
-                    } else if ("json".equalsIgnoreCase(format)) {
-                        // JSON format - no signature to verify (already decoded)
-                        // The outer VP JWT signature covers this credential
-                        log.debug("Credential is in JSON format (no separate signature to verify)");
-                        // Continue - this is valid
-                    } else {
-                        log.warn("Unknown credential format: {}", format);
+            // Iterate through each VerifiablePresentation
+            for (Object presObj : presentationsList) {
+                // Convert to VerifiablePresentation
+                if (presObj instanceof VerifiablePresentation vp) {
+                    // If it's a VerifiablePresentation object, verify its credentials
+                    if (!verifyVerifiablePresentationCredentials(vp)) {
                         return false;
                     }
+                } else if (presObj instanceof java.util.Map) {
+                    // If it's a Map, we need to extract the VP structure
+                    @SuppressWarnings("unchecked")
+                    java.util.Map<String, Object> vpMap = (java.util.Map<String, Object>) presObj;
+
+                    // Check if this map has verifiableCredential array (it's the VP structure)
+                    if (!vpMap.containsKey("verifiableCredential")) {
+                        log.warn("Map does not contain verifiableCredential array");
+                        return false;
+                    }
+
+                    // Extract profileId to determine format
+                    String profileId = vpMap.containsKey("profileId") ? String.valueOf(vpMap.get("profileId")) : null;
+                    boolean isJwtFormat = profileId != null && profileId.contains("JWT");
+
+                    // Extract credentials from the verifiableCredential array
+                    Object vcArrayObj = vpMap.get("verifiableCredential");
+                    if (!(vcArrayObj instanceof java.util.List)) {
+                        log.warn("verifiableCredential is not a List");
+                        return false;
+                    }
+
+                    @SuppressWarnings("unchecked")
+                    java.util.List<Object> credentialsList = (java.util.List<Object>) vcArrayObj;
+
+                    // Verify each credential
+                    for (Object credObj : credentialsList) {
+                        if (!verifyCredentialObject(credObj, isJwtFormat)) {
+                            return false;
+                        }
+                    }
                 } else {
-                    log.warn("Credential is not a Map: {}", credObj.getClass().getName());
+                    log.warn("Presentation object is not VerifiablePresentation or Map: {}", presObj.getClass().getName());
                     return false;
                 }
             }
@@ -262,6 +285,99 @@ public class VcVpAuthenticationProvider implements AuthenticationProvider {
 
         } catch (Exception e) {
             log.error("Error verifying inner credential signatures: {}", e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * Verify credentials from a VerifiablePresentation object.
+     *
+     * @param vp The VerifiablePresentation containing credentials
+     * @return true if all credentials are valid, false otherwise
+     */
+    private boolean verifyVerifiablePresentationCredentials(VerifiablePresentation vp) {
+        try {
+            // Use profileId to determine format
+            String profileId = vp.getProfileId();
+            boolean isJwtFormat = profileId != null && profileId.contains("JWT");
+
+            // Get credentials list
+            List<Object> credentialsList = vp.getCredentials();
+            if (credentialsList == null || credentialsList.isEmpty()) {
+                log.debug("VerifiablePresentation has no credentials in the credentials list, checking presentation field");
+                // Credentials might be in the presentation JsonNode instead
+                return true; // Will be validated by the validation service
+            }
+
+            // Verify each credential
+            for (Object credObj : credentialsList) {
+                if (!verifyCredentialObject(credObj, isJwtFormat)) {
+                    return false;
+                }
+            }
+
+            return true;
+
+        } catch (Exception e) {
+            log.error("Error verifying VerifiablePresentation credentials: {}", e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * Verify a single credential object based on its format.
+     *
+     * @param credObj The credential object (can be Map or String)
+     * @param isJwtFormat Whether the profile indicates JWT format
+     * @return true if credential is valid, false otherwise
+     */
+    private boolean verifyCredentialObject(Object credObj, boolean isJwtFormat) {
+        try {
+            if (credObj instanceof java.util.Map) {
+                @SuppressWarnings("unchecked")
+                java.util.Map<String, Object> credMap = (java.util.Map<String, Object>) credObj;
+
+                // Check the format field (if present)
+                Object formatObj = credMap.get("format");
+                String format = formatObj != null ? formatObj.toString() : (isJwtFormat ? "jwt" : "json");
+
+                if ("jwt".equalsIgnoreCase(format)) {
+                    // JWT format - verify signature
+                    Object jwtObj = credMap.get("jwt");
+                    if (jwtObj instanceof String jwtString) {
+                        if (!verifyCredentialJwt(jwtString)) {
+                            log.warn("Inner credential JWT signature verification failed");
+                            return false;
+                        }
+                    } else {
+                        log.warn("Credential has format='jwt' but no 'jwt' field or is not a string");
+                        return false;
+                    }
+                } else if ("json".equalsIgnoreCase(format)) {
+                    // JSON format - no signature to verify (already decoded)
+                    // The outer VP JWT signature covers this credential
+                    log.debug("Credential is in JSON format (no separate signature to verify)");
+                    // Continue - this is valid
+                } else {
+                    log.warn("Unknown credential format: {}", format);
+                    return false;
+                }
+            } else if (credObj instanceof String) {
+                // Raw JWT string
+                String jwtString = (String) credObj;
+                if (!verifyCredentialJwt(jwtString)) {
+                    log.warn("Inner credential JWT signature verification failed");
+                    return false;
+                }
+            } else {
+                log.warn("Credential is not a Map or String: {}", credObj.getClass().getName());
+                return false;
+            }
+
+            return true;
+
+        } catch (Exception e) {
+            log.error("Error verifying credential object: {}", e.getMessage(), e);
             return false;
         }
     }
@@ -331,38 +447,42 @@ public class VcVpAuthenticationProvider implements AuthenticationProvider {
      * - Check expiration dates beyond standard JWT exp validation
      * - Enforce business rules specific to your domain
      *
-     * @param presentation The presentation to validate
+     * @param presentationMsg The presentation message to validate
      * @return true if custom claims are valid, false otherwise
      */
-    private boolean validateCustomClaims(PresentationResponseMessage presentation) {
+    private boolean validateCustomClaims(PresentationResponseMessage presentationMsg) {
         try {
-            List<Object> credentialsList = presentation.getPresentation();
-            if (credentialsList == null || credentialsList.isEmpty()) {
+            List<Object> presentationsList = presentationMsg.getPresentation();
+            if (presentationsList == null || presentationsList.isEmpty()) {
                 return true; // No custom validation needed
             }
 
-            // Each object in the list is a credential
-            for (Object credObj : credentialsList) {
-                if (credObj instanceof java.util.Map) {
+            // Iterate through each VerifiablePresentation
+            for (Object presObj : presentationsList) {
+                if (presObj instanceof VerifiablePresentation vp) {
+                    // Validate credentials in the VerifiablePresentation
+                    if (!validateVpCustomClaims(vp)) {
+                        return false;
+                    }
+                } else if (presObj instanceof java.util.Map) {
                     @SuppressWarnings("unchecked")
-                    java.util.Map<String, Object> credMap = (java.util.Map<String, Object>) credObj;
+                    java.util.Map<String, Object> vpMap = (java.util.Map<String, Object>) presObj;
 
-                    // Check the format field
-                    Object formatObj = credMap.get("format");
-                    String format = formatObj != null ? formatObj.toString() : "unknown";
+                    // Extract profileId to determine format
+                    String profileId = vpMap.containsKey("profileId") ? String.valueOf(vpMap.get("profileId")) : null;
+                    boolean isJwtFormat = profileId != null && profileId.contains("JWT");
 
-                    if ("jwt".equalsIgnoreCase(format)) {
-                        // JWT format - parse and validate claims from JWT
-                        Object jwtObj = credMap.get("jwt");
-                        if (jwtObj instanceof String jwtString) {
-                            if (!validateCredentialClaims(jwtString, credMap)) {
+                    // Extract credentials from the verifiableCredential array
+                    Object vcArrayObj = vpMap.get("verifiableCredential");
+                    if (vcArrayObj instanceof java.util.List) {
+                        @SuppressWarnings("unchecked")
+                        java.util.List<Object> credentialsList = (java.util.List<Object>) vcArrayObj;
+
+                        // Validate each credential
+                        for (Object credObj : credentialsList) {
+                            if (!validateCredentialCustomClaims(credObj, isJwtFormat)) {
                                 return false;
                             }
-                        }
-                    } else if ("json".equalsIgnoreCase(format)) {
-                        // JSON format - validate claims directly from the credential map
-                        if (!validateJsonCredentialClaims(credMap)) {
-                            return false;
                         }
                     }
                 }
@@ -372,6 +492,87 @@ public class VcVpAuthenticationProvider implements AuthenticationProvider {
 
         } catch (Exception e) {
             log.error("Error during custom claims validation: {}", e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * Validate custom claims for all credentials in a VerifiablePresentation.
+     *
+     * @param vp The VerifiablePresentation to validate
+     * @return true if all credentials pass validation, false otherwise
+     */
+    private boolean validateVpCustomClaims(VerifiablePresentation vp) {
+        try {
+            // Use profileId to determine format
+            String profileId = vp.getProfileId();
+            boolean isJwtFormat = profileId != null && profileId.contains("JWT");
+
+            // Get credentials list
+            List<Object> credentialsList = vp.getCredentials();
+            if (credentialsList == null || credentialsList.isEmpty()) {
+                log.debug("VerifiablePresentation has no credentials in the credentials list");
+                return true; // No credentials to validate
+            }
+
+            // Validate each credential
+            for (Object credObj : credentialsList) {
+                if (!validateCredentialCustomClaims(credObj, isJwtFormat)) {
+                    return false;
+                }
+            }
+
+            return true;
+
+        } catch (Exception e) {
+            log.error("Error validating VP custom claims: {}", e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * Validate custom claims for a single credential object.
+     *
+     * @param credObj The credential object (can be Map or String)
+     * @param isJwtFormat Whether the profile indicates JWT format
+     * @return true if credential passes validation, false otherwise
+     */
+    private boolean validateCredentialCustomClaims(Object credObj, boolean isJwtFormat) {
+        try {
+            if (credObj instanceof java.util.Map) {
+                @SuppressWarnings("unchecked")
+                java.util.Map<String, Object> credMap = (java.util.Map<String, Object>) credObj;
+
+                // Check the format field
+                Object formatObj = credMap.get("format");
+                String format = formatObj != null ? formatObj.toString() : (isJwtFormat ? "jwt" : "json");
+
+                if ("jwt".equalsIgnoreCase(format)) {
+                    // JWT format - parse and validate claims from JWT
+                    Object jwtObj = credMap.get("jwt");
+                    if (jwtObj instanceof String jwtString) {
+                        if (!validateCredentialClaims(jwtString, credMap)) {
+                            return false;
+                        }
+                    }
+                } else if ("json".equalsIgnoreCase(format)) {
+                    // JSON format - validate claims directly from the credential map
+                    if (!validateJsonCredentialClaims(credMap)) {
+                        return false;
+                    }
+                }
+            } else if (credObj instanceof String) {
+                // Raw JWT string
+                String jwtString = (String) credObj;
+                if (!validateCredentialClaims(jwtString, null)) {
+                    return false;
+                }
+            }
+
+            return true;
+
+        } catch (Exception e) {
+            log.error("Error validating credential custom claims: {}", e.getMessage(), e);
             return false;
         }
     }
@@ -426,6 +627,34 @@ public class VcVpAuthenticationProvider implements AuthenticationProvider {
         // TODO: Implement your custom validation logic here
         // For now, accept all credentials (signature was already verified)
         log.debug("Custom claims validation placeholder (JWT format) - accepting credential");
+        /*
+        jwt example decoded
+        {
+          "sub": "did:web:localhost:8080",
+          "iss": "did:web:localhost:8080",
+          "exp": 1797331441,
+          "iat": 1765795441,
+          "vc": {
+            "credentialSubject": {
+              "membershipType": "Premium",
+              "membershipId": "MEMBER-21b6390b",
+              "id": "did:web:localhost:8080",
+              "status": "Active"
+            },
+            "type": [
+              "VerifiableCredential",
+              "MembershipCredential"
+            ],
+            "@context": [
+              "https://www.w3.org/2018/credentials/v1",
+              "https://example.org/credentials/v1"
+            ]
+          },
+          "jti": "urn:uuid:c644b282-9c84-4473-bcb3-81d59c12d953"
+        }
+         */
+
+
         return true;
     }
 

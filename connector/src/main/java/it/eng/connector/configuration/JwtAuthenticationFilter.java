@@ -41,6 +41,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 			return;
 		}
 
+		// Check if authentication already exists (e.g., from VcVpAuthenticationFilter)
+		Authentication existingAuth = this.securityContextHolderStrategy.getContext().getAuthentication();
+		if (existingAuth != null && existingAuth.isAuthenticated()) {
+			this.logger.debug("Authentication already exists (from VP filter), skipping JWT authentication");
+			filterChain.doFilter(request, response);
+			return;
+		}
+
 		String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
 		if (!StringUtils.hasText(authHeader) || !authHeader.startsWith("Bearer ")) {
 			filterChain.doFilter(request, response);

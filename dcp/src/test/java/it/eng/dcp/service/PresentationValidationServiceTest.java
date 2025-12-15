@@ -2,8 +2,8 @@ package it.eng.dcp.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import it.eng.dcp.core.ProfileResolver;
 import it.eng.dcp.model.PresentationResponseMessage;
+import it.eng.dcp.model.VerifiablePresentation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -57,17 +57,17 @@ public class PresentationValidationServiceTest {
         when(profileResolver.resolve(org.mockito.Mockito.anyString(), org.mockito.Mockito.anyMap())).thenAnswer(resolverAnswer);
     }
 
-    private JsonNode buildVpJson(JsonNode credNode, String profileId) {
-        var obj = mapper.createObjectNode();
-        obj.put("holderDid", "did:example:holder");
-        obj.put("profileId", profileId);
-        var ids = mapper.createArrayNode();
-        ids.add(credNode.has("id") ? credNode.get("id").asText() : "urn:uuid:cred");
-        obj.set("credentialIds", ids);
-        var pres = mapper.createArrayNode();
-        pres.add(credNode);
-        obj.set("presentation", pres);
-        return obj;
+    /**
+     * Helper method to build a VerifiablePresentation object for testing.
+     * Now creates proper VerifiablePresentation objects instead of JsonNode.
+     */
+    private VerifiablePresentation buildVp(JsonNode credNode, String profileId) {
+        return VerifiablePresentation.Builder.newInstance()
+                .holderDid("did:example:holder")
+                .profileId(profileId)
+                .credentialIds(List.of(credNode.has("id") ? credNode.get("id").asText() : "urn:uuid:cred"))
+                .credentials(List.of(credNode))
+                .build();
     }
 
     private JsonNode makeCredential(String id, String issuer, String type, Instant issuance, Instant expiry) {
@@ -99,8 +99,8 @@ public class PresentationValidationServiceTest {
         when(schemaRegistryService.exists("http://example.com/schemas/TestCredentialType")).thenReturn(true);
         when(issuerTrustService.isTrusted(eq("TestCredentialType"), eq("did:example:issuer"))).thenReturn(true);
 
-        JsonNode vpJson = buildVpJson(cred, "VC11_SL2021_JSONLD");
-        PresentationResponseMessage rsp = PresentationResponseMessage.Builder.newInstance().presentation(List.of(vpJson)).build();
+        VerifiablePresentation vp = buildVp(cred, "VC11_SL2021_JSONLD");
+        PresentationResponseMessage rsp = PresentationResponseMessage.Builder.newInstance().presentation(List.of(vp)).build();
 
         var report = validationService.validate(rsp, List.of("TestCredentialType"), null);
         assertTrue(report.isValid(), () -> "Expected validation to pass but got errors: " + report.getErrors());
@@ -111,8 +111,8 @@ public class PresentationValidationServiceTest {
         Instant now = Instant.now();
         JsonNode cred = makeCredential("urn:uuid:2", "did:example:issuer", "TestCredentialType", now.minusSeconds(3600), now.minusSeconds(10));
         ((com.fasterxml.jackson.databind.node.ObjectNode)cred).set("proof", mapper.createObjectNode().put("type","TestProof"));
-        JsonNode vpJson = buildVpJson(cred, "VC11_SL2021_JSONLD");
-        PresentationResponseMessage rsp = PresentationResponseMessage.Builder.newInstance().presentation(List.of(vpJson)).build();
+        VerifiablePresentation vp = buildVp(cred, "VC11_SL2021_JSONLD");
+        PresentationResponseMessage rsp = PresentationResponseMessage.Builder.newInstance().presentation(List.of(vp)).build();
 
         var report = validationService.validate(rsp, List.of("TestCredentialType"), null);
         assertFalse(report.isValid());
@@ -124,8 +124,8 @@ public class PresentationValidationServiceTest {
         Instant now = Instant.now();
         JsonNode cred = makeCredential("urn:uuid:3", "did:example:untrusted", "TestCredentialType", now.minusSeconds(60), now.plusSeconds(3600));
         ((com.fasterxml.jackson.databind.node.ObjectNode)cred).set("proof", mapper.createObjectNode().put("type","TestProof"));
-        JsonNode vpJson = buildVpJson(cred, "VC11_SL2021_JSONLD");
-        PresentationResponseMessage rsp = PresentationResponseMessage.Builder.newInstance().presentation(List.of(vpJson)).build();
+        VerifiablePresentation vp = buildVp(cred, "VC11_SL2021_JSONLD");
+        PresentationResponseMessage rsp = PresentationResponseMessage.Builder.newInstance().presentation(List.of(vp)).build();
 
         var report = validationService.validate(rsp, List.of("TestCredentialType"), null);
         assertFalse(report.isValid());
@@ -137,8 +137,8 @@ public class PresentationValidationServiceTest {
         Instant now = Instant.now();
         JsonNode cred = makeCredential("urn:uuid:4", "did:example:issuer", "OtherType", now.minusSeconds(60), now.plusSeconds(3600));
         ((com.fasterxml.jackson.databind.node.ObjectNode)cred).set("proof", mapper.createObjectNode().put("type","TestProof"));
-        JsonNode vpJson = buildVpJson(cred, "VC11_SL2021_JSONLD");
-        PresentationResponseMessage rsp = PresentationResponseMessage.Builder.newInstance().presentation(List.of(vpJson)).build();
+        VerifiablePresentation vp = buildVp(cred, "VC11_SL2021_JSONLD");
+        PresentationResponseMessage rsp = PresentationResponseMessage.Builder.newInstance().presentation(List.of(vp)).build();
 
         var report = validationService.validate(rsp, List.of("TestCredentialType"), null);
         assertFalse(report.isValid());
@@ -153,12 +153,15 @@ public class PresentationValidationServiceTest {
         // make first credential look like JSON-LD (has a proof), second has credentialStatus -> leads to mixed profile
         ((com.fasterxml.jackson.databind.node.ObjectNode)cred1).set("proof", mapper.createObjectNode().put("type","TestProof"));
         ((com.fasterxml.jackson.databind.node.ObjectNode)cred2).set("credentialStatus", mapper.createObjectNode().put("id","status"));
-        var vpObj = mapper.createObjectNode();
-        vpObj.put("holderDid", "did:example:holder");
-        vpObj.put("profileId", "VC11_SL2021_JSONLD");
-        var ids = mapper.createArrayNode(); ids.add("urn:uuid:5"); ids.add("urn:uuid:6"); vpObj.set("credentialIds", ids);
-        var pres = mapper.createArrayNode(); pres.add(cred1); pres.add(cred2); vpObj.set("presentation", pres);
-        PresentationResponseMessage rsp = PresentationResponseMessage.Builder.newInstance().presentation(List.of(vpObj)).build();
+
+        VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
+                .holderDid("did:example:holder")
+                .profileId("VC11_SL2021_JSONLD")
+                .credentialIds(List.of("urn:uuid:5", "urn:uuid:6"))
+                .credentials(List.of(cred1, cred2))
+                .build();
+
+        PresentationResponseMessage rsp = PresentationResponseMessage.Builder.newInstance().presentation(List.of(vp)).build();
         var report = validationService.validate(rsp, List.of("TestCredentialType"), null);
         assertFalse(report.isValid());
         assertTrue(report.getErrors().stream().anyMatch(e -> "PROFILE_MIXED".equals(e.code())));

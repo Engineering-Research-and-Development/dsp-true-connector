@@ -67,11 +67,6 @@ public class VerifiablePresentation implements Serializable {
     @NotNull
     private String profileId;
 
-    /**
-     * Raw presentation payload (JSON or JSON-LD) as tree. For signed JWT format this may be null.
-     */
-    @JsonProperty("presentation")
-    private JsonNode presentation;
 
     /**
      * Proof block or JWT string depending on format. For JSON-LD, this is the proof object; for JWT, it may contain
@@ -120,11 +115,6 @@ public class VerifiablePresentation implements Serializable {
 
         public Builder profileId(String profileId) {
             vp.profileId = profileId;
-            return this;
-        }
-
-        public Builder presentation(JsonNode presentation) {
-            vp.presentation = presentation;
             return this;
         }
 

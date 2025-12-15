@@ -47,7 +47,7 @@ class VcVpAuthenticationProviderEnabledTest {
         // Given: VC/VP is enabled
         ReflectionTestUtils.setField(authenticationProvider, "vcVpEnabled", true);
 
-        // Create a credential in the correct format (Map with format and jwt fields)
+        // Create a proper VerifiablePresentation with credentials
         java.util.Map<String, Object> credential = new java.util.HashMap<>();
         credential.put("type", "MembershipCredential");
         credential.put("format", "json");
@@ -57,8 +57,15 @@ class VcVpAuthenticationProviderEnabledTest {
             "status", "Active"
         ));
 
+        VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
+                .holderDid("did:example:holder123")
+                .profileId("VC11_SL2021_JSONLD")
+                .credentialIds(List.of("urn:uuid:cred1"))
+                .credentials(List.of(credential))
+                .build();
+
         PresentationResponseMessage presentation = PresentationResponseMessage.Builder.newInstance()
-                .presentation(List.of(credential))
+                .presentation(List.of(vp))
                 .build();
 
         VcVpAuthenticationToken token = new VcVpAuthenticationToken(presentation, null);
@@ -82,7 +89,7 @@ class VcVpAuthenticationProviderEnabledTest {
         // Given: VC/VP is disabled
         ReflectionTestUtils.setField(authenticationProvider, "vcVpEnabled", false);
 
-        // Create a credential in the correct format
+        // Create a proper VerifiablePresentation with credentials
         java.util.Map<String, Object> credential = new java.util.HashMap<>();
         credential.put("type", "MembershipCredential");
         credential.put("format", "json");
@@ -91,8 +98,15 @@ class VcVpAuthenticationProviderEnabledTest {
             "membershipType", "Premium"
         ));
 
+        VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
+                .holderDid("did:example:holder123")
+                .profileId("VC11_SL2021_JSONLD")
+                .credentialIds(List.of("urn:uuid:cred1"))
+                .credentials(List.of(credential))
+                .build();
+
         PresentationResponseMessage presentation = PresentationResponseMessage.Builder.newInstance()
-                .presentation(List.of(credential))
+                .presentation(List.of(vp))
                 .build();
 
         VcVpAuthenticationToken token = new VcVpAuthenticationToken(presentation, null);
@@ -110,7 +124,7 @@ class VcVpAuthenticationProviderEnabledTest {
         // Given: VC/VP is enabled but presentation is invalid
         ReflectionTestUtils.setField(authenticationProvider, "vcVpEnabled", true);
 
-        // Create a credential in the correct format
+        // Create a proper VerifiablePresentation with credentials
         java.util.Map<String, Object> credential = new java.util.HashMap<>();
         credential.put("type", "MembershipCredential");
         credential.put("format", "json");
@@ -119,8 +133,15 @@ class VcVpAuthenticationProviderEnabledTest {
             "membershipType", "Premium"
         ));
 
+        VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
+                .holderDid("did:example:holder123")
+                .profileId("VC11_SL2021_JSONLD")
+                .credentialIds(List.of("urn:uuid:cred1"))
+                .credentials(List.of(credential))
+                .build();
+
         PresentationResponseMessage presentation = PresentationResponseMessage.Builder.newInstance()
-                .presentation(List.of(credential))
+                .presentation(List.of(vp))
                 .build();
 
         VcVpAuthenticationToken token = new VcVpAuthenticationToken(presentation, null);
@@ -159,7 +180,7 @@ class VcVpAuthenticationProviderEnabledTest {
         // Given: VC/VP is enabled but validation throws exception
         ReflectionTestUtils.setField(authenticationProvider, "vcVpEnabled", true);
 
-        // Create a credential in the correct format
+        // Create a proper VerifiablePresentation with credentials
         java.util.Map<String, Object> credential = new java.util.HashMap<>();
         credential.put("type", "MembershipCredential");
         credential.put("format", "json");
@@ -168,8 +189,15 @@ class VcVpAuthenticationProviderEnabledTest {
             "membershipType", "Premium"
         ));
 
+        VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
+                .holderDid("did:example:holder123")
+                .profileId("VC11_SL2021_JSONLD")
+                .credentialIds(List.of("urn:uuid:cred1"))
+                .credentials(List.of(credential))
+                .build();
+
         PresentationResponseMessage presentation = PresentationResponseMessage.Builder.newInstance()
-                .presentation(List.of(credential))
+                .presentation(List.of(vp))
                 .build();
 
         VcVpAuthenticationToken token = new VcVpAuthenticationToken(presentation, null);
@@ -198,7 +226,7 @@ class VcVpAuthenticationProviderEnabledTest {
         // Given: Fresh provider without setting vcVpEnabled
         VcVpAuthenticationProvider defaultProvider = new VcVpAuthenticationProvider(presentationValidationService, didResolverService);
 
-        // Create a credential in the correct format
+        // Create a proper VerifiablePresentation with credentials
         java.util.Map<String, Object> credential = new java.util.HashMap<>();
         credential.put("type", "MembershipCredential");
         credential.put("format", "json");
@@ -207,8 +235,15 @@ class VcVpAuthenticationProviderEnabledTest {
             "membershipType", "Premium"
         ));
 
+        VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
+                .holderDid("did:example:holder123")
+                .profileId("VC11_SL2021_JSONLD")
+                .credentialIds(List.of("urn:uuid:cred1"))
+                .credentials(List.of(credential))
+                .build();
+
         PresentationResponseMessage presentation = PresentationResponseMessage.Builder.newInstance()
-                .presentation(List.of(credential))
+                .presentation(List.of(vp))
                 .build();
 
         VcVpAuthenticationToken token = new VcVpAuthenticationToken(presentation, null);

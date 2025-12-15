@@ -48,7 +48,7 @@ class VcVpAuthenticationIntegrationTest {
 
     @Test
     void testSuccessfulAuthentication() {
-        // Given a valid presentation with credential in correct format
+        // Given a valid presentation with proper VerifiablePresentation object
         java.util.Map<String, Object> credential = new java.util.HashMap<>();
         credential.put("type", "MembershipCredential");
         credential.put("format", "json");
@@ -58,8 +58,15 @@ class VcVpAuthenticationIntegrationTest {
             "status", "Active"
         ));
 
+        VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
+                .holderDid("did:example:holder123")
+                .profileId("VC11_SL2021_JSONLD")
+                .credentialIds(List.of("urn:uuid:cred1"))
+                .credentials(List.of(credential))
+                .build();
+
         PresentationResponseMessage presentation = PresentationResponseMessage.Builder.newInstance()
-                .presentation(List.of(credential))
+                .presentation(List.of(vp))
                 .build();
 
         VcVpAuthenticationToken token = new VcVpAuthenticationToken(presentation, null);
@@ -81,7 +88,7 @@ class VcVpAuthenticationIntegrationTest {
 
     @Test
     void testFailedAuthentication_InvalidPresentation() {
-        // Given an invalid presentation with credential in correct format
+        // Given an invalid presentation with proper VerifiablePresentation object
         java.util.Map<String, Object> credential = new java.util.HashMap<>();
         credential.put("type", "MembershipCredential");
         credential.put("format", "json");
@@ -90,8 +97,15 @@ class VcVpAuthenticationIntegrationTest {
             "membershipType", "Premium"
         ));
 
+        VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
+                .holderDid("did:example:holder123")
+                .profileId("VC11_SL2021_JSONLD")
+                .credentialIds(List.of("urn:uuid:cred1"))
+                .credentials(List.of(credential))
+                .build();
+
         PresentationResponseMessage presentation = PresentationResponseMessage.Builder.newInstance()
-                .presentation(List.of(credential))
+                .presentation(List.of(vp))
                 .build();
 
         VcVpAuthenticationToken token = new VcVpAuthenticationToken(presentation, null);
@@ -124,7 +138,7 @@ class VcVpAuthenticationIntegrationTest {
 
     @Test
     void testFilterParsesDirectJson() throws Exception {
-        // Given a direct JSON presentation with credential map
+        // Given a direct JSON presentation with proper VerifiablePresentation
         java.util.Map<String, Object> credential = new java.util.HashMap<>();
         credential.put("type", "MembershipCredential");
         credential.put("format", "json");
@@ -133,8 +147,15 @@ class VcVpAuthenticationIntegrationTest {
             "membershipType", "Premium"
         ));
 
+        VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
+                .holderDid("did:example:holder123")
+                .profileId("VC11_SL2021_JSONLD")
+                .credentialIds(List.of("urn:uuid:cred1"))
+                .credentials(List.of(credential))
+                .build();
+
         PresentationResponseMessage presentation = PresentationResponseMessage.Builder.newInstance()
-                .presentation(List.of(credential))
+                .presentation(List.of(vp))
                 .build();
 
         String json = objectMapper.writeValueAsString(presentation);
@@ -150,7 +171,7 @@ class VcVpAuthenticationIntegrationTest {
 
     @Test
     void testFilterParsesBase64EncodedJson() throws Exception {
-        // Given a base64-encoded JSON presentation with credential map
+        // Given a base64-encoded JSON presentation with proper VerifiablePresentation
         java.util.Map<String, Object> credential = new java.util.HashMap<>();
         credential.put("type", "MembershipCredential");
         credential.put("format", "json");
@@ -159,8 +180,15 @@ class VcVpAuthenticationIntegrationTest {
             "membershipType", "Premium"
         ));
 
+        VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
+                .holderDid("did:example:holder123")
+                .profileId("VC11_SL2021_JSONLD")
+                .credentialIds(List.of("urn:uuid:cred1"))
+                .credentials(List.of(credential))
+                .build();
+
         PresentationResponseMessage presentation = PresentationResponseMessage.Builder.newInstance()
-                .presentation(List.of(credential))
+                .presentation(List.of(vp))
                 .build();
 
         String json = objectMapper.writeValueAsString(presentation);
@@ -179,7 +207,7 @@ class VcVpAuthenticationIntegrationTest {
 
     @Test
     void testExtractSubjectFromPresentation() {
-        // Given a presentation with credential in correct format
+        // Given a presentation with proper VerifiablePresentation object
         java.util.Map<String, Object> credential = new java.util.HashMap<>();
         credential.put("type", "MembershipCredential");
         credential.put("format", "json");
@@ -188,8 +216,15 @@ class VcVpAuthenticationIntegrationTest {
             "membershipType", "Premium"
         ));
 
+        VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
+                .holderDid("did:example:holder123")
+                .profileId("VC11_SL2021_JSONLD")
+                .credentialIds(List.of("urn:uuid:cred1"))
+                .credentials(List.of(credential))
+                .build();
+
         PresentationResponseMessage presentation = PresentationResponseMessage.Builder.newInstance()
-                .presentation(List.of(credential))
+                .presentation(List.of(vp))
                 .build();
 
         VcVpAuthenticationToken token = new VcVpAuthenticationToken(presentation, null);
@@ -202,9 +237,10 @@ class VcVpAuthenticationIntegrationTest {
         // When
         Authentication result = authenticationProvider.authenticate(token);
 
-        // Then - subject extraction logic may return "unknown-holder" for credential maps
+        // Then - subject extracted from VerifiablePresentation.holderDid
         assertNotNull(result);
         assertNotNull(result.getName());
+        assertEquals("did:example:holder123", result.getName());
     }
 
     @Test

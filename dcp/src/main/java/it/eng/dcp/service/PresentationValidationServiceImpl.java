@@ -211,15 +211,49 @@ public class PresentationValidationServiceImpl implements PresentationValidation
     private VerifiablePresentation jsonToVp(JsonNode node) {
         VerifiablePresentation.Builder b = VerifiablePresentation.Builder.newInstance();
         if (node.has("id")) b.id(node.get("id").asText());
+
         // ensure holderDid is present (use provided or default test DID)
-        if (node.has("holderDid")) b.holderDid(node.get("holderDid").asText()); else b.holderDid("did:example:holder");
+        if (node.has("holderDid")) {
+            b.holderDid(node.get("holderDid").asText());
+        } else if (node.has("holder")) {
+            b.holderDid(node.get("holder").asText());
+        } else {
+            b.holderDid("did:example:holder");
+        }
+
         if (node.has("profileId")) b.profileId(node.get("profileId").asText());
+
         if (node.has("credentialIds") && node.get("credentialIds").isArray()) {
             List<String> ids = new ArrayList<>();
             node.get("credentialIds").forEach(n -> ids.add(n.asText()));
             b.credentialIds(ids);
         }
-        if (node.has("presentation")) b.presentation(node.get("presentation"));
+
+        // Handle verifiableCredential array
+        if (node.has("verifiableCredential") && node.get("verifiableCredential").isArray()) {
+            List<Object> credentials = new ArrayList<>();
+            node.get("verifiableCredential").forEach(credNode -> {
+                // Convert JsonNode to appropriate format (Map for processing)
+                try {
+                    com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                    Object credObj = mapper.treeToValue(credNode, Object.class);
+                    credentials.add(credObj);
+                } catch (Exception e) {
+                    // Skip malformed credential
+                }
+            });
+            b.credentials(credentials);
+
+            // Generate credential IDs if not provided
+            if (!node.has("credentialIds")) {
+                List<String> credIds = new ArrayList<>();
+                for (int i = 0; i < credentials.size(); i++) {
+                    credIds.add("urn:uuid:credential-" + i);
+                }
+                b.credentialIds(credIds);
+            }
+        }
+
         if (node.has("proof")) b.proof(node.get("proof"));
         return b.build();
     }
@@ -227,38 +261,170 @@ public class PresentationValidationServiceImpl implements PresentationValidation
     @SuppressWarnings("unchecked")
     private VerifiablePresentation mapToVp(Map<String, Object> map) {
         VerifiablePresentation.Builder b = VerifiablePresentation.Builder.newInstance();
-        if (map.containsKey("id")) b.id(String.valueOf(map.get("id")));
-        if (map.containsKey("holderDid")) b.holderDid(String.valueOf(map.get("holderDid"))); else b.holderDid("did:example:holder");
-        if (map.containsKey("profileId")) b.profileId(String.valueOf(map.get("profileId")));
+
+        // Extract standard VP fields
+        if (map.containsKey("id")) {
+            b.id(String.valueOf(map.get("id")));
+        }
+
+        // holderDid can be in multiple places: holderDid, holder, or derived from parent JWT's iss/sub
+        if (map.containsKey("holderDid")) {
+            b.holderDid(String.valueOf(map.get("holderDid")));
+        } else if (map.containsKey("holder")) {
+            b.holderDid(String.valueOf(map.get("holder")));
+        } else {
+            // Default - will be overridden by outer JWT's iss claim in the provider
+            b.holderDid("did:example:holder");
+        }
+
+        // ProfileId
+        if (map.containsKey("profileId")) {
+            b.profileId(String.valueOf(map.get("profileId")));
+        }
+
+        // Extract credentialIds if present (list of credential IDs)
         if (map.containsKey("credentialIds") && map.get("credentialIds") instanceof List) {
             b.credentialIds((List<String>) map.get("credentialIds"));
         }
-        // presentation/proof mapping not attempted here
+
+        // Handle verifiableCredential array (can contain JWT or JSON formatted credentials)
+        if (map.containsKey("verifiableCredential") && map.get("verifiableCredential") instanceof List) {
+            List<Object> credentials = (List<Object>) map.get("verifiableCredential");
+            b.credentials(credentials);
+
+            // Also extract credential IDs if not already set
+            // Generate IDs from the credentials for the credentialIds list
+            if (!map.containsKey("credentialIds") || ((List<?>) map.get("credentialIds")).isEmpty()) {
+                List<String> credIds = new ArrayList<>();
+                for (int i = 0; i < credentials.size(); i++) {
+                    credIds.add("urn:uuid:credential-" + i);
+                }
+                b.credentialIds(credIds);
+            }
+        }
+
         return b.build();
     }
 
     private List<VerifiableCredential> extractCredentialsFromVp(VerifiablePresentation vp) {
         List<VerifiableCredential> out = new ArrayList<>();
-        if (vp.getPresentation() != null && vp.getPresentation().isArray()) {
-            for (JsonNode node : vp.getPresentation()) {
+
+        // First, try to extract from credentials list (handles JWT, JSON, and JsonNode formats)
+        if (vp.getCredentials() != null && !vp.getCredentials().isEmpty()) {
+            for (Object credObj : vp.getCredentials()) {
                 try {
-                    VerifiableCredential.Builder cb = VerifiableCredential.Builder.newInstance();
-                    if (node.has("id")) cb.id(node.get("id").asText());
-                    if (node.has("type") && node.get("type").isArray()) {
-                        // pick first type as credentialType for schema lookup
-                        cb.credentialType(node.get("type").get(0).asText());
-                    } else if (node.has("type")) {
-                        cb.credentialType(node.get("type").asText());
+                    // Handle JsonNode format (from tests or JSON deserialization)
+                    if (credObj instanceof JsonNode credNode) {
+                        VerifiableCredential.Builder cb = VerifiableCredential.Builder.newInstance();
+                        if (credNode.has("id")) cb.id(credNode.get("id").asText());
+                        if (credNode.has("type") && credNode.get("type").isArray()) {
+                            cb.credentialType(credNode.get("type").get(0).asText());
+                        } else if (credNode.has("type")) {
+                            cb.credentialType(credNode.get("type").asText());
+                        }
+                        if (vp.getHolderDid() != null) cb.holderDid(vp.getHolderDid());
+                        if (credNode.has("issuer")) {
+                            JsonNode issuerNode = credNode.get("issuer");
+                            if (issuerNode.isTextual()) {
+                                // Store issuer for later extraction
+                            }
+                        }
+                        if (credNode.has("issuanceDate")) cb.issuanceDate(Instant.parse(credNode.get("issuanceDate").asText()));
+                        if (credNode.has("expirationDate")) cb.expirationDate(Instant.parse(credNode.get("expirationDate").asText()));
+                        cb.credential(credNode);
+                        out.add(cb.build());
                     }
-                    // set holderDid from the presentation so the VC passes validation
-                    if (vp.getHolderDid() != null) cb.holderDid(vp.getHolderDid());
-                    if (node.has("issuanceDate")) cb.issuanceDate(Instant.parse(node.get("issuanceDate").asText()));
-                    if (node.has("expirationDate")) cb.expirationDate(Instant.parse(node.get("expirationDate").asText()));
-                    cb.credential(node);
-                    out.add(cb.build());
+                    // Handle Map format
+                    else if (credObj instanceof Map) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> credMap = (Map<String, Object>) credObj;
+
+                        // Handle JWT format: {type: "MembershipCredential", format: "jwt", jwt: "eyJ..."}
+                        if (credMap.containsKey("format") && "jwt".equals(credMap.get("format")) && credMap.containsKey("jwt")) {
+                            String jwtString = (String) credMap.get("jwt");
+                            String credType = credMap.containsKey("type") ? String.valueOf(credMap.get("type")) : "VerifiableCredential";
+
+                            // Parse JWT to extract claims (we'll use nimbus-jose-jwt library)
+                            try {
+                                com.nimbusds.jwt.SignedJWT signedJWT = com.nimbusds.jwt.SignedJWT.parse(jwtString);
+                                var claims = signedJWT.getJWTClaimsSet();
+
+                                VerifiableCredential.Builder cb = VerifiableCredential.Builder.newInstance();
+                                cb.credentialType(credType);
+
+                                // Extract standard fields from JWT claims
+                                if (claims.getJWTID() != null) cb.id(claims.getJWTID());
+                                if (vp.getHolderDid() != null) cb.holderDid(vp.getHolderDid());
+                                if (claims.getIssueTime() != null) cb.issuanceDate(claims.getIssueTime().toInstant());
+                                if (claims.getExpirationTime() != null) cb.expirationDate(claims.getExpirationTime().toInstant());
+
+                                // Store the JWT claims as credential payload with format metadata
+                                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                                JsonNode credNode = mapper.readTree(claims.toString());
+
+                                // Wrap in object with format metadata so determineFormat() can detect it
+                                com.fasterxml.jackson.databind.node.ObjectNode wrappedCred = mapper.createObjectNode();
+                                wrappedCred.put("format", "jwt");
+                                wrappedCred.set("claims", credNode);
+
+                                cb.credential(wrappedCred);
+
+                                out.add(cb.build());
+                            } catch (Exception e) {
+                                // Failed to parse JWT, skip this credential
+                            }
+                        }
+                        // Handle JSON format: full credential object as map
+                        else {
+                            VerifiableCredential.Builder cb = VerifiableCredential.Builder.newInstance();
+                            if (credMap.containsKey("id")) cb.id(String.valueOf(credMap.get("id")));
+                            if (credMap.containsKey("type")) {
+                                Object typeObj = credMap.get("type");
+                                if (typeObj instanceof List) {
+                                    @SuppressWarnings("unchecked")
+                                    List<String> types = (List<String>) typeObj;
+                                    if (!types.isEmpty()) cb.credentialType(types.get(0));
+                                } else {
+                                    cb.credentialType(String.valueOf(typeObj));
+                                }
+                            }
+                            if (vp.getHolderDid() != null) cb.holderDid(vp.getHolderDid());
+
+                            // Convert map to JsonNode
+                            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                            JsonNode credNode = mapper.valueToTree(credMap);
+
+                            if (credNode.has("issuanceDate")) cb.issuanceDate(Instant.parse(credNode.get("issuanceDate").asText()));
+                            if (credNode.has("expirationDate")) cb.expirationDate(Instant.parse(credNode.get("expirationDate").asText()));
+                            cb.credential(credNode);
+                            out.add(cb.build());
+                        }
+                    } else if (credObj instanceof String) {
+                        // Raw JWT string
+                        String jwtString = (String) credObj;
+                        try {
+                            com.nimbusds.jwt.SignedJWT signedJWT = com.nimbusds.jwt.SignedJWT.parse(jwtString);
+                            var claims = signedJWT.getJWTClaimsSet();
+
+                            VerifiableCredential.Builder cb = VerifiableCredential.Builder.newInstance();
+                            cb.credentialType("VerifiableCredential");
+
+                            if (claims.getJWTID() != null) cb.id(claims.getJWTID());
+                            if (vp.getHolderDid() != null) cb.holderDid(vp.getHolderDid());
+                            if (claims.getIssueTime() != null) cb.issuanceDate(claims.getIssueTime().toInstant());
+                            if (claims.getExpirationTime() != null) cb.expirationDate(claims.getExpirationTime().toInstant());
+
+                            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                            JsonNode credNode = mapper.readTree(claims.toString());
+                            cb.credential(credNode);
+
+                            out.add(cb.build());
+                        } catch (Exception e) {
+                            // Failed to parse JWT, skip
+                        }
+                    }
                 } catch (Exception e) {
-                    // skip malformed credential with warning
-                    // note: in production we may want to surface this
+                    // skip malformed credential
                 }
             }
         }
@@ -266,19 +432,37 @@ public class PresentationValidationServiceImpl implements PresentationValidation
     }
 
     private String determineFormat(VerifiableCredential vc) {
-        // naive: if credential node has "proof" -> json-ld; if it looks like a JWT string inside proof -> jwt
         try {
-            if (vc.getCredential() != null && vc.getCredential().has("proof")) return "json-ld";
+            if (vc.getCredential() != null) {
+                // Check for explicit format field (added when parsing JWT credentials)
+                if (vc.getCredential().has("format")) {
+                    return vc.getCredential().get("format").asText();
+                }
+                // Check for proof (indicates JSON-LD)
+                if (vc.getCredential().has("proof")) {
+                    return "json-ld";
+                }
+            }
         } catch (Exception ignored) {}
         return "jwt"; // default guess
     }
 
     private String extractIssuer(VerifiableCredential vc) {
         try {
-            if (vc.getCredential() != null && vc.getCredential().has("issuer")) {
-                JsonNode issuer = vc.getCredential().get("issuer");
-                if (issuer.isTextual()) return issuer.asText();
-                if (issuer.has("id")) return issuer.get("id").asText();
+            if (vc.getCredential() != null) {
+                JsonNode credNode = vc.getCredential();
+
+                // Check if wrapped JWT format (has format field and claims)
+                if (credNode.has("format") && "jwt".equals(credNode.get("format").asText()) && credNode.has("claims")) {
+                    credNode = credNode.get("claims");
+                }
+
+                // Now extract issuer from the credential node
+                if (credNode.has("issuer") || credNode.has("iss")) {
+                    JsonNode issuer = credNode.has("issuer") ? credNode.get("issuer") : credNode.get("iss");
+                    if (issuer.isTextual()) return issuer.asText();
+                    if (issuer.has("id")) return issuer.get("id").asText();
+                }
             }
         } catch (Exception ignored) {}
         return null;

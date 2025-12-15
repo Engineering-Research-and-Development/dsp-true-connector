@@ -7,8 +7,8 @@ import java.util.Map;
 
 /**
  * Simple stub resolver.
- * - format "jwt" with statusList -> VC11_SL2021_JWT
- * - format "json-ld" without statusList -> VC11_SL2021_JSONLD
+ * - format "jwt" -> VC11_SL2021_JWT (with or without statusList)
+ * - format "json-ld" -> VC11_SL2021_JSONLD (with or without statusList)
  * - otherwise null
  */
 @Service
@@ -18,9 +18,17 @@ public class ProfileResolverStub implements ProfileResolver {
     public ProfileId resolve(String format, Map<String, Object> attributes) {
         if (format == null) return null;
         String f = format.toLowerCase();
-        boolean hasStatusList = attributes != null && attributes.containsKey("statusList") && attributes.get("statusList") != null;
-        if ("jwt".equals(f) && hasStatusList) return ProfileId.VC11_SL2021_JWT;
-        if ("json-ld".equals(f) && !hasStatusList) return ProfileId.VC11_SL2021_JSONLD;
+
+        // JWT format credentials -> VC11_SL2021_JWT profile
+        if ("jwt".equals(f)) {
+            return ProfileId.VC11_SL2021_JWT;
+        }
+
+        // JSON-LD format credentials -> VC11_SL2021_JSONLD profile
+        if ("json-ld".equals(f)) {
+            return ProfileId.VC11_SL2021_JSONLD;
+        }
+
         return null;
     }
 }
