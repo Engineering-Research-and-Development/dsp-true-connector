@@ -32,6 +32,9 @@ public class DcpProperties {
     /** Trusted issuers mapping per credential type. */
     private Map<String, List<String>> trustedIssuers = Collections.emptyMap();
 
+    /** Enable Verifiable Presentation JWT for connector authentication. Defaults to false. */
+    private Vp vp = new Vp();
+
     public String getConnectorDid() {
         return connectorDid;
     }
@@ -70,5 +73,40 @@ public class DcpProperties {
 
     public void setTrustedIssuers(Map<String, List<String>> trustedIssuers) {
         this.trustedIssuers = trustedIssuers;
+    }
+
+    public Vp getVp() {
+        return vp;
+    }
+
+    public void setVp(Vp vp) {
+        this.vp = vp;
+    }
+
+    /**
+     * Configuration for Verifiable Presentation JWT authentication.
+     */
+    public static class Vp {
+        /** Enable VP JWT for connector authentication. */
+        private boolean enabled = false;
+
+        /** Credential types to include in VP (comma-separated). Empty means all credentials. */
+        private String scope = "";
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getScope() {
+            return scope;
+        }
+
+        public void setScope(String scope) {
+            this.scope = scope;
+        }
     }
 }

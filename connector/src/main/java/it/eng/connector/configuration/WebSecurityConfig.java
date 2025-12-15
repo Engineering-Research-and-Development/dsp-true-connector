@@ -54,17 +54,24 @@ public class WebSecurityConfig {
     @Value("${application.cors.allowed.credentials:}")
     private String allowedCredentials;
     
+    @Value("${dcp.vp.enabled:false}")
+    private boolean vcVpEnabled;
+
     @Autowired
     @Qualifier("delegatedAuthenticationEntryPoint")
     private AuthenticationEntryPoint authEntryPoint;
 
     private final JwtAuthenticationProvider jwtAuthenticationProvider;
+    private final VcVpAuthenticationProvider vcVpAuthenticationProvider;
     private final UserRepository userRepository;
     private final ApplicationPropertiesService applicationPropertiesService;
 
-    public WebSecurityConfig(JwtAuthenticationProvider jwtAuthenticationProvider, UserRepository userRepository,
+    public WebSecurityConfig(JwtAuthenticationProvider jwtAuthenticationProvider,
+                             VcVpAuthenticationProvider vcVpAuthenticationProvider,
+                             UserRepository userRepository,
     		ApplicationPropertiesService applicationPropertiesService) {
         this.jwtAuthenticationProvider = jwtAuthenticationProvider;
+        this.vcVpAuthenticationProvider = vcVpAuthenticationProvider;
         this.userRepository = userRepository;
         this.applicationPropertiesService = applicationPropertiesService;
     }
@@ -72,6 +79,11 @@ public class WebSecurityConfig {
     @Bean
     JwtAuthenticationFilter jwtAuthenticationFilter(HttpSecurity http) {
         return new JwtAuthenticationFilter(authenticationManager());
+    }
+
+    @Bean
+    VcVpAuthenticationFilter vcVpAuthenticationFilter(com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
+        return new VcVpAuthenticationFilter(authenticationManager(), objectMapper, vcVpEnabled);
     }
 
     @Bean
@@ -86,7 +98,10 @@ public class WebSecurityConfig {
 
     @Bean
     AuthenticationManager authenticationManager() {
-        return new ProviderManager(jwtAuthenticationProvider, daoAUthenticationProvider());
+        // VcVpAuthenticationProvider is listed first to give priority to VC/VP authentication
+//        jwtAuthenticationProvider
+        // If VP validation fails, it will fall back to username/password (DAO)
+        return new ProviderManager(vcVpAuthenticationProvider, daoAUthenticationProvider());
     }
 
     @Bean
@@ -122,7 +137,8 @@ public class WebSecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                             com.fasterxml.jackson.databind.ObjectMapper objectMapper) throws Exception {
         http
                 .csrf(crsf -> crsf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -140,7 +156,8 @@ public class WebSecurityConfig {
                     authorize
                             .requestMatchers(new AntPathRequestMatcher("/env"), new AntPathRequestMatcher("/actuator/**")).hasRole("ADMIN")
                             // TODO consider wrapping up all protocol endpoints under single context (/protocol/ or /dsp/ or anything else)
-                            .requestMatchers(new AntPathRequestMatcher("/connector/**"),
+                            .requestMatchers(
+                                    new AntPathRequestMatcher("/connector/**"),
                                     new AntPathRequestMatcher("/negotiations/**"),
                                     new AntPathRequestMatcher("/catalog/**"),
                                     new AntPathRequestMatcher("/transfers/**"))
@@ -154,6 +171,7 @@ public class WebSecurityConfig {
                             .anyRequest().permitAll();
                 })
                 .addFilterBefore(protocolEndpointsAuthenticationFilter(applicationPropertiesService), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(vcVpAuthenticationFilter(objectMapper), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter(http), UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(basicAuthenticationFilter(), JwtAuthenticationFilter.class)
                 .exceptionHandling((exHandler) -> exHandler.authenticationEntryPoint(authEntryPoint));
