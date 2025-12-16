@@ -35,8 +35,23 @@ Project is structured as multi-module maven project:
 * negotiation - module containing logic for performing contract negotiation
 * connector - wrapper module for starting application
 * data-transfer - module maintaining transfer of the data
+* dcp - module implementing Decentralized Claims Protocol (DCP) for Verifiable Credentials/Presentations
 * tools - various tools and utilities needed across modules
 
 ## GUI tool for DSP TRUEConnector
 
 * [GUI frontend](https://github.com/Engineering-Research-and-Development/dsp-true-connector-ui)
+
+## Verifiable Credentials Documentation
+
+📖 **Start Here:** [Verifiable Credentials Documentation Index](dcp/doc/verifiable-credentials-index.md) - Complete guide to all VC/VP documentation
+
+### Quick Links by Audience
+
+**For Non-Technical Readers:**
+- [Verifiable Credentials: A Simple Overview](dcp/doc/verifiable-credentials-overview.md) - What VCs are and why they matter
+
+**For Developers:**
+- [Verifiable Credentials: Technical Guide](dcp/doc/verifiable-credentials-technical.md) - Implementation details, API examples, and debugging
+- [Verifiable Credentials: Quick Reference](dcp/doc/verifiable-credentials-quick-reference.md) - Cheat sheet with commands and troubleshooting
+

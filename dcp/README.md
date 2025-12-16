@@ -4,10 +4,10 @@ This module implements the Eclipse Decentralized Claims Protocol (DCP) for manag
 
 ## 📚 Documentation
 
-- **[Verifiable Credentials Guide](VERIFIABLE_CREDENTIALS_GUIDE.md)** - Comprehensive guide for understanding and using Verifiable Credentials (start here if you're new to VCs)
-- **[ProfileId Guide](PROFILEID_GUIDE.md)** - Understanding the mandatory profileId field and how it's automatically determined
-- **[Quick Start Guide](QUICK_START.md)** - Fast-track testing with Postman examples
-- **[Credential Examples](CREDENTIAL_MESSAGE_EXAMPLES.md)** - Ready-to-use JSON examples
+- **[Verifiable Credentials Guide](doc/VERIFIABLE_CREDENTIALS_GUIDE.md)** - Comprehensive guide for understanding and using Verifiable Credentials (start here if you're new to VCs)
+- **[ProfileId Guide](doc/PROFILEID_GUIDE.md)** - Understanding the mandatory profileId field and how it's automatically determined
+- **[Quick Start Guide](doc/quick_start.md)** - Fast-track testing with Postman examples
+- **[Credential Examples](doc/credential_message_examples.md)** - Ready-to-use JSON examples
 
 ## Overview
 
