@@ -2,8 +2,6 @@ package it.eng.dcp.config;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,10 +9,8 @@ import java.util.Map;
 
 /**
  * Configuration for supported credentials metadata.
- * Binds properties under the `dcp.credentials` prefix.
+ * Loaded from credential-metadata-configuration.properties file on classpath.
  */
-@Component
-@ConfigurationProperties(prefix = "dcp.credentials")
 @Getter
 @Setter
 public class CredentialMetadataConfig {
