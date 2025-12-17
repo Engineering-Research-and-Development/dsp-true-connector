@@ -2,6 +2,7 @@ package it.eng.dcp.rest;
 
 import it.eng.dcp.model.CredentialRequest;
 import it.eng.dcp.model.CredentialRequestMessage;
+import it.eng.dcp.model.IssuerMetadata;
 import it.eng.dcp.service.IssuerService;
 import it.eng.tools.response.GenericApiResponse;
 import org.slf4j.Logger;
@@ -28,6 +29,35 @@ public class IssuerController {
     @Autowired
     public IssuerController(IssuerService issuerService) {
         this.issuerService = issuerService;
+    }
+
+    /**
+     * Get Issuer Metadata endpoint.
+     * Returns the issuer's metadata including supported credentials and issuance policies.
+     *
+     * @param authorization HTTP Authorization header with a Bearer Self-Issued ID Token.
+     * @return HTTP 200 with IssuerMetadata JSON
+     */
+    @GetMapping(path = "/metadata")
+    public ResponseEntity<?> getMetadata(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {
+        // Validate Authorization header
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body("Missing or invalid Authorization header");
+        }
+        String token = authorization.substring("Bearer ".length());
+
+        try {
+            // Validate token (we don't need to match a specific holderPid for metadata endpoint)
+            issuerService.authorizeRequest(token, null);
+
+            IssuerMetadata metadata = issuerService.getMetadata();
+            return ResponseEntity.ok(metadata);
+        } catch (SecurityException se) {
+            return ResponseEntity.status(401).body(GenericApiResponse.error("Invalid token: " + se.getMessage()));
+        } catch (Exception e) {
+            LOG.error("Failed to retrieve issuer metadata: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(GenericApiResponse.error("Internal error"));
+        }
     }
 
     /**

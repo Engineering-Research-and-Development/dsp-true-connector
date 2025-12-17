@@ -39,7 +39,9 @@ public class ProxyAPIService {
 
     public Catalog getCatalog(String forwardTo) {
         CatalogRequestMessage catalogRequestMessage = CatalogRequestMessage.Builder.newInstance().build();
-        GenericApiResponse<String> catalogResponse = okHttpClient.sendRequestProtocol(forwardTo + "/catalog/request", CatalogSerializer.serializeProtocolJsonNode(catalogRequestMessage),
+        GenericApiResponse<String> catalogResponse = okHttpClient.sendRequestProtocol(forwardTo + "/catalog/request",
+                CatalogSerializer.serializeProtocolJsonNode(catalogRequestMessage),
+                //TODO add credentials management for VC - pass forwardTo - add check if vc enabled
                 credentialUtils.getConnectorCredentials());
         if (catalogResponse.isSuccess()) {
             return CatalogSerializer.deserializeProtocol(catalogResponse.getData(), Catalog.class);

@@ -4,10 +4,9 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import it.eng.dcp.model.CredentialMessage;
 import it.eng.dcp.model.CredentialRequest;
 import it.eng.dcp.model.CredentialRequestMessage;
+import it.eng.dcp.model.IssuerMetadata;
 import it.eng.dcp.repository.CredentialRequestRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -27,23 +26,26 @@ public class IssuerService {
     private final CredentialRequestRepository requestRepository;
     private final CredentialDeliveryService deliveryService;
     private final CredentialIssuanceService issuanceService;
+    private final CredentialMetadataService credentialMetadataService;
 
     @Autowired
     public IssuerService(SelfIssuedIdTokenService tokenService,
                         CredentialRequestRepository requestRepository,
                         CredentialDeliveryService deliveryService,
-                        CredentialIssuanceService issuanceService) {
+                        CredentialIssuanceService issuanceService,
+                        CredentialMetadataService credentialMetadataService) {
         this.tokenService = tokenService;
         this.requestRepository = requestRepository;
         this.deliveryService = deliveryService;
         this.issuanceService = issuanceService;
+        this.credentialMetadataService = credentialMetadataService;
     }
 
     /**
      * Authorize a credential request by validating the bearer token and matching holderPid.
      *
      * @param bearerToken The bearer token from Authorization header (without "Bearer " prefix)
-     * @param holderPid The holder PID from the request message
+     * @param holderPid The holder PID from the request message (can be null for endpoints that don't require matching)
      * @return JWTClaimsSet if valid
      * @throws SecurityException if token is invalid or holderPid doesn't match
      */
@@ -53,11 +55,14 @@ public class IssuerService {
         }
 
         JWTClaimsSet claims = tokenService.validateToken(bearerToken);
-        String subject = claims.getSubject();
 
-        if (subject == null || !subject.equals(holderPid)) {
-            log.warn("Holder PID in message does not match token subject: msg={}, sub={}", holderPid, subject);
-            throw new SecurityException("Token subject does not match holderPid");
+        // If holderPid is provided, validate that it matches the token subject
+        if (holderPid != null) {
+            String subject = claims.getSubject();
+            if (subject == null || !subject.equals(holderPid)) {
+                log.warn("Holder PID in message does not match token subject: msg={}, sub={}", holderPid, subject);
+                throw new SecurityException("Token subject does not match holderPid");
+            }
         }
 
         return claims;
@@ -65,13 +70,56 @@ public class IssuerService {
 
     /**
      * Create and persist a credential request from the incoming message.
+     * Validates that all requested credentials are supported by the issuer.
      *
      * @param msg The CredentialRequestMessage
      * @return The persisted CredentialRequest
+     * @throws IllegalArgumentException if any requested credential type is not supported
      */
     public CredentialRequest createCredentialRequest(CredentialRequestMessage msg) {
+        // Validate that all requested credentials are supported
+        validateRequestedCredentials(msg);
+
         CredentialRequest req = CredentialRequest.fromMessage(msg);
         return requestRepository.save(req);
+    }
+
+    /**
+     * Validate that all requested credentials in the message are supported by the issuer.
+     *
+     * @param msg The CredentialRequestMessage to validate
+     * @throws IllegalArgumentException if any requested credential is not supported
+     */
+    private void validateRequestedCredentials(CredentialRequestMessage msg) {
+        // Get supported credential types from issuer metadata
+        IssuerMetadata metadata;
+        try {
+            metadata = credentialMetadataService.buildIssuerMetadata();
+        } catch (IllegalStateException e) {
+            log.error("Cannot validate credential request - issuer metadata not available: {}", e.getMessage());
+            throw new IllegalStateException("Issuer metadata not configured. Cannot process credential requests.", e);
+        }
+
+        List<String> supportedCredentialTypes = metadata.getCredentialsSupported().stream()
+                .map(IssuerMetadata.CredentialObject::getCredentialType)
+                .toList();
+
+        // Validate each requested credential
+        for (var credentialRef : msg.getCredentials()) {
+            String requestedId = credentialRef.getId();
+
+            // Check if the requested credential ID matches any supported credential type
+            if (!supportedCredentialTypes.contains(requestedId)) {
+                log.warn("Unsupported credential type requested: {}. Supported types: {}",
+                        requestedId, supportedCredentialTypes);
+                throw new IllegalArgumentException(
+                        String.format("Credential type '%s' is not supported by this issuer. Supported types: %s",
+                                requestedId, supportedCredentialTypes));
+            }
+        }
+
+        log.debug("All requested credentials are supported: {}",
+                msg.getCredentials().stream().map(c -> c.getId()).toList());
     }
 
     /**
@@ -209,6 +257,17 @@ public class IssuerService {
         }
 
         return credentials;
+    }
+
+    /**
+     * Get issuer metadata based on configuration.
+     * This endpoint returns the issuer's metadata including supported credentials and issuance policies.
+     * Credentials are loaded from configuration (dcp.credentials.supported) or defaults are used.
+     *
+     * @return IssuerMetadata object with configured or default credential data
+     */
+    public IssuerMetadata getMetadata() {
+        return credentialMetadataService.buildIssuerMetadata();
     }
 
     /**

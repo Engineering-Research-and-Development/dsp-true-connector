@@ -67,6 +67,13 @@ public class OkHttpRestClient {
         requestBuilder.post(body);
         if(StringUtils.isNotBlank(authorization)) {
 			requestBuilder.addHeader(HttpHeaders.AUTHORIZATION, authorization);
+		} else {
+			// If no authorization provided, get credentials with target URL for dynamic DID extraction
+			String credentials = credentialUtils.getConnectorCredentials(targetAddress);
+			if(StringUtils.isNotBlank(credentials)) {
+				requestBuilder.addHeader(HttpHeaders.AUTHORIZATION, credentials);
+				log.debug("Added dynamic authorization header for target: {}", targetAddress);
+			}
 		}
 		Request request = requestBuilder.build();
         log.info("Sending request using address: {}", targetAddress);

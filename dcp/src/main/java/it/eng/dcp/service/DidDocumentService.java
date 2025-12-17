@@ -4,6 +4,7 @@ import it.eng.dcp.model.DidDocument;
 import it.eng.dcp.model.ServiceEntry;
 import it.eng.dcp.model.VerificationMethod;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -13,11 +14,18 @@ public class DidDocumentService {
 
     private final KeyService keyService;
     private final KeyMetadataService keyMetadataService;
+    private final boolean sslEnabled;
+    private final String serverPort;
 
     @Autowired
-    public DidDocumentService(KeyService keyService, KeyMetadataService keyMetadataService) {
+    public DidDocumentService(KeyService keyService,
+                             KeyMetadataService keyMetadataService,
+                             @Value("${server.ssl.enabled:false}") boolean sslEnabled,
+                             @Value("${server.port}") String serverPort) {
         this.keyService = keyService;
         this.keyMetadataService = keyMetadataService;
+        this.sslEnabled = sslEnabled;
+        this.serverPort = serverPort;
     }
 
     public DidDocument provideDidDocument() {
@@ -27,13 +35,17 @@ public class DidDocumentService {
         keyService.loadKeyPairFromP12("eckey.p12", "password", activeAlias);
 
         String did = "did:web:localhost%3A8083:holder";
-        String baseEndpoint = "http://localhost:8080";
+
+        // Construct baseEndpoint based on SSL configuration
+        String protocol = sslEnabled ? "https" : "http";
+        String baseEndpoint = protocol + "://localhost:" + serverPort;
+
         String serviceId = "TRUEConnector-Credential-Service";
         return DidDocument.Builder.newInstance()
                 .id(did)
                 .service(List.of(
                         new ServiceEntry(serviceId, "CredentialService", baseEndpoint),
-                        new ServiceEntry(serviceId, "IssuerService", baseEndpoint)
+                        new ServiceEntry(serviceId, "IssuerService", baseEndpoint + "/issuer")
                 ))
                 .verificationMethod(List.of(
                         VerificationMethod.Builder.newInstance()

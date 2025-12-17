@@ -5,6 +5,7 @@ import it.eng.dcp.model.CredentialMessage;
 import it.eng.dcp.model.CredentialRequest;
 import it.eng.dcp.model.CredentialRequestMessage;
 import it.eng.dcp.model.CredentialStatus;
+import it.eng.dcp.model.IssuerMetadata;
 import it.eng.dcp.repository.CredentialRequestRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,11 +34,14 @@ class IssuerServiceTest {
     @Mock
     private CredentialIssuanceService issuanceService;
 
+    @Mock
+    private CredentialMetadataService credentialMetadataService;
+
     private IssuerService issuerService;
 
     @BeforeEach
     void setUp() {
-        issuerService = new IssuerService(tokenService, requestRepository, deliveryService, issuanceService);
+        issuerService = new IssuerService(tokenService, requestRepository, deliveryService, issuanceService, credentialMetadataService);
     }
 
     @Test
@@ -107,7 +111,7 @@ class IssuerServiceTest {
         // Arrange
         CredentialRequestMessage.CredentialReference credRef =
                 CredentialRequestMessage.CredentialReference.Builder.newInstance()
-                        .id("cred-1")
+                        .id("MembershipCredential")
                         .build();
 
         CredentialRequestMessage msg = CredentialRequestMessage.Builder.newInstance()
@@ -115,11 +119,24 @@ class IssuerServiceTest {
                 .credentials(List.of(credRef))
                 .build();
 
+        IssuerMetadata.CredentialObject supportedCred = IssuerMetadata.CredentialObject.Builder.newInstance()
+                .id("test-id")
+                .type("CredentialObject")
+                .credentialType("MembershipCredential")
+                .build();
+
+        IssuerMetadata metadata = IssuerMetadata.Builder.newInstance()
+                .issuer("did:web:localhost:8090")
+                .credentialsSupported(List.of(supportedCred))
+                .build();
+
+        when(credentialMetadataService.buildIssuerMetadata()).thenReturn(metadata);
+
         CredentialRequest expected = CredentialRequest.Builder.newInstance()
                 .issuerPid("req-123")
                 .holderPid("did:example:holder123")
                 .status(CredentialStatus.RECEIVED)
-                .credentialIds(List.of("cred-1"))
+                .credentialIds(List.of("MembershipCredential"))
                 .build();
 
         when(requestRepository.save(any(CredentialRequest.class))).thenReturn(expected);
@@ -131,6 +148,124 @@ class IssuerServiceTest {
         assertNotNull(result);
         assertEquals("req-123", result.getIssuerPid());
         assertEquals("did:example:holder123", result.getHolderPid());
+        verify(credentialMetadataService).buildIssuerMetadata();
+        verify(requestRepository).save(any(CredentialRequest.class));
+    }
+
+    @Test
+    void createCredentialRequest_unsupportedCredential_throwsException() {
+        // Arrange
+        CredentialRequestMessage.CredentialReference credRef =
+                CredentialRequestMessage.CredentialReference.Builder.newInstance()
+                        .id("UnsupportedCredential")
+                        .build();
+
+        CredentialRequestMessage msg = CredentialRequestMessage.Builder.newInstance()
+                .holderPid("did:example:holder123")
+                .credentials(List.of(credRef))
+                .build();
+
+        IssuerMetadata.CredentialObject supportedCred = IssuerMetadata.CredentialObject.Builder.newInstance()
+                .id("test-id")
+                .type("CredentialObject")
+                .credentialType("MembershipCredential")
+                .build();
+
+        IssuerMetadata metadata = IssuerMetadata.Builder.newInstance()
+                .issuer("did:web:localhost:8090")
+                .credentialsSupported(List.of(supportedCred))
+                .build();
+
+        when(credentialMetadataService.buildIssuerMetadata()).thenReturn(metadata);
+
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> issuerService.createCredentialRequest(msg));
+
+        assertTrue(exception.getMessage().contains("UnsupportedCredential"));
+        assertTrue(exception.getMessage().contains("not supported"));
+        verify(credentialMetadataService).buildIssuerMetadata();
+        verify(requestRepository, never()).save(any(CredentialRequest.class));
+    }
+
+    @Test
+    void createCredentialRequest_metadataNotConfigured_throwsException() {
+        // Arrange
+        CredentialRequestMessage.CredentialReference credRef =
+                CredentialRequestMessage.CredentialReference.Builder.newInstance()
+                        .id("MembershipCredential")
+                        .build();
+
+        CredentialRequestMessage msg = CredentialRequestMessage.Builder.newInstance()
+                .holderPid("did:example:holder123")
+                .credentials(List.of(credRef))
+                .build();
+
+        when(credentialMetadataService.buildIssuerMetadata())
+                .thenThrow(new IllegalStateException("No credentials configured"));
+
+        // Act & Assert
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> issuerService.createCredentialRequest(msg));
+
+        assertTrue(exception.getMessage().contains("Issuer metadata not configured"));
+        verify(credentialMetadataService).buildIssuerMetadata();
+        verify(requestRepository, never()).save(any(CredentialRequest.class));
+    }
+
+    @Test
+    void createCredentialRequest_multipleCredentials_allSupported_success() {
+        // Arrange
+        CredentialRequestMessage.CredentialReference credRef1 =
+                CredentialRequestMessage.CredentialReference.Builder.newInstance()
+                        .id("MembershipCredential")
+                        .build();
+
+        CredentialRequestMessage.CredentialReference credRef2 =
+                CredentialRequestMessage.CredentialReference.Builder.newInstance()
+                        .id("CompanyCredential")
+                        .build();
+
+        CredentialRequestMessage msg = CredentialRequestMessage.Builder.newInstance()
+                .holderPid("did:example:holder123")
+                .credentials(List.of(credRef1, credRef2))
+                .build();
+
+        IssuerMetadata.CredentialObject supportedCred1 = IssuerMetadata.CredentialObject.Builder.newInstance()
+                .id("test-id-1")
+                .type("CredentialObject")
+                .credentialType("MembershipCredential")
+                .build();
+
+        IssuerMetadata.CredentialObject supportedCred2 = IssuerMetadata.CredentialObject.Builder.newInstance()
+                .id("test-id-2")
+                .type("CredentialObject")
+                .credentialType("CompanyCredential")
+                .build();
+
+        IssuerMetadata metadata = IssuerMetadata.Builder.newInstance()
+                .issuer("did:web:localhost:8090")
+                .credentialsSupported(List.of(supportedCred1, supportedCred2))
+                .build();
+
+        when(credentialMetadataService.buildIssuerMetadata()).thenReturn(metadata);
+
+        CredentialRequest expected = CredentialRequest.Builder.newInstance()
+                .issuerPid("req-123")
+                .holderPid("did:example:holder123")
+                .status(CredentialStatus.RECEIVED)
+                .credentialIds(List.of("MembershipCredential", "CompanyCredential"))
+                .build();
+
+        when(requestRepository.save(any(CredentialRequest.class))).thenReturn(expected);
+
+        // Act
+        CredentialRequest result = issuerService.createCredentialRequest(msg);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(2, result.getCredentialIds().size());
+        verify(credentialMetadataService).buildIssuerMetadata();
         verify(requestRepository).save(any(CredentialRequest.class));
     }
 
@@ -452,5 +587,52 @@ class IssuerServiceTest {
         assertTrue(exception.getMessage().contains("Each credential must have credentialType, payload, and format"));
         verify(deliveryService, never()).deliverCredentials(anyString(), anyList());
     }
-}
 
+    @Test
+    void getMetadata_success() {
+        // Arrange
+        IssuerMetadata.CredentialObject credentialObject =
+                IssuerMetadata.CredentialObject.Builder.newInstance()
+                        .id("test-id")
+                        .type("CredentialObject")
+                        .credentialType("TestCredential")
+                        .build();
+
+        IssuerMetadata expectedMetadata = IssuerMetadata.Builder.newInstance()
+                .issuer("did:web:localhost:8090")
+                .credentialsSupported(List.of(credentialObject))
+                .build();
+
+        when(credentialMetadataService.buildIssuerMetadata()).thenReturn(expectedMetadata);
+
+        // Act
+        IssuerMetadata result = issuerService.getMetadata();
+
+        // Assert
+        assertNotNull(result);
+        assertEquals("did:web:localhost:8090", result.getIssuer());
+        assertEquals(1, result.getCredentialsSupported().size());
+        verify(credentialMetadataService).buildIssuerMetadata();
+    }
+
+    @Test
+    void authorizeRequest_nullHolderPid_validatesTokenOnly() {
+        // Arrange
+        String bearerToken = "valid-token";
+        String tokenSubject = "did:example:holder123";
+
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .subject(tokenSubject)
+                .build();
+
+        when(tokenService.validateToken(bearerToken)).thenReturn(claims);
+
+        // Act
+        JWTClaimsSet result = issuerService.authorizeRequest(bearerToken, null);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(tokenSubject, result.getSubject());
+        verify(tokenService).validateToken(bearerToken);
+    }
+}
