@@ -163,7 +163,7 @@ public class IssuerService {
             log.info("Using manually provided credentials for request {}", requestId);
             credentials = convertToCredentialContainers(providedCredentials);
         } else {
-            // Auto-generate credentials with custom claims and constraints
+            // Auto-generate credentials with custom claims, constraints, and metadata
             log.info("Auto-generating credentials for request {} based on requested credential IDs: {}",
                     requestId, credentialRequest.getCredentialIds());
 
@@ -175,15 +175,27 @@ public class IssuerService {
                 log.info("Applying {} constraints to credential generation", constraintsData.size());
             }
 
+            // Retrieve issuer metadata to use profile/format information
+            IssuerMetadata metadata = credentialMetadataService.buildIssuerMetadata();
+
+            // Enrich custom claims with metadata-based profile information
+            Map<String, Object> enrichedClaims = enrichClaimsWithMetadata(
+                    credentialRequest.getCredentialIds(),
+                    metadata,
+                    customClaims);
+
             credentials = issuanceService.generateCredentials(
                 credentialRequest,
-                customClaims,
+                enrichedClaims,
                 constraintsData
             );
 
             if (credentials.isEmpty()) {
                 throw new IllegalStateException("Failed to generate credentials for the requested types");
             }
+
+            // Apply metadata profile/format to generated credentials
+            credentials = applyMetadataToCredentials(credentials, metadata);
         }
 
         boolean success = deliveryService.deliverCredentials(requestId, credentials);
@@ -199,6 +211,110 @@ public class IssuerService {
                         .map(CredentialMessage.CredentialContainer::getCredentialType)
                         .toList()
         );
+    }
+
+    /**
+     * Enrich custom claims with metadata information for credential types.
+     *
+     * @param credentialIds List of credential IDs being generated
+     * @param metadata Issuer metadata containing credential configurations
+     * @param customClaims Existing custom claims (can be null)
+     * @return Enriched claims map with metadata information
+     */
+    private Map<String, Object> enrichClaimsWithMetadata(List<String> credentialIds,
+                                                         IssuerMetadata metadata,
+                                                         Map<String, Object> customClaims) {
+        Map<String, Object> enriched = new java.util.HashMap<>(customClaims != null ? customClaims : Map.of());
+
+        // Create a metadata lookup map for quick access
+        Map<String, Map<String, Object>> metadataByType = new java.util.HashMap<>();
+
+        for (IssuerMetadata.CredentialObject credObj : metadata.getCredentialsSupported()) {
+            Map<String, Object> credMetadata = new java.util.HashMap<>();
+            credMetadata.put("profile", credObj.getProfile());
+            credMetadata.put("bindingMethods", credObj.getBindingMethods());
+            credMetadata.put("schema", credObj.getCredentialSchema());
+            metadataByType.put(credObj.getCredentialType(), credMetadata);
+        }
+
+        // Add metadata lookup to claims so credential generation can access it
+        enriched.put("__credentialMetadata", metadataByType);
+
+        log.debug("Enriched claims with metadata for {} credential types", metadataByType.size());
+        return enriched;
+    }
+
+    /**
+     * Apply metadata profile and format information to generated credentials.
+     *
+     * @param credentials List of generated credentials
+     * @param metadata Issuer metadata containing credential configurations
+     * @return Updated credentials with proper format based on metadata
+     */
+    private List<CredentialMessage.CredentialContainer> applyMetadataToCredentials(
+            List<CredentialMessage.CredentialContainer> credentials,
+            IssuerMetadata metadata) {
+
+        // Create lookup map for credential metadata
+        Map<String, IssuerMetadata.CredentialObject> metadataMap = new java.util.HashMap<>();
+        for (IssuerMetadata.CredentialObject credObj : metadata.getCredentialsSupported()) {
+            metadataMap.put(credObj.getCredentialType(), credObj);
+        }
+
+        List<CredentialMessage.CredentialContainer> updatedCredentials = new java.util.ArrayList<>();
+
+        for (CredentialMessage.CredentialContainer credential : credentials) {
+            IssuerMetadata.CredentialObject credentialMetadata = metadataMap.get(credential.getCredentialType());
+
+            if (credentialMetadata != null && credentialMetadata.getProfile() != null) {
+                // Extract format from profile (e.g., "vc11-sl2021/jwt" -> "jwt")
+                String format = extractFormatFromProfile(credentialMetadata.getProfile());
+
+                log.debug("Applying metadata to credential type '{}': profile='{}', format='{}'",
+                        credential.getCredentialType(), credentialMetadata.getProfile(), format);
+
+                // Rebuild credential with correct format
+                CredentialMessage.CredentialContainer updated =
+                        CredentialMessage.CredentialContainer.Builder.newInstance()
+                                .credentialType(credential.getCredentialType())
+                                .payload(credential.getPayload())
+                                .format(format)
+                                .build();
+                updatedCredentials.add(updated);
+            } else {
+                // No metadata found, use credential as-is
+                log.debug("No metadata found for credential type '{}', using default format",
+                        credential.getCredentialType());
+                updatedCredentials.add(credential);
+            }
+        }
+
+        return updatedCredentials;
+    }
+
+    /**
+     * Extract format from profile string.
+     * Profile format: "vcVersion-suite/format" (e.g., "vc11-sl2021/jwt", "vc11-sl2021/jsonld")
+     *
+     * @param profile Profile string
+     * @return Format extracted from profile (e.g., "jwt", "jsonld"), defaults to "jwt" if not parseable
+     */
+    private String extractFormatFromProfile(String profile) {
+        if (profile == null || profile.isBlank()) {
+            return "jwt";
+        }
+
+        // Profile format: "vc11-sl2021/jwt" or "vc10-sl2021/jsonld"
+        int slashIndex = profile.lastIndexOf('/');
+        if (slashIndex > 0 && slashIndex < profile.length() - 1) {
+            String format = profile.substring(slashIndex + 1);
+            log.debug("Extracted format '{}' from profile '{}'", format, profile);
+            return format;
+        }
+
+        // Fallback to jwt if profile doesn't contain format
+        log.debug("Could not extract format from profile '{}', using default 'jwt'", profile);
+        return "jwt";
     }
 
     /**
