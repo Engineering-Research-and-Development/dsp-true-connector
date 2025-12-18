@@ -1,8 +1,8 @@
 package it.eng.dcp.service;
 
+import it.eng.dcp.common.util.DidUrlConverter;
 import it.eng.dcp.model.PresentationQueryMessage;
 import it.eng.dcp.model.PresentationResponseMessage;
-import it.eng.dcp.util.DidUrlConverter;
 import it.eng.tools.credential.VpCredentialService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

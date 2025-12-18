@@ -1,4 +1,4 @@
-package it.eng.dcp.model;
+package it.eng.dcp.common.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -70,3 +70,4 @@ public class VerificationMethod implements Serializable {
         }
     }
 }
+

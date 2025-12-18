@@ -3,6 +3,7 @@ package it.eng.dcp.model;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import it.eng.dcp.common.model.BaseDcpMessage;
 import it.eng.tools.model.DSpaceConstants;
 import lombok.NoArgsConstructor;
 

@@ -2,6 +2,7 @@ package it.eng.dcp.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dcp.common.model.ProfileId;
 import it.eng.dcp.model.PresentationResponseMessage;
 import it.eng.dcp.model.VerifiablePresentation;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,13 +46,13 @@ public class PresentationValidationServiceTest {
 //        when(schemaRegistryService.exists(org.mockito.Mockito.anyString())).thenReturn(false);
 
         // mimic ProfileResolverStub logic via mocked resolver
-        org.mockito.stubbing.Answer<it.eng.dcp.model.ProfileId> resolverAnswer = invocation -> {
+        org.mockito.stubbing.Answer<ProfileId> resolverAnswer = invocation -> {
             String fmt = invocation.getArgument(0, String.class);
             java.util.Map<String, Object> attrs = invocation.getArgument(1, java.util.Map.class);
             boolean hasStatusList = attrs != null && attrs.containsKey("statusList") && attrs.get("statusList") != null;
             if (fmt == null) return null;
-            if ("jwt".equalsIgnoreCase(fmt) && hasStatusList) return it.eng.dcp.model.ProfileId.VC11_SL2021_JWT;
-            if ("json-ld".equalsIgnoreCase(fmt) && !hasStatusList) return it.eng.dcp.model.ProfileId.VC11_SL2021_JSONLD;
+            if ("jwt".equalsIgnoreCase(fmt) && hasStatusList) return ProfileId.VC11_SL2021_JWT;
+            if ("json-ld".equalsIgnoreCase(fmt) && !hasStatusList) return ProfileId.VC11_SL2021_JSONLD;
             return null;
         };
         when(profileResolver.resolve(org.mockito.Mockito.anyString(), org.mockito.Mockito.anyMap())).thenAnswer(resolverAnswer);

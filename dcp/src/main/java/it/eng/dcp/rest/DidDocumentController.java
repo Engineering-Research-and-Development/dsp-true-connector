@@ -1,6 +1,6 @@
 package it.eng.dcp.rest;
 
-import it.eng.dcp.model.DidDocument;
+import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.service.DidDocumentService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;

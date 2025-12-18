@@ -1,4 +1,4 @@
-package it.eng.dcp.model;
+package it.eng.dcp.common.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.Serializable;
@@ -17,3 +17,4 @@ public record ServiceEntry(String id, String type, String serviceEndpoint) imple
         this.serviceEndpoint = serviceEndpoint;
     }
 }
+

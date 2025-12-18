@@ -2,6 +2,7 @@ package it.eng.dcp.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jwt.JWTClaimsSet;
+import it.eng.dcp.common.model.CredentialStatus;
 import it.eng.dcp.core.ProfileResolver;
 import it.eng.dcp.model.*;
 import it.eng.dcp.repository.CredentialStatusRepository;

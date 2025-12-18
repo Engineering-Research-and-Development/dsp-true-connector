@@ -1,4 +1,4 @@
-package it.eng.dcp.model;
+package it.eng.dcp.common.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -92,3 +92,4 @@ public class DidDocument implements Serializable {
         }
     }
 }
+

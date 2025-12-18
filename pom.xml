@@ -27,6 +27,7 @@
         <module>tools</module>
         <module>negotiation</module>
         <module>data-transfer</module>
+        <module>dcp-common</module>
         <module>dcp</module>
     </modules>
 

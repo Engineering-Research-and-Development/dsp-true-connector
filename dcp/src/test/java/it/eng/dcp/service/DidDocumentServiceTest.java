@@ -1,9 +1,9 @@
 package it.eng.dcp.service;
 
-import it.eng.dcp.model.DidDocument;
+import it.eng.dcp.common.model.DidDocument;
+import it.eng.dcp.common.model.ServiceEntry;
+import it.eng.dcp.common.model.VerificationMethod;
 import it.eng.dcp.model.KeyMetadata;
-import it.eng.dcp.model.ServiceEntry;
-import it.eng.dcp.model.VerificationMethod;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

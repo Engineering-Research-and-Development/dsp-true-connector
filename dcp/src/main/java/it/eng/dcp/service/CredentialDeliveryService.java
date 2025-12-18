@@ -1,10 +1,10 @@
 package it.eng.dcp.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dcp.common.model.CredentialStatus;
 import it.eng.dcp.core.DidResolverService;
 import it.eng.dcp.model.CredentialMessage;
 import it.eng.dcp.model.CredentialRequest;
-import it.eng.dcp.model.CredentialStatus;
 import it.eng.dcp.repository.CredentialRequestRepository;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.response.GenericApiResponse;

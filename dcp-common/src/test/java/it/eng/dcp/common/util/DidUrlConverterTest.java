@@ -1,4 +1,4 @@
-package it.eng.dcp.util;
+package it.eng.dcp.common.util;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

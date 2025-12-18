@@ -1,26 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <parent>
         <groupId>it.eng</groupId>
         <artifactId>trueconnector</artifactId>
         <version>${revision}</version>
     </parent>
-    <artifactId>dcp</artifactId>
-    <name>Decentralized claims protocol</name>
+
+    <artifactId>dcp-common</artifactId>
+    <name>DCP Common Library</name>
+    <description>Shared models and utilities for DCP modules (Issuer and Holder/Verifier)</description>
 
     <dependencies>
-        <dependency>
-            <groupId>it.eng</groupId>
-            <artifactId>dcp-common</artifactId>
-            <version>${revision}</version>
-        </dependency>
+        <!-- Internal dependencies -->
         <dependency>
             <groupId>it.eng</groupId>
             <artifactId>tools</artifactId>
             <version>${revision}</version>
         </dependency>
+
+        <!-- Jackson for JSON -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
@@ -35,19 +37,34 @@
             <version>2.17.1</version>
         </dependency>
 
+        <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
 
+        <!-- SLF4J for logging -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- Nimbus JOSE + JWT -->
         <dependency>
             <groupId>com.nimbusds</groupId>
             <artifactId>nimbus-jose-jwt</artifactId>
             <version>10.5</version>
         </dependency>
 
-        <!-- TEST-->
+        <!-- Spring Data MongoDB (for annotations only) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Test dependencies -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
@@ -58,16 +75,6 @@
             <artifactId>mockito-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <!-- Spring test utilities for MockMvc and WebMvcTest -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 </project>
+

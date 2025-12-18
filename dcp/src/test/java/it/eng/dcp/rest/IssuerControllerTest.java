@@ -1,7 +1,7 @@
 package it.eng.dcp.rest;
 
+import it.eng.dcp.common.model.CredentialStatus;
 import it.eng.dcp.model.CredentialRequest;
-import it.eng.dcp.model.CredentialStatus;
 import it.eng.dcp.service.IssuerService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

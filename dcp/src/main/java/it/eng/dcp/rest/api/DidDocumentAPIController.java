@@ -1,6 +1,6 @@
 package it.eng.dcp.rest.api;
 
-import it.eng.dcp.model.DidDocument;
+import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.service.DidDocumentService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

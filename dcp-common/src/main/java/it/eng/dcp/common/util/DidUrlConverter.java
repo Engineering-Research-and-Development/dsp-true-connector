@@ -1,4 +1,4 @@
-package it.eng.dcp.util;
+package it.eng.dcp.common.util;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -99,13 +99,10 @@ public class DidUrlConverter {
 
         try {
             URL url = new URL(targetUrl);
-
-            String protocol = url.getProtocol();
-            String host = url.getHost();
             int port = url.getPort();
 
             StringBuilder baseUrl = new StringBuilder();
-            baseUrl.append(protocol).append("://").append(host);
+            baseUrl.append(url.getProtocol()).append("://").append(url.getHost());
 
             // Add port if not default
             if (port != -1 && port != 80 && port != 443) {
@@ -115,7 +112,6 @@ public class DidUrlConverter {
             return baseUrl.toString();
 
         } catch (MalformedURLException e) {
-            log.error("Failed to parse target URL: {}", targetUrl, e);
             throw new IllegalArgumentException("Invalid target URL: " + targetUrl, e);
         }
     }

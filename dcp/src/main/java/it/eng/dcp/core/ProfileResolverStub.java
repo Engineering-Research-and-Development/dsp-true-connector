@@ -1,6 +1,6 @@
 package it.eng.dcp.core;
 
-import it.eng.dcp.model.ProfileId;
+import it.eng.dcp.common.model.ProfileId;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;

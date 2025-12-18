@@ -1,10 +1,10 @@
 package it.eng.dcp.service;
 
 import com.nimbusds.jwt.JWTClaimsSet;
+import it.eng.dcp.common.model.CredentialStatus;
 import it.eng.dcp.model.CredentialMessage;
 import it.eng.dcp.model.CredentialRequest;
 import it.eng.dcp.model.CredentialRequestMessage;
-import it.eng.dcp.model.CredentialStatus;
 import it.eng.dcp.model.IssuerMetadata;
 import it.eng.dcp.repository.CredentialRequestRepository;
 import org.junit.jupiter.api.BeforeEach;

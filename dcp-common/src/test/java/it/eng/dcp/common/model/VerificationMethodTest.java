@@ -1,4 +1,4 @@
-package it.eng.dcp.model;
+package it.eng.dcp.common.model;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -67,3 +67,4 @@ class VerificationMethodTest {
         assertEquals(vm.getPublicKeyJwk(), deserialized.getPublicKeyJwk());
     }
 }
+

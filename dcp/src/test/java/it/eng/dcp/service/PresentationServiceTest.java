@@ -1,5 +1,6 @@
 package it.eng.dcp.service;
 
+import it.eng.dcp.common.model.ProfileId;
 import it.eng.dcp.model.*;
 import it.eng.dcp.repository.VerifiableCredentialRepository;
 import org.junit.jupiter.api.BeforeEach;

@@ -1,8 +1,8 @@
 package it.eng.dcp.service;
 
-import it.eng.dcp.model.DidDocument;
-import it.eng.dcp.model.ServiceEntry;
-import it.eng.dcp.model.VerificationMethod;
+import it.eng.dcp.common.model.DidDocument;
+import it.eng.dcp.common.model.ServiceEntry;
+import it.eng.dcp.common.model.VerificationMethod;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
