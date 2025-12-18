@@ -9,6 +9,7 @@ import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.config.DcpProperties;
 import it.eng.dcp.model.ConstraintRule;
 import it.eng.dcp.model.CredentialGenerationContext;

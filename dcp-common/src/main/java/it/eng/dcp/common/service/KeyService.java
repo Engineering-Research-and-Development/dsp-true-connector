@@ -1,11 +1,11 @@
-package it.eng.dcp.service;
+package it.eng.dcp.common.service;
 
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.KeyUse;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
-import it.eng.dcp.util.SelfSignedCertGenerator;
+import it.eng.dcp.common.util.SelfSignedCertGenerator;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -25,6 +25,10 @@ import java.util.Map;
 
 import static java.util.UUID.randomUUID;
 
+/**
+ * Service for managing cryptographic keys used in DCP operations.
+ * Handles key loading, rotation, and JWK conversion.
+ */
 @Service
 public class KeyService {
 
@@ -41,6 +45,14 @@ public class KeyService {
         Security.addProvider(new BouncyCastleProvider());
     }
 
+    /**
+     * Loads a key pair from a PKCS12 keystore.
+     *
+     * @param resourcePath Path to the keystore resource
+     * @param password     Keystore password
+     * @param alias        Key alias in the keystore
+     * @return The loaded KeyPair
+     */
     public KeyPair loadKeyPairFromP12(String resourcePath, String password, String alias) {
         try (InputStream is = getClass().getClassLoader().getResourceAsStream(resourcePath)) {
             KeyStore keystore = KeyStore.getInstance("PKCS12");
@@ -54,6 +66,11 @@ public class KeyService {
         }
     }
 
+    /**
+     * Gets the current key pair, loading it from default location if not already loaded.
+     *
+     * @return The current KeyPair
+     */
     public KeyPair getKeyPair() {
         if (keyPair == null) {
             keyPair = loadKeyPairFromP12("eckey.p12", "password", "dsptrueconnector");
@@ -61,6 +78,11 @@ public class KeyService {
         return keyPair;
     }
 
+    /**
+     * Generates a key ID (kid) from the public key using SHA-256 hash.
+     *
+     * @return Base64-URL encoded key ID
+     */
     public String getKidFromPublicKey() {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -72,8 +94,9 @@ public class KeyService {
     }
 
     /**
-     * Return a Nimbus ECKey containing public and private parts suitable for signing.
+     * Returns a Nimbus ECKey containing public and private parts suitable for signing.
      * This centralizes building the EC JWK from the loaded KeyPair.
+     *
      * @return ECKey for signing
      */
     public ECKey getSigningJwk() {
@@ -91,6 +114,12 @@ public class KeyService {
         }
     }
 
+    /**
+     * Converts a BigInteger to Base64-URL encoded string, removing leading zeros.
+     *
+     * @param value The BigInteger value
+     * @return Base64-URL encoded string
+     */
     private String toBase64Url(BigInteger value) {
         byte[] bytes = value.toByteArray();
         // Remove leading zero byte if present
@@ -102,6 +131,11 @@ public class KeyService {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
+    /**
+     * Converts the current public key to JWK (JSON Web Key) format.
+     *
+     * @return Map containing JWK parameters
+     */
     public Map<String, Object> convertPublicKeyToJWK() {
         String x = toBase64Url(((ECPublicKey) keyPair.getPublic()).getW().getAffineX());
         String y = toBase64Url(((ECPublicKey) keyPair.getPublic()).getW().getAffineY());
@@ -118,6 +152,13 @@ public class KeyService {
                 "y", y);
     }
 
+    /**
+     * Rotates the key pair and persists it to the keystore.
+     *
+     * @param keystorePath Path to the keystore file
+     * @param password     Keystore password
+     * @param alias        New key alias
+     */
     public void rotateAndPersistKeyPair(String keystorePath, String password, String alias) {
         try {
             // Generate new EC key pair
@@ -152,7 +193,14 @@ public class KeyService {
         }
     }
 
-
+    /**
+     * Generates a new EC key pair using the secp256r1 curve.
+     *
+     * @return The generated KeyPair
+     * @throws NoSuchAlgorithmException     if EC algorithm is not available
+     * @throws InvalidAlgorithmParameterException if the curve parameters are invalid
+     * @throws NoSuchProviderException      if BouncyCastle provider is not available
+     */
     private KeyPair generateEcKeyPair() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchProviderException {
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC", "BC");
         ECGenParameterSpec ecSpec = new ECGenParameterSpec("secp256r1");
@@ -160,7 +208,11 @@ public class KeyService {
         return keyGen.generateKeyPair();
     }
 
-
+    /**
+     * Generates a new EC key using Nimbus library.
+     *
+     * @return The generated ECKey
+     */
     public ECKey generateEcKey() {
         try {
             return new ECKeyGenerator(Curve.P_256)
@@ -194,3 +246,4 @@ public class KeyService {
         return alias;
     }
 }
+

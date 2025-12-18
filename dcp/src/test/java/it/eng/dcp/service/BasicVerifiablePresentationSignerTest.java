@@ -7,6 +7,7 @@ import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jwt.SignedJWT;
 import it.eng.dcp.common.model.ProfileId;
+import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.model.VerifiablePresentation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

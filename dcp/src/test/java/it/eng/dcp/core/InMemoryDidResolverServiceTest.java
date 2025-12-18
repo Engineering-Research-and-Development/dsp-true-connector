@@ -3,6 +3,8 @@ package it.eng.dcp.core;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.OctetSequenceKey;
+import it.eng.dcp.common.exception.DidResolutionException;
+import it.eng.dcp.common.service.did.InMemoryDidResolverService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

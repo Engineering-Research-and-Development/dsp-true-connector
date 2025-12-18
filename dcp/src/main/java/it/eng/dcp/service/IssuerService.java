@@ -1,6 +1,7 @@
 package it.eng.dcp.service;
 
 import com.nimbusds.jwt.JWTClaimsSet;
+import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.model.CredentialMessage;
 import it.eng.dcp.model.CredentialRequest;
 import it.eng.dcp.model.CredentialRequestMessage;

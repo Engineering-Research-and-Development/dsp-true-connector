@@ -13,8 +13,8 @@ import org.springframework.context.annotation.Import;
  *
  * This configuration is registered using the Spring Boot auto-configuration discovery
  * mechanism. It enables the DCP properties binding, imports the Mongo configuration
- * and component-scans only the `it.eng.dcp` package so the main application doesn't
- * need to scan broad package roots.
+ * and component-scans both `it.eng.dcp` and `it.eng.dcp.common` packages to include
+ * shared services from dcp-common module.
  *
  * It is conditional on the property `dcp.enabled` (defaults to enabled).
  */
@@ -22,7 +22,10 @@ import org.springframework.context.annotation.Import;
 @ConditionalOnProperty(prefix = "dcp", name = "enabled", havingValue = "true", matchIfMissing = true)
 @EnableConfigurationProperties(DcpProperties.class)
 @Import({DCPMongoConfig.class})
-@ComponentScan("it.eng.dcp")
+@ComponentScan({
+    "it.eng.dcp",
+    "it.eng.dcp.common"
+})
 public class DcpAutoConfiguration {
 
 }

@@ -1,4 +1,4 @@
-package it.eng.dcp.core;
+package it.eng.dcp.common.service.sts;
 
 import org.springframework.stereotype.Component;
 
@@ -35,4 +35,3 @@ public class InMemoryJtiReplayCache implements JtiReplayCache {
         }
     }
 }
-

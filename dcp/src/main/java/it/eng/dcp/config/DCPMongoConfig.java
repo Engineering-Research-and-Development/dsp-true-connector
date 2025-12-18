@@ -9,7 +9,10 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 import java.util.Arrays;
 
 @Configuration
-@EnableMongoRepositories(basePackages = {"it.eng.dcp.repository"})
+@EnableMongoRepositories(basePackages = {
+    "it.eng.dcp.repository",
+    "it.eng.dcp.common.repository"
+})
 public class DCPMongoConfig {
 
     /**

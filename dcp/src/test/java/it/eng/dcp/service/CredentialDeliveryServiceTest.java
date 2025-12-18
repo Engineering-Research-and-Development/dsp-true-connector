@@ -1,7 +1,8 @@
 package it.eng.dcp.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import it.eng.dcp.core.DidResolverService;
+import it.eng.dcp.common.service.did.DidResolverService;
+import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.repository.CredentialRequestRepository;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import org.junit.jupiter.api.Test;

@@ -9,7 +9,7 @@ import static org.mockito.Mockito.never;
 
 import java.util.List;
 
-import it.eng.dcp.core.DidResolverService;
+import it.eng.dcp.common.service.did.DidResolverService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

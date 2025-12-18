@@ -1,7 +1,7 @@
-package it.eng.dcp.service;
+package it.eng.dcp.common.service;
 
-import it.eng.dcp.model.KeyMetadata;
-import it.eng.dcp.repository.KeyMetadataRepository;
+import it.eng.dcp.common.model.KeyMetadata;
+import it.eng.dcp.common.repository.KeyMetadataRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

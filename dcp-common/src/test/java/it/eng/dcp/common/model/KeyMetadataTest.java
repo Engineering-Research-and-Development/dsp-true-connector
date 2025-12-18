@@ -1,4 +1,4 @@
-package it.eng.dcp.model;
+package it.eng.dcp.common.model;
 
 import jakarta.validation.ValidationException;
 import org.junit.jupiter.api.Test;

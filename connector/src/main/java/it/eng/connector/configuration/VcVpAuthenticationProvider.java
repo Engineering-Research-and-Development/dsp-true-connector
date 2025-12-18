@@ -3,7 +3,7 @@ package it.eng.connector.configuration;
 import java.util.Collections;
 import java.util.List;
 
-import it.eng.dcp.core.DidResolverService;
+import it.eng.dcp.common.service.did.DidResolverService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.core.Authentication;

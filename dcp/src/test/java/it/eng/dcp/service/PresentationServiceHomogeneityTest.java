@@ -3,6 +3,7 @@ package it.eng.dcp.service;
 import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
+import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.model.VerifiableCredential;
 import it.eng.dcp.repository.VerifiableCredentialRepository;
 import org.junit.jupiter.api.BeforeEach;

@@ -1,9 +1,10 @@
 package it.eng.dcp.service;
 
 import com.nimbusds.jose.jwk.JWKSet;
-import it.eng.dcp.core.InMemoryDidResolverService;
-import it.eng.dcp.core.InMemoryJtiReplayCache;
-import it.eng.dcp.config.DcpProperties;
+import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.common.service.did.InMemoryDidResolverService;
+import it.eng.dcp.common.service.sts.InMemoryJtiReplayCache;
+import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -48,23 +49,22 @@ class KeyServiceIT {
         assertNotNull(signingJwk.getKeyID());
 
         // Prepare token service using real keyService
-        DcpProperties props = new DcpProperties();
-        props.setConnectorDid("did:example:connector");
+        String connectorDid = "did:example:connector";
 
         InMemoryDidResolverService didResolver = new InMemoryDidResolverService();
         InMemoryJtiReplayCache jtiCache = new InMemoryJtiReplayCache();
 
-        SelfIssuedIdTokenService svc = new SelfIssuedIdTokenService(props, didResolver, jtiCache, keyService);
+        SelfIssuedIdTokenService svc = new SelfIssuedIdTokenService(connectorDid, didResolver, jtiCache, keyService);
 
         // register public JWK in resolver so validation can fetch it
-        didResolver.put(props.getConnectorDid(), new JWKSet(signingJwk.toPublicJWK()));
+        didResolver.put(connectorDid, new JWKSet(signingJwk.toPublicJWK()));
 
         // create and validate token using the real signing key
         String token = svc.createAndSignToken("did:example:aud", null);
         assertNotNull(token);
 
         var claims = svc.validateToken(token);
-        assertEquals(props.getConnectorDid(), claims.getIssuer());
+        assertEquals(connectorDid, claims.getIssuer());
 
         // Disable replay detection for now
         // second validation should be rejected due to replay detection

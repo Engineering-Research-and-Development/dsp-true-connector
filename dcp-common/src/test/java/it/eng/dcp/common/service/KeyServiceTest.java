@@ -1,4 +1,4 @@
-package it.eng.dcp.service;
+package it.eng.dcp.common.service;
 
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.Curve;

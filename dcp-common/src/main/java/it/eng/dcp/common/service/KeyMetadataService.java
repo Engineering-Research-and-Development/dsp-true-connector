@@ -1,12 +1,16 @@
-package it.eng.dcp.service;
+package it.eng.dcp.common.service;
 
-import it.eng.dcp.model.KeyMetadata;
-import it.eng.dcp.repository.KeyMetadataRepository;
+import it.eng.dcp.common.model.KeyMetadata;
+import it.eng.dcp.common.repository.KeyMetadataRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.Optional;
 
+/**
+ * Service for managing cryptographic key metadata.
+ * Handles key lifecycle including activation, archiving, and rotation.
+ */
 @Service
 public class KeyMetadataService {
 
@@ -16,6 +20,12 @@ public class KeyMetadataService {
         this.repository = repository;
     }
 
+    /**
+     * Saves new key metadata and archives the previous active key.
+     *
+     * @param alias The alias of the new key
+     * @return The saved KeyMetadata
+     */
     public KeyMetadata saveNewKeyMetadata(String alias) {
         // Mark previous active key as inactive and archived (preserve its id for revocation checks)
         repository.findByActiveTrue().ifPresent(meta -> {
@@ -40,11 +50,23 @@ public class KeyMetadataService {
         return repository.save(metadata);
     }
 
+    /**
+     * Retrieves the currently active key metadata.
+     *
+     * @return Optional containing the active KeyMetadata, or empty if none exists
+     */
     public Optional<KeyMetadata> getActiveKeyMetadata() {
         return repository.findByActiveTrue();
     }
 
+    /**
+     * Retrieves key metadata by alias.
+     *
+     * @param alias The key alias to search for
+     * @return Optional containing the KeyMetadata, or empty if not found
+     */
     public Optional<KeyMetadata> getKeyMetadataByAlias(String alias) {
         return repository.findByAlias(alias);
     }
 }
+

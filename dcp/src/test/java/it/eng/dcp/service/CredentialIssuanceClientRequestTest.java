@@ -1,5 +1,6 @@
 package it.eng.dcp.service;
 
+import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.model.IssuerMetadata;
 import it.eng.dcp.model.IssuerMetadata.CredentialObject;
 import it.eng.dcp.model.CredentialRequestMessage;

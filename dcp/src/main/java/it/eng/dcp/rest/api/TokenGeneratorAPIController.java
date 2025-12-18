@@ -1,6 +1,6 @@
 package it.eng.dcp.rest.api;
 
-import it.eng.dcp.service.SelfIssuedIdTokenService;
+import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;

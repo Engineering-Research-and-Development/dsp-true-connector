@@ -1,5 +1,4 @@
-package it.eng.dcp.util;
-
+package it.eng.dcp.common.util;
 
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
@@ -14,12 +13,24 @@ import java.security.Security;
 import java.security.cert.X509Certificate;
 import java.util.Date;
 
+/**
+ * Utility class for generating self-signed X.509 certificates.
+ * Used for key rotation and certificate generation in DCP components.
+ */
 public class SelfSignedCertGenerator {
 
     static {
         Security.addProvider(new BouncyCastleProvider());
     }
 
+    /**
+     * Generates a self-signed X.509 certificate for the given key pair.
+     *
+     * @param dn      Distinguished Name (e.g., "CN=DidKey")
+     * @param keyPair The key pair to create a certificate for
+     * @return Self-signed X.509 certificate
+     * @throws Exception if certificate generation fails
+     */
     public static X509Certificate generate(String dn, KeyPair keyPair) throws Exception {
         if (dn == null || dn.isEmpty() || keyPair == null) {
             throw new IllegalArgumentException("Distinguished name and key pair must not be null or empty");
@@ -49,5 +60,5 @@ public class SelfSignedCertGenerator {
                 .setProvider("BC")
                 .getCertificate(certBuilder.build(signer));
     }
-
 }
+

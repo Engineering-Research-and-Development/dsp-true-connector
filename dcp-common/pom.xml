@@ -57,6 +57,27 @@
             <version>10.5</version>
         </dependency>
 
+        <!-- BouncyCastle for key generation -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <version>1.78.1</version>
+        </dependency>
+
+        <!-- Spring Context for @Service, @Transactional annotations -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Spring TX for @Transactional -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Spring Data MongoDB (for annotations only) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

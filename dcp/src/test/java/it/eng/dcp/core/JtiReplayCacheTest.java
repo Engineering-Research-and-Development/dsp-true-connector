@@ -1,5 +1,6 @@
 package it.eng.dcp.core;
 
+import it.eng.dcp.common.service.sts.InMemoryJtiReplayCache;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

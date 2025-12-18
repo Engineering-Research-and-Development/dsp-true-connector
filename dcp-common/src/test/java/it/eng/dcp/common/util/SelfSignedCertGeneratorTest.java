@@ -1,4 +1,4 @@
-package it.eng.dcp.util;
+package it.eng.dcp.common.util;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
@@ -59,3 +59,4 @@ class SelfSignedCertGeneratorTest {
         Assertions.assertThrows(Exception.class, () -> SelfSignedCertGenerator.generate("", keyPair));
     }
 }
+

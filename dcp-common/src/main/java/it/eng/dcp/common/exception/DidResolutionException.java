@@ -1,4 +1,4 @@
-package it.eng.dcp.core;
+package it.eng.dcp.common.exception;
 
 /**
  * Exception raised when DID resolution fails or the DID document is malformed/incomplete.
