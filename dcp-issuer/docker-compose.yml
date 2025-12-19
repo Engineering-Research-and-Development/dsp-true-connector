@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  dcp-issuer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dcp-issuer
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_APPLICATION_NAME=dcp-issuer
+      - SERVER_PORT=8084
+      - ISSUER_DID=did:web:localhost%3A8084:issuer
+      - ISSUER_BASE_URL=http://localhost:8084
+      - SPRING_DATA_MONGODB_HOST=issuer-mongodb
+      - SPRING_DATA_MONGODB_PORT=27017
+      - SPRING_DATA_MONGODB_DATABASE=issuer_db
+      - ISSUER_KEYSTORE_PATH=/app/eckey-issuer.p12
+      - ISSUER_KEYSTORE_PASSWORD=password
+      - ISSUER_KEYSTORE_ALIAS=issuer
+    depends_on:
+      - issuer-mongodb
+    networks:
+      - issuer-network
+
+  issuer-mongodb:
+    image: mongo:7.0
+    container_name: issuer-mongodb
+    ports:
+      - "27018:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=issuer_db
+    volumes:
+      - issuer-mongodb-data:/data/db
+    networks:
+      - issuer-network
+
+networks:
+  issuer-network:
+    driver: bridge
+
+volumes:
+  issuer-mongodb-data:
+

@@ -1,0 +1,27 @@
+# Ignore build artifacts
+target/
+*.class
+*.jar
+*.war
+
+# Ignore IDE files
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# Ignore keystore files (security)
+*.p12
+*.jks
+*.keystore
+!*.p12.placeholder
+
+# Ignore logs
+*.log
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
