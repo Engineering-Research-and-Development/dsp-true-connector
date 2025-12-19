@@ -65,6 +65,12 @@ public class DidDocumentConfig {
     private final String keystorePassword = "password";
 
     /**
+     * Keystore alias for the key pair.
+     */
+    @Builder.Default
+    private final String keystoreAlias = "dcp-issuer";
+
+    /**
      * Get the effective base URL.
      * If baseUrl is set, use it; otherwise construct from protocol, host, and port.
      *

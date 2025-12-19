@@ -173,7 +173,7 @@ class DidDocumentServiceTest {
         didDocumentService.provideDidDocument(config);
 
         // Assert
-        verify(keyService).loadKeyPairFromP12("eckey.p12", "password", "dsptrueconnector");
+        verify(keyService).loadKeyPairFromP12("eckey.p12", "password", "dcp-issuer");
     }
 
     /**

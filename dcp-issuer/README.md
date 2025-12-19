@@ -22,7 +22,7 @@ The DCP Issuer service is a standalone Spring Boot application that handles:
 ## Generate EC Key Pair for development purposes
 
 ```cmd
-keytool -genkeypair -alias issuer-ec -keyalg EC -groupname secp256r1 -sigalg SHA256withECDSA -dname "CN=DSP TRUEConnector,OU=Engineering,O=R&D,C=IT" -keystore eckey-issuer.p12 -storetype PKCS12 -storepass password -keypass password
+keytool -genkeypair -alias dcp-issuer -keyalg EC -groupname secp256r1 -sigalg SHA256withECDSA -dname "CN=DSP TRUEConnector,OU=Engineering,O=R&D,C=IT" -keystore eckey-issuer.p12 -storetype PKCS12 -storepass password -keypass password
 
 ```
 

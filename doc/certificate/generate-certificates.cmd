@@ -38,6 +38,7 @@ set SAN_CONNECTOR_B=DNS:localhost,DNS:connector-b,IP:127.0.0.1
 set SAN_MINIO=DNS:localhost,DNS:minio,IP:127.0.0.1
 set SAN_UI_A=DNS:localhost,DNS:ui-a,IP:127.0.0.1
 set SAN_UI_B=DNS:localhost,DNS:ui-b,IP:127.0.0.1
+set SAN_DCP_ISSUER=DNS:localhost,DNS:dcp-issuer,IP:127.0.0.1
 
 REM Legacy: All SANs combined (for backward compatibility or development)
 REM set SAN_LIST=DNS:localhost,DNS:connector-a,DNS:connector-b,DNS:minio,DNS:mongodb-a,DNS:mongodb-b,DNS:ui-a,DNS:ui-b,IP:127.0.0.1
@@ -90,6 +91,7 @@ if exist connector-b.p12 del connector-b.p12
 if exist minio-temp.p12 del minio-temp.p12
 if exist ui-a-temp.p12 del ui-a-temp.p12
 if exist ui-b-temp.p12 del ui-b-temp.p12
+if exist dcp-issuer-temp.p12 del dcp-issuer-temp.p12
 if exist private.key del private.key
 if exist public.crt del public.crt
 if exist ui-a-cert.key del ui-a-cert.key
@@ -769,6 +771,152 @@ echo   - ui-b-temp.p12 (Temporary PKCS12 keystore, can be deleted)
 echo.
 
 REM ==================================================================
+REM STEP 4c: Generate DCP-Issuer Certificate (PEM format)
+REM ==================================================================
+
+echo ==================================================================
+echo STEP 4c: Generating DCP-Issuer Certificate (PEM format)
+echo ==================================================================
+echo.
+
+echo Generating key pair for DCP-Issuer...
+keytool -genkeypair ^
+    -alias %DCP_ISSUER_ALIAS% ^
+    -keyalg %KEY_ALG% ^
+    -keysize %KEY_SIZE% ^
+    -dname "%DCP_ISSUER_DN%" ^
+    -validity %SERVER_VALIDITY% ^
+    -keystore %DCP_ISSUER_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %SERVER_PASSWORD% ^
+    -keypass %SERVER_PASSWORD% ^
+    -ext KeyUsage:critical=digitalSignature,keyEncipherment ^
+    -ext ExtendedKeyUsage=serverAuth,clientAuth ^
+    -ext "SAN=%SAN_DCP_ISSUER%"
+
+if %ERRORLEVEL% NEQ 0 (
+    echo ERROR: Failed to generate key pair for DCP-Issuer
+    exit /b 1
+)
+echo Done.
+echo.
+
+echo Generating Certificate Signing Request for DCP-Issuer...
+keytool -certreq ^
+    -alias %DCP_ISSUER_ALIAS% ^
+    -keystore %DCP_ISSUER_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %SERVER_PASSWORD% ^
+    -file dcp-issuer.csr ^
+    -ext KeyUsage:critical=digitalSignature,keyEncipherment ^
+    -ext ExtendedKeyUsage=serverAuth,clientAuth ^
+    -ext "SAN=%SAN_DCP_ISSUER%"
+
+if %ERRORLEVEL% NEQ 0 (
+    echo ERROR: Failed to generate CSR for DCP-Issuer
+    exit /b 1
+)
+echo Done.
+echo.
+
+echo Signing DCP-Issuer certificate with Intermediate CA...
+keytool -gencert ^
+    -alias %INTERMEDIATE_ALIAS% ^
+    -keystore %INTERMEDIATE_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %INTERMEDIATE_PASSWORD% ^
+    -infile dcp-issuer.csr ^
+    -outfile dcp-issuer-signed.crt ^
+    -validity %SERVER_VALIDITY% ^
+    -ext KeyUsage:critical=digitalSignature,keyEncipherment ^
+    -ext ExtendedKeyUsage=serverAuth,clientAuth ^
+    -ext "SAN=%SAN_DCP_ISSUER%" ^
+    -rfc
+
+if %ERRORLEVEL% NEQ 0 (
+    echo ERROR: Failed to sign certificate for DCP-Issuer
+    exit /b 1
+)
+echo Done.
+echo.
+
+echo Importing certificate chain for DCP-Issuer...
+echo   - Importing Root CA...
+keytool -importcert ^
+    -alias %ROOT_ALIAS% ^
+    -keystore %DCP_ISSUER_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %SERVER_PASSWORD% ^
+    -file root-ca.crt ^
+    -noprompt
+
+echo   - Importing Intermediate CA...
+keytool -importcert ^
+    -alias %INTERMEDIATE_ALIAS% ^
+    -keystore %DCP_ISSUER_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %SERVER_PASSWORD% ^
+    -file intermediate-ca.crt ^
+    -noprompt
+
+echo   - Importing signed DCP-Issuer certificate...
+keytool -importcert ^
+    -alias %DCP_ISSUER_ALIAS% ^
+    -keystore %DCP_ISSUER_KEYSTORE% ^
+    -storetype PKCS12 ^
+    -storepass %SERVER_PASSWORD% ^
+    -file dcp-issuer-signed.crt ^
+    -noprompt
+
+if %ERRORLEVEL% NEQ 0 (
+    echo ERROR: Failed to import certificate chain for DCP-Issuer
+    exit /b 1
+)
+echo Done.
+echo.
+
+echo Exporting DCP-Issuer private key to PEM format (dcp-issuer.key)...
+openssl pkcs12 -in %DCP_ISSUER_KEYSTORE% -nocerts -nodes -passin pass:%SERVER_PASSWORD% -out dcp-issuer.key 2>nul
+if %ERRORLEVEL% NEQ 0 (
+    echo WARNING: OpenSSL not found. Using alternative method...
+    echo You will need to manually convert dcp-issuer-temp.p12 to dcp-issuer.key
+    echo Command: openssl pkcs12 -in dcp-issuer-temp.p12 -nocerts -nodes -passin pass:%SERVER_PASSWORD% -out dcp-issuer.key
+    echo.
+    echo Creating placeholder dcp-issuer.key file...
+    echo # DCP-Issuer Private Key > dcp-issuer.key
+    echo # Convert from dcp-issuer-temp.p12 using OpenSSL >> dcp-issuer.key
+    echo # Command: openssl pkcs12 -in dcp-issuer-temp.p12 -nocerts -nodes -passin pass:%SERVER_PASSWORD% -out dcp-issuer.key >> dcp-issuer.key
+) else (
+    echo Done.
+)
+echo.
+echo Exporting DCP-Issuer certificate to PEM format (dcp-issuer.crt)...
+openssl pkcs12 -in %DCP_ISSUER_KEYSTORE% -clcerts -nokeys -passin pass:%SERVER_PASSWORD% -out dcp-issuer.crt 2>nul
+if %ERRORLEVEL% NEQ 0 (
+    echo WARNING: OpenSSL not found. Using keytool export...
+    keytool -exportcert ^
+        -alias %DCP_ISSUER_ALIAS% ^
+        -keystore %DCP_ISSUER_KEYSTORE% ^
+        -storetype PKCS12 ^
+        -storepass %SERVER_PASSWORD% ^
+        -file dcp-issuer.crt ^
+        -rfc
+    if %ERRORLEVEL% NEQ 0 (
+        echo ERROR: Failed to export DCP-Issuer certificate
+        exit /b 1
+    )
+) else (
+    echo Done.
+)
+echo.
+echo DCP-Issuer certificate files generated:
+echo   - dcp-issuer.key (Private key in PEM format)
+echo   - dcp-issuer.crt (Certificate in PEM format, signed by Intermediate CA)
+echo   - SAN: %SAN_DCP_ISSUER%
+echo   - dcp-issuer-temp.p12 (Temporary PKCS12 keystore, can be deleted)
+echo.
+
+REM ==================================================================
 REM STEP 5: Create Truststore with Intermediate CA
 REM ==================================================================
 
@@ -867,10 +1015,12 @@ del intermediate-ca.crt
 del minio-signed.crt
 del ui-a-signed.crt
 del ui-b-signed.crt
+del dcp-issuer-signed.crt
 REM Keep public.crt for MinIO
 REM Keep private.key for MinIO
 REM Keep ui-a-cert.crt and ui-a-cert.key for UI-A
 REM Keep ui-b-cert.crt and ui-b-cert.key for UI-B
+REM Keep dcp-issuer.crt and dcp-issuer.key for DCP-Issuer
 if exist connector-a.crt del connector-a.crt
 if exist connector-b.crt del connector-b.crt
 del *.cer
@@ -902,7 +1052,10 @@ echo   12. ui-b-cert.key - UI-B private key in PEM format (for nginx)
 echo   13. ui-b-cert.crt - UI-B certificate in PEM format (for nginx, signed by Intermediate CA)
 echo   14. ui-b-fullchain.crt - UI-B fullchain certificate in PEM format (server cert + intermediate CA)
 echo   15. ui-b-temp.p12 - UI-B certificate in PKCS12 format (optional, can be deleted)
-echo   16. %TRUSTSTORE% - Truststore with Intermediate CA (use for TLS validation)
+echo   16. dcp-issuer.key - DCP-Issuer private key in PEM format (for nginx)
+echo   17. dcp-issuer.crt - DCP-Issuer certificate in PEM format (for nginx, signed by Intermediate CA)
+echo   18. dcp-issuer-temp.p12 - DCP-Issuer certificate in PKCS12 format (optional, can be deleted)
+echo   19. %TRUSTSTORE% - Truststore with Intermediate CA (use for TLS validation)
 echo.
 echo Certificate Chain:
 echo   Root CA --signs--^> Intermediate CA --signs--^> Server Certificates (including MinIO)
@@ -1071,4 +1224,3 @@ echo.
 
 endlocal
 goto :eof
-

@@ -46,7 +46,7 @@ public class DidDocumentService {
         // Get active key alias from metadata
         String activeAlias = keyMetadataService.getActiveKeyMetadata()
                 .map(KeyMetadata::getAlias)
-                .orElse("dsptrueconnector");
+                .orElse(config.getKeystoreAlias());
 
         // Load key pair for active alias
         keyService.loadKeyPairFromP12(config.getKeystorePath(), config.getKeystorePassword(), activeAlias);

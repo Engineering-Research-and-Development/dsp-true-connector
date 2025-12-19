@@ -54,7 +54,18 @@ public class KeyService {
      * @return The loaded KeyPair
      */
     public KeyPair loadKeyPairFromP12(String resourcePath, String password, String alias) {
-        try (InputStream is = getClass().getClassLoader().getResourceAsStream(resourcePath)) {
+        // Normalize resource path: strip 'classpath:' and leading '/'
+        String normalizedPath = resourcePath;
+        if (normalizedPath.startsWith("classpath:")) {
+            normalizedPath = normalizedPath.substring("classpath:".length());
+        }
+        if (normalizedPath.startsWith("/")) {
+            normalizedPath = normalizedPath.substring(1);
+        }
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream(normalizedPath)) {
+            if (is == null) {
+                throw new RuntimeException("Resource not found in classpath: " + normalizedPath);
+            }
             KeyStore keystore = KeyStore.getInstance("PKCS12");
             keystore.load(is, password.toCharArray());
             PrivateKey privateKey = (PrivateKey) keystore.getKey(alias, password.toCharArray());
@@ -246,4 +257,3 @@ public class KeyService {
         return alias;
     }
 }
-
