@@ -5,14 +5,14 @@ import it.eng.dcp.model.CredentialRequest;
 import it.eng.dcp.model.CredentialRequestMessage;
 import it.eng.dcp.model.IssuerMetadata;
 import it.eng.tools.response.GenericApiResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 
@@ -21,9 +21,8 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping(path = "/issuer", produces = MediaType.APPLICATION_JSON_VALUE)
+@Slf4j
 public class IssuerController {
-
-    private static final Logger LOG = LoggerFactory.getLogger(IssuerController.class);
 
     private final IssuerService issuerService;
 
@@ -50,10 +49,10 @@ public class IssuerController {
             IssuerMetadata metadata = issuerService.getMetadata();
             return ResponseEntity.ok(metadata);
         } catch (SecurityException e) {
-            LOG.warn("Authorization failed for metadata request: {}", e.getMessage());
+            log.warn("Authorization failed for metadata request: {}", e.getMessage());
             return ResponseEntity.status(401).body("Unauthorized: " + e.getMessage());
         } catch (Exception e) {
-            LOG.error("Error retrieving metadata: {}", e.getMessage(), e);
+            log.error("Error retrieving metadata: {}", e.getMessage(), e);
             return ResponseEntity.status(500).body("Internal error: " + e.getMessage());
         }
     }
@@ -65,7 +64,7 @@ public class IssuerController {
      * @param requestMessage The credential request message
      * @return ResponseEntity with created request or error
      */
-    @PostMapping(path = "/requests", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(path = "/credentials", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> createCredentialRequest(
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
             @RequestBody CredentialRequestMessage requestMessage) {
@@ -79,18 +78,19 @@ public class IssuerController {
             issuerService.authorizeRequest(token, requestMessage.getHolderPid());
             CredentialRequest request = issuerService.createCredentialRequest(requestMessage);
 
-            LOG.info("Created credential request: issuerPid={}, holderPid={}, credentials={}",
+            log.info("Created credential request: issuerPid={}, holderPid={}, credentials={}",
                     request.getIssuerPid(), request.getHolderPid(), request.getCredentialIds());
 
-            return ResponseEntity.ok(GenericApiResponse.success(request, "Credential request created successfully"));
+            String location = "/issuer/requests/" + request.getIssuerPid();
+            return ResponseEntity.created(URI.create(location)).header(HttpHeaders.LOCATION, location).build();
         } catch (SecurityException e) {
-            LOG.warn("Authorization failed: {}", e.getMessage());
+            log.warn("Authorization failed: {}", e.getMessage());
             return ResponseEntity.status(401).body(GenericApiResponse.error("Unauthorized: " + e.getMessage()));
         } catch (IllegalArgumentException e) {
-            LOG.warn("Invalid request: {}", e.getMessage());
+            log.warn("Invalid request: {}", e.getMessage());
             return ResponseEntity.badRequest().body(GenericApiResponse.error(e.getMessage()));
         } catch (Exception e) {
-            LOG.error("Error creating credential request: {}", e.getMessage(), e);
+            log.error("Error creating credential request: {}", e.getMessage(), e);
             return ResponseEntity.status(500).body(GenericApiResponse.error("Internal error: " + e.getMessage()));
         }
     }
@@ -121,15 +121,15 @@ public class IssuerController {
             IssuerService.ApprovalResult result = issuerService.approveAndDeliverCredentials(
                     requestId, customClaims, constraints, providedCredentials);
 
-            LOG.info("Approved and delivered {} credentials for request {}: types={}",
+            log.info("Approved and delivered {} credentials for request {}: types={}",
                     result.getCredentialsCount(), requestId, result.getCredentialTypes());
 
             return ResponseEntity.ok(GenericApiResponse.success(result, "Credentials issued and delivered successfully"));
         } catch (IllegalArgumentException e) {
-            LOG.warn("Invalid approval request: {}", e.getMessage());
+            log.warn("Invalid approval request: {}", e.getMessage());
             return ResponseEntity.badRequest().body(GenericApiResponse.error(e.getMessage()));
         } catch (Exception e) {
-            LOG.error("Error approving request: {}", e.getMessage(), e);
+            log.error("Error approving request: {}", e.getMessage(), e);
             return ResponseEntity.status(500).body(GenericApiResponse.error("Internal error: " + e.getMessage()));
         }
     }
@@ -154,16 +154,16 @@ public class IssuerController {
         try {
             boolean success = issuerService.rejectCredentialRequest(requestId, rejectionReason);
             if (success) {
-                LOG.info("Rejected credential request {}: {}", requestId, rejectionReason);
+                log.info("Rejected credential request {}: {}", requestId, rejectionReason);
                 return ResponseEntity.ok(GenericApiResponse.success(null, "Credential request rejected successfully"));
             } else {
                 return ResponseEntity.status(500).body(GenericApiResponse.error("Failed to reject request"));
             }
         } catch (IllegalArgumentException e) {
-            LOG.warn("Invalid rejection request: {}", e.getMessage());
+            log.warn("Invalid rejection request: {}", e.getMessage());
             return ResponseEntity.badRequest().body(GenericApiResponse.error(e.getMessage()));
         } catch (Exception e) {
-            LOG.error("Error rejecting request: {}", e.getMessage(), e);
+            log.error("Error rejecting request: {}", e.getMessage(), e);
             return ResponseEntity.status(500).body(GenericApiResponse.error("Internal error: " + e.getMessage()));
         }
     }
@@ -181,9 +181,8 @@ public class IssuerController {
                     .map(request -> ResponseEntity.ok(GenericApiResponse.success(request, "Request found")))
                     .orElse(ResponseEntity.notFound().build());
         } catch (Exception e) {
-            LOG.error("Error retrieving request: {}", e.getMessage(), e);
+            log.error("Error retrieving request: {}", e.getMessage(), e);
             return ResponseEntity.status(500).body(GenericApiResponse.error("Internal error: " + e.getMessage()));
         }
     }
 }
-

@@ -434,6 +434,39 @@ class DidUrlConverterTest {
         }
 
         @Test
+        @DisplayName("Converts DID with port and path segments to URL")
+        void convertsDidWithPortAndPathToUrl() {
+            String did = "did:web:localhost%3A8080:api:v1";
+            String expected = "https://localhost:8080/api/v1";
+
+            String result = DidUrlConverter.convertDidToUrl(did);
+
+            assertEquals(expected, result);
+        }
+
+        @Test
+        @DisplayName("Converts DID with host and multiple path segments to URL")
+        void convertsDidWithHostAndMultiplePathToUrl() {
+            String did = "did:web:example.com:api:v1:resource";
+            String expected = "https://example.com/api/v1/resource";
+
+            String result = DidUrlConverter.convertDidToUrl(did);
+
+            assertEquals(expected, result);
+        }
+
+        @Test
+        @DisplayName("Converts DID with port (unencoded colon) and path segments to URL")
+        void convertsDidWithUnencodedPortAndPathToUrl() {
+            String did = "did:web:localhost:8080:api:v1";
+            String expected = "https://localhost:8080/api/v1";
+
+            String result = DidUrlConverter.convertDidToUrl(did);
+
+            assertEquals(expected, result);
+        }
+
+        @Test
         @DisplayName("Throws exception for null DID")
         void throwsExceptionForNullDid() {
             IllegalArgumentException exception = assertThrows(
@@ -592,4 +625,3 @@ class DidUrlConverterTest {
         }
     }
 }
-

@@ -2,8 +2,7 @@ package it.eng.dcp.issuer.rest;
 
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.service.did.DidDocumentService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
@@ -18,9 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE)
+@Slf4j
 public class IssuerDidDocumentController {
-
-    private static final Logger LOG = LoggerFactory.getLogger(IssuerDidDocumentController.class);
 
     private final DidDocumentService didDocumentService;
     private final DidDocumentConfig issuerDidDocumentConfig;
@@ -47,12 +45,12 @@ public class IssuerDidDocumentController {
     public ResponseEntity<String> getDidDocument() {
         try {
             String didDocument = didDocumentService.getDidDocument(issuerDidDocumentConfig);
-            LOG.debug("Serving issuer DID document");
+            log.debug("Serving issuer DID document");
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(didDocument);
         } catch (Exception e) {
-            LOG.error("Failed to retrieve issuer DID document: {}", e.getMessage(), e);
+            log.error("Failed to retrieve issuer DID document: {}", e.getMessage(), e);
             return ResponseEntity.status(500).body("{\"error\": \"Failed to retrieve DID document\"}");
         }
     }
@@ -67,4 +65,3 @@ public class IssuerDidDocumentController {
         return getDidDocument();
     }
 }
-

@@ -37,6 +37,9 @@ public class HolderDidDocumentConfiguration {
     @Value("${holder.keystore.password:password}")
     private String keystorePassword;
 
+    @Value("${holder.keystore.alias:dsptrueconnector}")
+    private String keystoreAlias;
+
     /**
      * Create the DID document configuration bean for the holder.
      *
@@ -55,6 +58,7 @@ public class HolderDidDocumentConfiguration {
                 .verificationMethodController(verificationMethodController)
                 .keystorePath(keystorePath)
                 .keystorePassword(keystorePassword)
+                .keystoreAlias(keystoreAlias)
                 .serviceEntries(List.of(
                         DidDocumentConfig.ServiceEntryConfig.builder()
                                 .id("TRUEConnector-Credential-Service")

@@ -14,8 +14,7 @@ import it.eng.dcp.model.ConstraintRule;
 import it.eng.dcp.model.CredentialGenerationContext;
 import it.eng.dcp.model.CredentialMessage;
 import it.eng.dcp.model.CredentialRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -26,9 +25,8 @@ import java.util.*;
  * Service responsible for generating/issuing verifiable credentials based on credential requests.
  */
 @Service
+@Slf4j
 public class CredentialIssuanceService {
-
-    private static final Logger LOG = LoggerFactory.getLogger(CredentialIssuanceService.class);
 
     private final IssuerProperties issuerProperties;
     private final KeyService keyService;
@@ -74,7 +72,7 @@ public class CredentialIssuanceService {
                     ConstraintRule constraint = parseConstraint(constraintData);
                     constraints.add(constraint);
                 } catch (Exception e) {
-                    LOG.warn("Failed to parse constraint: {}", e.getMessage());
+                    log.warn("Failed to parse constraint: {}", e.getMessage());
                 }
             }
         }
@@ -86,7 +84,7 @@ public class CredentialIssuanceService {
             constraints
         );
 
-        LOG.info("Generating {} credentials for request {} (holder: {}) with {} custom claims and {} constraints",
+        log.info("Generating {} credentials for request {} (holder: {}) with {} custom claims and {} constraints",
                 request.getCredentialIds().size(), request.getIssuerPid(), request.getHolderPid(),
                 customClaims != null ? customClaims.size() : 0,
                 constraints.size());
@@ -97,9 +95,9 @@ public class CredentialIssuanceService {
             try {
                 CredentialMessage.CredentialContainer credential = generateCredentialForType(credentialId, context);
                 credentials.add(credential);
-                LOG.debug("Generated credential type '{}' for holder {}", credentialId, request.getHolderPid());
+                log.debug("Generated credential type '{}' for holder {}", credentialId, request.getHolderPid());
             } catch (Exception e) {
-                LOG.error("Failed to generate credential '{}' for request {}: {}",
+                log.error("Failed to generate credential '{}' for request {}: {}",
                         credentialId, request.getIssuerPid(), e.getMessage(), e);
             }
         }
@@ -158,7 +156,7 @@ public class CredentialIssuanceService {
             case "OrganizationCredential":
                 return generateOrganizationCredential(context);
             default:
-                LOG.warn("Unknown credential type '{}', generating generic credential", credentialType);
+                log.warn("Unknown credential type '{}', generating generic credential", credentialType);
                 return generateGenericCredential(credentialType, context);
         }
     }
@@ -282,4 +280,3 @@ public class CredentialIssuanceService {
         }
     }
 }
-

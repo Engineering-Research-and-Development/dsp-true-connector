@@ -10,6 +10,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Request;
 import okhttp3.Response;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
@@ -34,6 +35,7 @@ public class IssuerDidResolverService implements DidResolverService {
 
     private final ObjectMapper mapper = new ObjectMapper();
     private final SimpleOkHttpRestClient simpleOkHttpRestClient;
+    private final boolean sslEnabled;
 
     /**
      * Cached DID document entry with expiry time.
@@ -60,10 +62,12 @@ public class IssuerDidResolverService implements DidResolverService {
      * Constructor.
      *
      * @param simpleOkHttpRestClient The SimpleOkHttpRestClient to use
+     * @param sslEnabled              SSL enabled flag from application properties
      */
-    public IssuerDidResolverService(SimpleOkHttpRestClient simpleOkHttpRestClient) {
-        log.info("IssuerDidResolverService initialized with SimpleOkHttpRestClient");
+    public IssuerDidResolverService(SimpleOkHttpRestClient simpleOkHttpRestClient, @Value("${server.ssl.enabled:false}") boolean sslEnabled) {
+        log.info("IssuerDidResolverService initialized with SimpleOkHttpRestClient, sslEnabled={}", sslEnabled);
         this.simpleOkHttpRestClient = simpleOkHttpRestClient;
+        this.sslEnabled = sslEnabled;
     }
 
     @Override
@@ -77,7 +81,9 @@ public class IssuerDidResolverService implements DidResolverService {
         }
 
         try {
-            String url = convertDidToUrl(did);
+            String url = convertDidToUrl(did, sslEnabled);
+            url = url + "/.well-known/did.json";
+
             JsonNode root = fetchDidDocumentCached(url);
 
             JsonNode vmArray = root.get("verificationMethod");
@@ -123,6 +129,7 @@ public class IssuerDidResolverService implements DidResolverService {
 
     /**
      * Fetches DID document with caching support.
+     *
      * @param url The DID document URL
      * @return The parsed JSON root node
      * @throws IOException on IO errors
@@ -159,6 +166,7 @@ public class IssuerDidResolverService implements DidResolverService {
 
     /**
      * Fetches DID document with retry logic.
+     *
      * @param url The DID document URL
      * @return The document content
      * @throws IOException on IO errors
@@ -191,6 +199,7 @@ public class IssuerDidResolverService implements DidResolverService {
 
     /**
      * Fetches DID document using OkHttpRestClient.
+     *
      * @param url The DID document URL
      * @return The document content
      * @throws IOException on IO errors
@@ -204,10 +213,7 @@ public class IssuerDidResolverService implements DidResolverService {
             String resp = null;
             if (response.body() != null) {
                 resp = response.body().string();
-            }
-            log.info("Response received: {}", resp);
-            if(response.isSuccessful()) { // code in 200..299
-                return response.body().string();
+                return resp;
             }
         } catch (IOException e) {
             log.error(e.getLocalizedMessage());
@@ -218,9 +224,10 @@ public class IssuerDidResolverService implements DidResolverService {
 
     /**
      * Checks if a JWK matches the requested key ID.
-     * @param jwk The JWK to check
+     *
+     * @param jwk  The JWK to check
      * @param vmId The verification method ID
-     * @param kid The requested key ID
+     * @param kid  The requested key ID
      * @return true if matches, false otherwise
      */
     private boolean isKeyMatch(JWK jwk, String vmId, String kid) {
@@ -241,9 +248,10 @@ public class IssuerDidResolverService implements DidResolverService {
 
     /**
      * Enforces that the key is referenced in the specified verification relationship.
-     * @param root The DID document root node
-     * @param vmId The verification method ID
-     * @param kid The requested key ID
+     *
+     * @param root                   The DID document root node
+     * @param vmId                   The verification method ID
+     * @param kid                    The requested key ID
      * @param verificationRelationship The verification relationship to check
      * @throws DidResolutionException if the key is not referenced properly
      */
@@ -282,4 +290,3 @@ public class IssuerDidResolverService implements DidResolverService {
     }
 
 }
-
