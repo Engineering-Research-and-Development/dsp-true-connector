@@ -5,12 +5,15 @@ import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.KeyUse;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
+import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.util.SelfSignedCertGenerator;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.security.*;
@@ -18,10 +21,12 @@ import java.security.cert.Certificate;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECGenParameterSpec;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static java.util.UUID.randomUUID;
 
@@ -41,19 +46,63 @@ public class KeyService {
 
     private KeyPair keyPair;
 
+    // TTL for key cache in seconds (default: 1 day)
+    private long keyCacheTtlSeconds = 86400;
+
+    // CachedKey structure for caching with expiry - keyed by (keystorePath + alias)
+    private static class CachedKey {
+        final KeyPair keyPair;
+        final Instant expiresAt;
+        CachedKey(KeyPair keyPair, Instant expiresAt) {
+            this.keyPair = keyPair;
+            this.expiresAt = expiresAt;
+        }
+    }
+    // Cache key format: "keystorePath::alias"
+    private final Map<String, CachedKey> keyPairCache = new ConcurrentHashMap<>();
+
     static {
         Security.addProvider(new BouncyCastleProvider());
     }
 
     /**
-     * Loads a key pair from a PKCS12 keystore.
+     * Loads a key pair with caching and active alias resolution from metadata.
+     * This is the primary method for loading key pairs that should be used by other methods.
      *
-     * @param resourcePath Path to the keystore resource
-     * @param password     Keystore password
-     * @param alias        Key alias in the keystore
-     * @return The loaded KeyPair
+     * The method:
+     * 1. Resolves the active alias from keyMetadataService (falls back to config alias)
+     * 2. Checks cache for existing valid key pair
+     * 3. Loads from keystore if not cached or expired
+     * 4. Caches the loaded key pair with TTL
+     *
+     * @param config DidDocumentConfig containing keystore details
+     * @return The loaded KeyPair for the active alias
      */
-    public KeyPair loadKeyPairFromP12(String resourcePath, String password, String alias) {
+    public KeyPair loadKeyPairWithActiveAlias(DidDocumentConfig config) {
+        // Get active key alias from metadata
+        String activeAlias = keyMetadataService.getActiveKeyMetadata()
+                .map(it.eng.dcp.common.model.KeyMetadata::getAlias)
+                .orElse(config.getKeystoreAlias());
+
+        String cacheKey = config.getKeystorePath() + "::" + activeAlias;
+        Instant now = Instant.now();
+
+        // Check cache first
+        CachedKey cached = keyPairCache.get(cacheKey);
+        if (cached != null && cached.expiresAt.isAfter(now)) {
+            return cached.keyPair;
+        }
+
+        // Load from keystore
+        KeyPair loaded = loadKeyPairFromP12(config.getKeystorePath(), config.getKeystorePassword(), activeAlias);
+
+        // Cache with TTL
+        keyPairCache.put(cacheKey, new CachedKey(loaded, now.plusSeconds(keyCacheTtlSeconds)));
+
+        return loaded;
+    }
+
+    private KeyPair loadKeyPairFromP12(String resourcePath, String password, String alias) {
         // Normalize resource path: strip 'classpath:' and leading '/'
         String normalizedPath = resourcePath;
         if (normalizedPath.startsWith("classpath:")) {
@@ -62,9 +111,18 @@ public class KeyService {
         if (normalizedPath.startsWith("/")) {
             normalizedPath = normalizedPath.substring(1);
         }
-        try (InputStream is = getClass().getClassLoader().getResourceAsStream(normalizedPath)) {
+        InputStream is = null;
+        try {
+            // First, try loading from filesystem
+            File file = new File(normalizedPath);
+            if (file.exists()) {
+                is = new FileInputStream(file);
+            } else {
+                // Fallback to classpath
+                is = getClassLoader().getResourceAsStream(normalizedPath);
+            }
             if (is == null) {
-                throw new RuntimeException("Resource not found in classpath: " + normalizedPath);
+                throw new RuntimeException("Resource not found in filesystem or classpath: " + normalizedPath);
             }
             KeyStore keystore = KeyStore.getInstance("PKCS12");
             keystore.load(is, password.toCharArray());
@@ -74,30 +132,43 @@ public class KeyService {
             return keyPair;
         } catch (Exception e) {
             throw new RuntimeException("Failed to load KeyPair from PKCS12", e);
+        } finally {
+            if (is != null) {
+                try { is.close(); } catch (Exception ignore) {}
+            }
         }
     }
 
     /**
-     * Gets the current key pair, loading it from default location if not already loaded.
+     * Invalidates all cached keys.
+     * Useful for clearing cache after key rotation or configuration changes.
+     */
+    public void invalidateAllCache() {
+        keyPairCache.clear();
+    }
+
+    /**
+     * Gets the current key pair for the given config, loading it from default location if not already loaded.
      *
+     * @deprecated Use {@link #loadKeyPairWithActiveAlias(DidDocumentConfig)} instead for proper caching and alias resolution
+     * @param config DidDocumentConfig containing keystore details
      * @return The current KeyPair
      */
-    public KeyPair getKeyPair() {
-        if (keyPair == null) {
-            keyPair = loadKeyPairFromP12("eckey.p12", "password", "dsptrueconnector");
-        }
-        return keyPair;
+    @Deprecated
+    public KeyPair getKeyPair(DidDocumentConfig config) {
+        return loadKeyPairWithActiveAlias(config);
     }
 
     /**
      * Generates a key ID (kid) from the public key using SHA-256 hash.
      *
+     * @param config DidDocumentConfig containing keystore details
      * @return Base64-URL encoded key ID
      */
-    public String getKidFromPublicKey() {
+    public String getKidFromPublicKey(DidDocumentConfig config) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(getKeyPair().getPublic().getEncoded());
+            byte[] hash = digest.digest(loadKeyPairWithActiveAlias(config).getPublic().getEncoded());
             return Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate kid", e);
@@ -108,17 +179,18 @@ public class KeyService {
      * Returns a Nimbus ECKey containing public and private parts suitable for signing.
      * This centralizes building the EC JWK from the loaded KeyPair.
      *
+     * @param config DidDocumentConfig containing keystore details
      * @return ECKey for signing
      */
-    public ECKey getSigningJwk() {
+    public ECKey getSigningJwk(DidDocumentConfig config) {
         try {
-            KeyPair kp = getKeyPair();
+            KeyPair kp = loadKeyPairWithActiveAlias(config);
             if (kp == null) throw new IllegalStateException("No KeyPair available");
             ECPublicKey pub = (ECPublicKey) kp.getPublic();
             ECPrivateKey priv = (ECPrivateKey) kp.getPrivate();
             return new ECKey.Builder(Curve.forECParameterSpec(pub.getParams()), pub)
                     .privateKey(priv)
-                    .keyID(getKidFromPublicKey())
+                    .keyID(getKidFromPublicKey(config))
                     .build();
         } catch (Exception e) {
             throw new RuntimeException("Failed to build signing JWK", e);
@@ -145,14 +217,15 @@ public class KeyService {
     /**
      * Converts the current public key to JWK (JSON Web Key) format.
      *
+     * @param config DidDocumentConfig containing keystore details
      * @return Map containing JWK parameters
      */
-    public Map<String, Object> convertPublicKeyToJWK() {
-        String x = toBase64Url(((ECPublicKey) keyPair.getPublic()).getW().getAffineX());
-        String y = toBase64Url(((ECPublicKey) keyPair.getPublic()).getW().getAffineY());
-        String d = toBase64Url(((ECPrivateKey) keyPair.getPrivate()).getS());
-        String kid = getKidFromPublicKey();
-
+    public Map<String, Object> convertPublicKeyToJWK(DidDocumentConfig config) {
+        KeyPair kp = loadKeyPairWithActiveAlias(config);
+        String x = toBase64Url(((ECPublicKey) kp.getPublic()).getW().getAffineX());
+        String y = toBase64Url(((ECPublicKey) kp.getPublic()).getW().getAffineY());
+        String d = toBase64Url(((ECPrivateKey) kp.getPrivate()).getS());
+        String kid = getKidFromPublicKey(config);
         return Map.of(
                 "kty", "EC",
                 "d", d,
@@ -254,6 +327,14 @@ public class KeyService {
         // Update key metadata in MongoDB
         keyMetadataService.saveNewKeyMetadata(alias);
 
+        // Invalidate cache to ensure fresh keys are loaded
+        invalidateAllCache();
+
         return alias;
+    }
+
+    // For testability: allow mocking the classloader
+    protected ClassLoader getClassLoader() {
+        return getClass().getClassLoader();
     }
 }

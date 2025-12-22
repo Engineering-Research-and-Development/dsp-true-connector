@@ -6,11 +6,14 @@ import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
+import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
+import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.service.did.DidResolverService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.time.Instant;
 import java.util.Map;
@@ -25,6 +28,7 @@ class SelfIssuedIdTokenServiceTest {
     private final String connectorDid = "did:example:connector";
     private InMemoryDidResolverForTest didResolver;
     private InMemoryJtiCacheForTest jtiCache;
+    private BaseDidDocumentConfiguration config;
 
     @BeforeEach
     void setUp() throws JOSEException {
@@ -32,8 +36,10 @@ class SelfIssuedIdTokenServiceTest {
         didResolver = new InMemoryDidResolverForTest();
         jtiCache = new InMemoryJtiCacheForTest();
 
+        config = Mockito.mock(BaseDidDocumentConfiguration.class);
+
         // Create service with connector DID injected
-        svc = new SelfIssuedIdTokenService(connectorDid, didResolver, jtiCache, null);
+        svc = new SelfIssuedIdTokenService(connectorDid, didResolver, jtiCache, null, config);
 
         // Generate EC key for signing
         signingKey = new ECKeyGenerator(Curve.P_256)

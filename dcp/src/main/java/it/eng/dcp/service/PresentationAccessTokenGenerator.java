@@ -5,6 +5,7 @@ import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.config.DcpProperties;
 import lombok.extern.slf4j.Slf4j;
@@ -39,11 +40,13 @@ public class PresentationAccessTokenGenerator {
 
     private final DcpProperties props;
     private final KeyService keyService;
+    private final DidDocumentConfig config;
 
     @Autowired
-    public PresentationAccessTokenGenerator(DcpProperties props, KeyService keyService) {
+    public PresentationAccessTokenGenerator(DcpProperties props, KeyService keyService, DidDocumentConfig config) {
         this.props = props;
         this.keyService = keyService;
+        this.config = config;
     }
 
     /**
@@ -100,7 +103,7 @@ public class PresentationAccessTokenGenerator {
             JWTClaimsSet claims = claimsBuilder.build();
 
             // Sign the access token
-            ECKey signingJwk = keyService.getSigningJwk();
+            ECKey signingJwk = keyService.getSigningJwk(config);
 
             JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.ES256)
                     .keyID(signingJwk.getKeyID())

@@ -7,11 +7,15 @@ import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
+import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.common.service.did.DidDocumentService;
 import it.eng.dcp.common.service.did.DidResolverService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -42,6 +46,7 @@ public class SelfIssuedIdTokenService {
     private final DidResolverService didResolver;
     private final JtiReplayCache jtiCache;
     private final KeyService keyService;
+    private final BaseDidDocumentConfiguration config;
 
     // Test hook to override the signing key with a specific EC JWK (used in unit tests)
     private ECKey overrideSigningKey;
@@ -51,11 +56,13 @@ public class SelfIssuedIdTokenService {
             @Value("${dcp.connector.did:}") String connectorDid,
             DidResolverService didResolver,
             JtiReplayCache jtiCache,
-            KeyService keyService) {
+            KeyService keyService,
+            BaseDidDocumentConfiguration config) {
         this.connectorDid = connectorDid;
         this.didResolver = didResolver;
         this.jtiCache = jtiCache;
         this.keyService = keyService;
+        this.config = config;
     }
 
     /**
@@ -69,15 +76,34 @@ public class SelfIssuedIdTokenService {
 
     /**
      * Creates and signs a self-issued ID token for the given audience.
-     * 
+     * Uses a default DidDocumentConfig created from standard property names.
+     *
      * @param audienceDid The DID of the intended audience (verifier)
      * @param accessToken Optional access token to include in the token claims
      * @return Signed JWT token as a string
      * @throws IllegalArgumentException if audienceDid is null or blank
      * @throws IllegalStateException if connectorDid is not configured
      * @throws RuntimeException if signing fails
+     * @deprecated Use {@link #createAndSignToken(String, String, DidDocumentConfig)} with explicit config
      */
+    @Deprecated
     public String createAndSignToken(String audienceDid, String accessToken) {
+
+        return createAndSignToken(audienceDid, accessToken, config.getDidDocumentConfig());
+    }
+
+    /**
+     * Creates and signs a self-issued ID token for the given audience.
+     *
+     * @param audienceDid The DID of the intended audience (verifier)
+     * @param accessToken Optional access token to include in the token claims
+     * @param config DidDocumentConfig containing keystore details for signing
+     * @return Signed JWT token as a string
+     * @throws IllegalArgumentException if audienceDid is null or blank
+     * @throws IllegalStateException if connectorDid is not configured
+     * @throws RuntimeException if signing fails
+     */
+    public String createAndSignToken(String audienceDid, String accessToken, DidDocumentConfig config) {
         if (audienceDid == null || audienceDid.isBlank()) {
             throw new IllegalArgumentException("audienceDid required");
         }
@@ -114,7 +140,7 @@ public class SelfIssuedIdTokenService {
                 if (keyService == null) {
                     throw new IllegalStateException("KeyService is not available for signing");
                 }
-                signingJwk = keyService.getSigningJwk();
+                signingJwk = keyService.getSigningJwk(config);
             }
 
             JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.ES256)

@@ -5,6 +5,7 @@ import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.config.DcpProperties;
 import lombok.extern.slf4j.Slf4j;
@@ -38,14 +39,16 @@ public class DcpCompliantTokenService {
     private final DcpProperties props;
     private final KeyService keyService;
     private final PresentationAccessTokenGenerator tokenGenerator;
+    private final DidDocumentConfig config;
 
     @Autowired
     public DcpCompliantTokenService(DcpProperties props,
-                                   KeyService keyService,
-                                   PresentationAccessTokenGenerator tokenGenerator) {
+                                    KeyService keyService,
+                                    PresentationAccessTokenGenerator tokenGenerator, DidDocumentConfig config) {
         this.props = props;
         this.keyService = keyService;
         this.tokenGenerator = tokenGenerator;
+        this.config = config;
     }
 
     /**
@@ -168,7 +171,7 @@ public class DcpCompliantTokenService {
             JWTClaimsSet claims = claimsBuilder.build();
 
             // Get signing key
-            ECKey signingJwk = keyService.getSigningJwk();
+            ECKey signingJwk = keyService.getSigningJwk(config);
 
             JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.ES256)
                     .keyID(signingJwk.getKeyID())

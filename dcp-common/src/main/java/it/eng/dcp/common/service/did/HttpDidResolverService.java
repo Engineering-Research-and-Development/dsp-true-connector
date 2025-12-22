@@ -8,12 +8,11 @@ import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.time.Instant;
 import java.util.Iterator;
@@ -22,6 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import static it.eng.dcp.common.util.DidUrlConverter.convertDidToUrl;
+import static it.eng.dcp.common.util.DidUrlConverter.extractBaseUrl;
 
 /**
  * HTTP-backed DID resolver for did:web documents.
@@ -92,6 +92,9 @@ public class HttpDidResolverService implements DidResolverService {
         this.httpClient = httpClient;
     }
 
+    @Value("${server.ssl.enabled:false}")
+    private boolean sslEnabled;
+
     @Override
     public JWK resolvePublicKey(String did, String kid, String verificationRelationship) throws DidResolutionException {
         if (did == null || kid == null) {
@@ -103,8 +106,10 @@ public class HttpDidResolverService implements DidResolverService {
         }
 
         try {
-            String url = convertDidToUrl(did);
-            JsonNode root = fetchDidDocumentCached(url);
+            String url = convertDidToUrl(did, sslEnabled);
+            String baseUrl = extractBaseUrl(url);
+            // TODO: consider moving this to service or handle in uniform way across resolvers
+            JsonNode root = fetchDidDocumentCached(baseUrl + "/.well-known/did.json");
 
             JsonNode vmArray = root.get("verificationMethod");
             if (vmArray == null || !vmArray.isArray()) {
@@ -301,4 +306,3 @@ public class HttpDidResolverService implements DidResolverService {
         return fetchDidDocumentWithRetries(url);
     }
 }
-

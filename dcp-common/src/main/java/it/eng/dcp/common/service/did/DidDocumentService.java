@@ -1,8 +1,8 @@
 package it.eng.dcp.common.service.did;
 
+import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.DidDocument;
-import it.eng.dcp.common.model.KeyMetadata;
 import it.eng.dcp.common.model.ServiceEntry;
 import it.eng.dcp.common.model.VerificationMethod;
 import it.eng.dcp.common.service.KeyMetadataService;
@@ -21,19 +21,15 @@ import java.util.stream.Collectors;
 public class DidDocumentService {
 
     private final KeyService keyService;
-    private final KeyMetadataService keyMetadataService;
 
     /**
      * Constructor for DidDocumentService.
      *
      * @param keyService Service for key operations
-     * @param keyMetadataService Service for key metadata operations
      */
     @Autowired
-    public DidDocumentService(KeyService keyService,
-                             KeyMetadataService keyMetadataService) {
+    public DidDocumentService(KeyService keyService) {
         this.keyService = keyService;
-        this.keyMetadataService = keyMetadataService;
     }
 
     /**
@@ -42,19 +38,15 @@ public class DidDocumentService {
      * @param config Configuration for the DID document
      * @return DidDocument containing service endpoints and verification methods
      */
-    public DidDocument provideDidDocument(DidDocumentConfig config) {
-        // Get active key alias from metadata
-        String activeAlias = keyMetadataService.getActiveKeyMetadata()
-                .map(KeyMetadata::getAlias)
-                .orElse(config.getKeystoreAlias());
+    public DidDocument provideDidDocument(BaseDidDocumentConfiguration config) {
+        DidDocumentConfig didConfig = config.getDidDocumentConfig();
+        // Load key pair with active alias (handles metadata and caching)
+        keyService.loadKeyPairWithActiveAlias(didConfig);
 
-        // Load key pair for active alias
-        keyService.loadKeyPairFromP12(config.getKeystorePath(), config.getKeystorePassword(), activeAlias);
-
-        String baseUrl = config.getEffectiveBaseUrl();
+        String baseUrl = didConfig.getEffectiveBaseUrl();
 
         // Build service entries
-        List<ServiceEntry> services = config.getServiceEntries().stream()
+        List<ServiceEntry> services = didConfig.getServiceEntries().stream()
                 .map(serviceConfig -> new ServiceEntry(
                         serviceConfig.getId(),
                         serviceConfig.getType(),
@@ -65,15 +57,15 @@ public class DidDocumentService {
         // Build verification methods
         List<VerificationMethod> verificationMethods = List.of(
                 VerificationMethod.Builder.newInstance()
-                        .id(config.getDid() + "#" + keyService.getKidFromPublicKey())
+                        .id(didConfig.getDid() + "#" + keyService.getKidFromPublicKey(didConfig))
                         .type("JsonWebKey2020")
-                        .controller(config.getEffectiveController())
-                        .publicKeyJwk(keyService.convertPublicKeyToJWK())
+                        .controller(didConfig.getEffectiveController())
+                        .publicKeyJwk(keyService.convertPublicKeyToJWK(didConfig))
                         .build()
         );
 
         return DidDocument.Builder.newInstance()
-                .id(config.getDid())
+                .id(didConfig.getDid())
                 .service(services)
                 .verificationMethod(verificationMethods)
                 .build();
@@ -85,7 +77,7 @@ public class DidDocumentService {
      * @param config Configuration for the DID document
      * @return JSON string representation of the DID document
      */
-    public String getDidDocument(DidDocumentConfig config) {
+    public String getDidDocument(BaseDidDocumentConfiguration config) {
         DidDocument didDocument = provideDidDocument(config);
         try {
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
@@ -95,4 +87,3 @@ public class DidDocumentService {
         }
     }
 }
-

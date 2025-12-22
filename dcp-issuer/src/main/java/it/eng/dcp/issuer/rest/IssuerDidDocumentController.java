@@ -1,10 +1,10 @@
 package it.eng.dcp.issuer.rest;
 
-import it.eng.dcp.common.config.DidDocumentConfig;
+import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.service.did.DidDocumentService;
+import it.eng.dcp.issuer.config.IssuerDidDocumentConfiguration;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class IssuerDidDocumentController {
 
     private final DidDocumentService didDocumentService;
-    private final DidDocumentConfig issuerDidDocumentConfig;
+    private final BaseDidDocumentConfiguration issuerDidDocumentConfig;
 
     /**
      * Constructor.
@@ -31,7 +31,7 @@ public class IssuerDidDocumentController {
      */
     @Autowired
     public IssuerDidDocumentController(DidDocumentService didDocumentService,
-                                      @Qualifier("issuerDidDocumentConfig") DidDocumentConfig issuerDidDocumentConfig) {
+                                      IssuerDidDocumentConfiguration issuerDidDocumentConfig) {
         this.didDocumentService = didDocumentService;
         this.issuerDidDocumentConfig = issuerDidDocumentConfig;
     }

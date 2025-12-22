@@ -8,7 +8,9 @@ import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.issuer.config.IssuerDidDocumentConfiguration;
 import it.eng.dcp.issuer.config.IssuerProperties;
 import it.eng.dcp.model.ConstraintRule;
 import it.eng.dcp.model.CredentialGenerationContext;
@@ -30,11 +32,14 @@ public class CredentialIssuanceService {
 
     private final IssuerProperties issuerProperties;
     private final KeyService keyService;
+    private final BaseDidDocumentConfiguration didDocumentConfig;
 
     @Autowired
-    public CredentialIssuanceService(IssuerProperties issuerProperties, KeyService keyService) {
+    public CredentialIssuanceService(IssuerProperties issuerProperties, KeyService keyService,
+                                     IssuerDidDocumentConfiguration didDocumentConfig) {
         this.issuerProperties = issuerProperties;
         this.keyService = keyService;
+        this.didDocumentConfig = didDocumentConfig;
     }
 
     /**
@@ -244,7 +249,7 @@ public class CredentialIssuanceService {
      */
     private String generateSignedJWT(String holderDid, String credentialType, Map<String, String> claims) {
         try {
-            ECKey signingKey = keyService.getSigningJwk();
+            ECKey signingKey = keyService.getSigningJwk(didDocumentConfig.getDidDocumentConfig());
 
             Map<String, Object> vc = new HashMap<>();
             vc.put("@context", List.of(

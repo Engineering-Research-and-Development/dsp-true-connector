@@ -1,5 +1,6 @@
 package it.eng.dcp.rest.api;
 
+import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.service.did.DidDocumentService;
@@ -39,7 +40,7 @@ public class DidDocumentAPIController {
      */
     @GetMapping
     public ResponseEntity<DidDocument> getDidDocument() {
-        DidDocument didDocument = didDocumentService.provideDidDocument(holderDidDocumentConfig);
+        DidDocument didDocument = didDocumentService.provideDidDocument((BaseDidDocumentConfiguration) holderDidDocumentConfig);
         return ResponseEntity.ok(didDocument);
     }
 }

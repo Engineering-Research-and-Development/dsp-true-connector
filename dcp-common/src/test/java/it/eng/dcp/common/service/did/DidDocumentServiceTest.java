@@ -1,11 +1,11 @@
 package it.eng.dcp.common.service.did;
 
+import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.model.KeyMetadata;
 import it.eng.dcp.common.model.ServiceEntry;
 import it.eng.dcp.common.model.VerificationMethod;
-import it.eng.dcp.common.service.KeyMetadataService;
 import it.eng.dcp.common.service.KeyService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -16,11 +16,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -31,8 +31,6 @@ import static org.mockito.Mockito.when;
 class DidDocumentServiceTest {
     @Mock
     private KeyService keyService;
-    @Mock
-    private KeyMetadataService keyMetadataService;
 
     private DidDocumentService didDocumentService;
 
@@ -41,9 +39,9 @@ class DidDocumentServiceTest {
      */
     @BeforeEach
     void setUp() {
-        didDocumentService = new DidDocumentService(keyService, keyMetadataService);
-        when(keyService.getKidFromPublicKey()).thenReturn("kid123");
-        when(keyService.convertPublicKeyToJWK()).thenReturn(Map.of("kty", "EC"));
+        didDocumentService = new DidDocumentService(keyService);
+        when(keyService.getKidFromPublicKey(any(DidDocumentConfig.class))).thenReturn("kid123");
+        when(keyService.convertPublicKeyToJWK(any(DidDocumentConfig.class))).thenReturn(Map.of("kty", "EC"));
     }
 
     /**
@@ -53,12 +51,6 @@ class DidDocumentServiceTest {
     @Test
     void provideDidDocument_ReturnsValidDidDocument_WithHTTPS() {
         // Arrange
-        KeyMetadata metadata = KeyMetadata.Builder.newInstance()
-                .alias("activeAlias")
-                .active(true)
-                .build();
-        when(keyMetadataService.getActiveKeyMetadata()).thenReturn(Optional.of(metadata));
-
         DidDocumentConfig config = DidDocumentConfig.builder()
                 .did("did:web:example.com:holder")
                 .protocol("https")
@@ -76,7 +68,7 @@ class DidDocumentServiceTest {
                 .build();
 
         // Act
-        DidDocument doc = didDocumentService.provideDidDocument(config);
+        DidDocument doc = didDocumentService.provideDidDocument(new TestDidDocumentConfig(config));
 
         // Assert
         assertEquals("did:web:example.com:holder", doc.getId());
@@ -91,7 +83,7 @@ class DidDocumentServiceTest {
         assertEquals("JsonWebKey2020", vm.getType());
         assertEquals("did:web:example.com:holder", vm.getController());
         assertEquals("EC", vm.getPublicKeyJwk().get("kty"));
-        verify(keyService).loadKeyPairFromP12("eckey.p12", "password", "activeAlias");
+        verify(keyService).loadKeyPairWithActiveAlias(config);
     }
 
     /**
@@ -101,12 +93,6 @@ class DidDocumentServiceTest {
     @Test
     void provideDidDocument_ReturnsValidDidDocument_WithHTTP() {
         // Arrange
-        KeyMetadata metadata = KeyMetadata.Builder.newInstance()
-                .alias("activeAlias")
-                .active(true)
-                .build();
-        when(keyMetadataService.getActiveKeyMetadata()).thenReturn(Optional.of(metadata));
-
         DidDocumentConfig config = DidDocumentConfig.builder()
                 .did("did:web:localhost%3A8090:holder")
                 .protocol("http")
@@ -129,7 +115,7 @@ class DidDocumentServiceTest {
                 .build();
 
         // Act
-        DidDocument doc = didDocumentService.provideDidDocument(config);
+        DidDocument doc = didDocumentService.provideDidDocument(new TestDidDocumentConfig(config));
 
         // Assert
         assertEquals("did:web:localhost%3A8090:holder", doc.getId());
@@ -142,7 +128,7 @@ class DidDocumentServiceTest {
         ServiceEntry issuerService = doc.getServices().get(1);
         assertEquals("http://localhost:8090/issuer", issuerService.serviceEndpoint());
 
-        verify(keyService).loadKeyPairFromP12("eckey.p12", "password", "activeAlias");
+        verify(keyService).loadKeyPairWithActiveAlias(config);
     }
 
     /**
@@ -152,7 +138,6 @@ class DidDocumentServiceTest {
     @Test
     void provideDidDocument_UsesDefaultAlias_WhenMetadataAbsent() {
         // Arrange
-        when(keyMetadataService.getActiveKeyMetadata()).thenReturn(Optional.empty());
 
         DidDocumentConfig config = DidDocumentConfig.builder()
                 .did("did:web:localhost:holder")
@@ -170,10 +155,10 @@ class DidDocumentServiceTest {
                 .build();
 
         // Act
-        didDocumentService.provideDidDocument(config);
+        didDocumentService.provideDidDocument(new TestDidDocumentConfig(config));
 
         // Assert
-        verify(keyService).loadKeyPairFromP12("eckey.p12", "password", "dcp-issuer");
+        verify(keyService).loadKeyPairWithActiveAlias(config);
     }
 
     /**
@@ -183,12 +168,6 @@ class DidDocumentServiceTest {
     @Test
     void provideDidDocument_UsesCustomController() {
         // Arrange
-        KeyMetadata metadata = KeyMetadata.Builder.newInstance()
-                .alias("testAlias")
-                .active(true)
-                .build();
-        when(keyMetadataService.getActiveKeyMetadata()).thenReturn(Optional.of(metadata));
-
         DidDocumentConfig config = DidDocumentConfig.builder()
                 .did("did:web:example.com:issuer")
                 .protocol("https")
@@ -206,7 +185,7 @@ class DidDocumentServiceTest {
                 .build();
 
         // Act
-        DidDocument doc = didDocumentService.provideDidDocument(config);
+        DidDocument doc = didDocumentService.provideDidDocument(new TestDidDocumentConfig(config));
 
         // Assert
         ServiceEntry service = doc.getServices().get(0);
@@ -214,7 +193,7 @@ class DidDocumentServiceTest {
 
         VerificationMethod vm = doc.getVerificationMethods().get(0);
         assertEquals("did:web:example.com:controller", vm.getController());
-        verify(keyService).loadKeyPairFromP12("eckey-issuer.p12", "secret", "testAlias");
+        verify(keyService).loadKeyPairWithActiveAlias(config);
     }
 
     /**
@@ -224,12 +203,6 @@ class DidDocumentServiceTest {
     @Test
     void provideDidDocument_UsesBaseUrl_WhenProvided() {
         // Arrange
-        KeyMetadata metadata = KeyMetadata.Builder.newInstance()
-                .alias("alias1")
-                .active(true)
-                .build();
-        when(keyMetadataService.getActiveKeyMetadata()).thenReturn(Optional.of(metadata));
-
         DidDocumentConfig config = DidDocumentConfig.builder()
                 .did("did:web:production.example.com:holder")
                 .baseUrl("https://production.example.com")
@@ -245,7 +218,7 @@ class DidDocumentServiceTest {
                 .build();
 
         // Act
-        DidDocument doc = didDocumentService.provideDidDocument(config);
+        DidDocument doc = didDocumentService.provideDidDocument(new TestDidDocumentConfig(config));
 
         // Assert
         ServiceEntry service = doc.getServices().get(0);
@@ -259,12 +232,6 @@ class DidDocumentServiceTest {
     @Test
     void getDidDocument_ReturnsValidJsonString() {
         // Arrange
-        KeyMetadata metadata = KeyMetadata.Builder.newInstance()
-                .alias("activeAlias")
-                .active(true)
-                .build();
-        when(keyMetadataService.getActiveKeyMetadata()).thenReturn(Optional.of(metadata));
-
         DidDocumentConfig config = DidDocumentConfig.builder()
                 .did("did:web:localhost:holder")
                 .protocol("http")
@@ -281,12 +248,21 @@ class DidDocumentServiceTest {
                 .build();
 
         // Act
-        String jsonDidDocument = didDocumentService.getDidDocument(config);
+        String jsonDidDocument = didDocumentService.getDidDocument(new TestDidDocumentConfig(config));
 
         // Assert
         assertNotNull(jsonDidDocument);
         assertTrue(jsonDidDocument.contains("did:web:localhost:holder"));
         assertTrue(jsonDidDocument.contains("CredentialService"));
     }
-}
 
+    /**
+     * Simple test implementation to wrap DidDocumentConfig as BaseDidDocumentConfiguration
+     */
+    private static class TestDidDocumentConfig implements BaseDidDocumentConfiguration {
+        private final DidDocumentConfig config;
+        public TestDidDocumentConfig(DidDocumentConfig config) { this.config = config; }
+        @Override
+        public DidDocumentConfig getDidDocumentConfig() { return config; }
+    }
+}

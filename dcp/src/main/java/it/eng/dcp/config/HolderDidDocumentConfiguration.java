@@ -1,5 +1,6 @@
 package it.eng.dcp.config;
 
+import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -11,7 +12,7 @@ import java.util.List;
  * Configuration for DID document in the holder (dcp) module.
  */
 @Configuration
-public class HolderDidDocumentConfiguration {
+public class HolderDidDocumentConfiguration implements BaseDidDocumentConfiguration {
 
     @Value("${holder.did:did:web:localhost%3A8083:holder}")
     private String holderDid;
@@ -48,7 +49,6 @@ public class HolderDidDocumentConfiguration {
     @Bean(name = "holderDidDocumentConfig")
     public DidDocumentConfig holderDidDocumentConfig() {
         String protocol = sslEnabled ? "https" : "http";
-
         return DidDocumentConfig.builder()
                 .did(holderDid)
                 .baseUrl(holderBaseUrl != null && !holderBaseUrl.isBlank() ? holderBaseUrl : null)
@@ -73,5 +73,9 @@ public class HolderDidDocumentConfiguration {
                 ))
                 .build();
     }
-}
 
+    @Override
+    public DidDocumentConfig getDidDocumentConfig() {
+        return holderDidDocumentConfig();
+    }
+}

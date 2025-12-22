@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
+import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.model.VerifiablePresentation;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +20,8 @@ public class VerifiablePresentationSignerTest {
 
     @Mock
     private KeyService keyService;
+    @Mock
+    private DidDocumentConfig config;
     
     private BasicVerifiablePresentationSigner signer;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -33,9 +36,9 @@ public class VerifiablePresentationSignerTest {
                 .generate();
         
         // Mock KeyService to return test key
-        when(keyService.getSigningJwk()).thenReturn(testKey);
+        when(keyService.getSigningJwk(config)).thenReturn(testKey);
         
-        signer = new BasicVerifiablePresentationSigner(keyService);
+        signer = new BasicVerifiablePresentationSigner(keyService, config);
     }
 
     @Test

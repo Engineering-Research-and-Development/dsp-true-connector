@@ -1,10 +1,10 @@
 package it.eng.dcp.rest;
 
-import it.eng.dcp.common.config.DidDocumentConfig;
+import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.service.did.DidDocumentService;
+import it.eng.dcp.config.HolderDidDocumentConfiguration;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class DidDocumentController {
 
     private final DidDocumentService didDocumentService;
-    private final DidDocumentConfig holderDidDocumentConfig;
+    private final BaseDidDocumentConfiguration holderDidDocumentConfig;
 
     /**
      * Constructor.
@@ -29,7 +29,7 @@ public class DidDocumentController {
      */
     @Autowired
     public DidDocumentController(DidDocumentService didDocumentService,
-                                @Qualifier("holderDidDocumentConfig") DidDocumentConfig holderDidDocumentConfig) {
+                                HolderDidDocumentConfiguration holderDidDocumentConfig) {
         this.didDocumentService = didDocumentService;
         this.holderDidDocumentConfig = holderDidDocumentConfig;
     }

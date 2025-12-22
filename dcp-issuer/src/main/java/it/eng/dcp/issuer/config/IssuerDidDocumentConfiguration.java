@@ -1,5 +1,6 @@
 package it.eng.dcp.issuer.config;
 
+import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -11,7 +12,7 @@ import java.util.List;
  * Configuration for DID document in the issuer (dcp-issuer) module.
  */
 @Configuration
-public class IssuerDidDocumentConfiguration {
+public class IssuerDidDocumentConfiguration implements BaseDidDocumentConfiguration {
 
     @Value("${issuer.did:did:web:localhost%3A8084:issuer}")
     private String issuerDid;
@@ -45,7 +46,6 @@ public class IssuerDidDocumentConfiguration {
     @Bean(name = "issuerDidDocumentConfig")
     public DidDocumentConfig issuerDidDocumentConfig() {
         String protocol = sslEnabled ? "https" : "http";
-
         return DidDocumentConfig.builder()
                 .did(issuerDid)
                 .baseUrl(issuerBaseUrl != null && !issuerBaseUrl.isBlank() ? issuerBaseUrl : null)
@@ -69,5 +69,9 @@ public class IssuerDidDocumentConfiguration {
                 ))
                 .build();
     }
-}
 
+    @Override
+    public DidDocumentConfig getDidDocumentConfig() {
+        return issuerDidDocumentConfig();
+    }
+}

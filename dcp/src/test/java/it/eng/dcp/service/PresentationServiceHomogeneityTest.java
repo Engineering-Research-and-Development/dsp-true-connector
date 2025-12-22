@@ -3,6 +3,7 @@ package it.eng.dcp.service;
 import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
+import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.model.VerifiableCredential;
 import it.eng.dcp.repository.VerifiableCredentialRepository;
@@ -22,11 +23,13 @@ class PresentationServiceHomogeneityTest {
     private KeyService keyService;
     private BasicVerifiablePresentationSigner signer;
     private PresentationService svc;
+    private DidDocumentConfig config;
 
     @BeforeEach
     void setup() throws Exception {
         repo = Mockito.mock(VerifiableCredentialRepository.class);
         keyService = Mockito.mock(KeyService.class);
+        config = Mockito.mock(DidDocumentConfig.class);
 
         // Generate a test EC key for signing
         ECKey testKey = new ECKeyGenerator(Curve.P_256)
@@ -34,9 +37,9 @@ class PresentationServiceHomogeneityTest {
                 .generate();
 
         // Mock KeyService to return test key
-        when(keyService.getSigningJwk()).thenReturn(testKey);
+        when(keyService.getSigningJwk(config)).thenReturn(testKey);
 
-        signer = new BasicVerifiablePresentationSigner(keyService);
+        signer = new BasicVerifiablePresentationSigner(keyService, config);
         svc = new PresentationService(repo, signer);
     }
 

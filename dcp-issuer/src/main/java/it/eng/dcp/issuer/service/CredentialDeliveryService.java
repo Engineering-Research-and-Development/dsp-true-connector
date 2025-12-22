@@ -15,6 +15,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -32,15 +33,19 @@ public class CredentialDeliveryService {
     private final ObjectMapper mapper;
     private final SimpleOkHttpRestClient httpClient;
 
+    private final boolean sslEnabled;
+
     @Autowired
     public CredentialDeliveryService(CredentialRequestRepository requestRepository,
                                      SelfIssuedIdTokenService tokenService,
                                      ObjectMapper mapper,
-                                     SimpleOkHttpRestClient httpClient) {
+                                     SimpleOkHttpRestClient httpClient,
+                                     @Value("${dcp.ssl.enabled:false}") boolean sslEnabled) {
         this.requestRepository = requestRepository;
         this.tokenService = tokenService;
         this.mapper = mapper;
         this.httpClient = httpClient;
+        this.sslEnabled = sslEnabled;
     }
 
     /**
@@ -207,11 +212,7 @@ public class CredentialDeliveryService {
     private String resolveCredentialServiceEndpoint(String holderDid) {
         try {
             if (holderDid.startsWith("did:web:")) {
-                String baseUrl = DidUrlConverter.convertDidToUrl(holderDid);
-                // Ensure HTTPS for production, replace http with https if needed
-                if (baseUrl.startsWith("http://")) {
-                    baseUrl = "https://" + baseUrl.substring(7);
-                }
+                String baseUrl = DidUrlConverter.convertDidToUrl(holderDid, sslEnabled);
                 return baseUrl + "/dcp/credentials";
             }
             log.error("Unable to resolve Credential Service endpoint for DID: {}", holderDid);
@@ -242,11 +243,6 @@ public class CredentialDeliveryService {
             try (Response response = httpClient.executeCall(request)) {
                 int code = response.code();
                 log.info("Status {}", code);
-                String resp = null;
-                if (response.body() != null) {
-                    resp = response.body().string();
-                }
-                log.info("Response received: {}", resp);
                 if (response.isSuccessful()) { // code in 200..299
                     return response.body().string();
                 }

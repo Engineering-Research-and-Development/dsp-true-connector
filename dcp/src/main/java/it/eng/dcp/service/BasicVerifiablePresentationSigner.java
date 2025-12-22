@@ -10,6 +10,7 @@ import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.model.VerifiablePresentation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,10 +23,12 @@ public class BasicVerifiablePresentationSigner implements VerifiablePresentation
 
     private final ObjectMapper mapper = new ObjectMapper();
     private final KeyService keyService;
+    private final DidDocumentConfig config;
 
     @Autowired
-    public BasicVerifiablePresentationSigner(KeyService keyService) {
+    public BasicVerifiablePresentationSigner(KeyService keyService, DidDocumentConfig config) {
         this.keyService = keyService;
+        this.config = config;
     }
 
     @Override
@@ -36,7 +39,7 @@ public class BasicVerifiablePresentationSigner implements VerifiablePresentation
                 // Produce a signed JWT VP using ES256 algorithm with the holder's key
                 try {
                     // Get the signing key from KeyService
-                    ECKey signingKey = keyService.getSigningJwk();
+                    ECKey signingKey = keyService.getSigningJwk(config);
 
                     // Build JWT claims for Verifiable Presentation
                     JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
@@ -67,7 +70,7 @@ public class BasicVerifiablePresentationSigner implements VerifiablePresentation
                 // Produce a signed JSON-LD VP with JsonWebSignature2020 proof
                 try {
                     // Get the signing key from KeyService
-                    ECKey signingKey = keyService.getSigningJwk();
+                    ECKey signingKey = keyService.getSigningJwk(config);
 
                     // Build the presentation document
                     ObjectNode presentation = mapper.createObjectNode();
