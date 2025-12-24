@@ -5,7 +5,6 @@ import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.model.ServiceEntry;
 import it.eng.dcp.common.model.VerificationMethod;
-import it.eng.dcp.common.service.KeyMetadataService;
 import it.eng.dcp.common.service.KeyService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -63,11 +62,13 @@ public class DidDocumentService {
                         .publicKeyJwk(keyService.convertPublicKeyToJWK(didConfig))
                         .build()
         );
+        String verificationMethodId = verificationMethods.get(0).getId();
 
         return DidDocument.Builder.newInstance()
                 .id(didConfig.getDid())
                 .service(services)
                 .verificationMethod(verificationMethods)
+                .capabilityInvocation(List.of(verificationMethodId))
                 .build();
     }
 

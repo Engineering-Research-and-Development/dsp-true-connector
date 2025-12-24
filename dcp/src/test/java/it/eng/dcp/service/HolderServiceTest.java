@@ -9,6 +9,7 @@ import it.eng.dcp.model.*;
 import it.eng.dcp.repository.CredentialStatusRepository;
 import it.eng.dcp.repository.VerifiableCredentialRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -340,5 +341,60 @@ class HolderServiceTest {
         assertEquals(5, result.getSavedCount());
         assertEquals(0, result.getSkippedCount());
     }
-}
 
+    @Test
+    @Disabled("Disabled until full VC parsing and validation is implemented")
+    void processIssuedCredentials_validIssuedMessage_savesCredentialsAndReturnsSuccess() {
+        // Arrange
+        String issuerPid = "39c7157d-99ba-4596-ac44-741f415d6646";
+        String holderPid = "59e3cc57-8773-4aa6-87e5-4bc47f09f429";
+        String requestId = holderPid;
+        String payload1 = "eyJraWQiOiJkaWQ6d2ViOmxvY2FsaG9zdCUzQTgwODA6aXNzdWVyIzY2ZjcxMDI5LTg3MDYtNDk5Ny1iNTZjLTJmZjRhODQzYjZkYSIsInR5cCI6IkpXVCIsImFsZyI6IkVTMjU2In0.eyJzdWIiOiIxNzMyODc3ZS0zNmM4LTQwYjgtYmZjYy1jZDU5YmFmMzdiMjciLCJuYmYiOjE3NjY1Njk5MjgsImlzcyI6ImRpZDp3ZWI6bG9jYWxob3N0JTNBODA4MDppc3N1ZXIiLCJleHAiOjE3NjY1NzAyMjgsImlhdCI6MTc2NjU2OTkyOCwidmMiOnsiQGNvbnRleHQiOiIxNzMyODc3ZS0zNmM4LTQwYjgtYmZjYy1jZDU5YmFmMzdiMjciLCJpZCI6IjE3MzI4NzdlLTM2YzgtNDBiOC1iZmNjLWNkNTliYWYzN2IyNyIsInR5cGUiOlsiTWVtYmVyc2hpcENyZWRlbnRpYWwiXSwiaXNzdWVyIjoiZGlkOndlYjpsb2NhbGhvc3QlM0E4MDgwOmlzc3VlciIsImlzc3VhbmNlRGF0ZSI6IjIwMjUtMTItMjRUMDk6NTI6MDguNjkzMDg3MjAwWiIsImV4cGlyYXRpb25EYXRlIjpudWxsLCJjcmVkZW50aWFsU3ViamVjdCI6eyJmb28iOiJiYXIiLCJpZCI6ImRpZDp3ZWI6bG9jYWxob3N0JTNBODA4MDpob2xkZXIifX0sImp0aSI6ImIzNDBjYmVlLWNjZDAtNDc1Mi1hNzFlLTBhZTkxZGQzZGY2MyJ9.wE4Um0edixt9rKKBYv_vrquOHW6S23tCB_EQMeUZdGqkxeQbBsigbScDu3fRLOas6udN2vj6517Kg9gRqv5nVw";
+        String payload2 = "eyJraWQiOiJkaWQ6d2ViOmxvY2FsaG9zdCUzQTgwODA6aXNzdWVyIzY2ZjcxMDI5LTg3MDYtNDk5Ny1iNTZjLTJmZjRhODQzYjZkYSIsInR5cCI6IkpXVCIsImFsZyI6IkVTMjU2In0.eyJzdWIiOiI4ZGViYWM1Mi0wYWUxLTQwZTgtYWY4Ni1jYzY1MGYyNjNlMDMiLCJuYmYiOjE3NjY1Njk5MjgsImlzcyI6ImRpZDp3ZWI6bG9jYWxob3N0JTNBODA4MDppc3N1ZXIiLCJleHAiOjE3NjY1NzAyMjgsImlhdCI6MTc2NjU2OTkyOCwidmMiOnsiQGNvbnRleHQiOiI4ZGViYWM1Mi0wYWUxLTQwZTgtYWY4Ni1jYzY1MGYyNjNlMDMiLCJpZCI6IjhkZWJhYzUyLTBhZTEtNDBlOC1hZjg2LWNjNjUwZjI2M2UwMyIsInR5cGUiOlsiU2Vuc2l0aXZlRGF0YUNyZWRlbnRpYWwiXSwiaXNzdWVyIjoiZGlkOndlYjpsb2NhbGhvc3QlM0E4MDgwOmlzc3VlciIsImlzc3VhbmNlRGF0ZSI6IjIwMjUtMTItMjRUMDk6NTI6MDguNzYwNzcxNzAwWiIsImV4cGlyYXRpb25EYXRlIjpudWxsLCJjcmVkZW50aWFsU3ViamVjdCI6eyJmb28iOiJiYXIiLCJpZCI6ImRpZDp3ZWI6bG9jYWxob3N0JTNBODA4MDpob2xkZXIifX0sImp0aSI6IjQ3M2ExZjIwLWYzNGMtNGI3OS1hMTFhLTM4ZTg2MWQzYWM4MiJ9.EcbmqIlr6o_zvvyyRS-NdFr7uNH3KVR0ZhD1h4U0sKPSgLdwHIQiR6KAkZwGq7Fpu7ZSTfGTM6b5E2AORbSjcw";
+
+        CredentialMessage.CredentialContainer container1 = CredentialMessage.CredentialContainer.Builder.newInstance()
+                .credentialType("MembershipCredential")
+                .payload(payload1)
+                .format("VC1_0_JWT")
+                .build();
+        CredentialMessage.CredentialContainer container2 = CredentialMessage.CredentialContainer.Builder.newInstance()
+                .credentialType("SensitiveDataCredential")
+                .payload(payload2)
+                .format("VC1_0_JWT")
+                .build();
+
+        CredentialMessage msg = CredentialMessage.Builder.newInstance()
+                .issuerPid(issuerPid)
+                .holderPid(holderPid)
+                .status("ISSUED")
+                .rejectionReason(null)
+                .requestId(requestId)
+                .credentials(List.of(container1, container2))
+                .build();
+
+        // Mock credentialRepository.save to return the input VerifiableCredential
+        when(credentialRepository.save(any(VerifiableCredential.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        // Act
+        HolderService.CredentialReceptionResult result = holderService.processIssuedCredentials(msg, issuerPid);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(2, result.getSavedCount());
+        assertEquals(0, result.getSkippedCount());
+        assertFalse(result.isEmpty());
+        assertFalse(result.hasSkipped());
+        // Verify that save was called twice
+        verify(credentialRepository, times(2)).save(any(VerifiableCredential.class));
+        // Optionally, capture and inspect the saved credentials
+        ArgumentCaptor<VerifiableCredential> captor = ArgumentCaptor.forClass(VerifiableCredential.class);
+        verify(credentialRepository, times(2)).save(captor.capture());
+        List<VerifiableCredential> saved = captor.getAllValues();
+        assertEquals("MembershipCredential", saved.get(0).getCredentialType());
+        assertEquals("SensitiveDataCredential", saved.get(1).getCredentialType());
+        assertEquals(holderPid, saved.get(0).getHolderDid());
+        assertEquals(holderPid, saved.get(1).getHolderDid());
+        assertEquals(issuerPid, saved.get(0).getIssuerDid());
+        assertEquals(issuerPid, saved.get(1).getIssuerDid());
+    }
+}

@@ -225,7 +225,7 @@ public class KeyService {
         String x = toBase64Url(((ECPublicKey) kp.getPublic()).getW().getAffineX());
         String y = toBase64Url(((ECPublicKey) kp.getPublic()).getW().getAffineY());
         String d = toBase64Url(((ECPrivateKey) kp.getPrivate()).getS());
-        String kid = getKidFromPublicKey(config);
+        String kid = config.getDid() + "#" + getKidFromPublicKey(config);
         return Map.of(
                 "kty", "EC",
                 "d", d,

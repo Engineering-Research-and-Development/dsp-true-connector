@@ -11,11 +11,9 @@ import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.service.KeyService;
-import it.eng.dcp.common.service.did.DidDocumentService;
 import it.eng.dcp.common.service.did.DidResolverService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -72,24 +70,6 @@ public class SelfIssuedIdTokenService {
      */
     void setOverrideSigningKey(ECKey key) {
         this.overrideSigningKey = key;
-    }
-
-    /**
-     * Creates and signs a self-issued ID token for the given audience.
-     * Uses a default DidDocumentConfig created from standard property names.
-     *
-     * @param audienceDid The DID of the intended audience (verifier)
-     * @param accessToken Optional access token to include in the token claims
-     * @return Signed JWT token as a string
-     * @throws IllegalArgumentException if audienceDid is null or blank
-     * @throws IllegalStateException if connectorDid is not configured
-     * @throws RuntimeException if signing fails
-     * @deprecated Use {@link #createAndSignToken(String, String, DidDocumentConfig)} with explicit config
-     */
-    @Deprecated
-    public String createAndSignToken(String audienceDid, String accessToken) {
-
-        return createAndSignToken(audienceDid, accessToken, config.getDidDocumentConfig());
     }
 
     /**
@@ -165,8 +145,11 @@ public class SelfIssuedIdTokenService {
      *   <li>Parses the JWT and extracts issuer/kid</li>
      *   <li>Resolves the issuer's public key via DID resolution</li>
      *   <li>Verifies the signature using the resolved public key</li>
-     *   <li>Checks token expiry and issue time</li>
-     *   <li>Prevents replay attacks using JTI cache (optional)</li>
+     *   <li>Checks token expiry, not-before, and issue time</li>
+     *   <li>Checks iss == sub, aud == verifierDid, sub == DID Document id</li>
+     *   <li>Checks capabilityInvocation relationship</li>
+     *   <li>Handles kid header logic</li>
+     *   <li>Prevents replay attacks using JTI cache</li>
      * </ul>
      * 
      * @param token The JWT token string to validate
@@ -177,61 +160,71 @@ public class SelfIssuedIdTokenService {
     public JWTClaimsSet validateToken(String token) {
         try {
             SignedJWT jwt = SignedJWT.parse(token);
-            String issuer = jwt.getJWTClaimsSet().getIssuer();
+            JWTClaimsSet claims = jwt.getJWTClaimsSet();
+            String issuer = claims.getIssuer();
+            String subject = claims.getSubject();
+            String aud = claims.getAudience() != null && !claims.getAudience().isEmpty() ? claims.getAudience().get(0) : null;
             String kid = jwt.getHeader().getKeyID();
-            
-            if (issuer == null || kid == null) {
-                throw new SecurityException("Missing issuer or kid");
+
+            // 1. iss and sub must be the same
+            if (issuer == null || subject == null || !issuer.equals(subject)) {
+                throw new SecurityException("iss and sub must be present and equal");
             }
 
-            // Resolve the public key from the issuer's DID document
-            JWK jwk;
-            try {
-                jwk = didResolver.resolvePublicKey(issuer, kid, null); // "capabilityInvocation"
-            } catch (DidResolutionException dre) {
-                throw new SecurityException("Failed to resolve issuer public key", dre);
+            // 2. aud must match verifierDid (from config)
+            if (aud == null || connectorDid == null || !aud.equals(connectorDid)) {
+                throw new SecurityException("aud claim must match verifier DID");
             }
-            
+
+            // 3. Resolve the public key for sub DID and kid with capabilityInvocation
+            JWK jwk = didResolver.resolvePublicKey(subject, kid, "capabilityInvocation");
             if (jwk == null) {
-                throw new SecurityException("No key found for issuer/kid");
+                throw new SecurityException("No JWK found for sub DID with capabilityInvocation");
             }
 
-            // Expect EC public key
+            // 4. Verify signature
             ECKey ecPub = (ECKey) jwk;
             JWSVerifier verifier = new ECDSAVerifier(ecPub.toECPublicKey());
-            
             if (!jwt.verify(verifier)) {
                 throw new SecurityException("Invalid signature");
             }
 
-            JWTClaimsSet claims = jwt.getJWTClaimsSet();
-
-            // Basic claim checks
+            // 5. Check nbf if present (allow 2 min clock skew)
             Instant now = Instant.now();
-            Date exp = claims.getExpirationTime();
-            Date iat = claims.getIssueTime();
-            
-            if (exp == null || iat == null) {
-                throw new SecurityException("Missing iat/exp");
+            Date nbf = claims.getNotBeforeTime();
+            if (nbf != null && now.isBefore(nbf.toInstant().minusSeconds(120))) {
+                throw new SecurityException("Token not valid yet (nbf)");
             }
-            
-            if (exp.toInstant().isBefore(now)) {
+
+            // 6. Check exp (allow 2 min clock skew)
+            Date exp = claims.getExpirationTime();
+            if (exp == null || now.isAfter(exp.toInstant().plusSeconds(120))) {
                 throw new SecurityException("Token expired");
             }
 
-            // Replay protection: use jti and exp
+            // 7. Optionally, check iat (reject if too old, e.g., >1h)
+            Date iat = claims.getIssueTime();
+            if (iat == null) {
+                throw new SecurityException("Missing iat");
+            }
+            if (now.isAfter(iat.toInstant().plusSeconds(3600))) {
+                throw new SecurityException("Token issued too far in the past");
+            }
+
+            // 8. jti must be present and not used before
             String jti = claims.getJWTID();
             if (jti == null) {
                 throw new SecurityException("Missing jti");
             }
-            
-            // Note: jtiCache.checkAndPut(jti, exp.toInstant()) can be uncommented for strict replay prevention
-            // Currently commented out to allow token reuse in development/testing scenarios
+            try {
+                jtiCache.checkAndPut(jti, exp.toInstant());
+            } catch (IllegalStateException e) {
+                throw new SecurityException("jti has already been used", e);
+            }
 
             return claims;
-        } catch (java.text.ParseException | JOSEException e) {
+        } catch (java.text.ParseException | JOSEException | DidResolutionException e) {
             throw new RuntimeException("Failed to validate token", e);
         }
     }
 }
-

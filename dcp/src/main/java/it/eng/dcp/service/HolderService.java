@@ -237,7 +237,7 @@ public class HolderService {
         VerifiableCredential.Builder cb = VerifiableCredential.Builder.newInstance();
 
         // Handle JWT format credentials
-        if ("jwt".equalsIgnoreCase(format)) {
+        if ("jwt".equalsIgnoreCase(format) || "VC1_0_JWT".equalsIgnoreCase(format) ) {
             log.debug("Processing JWT format credential: type={}", container.getCredentialType());
             if (!processJwtCredential(payload, container, cb)) {
                 return null;
@@ -259,11 +259,19 @@ public class HolderService {
         if (container.getCredentialType() != null) {
             cb.credentialType(container.getCredentialType());
         }
+
+        // Ensure mandatory fields are set
+        if (cb == null || msg.getHolderPid() == null || !msg.getHolderPid().startsWith("did:") || container.getCredentialType() == null) {
+            log.error("Mandatory fields missing: holderDid={}, credentialType={}", msg.getHolderPid(), container.getCredentialType());
+            throw new IllegalArgumentException("Mandatory fields missing for VerifiableCredential: holderDid and credentialType are required");
+        }
+
         cb.issuerDid(issuerDid);
 
         // Determine and set profileId using ProfileResolver
         setProfileId(cb, format);
-
+        //TODO holderDid is missing
+        // possibly other properties
         return cb.build();
     }
 
@@ -350,9 +358,10 @@ public class HolderService {
         Map<String, Object> attributes = new java.util.HashMap<>();
 
         // Check if credential has credentialStatus (StatusList2021)
-        if (builder.build().getCredentialStatus() != null) {
-            attributes.put("statusList", true);
-        }
+        //TODO this cannot be done using calling build() before building the final object
+//        if (builder.build().getCredentialStatus() != null) {
+//            attributes.put("statusList", true);
+//        }
 
         ProfileId profileId = profileResolver.resolve(format, attributes);
         if (profileId != null) {
@@ -430,4 +439,3 @@ public class HolderService {
         }
     }
 }
-

@@ -65,7 +65,7 @@ class KeyServiceIT {
         didResolver.put(connectorDid, new JWKSet(signingJwk.toPublicJWK()));
 
         // create and validate token using the real signing key
-        String token = svc.createAndSignToken("did:example:aud", null);
+        String token = svc.createAndSignToken("did:example:aud", null, config.getDidDocumentConfig());
         assertNotNull(token);
 
         var claims = svc.validateToken(token);

@@ -1,6 +1,8 @@
 package it.eng.dcp.rest.api;
 
+import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -17,13 +19,16 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping(path = "/api/dev/token", produces = MediaType.APPLICATION_JSON_VALUE)
+@Slf4j
 public class TokenGeneratorAPIController {
 
     private final SelfIssuedIdTokenService tokenService;
+    private final BaseDidDocumentConfiguration config;
 
     @Autowired
-    public TokenGeneratorAPIController(SelfIssuedIdTokenService tokenService) {
+    public TokenGeneratorAPIController(SelfIssuedIdTokenService tokenService, BaseDidDocumentConfiguration config) {
         this.tokenService = tokenService;
+        this.config = config;
     }
 
     /**
@@ -34,6 +39,7 @@ public class TokenGeneratorAPIController {
      */
     @PostMapping("/generate")
     public ResponseEntity<?> generateToken(@RequestBody Map<String, String> request) {
+        log.info("Received request to generate Self-Issued ID Token");
         String audienceDid = request.get("audienceDid");
         String accessToken = request.get("accessToken");
 
@@ -42,7 +48,7 @@ public class TokenGeneratorAPIController {
         }
 
         try {
-            String token = tokenService.createAndSignToken(audienceDid, accessToken);
+            String token = tokenService.createAndSignToken(audienceDid, accessToken, config.getDidDocumentConfig());
             return ResponseEntity.ok(Map.of(
                 "token", token,
                 "authorization", "Bearer " + token,

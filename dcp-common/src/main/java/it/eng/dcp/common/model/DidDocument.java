@@ -46,6 +46,8 @@ public class DidDocument implements Serializable {
     @JsonProperty("verificationMethod")
     private List<VerificationMethod> verificationMethods = new ArrayList<>();
 
+    private List<String> capabilityInvocation;
+
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -78,6 +80,11 @@ public class DidDocument implements Serializable {
             return this;
         }
 
+        public Builder capabilityInvocation(List<String> capabilityInvocation) {
+            document.capabilityInvocation = capabilityInvocation;
+            return this;
+        }
+
         public DidDocument build() {
             try (ValidatorFactory vf = Validation.buildDefaultValidatorFactory()) {
                 Set<ConstraintViolation<DidDocument>> violations = vf.getValidator().validate(document);
@@ -92,4 +99,3 @@ public class DidDocument implements Serializable {
         }
     }
 }
-

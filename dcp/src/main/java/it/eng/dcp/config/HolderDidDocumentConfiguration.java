@@ -14,7 +14,7 @@ import java.util.List;
 @Configuration
 public class HolderDidDocumentConfiguration implements BaseDidDocumentConfiguration {
 
-    @Value("${holder.did:did:web:localhost%3A8083:holder}")
+    @Value("${holder.did:did:web:localhost%3A8080:holder}")
     private String holderDid;
 
     @Value("${holder.base-url:}")
@@ -41,6 +41,9 @@ public class HolderDidDocumentConfiguration implements BaseDidDocumentConfigurat
     @Value("${holder.keystore.alias:dsptrueconnector}")
     private String keystoreAlias;
 
+    @Value("${dcp.issuer.location}")
+    private String issuerLocation;
+
     /**
      * Create the DID document configuration bean for the holder.
      *
@@ -63,12 +66,13 @@ public class HolderDidDocumentConfiguration implements BaseDidDocumentConfigurat
                         DidDocumentConfig.ServiceEntryConfig.builder()
                                 .id("TRUEConnector-Credential-Service")
                                 .type("CredentialService")
-                                .endpointPath("")
+                                .endpointPath("/dcp")
                                 .build(),
                         DidDocumentConfig.ServiceEntryConfig.builder()
                                 .id("TRUEConnector-Issuer-Service")
                                 .type("IssuerService")
-                                .endpointPath("/issuer")
+//                                .endpointPath("/issuer")
+                                .issuerLocation(issuerLocation)
                                 .build()
                 ))
                 .build();

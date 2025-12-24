@@ -2,6 +2,7 @@ package it.eng.dcp.issuer.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.model.CredentialStatus;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.issuer.client.SimpleOkHttpRestClient;
@@ -32,6 +33,7 @@ public class CredentialDeliveryService {
     private final SelfIssuedIdTokenService tokenService;
     private final ObjectMapper mapper;
     private final SimpleOkHttpRestClient httpClient;
+    private final BaseDidDocumentConfiguration config;
 
     private final boolean sslEnabled;
 
@@ -39,12 +41,13 @@ public class CredentialDeliveryService {
     public CredentialDeliveryService(CredentialRequestRepository requestRepository,
                                      SelfIssuedIdTokenService tokenService,
                                      ObjectMapper mapper,
-                                     SimpleOkHttpRestClient httpClient,
+                                     SimpleOkHttpRestClient httpClient, BaseDidDocumentConfiguration config,
                                      @Value("${dcp.ssl.enabled:false}") boolean sslEnabled) {
         this.requestRepository = requestRepository;
         this.tokenService = tokenService;
         this.mapper = mapper;
         this.httpClient = httpClient;
+        this.config = config;
         this.sslEnabled = sslEnabled;
     }
 
@@ -101,7 +104,7 @@ public class CredentialDeliveryService {
                     .credentials(credentials)
                     .build();
 
-            String token = tokenService.createAndSignToken(holderPid, null);
+            String token = tokenService.createAndSignToken(holderPid, null, config.getDidDocumentConfig());
             String messageJson = mapper.writeValueAsString(message);
 
             String response = sendPostRequest(targetUrl, messageJson, "Bearer " + token);
@@ -179,7 +182,7 @@ public class CredentialDeliveryService {
                     .credentials(List.of())
                     .build();
 
-            String token = tokenService.createAndSignToken(holderPid, null);
+            String token = tokenService.createAndSignToken(holderPid, null, config.getDidDocumentConfig());
             String messageJson = mapper.writeValueAsString(message);
 
             String response = sendPostRequest(targetUrl, messageJson, "Bearer " + token);

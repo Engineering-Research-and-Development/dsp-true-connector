@@ -120,12 +120,21 @@ public class DidDocumentConfig {
         private final String endpointPath = "";
 
         /**
+         * Issuer location (optional).
+         */
+        @Builder.Default
+        private final String issuerLocation = "";
+
+        /**
          * Get the full service endpoint.
          *
          * @param baseUrl the base URL
          * @return the full endpoint URL
          */
         public String getFullEndpoint(String baseUrl) {
+            if(issuerLocation != null && !issuerLocation.isBlank()) {
+                return issuerLocation;
+            }
             if (endpointPath == null || endpointPath.isBlank()) {
                 return baseUrl;
             }

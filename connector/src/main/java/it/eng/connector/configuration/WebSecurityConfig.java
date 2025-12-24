@@ -166,8 +166,8 @@ public class WebSecurityConfig {
                             .requestMatchers(new AntPathRequestMatcher("/api/dev/token/**")).permitAll()
                             .requestMatchers(new AntPathRequestMatcher("/api/**")).hasRole("ADMIN")
                             // Verifiable Credentials endpoints handle their own authentication (Self-Issued ID Tokens)
-                            .requestMatchers(new AntPathRequestMatcher("/issuer/**"),
-                                    new AntPathRequestMatcher("/dcp/**")).permitAll()
+                            .requestMatchers(new AntPathRequestMatcher("/dcp/**"),
+                                    new AntPathRequestMatcher("/tck/protocol/2025/1/catalog/request")).permitAll()
                             .anyRequest().permitAll();
                 })
                 .addFilterBefore(protocolEndpointsAuthenticationFilter(applicationPropertiesService), UsernamePasswordAuthenticationFilter.class)

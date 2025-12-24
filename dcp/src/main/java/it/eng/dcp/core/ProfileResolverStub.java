@@ -18,7 +18,11 @@ public class ProfileResolverStub implements ProfileResolver {
     public ProfileId resolve(String format, Map<String, Object> attributes) {
         if (format == null) return null;
         String f = format.toLowerCase();
-
+        if("VC1_0_JWT".equalsIgnoreCase(f)) {
+            f = "jwt";
+        } else if("VC1_0_JSONLD".equalsIgnoreCase(f)) {
+            f = "json-ld";
+        }
         // JWT format credentials -> VC11_SL2021_JWT profile
         if ("jwt".equals(f)) {
             return ProfileId.VC11_SL2021_JWT;

@@ -4,6 +4,7 @@ import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.service.did.DidDocumentService;
 import it.eng.dcp.config.HolderDidDocumentConfiguration;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE)
+@Slf4j
 public class DidDocumentController {
 
     private final DidDocumentService didDocumentService;
@@ -41,6 +43,13 @@ public class DidDocumentController {
      */
     @GetMapping("/.well-known/did.json")
     public ResponseEntity<DidDocument> getDidDocument() {
+        DidDocument didDocument = didDocumentService.provideDidDocument(holderDidDocumentConfig);
+        return ResponseEntity.ok(didDocument);
+    }
+
+    @GetMapping("/holder/did.json" )
+    public ResponseEntity<DidDocument> getHolderDidDocument() {
+        log.info("Received request for holder DID document");
         DidDocument didDocument = didDocumentService.provideDidDocument(holderDidDocumentConfig);
         return ResponseEntity.ok(didDocument);
     }

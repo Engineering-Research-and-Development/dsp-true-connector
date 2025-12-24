@@ -1,5 +1,6 @@
 package it.eng.dcp.service;
 
+import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.model.CredentialRequestMessage;
 import it.eng.dcp.model.IssuerMetadata;
@@ -37,11 +38,13 @@ public class CredentialIssuanceClient {
     private final OkHttpRestClient rest;
     private final SelfIssuedIdTokenService tokenService;
     private final ObjectMapper mapper = new ObjectMapper();
+    private final BaseDidDocumentConfiguration config;
 
     @Autowired
-    public CredentialIssuanceClient(OkHttpRestClient rest, SelfIssuedIdTokenService tokenService) {
+    public CredentialIssuanceClient(OkHttpRestClient rest, SelfIssuedIdTokenService tokenService, BaseDidDocumentConfiguration config) {
         this.rest = rest;
         this.tokenService = tokenService;
+        this.config = config;
     }
 
     /**
@@ -133,7 +136,7 @@ public class CredentialIssuanceClient {
         String audience = issuerMetadata.getIssuer();
         String token = null;
         try {
-            token = tokenService.createAndSignToken(audience, null);
+            token = tokenService.createAndSignToken(audience, null, config.getDidDocumentConfig());
         } catch (Exception e) {
             LOG.debug("No token could be created for issuer audience {}: {}", audience, e.getMessage());
         }
@@ -199,7 +202,7 @@ public class CredentialIssuanceClient {
      */
     public ResponseEntity<String> getRequestStatus(String statusUrl, String audience) {
         if (statusUrl == null) throw new IllegalArgumentException("statusUrl required");
-        String token = tokenService.createAndSignToken(audience, null);
+        String token = tokenService.createAndSignToken(audience, null, config.getDidDocumentConfig());
         Request.Builder rb = new Request.Builder().url(statusUrl).get();
         if (token != null && !token.isBlank()) {
             rb.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token);
