@@ -12,6 +12,7 @@ import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.common.service.did.DidResolverService;
+import it.eng.dcp.common.util.DidUrlConverter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -166,13 +167,13 @@ public class SelfIssuedIdTokenService {
             String aud = claims.getAudience() != null && !claims.getAudience().isEmpty() ? claims.getAudience().get(0) : null;
             String kid = jwt.getHeader().getKeyID();
 
-            // 1. iss and sub must be the same
-            if (issuer == null || subject == null || !issuer.equals(subject)) {
+            // 1. iss and sub must be the same (using robust DID comparison)
+            if (issuer == null || subject == null || !DidUrlConverter.compareDids(issuer, subject)) {
                 throw new SecurityException("iss and sub must be present and equal");
             }
 
-            // 2. aud must match verifierDid (from config)
-            if (aud == null || connectorDid == null || !aud.equals(connectorDid)) {
+            // 2. aud must match verifierDid (using robust DID comparison)
+            if (aud == null || connectorDid == null || !DidUrlConverter.compareDids(aud, connectorDid)) {
                 throw new SecurityException("aud claim must match verifier DID");
             }
 

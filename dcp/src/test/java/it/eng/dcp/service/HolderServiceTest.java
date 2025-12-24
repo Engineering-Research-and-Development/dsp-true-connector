@@ -9,7 +9,6 @@ import it.eng.dcp.model.*;
 import it.eng.dcp.repository.CredentialStatusRepository;
 import it.eng.dcp.repository.VerifiableCredentialRepository;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -43,13 +42,14 @@ class HolderServiceTest {
     @Mock
     private ProfileResolver profileResolver;
 
-    @Mock
     private ObjectMapper mapper;
 
     private HolderService holderService;
 
     @BeforeEach
     void setUp() {
+        // Use real ObjectMapper instead of mock for proper JSON processing
+        mapper = new ObjectMapper();
         holderService = new HolderService(
                 tokenService,
                 presentationService,
@@ -343,7 +343,7 @@ class HolderServiceTest {
     }
 
     @Test
-    @Disabled("Disabled until full VC parsing and validation is implemented")
+//    @Disabled("Disabled until full VC parsing and validation is implemented")
     void processIssuedCredentials_validIssuedMessage_savesCredentialsAndReturnsSuccess() {
         // Arrange
         String issuerPid = "39c7157d-99ba-4596-ac44-741f415d6646";
@@ -392,8 +392,9 @@ class HolderServiceTest {
         List<VerifiableCredential> saved = captor.getAllValues();
         assertEquals("MembershipCredential", saved.get(0).getCredentialType());
         assertEquals("SensitiveDataCredential", saved.get(1).getCredentialType());
-        assertEquals(holderPid, saved.get(0).getHolderDid());
-        assertEquals(holderPid, saved.get(1).getHolderDid());
+        // The holderDid should be extracted from the credential's credentialSubject.id, not from holderPid
+        assertEquals("did:web:localhost%3A8080:holder", saved.get(0).getHolderDid());
+        assertEquals("did:web:localhost%3A8080:holder", saved.get(1).getHolderDid());
         assertEquals(issuerPid, saved.get(0).getIssuerDid());
         assertEquals(issuerPid, saved.get(1).getIssuerDid());
     }

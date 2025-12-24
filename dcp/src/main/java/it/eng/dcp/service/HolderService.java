@@ -142,7 +142,7 @@ public class HolderService {
         for (CredentialMessage.CredentialContainer c : msg.getCredentials()) {
             try {
                 log.debug("Processing credential: type={}, format={}", c.getCredentialType(), c.getFormat());
-                VerifiableCredential vc = processCredentialContainer(c, msg, issuerDid);
+                VerifiableCredential vc = processCredentialContainer(c, issuerDid);
                 if (vc != null) {
                     saved.add(credentialRepository.save(vc));
                     log.debug("Successfully saved credential: id={}, type={}, holderDid={}",
@@ -210,13 +210,11 @@ public class HolderService {
      * Process a single credential container and convert it to VerifiableCredential.
      *
      * @param container The credential container
-     * @param msg The parent credential message
      * @param issuerDid The authenticated issuer DID
      * @return VerifiableCredential or null if should be skipped
      */
     private VerifiableCredential processCredentialContainer(
             CredentialMessage.CredentialContainer container,
-            CredentialMessage msg,
             String issuerDid) {
 
         Object payload = container.getPayload();
@@ -252,26 +250,17 @@ public class HolderService {
             return null;
         }
 
-        // Common properties for both formats
-        if (msg.getHolderPid() != null && msg.getHolderPid().startsWith("did:")) {
-            cb.holderDid(msg.getHolderPid());
-        }
+        // Set credentialType if not already set
         if (container.getCredentialType() != null) {
             cb.credentialType(container.getCredentialType());
         }
 
-        // Ensure mandatory fields are set
-        if (cb == null || msg.getHolderPid() == null || !msg.getHolderPid().startsWith("did:") || container.getCredentialType() == null) {
-            log.error("Mandatory fields missing: holderDid={}, credentialType={}", msg.getHolderPid(), container.getCredentialType());
-            throw new IllegalArgumentException("Mandatory fields missing for VerifiableCredential: holderDid and credentialType are required");
-        }
-
+        // Set issuerDid
         cb.issuerDid(issuerDid);
 
         // Determine and set profileId using ProfileResolver
         setProfileId(cb, format);
-        //TODO holderDid is missing
-        // possibly other properties
+
         return cb.build();
     }
 
@@ -290,13 +279,71 @@ public class HolderService {
             return false;
         }
 
-        JsonNode jwtNode = mapper.createObjectNode()
-                .put("type", container.getCredentialType())
-                .put("format", "jwt")
-                .put("jwt", jwtString);
-        builder.credential(jwtNode);
-        log.debug("JWT credential stored: type={}", container.getCredentialType());
-        return true;
+        try {
+            // Parse JWT to extract claims and credential information
+            com.nimbusds.jwt.SignedJWT signedJWT = com.nimbusds.jwt.SignedJWT.parse(jwtString);
+            JWTClaimsSet claims = signedJWT.getJWTClaimsSet();
+
+            // Extract vc claim which contains the Verifiable Credential
+            Map<String, Object> vcClaim = claims.getJSONObjectClaim("vc");
+            if (vcClaim == null) {
+                log.warn("Skipping JWT credential - missing 'vc' claim");
+                return false;
+            }
+
+            // Extract credential ID from vc.id
+            if (vcClaim.containsKey("id")) {
+                builder.id(vcClaim.get("id").toString());
+            }
+
+            // Extract holder DID from credentialSubject.id
+            if (vcClaim.containsKey("credentialSubject")) {
+                Object credentialSubject = vcClaim.get("credentialSubject");
+                if (credentialSubject instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> subjectMap = (Map<String, Object>) credentialSubject;
+                    if (subjectMap.containsKey("id")) {
+                        String holderDid = subjectMap.get("id").toString();
+                        builder.holderDid(holderDid);
+                        log.debug("Extracted holderDid from credentialSubject: {}", holderDid);
+                    }
+                }
+            }
+
+            // Extract issuance date
+            if (vcClaim.containsKey("issuanceDate")) {
+                try {
+                    builder.issuanceDate(Instant.parse(vcClaim.get("issuanceDate").toString()));
+                } catch (Exception e) {
+                    log.debug("Could not parse issuanceDate: {}", e.getMessage());
+                }
+            }
+
+            // Extract expiration date
+            if (vcClaim.containsKey("expirationDate") && vcClaim.get("expirationDate") != null) {
+                try {
+                    builder.expirationDate(Instant.parse(vcClaim.get("expirationDate").toString()));
+                } catch (Exception e) {
+                    log.debug("Could not parse expirationDate: {}", e.getMessage());
+                }
+            }
+
+            // Store credential as JsonNode
+            JsonNode jwtNode = mapper.createObjectNode()
+                    .put("type", container.getCredentialType())
+                    .put("format", "jwt")
+                    .put("jwt", jwtString);
+            builder.credential(jwtNode);
+
+            // Store JWT representation for later use (e.g., in presentations)
+            builder.jwtRepresentation(jwtString);
+
+            log.debug("JWT credential stored: type={}", container.getCredentialType());
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to parse JWT credential: {}", e.getMessage(), e);
+            return false;
+        }
     }
 
     /**
@@ -334,12 +381,22 @@ public class HolderService {
         }
         builder.credential(payloadNode);
 
+        // Extract holder DID from credentialSubject.id
+        if (payloadNode.has("credentialSubject")) {
+            JsonNode credentialSubject = payloadNode.get("credentialSubject");
+            if (credentialSubject.has("id")) {
+                String holderDid = credentialSubject.get("id").asText();
+                builder.holderDid(holderDid);
+                log.debug("Extracted holderDid from credentialSubject: {}", holderDid);
+            }
+        }
+
         // Attempt to set issuance/expiration if present
         try {
             if (payloadNode.has("issuanceDate")) {
                 builder.issuanceDate(Instant.parse(payloadNode.get("issuanceDate").asText()));
             }
-            if (payloadNode.has("expirationDate")) {
+            if (payloadNode.has("expirationDate") && !payloadNode.get("expirationDate").isNull()) {
                 builder.expirationDate(Instant.parse(payloadNode.get("expirationDate").asText()));
             }
         } catch (Exception ignored) {

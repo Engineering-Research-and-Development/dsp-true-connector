@@ -624,4 +624,317 @@ class DidUrlConverterTest {
             assertNotEquals(didA, didC);
         }
     }
+
+    @Nested
+    @DisplayName("normalizeDid() tests")
+    class NormalizeDidTests {
+
+        @Test
+        @DisplayName("Normalizes DID with URL-encoded colon (uppercase)")
+        void normalizesDidWithEncodedColonUppercase() {
+            String did = "did:web:localhost%3A8080:issuer";
+            String expected = "did:web:localhost:8080:issuer";
+
+            String result = DidUrlConverter.normalizeDid(did);
+
+            assertEquals(expected, result);
+        }
+
+        @Test
+        @DisplayName("Normalizes DID with URL-encoded colon (lowercase)")
+        void normalizesDidWithEncodedColonLowercase() {
+            String did = "did:web:localhost%3a8080:holder";
+            String expected = "did:web:localhost:8080:holder";
+
+            String result = DidUrlConverter.normalizeDid(did);
+
+            assertEquals(expected, result);
+        }
+
+        @Test
+        @DisplayName("Returns already normalized DID unchanged")
+        void returnsNormalizedDidUnchanged() {
+            String did = "did:web:localhost:8080:issuer";
+            String expected = "did:web:localhost:8080:issuer";
+
+            String result = DidUrlConverter.normalizeDid(did);
+
+            assertEquals(expected, result);
+        }
+
+        @Test
+        @DisplayName("Normalizes DID without port")
+        void normalizesDidWithoutPort() {
+            String did = "did:web:example.com:issuer";
+            String expected = "did:web:example.com:issuer";
+
+            String result = DidUrlConverter.normalizeDid(did);
+
+            assertEquals(expected, result);
+        }
+
+        @Test
+        @DisplayName("Normalizes DID with multiple encoded colons")
+        void normalizesDidWithMultipleEncodedColons() {
+            String did = "did:web:localhost%3A8080%3Apath";
+            String expected = "did:web:localhost:8080:path";
+
+            String result = DidUrlConverter.normalizeDid(did);
+
+            assertEquals(expected, result);
+        }
+
+        @Test
+        @DisplayName("Throws exception for null DID")
+        void throwsExceptionForNullDid() {
+            IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> DidUrlConverter.normalizeDid(null)
+            );
+
+            assertTrue(exception.getMessage().contains("cannot be null"));
+        }
+
+        @Test
+        @DisplayName("Throws exception for non-did:web format")
+        void throwsExceptionForNonDidWebFormat() {
+            String did = "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK";
+
+            IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> DidUrlConverter.normalizeDid(did)
+            );
+
+            assertTrue(exception.getMessage().contains("Invalid DID:web format"));
+        }
+
+        @Test
+        @DisplayName("Throws exception for plain URL")
+        void throwsExceptionForPlainUrl() {
+            String url = "https://example.com";
+
+            IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> DidUrlConverter.normalizeDid(url)
+            );
+
+            assertTrue(exception.getMessage().contains("Invalid DID:web format"));
+        }
+    }
+
+    @Nested
+    @DisplayName("compareDids() tests")
+    class CompareDidTests {
+
+        @Test
+        @DisplayName("Compares encoded and decoded DIDs as equal")
+        void comparesEncodedAndDecodedAsEqual() {
+            String encodedDid = "did:web:localhost%3A8080:issuer";
+            String decodedDid = "did:web:localhost:8080:issuer";
+
+            boolean result = DidUrlConverter.compareDids(encodedDid, decodedDid);
+
+            assertTrue(result, "Encoded and decoded DIDs should be equal");
+        }
+
+        @Test
+        @DisplayName("Compares decoded and encoded DIDs as equal (reversed order)")
+        void comparesDecodedAndEncodedAsEqual() {
+            String decodedDid = "did:web:localhost:8080:holder";
+            String encodedDid = "did:web:localhost%3A8080:holder";
+
+            boolean result = DidUrlConverter.compareDids(decodedDid, encodedDid);
+
+            assertTrue(result, "Decoded and encoded DIDs should be equal");
+        }
+
+        @Test
+        @DisplayName("Compares identical DIDs as equal")
+        void comparesIdenticalDidsAsEqual() {
+            String did1 = "did:web:localhost:8080:issuer";
+            String did2 = "did:web:localhost:8080:issuer";
+
+            boolean result = DidUrlConverter.compareDids(did1, did2);
+
+            assertTrue(result);
+        }
+
+        @Test
+        @DisplayName("Compares identical encoded DIDs as equal")
+        void comparesIdenticalEncodedDidsAsEqual() {
+            String did1 = "did:web:localhost%3A8080:issuer";
+            String did2 = "did:web:localhost%3A8080:issuer";
+
+            boolean result = DidUrlConverter.compareDids(did1, did2);
+
+            assertTrue(result);
+        }
+
+        @Test
+        @DisplayName("Compares lowercase and uppercase encoding as equal")
+        void comparesLowercaseAndUppercaseEncodingAsEqual() {
+            String uppercaseDid = "did:web:localhost%3A8080:issuer";
+            String lowercaseDid = "did:web:localhost%3a8080:issuer";
+
+            boolean result = DidUrlConverter.compareDids(uppercaseDid, lowercaseDid);
+
+            assertTrue(result, "Uppercase and lowercase encoded DIDs should be equal");
+        }
+
+        @Test
+        @DisplayName("Compares different DIDs as not equal")
+        void comparesDifferentDidsAsNotEqual() {
+            String did1 = "did:web:localhost:8080:issuer";
+            String did2 = "did:web:localhost:8080:holder";
+
+            boolean result = DidUrlConverter.compareDids(did1, did2);
+
+            assertFalse(result);
+        }
+
+        @Test
+        @DisplayName("Compares different hosts as not equal")
+        void comparesDifferentHostsAsNotEqual() {
+            String did1 = "did:web:example.com:issuer";
+            String did2 = "did:web:other.com:issuer";
+
+            boolean result = DidUrlConverter.compareDids(did1, did2);
+
+            assertFalse(result);
+        }
+
+        @Test
+        @DisplayName("Compares different ports as not equal")
+        void comparesDifferentPortsAsNotEqual() {
+            String did1 = "did:web:localhost:8080:issuer";
+            String did2 = "did:web:localhost:9090:issuer";
+
+            boolean result = DidUrlConverter.compareDids(did1, did2);
+
+            assertFalse(result);
+        }
+
+        @Test
+        @DisplayName("Compares DIDs without ports as equal")
+        void comparesDidsWithoutPortsAsEqual() {
+            String did1 = "did:web:example.com";
+            String did2 = "did:web:example.com";
+
+            boolean result = DidUrlConverter.compareDids(did1, did2);
+
+            assertTrue(result);
+        }
+
+        @Test
+        @DisplayName("Returns true for two null DIDs")
+        void returnsTrueForTwoNullDids() {
+            boolean result = DidUrlConverter.compareDids(null, null);
+
+            assertTrue(result);
+        }
+
+        @Test
+        @DisplayName("Returns false when first DID is null")
+        void returnsFalseWhenFirstDidIsNull() {
+            String did = "did:web:example.com";
+
+            boolean result = DidUrlConverter.compareDids(null, did);
+
+            assertFalse(result);
+        }
+
+        @Test
+        @DisplayName("Returns false when second DID is null")
+        void returnsFalseWhenSecondDidIsNull() {
+            String did = "did:web:example.com";
+
+            boolean result = DidUrlConverter.compareDids(did, null);
+
+            assertFalse(result);
+        }
+
+        @Test
+        @DisplayName("Returns true for two blank strings")
+        void returnsTrueForTwoBlankStrings() {
+            boolean result = DidUrlConverter.compareDids("   ", "  ");
+
+            assertTrue(result);
+        }
+
+        @Test
+        @DisplayName("Returns false when first DID is blank")
+        void returnsFalseWhenFirstDidIsBlank() {
+            String did = "did:web:example.com";
+
+            boolean result = DidUrlConverter.compareDids("  ", did);
+
+            assertFalse(result);
+        }
+
+        @Test
+        @DisplayName("Returns false when second DID is blank")
+        void returnsFalseWhenSecondDidIsBlank() {
+            String did = "did:web:example.com";
+
+            boolean result = DidUrlConverter.compareDids(did, "  ");
+
+            assertFalse(result);
+        }
+
+        @Test
+        @DisplayName("Falls back to simple comparison for non-did:web DIDs")
+        void fallsBackToSimpleComparisonForNonDidWeb() {
+            String did1 = "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK";
+            String did2 = "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK";
+
+            boolean result = DidUrlConverter.compareDids(did1, did2);
+
+            assertTrue(result);
+        }
+
+        @Test
+        @DisplayName("Returns false for different non-did:web DIDs")
+        void returnsFalseForDifferentNonDidWeb() {
+            String did1 = "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK";
+            String did2 = "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2zzz";
+
+            boolean result = DidUrlConverter.compareDids(did1, did2);
+
+            assertFalse(result);
+        }
+
+        @Test
+        @DisplayName("Real-world test: debug log example DIDs are equal")
+        void realWorldDebugLogExampleDidsAreEqual() {
+            // From debug_log.txt: these are the same issuer DID in different encodings
+            String encodedDid = "did:web:localhost%3A8080:issuer";
+            String decodedDid = "did:web:localhost:8080:issuer";
+
+            boolean result = DidUrlConverter.compareDids(encodedDid, decodedDid);
+
+            assertTrue(result, "DIDs from debug log should be considered equal");
+        }
+
+        @Test
+        @DisplayName("Real-world test: holder DIDs with different encodings are equal")
+        void realWorldHolderDidsWithDifferentEncodingsAreEqual() {
+            String encodedDid = "did:web:localhost%3A8080:holder";
+            String decodedDid = "did:web:localhost:8080:holder";
+
+            boolean result = DidUrlConverter.compareDids(encodedDid, decodedDid);
+
+            assertTrue(result, "Holder DIDs with different encodings should be equal");
+        }
+
+        @Test
+        @DisplayName("Real-world test: production DIDs without encoding")
+        void realWorldProductionDidsWithoutEncoding() {
+            String did1 = "did:web:connector-a.dataspace.org";
+            String did2 = "did:web:connector-a.dataspace.org";
+
+            boolean result = DidUrlConverter.compareDids(did1, did2);
+
+            assertTrue(result);
+        }
+    }
 }

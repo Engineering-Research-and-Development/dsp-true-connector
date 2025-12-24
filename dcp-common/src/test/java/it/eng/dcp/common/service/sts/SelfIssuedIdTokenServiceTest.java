@@ -242,4 +242,118 @@ class SelfIssuedIdTokenServiceTest {
         when(keyService.getSigningJwk(didConfig)).thenThrow(new RuntimeException("key error"));
         assertThrows(RuntimeException.class, () -> service.createAndSignToken("did:web:test:audience", "token", didConfig));
     }
+
+    @Test
+    void validateToken_encodedIssuerDid_success() throws Exception {
+        // Test with encoded DID (localhost%3A8080) - this is what we might get from a JWT
+        String encodedDid = "did:web:localhost%3A8080:issuer";
+        Instant now = Instant.now();
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .issuer(encodedDid)
+                .subject(encodedDid)
+                .audience(CONNECTOR_DID)
+                .issueTime(Date.from(now))
+                .expirationTime(Date.from(now.plusSeconds(300)))
+                .jwtID(UUID.randomUUID().toString())
+                .build();
+        
+        String jwt = createJwt(claims, ecJwk);
+        when(didResolver.resolvePublicKey(encodedDid, KID, "capabilityInvocation")).thenReturn(ecJwk);
+        doNothing().when(jtiCache).checkAndPut(anyString(), any());
+        
+        JWTClaimsSet result = service.validateToken(jwt);
+        assertEquals(encodedDid, result.getIssuer());
+    }
+
+    @Test
+    void validateToken_encodedAndDecodedAudienceDid_success() throws Exception {
+        // Connector DID is encoded, audience is decoded - should still work
+        String encodedConnectorDid = "did:web:localhost%3A8080:holder";
+        String decodedConnectorDid = "did:web:localhost:8080:holder";
+        
+        // Create service with encoded connector DID
+        SelfIssuedIdTokenService encodedService = new SelfIssuedIdTokenService(
+            encodedConnectorDid, didResolver, jtiCache, keyService, config);
+        
+        Instant now = Instant.now();
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .issuer(SUBJECT_DID)
+                .subject(SUBJECT_DID)
+                .audience(decodedConnectorDid)  // Token has decoded DID
+                .issueTime(Date.from(now))
+                .expirationTime(Date.from(now.plusSeconds(300)))
+                .jwtID(UUID.randomUUID().toString())
+                .build();
+        
+        String jwt = createJwt(claims, ecJwk);
+        when(didResolver.resolvePublicKey(SUBJECT_DID, KID, "capabilityInvocation")).thenReturn(ecJwk);
+        doNothing().when(jtiCache).checkAndPut(anyString(), any());
+        
+        // Should succeed because compareDids handles encoded/decoded formats
+        JWTClaimsSet result = encodedService.validateToken(jwt);
+        assertEquals(decodedConnectorDid, result.getAudience().get(0));
+    }
+
+    @Test
+    void validateToken_decodedAndEncodedAudienceDid_success() throws Exception {
+        // Connector DID is decoded, audience is encoded - should still work
+        String decodedConnectorDid = "did:web:localhost:8080:holder";
+        String encodedConnectorDid = "did:web:localhost%3A8080:holder";
+        
+        // Create service with decoded connector DID
+        SelfIssuedIdTokenService decodedService = new SelfIssuedIdTokenService(
+            decodedConnectorDid, didResolver, jtiCache, keyService, config);
+        
+        Instant now = Instant.now();
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .issuer(SUBJECT_DID)
+                .subject(SUBJECT_DID)
+                .audience(encodedConnectorDid)  // Token has encoded DID
+                .issueTime(Date.from(now))
+                .expirationTime(Date.from(now.plusSeconds(300)))
+                .jwtID(UUID.randomUUID().toString())
+                .build();
+        
+        String jwt = createJwt(claims, ecJwk);
+        when(didResolver.resolvePublicKey(SUBJECT_DID, KID, "capabilityInvocation")).thenReturn(ecJwk);
+        doNothing().when(jtiCache).checkAndPut(anyString(), any());
+        
+        // Should succeed because compareDids handles encoded/decoded formats
+        JWTClaimsSet result = decodedService.validateToken(jwt);
+        assertEquals(encodedConnectorDid, result.getAudience().get(0));
+    }
+
+    @Test
+    void validateToken_realWorldDebugLogScenario_success() throws Exception {
+        // Real-world scenario from debug_log.txt:
+        // Issuer DID might be encoded in the JWT: "did:web:localhost%3A8080:issuer"
+        // But in configuration it's decoded: "did:web:localhost:8080:issuer"
+        String encodedIssuerDid = "did:web:localhost%3A8080:issuer";
+        String decodedIssuerDid = "did:web:localhost:8080:issuer";
+        String encodedHolderDid = "did:web:localhost%3A8080:holder";
+        
+        // Create service with encoded holder DID (from config)
+        SelfIssuedIdTokenService holderService = new SelfIssuedIdTokenService(
+            encodedHolderDid, didResolver, jtiCache, keyService, config);
+        
+        Instant now = Instant.now();
+        // JWT has encoded issuer/subject but decoded audience
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .issuer(encodedIssuerDid)
+                .subject(encodedIssuerDid)
+                .audience("did:web:localhost:8080:holder")  // Decoded audience
+                .issueTime(Date.from(now))
+                .expirationTime(Date.from(now.plusSeconds(300)))
+                .jwtID(UUID.randomUUID().toString())
+                .build();
+        
+        String jwt = createJwt(claims, ecJwk);
+        when(didResolver.resolvePublicKey(encodedIssuerDid, KID, "capabilityInvocation")).thenReturn(ecJwk);
+        doNothing().when(jtiCache).checkAndPut(anyString(), any());
+        
+        // Should succeed - this is the exact scenario from debug log
+        JWTClaimsSet result = holderService.validateToken(jwt);
+        assertEquals(encodedIssuerDid, result.getIssuer());
+        assertEquals(encodedIssuerDid, result.getSubject());
+    }
 }
