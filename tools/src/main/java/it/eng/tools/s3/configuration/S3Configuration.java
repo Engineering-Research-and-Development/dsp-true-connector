@@ -4,6 +4,7 @@ import io.minio.admin.MinioAdminClient;
 import it.eng.tools.s3.properties.S3Properties;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -19,11 +20,19 @@ public class S3Configuration {
         this.okHttpClient = okHttpClient;
     }
 
+    /**
+     * MinioAdminClient is only created when s3.endpoint is set and is not an AWS endpoint.
+     *
+     * @return the configured MinioAdminClient or null when AWS S3 is detected
+     */
     @Bean
+    @ConditionalOnExpression("T(org.springframework.util.StringUtils).hasText('${s3.endpoint:}') and !('${s3.endpoint:}'.toLowerCase().contains('amazonaws.com'))")
     public MinioAdminClient minioAdminClient() {
-        log.debug("Creating MinioAdminClient with OkHttpClient from OkHttpClientConfiguration");
+        String endpoint = s3Properties.getEndpoint();
+
+        log.info("Creating MinioAdminClient for Minio endpoint: {}", endpoint);
         return MinioAdminClient.builder()
-                .endpoint(s3Properties.getEndpoint())
+                .endpoint(endpoint)
                 .credentials(s3Properties.getAccessKey(), s3Properties.getSecretKey())
                 .httpClient(okHttpClient)
                 .build();

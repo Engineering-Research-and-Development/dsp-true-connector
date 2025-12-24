@@ -217,15 +217,31 @@ public class S3ClientServiceImpl implements S3ClientService {
             throw new IllegalArgumentException("Object key cannot be null or empty");
         }
         BucketCredentialsEntity bucketCredentials = bucketCredentialsService.getBucketCredentials(bucketName);
-        try (S3Presigner presigner = S3Presigner.builder()
-                .endpointOverride(URI.create(s3Properties.getExternalPresignedEndpoint()))
+
+        String externalEndpoint = resolveExternalEndpoint(bucketName);
+        boolean isAws = isAwsEndpoint(externalEndpoint);
+
+        log.debug("Generating presigned URL - AWS mode: {}, endpoint: {}, bucket: {}, key: {}",
+                isAws, externalEndpoint, bucketName, objectKey);
+
+        S3Presigner.Builder presignerBuilder = S3Presigner.builder()
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(bucketCredentials.getAccessKey(), bucketCredentials.getSecretKey())))
-                .region(Region.of(s3Properties.getRegion()))
-                .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
-                        .pathStyleAccessEnabled(true)
-                        .build())
-                .build()) {
+                .region(Region.of(s3Properties.getRegion()));
+
+        if (isAws) {
+            presignerBuilder.serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
+                    .pathStyleAccessEnabled(false)
+                    .build());
+        } else {
+            presignerBuilder
+                    .endpointOverride(URI.create(externalEndpoint))
+                    .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
+                            .pathStyleAccessEnabled(true)
+                            .build());
+        }
+
+        try (S3Presigner presigner = presignerBuilder.build()) {
 
             S3Client s3Client = getS3Client(bucketName);
 
@@ -264,6 +280,24 @@ public class S3ClientServiceImpl implements S3ClientService {
         }
     }
 
+    private String resolveExternalEndpoint(String bucketName) {
+        String externalEndpoint = s3Properties.getExternalPresignedEndpoint();
+        if (externalEndpoint == null || externalEndpoint.isBlank()) {
+            // Fallback for AWS: build virtual-hosted-style endpoint using region and bucket name
+            String region = s3Properties.getRegion();
+            if (region == null || region.isBlank()) {
+                throw new IllegalStateException("S3 region must be configured when externalPresignedEndpoint is blank");
+            }
+            if ("us-east-1".equals(region)) {
+                externalEndpoint = String.format("https://%s.s3.amazonaws.com", bucketName);
+            } else {
+                externalEndpoint = String.format("https://%s.s3.%s.amazonaws.com", bucketName, region);
+            }
+            log.info("Derived externalPresignedEndpoint for AWS: {}", externalEndpoint);
+        }
+        return externalEndpoint;
+    }
+
     @Override
     public List<String> listFiles(String bucketName) {
         validateBucketName(bucketName);
@@ -291,5 +325,19 @@ public class S3ClientServiceImpl implements S3ClientService {
         if (!bucketName.matches("^[a-z0-9][a-z0-9\\-]{1,61}[a-z0-9]$")) {
             throw new IllegalArgumentException("Invalid bucket name format: " + bucketName);
         }
+    }
+
+    /**
+     * Detects if the endpoint indicates AWS S3 vs Minio/custom S3.
+     *
+     * @param endpoint the S3 endpoint URL, may be null or blank
+     * @return true if AWS S3, false for Minio/custom S3
+     */
+    private boolean isAwsEndpoint(String endpoint) {
+        if (endpoint == null || endpoint.isBlank()) {
+            return true;
+        }
+        String lower = endpoint.toLowerCase();
+        return lower.contains(".amazonaws.com") || lower.contains(".aws.");
     }
 }
