@@ -9,6 +9,9 @@ import org.springframework.stereotype.Service;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
+import software.amazon.awssdk.services.s3.model.BucketAlreadyOwnedByYouException;
+import software.amazon.awssdk.services.s3.model.BucketLocationConstraint;
+import software.amazon.awssdk.services.s3.model.CreateBucketConfiguration;
 
 import java.time.Duration;
 import java.util.UUID;
@@ -44,6 +47,21 @@ public class S3BucketProvisionService {
     public BucketCredentialsEntity createBucketCredentials(String bucketName) {
         validateBucketName(bucketName);
         log.info("Creating bucket credentials for existing bucket {}", bucketName);
+
+        boolean isAws = isAwsEndpoint(s3Properties.getEndpoint());
+
+        if (isAws) {
+            log.info("AWS mode detected - reusing configured access key for bucket {}", bucketName);
+            BucketCredentialsEntity bucketCredentials = BucketCredentialsEntity.Builder.newInstance()
+                    .bucketName(bucketName)
+                    .accessKey(s3Properties.getAccessKey())
+                    .secretKey(s3Properties.getSecretKey())
+                    .build();
+
+            bucketCredentialsService.saveBucketCredentials(bucketCredentials);
+            s3ClientProvider.clearBucketCache(bucketName);
+            return bucketCredentials;
+        }
 
         // Generate temporary credentials
         String accessKey = "GetBucketUser-" + UUID.randomUUID().toString().substring(0, 8);
@@ -83,33 +101,59 @@ public class S3BucketProvisionService {
         validateBucketName(bucketName);
         log.info("Ensuring bucket credentials exist for bucket: {}", bucketName);
 
-        // Check if credentials already exist
-        if (bucketCredentialsService.bucketCredentialsExist(bucketName)) {
+        boolean credentialsExist = bucketCredentialsService.bucketCredentialsExist(bucketName);
+        if (credentialsExist) {
             log.info("Bucket credentials already exist for bucket: {}", bucketName);
             return bucketCredentialsService.getBucketCredentials(bucketName);
         }
 
-        // Check if bucket exists
-        if (bucketExists(bucketName)) {
+        boolean bucketExists = bucketExists(bucketName);
+
+        if (bucketExists) {
             log.info("Bucket {} exists but credentials are missing. Creating credentials...", bucketName);
             BucketCredentialsEntity credentials = createBucketCredentials(bucketName);
             log.info("Created bucket credentials for existing bucket: {}", bucketName);
             return credentials;
-        } else {
-            log.info("Bucket {} does not exist. Creating secure bucket with credentials...", bucketName);
-            BucketCredentialsEntity credentials = createSecureBucket(bucketName);
-            log.info("Created secure bucket with credentials: {}", bucketName);
-            return credentials;
         }
+
+        log.info("Bucket {} does not exist. Creating secure bucket with credentials...", bucketName);
+        BucketCredentialsEntity credentials = createSecureBucket(bucketName);
+        log.info("Created secure bucket with credentials: {}", bucketName);
+        return credentials;
+    }
+
+    private boolean isAwsEndpoint(String endpoint) {
+        return endpoint == null || endpoint.isBlank() || endpoint.toLowerCase().contains(".amazonaws.com") || endpoint.toLowerCase().contains(".aws.");
     }
 
     private void createBucket(String bucketName) {
         try {
-            s3ClientProvider.adminS3Client().createBucket(CreateBucketRequest.builder()
-                    .bucket(bucketName)
-                    .build());
-        } catch (BucketAlreadyExistsException e) {
-            log.warn("Bucket {} already exists", bucketName);
+            String region = s3Properties.getRegion();
+            String endpoint = s3Properties.getEndpoint();
+            boolean isAws = isAwsEndpoint(endpoint);
+
+            CreateBucketRequest.Builder requestBuilder = CreateBucketRequest.builder()
+                    .bucket(bucketName);
+
+            // AWS S3 requires LocationConstraint for non-us-east-1 regions
+            if (isAws && !"us-east-1".equals(region)) {
+                log.info("Creating AWS S3 bucket {} in region {} with LocationConstraint", bucketName, region);
+                requestBuilder.createBucketConfiguration(
+                        CreateBucketConfiguration.builder()
+                                .locationConstraint(BucketLocationConstraint.fromValue(region))
+                                .build());
+            } else {
+                log.info("Creating bucket {} (AWS: {}, Region: {})", bucketName, isAws, region);
+            }
+
+            s3ClientProvider.adminS3Client().createBucket(requestBuilder.build());
+            log.info("Bucket {} created successfully", bucketName);
+
+        } catch (BucketAlreadyExistsException | BucketAlreadyOwnedByYouException e) {
+            log.warn("Bucket {} already exists, continuing...", bucketName);
+        } catch (Exception e) {
+            log.error("Failed to create bucket {}: {}", bucketName, e.getMessage());
+            throw new S3ServerException("Failed to create bucket: " + e.getMessage(), e);
         }
     }
 
