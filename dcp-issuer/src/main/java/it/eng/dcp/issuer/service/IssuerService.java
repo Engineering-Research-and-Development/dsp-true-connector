@@ -2,10 +2,10 @@ package it.eng.dcp.issuer.service;
 
 import com.nimbusds.jwt.JWTClaimsSet;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
-import it.eng.dcp.model.CredentialMessage;
-import it.eng.dcp.model.CredentialRequest;
-import it.eng.dcp.model.CredentialRequestMessage;
-import it.eng.dcp.model.IssuerMetadata;
+import it.eng.dcp.common.model.CredentialMessage;
+import it.eng.dcp.common.model.CredentialRequest;
+import it.eng.dcp.common.model.CredentialRequestMessage;
+import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.issuer.repository.CredentialRequestRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;

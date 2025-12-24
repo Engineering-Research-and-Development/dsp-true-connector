@@ -1,6 +1,7 @@
-package it.eng.dcp.model;
+package it.eng.dcp.common.model;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dcp.common.model.CredentialRequestMessage;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

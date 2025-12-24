@@ -1,11 +1,10 @@
-package it.eng.dcp.model;
+package it.eng.dcp.common.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-import it.eng.dcp.common.model.BaseDcpMessage;
 import it.eng.tools.model.DSpaceConstants;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

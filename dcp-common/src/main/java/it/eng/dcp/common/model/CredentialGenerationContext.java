@@ -1,4 +1,4 @@
-package it.eng.dcp.model;
+package it.eng.dcp.common.model;
 
 import lombok.Builder;
 import lombok.Getter;

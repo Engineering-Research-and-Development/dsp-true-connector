@@ -2,8 +2,8 @@ package it.eng.dcp.service;
 
 import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
-import it.eng.dcp.model.CredentialRequestMessage;
-import it.eng.dcp.model.IssuerMetadata;
+import it.eng.dcp.common.model.CredentialRequestMessage;
+import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.exception.IssuerServiceNotFoundException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

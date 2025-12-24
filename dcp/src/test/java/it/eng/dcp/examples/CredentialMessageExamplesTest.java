@@ -12,7 +12,7 @@ import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import it.eng.dcp.model.CredentialMessage;
+import it.eng.dcp.common.model.CredentialMessage;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;

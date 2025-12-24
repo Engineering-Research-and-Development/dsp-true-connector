@@ -1,8 +1,7 @@
-package it.eng.dcp.model;
+package it.eng.dcp.common.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-import it.eng.dcp.common.model.CredentialStatus;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;

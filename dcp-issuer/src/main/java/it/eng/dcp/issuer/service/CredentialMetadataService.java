@@ -2,7 +2,7 @@ package it.eng.dcp.issuer.service;
 
 import it.eng.dcp.issuer.config.CredentialMetadataConfig;
 import it.eng.dcp.issuer.config.IssuerProperties;
-import it.eng.dcp.model.IssuerMetadata;
+import it.eng.dcp.common.model.IssuerMetadata;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

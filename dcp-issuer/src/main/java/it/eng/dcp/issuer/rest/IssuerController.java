@@ -1,9 +1,9 @@
 package it.eng.dcp.issuer.rest;
 
 import it.eng.dcp.issuer.service.IssuerService;
-import it.eng.dcp.model.CredentialRequest;
-import it.eng.dcp.model.CredentialRequestMessage;
-import it.eng.dcp.model.IssuerMetadata;
+import it.eng.dcp.common.model.CredentialRequest;
+import it.eng.dcp.common.model.CredentialRequestMessage;
+import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;

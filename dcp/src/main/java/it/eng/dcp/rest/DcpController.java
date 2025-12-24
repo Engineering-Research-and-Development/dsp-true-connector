@@ -1,7 +1,9 @@
 package it.eng.dcp.rest;
 
-import it.eng.dcp.model.CredentialMessage;
-import it.eng.dcp.model.CredentialOfferMessage;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dcp.common.model.CredentialMessage;
+import it.eng.dcp.common.model.CredentialOfferMessage;
 import it.eng.dcp.model.PresentationQueryMessage;
 import it.eng.dcp.model.PresentationResponseMessage;
 import it.eng.dcp.service.HolderService;
@@ -31,7 +33,7 @@ public class DcpController {
     private final HolderService holderService;
 
     @Autowired
-    public DcpController(HolderService holderService) {
+    public DcpController(HolderService holderService, ObjectMapper objectMapper) {
         this.holderService = holderService;
     }
 
@@ -91,7 +93,7 @@ public class DcpController {
      */
     @PostMapping(path = "/credentials", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> receiveCredentials(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
-                                                @RequestBody CredentialMessage msg) {
+                                                @RequestBody CredentialMessage msg) throws JsonProcessingException {
         log.info("Received credential message - status: {}, issuerPid: {}, holderPid: {}",
                 msg != null ? msg.getStatus() : "null",
                 msg != null ? msg.getIssuerPid() : "null",
@@ -103,7 +105,9 @@ public class DcpController {
             return ResponseEntity.status(401).body("Missing or invalid Authorization header");
         }
         String token = authorization.substring("Bearer ".length());
-
+        log.info(" -------- Token {}", token);
+        ObjectMapper objectMapper = new ObjectMapper();
+        log.info(" -------- Credential Message {}", objectMapper.writeValueAsString(msg));
         try {
             // Authorize issuer
             String issuerDid = holderService.authorizeIssuer(token);

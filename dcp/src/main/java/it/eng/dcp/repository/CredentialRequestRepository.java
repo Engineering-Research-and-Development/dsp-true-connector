@@ -1,6 +1,6 @@
 package it.eng.dcp.repository;
 
-import it.eng.dcp.model.CredentialRequest;
+import it.eng.dcp.common.model.CredentialRequest;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
