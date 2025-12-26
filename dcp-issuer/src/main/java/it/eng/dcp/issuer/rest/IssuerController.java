@@ -4,6 +4,7 @@ import it.eng.dcp.issuer.service.IssuerService;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.CredentialRequestMessage;
 import it.eng.dcp.common.model.IssuerMetadata;
+import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -178,8 +180,18 @@ public class IssuerController {
     public ResponseEntity<?> getRequest(@PathVariable String requestId) {
         try {
             return issuerService.getRequestByIssuerPid(requestId)
-                    .map(request -> ResponseEntity.ok(GenericApiResponse.success(request, "Request found")))
-                    .orElse(ResponseEntity.notFound().build());
+                    .map(r -> {
+                        Map<String, Object> body = new HashMap<>();
+                        body.put("type", "CredentialStatus");
+                        body.put("@context", List.of(DSpaceConstants.DCP_CONTEXT));
+                        body.put("issuerPid", r.getIssuerPid());
+                        body.put("holderPid", r.getHolderPid());
+                        body.put("status", r.getStatus() != null ? r.getStatus().toString() : null);
+                        body.put("rejectionReason", r.getRejectionReason());
+//                        body.put("createdAt", r.getCreatedAt() != null ? r.getCreatedAt().toString() : null);
+                        return ResponseEntity.ok(body);
+                    })
+                    .orElseGet(() -> ResponseEntity.notFound().build());
         } catch (Exception e) {
             log.error("Error retrieving request: {}", e.getMessage(), e);
             return ResponseEntity.status(500).body(GenericApiResponse.error("Internal error: " + e.getMessage()));

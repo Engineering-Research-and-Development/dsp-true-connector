@@ -229,7 +229,7 @@ public class CredentialIssuanceService {
     private CredentialMessage.CredentialContainer generateGenericCredential(String credentialType, CredentialGenerationContext context) {
         String signedJwt = generateSignedJWT(context.getRequest().getHolderPid(), credentialType, Map.of(
                 "status", "Active",
-                "issuedBy", issuerProperties.getDid()
+                "issuedBy", issuerProperties.getConnectorDid()
         ));
 
         return CredentialMessage.CredentialContainer.Builder.newInstance()
@@ -263,7 +263,7 @@ public class CredentialIssuanceService {
             vc.put("credentialSubject", credentialSubject);
 
             JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-                    .issuer(issuerProperties.getDid())
+                    .issuer(issuerProperties.getConnectorDid())
                     .subject(holderDid)
                     .issueTime(Date.from(Instant.now()))
                     .expirationTime(Date.from(Instant.now().plusSeconds(365 * 24 * 60 * 60)))

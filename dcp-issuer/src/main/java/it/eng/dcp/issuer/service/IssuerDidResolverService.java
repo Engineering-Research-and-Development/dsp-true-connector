@@ -127,14 +127,8 @@ public class IssuerDidResolverService implements DidResolverService {
         }
     }
 
-    /**
-     * Fetches DID document with caching support.
-     *
-     * @param url The DID document URL
-     * @return The parsed JSON root node
-     * @throws IOException on IO errors
-     */
-    private JsonNode fetchDidDocumentCached(String url) throws IOException {
+    // Change from private to package-private for testability
+    JsonNode fetchDidDocumentCached(String url) throws IOException {
         IssuerDidResolverService.CachedDoc cd = cache.get(url);
         Instant now = Instant.now();
 
@@ -222,15 +216,8 @@ public class IssuerDidResolverService implements DidResolverService {
         throw new IOException("Failed to fetch DID document from " + url);
     }
 
-    /**
-     * Checks if a JWK matches the requested key ID.
-     *
-     * @param jwk  The JWK to check
-     * @param vmId The verification method ID
-     * @param kid  The requested key ID
-     * @return true if matches, false otherwise
-     */
-    private boolean isKeyMatch(JWK jwk, String vmId, String kid) {
+    // Change from private to package-private for testability
+    boolean isKeyMatch(JWK jwk, String vmId, String kid) {
         String jwkKid = jwk.getKeyID();
 
         // Direct match with JWK kid
@@ -246,23 +233,14 @@ public class IssuerDidResolverService implements DidResolverService {
         return false;
     }
 
-    /**
-     * Enforces that the key is referenced in the specified verification relationship.
-     *
-     * @param root                   The DID document root node
-     * @param vmId                   The verification method ID
-     * @param kid                    The requested key ID
-     * @param verificationRelationship The verification relationship to check
-     * @throws DidResolutionException if the key is not referenced properly
-     */
-    private void enforceVerificationRelationship(JsonNode root, String vmId, String kid,
-                                                 String verificationRelationship) throws DidResolutionException {
+    // Change from private to package-private for testability
+    void enforceVerificationRelationship(JsonNode root, String vmId, String kid,
+                                         String verificationRelationship) throws DidResolutionException {
         JsonNode relArray = root.get(verificationRelationship);
         if (relArray == null) {
             throw new DidResolutionException(
                     "Verification relationship '" + verificationRelationship + "' not present in DID document");
         }
-
         boolean found = false;
         for (JsonNode rel : relArray) {
             if (rel.isTextual()) {
@@ -282,7 +260,6 @@ public class IssuerDidResolverService implements DidResolverService {
                 }
             }
         }
-
         if (!found) {
             throw new DidResolutionException(
                     "Key found but not referenced in verification relationship '" + verificationRelationship + "'");

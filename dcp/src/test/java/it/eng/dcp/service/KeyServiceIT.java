@@ -59,7 +59,7 @@ class KeyServiceIT {
         InMemoryDidResolverService didResolver = new InMemoryDidResolverService();
         InMemoryJtiReplayCache jtiCache = new InMemoryJtiReplayCache();
 
-        SelfIssuedIdTokenService svc = new SelfIssuedIdTokenService(connectorDid, didResolver, jtiCache, keyService, config);
+        SelfIssuedIdTokenService svc = new SelfIssuedIdTokenService(didResolver, jtiCache, keyService, config);
 
         // register public JWK in resolver so validation can fetch it
         didResolver.put(connectorDid, new JWKSet(signingJwk.toPublicJWK()));

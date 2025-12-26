@@ -2,6 +2,8 @@ package it.eng.dcp.config;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.util.Collections;
@@ -12,6 +14,8 @@ import java.util.Map;
  * Configuration properties for the DCP module.
  * Binds properties under the `dcp` prefix (e.g. `dcp.connector.did`).
  */
+@Setter
+@Getter
 @ConfigurationProperties(prefix = "dcp")
 public class DcpProperties {
 
@@ -21,6 +25,9 @@ public class DcpProperties {
 
     /** Base URL used by the connector when constructing endpoints. */
     private String baseUrl;
+
+    /** Host name or IP address. */
+    private String host = "localhost";
 
     /** Allowed clock skew in seconds for token validation. Defaults to 120 seconds. */
     @Min(0)
@@ -32,55 +39,62 @@ public class DcpProperties {
     /** Trusted issuers mapping per credential type. */
     private Map<String, List<String>> trustedIssuers = Collections.emptyMap();
 
+    /** Keystore configuration. */
+    private Keystore keystore = new Keystore();
+
+    /** Issuer configuration. */
+    private Issuer issuer = new Issuer();
+
     /** Enable Verifiable Presentation JWT for connector authentication. Defaults to false. */
     private Vp vp = new Vp();
 
-    public String getConnectorDid() {
-        return connectorDid;
+    /**
+     * Keystore configuration.
+     */
+    public static class Keystore {
+        private String path = "eckey.p12";
+        private String password = "password";
+        private String alias = "dsptrueconnector";
+
+        public String getPath() {
+            return path;
+        }
+
+        public void setPath(String path) {
+            this.path = path;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
+
+        public String getAlias() {
+            return alias;
+        }
+
+        public void setAlias(String alias) {
+            this.alias = alias;
+        }
     }
 
-    public void setConnectorDid(String connectorDid) {
-        this.connectorDid = connectorDid;
-    }
+    /**
+     * Issuer configuration.
+     */
+    public static class Issuer {
+        /** Issuer location URL. */
+        private String location;
 
-    public String getBaseUrl() {
-        return baseUrl;
-    }
+        public String getLocation() {
+            return location;
+        }
 
-    public void setBaseUrl(String baseUrl) {
-        this.baseUrl = baseUrl;
-    }
-
-    public int getClockSkewSeconds() {
-        return clockSkewSeconds;
-    }
-
-    public void setClockSkewSeconds(int clockSkewSeconds) {
-        this.clockSkewSeconds = clockSkewSeconds;
-    }
-
-    public List<String> getSupportedProfiles() {
-        return supportedProfiles;
-    }
-
-    public void setSupportedProfiles(List<String> supportedProfiles) {
-        this.supportedProfiles = supportedProfiles;
-    }
-
-    public Map<String, List<String>> getTrustedIssuers() {
-        return trustedIssuers;
-    }
-
-    public void setTrustedIssuers(Map<String, List<String>> trustedIssuers) {
-        this.trustedIssuers = trustedIssuers;
-    }
-
-    public Vp getVp() {
-        return vp;
-    }
-
-    public void setVp(Vp vp) {
-        this.vp = vp;
+        public void setLocation(String location) {
+            this.location = location;
+        }
     }
 
     /**

@@ -43,12 +43,14 @@ class SelfIssuedIdTokenServiceTest {
     private KeyService keyService;
     @Mock
     private BaseDidDocumentConfiguration config;
+    @Mock
+    private DidDocumentConfig didDocumentConfig;
     private SelfIssuedIdTokenService service;
     private ECKey ecJwk;
 
     @BeforeEach
     void setUp() throws Exception {
-        service = new SelfIssuedIdTokenService(CONNECTOR_DID, didResolver, jtiCache, keyService, config);
+        service = new SelfIssuedIdTokenService(didResolver, jtiCache, keyService, config);
 
         // Generate EC key for signing and verification
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
@@ -81,6 +83,8 @@ class SelfIssuedIdTokenServiceTest {
 
     @Test
     void validateToken_success() throws Exception {
+        when(config.getDidDocumentConfig()).thenReturn(didDocumentConfig);
+        when(didDocumentConfig.getDid()).thenReturn(CONNECTOR_DID);
         JWTClaimsSet claims = baseClaims().build();
         String jwt = createJwt(claims, ecJwk);
         when(didResolver.resolvePublicKey(SUBJECT_DID, KID, "capabilityInvocation")).thenReturn(ecJwk);
@@ -98,6 +102,8 @@ class SelfIssuedIdTokenServiceTest {
 
     @Test
     void validateToken_audNotEqualVerifier() throws Exception {
+        when(config.getDidDocumentConfig()).thenReturn(didDocumentConfig);
+        when(didDocumentConfig.getDid()).thenReturn(CONNECTOR_DID);
         JWTClaimsSet claims = baseClaims().audience("wrong:aud").build();
         String jwt = createJwt(claims, ecJwk);
         Exception ex = assertThrows(SecurityException.class, () -> service.validateToken(jwt));
@@ -106,6 +112,8 @@ class SelfIssuedIdTokenServiceTest {
 
     @Test
     void validateToken_noJwkFound() throws Exception {
+        when(config.getDidDocumentConfig()).thenReturn(didDocumentConfig);
+        when(didDocumentConfig.getDid()).thenReturn(CONNECTOR_DID);
         JWTClaimsSet claims = baseClaims().build();
         String jwt = createJwt(claims, ecJwk);
         when(didResolver.resolvePublicKey(SUBJECT_DID, KID, "capabilityInvocation")).thenReturn(null);
@@ -115,6 +123,9 @@ class SelfIssuedIdTokenServiceTest {
 
     @Test
     void validateToken_invalidSignature() throws Exception {
+        when(config.getDidDocumentConfig()).thenReturn(didDocumentConfig);
+        when(didDocumentConfig.getDid()).thenReturn(CONNECTOR_DID);
+
         // Use a different key for signing
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
         kpg.initialize(256);
@@ -132,6 +143,9 @@ class SelfIssuedIdTokenServiceTest {
 
     @Test
     void validateToken_nbfInFuture() throws Exception {
+        when(config.getDidDocumentConfig()).thenReturn(didDocumentConfig);
+        when(didDocumentConfig.getDid()).thenReturn(CONNECTOR_DID);
+
         Instant now = Instant.now();
         JWTClaimsSet claims = baseClaims().notBeforeTime(Date.from(now.plusSeconds(300))).build();
         String jwt = createJwt(claims, ecJwk);
@@ -142,6 +156,9 @@ class SelfIssuedIdTokenServiceTest {
 
     @Test
     void validateToken_expired() throws Exception {
+        when(config.getDidDocumentConfig()).thenReturn(didDocumentConfig);
+        when(didDocumentConfig.getDid()).thenReturn(CONNECTOR_DID);
+
         Instant now = Instant.now();
         // Set expiration to more than 120 seconds in the past to account for clock skew
         JWTClaimsSet claims = baseClaims().expirationTime(Date.from(now.minusSeconds(121))).build();
@@ -153,6 +170,8 @@ class SelfIssuedIdTokenServiceTest {
 
     @Test
     void validateToken_iatMissing() throws Exception {
+        when(config.getDidDocumentConfig()).thenReturn(didDocumentConfig);
+        when(didDocumentConfig.getDid()).thenReturn(CONNECTOR_DID);
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
                 .issuer(SUBJECT_DID)
                 .subject(SUBJECT_DID)
@@ -168,6 +187,9 @@ class SelfIssuedIdTokenServiceTest {
 
     @Test
     void validateToken_iatTooOld() throws Exception {
+        when(config.getDidDocumentConfig()).thenReturn(didDocumentConfig);
+        when(didDocumentConfig.getDid()).thenReturn(CONNECTOR_DID);
+
         Instant now = Instant.now();
         JWTClaimsSet claims = baseClaims().issueTime(Date.from(now.minusSeconds(4000))).build();
         String jwt = createJwt(claims, ecJwk);
@@ -178,6 +200,9 @@ class SelfIssuedIdTokenServiceTest {
 
     @Test
     void validateToken_jtiMissing() throws Exception {
+        when(config.getDidDocumentConfig()).thenReturn(didDocumentConfig);
+        when(didDocumentConfig.getDid()).thenReturn(CONNECTOR_DID);
+
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
                 .issuer(SUBJECT_DID)
                 .subject(SUBJECT_DID)
@@ -193,6 +218,9 @@ class SelfIssuedIdTokenServiceTest {
 
     @Test
     void validateToken_jtiReplay() throws Exception {
+        when(config.getDidDocumentConfig()).thenReturn(didDocumentConfig);
+        when(didDocumentConfig.getDid()).thenReturn(CONNECTOR_DID);
+
         JWTClaimsSet claims = baseClaims().build();
         String jwt = createJwt(claims, ecJwk);
         when(didResolver.resolvePublicKey(SUBJECT_DID, KID, "capabilityInvocation")).thenReturn(ecJwk);
@@ -208,6 +236,7 @@ class SelfIssuedIdTokenServiceTest {
         String accessToken = "access-token-value";
         DidDocumentConfig didConfig = mock(DidDocumentConfig.class);
         when(keyService.getSigningJwk(didConfig)).thenReturn(ecJwk);
+        when(didConfig.getDid()).thenReturn(audienceDid);
 
         // Act
         String jwt = service.createAndSignToken(audienceDid, accessToken, didConfig);
@@ -230,7 +259,7 @@ class SelfIssuedIdTokenServiceTest {
     @Test
     void createAndSignToken_connectorDidBlank_throws() throws Exception {
         // Arrange: create service with blank connectorDid
-        SelfIssuedIdTokenService blankService = new SelfIssuedIdTokenService("", didResolver, jtiCache, keyService, config);
+        SelfIssuedIdTokenService blankService = new SelfIssuedIdTokenService(didResolver, jtiCache, keyService, config);
         DidDocumentConfig didConfig = mock(DidDocumentConfig.class);
         // Act & Assert
         assertThrows(IllegalStateException.class, () -> blankService.createAndSignToken("did:web:test:audience", "token", didConfig));
@@ -239,6 +268,8 @@ class SelfIssuedIdTokenServiceTest {
     @Test
     void createAndSignToken_keyServiceThrows_throws() throws Exception {
         DidDocumentConfig didConfig = mock(DidDocumentConfig.class);
+        when(didConfig.getDid()).thenReturn(CONNECTOR_DID);
+
         when(keyService.getSigningJwk(didConfig)).thenThrow(new RuntimeException("key error"));
         assertThrows(RuntimeException.class, () -> service.createAndSignToken("did:web:test:audience", "token", didConfig));
     }
@@ -247,6 +278,10 @@ class SelfIssuedIdTokenServiceTest {
     void validateToken_encodedIssuerDid_success() throws Exception {
         // Test with encoded DID (localhost%3A8080) - this is what we might get from a JWT
         String encodedDid = "did:web:localhost%3A8080:issuer";
+
+        when(config.getDidDocumentConfig()).thenReturn(didDocumentConfig);
+        when(didDocumentConfig.getDid()).thenReturn(CONNECTOR_DID);
+
         Instant now = Instant.now();
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
                 .issuer(encodedDid)
@@ -270,10 +305,13 @@ class SelfIssuedIdTokenServiceTest {
         // Connector DID is encoded, audience is decoded - should still work
         String encodedConnectorDid = "did:web:localhost%3A8080:holder";
         String decodedConnectorDid = "did:web:localhost:8080:holder";
-        
+
+        when(config.getDidDocumentConfig()).thenReturn(didDocumentConfig);
+        when(didDocumentConfig.getDid()).thenReturn(encodedConnectorDid);
+
         // Create service with encoded connector DID
         SelfIssuedIdTokenService encodedService = new SelfIssuedIdTokenService(
-            encodedConnectorDid, didResolver, jtiCache, keyService, config);
+            didResolver, jtiCache, keyService, config);
         
         Instant now = Instant.now();
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
@@ -299,10 +337,13 @@ class SelfIssuedIdTokenServiceTest {
         // Connector DID is decoded, audience is encoded - should still work
         String decodedConnectorDid = "did:web:localhost:8080:holder";
         String encodedConnectorDid = "did:web:localhost%3A8080:holder";
-        
+
+        when(config.getDidDocumentConfig()).thenReturn(didDocumentConfig);
+        when(didDocumentConfig.getDid()).thenReturn(decodedConnectorDid);
+
         // Create service with decoded connector DID
         SelfIssuedIdTokenService decodedService = new SelfIssuedIdTokenService(
-            decodedConnectorDid, didResolver, jtiCache, keyService, config);
+            didResolver, jtiCache, keyService, config);
         
         Instant now = Instant.now();
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
@@ -325,16 +366,17 @@ class SelfIssuedIdTokenServiceTest {
 
     @Test
     void validateToken_realWorldDebugLogScenario_success() throws Exception {
-        // Real-world scenario from debug_log.txt:
         // Issuer DID might be encoded in the JWT: "did:web:localhost%3A8080:issuer"
         // But in configuration it's decoded: "did:web:localhost:8080:issuer"
         String encodedIssuerDid = "did:web:localhost%3A8080:issuer";
-        String decodedIssuerDid = "did:web:localhost:8080:issuer";
         String encodedHolderDid = "did:web:localhost%3A8080:holder";
-        
+
+        when(config.getDidDocumentConfig()).thenReturn(didDocumentConfig);
+        when(didDocumentConfig.getDid()).thenReturn(encodedHolderDid);
+
         // Create service with encoded holder DID (from config)
         SelfIssuedIdTokenService holderService = new SelfIssuedIdTokenService(
-            encodedHolderDid, didResolver, jtiCache, keyService, config);
+            didResolver, jtiCache, keyService, config);
         
         Instant now = Instant.now();
         // JWT has encoded issuer/subject but decoded audience

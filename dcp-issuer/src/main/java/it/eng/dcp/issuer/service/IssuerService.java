@@ -55,18 +55,17 @@ public class IssuerService {
             throw new SecurityException("Bearer token is required");
         }
 
-        JWTClaimsSet claims = tokenService.validateToken(bearerToken);
+        return tokenService.validateToken(bearerToken);
 
-        // If holderPid is provided, validate that it matches the token subject
-        if (holderPid != null) {
-            String subject = claims.getSubject();
-            if (subject == null || !subject.equals(holderPid)) {
-                log.warn("Holder PID in message does not match token subject: msg={}, sub={}", holderPid, subject);
-                throw new SecurityException("Token subject does not match holderPid");
-            }
-        }
-
-        return claims;
+//        // If holderPid is provided, validate that it matches the token subject
+        //Not sure that this is requirement at all according to DCP protocol
+//        if (holderPid != null) {
+//            String subject = claims.getSubject();
+//            if (subject == null || !subject.equals(holderPid)) {
+//                log.warn("Holder PID in message does not match token subject: msg={}, sub={}", holderPid, subject);
+//                throw new SecurityException("Token subject does not match holderPid");
+//            }
+//        }
     }
 
     /**

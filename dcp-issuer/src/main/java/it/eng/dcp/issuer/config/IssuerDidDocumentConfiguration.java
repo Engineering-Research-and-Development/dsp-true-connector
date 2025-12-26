@@ -2,7 +2,9 @@ package it.eng.dcp.issuer.config;
 
 import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.config.DidDocumentConfig;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -12,31 +14,18 @@ import java.util.List;
  * Configuration for DID document in the issuer (dcp-issuer) module.
  */
 @Configuration
+@EnableConfigurationProperties(IssuerProperties.class)
+@RequiredArgsConstructor
 public class IssuerDidDocumentConfiguration implements BaseDidDocumentConfiguration {
 
-    @Value("${issuer.did:did:web:localhost%3A8084:issuer}")
-    private String issuerDid;
-
-    @Value("${issuer.base-url:}")
-    private String issuerBaseUrl;
+    private final IssuerProperties issuerProperties;
 
     @Value("${server.ssl.enabled:false}")
     private boolean sslEnabled;
 
-    @Value("${issuer.host:localhost}")
-    private String host;
-
     @Value("${server.port:8084}")
     private String port;
 
-    @Value("${issuer.verification-method.controller:}")
-    private String verificationMethodController;
-
-    @Value("${issuer.keystore.path:classpath:eckey-issuer.p12}")
-    private String keystorePath;
-
-    @Value("${issuer.keystore.password:password}")
-    private String keystorePassword;
 
     /**
      * Create the DID document configuration bean for the issuer.
@@ -47,14 +36,16 @@ public class IssuerDidDocumentConfiguration implements BaseDidDocumentConfigurat
     public DidDocumentConfig issuerDidDocumentConfig() {
         String protocol = sslEnabled ? "https" : "http";
         return DidDocumentConfig.builder()
-                .did(issuerDid)
-                .baseUrl(issuerBaseUrl != null && !issuerBaseUrl.isBlank() ? issuerBaseUrl : null)
+                .did(issuerProperties.getConnectorDid())
+                .baseUrl(issuerProperties.getBaseUrl() != null && !issuerProperties.getBaseUrl().isBlank()
+                        ? issuerProperties.getBaseUrl() : null)
                 .protocol(protocol)
-                .host(host)
+                .host("localhost")
                 .port(port)
-                .verificationMethodController(verificationMethodController)
-                .keystorePath(keystorePath)
-                .keystorePassword(keystorePassword)
+                .verificationMethodController(null)
+                .keystorePath(issuerProperties.getKeystore().getPath())
+                .keystorePassword(issuerProperties.getKeystore().getPassword())
+                .keystoreAlias(issuerProperties.getKeystore().getAlias())
                 .serviceEntries(List.of(
                         DidDocumentConfig.ServiceEntryConfig.builder()
                                 .id("TRUEConnector-Issuer-Service")

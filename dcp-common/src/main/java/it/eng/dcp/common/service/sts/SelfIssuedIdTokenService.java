@@ -41,7 +41,7 @@ import java.util.UUID;
 @Slf4j
 public class SelfIssuedIdTokenService {
 
-    private final String connectorDid;
+//    private final String connectorDid;
     private final DidResolverService didResolver;
     private final JtiReplayCache jtiCache;
     private final KeyService keyService;
@@ -52,12 +52,12 @@ public class SelfIssuedIdTokenService {
 
     @Autowired
     public SelfIssuedIdTokenService(
-            @Value("${dcp.connector.did:}") String connectorDid,
+//            @Value("${dcp.connector.did:}") String connectorDid,
             DidResolverService didResolver,
             JtiReplayCache jtiCache,
             KeyService keyService,
             BaseDidDocumentConfiguration config) {
-        this.connectorDid = connectorDid;
+//        this.connectorDid = connectorDid;
         this.didResolver = didResolver;
         this.jtiCache = jtiCache;
         this.keyService = keyService;
@@ -91,7 +91,7 @@ public class SelfIssuedIdTokenService {
 
         log.debug("Creating token for audience: {}", audienceDid);
 
-        if (connectorDid == null || connectorDid.isBlank()) {
+        if (config.getDid() == null || config.getDid().isBlank()) {
             log.error("connectorDid is null or blank!");
             throw new IllegalStateException("connectorDid is not configured. Please set dcp.connector.did property");
         }
@@ -102,7 +102,7 @@ public class SelfIssuedIdTokenService {
             String jti = UUID.randomUUID().toString();
 
             JWTClaimsSet.Builder cb = new JWTClaimsSet.Builder();
-            cb.issuer(connectorDid).subject(connectorDid);
+            cb.issuer(config.getDid()).subject(config.getDid());
             cb.audience(audienceDid);
             cb.issueTime(Date.from(now));
             cb.expirationTime(Date.from(exp));
@@ -172,6 +172,7 @@ public class SelfIssuedIdTokenService {
                 throw new SecurityException("iss and sub must be present and equal");
             }
 
+            String connectorDid = config.getDidDocumentConfig().getDid();
             // 2. aud must match verifierDid (using robust DID comparison)
             if (aud == null || connectorDid == null || !DidUrlConverter.compareDids(aud, connectorDid)) {
                 throw new SecurityException("aud claim must match verifier DID");

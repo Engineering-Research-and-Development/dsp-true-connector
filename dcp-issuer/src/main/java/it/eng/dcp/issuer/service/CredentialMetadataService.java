@@ -34,7 +34,7 @@ public class CredentialMetadataService {
      * @return IssuerMetadata with configured credentials
      */
     public IssuerMetadata buildIssuerMetadata() {
-        String issuerDid = issuerProperties.getDid();
+        String issuerDid = issuerProperties.getConnectorDid();
         if (issuerDid == null || issuerDid.isBlank()) {
             issuerDid = "did:web:issuer-url";
             log.warn("No issuer DID configured, using default: {}", issuerDid);

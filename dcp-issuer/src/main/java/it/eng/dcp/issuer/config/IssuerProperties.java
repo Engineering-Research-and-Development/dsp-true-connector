@@ -10,26 +10,25 @@ import java.util.List;
 
 /**
  * Configuration properties for the DCP Issuer module.
- * Binds properties under the `issuer` prefix.
+ * Binds properties under the `dcp` prefix for unified configuration.
  */
 @Component
-@ConfigurationProperties(prefix = "issuer")
+@ConfigurationProperties(prefix = "dcp")
 public class IssuerProperties {
 
-    /** The issuer DID (e.g. did:web:localhost%3A8084:issuer). */
+    /** The connector DID (e.g. did:web:localhost%3A8084:issuer). */
     @NotNull
-    private String did;
+    private String connectorDid;
 
     /** Base URL used by the issuer when constructing endpoints. */
-    @NotNull
     private String baseUrl;
 
     /** Allowed clock skew in seconds for token validation. Defaults to 120 seconds. */
     @Min(0)
     private int clockSkewSeconds = 120;
 
-    /** Supported profiles, e.g. ["VC11_SL2021_JWT","VC11_SL2021_JSONLD"] */
-    private List<String> supportedProfiles = List.of("VC11_SL2021_JWT");
+    /** Issuer-specific configuration. */
+    private Issuer issuer = new Issuer();
 
     /** Keystore configuration for issuer signing keys. */
     private Keystore keystore = new Keystore();
@@ -41,19 +40,19 @@ public class IssuerProperties {
     private Credentials credentials = new Credentials();
 
     /**
-     * Get the issuer DID.
-     * @return issuer DID
+     * Get the connector DID.
+     * @return connector DID
      */
-    public String getDid() {
-        return did;
+    public String getConnectorDid() {
+        return connectorDid;
     }
 
     /**
-     * Set the issuer DID.
-     * @param did issuer DID
+     * Set the connector DID.
+     * @param connectorDid connector DID
      */
-    public void setDid(String did) {
-        this.did = did;
+    public void setConnectorDid(String connectorDid) {
+        this.connectorDid = connectorDid;
     }
 
     /**
@@ -89,19 +88,35 @@ public class IssuerProperties {
     }
 
     /**
-     * Get the list of supported profiles.
-     * @return supported profiles
+     * Get the issuer configuration.
+     * @return issuer configuration
      */
-    public List<String> getSupportedProfiles() {
-        return supportedProfiles;
+    public Issuer getIssuer() {
+        return issuer;
     }
 
     /**
-     * Set the list of supported profiles.
+     * Set the issuer configuration.
+     * @param issuer issuer configuration
+     */
+    public void setIssuer(Issuer issuer) {
+        this.issuer = issuer;
+    }
+
+    /**
+     * Get the list of supported profiles (delegated to issuer).
+     * @return supported profiles
+     */
+    public List<String> getSupportedProfiles() {
+        return issuer.getSupportedProfiles();
+    }
+
+    /**
+     * Set the list of supported profiles (delegated to issuer).
      * @param supportedProfiles supported profiles
      */
     public void setSupportedProfiles(List<String> supportedProfiles) {
-        this.supportedProfiles = supportedProfiles;
+        issuer.setSupportedProfiles(supportedProfiles);
     }
 
     /**
@@ -150,6 +165,30 @@ public class IssuerProperties {
      */
     public void setCredentials(Credentials credentials) {
         this.credentials = credentials;
+    }
+
+    /**
+     * Issuer-specific configuration properties.
+     */
+    public static class Issuer {
+        /** Supported profiles, e.g. ["VC11_SL2021_JWT","VC11_SL2021_JSONLD"] */
+        private List<String> supportedProfiles = List.of("VC11_SL2021_JWT");
+
+        /**
+         * Get the list of supported profiles.
+         * @return supported profiles
+         */
+        public List<String> getSupportedProfiles() {
+            return supportedProfiles;
+        }
+
+        /**
+         * Set the list of supported profiles.
+         * @param supportedProfiles supported profiles
+         */
+        public void setSupportedProfiles(List<String> supportedProfiles) {
+            this.supportedProfiles = supportedProfiles;
+        }
     }
 
     /**

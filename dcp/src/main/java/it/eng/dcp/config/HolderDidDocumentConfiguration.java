@@ -2,7 +2,9 @@ package it.eng.dcp.config;
 
 import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.config.DidDocumentConfig;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -12,37 +14,18 @@ import java.util.List;
  * Configuration for DID document in the holder (dcp) module.
  */
 @Configuration
+@EnableConfigurationProperties(DcpProperties.class)
+@RequiredArgsConstructor
 public class HolderDidDocumentConfiguration implements BaseDidDocumentConfiguration {
 
-    @Value("${holder.did:did:web:localhost%3A8080:holder}")
-    private String holderDid;
-
-    @Value("${holder.base-url:}")
-    private String holderBaseUrl;
+    private final DcpProperties dcpProperties;
 
     @Value("${server.ssl.enabled:false}")
     private boolean sslEnabled;
 
-    @Value("${holder.host:localhost}")
-    private String host;
-
-    @Value("${server.port:8083}")
+    @Value("${server.port}")
     private String port;
 
-    @Value("${holder.verification-method.controller:}")
-    private String verificationMethodController;
-
-    @Value("${holder.keystore.path:eckey.p12}")
-    private String keystorePath;
-
-    @Value("${holder.keystore.password:password}")
-    private String keystorePassword;
-
-    @Value("${holder.keystore.alias:dsptrueconnector}")
-    private String keystoreAlias;
-
-    @Value("${dcp.issuer.location}")
-    private String issuerLocation;
 
     /**
      * Create the DID document configuration bean for the holder.
@@ -53,15 +36,16 @@ public class HolderDidDocumentConfiguration implements BaseDidDocumentConfigurat
     public DidDocumentConfig holderDidDocumentConfig() {
         String protocol = sslEnabled ? "https" : "http";
         return DidDocumentConfig.builder()
-                .did(holderDid)
-                .baseUrl(holderBaseUrl != null && !holderBaseUrl.isBlank() ? holderBaseUrl : null)
+                .did(dcpProperties.getConnectorDid())
+                .baseUrl(dcpProperties.getBaseUrl() != null && !dcpProperties.getBaseUrl().isBlank()
+                        ? dcpProperties.getBaseUrl() : null)
                 .protocol(protocol)
-                .host(host)
+                .host(dcpProperties.getHost())
                 .port(port)
-                .verificationMethodController(verificationMethodController)
-                .keystorePath(keystorePath)
-                .keystorePassword(keystorePassword)
-                .keystoreAlias(keystoreAlias)
+                .verificationMethodController(null)
+                .keystorePath(dcpProperties.getKeystore().getPath())
+                .keystorePassword(dcpProperties.getKeystore().getPassword())
+                .keystoreAlias(dcpProperties.getKeystore().getAlias())
                 .serviceEntries(List.of(
                         DidDocumentConfig.ServiceEntryConfig.builder()
                                 .id("TRUEConnector-Credential-Service")
@@ -71,8 +55,7 @@ public class HolderDidDocumentConfiguration implements BaseDidDocumentConfigurat
                         DidDocumentConfig.ServiceEntryConfig.builder()
                                 .id("TRUEConnector-Issuer-Service")
                                 .type("IssuerService")
-//                                .endpointPath("/issuer")
-                                .issuerLocation(issuerLocation)
+                                .issuerLocation(dcpProperties.getIssuer().getLocation())
                                 .build()
                 ))
                 .build();
