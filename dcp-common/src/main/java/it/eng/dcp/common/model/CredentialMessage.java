@@ -6,17 +6,21 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import it.eng.tools.model.DSpaceConstants;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidationException;
+import jakarta.validation.ValidatorFactory;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.io.Serial;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
-
-import jakarta.validation.ValidationException;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 
 @JsonDeserialize(builder = CredentialMessage.Builder.class)
 @NoArgsConstructor(access = lombok.AccessLevel.PRIVATE)
@@ -130,7 +134,7 @@ public class CredentialMessage extends BaseDcpMessage {
     @JsonDeserialize(builder = CredentialContainer.Builder.class)
     @NoArgsConstructor(access = lombok.AccessLevel.PRIVATE)
     @Getter
-    public static class CredentialContainer implements java.io.Serializable {
+    public static class CredentialContainer implements Serializable {
 
         @Serial
         private static final long serialVersionUID = 1L;
@@ -172,12 +176,12 @@ public class CredentialMessage extends BaseDcpMessage {
             }
 
             public CredentialContainer build() {
-                try (jakarta.validation.ValidatorFactory vf = jakarta.validation.Validation.buildDefaultValidatorFactory()) {
-                    java.util.Set<jakarta.validation.ConstraintViolation<CredentialContainer>> violations = vf.getValidator().validate(container);
+                try (ValidatorFactory vf = Validation.buildDefaultValidatorFactory()) {
+                    Set<ConstraintViolation<CredentialContainer>> violations = vf.getValidator().validate(container);
                     if (violations.isEmpty()) {
                         return container;
                     }
-                    throw new jakarta.validation.ValidationException("CredentialContainer - " +
+                    throw new ValidationException("CredentialContainer - " +
                             violations.stream().map(v -> v.getPropertyPath() + " " + v.getMessage()).collect(Collectors.joining(",")));
                 }
             }

@@ -3,13 +3,13 @@ package it.eng.dcp.issuer.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
-import it.eng.dcp.common.model.CredentialStatus;
-import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
-import it.eng.dcp.issuer.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
-import it.eng.dcp.issuer.repository.CredentialRequestRepository;
+import it.eng.dcp.common.model.CredentialStatus;
+import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.common.util.DidUrlConverter;
+import it.eng.dcp.issuer.client.SimpleOkHttpRestClient;
+import it.eng.dcp.issuer.repository.CredentialRequestRepository;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.MediaType;
 import okhttp3.Request;
@@ -31,7 +31,7 @@ public class CredentialDeliveryService {
 
     private final CredentialRequestRepository requestRepository;
     private final SelfIssuedIdTokenService tokenService;
-    private final ObjectMapper mapper;
+    private final ObjectMapper mapper = new ObjectMapper();
     private final SimpleOkHttpRestClient httpClient;
     private final BaseDidDocumentConfiguration config;
 
@@ -40,12 +40,10 @@ public class CredentialDeliveryService {
     @Autowired
     public CredentialDeliveryService(CredentialRequestRepository requestRepository,
                                      SelfIssuedIdTokenService tokenService,
-                                     ObjectMapper mapper,
                                      SimpleOkHttpRestClient httpClient, BaseDidDocumentConfiguration config,
                                      @Value("${dcp.ssl.enabled:false}") boolean sslEnabled) {
         this.requestRepository = requestRepository;
         this.tokenService = tokenService;
-        this.mapper = mapper;
         this.httpClient = httpClient;
         this.config = config;
         this.sslEnabled = sslEnabled;
@@ -179,7 +177,7 @@ public class CredentialDeliveryService {
                     .requestId(issuerPid)
                     .status("REJECTED")
                     .rejectionReason(rejectionReason)
-                    .credentials(List.of())
+                    .credentials(List.of(CredentialMessage.CredentialContainer.Builder.newInstance().credentialType("No type").format("JWT").build()))
                     .build();
 
             String token = tokenService.createAndSignToken(holderPid, null, config.getDidDocumentConfig());
