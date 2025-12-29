@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE,
+@RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE,
         path = "/tck/protocol/2025/1/catalog/request")
 @Slf4j
 public class TCKCatalogController {
@@ -22,7 +22,7 @@ public class TCKCatalogController {
         this.holderService = holderService;
     }
 
-    @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(consumes = {MediaType.APPLICATION_JSON_VALUE, "application/json;charset=utf-8"})
     public ResponseEntity<String> initiateTCKCatalogRequest(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {
         log.info("Authorization header: {}", authorization);
 

@@ -3,6 +3,7 @@ package it.eng.dcp.common.model;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import it.eng.tools.model.DSpaceConstants;
@@ -12,10 +13,7 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import jakarta.validation.ConstraintViolation;
@@ -28,6 +26,7 @@ import jakarta.validation.constraints.Size;
 @JsonDeserialize(builder = CredentialOfferMessage.Builder.class)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
+@JsonPropertyOrder({DSpaceConstants.CONTEXT, "type", "issuer", "credentials"})
 public class CredentialOfferMessage implements Serializable {
 
     @Serial
@@ -36,12 +35,15 @@ public class CredentialOfferMessage implements Serializable {
     @JsonProperty(value = DSpaceConstants.CONTEXT)
     private List<String> context = new ArrayList<>();
 
-    @NotNull
+    @JsonProperty(value = DSpaceConstants.TYPE, access = JsonProperty.Access.READ_ONLY)
     private String type;
+
+    private String issuer;
 
     @NotNull
     @Size(min = 1)
-    private List<OfferedCredential> offeredCredentials = new ArrayList<>();
+    @JsonProperty(value = "credentials")
+    private List<CredentialObject> credentialObjects = new ArrayList<>();
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -67,16 +69,16 @@ public class CredentialOfferMessage implements Serializable {
             return this;
         }
 
-        public Builder type(String type) {
-            msg.type = type;
+        public Builder issuer(String issuer) {
+            msg.issuer = issuer;
             return this;
         }
 
-        @JsonProperty("offeredCredentials")
-        public Builder offeredCredentials(List<OfferedCredential> offeredCredentials) {
-            if (offeredCredentials != null) {
-                msg.offeredCredentials.clear();
-                msg.offeredCredentials.addAll(offeredCredentials);
+        @JsonProperty("credentials")
+        public Builder offeredCredentials(List<CredentialObject> credentialObjects) {
+            if (credentialObjects != null) {
+                msg.credentialObjects.clear();
+                msg.credentialObjects.addAll(credentialObjects);
             }
             return this;
         }
@@ -85,8 +87,8 @@ public class CredentialOfferMessage implements Serializable {
             try (ValidatorFactory vf = Validation.buildDefaultValidatorFactory()) {
                 Set<ConstraintViolation<CredentialOfferMessage>> violations = vf.getValidator().validate(msg);
                 if (violations.isEmpty()) {
-                    if (msg.offeredCredentials == null) {
-                        msg.offeredCredentials = new ArrayList<>();
+                    if (msg.credentialObjects == null) {
+                        msg.credentialObjects = new ArrayList<>();
                     }
                     return msg;
                 }
@@ -96,42 +98,66 @@ public class CredentialOfferMessage implements Serializable {
         }
     }
 
-    @JsonDeserialize(builder = OfferedCredential.Builder.class)
+    public String getType() {
+        return CredentialOfferMessage.class.getSimpleName();
+    }
+
+    @JsonDeserialize(builder = CredentialObject.Builder.class)
     @Getter
     @NoArgsConstructor(access = AccessLevel.PRIVATE)
-    public static class OfferedCredential implements Serializable {
+    @JsonPropertyOrder({"id", "type", "credentialType", "offerReason", "bindingMethods", "profile", "issuancePolicy", "credentialSchema"})
+    public static class CredentialObject implements Serializable {
 
         @Serial
         private static final long serialVersionUID = 1L;
 
+        @JsonProperty(value = "id", required = true)
+        private String id;
+
         @NotNull
         private String credentialType;
 
-        @NotNull
-        private String format;
-
         private Map<String, Object> issuancePolicy;
+
+        @JsonProperty(value = "bindingMethods")
+        private final List<String> bindingMethods = new ArrayList<>();
+
+        @JsonProperty(value = "profile")
+        private String profile;
+
+        @JsonProperty(value = "type")
+        private String type;
+
+        @JsonProperty(value = "offerReason")
+        private String offerReason;
+
+        @JsonProperty(value = "credentialSchema")
+        private String credentialSchema;
+
+        public String getType() {
+            return CredentialObject.class.getSimpleName();
+        }
 
         @JsonPOJOBuilder(withPrefix = "")
         @JsonIgnoreProperties(ignoreUnknown = true)
         public static class Builder {
-            private final OfferedCredential offered;
+            private final CredentialObject offered;
 
             private Builder() {
-                offered = new OfferedCredential();
+                offered = new CredentialObject();
             }
 
             public static Builder newInstance() {
                 return new Builder();
             }
 
-            public Builder credentialType(String credentialType) {
-                offered.credentialType = credentialType;
+            public Builder id(String id) {
+                offered.id = id;
                 return this;
             }
 
-            public Builder format(String format) {
-                offered.format = format;
+            public Builder credentialType(String credentialType) {
+                offered.credentialType = credentialType;
                 return this;
             }
 
@@ -140,9 +166,32 @@ public class CredentialOfferMessage implements Serializable {
                 return this;
             }
 
-            public OfferedCredential build() {
+            public Builder bindingMethods(List<String> bindingMethods) {
+                if (bindingMethods != null) {
+                    offered.bindingMethods.clear();
+                    offered.bindingMethods.addAll(bindingMethods);
+                }
+                return this;
+            }
+
+            public Builder profile(String profile) {
+                offered.profile = profile;
+                return this;
+            }
+
+            public Builder offerReason(String offerReason) {
+                offered.offerReason = offerReason;
+                return this;
+            }
+
+            public Builder credentialSchema(String credentialSchema) {
+                offered.credentialSchema = credentialSchema;
+                return this;
+            }
+
+            public CredentialObject build() {
                 try (ValidatorFactory vf = Validation.buildDefaultValidatorFactory()) {
-                    Set<ConstraintViolation<OfferedCredential>> violations = vf.getValidator().validate(offered);
+                    Set<ConstraintViolation<CredentialObject>> violations = vf.getValidator().validate(offered);
                     if (violations.isEmpty()) {
                         return offered;
                     }
@@ -153,4 +202,3 @@ public class CredentialOfferMessage implements Serializable {
         }
     }
 }
-

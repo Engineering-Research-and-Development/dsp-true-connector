@@ -191,17 +191,17 @@ public class HolderService {
      * @return true if offer is accepted
      */
     public boolean processCredentialOffer(CredentialOfferMessage offer) {
-        if (offer == null || offer.getOfferedCredentials() == null || offer.getOfferedCredentials().isEmpty()) {
+        if (offer == null || offer.getCredentialObjects() == null || offer.getCredentialObjects().isEmpty()) {
             log.error("Invalid credential offer: offeredCredentials is null or empty");
             throw new IllegalArgumentException("offeredCredentials must be provided and non-empty");
         }
 
         log.info("Received credential offer message");
         log.info("Processing credential offer with {} offered credentials",
-                offer.getOfferedCredentials().size());
+                offer.getCredentialObjects().size());
         log.debug("Offered credential types: {}",
-                offer.getOfferedCredentials().stream()
-                        .map(CredentialOfferMessage.OfferedCredential::getCredentialType)
+                offer.getCredentialObjects().stream()
+                        .map(CredentialOfferMessage.CredentialObject::getCredentialType)
                         .toList());
 
         log.info("Credential offer accepted");

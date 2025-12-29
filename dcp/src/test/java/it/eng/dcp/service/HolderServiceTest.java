@@ -269,13 +269,11 @@ class HolderServiceTest {
     @Test
     void processCredentialOffer_validOffer_success() {
         // Arrange
-        CredentialOfferMessage.OfferedCredential credential1 = CredentialOfferMessage.OfferedCredential.Builder.newInstance()
+        CredentialOfferMessage.CredentialObject credential1 = CredentialOfferMessage.CredentialObject.Builder.newInstance()
                 .credentialType("MembershipCredential")
-                .format("jwt")
                 .build();
 
         CredentialOfferMessage offer = CredentialOfferMessage.Builder.newInstance()
-                .type("CredentialOfferMessage")
                 .offeredCredentials(List.of(credential1))
                 .build();
 
@@ -299,7 +297,7 @@ class HolderServiceTest {
     void processCredentialOffer_emptyOfferedCredentials_throwsException() {
         // Arrange - Use mock since builder validation prevents empty credentials
         CredentialOfferMessage offer = mock(CredentialOfferMessage.class);
-        when(offer.getOfferedCredentials()).thenReturn(Collections.emptyList());
+        when(offer.getCredentialObjects()).thenReturn(Collections.emptyList());
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
