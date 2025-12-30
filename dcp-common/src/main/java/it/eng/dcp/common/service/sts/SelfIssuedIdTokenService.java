@@ -229,7 +229,9 @@ public class SelfIssuedIdTokenService {
             }
 
             return claims;
-        } catch (java.text.ParseException | JOSEException | DidResolutionException e) {
+        } catch (DidResolutionException e) {
+            throw new SecurityException("Failed to resolve DID: " + e.getMessage(), e);
+        } catch (java.text.ParseException | JOSEException e) {
             throw new RuntimeException("Failed to validate token", e);
         }
     }
