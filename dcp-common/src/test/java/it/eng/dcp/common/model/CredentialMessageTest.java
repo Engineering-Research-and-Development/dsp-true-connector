@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -15,6 +16,9 @@ class CredentialMessageTest {
     @Test
     @DisplayName("Builder constructs CredentialMessage and JSON roundtrip preserves fields for ISSUED status")
     void builderConstructsMessageAndJsonRoundtripForIssued() throws Exception {
+        String holderPid = UUID.randomUUID().toString();
+        String issuerPid = UUID.randomUUID().toString();
+
         CredentialMessage.CredentialContainer container = CredentialMessage.CredentialContainer.Builder.newInstance()
                 .credentialType("ProofCredential")
                 .format("jwt")
@@ -22,16 +26,16 @@ class CredentialMessageTest {
                 .build();
 
         CredentialMessage msg = CredentialMessage.Builder.newInstance()
-                .issuerPid("did:web:example:issuer")
-                .holderPid("did:web:example:holder")
+                .issuerPid(issuerPid)
+                .holderPid(holderPid)
                 .requestId("req-12345")
                 .status("ISSUED")
                 .credentials(List.of(container))
                 .build();
 
         assertEquals("CredentialMessage", msg.getType());
-        assertEquals("did:web:example:issuer", msg.getIssuerPid());
-        assertEquals("did:web:example:holder", msg.getHolderPid());
+        assertEquals(issuerPid, msg.getIssuerPid());
+        assertEquals(holderPid, msg.getHolderPid());
         assertEquals("req-12345", msg.getRequestId());
         assertEquals("ISSUED", msg.getStatus());
         assertEquals(1, msg.getCredentials().size());
@@ -51,6 +55,8 @@ class CredentialMessageTest {
     @Test
     @DisplayName("REJECTED status requires rejectionReason")
     void rejectedStatusRequiresReason() {
+        String holderPid = UUID.randomUUID().toString();
+        String issuerPid = UUID.randomUUID().toString();
         CredentialMessage.CredentialContainer container = CredentialMessage.CredentialContainer.Builder.newInstance()
                 .credentialType("ProofCredential")
                 .format("jwt")
@@ -59,8 +65,8 @@ class CredentialMessageTest {
 
         Exception ex = assertThrows(Exception.class, () ->
                 CredentialMessage.Builder.newInstance()
-                        .issuerPid("did:web:example:issuer")
-                        .holderPid("did:web:example:holder")
+                        .issuerPid(issuerPid)
+                        .holderPid(holderPid)
                         .status("REJECTED")
                         .credentials(List.of(container))
                         .build()

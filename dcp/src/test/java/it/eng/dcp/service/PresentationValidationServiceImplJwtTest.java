@@ -95,12 +95,12 @@ class PresentationValidationServiceImplJwtTest {
         assertTrue(credMap.containsKey("jwt"), "Credential should contain jwt field");
         assertInstanceOf(String.class, credMap.get("jwt"), "JWT field should be a String");
 
-        System.out.println("✓ VerifiablePresentation created successfully");
-        System.out.println("  - holderDid: " + vp.getHolderDid());
-        System.out.println("  - profileId: " + vp.getProfileId());
-        System.out.println("  - credentials count: " + vp.getCredentials().size());
-        System.out.println("  - credential type: " + credMap.get("type"));
-        System.out.println("  - credential format: " + credMap.get("format"));
+//        System.out.println("✓ VerifiablePresentation created successfully");
+//        System.out.println("  - holderDid: " + vp.getHolderDid());
+//        System.out.println("  - profileId: " + vp.getProfileId());
+//        System.out.println("  - credentials count: " + vp.getCredentials().size());
+//        System.out.println("  - credential type: " + credMap.get("type"));
+//        System.out.println("  - credential format: " + credMap.get("format"));
     }
 
     /**
@@ -135,27 +135,27 @@ class PresentationValidationServiceImplJwtTest {
         verify(profileResolver, atLeastOnce()).resolve(formatCaptor.capture(), attrsCaptor.capture());
 
         // Diagnose the issue
-        System.out.println("\n=== DIAGNOSIS: profileResolver.resolve called with ===");
+//        System.out.println("\n=== DIAGNOSIS: profileResolver.resolve called with ===");
         List<String> formats = formatCaptor.getAllValues();
         List<Map> attrs = attrsCaptor.getAllValues();
 
-        for (int i = 0; i < formats.size(); i++) {
-            System.out.println("Call " + (i + 1) + ":");
-            System.out.println("  - format: " + formats.get(i));
-            System.out.println("  - attrs: " + attrs.get(i));
-        }
+//        for (int i = 0; i < formats.size(); i++) {
+//            System.out.println("Call " + (i + 1) + ":");
+//            System.out.println("  - format: " + formats.get(i));
+//            System.out.println("  - attrs: " + attrs.get(i));
+//        }
 
         // The issue: profileResolver returns null, causing PROFILE_UNKNOWN error
         assertFalse(report.isValid(), "Report should be invalid when profileResolver returns null");
         assertTrue(report.getErrors().stream().anyMatch(e -> "PROFILE_UNKNOWN".equals(e.code())),
                 "Should have PROFILE_UNKNOWN error when profileResolver returns null");
 
-        System.out.println("\n=== ROOT CAUSE ===");
-        System.out.println("profileResolver.resolve returns null for:");
-        System.out.println("  - format: " + formats.get(0));
-        System.out.println("  - attrs: " + attrs.get(0));
-        System.out.println("\nThis means ProfileResolver cannot map format='jwt' to ProfileId.VC11_SL2021_JWT");
-        System.out.println("SOLUTION: Configure ProfileResolver to handle JWT format credentials");
+//        System.out.println("\n=== ROOT CAUSE ===");
+//        System.out.println("profileResolver.resolve returns null for:");
+//        System.out.println("  - format: " + formats.get(0));
+//        System.out.println("  - attrs: " + attrs.get(0));
+//        System.out.println("\nThis means ProfileResolver cannot map format='jwt' to ProfileId.VC11_SL2021_JWT");
+//        System.out.println("SOLUTION: Configure ProfileResolver to handle JWT format credentials");
     }
 
     /**
@@ -190,10 +190,10 @@ class PresentationValidationServiceImplJwtTest {
         ValidationReport report = validationService.validate(presentation, List.of("MembershipCredential"), null);
 
         // Then: Validation should succeed
-        System.out.println("\n=== VALIDATION REPORT ===");
-        System.out.println("Valid: " + report.isValid());
-        System.out.println("Errors: " + report.getErrors());
-        System.out.println("Accepted types: " + report.getAcceptedCredentialTypes());
+//        System.out.println("\n=== VALIDATION REPORT ===");
+//        System.out.println("Valid: " + report.isValid());
+//        System.out.println("Errors: " + report.getErrors());
+//        System.out.println("Accepted types: " + report.getAcceptedCredentialTypes());
 
         // Note: May still have errors if credential parsing fails, but no PROFILE_UNKNOWN error
         assertFalse(report.getErrors().stream().anyMatch(e -> "PROFILE_UNKNOWN".equals(e.code())),
@@ -261,16 +261,16 @@ class PresentationValidationServiceImplJwtTest {
                 .presentation(List.of(vp))
                 .build();
 
-        System.out.println("\n=== VALIDATION FLOW ===");
-        System.out.println("Step 1: JWT Parsed");
-        System.out.println("  - Issuer: " + claims.get("iss"));
-        System.out.println("  - Subject: " + claims.get("sub"));
-        System.out.println("  - VP profileId: " + vpNode.get("profileId").asText());
+//        System.out.println("\n=== VALIDATION FLOW ===");
+//        System.out.println("Step 1: JWT Parsed");
+//        System.out.println("  - Issuer: " + claims.get("iss"));
+//        System.out.println("  - Subject: " + claims.get("sub"));
+//        System.out.println("  - VP profileId: " + vpNode.get("profileId").asText());
 
-        System.out.println("\nStep 2: VerifiablePresentation Created");
-        System.out.println("  - holderDid: " + vp.getHolderDid());
-        System.out.println("  - profileId: " + vp.getProfileId());
-        System.out.println("  - credentialIds: " + vp.getCredentialIds());
+//        System.out.println("\nStep 2: VerifiablePresentation Created");
+//        System.out.println("  - holderDid: " + vp.getHolderDid());
+//        System.out.println("  - profileId: " + vp.getProfileId());
+//        System.out.println("  - credentialIds: " + vp.getCredentialIds());
 
         // Mock with correct configuration
         when(profileResolver.resolve(eq("jwt"), anyMap())).thenReturn(ProfileId.VC11_SL2021_JWT);
@@ -280,10 +280,10 @@ class PresentationValidationServiceImplJwtTest {
         // When: Validate
         ValidationReport report = validationService.validate(presentation, List.of("MembershipCredential"), null);
 
-        System.out.println("\nStep 3: Validation Complete");
-        System.out.println("  - Valid: " + report.isValid());
-        System.out.println("  - Errors: " + report.getErrors());
-        System.out.println("  - Accepted types: " + report.getAcceptedCredentialTypes());
+//        System.out.println("\nStep 3: Validation Complete");
+//        System.out.println("  - Valid: " + report.isValid());
+//        System.out.println("  - Errors: " + report.getErrors());
+//        System.out.println("  - Accepted types: " + report.getAcceptedCredentialTypes());
 
         // Verify no profile-related errors
         assertFalse(report.getErrors().stream().anyMatch(e ->

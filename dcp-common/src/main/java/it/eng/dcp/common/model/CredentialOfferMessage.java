@@ -32,12 +32,13 @@ public class CredentialOfferMessage implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    @JsonProperty(value = DSpaceConstants.CONTEXT)
-    private List<String> context = new ArrayList<>();
+    @JsonProperty(value = DSpaceConstants.CONTEXT, access = JsonProperty.Access.READ_ONLY)
+    private List<String> context = List.of("https://w3id.org/dspace-dcp/v1.0/dcp.jsonld");
 
     @JsonProperty(value = DSpaceConstants.TYPE, access = JsonProperty.Access.READ_ONLY)
     private String type;
 
+    @NotNull
     private String issuer;
 
     @NotNull
@@ -52,21 +53,11 @@ public class CredentialOfferMessage implements Serializable {
 
         private Builder() {
             msg = new CredentialOfferMessage();
-            msg.context.add(DSpaceConstants.DCP_CONTEXT);
         }
 
         @JsonCreator
         public static Builder newInstance() {
             return new Builder();
-        }
-
-        @JsonProperty(DSpaceConstants.CONTEXT)
-        public Builder context(List<String> context) {
-            if (context != null) {
-                msg.context.clear();
-                msg.context.addAll(context);
-            }
-            return this;
         }
 
         public Builder issuer(String issuer) {
@@ -114,7 +105,7 @@ public class CredentialOfferMessage implements Serializable {
         @JsonProperty(value = "id", required = true)
         private String id;
 
-        @NotNull
+//        @NotNull - need to support id's only
         private String credentialType;
 
         private Map<String, Object> issuancePolicy;

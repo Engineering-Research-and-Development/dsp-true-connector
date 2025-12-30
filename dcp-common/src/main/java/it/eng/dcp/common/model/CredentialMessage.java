@@ -30,8 +30,6 @@ public class CredentialMessage extends BaseDcpMessage {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    // public static final String MESSAGE_TYPE = "CredentialMessage";
-
     @Override
     @JsonProperty(value = DSpaceConstants.TYPE, access = JsonProperty.Access.READ_ONLY)
     public String getType() {
@@ -53,6 +51,7 @@ public class CredentialMessage extends BaseDcpMessage {
 
     @NotNull
     @Size(min = 1)
+    @JsonProperty(value = "credentials")
     private List<CredentialContainer> credentials = new ArrayList<>();
 
     @JsonPOJOBuilder(withPrefix = "")

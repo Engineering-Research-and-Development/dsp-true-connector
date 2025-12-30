@@ -275,6 +275,7 @@ class HolderServiceTest {
 
         CredentialOfferMessage offer = CredentialOfferMessage.Builder.newInstance()
                 .offeredCredentials(List.of(credential1))
+                .issuer("did:example:issuer123")
                 .build();
 
         // Act

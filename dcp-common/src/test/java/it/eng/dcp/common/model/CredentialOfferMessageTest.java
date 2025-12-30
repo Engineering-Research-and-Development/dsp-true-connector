@@ -1,9 +1,17 @@
 package it.eng.dcp.common.model;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import it.eng.tools.serializer.InstantDeserializer;
+import it.eng.tools.serializer.InstantSerializer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -91,5 +99,74 @@ class CredentialOfferMessageTest {
         assertEquals(offered.getType(), deserializedOffered.getType());
         assertEquals(offered.getOfferReason(), deserializedOffered.getOfferReason());
         assertEquals(offered.getCredentialSchema(), deserializedOffered.getCredentialSchema());
+    }
+
+    @Test
+    public void credentialOfferMessage_ids_only() {
+
+        SimpleModule instantConverterModule = new SimpleModule();
+        instantConverterModule.addSerializer(Instant.class, new InstantSerializer());
+        instantConverterModule.addDeserializer(Instant.class, new InstantDeserializer());
+        JsonMapper jsonMapper = JsonMapper.builder()
+                .serializationInclusion(JsonInclude.Include.NON_NULL)
+                .serializationInclusion(JsonInclude.Include.NON_EMPTY)
+                .configure(SerializationFeature.INDENT_OUTPUT, true)
+                .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+                .addModules(new JavaTimeModule(), instantConverterModule)
+                .build();
+
+        String json = """
+                {
+                    "@context": [
+                        "https://w3id.org/dspace-dcp/v1.0/dcp.jsonld"
+                    ],
+                    "type": "CredentialOfferMessage",
+                    "issuer": "did:web:localhost%3A8084:issuer",
+                    "credentials": [
+                        {
+                            "id": "80b1833e-f466-43f5-93a6-29ab49900ea5"
+                        },
+                        {
+                            "id": "539ab4cb-eaa3-4978-8916-5e9b91e62316"
+                        }
+                    ]
+                }
+                """;
+
+        String json2 = """
+                {
+                    "@context": [
+                        "https://w3id.org/dspace-dcp/v1.0/dcp.jsonld"
+                    ],
+                    "type": "CredentialOfferMessage",
+                    "issuer": "did:web:localhost%3A8084:issuer",
+                    "credentials": [
+                        {
+                            "profiles": [
+                                "vc11-sl2021/jwt",
+                                "vc20-bssl/jwt"
+                            ],
+                            "type": "CredentialObject",
+                            "id": "b3c16f06-e768-4b07-8762-84c020e4987f",
+                            "bindingMethods": [
+                                "did:web:"
+                            ],
+                            "offerReason": "reissue",
+                            "credentialType": "MembershipCredential",
+                            "issuancePolicy": {
+                            }
+                        }
+                    ]
+                }
+                """;
+        try {
+            CredentialOfferMessage msg = jsonMapper.readValue(json, CredentialOfferMessage.class);
+            assertNotNull(msg);
+            msg.getContext().forEach(System.out::println);
+            msg.getType();
+        } catch (Exception e) {
+            fail("Deserialization failed: " + e.getMessage(), e);
+        }
     }
 }

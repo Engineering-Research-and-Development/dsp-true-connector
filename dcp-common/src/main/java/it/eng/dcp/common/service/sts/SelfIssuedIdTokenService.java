@@ -212,6 +212,10 @@ public class SelfIssuedIdTokenService {
             if (now.isAfter(iat.toInstant().plusSeconds(3600))) {
                 throw new SecurityException("Token issued too far in the past");
             }
+            // Reject if iat is in the future (allow 2 min clock skew)
+            if (now.isBefore(iat.toInstant().minusSeconds(120))) {
+                throw new SecurityException("Token issued in the future (iat)");
+            }
 
             // 8. jti must be present and not used before
             String jti = claims.getJWTID();
