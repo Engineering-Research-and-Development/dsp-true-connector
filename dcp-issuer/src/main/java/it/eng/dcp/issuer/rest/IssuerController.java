@@ -40,7 +40,7 @@ public class IssuerController {
      * @return ResponseEntity with issuer metadata or error
      */
     @GetMapping(path = "/metadata")
-    public ResponseEntity<?> getMetadata(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {
+    public ResponseEntity<?> getMetadata(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
         if (authorization == null || !authorization.startsWith("Bearer ")) {
             return ResponseEntity.status(401).body("Missing or invalid Authorization header");
         }
@@ -68,8 +68,10 @@ public class IssuerController {
      */
     @PostMapping(path = "/credentials", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> createCredentialRequest(
-            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
             @RequestBody CredentialRequestMessage requestMessage) {
+
+        log.info("Received credential request creation");
 
         if (authorization == null || !authorization.startsWith("Bearer ")) {
             return ResponseEntity.status(401).body("Missing or invalid Authorization header");

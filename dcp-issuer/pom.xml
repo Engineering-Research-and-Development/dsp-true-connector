@@ -15,6 +15,10 @@
     <description>Standalone Verifiable Credentials Issuer Service</description>
     <packaging>jar</packaging>
 
+    <properties>
+        <testcontainer.version>2.0.2</testcontainer.version>
+    </properties>
+
     <dependencies>
         <!-- Internal dependencies -->
         <dependency>
@@ -122,6 +126,32 @@
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>${testcontainer.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>minio</artifactId>
+            <version>1.20.5</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>mongodb</artifactId>
+            <version>1.20.5</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>1.20.5</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -135,6 +165,8 @@
                 <configuration>
                     <mainClass>it.eng.dcp.issuer.IssuerApplication</mainClass>
                     <layout>JAR</layout>
+                    <!-- Add classifier to distinguish executable JAR from original -->
+                    <classifier>exec</classifier>
                 </configuration>
                 <executions>
                     <execution>
