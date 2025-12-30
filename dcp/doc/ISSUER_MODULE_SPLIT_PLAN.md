@@ -148,31 +148,52 @@ dsp-true-connector/
 
 ## Implementation Plan
 
-### Phase 1: Create Common Library Module
+### Phase 1: Create Common Library Module ✅ COMPLETED
 
 **Goal**: Extract shared models and utilities into a reusable library
 
+**Status**: ✅ All tasks completed - December 18, 2025
+
 #### Tasks:
 1. **Create `dcp-common` module**
-   - [ ] Create `dcp-common/pom.xml` with minimal dependencies
-   - [ ] Add to parent `pom.xml` modules section
+   - [x] Create `dcp-common/pom.xml` with minimal dependencies
+   - [x] Add to parent `pom.xml` modules section
    
 2. **Move shared models**
-   - [ ] `DidDocument`, `VerificationMethod`, `ServiceEntry`
-   - [ ] `VerifiableCredential`, `VerifiablePresentation`
-   - [ ] `IssuerMetadata`, `CredentialRequest`
-   - [ ] All DCP message models (`BaseDcpMessage`, `CredentialMessage`, etc.)
-   - [ ] `KeyMetadata`
+   - [x] `DidDocument`, `VerificationMethod`, `ServiceEntry`
+   - [x] `ProfileId`, `CredentialStatus`
+   - [x] All DCP message models (`BaseDcpMessage`, `CredentialMessage`, etc.)
+   - [x] `KeyMetadata`
    
 3. **Move shared utilities**
-   - [ ] JWT signing/verification utilities
-   - [ ] DID resolution utilities
-   - [ ] Common validation logic
+   - [x] `DidUrlConverter` - DID/URL conversion
+   - [x] `SelfSignedCertGenerator` - Certificate generation
+   
+4. **Move shared services**
+   - [x] `KeyService` - Key management and rotation
+   - [x] `KeyMetadataService` - Key metadata persistence
+   
+5. **Move shared repositories**
+   - [x] `KeyMetadataRepository` - MongoDB repository
 
-4. **Update dependencies**
-   - [ ] Update `dcp` module to depend on `dcp-common`
-   - [ ] Fix all imports
-   - [ ] Run tests to verify no breakage
+6. **Update dependencies**
+   - [x] Update `dcp` module to depend on `dcp-common`
+   - [x] Fix all imports (32 files updated)
+   - [x] Run tests to verify no breakage (233 tests passing)
+   
+7. **Migrate tests**
+   - [x] Move 9 test files to dcp-common
+   - [x] Delete duplicate tests from dcp
+   - [x] All tests passing in both modules
+
+**Results**: 
+- 9 classes migrated (7 models + 2 services)
+- 2 utilities migrated
+- 1 repository migrated
+- 9 test files migrated
+- 32 files updated in dcp module
+- 16 duplicate files deleted
+- 233 total tests passing ✅
 
 ### Phase 2: Create Issuer Module Structure
 

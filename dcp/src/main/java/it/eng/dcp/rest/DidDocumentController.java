@@ -41,13 +41,13 @@ public class DidDocumentController {
      *
      * @return DID document for the holder
      */
-    @GetMapping("/.well-known/did.json")
+    @GetMapping(value = "/.well-known/did.json")
     public ResponseEntity<DidDocument> getDidDocument() {
         DidDocument didDocument = didDocumentService.provideDidDocument(holderDidDocumentConfig);
         return ResponseEntity.ok(didDocument);
     }
 
-    @GetMapping("/holder/did.json" )
+    @GetMapping(value = "/holder/did.json")
     public ResponseEntity<DidDocument> getHolderDidDocument() {
         log.info("Received request for holder DID document");
         DidDocument didDocument = didDocumentService.provideDidDocument(holderDidDocumentConfig);

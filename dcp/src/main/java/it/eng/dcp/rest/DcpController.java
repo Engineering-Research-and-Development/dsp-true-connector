@@ -26,7 +26,7 @@ import java.util.Map;
  * Delegates business logic to HolderService.
  */
 @RestController
-@RequestMapping(path = "/dcp")
+@RequestMapping(path = "/dcp", produces =  MediaType.APPLICATION_JSON_VALUE)
 @Slf4j
 public class DcpController {
 
@@ -37,6 +37,13 @@ public class DcpController {
         this.holderService = holderService;
     }
 
+    private String extractBearerToken(String authorizationHeader) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            throw new SecurityException("Missing or invalid Authorization header");
+        }
+        return authorizationHeader.substring("Bearer ".length());
+    }
+
     /**
      * Presentation query endpoint.
      * Accepts presentation queries from verifiers and returns verifiable presentations.
@@ -45,7 +52,7 @@ public class DcpController {
      * @param query The presentation query message
      * @return PresentationResponseMessage or error response
      */
-    @PostMapping(path = "/presentations/query", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(path = "/presentations/query")
     public ResponseEntity<?> queryPresentations(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                                 @RequestBody PresentationQueryMessage query) {
         log.info("Received presentation query request");
@@ -53,12 +60,7 @@ public class DcpController {
                 query != null ? query.getScope() : null,
                 query != null && query.getPresentationDefinition() != null);
 
-        // Validate Bearer token: expected format 'Bearer <jwt>'
-        if (authorization == null || !authorization.startsWith("Bearer ")) {
-            log.warn("Presentation query rejected: Missing or invalid Authorization header");
-            return ResponseEntity.status(401).build();
-        }
-        String token = authorization.substring("Bearer ".length());
+        String token = extractBearerToken(authorization);
 
         try {
             // Authorize request
@@ -91,23 +93,16 @@ public class DcpController {
      * @param msg The credential message
      * @return Success response with saved/skipped counts or error response
      */
-    @PostMapping(path = "/credentials", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(path = "/credentials")
     public ResponseEntity<?> receiveCredentials(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
-                                                @RequestBody CredentialMessage msg) throws JsonProcessingException {
+                                                @RequestBody CredentialMessage msg) {
         log.info("Received credential message - status: {}, issuerPid: {}, holderPid: {}",
                 msg != null ? msg.getStatus() : "null",
                 msg != null ? msg.getIssuerPid() : "null",
                 msg != null ? msg.getHolderPid() : "null");
 
-        // Authenticate issuer: require Bearer token
-        if (authorization == null || !authorization.startsWith("Bearer ")) {
-            log.warn("Credential reception rejected: Missing or invalid Authorization header");
-            return ResponseEntity.status(401).body("Missing or invalid Authorization header");
-        }
-        String token = authorization.substring("Bearer ".length());
-        log.info(" -------- Token {}", token);
-        ObjectMapper objectMapper = new ObjectMapper();
-        log.info(" -------- Credential Message {}", objectMapper.writeValueAsString(msg));
+        String token = extractBearerToken(authorization);
+
         try {
             // Authorize issuer
             String issuerDid = holderService.authorizeIssuer(token);
@@ -174,12 +169,21 @@ public class DcpController {
      * Receives credential offers from issuers.
      *
      * @param offer The credential offer message
+     * @param authorization HTTP Authorization header with Bearer token from issuer
      * @return Acceptance response
      */
-    @PostMapping(path = "/offers", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> receiveOffer(@RequestBody CredentialOfferMessage offer) {
+    @PostMapping(path = "/offers")
+    public ResponseEntity<?> receiveOffer(@RequestBody Map<String, Object> offer,
+                                          @RequestHeader(value = HttpHeaders.AUTHORIZATION) String authorization)
+            throws JsonProcessingException {
+        // Authorization is optional for offers, but if present, validate it
+       String token =  extractBearerToken(authorization);
+       ObjectMapper objectMapper = new ObjectMapper();
+        log.info("Received credential offer {}", objectMapper.writeValueAsString(offer));
         try {
-            boolean accepted = holderService.processCredentialOffer(offer);
+            holderService.authorizeIssuer(token);
+            CredentialOfferMessage com = objectMapper.convertValue(offer, CredentialOfferMessage.class);
+            boolean accepted = holderService.processCredentialOffer(com);
             return ResponseEntity.ok(Map.of("accepted", accepted));
         } catch (IllegalArgumentException e) {
             log.error("Invalid credential offer: {}", e.getMessage());

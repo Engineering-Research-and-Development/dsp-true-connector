@@ -228,10 +228,16 @@ public class SelfIssuedIdTokenService {
                 throw new SecurityException("jti has already been used", e);
             }
 
+            log.debug("Token validation successful for subject: {}", subject);
             return claims;
+        } catch (SecurityException e) {
+            log.warn("Token validation failed: {}", e.getMessage());
+            throw e;
         } catch (DidResolutionException e) {
+            log.warn("Token validation failed - DID resolution error: {}", e.getMessage());
             throw new SecurityException("Failed to resolve DID: " + e.getMessage(), e);
         } catch (java.text.ParseException | JOSEException e) {
+            log.error("Token validation failed - parse/crypto error: {}", e.getMessage());
             throw new RuntimeException("Failed to validate token", e);
         }
     }
