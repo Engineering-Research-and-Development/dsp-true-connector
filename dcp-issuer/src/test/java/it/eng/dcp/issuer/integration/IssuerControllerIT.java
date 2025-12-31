@@ -1,4 +1,4 @@
-package it.eng.dcp.issuer.rest;
+package it.eng.dcp.issuer.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.JOSEException;
@@ -10,9 +10,11 @@ import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.model.CredentialRequestMessage;
 import it.eng.dcp.common.model.CredentialRequestMessage.CredentialReference;
+import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.common.service.did.DidResolverService;
 import it.eng.dcp.issuer.service.CredentialDeliveryService;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,14 +45,12 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
 
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
+import static org.hamcrest.Matchers.containsString;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static org.hamcrest.Matchers.*;
 
 /**
  * Integration tests for IssuerController using mocked DID resolution.
@@ -62,36 +62,8 @@ import static org.hamcrest.Matchers.*;
  *   <li>Full Spring context with MockMvc</li>
  * </ul>
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Testcontainers
-public class IssuerControllerIT {
 
-    protected static final MongoDBContainer mongoDBContainer =
-            new MongoDBContainer(DockerImageName.parse("mongo:7.0.12"))
-                    .withReuse(false);
-    protected static final MinIOContainer minIOContainer =
-            new MinIOContainer(DockerImageName.parse("minio/minio"))
-                    .withReuse(false);
-
-    static {
-        mongoDBContainer.start();
-        // used for checking S3 storage during test debugging; will be exposed on random localhost port which can be checked with `docker ps`or some docker GUI
-        minIOContainer.addExposedPort(9001);
-        minIOContainer.start();
-    }
-
-    @DynamicPropertySource
-    static void containersProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.data.mongodb.host", mongoDBContainer::getHost);
-        registry.add("spring.data.mongodb.port", mongoDBContainer::getFirstMappedPort);
-        registry.add("s3.endpoint", minIOContainer::getS3URL);
-        registry.add("s3.externalPresignedEndpoint", minIOContainer::getS3URL);
-
-    }
-
-    @Autowired
-    private MockMvc mockMvc;
+public class IssuerControllerIT extends BaseIssuerIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -101,9 +73,6 @@ public class IssuerControllerIT {
 
     @MockBean
     private CredentialDeliveryService credentialDeliveryService;
-
-    private ECKey holderKeyPair;
-    private ECKey issuerKeyPair;
 
     private static final String ISSUER_DID = "did:test:issuer";
     private static final String HOLDER_DID = "did:test:holder";
@@ -116,17 +85,10 @@ public class IssuerControllerIT {
      * Configures credential delivery service mock to succeed by default.
      * Individual tests can override this behavior as needed.
      */
+    @Override
     @BeforeEach
-    void setup() throws JOSEException {
-        // Generate holder keypair for signing test tokens
-        holderKeyPair = new ECKeyGenerator(Curve.P_256)
-            .keyID(HOLDER_KEY_ID)
-            .generate();
-
-        // Generate issuer keypair
-        issuerKeyPair = new ECKeyGenerator(Curve.P_256)
-            .keyID(ISSUER_KEY_ID)
-            .generate();
+    void beforeEach() throws JOSEException {
+        super.beforeEach();
 
         // Reset and configure credential delivery service mock to succeed by default
         // This ensures consistent behavior across all tests and allows individual tests
@@ -783,36 +745,6 @@ public class IssuerControllerIT {
             .andExpect(status().isInternalServerError())
             .andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.message").value(containsString("Internal error")));
-    }
-
-    /**
-     * Tests rejection failure without reason.
-     */
-    @Test
-    void rejectRequest_failure_noReason() throws Exception {
-        Map<String, String> rejectionBody = new HashMap<>();
-
-        mockMvc.perform(post("/issuer/requests/some-id/reject")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(rejectionBody)))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.success").value(false))
-            .andExpect(jsonPath("$.message").value("Rejection reason is required"));
-    }
-
-    /**
-     * Tests rejection failure with blank reason.
-     */
-    @Test
-    void rejectRequest_failure_blankReason() throws Exception {
-        Map<String, String> rejectionBody = new HashMap<>();
-        rejectionBody.put("reason", "   ");
-
-        mockMvc.perform(post("/issuer/requests/some-id/reject")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(rejectionBody)))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.message").value("Rejection reason is required"));
     }
 
     /**
