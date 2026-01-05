@@ -32,50 +32,19 @@ class IssuerControllerTest {
 
     @Test
     void getMetadata_success() {
-        String token = "valid-token";
-        String authHeader = "Bearer " + token;
         IssuerMetadata metadata = mock(IssuerMetadata.class);
-        when(issuerService.authorizeRequest(eq(token), isNull())).thenReturn(jwtClaimsSet);
         when(issuerService.getMetadata()).thenReturn(metadata);
 
-        ResponseEntity<?> response = issuerController.getMetadata(authHeader);
+        ResponseEntity<?> response = issuerController.getMetadata();
         assertEquals(200, response.getStatusCode().value());
         assertSame(metadata, response.getBody());
     }
 
     @Test
-    void getMetadata_missingAuthHeader() {
-        ResponseEntity<?> response = issuerController.getMetadata(null);
-        assertEquals(401, response.getStatusCode().value());
-        assertEquals("Missing or invalid Authorization header", response.getBody());
-    }
-
-    @Test
-    void getMetadata_invalidAuthHeader() {
-        ResponseEntity<?> response = issuerController.getMetadata("Basic abc");
-        assertEquals(401, response.getStatusCode().value());
-        assertEquals("Missing or invalid Authorization header", response.getBody());
-    }
-
-    @Test
-    void getMetadata_unauthorized() {
-        String token = "bad-token";
-        String authHeader = "Bearer " + token;
-        doThrow(new SecurityException("bad token")).when(issuerService).authorizeRequest(eq(token), isNull());
-
-        ResponseEntity<?> response = issuerController.getMetadata(authHeader);
-        assertEquals(401, response.getStatusCode().value());
-        assertEquals("Unauthorized: bad token", response.getBody());
-    }
-
-    @Test
     void getMetadata_internalError() {
-        String token = "token";
-        String authHeader = "Bearer " + token;
-        when(issuerService.authorizeRequest(eq(token), isNull())).thenReturn(jwtClaimsSet);
         when(issuerService.getMetadata()).thenThrow(new RuntimeException("fail"));
 
-        ResponseEntity<?> response = issuerController.getMetadata(authHeader);
+        ResponseEntity<?> response = issuerController.getMetadata();
         assertEquals(500, response.getStatusCode().value());
         assertNotNull(response.getBody());
         assertTrue(response.getBody().toString().contains("Internal error: fail"));

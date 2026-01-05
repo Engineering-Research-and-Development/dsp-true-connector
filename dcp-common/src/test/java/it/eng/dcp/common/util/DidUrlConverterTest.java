@@ -384,7 +384,7 @@ class DidUrlConverterTest {
             String did = "did:web:verifier.example.com";
             String expected = "https://verifier.example.com";
 
-            String result = DidUrlConverter.convertDidToUrl(did);
+            String result = DidUrlConverter.convertDidToUrl(did, true);
 
             assertEquals(expected, result);
         }
@@ -395,7 +395,7 @@ class DidUrlConverterTest {
             String did = "did:web:localhost%3A8080";
             String expected = "https://localhost:8080";
 
-            String result = DidUrlConverter.convertDidToUrl(did);
+            String result = DidUrlConverter.convertDidToUrl(did, true);
 
             assertEquals(expected, result);
         }
@@ -406,7 +406,7 @@ class DidUrlConverterTest {
             String did = "did:web:verifier.example.com%3A9090";
             String expected = "https://verifier.example.com:9090";
 
-            String result = DidUrlConverter.convertDidToUrl(did);
+            String result = DidUrlConverter.convertDidToUrl(did, true);
 
             assertEquals(expected, result);
         }
@@ -417,7 +417,7 @@ class DidUrlConverterTest {
             String did = "did:web:example.com:holder";
             String expected = "https://example.com";
 
-            String result = DidUrlConverter.convertDidToUrl(did);
+            String result = DidUrlConverter.convertDidToUrl(did, true);
 
             assertEquals(expected, result);
         }
@@ -428,7 +428,7 @@ class DidUrlConverterTest {
             String did = "did:web:192.168.1.100%3A8080";
             String expected = "https://192.168.1.100:8080";
 
-            String result = DidUrlConverter.convertDidToUrl(did);
+            String result = DidUrlConverter.convertDidToUrl(did, true);
 
             assertEquals(expected, result);
         }
@@ -439,7 +439,7 @@ class DidUrlConverterTest {
             String did = "did:web:localhost%3A8080:api:v1";
             String expected = "https://localhost:8080/api/v1";
 
-            String result = DidUrlConverter.convertDidToUrl(did);
+            String result = DidUrlConverter.convertDidToUrl(did, true);
 
             assertEquals(expected, result);
         }
@@ -450,7 +450,7 @@ class DidUrlConverterTest {
             String did = "did:web:example.com:api:v1:resource";
             String expected = "https://example.com/api/v1/resource";
 
-            String result = DidUrlConverter.convertDidToUrl(did);
+            String result = DidUrlConverter.convertDidToUrl(did, true);
 
             assertEquals(expected, result);
         }
@@ -461,7 +461,7 @@ class DidUrlConverterTest {
             String did = "did:web:localhost:8080:api:v1";
             String expected = "https://localhost:8080/api/v1";
 
-            String result = DidUrlConverter.convertDidToUrl(did);
+            String result = DidUrlConverter.convertDidToUrl(did, true);
 
             assertEquals(expected, result);
         }
@@ -505,14 +505,14 @@ class DidUrlConverterTest {
     }
 
     @Nested
-    @DisplayName("Round-trip conversion tests")
+    @DisplayName("Round-trip conversion tests, default to http")
     class RoundTripTests {
 
         @Test
         @DisplayName("URL to DID to URL round-trip preserves base URL")
         void urlToDidToUrlRoundTrip() {
             String originalUrl = "https://verifier.example.com/catalog/request";
-            String expectedBaseUrl = "https://verifier.example.com";
+            String expectedBaseUrl = "http://verifier.example.com";
 
             String did = DidUrlConverter.convertUrlToDid(originalUrl);
             String resultUrl = DidUrlConverter.convertDidToUrl(did);
@@ -521,10 +521,10 @@ class DidUrlConverterTest {
         }
 
         @Test
-        @DisplayName("URL with port to DID to URL round-trip")
+        @DisplayName("URL with port to DID to URL round-trip, default to HTTP")
         void urlWithPortToDidToUrlRoundTrip() {
             String originalUrl = "https://localhost:8080/dsp/catalog";
-            String expectedBaseUrl = "https://localhost:8080";
+            String expectedBaseUrl = "http://localhost:8080";
 
             String did = DidUrlConverter.convertUrlToDid(originalUrl);
             String resultUrl = DidUrlConverter.convertDidToUrl(did);

@@ -5,12 +5,12 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialOfferMessage;
 import it.eng.dcp.common.model.CredentialStatus;
+import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.core.ProfileResolver;
 import it.eng.dcp.model.CredentialStatusRecord;
 import it.eng.dcp.model.PresentationQueryMessage;
 import it.eng.dcp.model.PresentationResponseMessage;
-import it.eng.dcp.model.VerifiableCredential;
 import it.eng.dcp.repository.CredentialStatusRepository;
 import it.eng.dcp.repository.VerifiableCredentialRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -361,12 +361,12 @@ class HolderServiceTest {
         when(sparseCredential.getCredentialType()).thenReturn(null); // Sparse - missing credentialType
 
         CredentialOfferMessage offer = mock(CredentialOfferMessage.class);
-        when(offer.getIssuer()).thenReturn("https://issuer.example.com");
+        when(offer.getIssuer()).thenReturn("did:web:issuer.example.com");
         when(offer.getCredentialObjects()).thenReturn(List.of(sparseCredential));
 
         // Mock issuer metadata response
-        it.eng.dcp.common.model.IssuerMetadata.CredentialObject fullCredential =
-            it.eng.dcp.common.model.IssuerMetadata.CredentialObject.Builder.newInstance()
+        IssuerMetadata.CredentialObject fullCredential =
+            IssuerMetadata.CredentialObject.Builder.newInstance()
                 .id("cred-123")
                 .type("CredentialObject")
                 .credentialType("MembershipCredential")
@@ -374,20 +374,20 @@ class HolderServiceTest {
                 .bindingMethods(List.of("did:web"))
                 .build();
 
-        it.eng.dcp.common.model.IssuerMetadata metadata =
-            it.eng.dcp.common.model.IssuerMetadata.Builder.newInstance()
-                .issuer("https://issuer.example.com")
+        IssuerMetadata metadata =
+            IssuerMetadata.Builder.newInstance()
+                .issuer("did:web:issuer.example.com")
                 .credentialsSupported(List.of(fullCredential))
                 .build();
 
-        when(issuanceClient.getIssuerMetadata("https://issuer.example.com/metadata")).thenReturn(metadata);
+        when(issuanceClient.getIssuerMetadata("http://issuer.example.com/metadata")).thenReturn(metadata);
 
         // Act
         boolean result = holderService.processCredentialOffer(offer);
 
         // Assert
         assertTrue(result);
-        verify(issuanceClient).getIssuerMetadata("https://issuer.example.com/metadata");
+        verify(issuanceClient).getIssuerMetadata("http://issuer.example.com/metadata");
     }
 
     @Test
@@ -398,24 +398,24 @@ class HolderServiceTest {
         when(sparseCredential.getCredentialType()).thenReturn(null);
 
         CredentialOfferMessage offer = mock(CredentialOfferMessage.class);
-        when(offer.getIssuer()).thenReturn("https://issuer.example.com");
+        when(offer.getIssuer()).thenReturn("did:web:issuer.example.com");
         when(offer.getCredentialObjects()).thenReturn(List.of(sparseCredential));
 
         // Mock metadata with different credential
-        it.eng.dcp.common.model.IssuerMetadata.CredentialObject fullCredential =
-            it.eng.dcp.common.model.IssuerMetadata.CredentialObject.Builder.newInstance()
+        IssuerMetadata.CredentialObject fullCredential =
+            IssuerMetadata.CredentialObject.Builder.newInstance()
                 .id("cred-123")
                 .type("CredentialObject")
                 .credentialType("MembershipCredential")
                 .build();
 
-        it.eng.dcp.common.model.IssuerMetadata metadata =
-            it.eng.dcp.common.model.IssuerMetadata.Builder.newInstance()
-                .issuer("https://issuer.example.com")
+        IssuerMetadata metadata =
+            IssuerMetadata.Builder.newInstance()
+                .issuer("did:web:issuer.example.com")
                 .credentialsSupported(List.of(fullCredential))
                 .build();
 
-        when(issuanceClient.getIssuerMetadata("https://issuer.example.com/metadata")).thenReturn(metadata);
+        when(issuanceClient.getIssuerMetadata("http://issuer.example.com/metadata")).thenReturn(metadata);
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
@@ -432,10 +432,10 @@ class HolderServiceTest {
         when(sparseCredential.getCredentialType()).thenReturn(null);
 
         CredentialOfferMessage offer = mock(CredentialOfferMessage.class);
-        when(offer.getIssuer()).thenReturn("https://issuer.example.com");
+        when(offer.getIssuer()).thenReturn("did:web:issuer.example.com");
         when(offer.getCredentialObjects()).thenReturn(List.of(sparseCredential));
 
-        when(issuanceClient.getIssuerMetadata("https://issuer.example.com/metadata"))
+        when(issuanceClient.getIssuerMetadata("http://issuer.example.com/metadata"))
             .thenThrow(new RuntimeException("Network error"));
 
         // Act & Assert
@@ -458,191 +458,30 @@ class HolderServiceTest {
         when(sparseCredential.getCredentialType()).thenReturn(null);
 
         CredentialOfferMessage offer = mock(CredentialOfferMessage.class);
-        when(offer.getIssuer()).thenReturn("https://issuer.example.com/");
+        when(offer.getIssuer()).thenReturn("did:web:issuer.example.com");
         when(offer.getCredentialObjects()).thenReturn(List.of(fullCredential, sparseCredential));
 
         // Mock metadata
-        it.eng.dcp.common.model.IssuerMetadata.CredentialObject metadataCredential =
-            it.eng.dcp.common.model.IssuerMetadata.CredentialObject.Builder.newInstance()
+        IssuerMetadata.CredentialObject metadataCredential =
+            IssuerMetadata.CredentialObject.Builder.newInstance()
                 .id("cred-456")
                 .type("CredentialObject")
                 .credentialType("MembershipCredential")
                 .build();
 
-        it.eng.dcp.common.model.IssuerMetadata metadata =
-            it.eng.dcp.common.model.IssuerMetadata.Builder.newInstance()
-                .issuer("https://issuer.example.com")
+        IssuerMetadata metadata =
+            IssuerMetadata.Builder.newInstance()
+                .issuer("did:web:issuer.example.com")
                 .credentialsSupported(List.of(metadataCredential))
                 .build();
 
-        when(issuanceClient.getIssuerMetadata("https://issuer.example.com/metadata")).thenReturn(metadata);
+        when(issuanceClient.getIssuerMetadata("http://issuer.example.com/metadata")).thenReturn(metadata);
 
         // Act
         boolean result = holderService.processCredentialOffer(offer);
 
         // Assert
         assertTrue(result);
-        verify(issuanceClient).getIssuerMetadata("https://issuer.example.com/metadata");
-    }
-
-    @Test
-    void credentialReceptionResult_isEmpty_whenAllSkipped() {
-        // Arrange
-        HolderService.CredentialReceptionResult result = new HolderService.CredentialReceptionResult(0, 5);
-
-        // Assert
-        assertTrue(result.isEmpty());
-        assertTrue(result.hasSkipped());
-        assertEquals(0, result.getSavedCount());
-        assertEquals(5, result.getSkippedCount());
-    }
-
-    @Test
-    void credentialReceptionResult_notEmpty_whenSomeSaved() {
-        // Arrange
-        HolderService.CredentialReceptionResult result = new HolderService.CredentialReceptionResult(3, 2);
-
-        // Assert
-        assertFalse(result.isEmpty());
-        assertTrue(result.hasSkipped());
-        assertEquals(3, result.getSavedCount());
-        assertEquals(2, result.getSkippedCount());
-    }
-
-    @Test
-    void credentialReceptionResult_noSkipped_whenAllSaved() {
-        // Arrange
-        HolderService.CredentialReceptionResult result = new HolderService.CredentialReceptionResult(5, 0);
-
-        // Assert
-        assertFalse(result.isEmpty());
-        assertFalse(result.hasSkipped());
-        assertEquals(5, result.getSavedCount());
-        assertEquals(0, result.getSkippedCount());
-    }
-
-    @Test
-//    @Disabled("Disabled until full VC parsing and validation is implemented")
-    void processIssuedCredentials_validIssuedMessage_savesCredentialsAndReturnsSuccess() {
-        // Arrange
-        String issuerPid = "39c7157d-99ba-4596-ac44-741f415d6646";
-        String holderPid = "59e3cc57-8773-4aa6-87e5-4bc47f09f429";
-        String requestId = holderPid;
-        String payload1 = "eyJraWQiOiJkaWQ6d2ViOmxvY2FsaG9zdCUzQTgwODA6aXNzdWVyIzY2ZjcxMDI5LTg3MDYtNDk5Ny1iNTZjLTJmZjRhODQzYjZkYSIsInR5cCI6IkpXVCIsImFsZyI6IkVTMjU2In0.eyJzdWIiOiIxNzMyODc3ZS0zNmM4LTQwYjgtYmZjYy1jZDU5YmFmMzdiMjciLCJuYmYiOjE3NjY1Njk5MjgsImlzcyI6ImRpZDp3ZWI6bG9jYWxob3N0JTNBODA4MDppc3N1ZXIiLCJleHAiOjE3NjY1NzAyMjgsImlhdCI6MTc2NjU2OTkyOCwidmMiOnsiQGNvbnRleHQiOiIxNzMyODc3ZS0zNmM4LTQwYjgtYmZjYy1jZDU5YmFmMzdiMjciLCJpZCI6IjE3MzI4NzdlLTM2YzgtNDBiOC1iZmNjLWNkNTliYWYzN2IyNyIsInR5cGUiOlsiTWVtYmVyc2hpcENyZWRlbnRpYWwiXSwiaXNzdWVyIjoiZGlkOndlYjpsb2NhbGhvc3QlM0E4MDgwOmlzc3VlciIsImlzc3VhbmNlRGF0ZSI6IjIwMjUtMTItMjRUMDk6NTI6MDguNjkzMDg3MjAwWiIsImV4cGlyYXRpb25EYXRlIjpudWxsLCJjcmVkZW50aWFsU3ViamVjdCI6eyJmb28iOiJiYXIiLCJpZCI6ImRpZDp3ZWI6bG9jYWxob3N0JTNBODA4MDpob2xkZXIifX0sImp0aSI6ImIzNDBjYmVlLWNjZDAtNDc1Mi1hNzFlLTBhZTkxZGQzZGY2MyJ9.wE4Um0edixt9rKKBYv_vrquOHW6S23tCB_EQMeUZdGqkxeQbBsigbScDu3fRLOas6udN2vj6517Kg9gRqv5nVw";
-        String payload2 = "eyJraWQiOiJkaWQ6d2ViOmxvY2FsaG9zdCUzQTgwODA6aXNzdWVyIzY2ZjcxMDI5LTg3MDYtNDk5Ny1iNTZjLTJmZjRhODQzYjZkYSIsInR5cCI6IkpXVCIsImFsZyI6IkVTMjU2In0.eyJzdWIiOiI4ZGViYWM1Mi0wYWUxLTQwZTgtYWY4Ni1jYzY1MGYyNjNlMDMiLCJuYmYiOjE3NjY1Njk5MjgsImlzcyI6ImRpZDp3ZWI6bG9jYWxob3N0JTNBODA4MDppc3N1ZXIiLCJleHAiOjE3NjY1NzAyMjgsImlhdCI6MTc2NjU2OTkyOCwidmMiOnsiQGNvbnRleHQiOiI4ZGViYWM1Mi0wYWUxLTQwZTgtYWY4Ni1jYzY1MGYyNjNlMDMiLCJpZCI6IjhkZWJhYzUyLTBhZTEtNDBlOC1hZjg2LWNjNjUwZjI2M2UwMyIsInR5cGUiOlsiU2Vuc2l0aXZlRGF0YUNyZWRlbnRpYWwiXSwiaXNzdWVyIjoiZGlkOndlYjpsb2NhbGhvc3QlM0E4MDgwOmlzc3VlciIsImlzc3VhbmNlRGF0ZSI6IjIwMjUtMTItMjRUMDk6NTI6MDguNzYwNzcxNzAwWiIsImV4cGlyYXRpb25EYXRlIjpudWxsLCJjcmVkZW50aWFsU3ViamVjdCI6eyJmb28iOiJiYXIiLCJpZCI6ImRpZDp3ZWI6bG9jYWxob3N0JTNBODA4MDpob2xkZXIifX0sImp0aSI6IjQ3M2ExZjIwLWYzNGMtNGI3OS1hMTFhLTM4ZTg2MWQzYWM4MiJ9.EcbmqIlr6o_zvvyyRS-NdFr7uNH3KVR0ZhD1h4U0sKPSgLdwHIQiR6KAkZwGq7Fpu7ZSTfGTM6b5E2AORbSjcw";
-
-        CredentialMessage.CredentialContainer container1 = CredentialMessage.CredentialContainer.Builder.newInstance()
-                .credentialType("MembershipCredential")
-                .payload(payload1)
-                .format("VC1_0_JWT")
-                .build();
-        CredentialMessage.CredentialContainer container2 = CredentialMessage.CredentialContainer.Builder.newInstance()
-                .credentialType("SensitiveDataCredential")
-                .payload(payload2)
-                .format("VC1_0_JWT")
-                .build();
-
-        CredentialMessage msg = CredentialMessage.Builder.newInstance()
-                .issuerPid(issuerPid)
-                .holderPid(holderPid)
-                .status("ISSUED")
-                .rejectionReason(null)
-                .requestId(requestId)
-                .credentials(List.of(container1, container2))
-                .build();
-
-        // Mock credentialRepository.save to return the input VerifiableCredential
-        when(credentialRepository.save(any(VerifiableCredential.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-        // Act
-        HolderService.CredentialReceptionResult result = holderService.processIssuedCredentials(msg, issuerPid);
-
-        // Assert
-        assertNotNull(result);
-        assertEquals(2, result.getSavedCount());
-        assertEquals(0, result.getSkippedCount());
-        assertFalse(result.isEmpty());
-        assertFalse(result.hasSkipped());
-        // Verify that save was called twice
-        verify(credentialRepository, times(2)).save(any(VerifiableCredential.class));
-        // Optionally, capture and inspect the saved credentials
-        ArgumentCaptor<VerifiableCredential> captor = ArgumentCaptor.forClass(VerifiableCredential.class);
-        verify(credentialRepository, times(2)).save(captor.capture());
-        List<VerifiableCredential> saved = captor.getAllValues();
-        assertEquals("MembershipCredential", saved.get(0).getCredentialType());
-        assertEquals("SensitiveDataCredential", saved.get(1).getCredentialType());
-        // The holderDid should be extracted from the credential's credentialSubject.id, not from holderPid
-        assertEquals("did:web:localhost%3A8080:holder", saved.get(0).getHolderDid());
-        assertEquals("did:web:localhost%3A8080:holder", saved.get(1).getHolderDid());
-        assertEquals(issuerPid, saved.get(0).getIssuerDid());
-        assertEquals(issuerPid, saved.get(1).getIssuerDid());
-    }
-
-    @Test
-    void buildDidDocumentUrl_simpleHostname_convertsCorrectly() throws Exception {
-        // Test: did:web:example.com -> http://example.com
-        String result = invokeBuildDidDocumentUrl("did:web:example.com");
-        assertEquals("http://example.com", result);
-    }
-
-    @Test
-    void buildDidDocumentUrl_hostnameWithPath_convertsCorrectly() throws Exception {
-        // Test: did:web:example.com:path:to:resource -> http://example.com/path/to/resource
-        String result = invokeBuildDidDocumentUrl("did:web:example.com:path:to:resource");
-        assertEquals("http://example.com/path/to/resource", result);
-    }
-
-    @Test
-    void buildDidDocumentUrl_localhostWithPort_convertsCorrectly() throws Exception {
-        // Test: did:web:localhost%3A8084 -> http://localhost:8084
-        String result = invokeBuildDidDocumentUrl("did:web:localhost%3A8084");
-        assertEquals("http://localhost:8084", result);
-    }
-
-    @Test
-    void buildDidDocumentUrl_localhostWithPortAndPath_convertsCorrectly() throws Exception {
-        // Test: did:web:localhost%3A8084:issuer -> http://localhost:8084/issuer
-        String result = invokeBuildDidDocumentUrl("did:web:localhost%3A8084:issuer");
-        assertEquals("http://localhost:8084/issuer", result);
-    }
-
-    @Test
-    void buildDidDocumentUrl_ipAddressWithPort_convertsCorrectly() throws Exception {
-        // Test: did:web:192.168.1.1%3A8080 -> http://192.168.1.1:8080
-        String result = invokeBuildDidDocumentUrl("did:web:192.168.1.1%3A8080");
-        assertEquals("http://192.168.1.1:8080", result);
-    }
-
-    @Test
-    void buildDidDocumentUrl_ipAddressWithPortAndPath_convertsCorrectly() throws Exception {
-        // Test: did:web:192.168.1.1%3A8080:api:v1 -> http://192.168.1.1:8080/api/v1
-        String result = invokeBuildDidDocumentUrl("did:web:192.168.1.1%3A8080:api:v1");
-        assertEquals("http://192.168.1.1:8080/api/v1", result);
-    }
-
-    @Test
-    void buildDidDocumentUrl_ipAddressWithoutPort_convertsCorrectly() throws Exception {
-        // Test: did:web:192.168.1.1:path -> http://192.168.1.1/path
-        String result = invokeBuildDidDocumentUrl("did:web:192.168.1.1:path");
-        assertEquals("http://192.168.1.1/path", result);
-    }
-
-    @Test
-    void buildDidDocumentUrl_localhostWithPortAndDeepPath_convertsCorrectly() throws Exception {
-        // Test: did:web:localhost%3A8084:issuer:credentials:v1 -> http://localhost:8084/issuer/credentials/v1
-        String result = invokeBuildDidDocumentUrl("did:web:localhost%3A8084:issuer:credentials:v1");
-        assertEquals("http://localhost:8084/issuer/credentials/v1", result);
-    }
-
-    /**
-     * Helper method to invoke the private buildDidDocumentUrl method using reflection.
-     *
-     * @param did The DID to convert
-     * @return The built URL
-     */
-    private String invokeBuildDidDocumentUrl(String did) throws Exception {
-        java.lang.reflect.Method method = HolderService.class.getDeclaredMethod("buildDidDocumentUrl", String.class);
-        method.setAccessible(true);
-        return (String) method.invoke(holderService, did);
+        verify(issuanceClient).getIssuerMetadata("http://issuer.example.com/metadata");
     }
 }

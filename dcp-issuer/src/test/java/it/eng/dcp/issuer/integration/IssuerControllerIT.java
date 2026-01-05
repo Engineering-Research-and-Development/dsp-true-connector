@@ -5,37 +5,21 @@ import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.ECDSASigner;
-import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
-import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.model.CredentialRequestMessage;
 import it.eng.dcp.common.model.CredentialRequestMessage.CredentialReference;
-import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.common.service.did.DidResolverService;
 import it.eng.dcp.issuer.service.CredentialDeliveryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.testcontainers.containers.MinIOContainer;
-import org.testcontainers.containers.MongoDBContainer;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import java.time.Instant;
 import java.util.Date;
@@ -43,7 +27,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Stream;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.*;
@@ -77,10 +60,9 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
     private static final String ISSUER_DID = "did:test:issuer";
     private static final String HOLDER_DID = "did:test:holder";
     private static final String HOLDER_KEY_ID = "holder-key-1";
-    private static final String ISSUER_KEY_ID = "issuer-key-1";
 
     /**
-     * Setup method to initialize keypairs and reset mocks before each test.
+     * Setup method to initialize keypair and reset mocks before each test.
      * Generates fresh EC key pairs for holder and issuer.
      * Configures credential delivery service mock to succeed by default.
      * Individual tests can override this behavior as needed.
@@ -301,111 +283,96 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         result.andExpect(status().isBadRequest());
     }
 
-    // ==================== Parameterized Tests for Authorization Failures ====================
-
     /**
-     * Provides test cases for endpoints that require authorization.
-     * Each case includes: endpoint URL, HTTP method, request body (if needed)
+     * Test: POST /issuer/credentials returns 401 when token is invalid (DID not found).
      */
-    static Stream<Arguments> protectedEndpoints() {
+    @Test
+    void postCredentials_unauthorized_didNotFound() throws Exception {
+        // Mock: Throw exception (DID not found)
+        when(didResolverService.resolvePublicKey(eq(HOLDER_DID), eq(HOLDER_KEY_ID), eq("capabilityInvocation")))
+            .thenThrow(new DidResolutionException("DID not found"));
+
+        String token = createToken(holderKeyPair, HOLDER_DID, ISSUER_DID);
         Map<String, Object> credRequestBody = Map.of(
             "holderPid", HOLDER_DID,
             "credentials", List.of(Map.of("id", "TestCredential")),
             "@context", List.of("https://w3id.org/dspace-dcp/v1.0/dcp.jsonld"),
             "@type", "CredentialRequestMessage"
         );
-
-        return Stream.of(
-            Arguments.of("GET", "/issuer/metadata", null),
-            Arguments.of("POST", "/issuer/credentials", credRequestBody)
-        );
-    }
-
-    /**
-     * Parameterized test: All protected endpoints should return 401 when token is invalid (DID not found).
-     */
-    @ParameterizedTest(name = "{0} {1} - should return 401 when DID not found")
-    @MethodSource("protectedEndpoints")
-    void protectedEndpoint_unauthorized_didNotFound(String method, String endpoint, Map<String, Object> body) throws Exception {
-        // Mock: Throw exception (DID not found)
-        when(didResolverService.resolvePublicKey(eq(HOLDER_DID), eq(HOLDER_KEY_ID), eq("capabilityInvocation")))
-            .thenThrow(new DidResolutionException("DID not found"));
-
-        String token = createToken(holderKeyPair, HOLDER_DID, ISSUER_DID);
-
-        MockHttpServletRequestBuilder request = createRequest(method, endpoint)
-            .header("Authorization", "Bearer " + token);
-
-        if (body != null) {
-            request.contentType(MediaType.APPLICATION_JSON)
-                   .content(new ObjectMapper().writeValueAsString(body));
-        }
+        MockHttpServletRequestBuilder request = post("/issuer/credentials")
+            .header("Authorization", "Bearer " + token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(new ObjectMapper().writeValueAsString(credRequestBody));
 
         mockMvc.perform(request)
             .andExpect(status().isUnauthorized());
     }
 
     /**
-     * Parameterized test: All protected endpoints should return 401 when key not found.
+     * Test: POST /issuer/credentials returns 401 when key not found.
      */
-    @ParameterizedTest(name = "{0} {1} - should return 401 when key not found")
-    @MethodSource("protectedEndpoints")
-    void protectedEndpoint_unauthorized_keyNotFound(String method, String endpoint, Map<String, Object> body) throws Exception {
+    @Test
+    void postCredentials_unauthorized_keyNotFound() throws Exception {
         // Mock: Return null (key not found)
         when(didResolverService.resolvePublicKey(eq(HOLDER_DID), eq(HOLDER_KEY_ID), eq("capabilityInvocation")))
             .thenReturn(null);
 
         String token = createToken(holderKeyPair, HOLDER_DID, ISSUER_DID);
-
-        MockHttpServletRequestBuilder request = createRequest(method, endpoint)
-            .header("Authorization", "Bearer " + token);
-
-        if (body != null) {
-            request.contentType(MediaType.APPLICATION_JSON)
-                   .content(new ObjectMapper().writeValueAsString(body));
-        }
-
-        mockMvc.perform(request)
-            .andExpect(status().isUnauthorized());
-    }
-
-    /**
-     * Parameterized test: All protected endpoints should return 401 when Authorization header is missing.
-     */
-    @ParameterizedTest(name = "{0} {1} - should return 401 when no auth header")
-    @MethodSource("protectedEndpoints")
-    void protectedEndpoint_unauthorized_noAuthHeader(String method, String endpoint, Map<String, Object> body) throws Exception {
-        MockHttpServletRequestBuilder request = createRequest(method, endpoint);
-
-        if (body != null) {
-            request.contentType(MediaType.APPLICATION_JSON)
-                   .content(new ObjectMapper().writeValueAsString(body));
-        }
+        Map<String, Object> credRequestBody = Map.of(
+            "holderPid", HOLDER_DID,
+            "credentials", List.of(Map.of("id", "TestCredential")),
+            "@context", List.of("https://w3id.org/dspace-dcp/v1.0/dcp.jsonld"),
+            "@type", "CredentialRequestMessage"
+        );
+        MockHttpServletRequestBuilder request = post("/issuer/credentials")
+            .header("Authorization", "Bearer " + token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(new ObjectMapper().writeValueAsString(credRequestBody));
 
         mockMvc.perform(request)
             .andExpect(status().isUnauthorized());
     }
 
     /**
-     * Parameterized test: All protected endpoints should return 401 with expired token.
+     * Test: POST /issuer/credentials returns 401 when Authorization header is missing.
      */
-    @ParameterizedTest(name = "{0} {1} - should return 401 with expired token")
-    @MethodSource("protectedEndpoints")
-    void protectedEndpoint_unauthorized_expiredToken(String method, String endpoint, Map<String, Object> body) throws Exception {
+    @Test
+    void postCredentials_unauthorized_noAuthHeader() throws Exception {
+        Map<String, Object> credRequestBody = Map.of(
+            "holderPid", HOLDER_DID,
+            "credentials", List.of(Map.of("id", "TestCredential")),
+            "@context", List.of("https://w3id.org/dspace-dcp/v1.0/dcp.jsonld"),
+            "@type", "CredentialRequestMessage"
+        );
+        MockHttpServletRequestBuilder request = post("/issuer/credentials")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(new ObjectMapper().writeValueAsString(credRequestBody));
+
+        mockMvc.perform(request)
+            .andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * Test: POST /issuer/credentials returns 401 with expired token.
+     */
+    @Test
+    void postCredentials_unauthorized_expiredToken() throws Exception {
         // Mock: Return matching public key
         when(didResolverService.resolvePublicKey(eq(HOLDER_DID), eq(HOLDER_KEY_ID), eq("capabilityInvocation")))
             .thenReturn(holderKeyPair.toPublicJWK());
 
         // Create token that expired 10 minutes ago
         String expiredToken = createExpiredToken(holderKeyPair, HOLDER_DID, ISSUER_DID);
-
-        MockHttpServletRequestBuilder request = createRequest(method, endpoint)
-            .header("Authorization", "Bearer " + expiredToken);
-
-        if (body != null) {
-            request.contentType(MediaType.APPLICATION_JSON)
-                   .content(new ObjectMapper().writeValueAsString(body));
-        }
+        Map<String, Object> credRequestBody = Map.of(
+            "holderPid", HOLDER_DID,
+            "credentials", List.of(Map.of("id", "TestCredential")),
+            "@context", List.of("https://w3id.org/dspace-dcp/v1.0/dcp.jsonld"),
+            "@type", "CredentialRequestMessage"
+        );
+        MockHttpServletRequestBuilder request = post("/issuer/credentials")
+            .header("Authorization", "Bearer " + expiredToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(new ObjectMapper().writeValueAsString(credRequestBody));
 
         mockMvc.perform(request)
             .andExpect(status().isUnauthorized());
@@ -414,18 +381,11 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
     // ==================== GET /issuer/metadata Tests ====================
 
     /**
-     * Tests successful metadata retrieval with valid token.
+     * Tests successful metadata retrieval without requiring authorization.
      */
     @Test
-    void getMetadata_success_withValidToken() throws Exception {
-        // Mock: Return matching public key
-        when(didResolverService.resolvePublicKey(eq(HOLDER_DID), eq(HOLDER_KEY_ID), eq("capabilityInvocation")))
-            .thenReturn(holderKeyPair.toPublicJWK());
-
-        String token = createToken(holderKeyPair, HOLDER_DID, ISSUER_DID);
-
-        mockMvc.perform(get("/issuer/metadata")
-                .header("Authorization", "Bearer " + token))
+    void getMetadata_success_noAuthRequired() throws Exception {
+        mockMvc.perform(get("/issuer/metadata"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.credentialsSupported").isArray())
             .andExpect(jsonPath("$.credentialsSupported[0].id").value("TestCredential"));
