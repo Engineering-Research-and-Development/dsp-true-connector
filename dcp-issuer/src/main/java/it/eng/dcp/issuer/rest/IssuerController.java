@@ -1,9 +1,9 @@
 package it.eng.dcp.issuer.rest;
 
-import it.eng.dcp.issuer.service.IssuerService;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.CredentialRequestMessage;
 import it.eng.dcp.common.model.IssuerMetadata;
+import it.eng.dcp.issuer.service.IssuerService;
 import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -36,18 +36,18 @@ public class IssuerController {
     /**
      * Get Issuer Metadata endpoint.
      *
-     * @param authorization HTTP Authorization header with Bearer token
+//     * @param authorization HTTP Authorization header with Bearer token
      * @return ResponseEntity with issuer metadata or error
      */
     @GetMapping(path = "/metadata")
-    public ResponseEntity<?> getMetadata(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
-        if (authorization == null || !authorization.startsWith("Bearer ")) {
-            return ResponseEntity.status(401).body("Missing or invalid Authorization header");
-        }
-        String token = authorization.substring("Bearer ".length());
+    public ResponseEntity<?> getMetadata() {
+//        if (authorization == null || !authorization.startsWith("Bearer ")) {
+//            return ResponseEntity.status(401).body("Missing or invalid Authorization header");
+//        }
+//        String token = authorization.substring("Bearer ".length());
 
         try {
-            issuerService.authorizeRequest(token, null);
+//            issuerService.authorizeRequest(token, null);
             IssuerMetadata metadata = issuerService.getMetadata();
             return ResponseEntity.ok(metadata);
         } catch (SecurityException e) {

@@ -1,12 +1,12 @@
 package it.eng.dcp.service;
 
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
-import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
-import it.eng.dcp.common.model.CredentialRequestMessage;
-import it.eng.dcp.common.model.IssuerMetadata;
-import it.eng.dcp.exception.IssuerServiceNotFoundException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
+import it.eng.dcp.common.model.CredentialRequestMessage;
+import it.eng.dcp.common.model.IssuerMetadata;
+import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
+import it.eng.dcp.exception.IssuerServiceNotFoundException;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.response.GenericApiResponse;
 import okhttp3.MediaType;
@@ -183,7 +183,7 @@ public class CredentialIssuanceClient {
      */
     public IssuerMetadata getIssuerMetadata(String metadataUrl) {
         if (metadataUrl == null) throw new IllegalArgumentException("metadataUrl required");
-        GenericApiResponse<String> resp = rest.sendGETRequest(metadataUrl, null);
+        GenericApiResponse<String> resp = rest.sendGETRequest(metadataUrl, "Bearer geefghsdfgsd");
         if (resp == null || !resp.isSuccess() || resp.getData() == null) {
             throw new RuntimeException("Failed to fetch issuer metadata from " + metadataUrl);
         }

@@ -3,13 +3,14 @@ package it.eng.dcp.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jwt.JWTClaimsSet;
-import it.eng.dcp.common.model.CredentialMessage;
-import it.eng.dcp.common.model.CredentialOfferMessage;
-import it.eng.dcp.common.model.CredentialStatus;
-import it.eng.dcp.common.model.ProfileId;
+import it.eng.dcp.common.model.*;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
+import it.eng.dcp.common.util.DidUrlConverter;
 import it.eng.dcp.core.ProfileResolver;
-import it.eng.dcp.model.*;
+import it.eng.dcp.model.CredentialStatusRecord;
+import it.eng.dcp.model.PresentationQueryMessage;
+import it.eng.dcp.model.PresentationResponseMessage;
+import it.eng.dcp.model.VerifiableCredential;
 import it.eng.dcp.repository.CredentialStatusRepository;
 import it.eng.dcp.repository.VerifiableCredentialRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -37,15 +38,17 @@ public class HolderService {
     private final CredentialStatusRepository credentialStatusRepository;
     private final ProfileResolver profileResolver;
     private final ObjectMapper mapper;
+    private final CredentialIssuanceClient issuanceClient;
 
     @Autowired
     public HolderService(SelfIssuedIdTokenService tokenService,
-                        PresentationService presentationService,
-                        PresentationRateLimiter rateLimiter,
-                        VerifiableCredentialRepository credentialRepository,
-                        CredentialStatusRepository credentialStatusRepository,
-                        ProfileResolver profileResolver,
-                        ObjectMapper mapper) {
+                         PresentationService presentationService,
+                         PresentationRateLimiter rateLimiter,
+                         VerifiableCredentialRepository credentialRepository,
+                         CredentialStatusRepository credentialStatusRepository,
+                         ProfileResolver profileResolver,
+                         ObjectMapper mapper,
+                         CredentialIssuanceClient issuanceClient) {
         this.tokenService = tokenService;
         this.presentationService = presentationService;
         this.rateLimiter = rateLimiter;
@@ -53,6 +56,7 @@ public class HolderService {
         this.credentialStatusRepository = credentialStatusRepository;
         this.profileResolver = profileResolver;
         this.mapper = mapper;
+        this.issuanceClient = issuanceClient;
     }
 
     /**
@@ -191,12 +195,18 @@ public class HolderService {
      * @return true if offer is accepted
      */
     public boolean processCredentialOffer(CredentialOfferMessage offer) {
+        // Validate required fields per DCP spec 6.6.1
         if (offer == null || offer.getCredentialObjects() == null || offer.getCredentialObjects().isEmpty()) {
             log.error("Invalid credential offer: offeredCredentials is null or empty");
             throw new IllegalArgumentException("offeredCredentials must be provided and non-empty");
         }
 
-        log.info("Received credential offer message");
+        if (offer.getIssuer() == null || offer.getIssuer().trim().isEmpty()) {
+            log.error("Invalid credential offer: issuer is null or empty");
+            throw new IllegalArgumentException("issuer must be provided");
+        }
+
+        log.info("Received credential offer message from issuer: {}", offer.getIssuer());
         log.info("Processing credential offer with {} offered credentials",
                 offer.getCredentialObjects().size());
         log.debug("Offered credential types: {}",
@@ -204,8 +214,99 @@ public class HolderService {
                         .map(CredentialOfferMessage.CredentialObject::getCredentialType)
                         .toList());
 
+        // Per DCP spec 6.6.1: If credential entries are sparse (only contain an id),
+        // the Credential Service MUST resolve values from the credentialsSupported list
+        // returned from the Issuer Metadata API (6.7)
+        if (hasSparseCredentials(offer.getCredentialObjects())) {
+            log.info("Detected sparse credentials in offer - resolving from issuer metadata");
+            try {
+                resolveInlineCredentials(offer);
+            } catch (Exception e) {
+                log.error("Failed to resolve sparse credentials from issuer metadata: {}", e.getMessage());
+                throw new IllegalArgumentException("Failed to resolve sparse credentials: " + e.getMessage(), e);
+            }
+        }
+
         log.info("Credential offer accepted");
         return true;
+    }
+
+    /**
+     * Check if the credential list contains sparse credentials (only id, no credentialType).
+     * Per DCP spec 6.6.1: "If the entries in the credentials property are sparse, i.e., only contain an id..."
+     *
+     * @param credentials List of credential objects from the offer
+     * @return true if any credential is sparse
+     */
+    private boolean hasSparseCredentials(List<CredentialOfferMessage.CredentialObject> credentials) {
+        return credentials.stream()
+                .anyMatch(c -> c.getId() != null &&
+                              (c.getCredentialType() == null || c.getCredentialType().trim().isEmpty()));
+    }
+
+    /**
+     * Validate that sparse credentials can be resolved from issuer metadata.
+     * Per DCP spec 6.6.1: "When processing, the Credential Service MUST resolve this string value to the respective object."
+     *
+     * This method validates that sparse credential IDs exist in the issuer's credentialsSupported list.
+     * The actual resolution and use of full credential details happens when the holder requests credentials.
+     *
+     * @param offer The credential offer containing sparse credentials
+     * @throws RuntimeException if metadata cannot be fetched or credentials cannot be resolved
+     */
+    private void resolveInlineCredentials(CredentialOfferMessage offer) {
+        // Construct metadata URL: issuer base + /metadata
+        String issuerBase = DidUrlConverter.convertDidToUrl(offer.getIssuer(), false);
+
+        String metadataUrl = issuerBase.endsWith("/")
+            ? issuerBase + "metadata"
+            : issuerBase + "/metadata";
+
+        log.debug("Fetching issuer metadata from: {}", metadataUrl);
+        IssuerMetadata metadata;
+        try {
+            metadata = issuanceClient.getIssuerMetadata(metadataUrl);
+        } catch (Exception e) {
+            log.error("Failed to fetch issuer metadata from {}: {}", metadataUrl, e.getMessage());
+            throw new RuntimeException("Cannot resolve sparse credentials - metadata fetch failed", e);
+        }
+
+        if (metadata.getCredentialsSupported() == null || metadata.getCredentialsSupported().isEmpty()) {
+            log.warn("Issuer metadata contains no credentialsSupported - cannot resolve sparse credentials");
+            throw new IllegalArgumentException("Issuer metadata does not contain credentialsSupported");
+        }
+
+        // Build a map of id -> full credential object from metadata
+        Map<String, IssuerMetadata.CredentialObject> supportedMap = new java.util.HashMap<>();
+        for (IssuerMetadata.CredentialObject supported : metadata.getCredentialsSupported()) {
+            if (supported.getId() != null) {
+                supportedMap.put(supported.getId(), supported);
+            }
+        }
+
+        // Validate each sparse credential exists in metadata
+        for (CredentialOfferMessage.CredentialObject offeredCred : offer.getCredentialObjects()) {
+            if (offeredCred.getId() != null &&
+                (offeredCred.getCredentialType() == null || offeredCred.getCredentialType().trim().isEmpty())) {
+
+                log.debug("Validating sparse credential with id: {}", offeredCred.getId());
+                IssuerMetadata.CredentialObject fullCred = supportedMap.get(offeredCred.getId());
+
+                if (fullCred == null) {
+                    log.error("Sparse credential id '{}' not found in issuer metadata", offeredCred.getId());
+                    throw new IllegalArgumentException(
+                        "Credential id '" + offeredCred.getId() + "' not found in issuer credentialsSupported");
+                }
+
+                log.info("Validated sparse credential '{}' resolves to type '{}' (bindingMethods: {}, profile: {})",
+                    offeredCred.getId(),
+                    fullCred.getCredentialType(),
+                    fullCred.getBindingMethods(),
+                    fullCred.getProfile());
+            }
+        }
+
+        log.info("All sparse credentials successfully validated against issuer metadata");
     }
 
     /**

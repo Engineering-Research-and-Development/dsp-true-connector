@@ -7,7 +7,10 @@ import it.eng.dcp.common.model.CredentialOfferMessage;
 import it.eng.dcp.common.model.CredentialStatus;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.core.ProfileResolver;
-import it.eng.dcp.model.*;
+import it.eng.dcp.model.CredentialStatusRecord;
+import it.eng.dcp.model.PresentationQueryMessage;
+import it.eng.dcp.model.PresentationResponseMessage;
+import it.eng.dcp.model.VerifiableCredential;
 import it.eng.dcp.repository.CredentialStatusRepository;
 import it.eng.dcp.repository.VerifiableCredentialRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,10 +20,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,6 +49,9 @@ class HolderServiceTest {
     @Mock
     private ProfileResolver profileResolver;
 
+    @Mock
+    private CredentialIssuanceClient issuanceClient;
+
     private ObjectMapper mapper;
 
     private HolderService holderService;
@@ -59,7 +67,8 @@ class HolderServiceTest {
                 credentialRepository,
                 credentialStatusRepository,
                 profileResolver,
-                mapper
+                mapper,
+                issuanceClient
         );
     }
 
@@ -274,6 +283,7 @@ class HolderServiceTest {
                 .build();
 
         CredentialOfferMessage offer = CredentialOfferMessage.Builder.newInstance()
+                .issuer("did:web:issuer.example.com")
                 .offeredCredentials(List.of(credential1))
                 .issuer("did:example:issuer123")
                 .build();
@@ -305,6 +315,174 @@ class HolderServiceTest {
                 () -> holderService.processCredentialOffer(offer));
 
         assertEquals("offeredCredentials must be provided and non-empty", exception.getMessage());
+    }
+
+    @Test
+    void processCredentialOffer_nullIssuer_throwsException() {
+        // Arrange - Use mock since builder validation requires issuer
+        CredentialOfferMessage.CredentialObject credential = CredentialOfferMessage.CredentialObject.Builder.newInstance()
+                .credentialType("MembershipCredential")
+                .build();
+
+        CredentialOfferMessage offer = mock(CredentialOfferMessage.class);
+        when(offer.getCredentialObjects()).thenReturn(List.of(credential));
+        when(offer.getIssuer()).thenReturn(null);
+
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> holderService.processCredentialOffer(offer));
+
+        assertEquals("issuer must be provided", exception.getMessage());
+    }
+
+    @Test
+    void processCredentialOffer_emptyIssuer_throwsException() {
+        // Arrange - Use mock since builder validation requires issuer
+        CredentialOfferMessage.CredentialObject credential = CredentialOfferMessage.CredentialObject.Builder.newInstance()
+                .credentialType("MembershipCredential")
+                .build();
+
+        CredentialOfferMessage offer = mock(CredentialOfferMessage.class);
+        when(offer.getCredentialObjects()).thenReturn(List.of(credential));
+        when(offer.getIssuer()).thenReturn("   ");
+
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> holderService.processCredentialOffer(offer));
+
+        assertEquals("issuer must be provided", exception.getMessage());
+    }
+
+    @Test
+    void processCredentialOffer_sparseCredentials_resolvesFromMetadata() {
+        // Arrange - Create a sparse credential (only id, no credentialType)
+        CredentialOfferMessage.CredentialObject sparseCredential = mock(CredentialOfferMessage.CredentialObject.class);
+        when(sparseCredential.getId()).thenReturn("cred-123");
+        when(sparseCredential.getCredentialType()).thenReturn(null); // Sparse - missing credentialType
+
+        CredentialOfferMessage offer = mock(CredentialOfferMessage.class);
+        when(offer.getIssuer()).thenReturn("https://issuer.example.com");
+        when(offer.getCredentialObjects()).thenReturn(List.of(sparseCredential));
+
+        // Mock issuer metadata response
+        it.eng.dcp.common.model.IssuerMetadata.CredentialObject fullCredential =
+            it.eng.dcp.common.model.IssuerMetadata.CredentialObject.Builder.newInstance()
+                .id("cred-123")
+                .type("CredentialObject")
+                .credentialType("MembershipCredential")
+                .profile("vc10-sl2021/jwt")
+                .bindingMethods(List.of("did:web"))
+                .build();
+
+        it.eng.dcp.common.model.IssuerMetadata metadata =
+            it.eng.dcp.common.model.IssuerMetadata.Builder.newInstance()
+                .issuer("https://issuer.example.com")
+                .credentialsSupported(List.of(fullCredential))
+                .build();
+
+        when(issuanceClient.getIssuerMetadata("https://issuer.example.com/metadata")).thenReturn(metadata);
+
+        // Act
+        boolean result = holderService.processCredentialOffer(offer);
+
+        // Assert
+        assertTrue(result);
+        verify(issuanceClient).getIssuerMetadata("https://issuer.example.com/metadata");
+    }
+
+    @Test
+    void processCredentialOffer_sparseCredentials_notFoundInMetadata_throwsException() {
+        // Arrange - Sparse credential with id not in metadata
+        CredentialOfferMessage.CredentialObject sparseCredential = mock(CredentialOfferMessage.CredentialObject.class);
+        when(sparseCredential.getId()).thenReturn("unknown-cred");
+        when(sparseCredential.getCredentialType()).thenReturn(null);
+
+        CredentialOfferMessage offer = mock(CredentialOfferMessage.class);
+        when(offer.getIssuer()).thenReturn("https://issuer.example.com");
+        when(offer.getCredentialObjects()).thenReturn(List.of(sparseCredential));
+
+        // Mock metadata with different credential
+        it.eng.dcp.common.model.IssuerMetadata.CredentialObject fullCredential =
+            it.eng.dcp.common.model.IssuerMetadata.CredentialObject.Builder.newInstance()
+                .id("cred-123")
+                .type("CredentialObject")
+                .credentialType("MembershipCredential")
+                .build();
+
+        it.eng.dcp.common.model.IssuerMetadata metadata =
+            it.eng.dcp.common.model.IssuerMetadata.Builder.newInstance()
+                .issuer("https://issuer.example.com")
+                .credentialsSupported(List.of(fullCredential))
+                .build();
+
+        when(issuanceClient.getIssuerMetadata("https://issuer.example.com/metadata")).thenReturn(metadata);
+
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> holderService.processCredentialOffer(offer));
+
+        assertTrue(exception.getMessage().contains("not found in issuer credentialsSupported"));
+    }
+
+    @Test
+    void processCredentialOffer_sparseCredentials_metadataFetchFails_throwsException() {
+        // Arrange
+        CredentialOfferMessage.CredentialObject sparseCredential = mock(CredentialOfferMessage.CredentialObject.class);
+        when(sparseCredential.getId()).thenReturn("cred-123");
+        when(sparseCredential.getCredentialType()).thenReturn(null);
+
+        CredentialOfferMessage offer = mock(CredentialOfferMessage.class);
+        when(offer.getIssuer()).thenReturn("https://issuer.example.com");
+        when(offer.getCredentialObjects()).thenReturn(List.of(sparseCredential));
+
+        when(issuanceClient.getIssuerMetadata("https://issuer.example.com/metadata"))
+            .thenThrow(new RuntimeException("Network error"));
+
+        // Act & Assert
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> holderService.processCredentialOffer(offer));
+
+        assertTrue(exception.getMessage().contains("metadata fetch failed"));
+    }
+
+    @Test
+    void processCredentialOffer_mixedCredentials_resolvesOnlySparse() {
+        // Arrange - Mix of sparse and full credentials
+        CredentialOfferMessage.CredentialObject fullCredential =
+            CredentialOfferMessage.CredentialObject.Builder.newInstance()
+                .credentialType("OrganizationCredential")
+                .build();
+
+        CredentialOfferMessage.CredentialObject sparseCredential = mock(CredentialOfferMessage.CredentialObject.class);
+        when(sparseCredential.getId()).thenReturn("cred-456");
+        when(sparseCredential.getCredentialType()).thenReturn(null);
+
+        CredentialOfferMessage offer = mock(CredentialOfferMessage.class);
+        when(offer.getIssuer()).thenReturn("https://issuer.example.com/");
+        when(offer.getCredentialObjects()).thenReturn(List.of(fullCredential, sparseCredential));
+
+        // Mock metadata
+        it.eng.dcp.common.model.IssuerMetadata.CredentialObject metadataCredential =
+            it.eng.dcp.common.model.IssuerMetadata.CredentialObject.Builder.newInstance()
+                .id("cred-456")
+                .type("CredentialObject")
+                .credentialType("MembershipCredential")
+                .build();
+
+        it.eng.dcp.common.model.IssuerMetadata metadata =
+            it.eng.dcp.common.model.IssuerMetadata.Builder.newInstance()
+                .issuer("https://issuer.example.com")
+                .credentialsSupported(List.of(metadataCredential))
+                .build();
+
+        when(issuanceClient.getIssuerMetadata("https://issuer.example.com/metadata")).thenReturn(metadata);
+
+        // Act
+        boolean result = holderService.processCredentialOffer(offer);
+
+        // Assert
+        assertTrue(result);
+        verify(issuanceClient).getIssuerMetadata("https://issuer.example.com/metadata");
     }
 
     @Test
@@ -398,5 +576,73 @@ class HolderServiceTest {
         assertEquals("did:web:localhost%3A8080:holder", saved.get(1).getHolderDid());
         assertEquals(issuerPid, saved.get(0).getIssuerDid());
         assertEquals(issuerPid, saved.get(1).getIssuerDid());
+    }
+
+    @Test
+    void buildDidDocumentUrl_simpleHostname_convertsCorrectly() throws Exception {
+        // Test: did:web:example.com -> http://example.com
+        String result = invokeBuildDidDocumentUrl("did:web:example.com");
+        assertEquals("http://example.com", result);
+    }
+
+    @Test
+    void buildDidDocumentUrl_hostnameWithPath_convertsCorrectly() throws Exception {
+        // Test: did:web:example.com:path:to:resource -> http://example.com/path/to/resource
+        String result = invokeBuildDidDocumentUrl("did:web:example.com:path:to:resource");
+        assertEquals("http://example.com/path/to/resource", result);
+    }
+
+    @Test
+    void buildDidDocumentUrl_localhostWithPort_convertsCorrectly() throws Exception {
+        // Test: did:web:localhost%3A8084 -> http://localhost:8084
+        String result = invokeBuildDidDocumentUrl("did:web:localhost%3A8084");
+        assertEquals("http://localhost:8084", result);
+    }
+
+    @Test
+    void buildDidDocumentUrl_localhostWithPortAndPath_convertsCorrectly() throws Exception {
+        // Test: did:web:localhost%3A8084:issuer -> http://localhost:8084/issuer
+        String result = invokeBuildDidDocumentUrl("did:web:localhost%3A8084:issuer");
+        assertEquals("http://localhost:8084/issuer", result);
+    }
+
+    @Test
+    void buildDidDocumentUrl_ipAddressWithPort_convertsCorrectly() throws Exception {
+        // Test: did:web:192.168.1.1%3A8080 -> http://192.168.1.1:8080
+        String result = invokeBuildDidDocumentUrl("did:web:192.168.1.1%3A8080");
+        assertEquals("http://192.168.1.1:8080", result);
+    }
+
+    @Test
+    void buildDidDocumentUrl_ipAddressWithPortAndPath_convertsCorrectly() throws Exception {
+        // Test: did:web:192.168.1.1%3A8080:api:v1 -> http://192.168.1.1:8080/api/v1
+        String result = invokeBuildDidDocumentUrl("did:web:192.168.1.1%3A8080:api:v1");
+        assertEquals("http://192.168.1.1:8080/api/v1", result);
+    }
+
+    @Test
+    void buildDidDocumentUrl_ipAddressWithoutPort_convertsCorrectly() throws Exception {
+        // Test: did:web:192.168.1.1:path -> http://192.168.1.1/path
+        String result = invokeBuildDidDocumentUrl("did:web:192.168.1.1:path");
+        assertEquals("http://192.168.1.1/path", result);
+    }
+
+    @Test
+    void buildDidDocumentUrl_localhostWithPortAndDeepPath_convertsCorrectly() throws Exception {
+        // Test: did:web:localhost%3A8084:issuer:credentials:v1 -> http://localhost:8084/issuer/credentials/v1
+        String result = invokeBuildDidDocumentUrl("did:web:localhost%3A8084:issuer:credentials:v1");
+        assertEquals("http://localhost:8084/issuer/credentials/v1", result);
+    }
+
+    /**
+     * Helper method to invoke the private buildDidDocumentUrl method using reflection.
+     *
+     * @param did The DID to convert
+     * @return The built URL
+     */
+    private String invokeBuildDidDocumentUrl(String did) throws Exception {
+        java.lang.reflect.Method method = HolderService.class.getDeclaredMethod("buildDidDocumentUrl", String.class);
+        method.setAccessible(true);
+        return (String) method.invoke(holderService, did);
     }
 }

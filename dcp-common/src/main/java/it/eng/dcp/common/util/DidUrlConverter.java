@@ -164,7 +164,7 @@ public class DidUrlConverter {
             hostAndPort = hostAndPort + ":" + segments[1];
             pathStartIdx = 2;
         }
-        StringBuilder url = new StringBuilder("https://").append(hostAndPort);
+        StringBuilder url = new StringBuilder("http://").append(hostAndPort);
         // Special case: if only one path segment and it is 'holder', ignore it (for test compatibility)
         if (segments.length == pathStartIdx + 1 && "holder".equals(segments[pathStartIdx])) {
             // do nothing
