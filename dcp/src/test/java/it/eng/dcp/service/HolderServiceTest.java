@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
@@ -368,7 +367,6 @@ class HolderServiceTest {
         IssuerMetadata.CredentialObject fullCredential =
             IssuerMetadata.CredentialObject.Builder.newInstance()
                 .id("cred-123")
-                .type("CredentialObject")
                 .credentialType("MembershipCredential")
                 .profile("vc10-sl2021/jwt")
                 .bindingMethods(List.of("did:web"))
@@ -405,7 +403,6 @@ class HolderServiceTest {
         IssuerMetadata.CredentialObject fullCredential =
             IssuerMetadata.CredentialObject.Builder.newInstance()
                 .id("cred-123")
-                .type("CredentialObject")
                 .credentialType("MembershipCredential")
                 .build();
 
@@ -465,7 +462,6 @@ class HolderServiceTest {
         IssuerMetadata.CredentialObject metadataCredential =
             IssuerMetadata.CredentialObject.Builder.newInstance()
                 .id("cred-456")
-                .type("CredentialObject")
                 .credentialType("MembershipCredential")
                 .build();
 

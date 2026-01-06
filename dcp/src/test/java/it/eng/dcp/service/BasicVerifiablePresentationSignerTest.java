@@ -15,7 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.util.Base64;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -130,7 +129,7 @@ class BasicVerifiablePresentationSignerTest {
         VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
                 .holderDid("did:web:localhost:8080")
                 .credentialIds(List.of("urn:uuid:test-cred-1"))
-                .profileId(ProfileId.VC11_SL2021_JSONLD.toString())
+                .profileId(ProfileId.VC20_BSSL_JWT.toString())
                 .build();
 
         // Act

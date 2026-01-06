@@ -1,27 +1,22 @@
 package it.eng.dcp.issuer.service;
 
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.JWSSigner;
-import com.nimbusds.jose.crypto.ECDSASigner;
-import com.nimbusds.jose.jwk.ECKey;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
-import it.eng.dcp.common.service.KeyService;
-import it.eng.dcp.issuer.config.IssuerDidDocumentConfiguration;
-import it.eng.dcp.issuer.config.IssuerProperties;
 import it.eng.dcp.common.model.ConstraintRule;
 import it.eng.dcp.common.model.CredentialGenerationContext;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
+import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.issuer.config.IssuerDidDocumentConfiguration;
+import it.eng.dcp.issuer.config.IssuerProperties;
+import it.eng.dcp.issuer.service.credential.CredentialGeneratorFactory;
+import it.eng.dcp.issuer.service.jwt.VcJwtGeneratorFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Service responsible for generating/issuing verifiable credentials based on credential requests.
@@ -31,15 +26,25 @@ import java.util.*;
 public class CredentialIssuanceService {
 
     private final IssuerProperties issuerProperties;
-    private final KeyService keyService;
-    private final BaseDidDocumentConfiguration didDocumentConfig;
+    private final CredentialGeneratorFactory credentialGeneratorFactory;
 
     @Autowired
     public CredentialIssuanceService(IssuerProperties issuerProperties, KeyService keyService,
                                      IssuerDidDocumentConfiguration didDocumentConfig) {
         this.issuerProperties = issuerProperties;
-        this.keyService = keyService;
-        this.didDocumentConfig = didDocumentConfig;
+
+        // Create JWT generator factory
+        VcJwtGeneratorFactory jwtGeneratorFactory = new VcJwtGeneratorFactory(
+                issuerProperties.getConnectorDid(),
+                keyService,
+                didDocumentConfig
+        );
+
+        // Create credential generator factory
+        this.credentialGeneratorFactory = new CredentialGeneratorFactory(
+                jwtGeneratorFactory,
+                issuerProperties.getConnectorDid()
+        );
     }
 
     /**
@@ -155,15 +160,9 @@ public class CredentialIssuanceService {
             CredentialGenerationContext context) {
         String credentialType = extractCredentialType(credentialId);
 
-        switch (credentialType) {
-            case "MembershipCredential":
-                return generateMembershipCredential(context);
-            case "OrganizationCredential":
-                return generateOrganizationCredential(context);
-            default:
-                log.warn("Unknown credential type '{}', generating generic credential", credentialType);
-                return generateGenericCredential(credentialType, context);
-        }
+        return credentialGeneratorFactory
+                .createGenerator(credentialType)
+                .generateCredential(context);
     }
 
     /**
@@ -177,111 +176,5 @@ public class CredentialIssuanceService {
             return credentialId;
         }
         return "MembershipCredential";
-    }
-
-    /**
-     * Generate a MembershipCredential with proper JWT signing.
-     *
-     * @param context The generation context
-     * @return A credential container with the signed membership credential
-     */
-    private CredentialMessage.CredentialContainer generateMembershipCredential(CredentialGenerationContext context) {
-        String signedJwt = generateSignedJWT(context.getRequest().getHolderPid(), "MembershipCredential", Map.of(
-                "membershipType", "Premium",
-                "status", "Active",
-                "membershipId", "MEMBER-" + UUID.randomUUID().toString().substring(0, 8)
-        ));
-
-        return CredentialMessage.CredentialContainer.Builder.newInstance()
-                .credentialType("MembershipCredential")
-                .format("jwt")
-                .payload(signedJwt)
-                .build();
-    }
-
-    /**
-     * Generate an OrganizationCredential with proper JWT signing.
-     *
-     * @param context The generation context
-     * @return A credential container with the signed organization credential
-     */
-    private CredentialMessage.CredentialContainer generateOrganizationCredential(CredentialGenerationContext context) {
-        String signedJwt = generateSignedJWT(context.getRequest().getHolderPid(), "OrganizationCredential", Map.of(
-                "organizationName", "Example Organization",
-                "organizationType", "Corporation",
-                "status", "Verified"
-        ));
-
-        return CredentialMessage.CredentialContainer.Builder.newInstance()
-                .credentialType("OrganizationCredential")
-                .format("jwt")
-                .payload(signedJwt)
-                .build();
-    }
-
-    /**
-     * Generate a generic credential with proper JWT signing.
-     *
-     * @param credentialType The type of credential to generate
-     * @param context The generation context
-     * @return A credential container with the signed generic credential
-     */
-    private CredentialMessage.CredentialContainer generateGenericCredential(String credentialType, CredentialGenerationContext context) {
-        String signedJwt = generateSignedJWT(context.getRequest().getHolderPid(), credentialType, Map.of(
-                "status", "Active",
-                "issuedBy", issuerProperties.getConnectorDid()
-        ));
-
-        return CredentialMessage.CredentialContainer.Builder.newInstance()
-                .credentialType(credentialType)
-                .format("jwt")
-                .payload(signedJwt)
-                .build();
-    }
-
-    /**
-     * Generate a properly signed JWT Verifiable Credential using ES256.
-     *
-     * @param holderDid The holder's DID
-     * @param credentialType The type of credential
-     * @param claims Additional claims to include in the credential subject
-     * @return A properly signed JWT VC string
-     */
-    private String generateSignedJWT(String holderDid, String credentialType, Map<String, String> claims) {
-        try {
-            ECKey signingKey = keyService.getSigningJwk(didDocumentConfig.getDidDocumentConfig());
-
-            Map<String, Object> vc = new HashMap<>();
-            vc.put("@context", List.of(
-                    "https://www.w3.org/2018/credentials/v1",
-                    "https://example.org/credentials/v1"
-            ));
-            vc.put("type", List.of("VerifiableCredential", credentialType));
-
-            Map<String, Object> credentialSubject = new HashMap<>(claims);
-            credentialSubject.put("id", holderDid);
-            vc.put("credentialSubject", credentialSubject);
-
-            JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-                    .issuer(issuerProperties.getConnectorDid())
-                    .subject(holderDid)
-                    .issueTime(Date.from(Instant.now()))
-                    .expirationTime(Date.from(Instant.now().plusSeconds(365 * 24 * 60 * 60)))
-                    .jwtID("urn:uuid:" + UUID.randomUUID())
-                    .claim("vc", vc)
-                    .build();
-
-            JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.ES256)
-                    .keyID(signingKey.getKeyID())
-                    .build();
-
-            SignedJWT signedJWT = new SignedJWT(header, claimsSet);
-            JWSSigner signer = new ECDSASigner(signingKey);
-            signedJWT.sign(signer);
-
-            return signedJWT.serialize();
-        } catch (JOSEException e) {
-            throw new RuntimeException("Failed to sign JWT VC", e);
-        }
     }
 }

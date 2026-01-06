@@ -1,12 +1,16 @@
 package it.eng.dcp.common.model;
 
-import lombok.Builder;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidationException;
+import jakarta.validation.ValidatorFactory;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.Serial;
+import java.io.Serializable;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Internal class for credential generation parameters.
@@ -16,12 +20,16 @@ import java.util.Map;
  * This separates protocol-defined messages from internal business logic requirements.
  */
 @Getter
-@Builder
-public class CredentialGenerationContext {
+public class CredentialGenerationContext implements Serializable {
 
+    @Serial
+    private static final long serialVersionUID = 1L;
+
+    // Explicit getters
     /**
      * The protocol-defined credential request.
      */
+    @NotNull
     private CredentialRequest request;
 
     /**
@@ -29,7 +37,6 @@ public class CredentialGenerationContext {
      * Example: {"country_code": "US", "role": "admin"}
      * These claims are used when generating credential subjects.
      */
-    @Builder.Default
     private Map<String, Object> requestedClaims = new HashMap<>();
 
     /**
@@ -39,7 +46,6 @@ public class CredentialGenerationContext {
      * - Approval workflow logic
      * - Business rules
      */
-    @Builder.Default
     private List<ConstraintRule> constraints = new ArrayList<>();
 
     /**
@@ -49,51 +55,75 @@ public class CredentialGenerationContext {
      * - Issuer-specific attributes
      * - Audit information
      */
-    @Builder.Default
     private Map<String, Object> metadata = new HashMap<>();
 
-    /**
-     * Create a simple context from a credential request without constraints.
-     *
-     * @param request The protocol-defined credential request
-     * @return A new context with the request and empty claims/constraints
-     */
+    private CredentialGenerationContext() {}
+
+    // Custom builder
+    public static class Builder {
+        private final CredentialGenerationContext context;
+
+        private Builder() {
+            context = new CredentialGenerationContext();
+        }
+
+        public static Builder newInstance() {
+            return new Builder();
+        }
+
+        public Builder request(CredentialRequest request) {
+            context.request = request;
+            return this;
+        }
+
+        public Builder requestedClaims(Map<String, Object> claims) {
+            context.requestedClaims = (claims != null) ? new HashMap<>(claims) : new HashMap<>();
+            return this;
+        }
+
+        public Builder constraints(List<ConstraintRule> constraints) {
+            context.constraints = (constraints != null) ? new ArrayList<>(constraints) : new ArrayList<>();
+            return this;
+        }
+
+        public Builder metadata(Map<String, Object> metadata) {
+            context.metadata = (metadata != null) ? new HashMap<>(metadata) : new HashMap<>();
+            return this;
+        }
+
+        public CredentialGenerationContext build() {
+            try (ValidatorFactory vf = Validation.buildDefaultValidatorFactory()) {
+                Set<ConstraintViolation<CredentialGenerationContext>> violations = vf.getValidator().validate(context);
+                if (violations.isEmpty()) {
+                    return context;
+                }
+                throw new ValidationException("CredentialGenerationContext - " +
+                        violations.stream()
+                                .map(v -> v.getPropertyPath() + " " + v.getMessage())
+                                .collect(Collectors.joining(",")));
+            }
+        }
+    }
+
+    // Static factory methods updated to use the new builder
     public static CredentialGenerationContext fromRequest(CredentialRequest request) {
-        return CredentialGenerationContext.builder()
+        return Builder.newInstance()
                 .request(request)
                 .build();
     }
-
-    /**
-     * Create a context with requested claims.
-     *
-     * @param request The protocol-defined credential request
-     * @param claims The requested claims for credential generation
-     * @return A new context with the request and claims
-     */
     public static CredentialGenerationContext withClaims(CredentialRequest request, Map<String, Object> claims) {
-        return CredentialGenerationContext.builder()
+        return Builder.newInstance()
                 .request(request)
-                .requestedClaims(claims != null ? new HashMap<>(claims) : new HashMap<>())
+                .requestedClaims(claims)
                 .build();
     }
-
-    /**
-     * Create a context with constraints.
-     *
-     * @param request The protocol-defined credential request
-     * @param claims The requested claims for credential generation
-     * @param constraints The constraints to verify before issuance
-     * @return A new context with the request, claims, and constraints
-     */
     public static CredentialGenerationContext withConstraints(CredentialRequest request,
-                                                               Map<String, Object> claims,
-                                                               List<ConstraintRule> constraints) {
-        return CredentialGenerationContext.builder()
+                                                             Map<String, Object> claims,
+                                                             List<ConstraintRule> constraints) {
+        return Builder.newInstance()
                 .request(request)
-                .requestedClaims(claims != null ? new HashMap<>(claims) : new HashMap<>())
-                .constraints(constraints != null ? new ArrayList<>(constraints) : new ArrayList<>())
+                .requestedClaims(claims)
+                .constraints(constraints)
                 .build();
     }
 }
-

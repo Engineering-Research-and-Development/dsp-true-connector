@@ -1,6 +1,7 @@
 package it.eng.dcp.issuer.service;
 
 import it.eng.dcp.common.model.IssuerMetadata;
+import it.eng.dcp.common.model.ProfileId;
 import it.eng.dcp.issuer.config.CredentialMetadataConfig;
 import it.eng.dcp.issuer.config.IssuerProperties;
 import org.junit.jupiter.api.AfterEach;
@@ -36,6 +37,8 @@ class CredentialMetadataServiceTest {
     @BeforeEach
     void setUp() {
         closeable = MockitoAnnotations.openMocks(this);
+        // Default mock for supported profiles - can be overridden in individual tests
+        when(issuerProperties.getSupportedProfiles()).thenReturn(List.of(ProfileId.VC20_BSSL_JWT.toString()));
     }
 
     @AfterEach
@@ -55,7 +58,7 @@ class CredentialMetadataServiceTest {
         membershipConfig.setCredentialType("MembershipCredential");
         membershipConfig.setCredentialSchema("https://example.com/schemas/membership");
         membershipConfig.setBindingMethods(List.of("did:web", "did:key"));
-        membershipConfig.setProfile("vc11-sl2021/jwt");
+        membershipConfig.setProfile(ProfileId.VC20_BSSL_JWT.toString());
 
         when(credentialMetadataConfig.getSupported()).thenReturn(List.of(membershipConfig));
 
@@ -71,7 +74,7 @@ class CredentialMetadataServiceTest {
         assertEquals("MembershipCredential", credentialObject.getCredentialType());
         assertEquals("https://example.com/schemas/membership", credentialObject.getCredentialSchema());
         assertTrue(credentialObject.getBindingMethods().contains("did:web"));
-        assertEquals("vc11-sl2021/jwt", credentialObject.getProfile());
+        assertEquals(ProfileId.VC20_BSSL_JWT.toString(), credentialObject.getProfile());
     }
 
     @Test
@@ -221,7 +224,7 @@ class CredentialMetadataServiceTest {
     @Test
     void buildIssuerMetadata_usesDefaultProfileWhenMissing() {
         when(issuerProperties.getConnectorDid()).thenReturn("did:web:issuer.example.com");
-        when(issuerProperties.getSupportedProfiles()).thenReturn(List.of("vc11-sl2021/jwt"));
+        when(issuerProperties.getSupportedProfiles()).thenReturn(List.of(ProfileId.VC20_BSSL_JWT.toString()));
 
         CredentialMetadataConfig.CredentialConfig config = new CredentialMetadataConfig.CredentialConfig();
         config.setCredentialType("MembershipCredential");
@@ -233,7 +236,7 @@ class CredentialMetadataServiceTest {
 
         assertNotNull(metadata);
         IssuerMetadata.CredentialObject credentialObject = metadata.getCredentialsSupported().get(0);
-        assertEquals("vc11-sl2021/jwt", credentialObject.getProfile());
+        assertEquals(ProfileId.VC20_BSSL_JWT.toString(), credentialObject.getProfile());
     }
 
     @Test
@@ -251,17 +254,17 @@ class CredentialMetadataServiceTest {
 
         assertNotNull(metadata);
         IssuerMetadata.CredentialObject credentialObject = metadata.getCredentialsSupported().get(0);
-        assertEquals("vc11-sl2021/jwt", credentialObject.getProfile());
+        assertEquals(ProfileId.VC20_BSSL_JWT.toString(), credentialObject.getProfile());
     }
 
     @Test
-    void buildIssuerMetadata_normalizesProfileId() {
+    void buildIssuerMetadata_usesDefaultProfile() {
         when(issuerProperties.getConnectorDid()).thenReturn("did:web:issuer.example.com");
-        when(issuerProperties.getSupportedProfiles()).thenReturn(List.of("VC11_SL2021_JWT"));
+        when(issuerProperties.getSupportedProfiles()).thenReturn(List.of(ProfileId.VC20_BSSL_JWT.toString()));
 
         CredentialMetadataConfig.CredentialConfig config = new CredentialMetadataConfig.CredentialConfig();
         config.setCredentialType("MembershipCredential");
-        config.setProfile(null);
+        config.setProfile(null);  // Should use default from supported profiles
 
         when(credentialMetadataConfig.getSupported()).thenReturn(List.of(config));
 
@@ -269,7 +272,7 @@ class CredentialMetadataServiceTest {
 
         assertNotNull(metadata);
         IssuerMetadata.CredentialObject credentialObject = metadata.getCredentialsSupported().get(0);
-        assertEquals("vc11-sl2021/jwt", credentialObject.getProfile());
+        assertEquals(ProfileId.VC20_BSSL_JWT.toString(), credentialObject.getProfile());
     }
 
     @Test
@@ -365,5 +368,91 @@ class CredentialMetadataServiceTest {
         // Schema should be null or not set when blank
         assertTrue(credentialObject.getCredentialSchema() == null || credentialObject.getCredentialSchema().isBlank());
     }
-}
 
+    @Test
+    void buildIssuerMetadata_supportsBothProfiles() {
+        when(issuerProperties.getConnectorDid()).thenReturn("did:web:issuer.example.com");
+        when(issuerProperties.getSupportedProfiles()).thenReturn(List.of(
+            ProfileId.VC20_BSSL_JWT.toString(),
+            ProfileId.VC11_SL2021_JWT.toString()
+        ));
+
+        CredentialMetadataConfig.CredentialConfig config1 = new CredentialMetadataConfig.CredentialConfig();
+        config1.setCredentialType("MembershipCredential");
+        config1.setProfile(ProfileId.VC20_BSSL_JWT.toString());
+
+        CredentialMetadataConfig.CredentialConfig config2 = new CredentialMetadataConfig.CredentialConfig();
+        config2.setCredentialType("OrganizationCredential");
+        config2.setProfile(ProfileId.VC11_SL2021_JWT.toString());
+
+        when(credentialMetadataConfig.getSupported()).thenReturn(List.of(config1, config2));
+
+        IssuerMetadata metadata = metadataService.buildIssuerMetadata();
+
+        assertNotNull(metadata);
+        assertEquals(2, metadata.getCredentialsSupported().size());
+
+        IssuerMetadata.CredentialObject credential1 = metadata.getCredentialsSupported().get(0);
+        assertEquals("MembershipCredential", credential1.getCredentialType());
+        assertEquals(ProfileId.VC20_BSSL_JWT.toString(), credential1.getProfile());
+
+        IssuerMetadata.CredentialObject credential2 = metadata.getCredentialsSupported().get(1);
+        assertEquals("OrganizationCredential", credential2.getCredentialType());
+        assertEquals(ProfileId.VC11_SL2021_JWT.toString(), credential2.getProfile());
+    }
+
+    @Test
+    void buildIssuerMetadata_usesVC20AsDefault() {
+        when(issuerProperties.getConnectorDid()).thenReturn("did:web:issuer.example.com");
+        when(issuerProperties.getSupportedProfiles()).thenReturn(List.of(
+            ProfileId.VC20_BSSL_JWT.toString(),
+            ProfileId.VC11_SL2021_JWT.toString()
+        ));
+
+        CredentialMetadataConfig.CredentialConfig config = new CredentialMetadataConfig.CredentialConfig();
+        config.setCredentialType("MembershipCredential");
+        config.setProfile(null); // Should default to first in list (VC20)
+
+        when(credentialMetadataConfig.getSupported()).thenReturn(List.of(config));
+
+        IssuerMetadata metadata = metadataService.buildIssuerMetadata();
+
+        assertNotNull(metadata);
+        IssuerMetadata.CredentialObject credentialObject = metadata.getCredentialsSupported().get(0);
+        assertEquals(ProfileId.VC20_BSSL_JWT.toString(), credentialObject.getProfile());
+    }
+
+    @Test
+    void buildIssuerMetadata_vc11ProfileExplicitlySet() {
+        when(issuerProperties.getConnectorDid()).thenReturn("did:web:issuer.example.com");
+
+        CredentialMetadataConfig.CredentialConfig config = new CredentialMetadataConfig.CredentialConfig();
+        config.setCredentialType("MembershipCredential");
+        config.setProfile(ProfileId.VC11_SL2021_JWT.toString());
+
+        when(credentialMetadataConfig.getSupported()).thenReturn(List.of(config));
+
+        IssuerMetadata metadata = metadataService.buildIssuerMetadata();
+
+        assertNotNull(metadata);
+        IssuerMetadata.CredentialObject credentialObject = metadata.getCredentialsSupported().get(0);
+        assertEquals(ProfileId.VC11_SL2021_JWT.toString(), credentialObject.getProfile());
+    }
+
+    @Test
+    void buildIssuerMetadata_vc20ProfileExplicitlySet() {
+        when(issuerProperties.getConnectorDid()).thenReturn("did:web:issuer.example.com");
+
+        CredentialMetadataConfig.CredentialConfig config = new CredentialMetadataConfig.CredentialConfig();
+        config.setCredentialType("MembershipCredential");
+        config.setProfile(ProfileId.VC20_BSSL_JWT.toString());
+
+        when(credentialMetadataConfig.getSupported()).thenReturn(List.of(config));
+
+        IssuerMetadata metadata = metadataService.buildIssuerMetadata();
+
+        assertNotNull(metadata);
+        IssuerMetadata.CredentialObject credentialObject = metadata.getCredentialsSupported().get(0);
+        assertEquals(ProfileId.VC20_BSSL_JWT.toString(), credentialObject.getProfile());
+    }
+}

@@ -12,12 +12,12 @@ import it.eng.dcp.common.model.CredentialStatus;
 import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.issuer.config.IssuerDidDocumentConfiguration;
 import it.eng.dcp.issuer.config.IssuerProperties;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.text.ParseException;
 import java.time.Instant;
@@ -33,7 +33,7 @@ import static org.mockito.Mockito.*;
 /**
  * Unit tests for CredentialIssuanceService.
  */
-@SuppressWarnings({"unused", "FieldCanBeLocal"})
+@ExtendWith(MockitoExtension.class)
 class CredentialIssuanceServiceTest {
 
     @Mock
@@ -55,8 +55,6 @@ class CredentialIssuanceServiceTest {
 
     @BeforeEach
     void setUp() throws JOSEException {
-        closeable = MockitoAnnotations.openMocks(this);
-
         testRequest = CredentialRequest.Builder.newInstance()
                 .issuerPid("issuer-pid-123")
                 .holderPid("did:web:example.com:holder")
@@ -65,19 +63,16 @@ class CredentialIssuanceServiceTest {
                 .createdAt(Instant.now())
                 .build();
 
-        ECKey testSigningKey = new ECKeyGenerator(Curve.P_256)
+        testSigningKey = new ECKeyGenerator(Curve.P_256)
                 .keyID("test-key-1")
                 .generate();
 
+        // Setup mocks BEFORE creating the service
         when(issuerProperties.getConnectorDid()).thenReturn("did:web:issuer.example.com");
-        when(keyService.getSigningJwk(any())).thenReturn(testSigningKey);
-    }
+        lenient().when(keyService.getSigningJwk(any())).thenReturn(testSigningKey);
 
-    @AfterEach
-    void tearDown() throws Exception {
-        if (closeable != null) {
-            closeable.close();
-        }
+        // Create service AFTER mocks are configured so factory gets correct issuerDid
+        issuanceService = new CredentialIssuanceService(issuerProperties, keyService, didDocumentConfig);
     }
 
     @Test
@@ -216,20 +211,22 @@ class CredentialIssuanceServiceTest {
         CredentialMessage.CredentialContainer credential = credentials.get(0);
         SignedJWT jwt = SignedJWT.parse((String) credential.getPayload());
 
+        // VC 2.0 has flat structure (no nested vc claim)
+        // Check for @context at root level
         @SuppressWarnings("unchecked")
-        Map<String, Object> vc = (Map<String, Object>) jwt.getJWTClaimsSet().getClaim("vc");
-        assertNotNull(vc);
-        assertTrue(vc.containsKey("@context"));
-        assertTrue(vc.containsKey("type"));
-        assertTrue(vc.containsKey("credentialSubject"));
+        List<String> context = (List<String>) jwt.getJWTClaimsSet().getClaim("@context");
+        assertNotNull(context, "VC 2.0 should have @context at root level");
+        assertTrue(context.contains("https://www.w3.org/ns/credentials/v2"));
 
         @SuppressWarnings("unchecked")
-        List<String> types = (List<String>) vc.get("type");
+        List<String> types = (List<String>) jwt.getJWTClaimsSet().getClaim("type");
+        assertNotNull(types);
         assertTrue(types.contains("VerifiableCredential"));
         assertTrue(types.contains("MembershipCredential"));
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> credentialSubject = (Map<String, Object>) vc.get("credentialSubject");
+        Map<String, Object> credentialSubject = (Map<String, Object>) jwt.getJWTClaimsSet().getClaim("credentialSubject");
+        assertNotNull(credentialSubject);
         assertEquals("did:web:example.com:holder", credentialSubject.get("id"));
     }
 
@@ -240,10 +237,10 @@ class CredentialIssuanceServiceTest {
         CredentialMessage.CredentialContainer credential = credentials.get(0);
         SignedJWT jwt = SignedJWT.parse((String) credential.getPayload());
 
+        // VC 2.0 has credentialSubject at root level
         @SuppressWarnings("unchecked")
-        Map<String, Object> vc = (Map<String, Object>) jwt.getJWTClaimsSet().getClaim("vc");
-        @SuppressWarnings("unchecked")
-        Map<String, Object> credentialSubject = (Map<String, Object>) vc.get("credentialSubject");
+        Map<String, Object> credentialSubject = (Map<String, Object>) jwt.getJWTClaimsSet().getClaim("credentialSubject");
+        assertNotNull(credentialSubject);
 
         assertTrue(credentialSubject.containsKey("membershipType"));
         assertTrue(credentialSubject.containsKey("status"));
@@ -311,6 +308,249 @@ class CredentialIssuanceServiceTest {
         assertNotNull(credentials);
         assertEquals(1, credentials.size());
         verify(keyService, atLeastOnce()).getSigningJwk(any());
+    }
+
+    // ============================================
+    // VC 2.0 Profile Tests (vc20-bssl/jwt)
+    // ============================================
+
+    @Test
+    void generateCredentials_vc20Profile_hasCorrectContext() throws ParseException {
+        // By default, credentials use VC 2.0 profile
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+
+        SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
+
+        @SuppressWarnings("unchecked")
+        List<String> context = (List<String>) jwt.getJWTClaimsSet().getClaim("@context");
+        assertNotNull(context, "VC 2.0 should have @context");
+        assertTrue(context.contains("https://www.w3.org/ns/credentials/v2"),
+                "VC 2.0 should use /ns/credentials/v2 context");
+    }
+
+    @Test
+    void generateCredentials_vc20Profile_hasValidFromAndValidUntil() throws ParseException {
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+
+        SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
+
+        // VC 2.0 uses validFrom and validUntil (not issuanceDate/expirationDate)
+        String validFrom = (String) jwt.getJWTClaimsSet().getClaim("validFrom");
+        String validUntil = (String) jwt.getJWTClaimsSet().getClaim("validUntil");
+
+        assertNotNull(validFrom, "VC 2.0 should have validFrom");
+        assertNotNull(validUntil, "VC 2.0 should have validUntil");
+
+        // Verify they are valid ISO timestamps
+        assertDoesNotThrow(() -> Instant.parse(validFrom));
+        assertDoesNotThrow(() -> Instant.parse(validUntil));
+    }
+
+    @Test
+    void generateCredentials_vc20Profile_hasEnvelopedProof() throws ParseException {
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+
+        SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
+
+        // VC 2.0 with enveloped proof: NO proof object in payload
+        Object proof = jwt.getJWTClaimsSet().getClaim("proof");
+        assertNull(proof, "VC 2.0 with enveloped proof should NOT have a proof claim");
+
+        // The JWT signature itself IS the proof
+        assertNotNull(jwt.getSignature(), "JWT should have signature");
+    }
+
+    @Test
+    void generateCredentials_vc20Profile_hasBitstringStatusListEntry() throws ParseException {
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+
+        SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> credentialStatus = (Map<String, Object>) jwt.getJWTClaimsSet().getClaim("credentialStatus");
+        assertNotNull(credentialStatus, "VC 2.0 should have credentialStatus");
+
+        assertEquals("BitstringStatusListEntry", credentialStatus.get("type"),
+                "VC 2.0 should use BitstringStatusListEntry");
+        assertEquals("revocation", credentialStatus.get("statusPurpose"));
+        assertNotNull(credentialStatus.get("statusListIndex"));
+        assertNotNull(credentialStatus.get("statusListCredential"));
+    }
+
+    @Test
+    void generateCredentials_vc20Profile_issuerIsObject() throws ParseException {
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+
+        SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
+
+        // VC 2.0 allows issuer as object
+        Object issuer = jwt.getJWTClaimsSet().getClaim("issuer");
+        assertNotNull(issuer);
+        assertTrue(issuer instanceof Map, "VC 2.0 issuer should be an object");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> issuerObj = (Map<String, Object>) issuer;
+        assertEquals("did:web:issuer.example.com", issuerObj.get("id"));
+    }
+
+    @Test
+    void generateCredentials_vc20Profile_jwtHeaderHasCorrectType() throws ParseException {
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+
+        SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
+
+        // VC 2.0 JWT should have type "vc+ld+jwt"
+        assertEquals("vc+ld+jwt", jwt.getHeader().getType().getType(),
+                "VC 2.0 JWT header should have type 'vc+ld+jwt'");
+    }
+
+    @Test
+    void generateCredentials_vc20Profile_flatStructureNoNestedVc() throws ParseException {
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+
+        SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
+
+        // VC 2.0 has FLAT structure - no nested "vc" claim
+        Object vc = jwt.getJWTClaimsSet().getClaim("vc");
+        assertNull(vc, "VC 2.0 should NOT have nested 'vc' claim - structure should be flat");
+
+        // All VC fields should be at root level
+        assertNotNull(jwt.getJWTClaimsSet().getClaim("@context"));
+        assertNotNull(jwt.getJWTClaimsSet().getClaim("type"));
+        assertNotNull(jwt.getJWTClaimsSet().getClaim("credentialSubject"));
+    }
+
+    // ============================================
+    // VC 1.1 Profile Tests (vc11-sl2021/jwt)
+    // ============================================
+
+    @Test
+    void generateCredentials_vc11Profile_hasNestedVcClaim() throws ParseException {
+        // Create context with VC 1.1 profile metadata
+        Map<String, Object> customClaims = new HashMap<>();
+        Map<String, Map<String, Object>> metadata = new HashMap<>();
+        Map<String, Object> credMetadata = new HashMap<>();
+        credMetadata.put("profile", "vc11-sl2021/jwt");
+        metadata.put("MembershipCredential", credMetadata);
+        customClaims.put("__credentialMetadata", metadata);
+
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(
+                testRequest, customClaims, null
+        );
+
+        SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
+
+        // VC 1.1 has NESTED structure with "vc" claim
+        @SuppressWarnings("unchecked")
+        Map<String, Object> vc = (Map<String, Object>) jwt.getJWTClaimsSet().getClaim("vc");
+        assertNotNull(vc, "VC 1.1 should have nested 'vc' claim");
+
+        // VC 1.1 fields are inside the vc claim
+        assertTrue(vc.containsKey("@context"));
+        assertTrue(vc.containsKey("type"));
+        assertTrue(vc.containsKey("credentialSubject"));
+        assertTrue(vc.containsKey("proof"), "VC 1.1 should have external proof object");
+    }
+
+    @Test
+    void generateCredentials_vc11Profile_hasCorrectContext() throws ParseException {
+        Map<String, Object> customClaims = new HashMap<>();
+        Map<String, Map<String, Object>> metadata = new HashMap<>();
+        Map<String, Object> credMetadata = new HashMap<>();
+        credMetadata.put("profile", "vc11-sl2021/jwt");
+        metadata.put("MembershipCredential", credMetadata);
+        customClaims.put("__credentialMetadata", metadata);
+
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(
+                testRequest, customClaims, null
+        );
+
+        SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> vc = (Map<String, Object>) jwt.getJWTClaimsSet().getClaim("vc");
+
+        @SuppressWarnings("unchecked")
+        List<String> context = (List<String>) vc.get("@context");
+        assertNotNull(context);
+        assertTrue(context.contains("https://www.w3.org/2018/credentials/v1"),
+                "VC 1.1 should use /2018/credentials/v1 context");
+    }
+
+    @Test
+    void generateCredentials_vc11Profile_hasIssuanceDateAndExpirationDate() throws ParseException {
+        Map<String, Object> customClaims = new HashMap<>();
+        Map<String, Map<String, Object>> metadata = new HashMap<>();
+        Map<String, Object> credMetadata = new HashMap<>();
+        credMetadata.put("profile", "vc11-sl2021/jwt");
+        metadata.put("MembershipCredential", credMetadata);
+        customClaims.put("__credentialMetadata", metadata);
+
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(
+                testRequest, customClaims, null
+        );
+
+        SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> vc = (Map<String, Object>) jwt.getJWTClaimsSet().getClaim("vc");
+
+        // VC 1.1 uses issuanceDate and expirationDate (not validFrom/validUntil)
+        String issuanceDate = (String) vc.get("issuanceDate");
+        String expirationDate = (String) vc.get("expirationDate");
+
+        assertNotNull(issuanceDate, "VC 1.1 should have issuanceDate");
+        assertNotNull(expirationDate, "VC 1.1 should have expirationDate");
+    }
+
+    @Test
+    void generateCredentials_vc11Profile_hasExternalProof() throws ParseException {
+        Map<String, Object> customClaims = new HashMap<>();
+        Map<String, Map<String, Object>> metadata = new HashMap<>();
+        Map<String, Object> credMetadata = new HashMap<>();
+        credMetadata.put("profile", "vc11-sl2021/jwt");
+        metadata.put("MembershipCredential", credMetadata);
+        customClaims.put("__credentialMetadata", metadata);
+
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(
+                testRequest, customClaims, null
+        );
+
+        SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> vc = (Map<String, Object>) jwt.getJWTClaimsSet().getClaim("vc");
+
+        // VC 1.1 has external proof object
+        @SuppressWarnings("unchecked")
+        Map<String, Object> proof = (Map<String, Object>) vc.get("proof");
+        assertNotNull(proof, "VC 1.1 should have external proof object");
+
+        assertEquals("JsonWebSignature2020", proof.get("type"));
+        assertNotNull(proof.get("created"));
+        assertNotNull(proof.get("verificationMethod"));
+        assertEquals("assertionMethod", proof.get("proofPurpose"));
+    }
+
+    @Test
+    void generateCredentials_vc11Profile_jwtHeaderHasStandardType() throws ParseException {
+        Map<String, Object> customClaims = new HashMap<>();
+        Map<String, Map<String, Object>> metadata = new HashMap<>();
+        Map<String, Object> credMetadata = new HashMap<>();
+        credMetadata.put("profile", "vc11-sl2021/jwt");
+        metadata.put("MembershipCredential", credMetadata);
+        customClaims.put("__credentialMetadata", metadata);
+
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(
+                testRequest, customClaims, null
+        );
+
+        SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
+
+        // VC 1.1 JWT typically doesn't set a specific type or uses "JWT"
+        // Our implementation doesn't set type for VC 1.1, which is valid
+        assertNotEquals("vc+ld+jwt", jwt.getHeader().getType() != null ? jwt.getHeader().getType().getType() : null,
+                "VC 1.1 should NOT use 'vc+ld+jwt' type");
     }
 }
 

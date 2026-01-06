@@ -2,6 +2,7 @@ package it.eng.dcp.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import it.eng.dcp.common.model.ProfileId;
 import it.eng.dcp.model.PresentationResponseMessage;
 import it.eng.dcp.model.VerifiablePresentation;
@@ -11,11 +12,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.stubbing.Answer;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -38,21 +42,14 @@ public class PresentationValidationServiceTest {
 
     @BeforeEach
     void setup() {
-        // trusted issuer behaviour for TestCredentialType
-//        when(issuerTrustService.isTrusted("TestCredentialType", "did:example:issuer")).thenReturn(true);
-//        when(issuerTrustService.isTrusted("TestCredentialType", "did:example:untrusted")).thenReturn(false);
-
-        // default schema existence: return false unless explicitly stubbed in a test
-//        when(schemaRegistryService.exists(org.mockito.Mockito.anyString())).thenReturn(false);
-
         // mimic ProfileResolverStub logic via mocked resolver
-        org.mockito.stubbing.Answer<ProfileId> resolverAnswer = invocation -> {
+        Answer<ProfileId> resolverAnswer = invocation -> {
             String fmt = invocation.getArgument(0, String.class);
-            java.util.Map<String, Object> attrs = invocation.getArgument(1, java.util.Map.class);
+            Map<String, Object> attrs = invocation.getArgument(1, Map.class);
             boolean hasStatusList = attrs != null && attrs.containsKey("statusList") && attrs.get("statusList") != null;
             if (fmt == null) return null;
             if ("jwt".equalsIgnoreCase(fmt) && hasStatusList) return ProfileId.VC11_SL2021_JWT;
-            if ("json-ld".equalsIgnoreCase(fmt) && !hasStatusList) return ProfileId.VC11_SL2021_JSONLD;
+            if ("jwt".equalsIgnoreCase(fmt)) return ProfileId.VC20_BSSL_JWT;
             return null;
         };
         when(profileResolver.resolve(org.mockito.Mockito.anyString(), org.mockito.Mockito.anyMap())).thenAnswer(resolverAnswer);
@@ -94,13 +91,13 @@ public class PresentationValidationServiceTest {
     void happyPath_singleVc_valid() {
         Instant now = Instant.now();
         JsonNode cred = makeCredential("urn:uuid:1", "did:example:issuer", "TestCredentialType", now.minusSeconds(60), now.plusSeconds(3600));
-        // mark credential as JSON-LD by including a minimal proof so ProfileResolver resolves it as VC11_SL2021_JSONLD
-        ((com.fasterxml.jackson.databind.node.ObjectNode)cred).set("proof", mapper.createObjectNode().put("type","TestProof"));
+        // mark credential as JWT with statusList so ProfileResolver resolves it as VC11_SL2021_JWT
+        ((ObjectNode)cred).set("statusList", mapper.createObjectNode().put("id","status"));
         // stub schema existence on the mocked schemaRegistryService
         when(schemaRegistryService.exists("http://example.com/schemas/TestCredentialType")).thenReturn(true);
         when(issuerTrustService.isTrusted(eq("TestCredentialType"), eq("did:example:issuer"))).thenReturn(true);
 
-        VerifiablePresentation vp = buildVp(cred, "VC11_SL2021_JSONLD");
+        VerifiablePresentation vp = buildVp(cred, ProfileId.VC11_SL2021_JWT.toString());
         PresentationResponseMessage rsp = PresentationResponseMessage.Builder.newInstance().presentation(List.of(vp)).build();
 
         var report = validationService.validate(rsp, List.of("TestCredentialType"), null);
@@ -111,8 +108,8 @@ public class PresentationValidationServiceTest {
     void edgeCase_expiredCredential_fails() {
         Instant now = Instant.now();
         JsonNode cred = makeCredential("urn:uuid:2", "did:example:issuer", "TestCredentialType", now.minusSeconds(3600), now.minusSeconds(10));
-        ((com.fasterxml.jackson.databind.node.ObjectNode)cred).set("proof", mapper.createObjectNode().put("type","TestProof"));
-        VerifiablePresentation vp = buildVp(cred, "VC11_SL2021_JSONLD");
+        ((ObjectNode)cred).set("proof", mapper.createObjectNode().put("type","TestProof"));
+        VerifiablePresentation vp = buildVp(cred, ProfileId.VC20_BSSL_JWT.toString());
         PresentationResponseMessage rsp = PresentationResponseMessage.Builder.newInstance().presentation(List.of(vp)).build();
 
         var report = validationService.validate(rsp, List.of("TestCredentialType"), null);
@@ -124,8 +121,8 @@ public class PresentationValidationServiceTest {
     void edgeCase_untrustedIssuer_fails() {
         Instant now = Instant.now();
         JsonNode cred = makeCredential("urn:uuid:3", "did:example:untrusted", "TestCredentialType", now.minusSeconds(60), now.plusSeconds(3600));
-        ((com.fasterxml.jackson.databind.node.ObjectNode)cred).set("proof", mapper.createObjectNode().put("type","TestProof"));
-        VerifiablePresentation vp = buildVp(cred, "VC11_SL2021_JSONLD");
+        ((ObjectNode)cred).set("proof", mapper.createObjectNode().put("type","TestProof"));
+        VerifiablePresentation vp = buildVp(cred, ProfileId.VC20_BSSL_JWT.toString());
         PresentationResponseMessage rsp = PresentationResponseMessage.Builder.newInstance().presentation(List.of(vp)).build();
 
         var report = validationService.validate(rsp, List.of("TestCredentialType"), null);
@@ -137,8 +134,8 @@ public class PresentationValidationServiceTest {
     void edgeCase_missingRequiredType_fails() {
         Instant now = Instant.now();
         JsonNode cred = makeCredential("urn:uuid:4", "did:example:issuer", "OtherType", now.minusSeconds(60), now.plusSeconds(3600));
-        ((com.fasterxml.jackson.databind.node.ObjectNode)cred).set("proof", mapper.createObjectNode().put("type","TestProof"));
-        VerifiablePresentation vp = buildVp(cred, "VC11_SL2021_JSONLD");
+        ((ObjectNode)cred).set("proof", mapper.createObjectNode().put("type","TestProof"));
+        VerifiablePresentation vp = buildVp(cred, ProfileId.VC20_BSSL_JWT.toString());
         PresentationResponseMessage rsp = PresentationResponseMessage.Builder.newInstance().presentation(List.of(vp)).build();
 
         var report = validationService.validate(rsp, List.of("TestCredentialType"), null);
@@ -152,8 +149,8 @@ public class PresentationValidationServiceTest {
         JsonNode cred1 = makeCredential("urn:uuid:5", "did:example:issuer", "TestCredentialType", now.minusSeconds(60), now.plusSeconds(3600));
         JsonNode cred2 = makeCredential("urn:uuid:6", "did:example:issuer", "TestCredentialType", now.minusSeconds(60), now.plusSeconds(3600));
         // make first credential look like JSON-LD (has a proof), second has credentialStatus -> leads to mixed profile
-        ((com.fasterxml.jackson.databind.node.ObjectNode)cred1).set("proof", mapper.createObjectNode().put("type","TestProof"));
-        ((com.fasterxml.jackson.databind.node.ObjectNode)cred2).set("credentialStatus", mapper.createObjectNode().put("id","status"));
+        ((ObjectNode)cred1).set("proof", mapper.createObjectNode().put("type","TestProof"));
+        ((ObjectNode)cred2).set("credentialStatus", mapper.createObjectNode().put("id","status"));
 
         VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
                 .holderDid("did:example:holder")

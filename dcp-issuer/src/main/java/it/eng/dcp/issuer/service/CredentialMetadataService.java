@@ -1,8 +1,9 @@
 package it.eng.dcp.issuer.service;
 
+import it.eng.dcp.common.model.IssuerMetadata;
+import it.eng.dcp.common.model.ProfileId;
 import it.eng.dcp.issuer.config.CredentialMetadataConfig;
 import it.eng.dcp.issuer.config.IssuerProperties;
-import it.eng.dcp.common.model.IssuerMetadata;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -87,12 +88,6 @@ public class CredentialMetadataService {
         }
         builder.id(id);
 
-        String type = config.getType();
-        if (type == null || type.isBlank()) {
-            type = "CredentialObject";
-        }
-        builder.type(type);
-
         if (config.getCredentialType() == null || config.getCredentialType().isBlank()) {
             throw new IllegalArgumentException("credentialType is required");
         }
@@ -123,33 +118,20 @@ public class CredentialMetadataService {
     }
 
     /**
-     * Determine the default profile to use.
+     * Determine the default profile to use from configuration.
+     * Returns the first configured profile, or defaults to VC 2.0 profile.
      *
-     * @return Default profile string
+     * @return Default profile string (spec-compliant alias)
      */
     private String determineDefaultProfile() {
         List<String> supportedProfiles = issuerProperties.getSupportedProfiles();
         if (supportedProfiles != null && !supportedProfiles.isEmpty()) {
             String profile = supportedProfiles.get(0);
             log.debug("Using first supported profile as default: {}", profile);
-            return normalizeProfileId(profile);
+            return profile;  // Already in spec format (e.g., "vc20-bssl/jwt")
         }
-        return "vc11-sl2021/jwt";
-    }
-
-    /**
-     * Normalize profile ID to lowercase with slashes.
-     *
-     * @param profileId The profile ID to normalize
-     * @return Normalized profile string
-     */
-    private String normalizeProfileId(String profileId) {
-        if (profileId == null) {
-            return "vc11-sl2021/jwt";
-        }
-        return profileId.toLowerCase()
-            .replace("_sl", "-sl")
-            .replace("_", "/");
+        // Default to VC 2.0 profile if none configured (recommended by DCP specification)
+        return ProfileId.VC20_BSSL_JWT.toString();
     }
 }
 

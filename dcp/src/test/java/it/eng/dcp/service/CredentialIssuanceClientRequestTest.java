@@ -1,14 +1,10 @@
 package it.eng.dcp.service;
 
-import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.common.model.IssuerMetadata.CredentialObject;
+import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.tools.client.rest.OkHttpRestClient;
-import okhttp3.MediaType;
-import okhttp3.Protocol;
-import okhttp3.Request;
-import okhttp3.Response;
-import okhttp3.ResponseBody;
+import okhttp3.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,9 +16,10 @@ import org.springframework.http.HttpStatus;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
-import static org.mockito.ArgumentMatchers.*;
 
 @ExtendWith(MockitoExtension.class)
 class CredentialIssuanceClientRequestTest {
@@ -39,7 +36,6 @@ class CredentialIssuanceClientRequestTest {
     private IssuerMetadata validIssuer(String issuer) {
         CredentialObject co = CredentialObject.Builder.newInstance()
                 .id("cred1")
-                .type("CredType")
                 .credentialType("VerifiableCredential")
                 .build();
         return IssuerMetadata.Builder.newInstance()

@@ -1,7 +1,6 @@
 package it.eng.dcp.common.model;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import it.eng.dcp.common.model.IssuerMetadata;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -17,7 +16,6 @@ class IssuerMetadataTest {
     void builderConstructsIssuerMetadataAndJsonRoundtrip() throws Exception {
         IssuerMetadata.CredentialObject co = IssuerMetadata.CredentialObject.Builder.newInstance()
                 .id("cred-1")
-                .type("CredentialObject")
                 .credentialType("ProofCredential")
                 .credentialSchema("https://example.com/schema")
                 .profile("vc11-jwt")
@@ -51,13 +49,11 @@ class IssuerMetadataTest {
     void duplicateCredentialIdsRejected() {
         IssuerMetadata.CredentialObject co1 = IssuerMetadata.CredentialObject.Builder.newInstance()
                 .id("dup")
-                .type("CredentialObject")
                 .credentialType("Proof")
                 .build();
 
         IssuerMetadata.CredentialObject co2 = IssuerMetadata.CredentialObject.Builder.newInstance()
                 .id("dup")
-                .type("CredentialObject")
                 .credentialType("Proof2")
                 .build();
 

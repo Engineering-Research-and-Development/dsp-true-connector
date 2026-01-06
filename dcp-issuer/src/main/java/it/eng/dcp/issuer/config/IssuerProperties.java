@@ -1,5 +1,6 @@
 package it.eng.dcp.issuer.config;
 
+import it.eng.dcp.common.model.ProfileId;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -171,12 +172,19 @@ public class IssuerProperties {
      * Issuer-specific configuration properties.
      */
     public static class Issuer {
-        /** Supported profiles, e.g. ["VC11_SL2021_JWT","VC11_SL2021_JSONLD"] */
-        private List<String> supportedProfiles = List.of("VC11_SL2021_JWT");
+        /**
+         * Supported DCP profiles using spec-compliant aliases.
+         * Defaults to VC 2.0 profile (vc20-bssl/jwt) as recommended by DCP specification.
+         * Valid values: "vc20-bssl/jwt", "vc11-sl2021/jwt"
+         * Example: ["vc20-bssl/jwt", "vc11-sl2021/jwt"]
+         *
+         * @see ProfileId for available profile constants
+         */
+        private List<String> supportedProfiles = List.of(ProfileId.VC20_BSSL_JWT.toString());
 
         /**
          * Get the list of supported profiles.
-         * @return supported profiles
+         * @return supported profiles (using spec aliases like "vc20-bssl/jwt")
          */
         public List<String> getSupportedProfiles() {
             return supportedProfiles;
@@ -184,7 +192,7 @@ public class IssuerProperties {
 
         /**
          * Set the list of supported profiles.
-         * @param supportedProfiles supported profiles
+         * @param supportedProfiles supported profiles (using spec aliases like "vc20-bssl/jwt")
          */
         public void setSupportedProfiles(List<String> supportedProfiles) {
             this.supportedProfiles = supportedProfiles;

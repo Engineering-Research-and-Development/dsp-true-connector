@@ -1,7 +1,10 @@
 package it.eng.dcp.service;
 
 import it.eng.dcp.common.model.ProfileId;
-import it.eng.dcp.model.*;
+import it.eng.dcp.model.PresentationQueryMessage;
+import it.eng.dcp.model.PresentationResponseMessage;
+import it.eng.dcp.model.VerifiableCredential;
+import it.eng.dcp.model.VerifiablePresentation;
 import it.eng.dcp.repository.VerifiableCredentialRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -66,46 +69,6 @@ class PresentationServiceTest {
 
         // Verify that vpSigner.sign was called with "jwt" format
         verify(vpSigner).sign(any(VerifiablePresentation.class), eq("jwt"));
-    }
-
-    @Test
-    void testCreatePresentation_JsonLdFormat() {
-        // Arrange
-        PresentationQueryMessage query = PresentationQueryMessage.Builder.newInstance()
-                .scope(List.of("MembershipCredential"))
-                .build();
-
-        VerifiableCredential vc = VerifiableCredential.Builder.newInstance()
-                .id("urn:uuid:test-123")
-                .credentialType("MembershipCredential")
-                .holderDid("did:web:localhost:8080")
-                .profileId(ProfileId.VC11_SL2021_JSONLD.toString())
-                .build();
-
-        when(credentialRepository.findByCredentialTypeIn(anyList())).thenReturn(List.of(vc));
-
-        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-        com.fasterxml.jackson.databind.node.ObjectNode jsonLdPresentation = mapper.createObjectNode();
-        jsonLdPresentation.put("id", "urn:uuid:vp-123");
-        jsonLdPresentation.put("type", "VerifiablePresentation");
-
-        when(vpSigner.sign(any(VerifiablePresentation.class), eq("json-ld")))
-                .thenReturn(jsonLdPresentation);
-
-        // Act
-        PresentationResponseMessage response = presentationService.createPresentation(query);
-
-        // Assert
-        assertNotNull(response);
-        assertNotNull(response.getPresentation());
-        assertEquals(1, response.getPresentation().size());
-
-        Object presentation = response.getPresentation().get(0);
-        assertTrue(presentation instanceof com.fasterxml.jackson.databind.node.ObjectNode,
-                   "Presentation should be a JSON-LD object");
-
-        // Verify that vpSigner.sign was called with "json-ld" format
-        verify(vpSigner).sign(any(VerifiablePresentation.class), eq("json-ld"));
     }
 
     @Test

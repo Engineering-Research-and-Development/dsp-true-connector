@@ -3,27 +3,24 @@ package it.eng.dcp.common.model;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import it.eng.tools.model.DSpaceConstants;
+import jakarta.validation.ValidationException;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.io.Serial;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
-
-import jakarta.validation.ValidationException;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 
 @JsonDeserialize(builder = IssuerMetadata.Builder.class)
 @NoArgsConstructor(access = lombok.AccessLevel.PRIVATE)
 @Getter
+@JsonPropertyOrder({DSpaceConstants.CONTEXT, "type", "issuer", "credentialsSupported"})
 public class IssuerMetadata extends BaseDcpMessage {
 
     @Serial
@@ -103,6 +100,7 @@ public class IssuerMetadata extends BaseDcpMessage {
 
     @JsonDeserialize(builder = CredentialObject.Builder.class)
     @Getter
+    @JsonPropertyOrder({"id", "type", "credentialType", "offerReason", "credentialSchema", "bindingMethods", "profile", "issuancePolicy"})
     @NoArgsConstructor
     public static class CredentialObject implements java.io.Serializable {
 
@@ -111,9 +109,6 @@ public class IssuerMetadata extends BaseDcpMessage {
 
         @NotNull
         private String id;
-
-        @NotNull
-        private String type;
 
         @NotNull
         private String credentialType;
@@ -125,6 +120,10 @@ public class IssuerMetadata extends BaseDcpMessage {
         private Map<String, Object> issuancePolicy;
 
         private final List<String> bindingMethods = new ArrayList<>();
+
+        public String getType() {
+            return CredentialObject.class.getSimpleName();
+        }
 
         @JsonPOJOBuilder(withPrefix = "")
         @JsonIgnoreProperties(ignoreUnknown = true)
@@ -142,11 +141,6 @@ public class IssuerMetadata extends BaseDcpMessage {
 
             public Builder id(String id) {
                 obj.id = id;
-                return this;
-            }
-
-            public Builder type(String type) {
-                obj.type = type;
                 return this;
             }
 

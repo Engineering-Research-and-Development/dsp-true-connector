@@ -6,7 +6,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class ProfileResolverStubTest {
 
@@ -17,13 +18,6 @@ class ProfileResolverStubTest {
     void jwtWithStatusListResolvesToJwtProfile() {
         ProfileId p = resolver.resolve("jwt", Map.of("statusList", "https://example.com/sl"));
         assertEquals(ProfileId.VC11_SL2021_JWT, p);
-    }
-
-    @Test
-    @DisplayName("json-ld without statusList resolves to JSON-LD profile")
-    void jsonLdWithoutStatusListResolvesToJsonLdProfile() {
-        ProfileId p = resolver.resolve("json-ld", Map.of());
-        assertEquals(ProfileId.VC11_SL2021_JSONLD, p);
     }
 
     @Test
