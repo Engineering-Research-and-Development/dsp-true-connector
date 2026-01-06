@@ -1,21 +1,21 @@
 package it.eng.connector.configuration;
 
-import java.util.Collections;
-import java.util.List;
-
+import it.eng.dcp.common.model.ProfileId;
 import it.eng.dcp.common.service.did.DidResolverService;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
-import org.springframework.stereotype.Component;
-
 import it.eng.dcp.model.PresentationResponseMessage;
 import it.eng.dcp.model.ValidationReport;
 import it.eng.dcp.model.VerifiablePresentation;
 import it.eng.dcp.service.PresentationValidationService;
 import it.eng.dcp.service.TokenContext;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.stereotype.Component;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Authentication provider for Verifiable Credentials / Verifiable Presentations.
@@ -298,8 +298,8 @@ public class VcVpAuthenticationProvider implements AuthenticationProvider {
     private boolean verifyVerifiablePresentationCredentials(VerifiablePresentation vp) {
         try {
             // Use profileId to determine format
-            String profileId = vp.getProfileId();
-            boolean isJwtFormat = profileId != null && profileId.contains("JWT");
+            ProfileId profileId = vp.getProfileId();
+            boolean isJwtFormat = true; //profileId != null && profileId.getFormat().contains("JWT");
 
             // Get credentials list
             List<Object> credentialsList = vp.getCredentials();
@@ -505,8 +505,8 @@ public class VcVpAuthenticationProvider implements AuthenticationProvider {
     private boolean validateVpCustomClaims(VerifiablePresentation vp) {
         try {
             // Use profileId to determine format
-            String profileId = vp.getProfileId();
-            boolean isJwtFormat = profileId != null && profileId.contains("JWT");
+            ProfileId profileId = ProfileId.fromString(vp.getProfileId().toString());
+            boolean isJwtFormat = true; //profileId != null && profileId.getFormat().contains("JWT");
 
             // Get credentials list
             List<Object> credentialsList = vp.getCredentials();

@@ -7,7 +7,6 @@ import it.eng.dcp.common.model.CredentialOfferMessage;
 import it.eng.dcp.common.model.CredentialStatus;
 import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
-import it.eng.dcp.core.ProfileResolver;
 import it.eng.dcp.model.CredentialStatusRecord;
 import it.eng.dcp.model.PresentationQueryMessage;
 import it.eng.dcp.model.PresentationResponseMessage;
@@ -46,9 +45,6 @@ class HolderServiceTest {
     private CredentialStatusRepository credentialStatusRepository;
 
     @Mock
-    private ProfileResolver profileResolver;
-
-    @Mock
     private CredentialIssuanceClient issuanceClient;
 
     private ObjectMapper mapper;
@@ -65,7 +61,6 @@ class HolderServiceTest {
                 rateLimiter,
                 credentialRepository,
                 credentialStatusRepository,
-                profileResolver,
                 mapper,
                 issuanceClient
         );

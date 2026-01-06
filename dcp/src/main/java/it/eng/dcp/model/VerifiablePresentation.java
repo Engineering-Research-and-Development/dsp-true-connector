@@ -1,10 +1,16 @@
 package it.eng.dcp.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import it.eng.dcp.common.model.ProfileId;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidationException;
+import jakarta.validation.ValidatorFactory;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,15 +21,8 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
-
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.Validation;
-import jakarta.validation.ValidationException;
-import jakarta.validation.ValidatorFactory;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -53,24 +52,25 @@ public class VerifiablePresentation implements Serializable {
 
     /**
      * Full credentials to be embedded in the presentation.
-     * Can contain JWT strings (for jwt format) or JSON objects (for json-ld format).
+     * Can contain JWT strings or JSON objects.
      * Per W3C VC Data Model and DCP spec, verifiableCredential can be:
      * - URIs/IDs: ["urn:uuid:abc"]
-     * - Embedded VCs: ["eyJhbGc...JWT...", {...JSON-LD VC...}]
+     * - Embedded VCs: ["eyJhbGc...JWT...", {...JSON VC...}]
      * If present, this takes precedence over credentialIds in the VP claim.
      */
     private List<Object> credentials = new ArrayList<>();
 
     /**
-     * Profile identifier used for homogeneity (e.g. VC11_SL2021_JWT).
+     * Profile identifier used for homogeneity (e.g. VC11_SL2021_JWT, VC20_BSSL_JWT).
+     * Must be one of the official DCP profiles.
      */
     @NotNull
-    private String profileId;
+    private ProfileId profileId;
 
 
     /**
-     * Proof block or JWT string depending on format. For JSON-LD, this is the proof object; for JWT, it may contain
-     * the compact JWT string.
+     * Proof block or JWT string depending on format.
+     * For JWT-based VPs, this contains the JWT proof.
      */
     private JsonNode proof;
 
@@ -113,7 +113,7 @@ public class VerifiablePresentation implements Serializable {
             return this;
         }
 
-        public Builder profileId(String profileId) {
+        public Builder profileId(ProfileId profileId) {
             vp.profileId = profileId;
             return this;
         }

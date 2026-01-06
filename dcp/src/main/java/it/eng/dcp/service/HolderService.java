@@ -3,10 +3,10 @@ package it.eng.dcp.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import it.eng.dcp.common.model.*;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.common.util.DidUrlConverter;
-import it.eng.dcp.core.ProfileResolver;
 import it.eng.dcp.model.CredentialStatusRecord;
 import it.eng.dcp.model.PresentationQueryMessage;
 import it.eng.dcp.model.PresentationResponseMessage;
@@ -36,7 +36,6 @@ public class HolderService {
     private final PresentationRateLimiter rateLimiter;
     private final VerifiableCredentialRepository credentialRepository;
     private final CredentialStatusRepository credentialStatusRepository;
-    private final ProfileResolver profileResolver;
     private final ObjectMapper mapper;
     private final CredentialIssuanceClient issuanceClient;
 
@@ -46,7 +45,6 @@ public class HolderService {
                          PresentationRateLimiter rateLimiter,
                          VerifiableCredentialRepository credentialRepository,
                          CredentialStatusRepository credentialStatusRepository,
-                         ProfileResolver profileResolver,
                          ObjectMapper mapper,
                          CredentialIssuanceClient issuanceClient) {
         this.tokenService = tokenService;
@@ -54,7 +52,6 @@ public class HolderService {
         this.rateLimiter = rateLimiter;
         this.credentialRepository = credentialRepository;
         this.credentialStatusRepository = credentialStatusRepository;
-        this.profileResolver = profileResolver;
         this.mapper = mapper;
         this.issuanceClient = issuanceClient;
     }
@@ -361,14 +358,15 @@ public class HolderService {
         // Set issuerDid
         cb.issuerDid(issuerDid);
 
-        // Determine and set profileId using ProfileResolver
-        setProfileId(cb, format);
+        // Profile is now set within the format-specific processing methods
+        // (processVc11JwtCredential, processVc20JwtCredential, processJsonLdCredential)
 
         return cb.build();
     }
 
     /**
      * Process a JWT format credential.
+     * Handles both VC 1.1 (nested 'vc' claim) and VC 2.0 (flat structure) profiles.
      *
      * @param payload The credential payload object
      * @param container The credential container
@@ -384,65 +382,22 @@ public class HolderService {
 
         try {
             // Parse JWT to extract claims and credential information
-            com.nimbusds.jwt.SignedJWT signedJWT = com.nimbusds.jwt.SignedJWT.parse(jwtString);
+            SignedJWT signedJWT = SignedJWT.parse(jwtString);
             JWTClaimsSet claims = signedJWT.getJWTClaimsSet();
 
-            // Extract vc claim which contains the Verifiable Credential
+            // Detect VC version: VC 1.1 has nested 'vc' claim, VC 2.0 is flat
             Map<String, Object> vcClaim = claims.getJSONObjectClaim("vc");
-            if (vcClaim == null) {
-                log.warn("Skipping JWT credential - missing 'vc' claim");
-                return false;
+            boolean isVc11 = (vcClaim != null);
+
+            if (isVc11) {
+                // VC 1.1 structure (vc11-sl2021/jwt profile)
+                log.debug("Detected VC 1.1 structure (nested 'vc' claim)");
+                return processVc11JwtCredential(vcClaim, jwtString, container, builder, claims);
+            } else {
+                // VC 2.0 structure (vc20-bssl/jwt profile)
+                log.debug("Detected VC 2.0 structure (flat claims)");
+                return processVc20JwtCredential(claims, jwtString, container, builder);
             }
-
-            // Extract credential ID from vc.id
-            if (vcClaim.containsKey("id")) {
-                builder.id(vcClaim.get("id").toString());
-            }
-
-            // Extract holder DID from credentialSubject.id
-            if (vcClaim.containsKey("credentialSubject")) {
-                Object credentialSubject = vcClaim.get("credentialSubject");
-                if (credentialSubject instanceof Map) {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> subjectMap = (Map<String, Object>) credentialSubject;
-                    if (subjectMap.containsKey("id")) {
-                        String holderDid = subjectMap.get("id").toString();
-                        builder.holderDid(holderDid);
-                        log.debug("Extracted holderDid from credentialSubject: {}", holderDid);
-                    }
-                }
-            }
-
-            // Extract issuance date
-            if (vcClaim.containsKey("issuanceDate")) {
-                try {
-                    builder.issuanceDate(Instant.parse(vcClaim.get("issuanceDate").toString()));
-                } catch (Exception e) {
-                    log.debug("Could not parse issuanceDate: {}", e.getMessage());
-                }
-            }
-
-            // Extract expiration date
-            if (vcClaim.containsKey("expirationDate") && vcClaim.get("expirationDate") != null) {
-                try {
-                    builder.expirationDate(Instant.parse(vcClaim.get("expirationDate").toString()));
-                } catch (Exception e) {
-                    log.debug("Could not parse expirationDate: {}", e.getMessage());
-                }
-            }
-
-            // Store credential as JsonNode
-            JsonNode jwtNode = mapper.createObjectNode()
-                    .put("type", container.getCredentialType())
-                    .put("format", "jwt")
-                    .put("jwt", jwtString);
-            builder.credential(jwtNode);
-
-            // Store JWT representation for later use (e.g., in presentations)
-            builder.jwtRepresentation(jwtString);
-
-            log.debug("JWT credential stored: type={}", container.getCredentialType());
-            return true;
         } catch (Exception e) {
             log.error("Failed to parse JWT credential: {}", e.getMessage(), e);
             return false;
@@ -450,7 +405,197 @@ public class HolderService {
     }
 
     /**
+     * Process VC 1.1 JWT credential (vc11-sl2021/jwt profile).
+     * Structure: JWT with nested 'vc' claim containing the credential.
+     *
+     * @param vcClaim The nested 'vc' claim
+     * @param jwtString The raw JWT string
+     * @param container The credential container
+     * @param builder The VerifiableCredential builder
+     * @param claims The JWT claims set
+     * @return true if successful, false if should be skipped
+     */
+    private boolean processVc11JwtCredential(Map<String, Object> vcClaim, String jwtString,
+                                            CredentialMessage.CredentialContainer container,
+                                            VerifiableCredential.Builder builder,
+                                            JWTClaimsSet claims) {
+        // Extract credential ID from vc.id
+        if (vcClaim.containsKey("id")) {
+            builder.id(vcClaim.get("id").toString());
+        }
+
+        // Extract holder DID from credentialSubject.id or from JWT 'sub' claim
+        String holderDid = extractHolderDid(vcClaim, claims);
+        if (holderDid != null) {
+            builder.holderDid(holderDid);
+            log.debug("Extracted holderDid: {}", holderDid);
+        }
+
+        // Extract issuance date from vc.issuanceDate
+        if (vcClaim.containsKey("issuanceDate")) {
+            try {
+                builder.issuanceDate(Instant.parse(vcClaim.get("issuanceDate").toString()));
+            } catch (Exception e) {
+                log.debug("Could not parse issuanceDate: {}", e.getMessage());
+            }
+        }
+
+        // Extract expiration date from vc.expirationDate
+        if (vcClaim.containsKey("expirationDate") && vcClaim.get("expirationDate") != null) {
+            try {
+                builder.expirationDate(Instant.parse(vcClaim.get("expirationDate").toString()));
+            } catch (Exception e) {
+                log.debug("Could not parse expirationDate: {}", e.getMessage());
+            }
+        }
+
+        // Extract credentialStatus if present (StatusList2021)
+        if (vcClaim.containsKey("credentialStatus")) {
+            JsonNode statusNode = mapper.convertValue(vcClaim.get("credentialStatus"), JsonNode.class);
+            builder.credentialStatus(statusNode);
+        }
+
+        // Store credential as JsonNode
+        JsonNode jwtNode = mapper.createObjectNode()
+                .put("type", container.getCredentialType())
+                .put("format", "jwt")
+                .put("jwt", jwtString);
+        builder.credential(jwtNode);
+
+        // Store JWT representation for later use
+        builder.jwtRepresentation(jwtString);
+
+        // Set profile to VC 1.1
+        builder.profileId(ProfileId.VC11_SL2021_JWT);
+
+        log.debug("VC 1.1 JWT credential stored: type={}, profile={}",
+                  container.getCredentialType(), ProfileId.VC11_SL2021_JWT.getSpecAlias());
+        return true;
+    }
+
+    /**
+     * Process VC 2.0 JWT credential (vc20-bssl/jwt profile).
+     * Structure: Flat JWT claims, no nested 'vc' claim.
+     *
+     * @param claims The JWT claims set
+     * @param jwtString The raw JWT string
+     * @param container The credential container
+     * @param builder The VerifiableCredential builder
+     * @return true if successful, false if should be skipped
+     */
+    private boolean processVc20JwtCredential(JWTClaimsSet claims, String jwtString,
+                                            CredentialMessage.CredentialContainer container,
+                                            VerifiableCredential.Builder builder) {
+        // VC 2.0 uses JWT claims directly (flat structure)
+
+        // Extract credential ID from 'jti' claim or generate one
+        String credId = claims.getJWTID();
+        if (credId != null) {
+            builder.id(credId);
+        }
+
+        // Extract holder DID from 'sub' claim
+        String holderDid = claims.getSubject();
+        if (holderDid != null) {
+            builder.holderDid(holderDid);
+            log.debug("Extracted holderDid from 'sub': {}", holderDid);
+        }
+
+        // Extract credentialSubject from direct claim
+        try {
+            Map<String, Object> credentialSubject = claims.getJSONObjectClaim("credentialSubject");
+            if (credentialSubject != null && credentialSubject.containsKey("id")) {
+                // Override with credentialSubject.id if present
+                String subjectId = credentialSubject.get("id").toString();
+                builder.holderDid(subjectId);
+                log.debug("Extracted holderDid from credentialSubject: {}", subjectId);
+            }
+        } catch (java.text.ParseException e) {
+            log.debug("Could not parse credentialSubject claim: {}", e.getMessage());
+        }
+
+        // Extract issuance date from 'validFrom' (VC 2.0) or 'nbf'/'iat'
+        Object validFrom = claims.getClaim("validFrom");
+        if (validFrom != null) {
+            try {
+                builder.issuanceDate(Instant.parse(validFrom.toString()));
+            } catch (Exception e) {
+                log.debug("Could not parse validFrom: {}", e.getMessage());
+            }
+        } else if (claims.getNotBeforeTime() != null) {
+            builder.issuanceDate(claims.getNotBeforeTime().toInstant());
+        } else if (claims.getIssueTime() != null) {
+            builder.issuanceDate(claims.getIssueTime().toInstant());
+        }
+
+        // Extract expiration date from 'validUntil' (VC 2.0) or 'exp'
+        Object validUntil = claims.getClaim("validUntil");
+        if (validUntil != null) {
+            try {
+                builder.expirationDate(Instant.parse(validUntil.toString()));
+            } catch (Exception e) {
+                log.debug("Could not parse validUntil: {}", e.getMessage());
+            }
+        } else if (claims.getExpirationTime() != null) {
+            builder.expirationDate(claims.getExpirationTime().toInstant());
+        }
+
+        // Extract credentialStatus if present (BitstringStatusList for VC 2.0)
+        Object credentialStatus = claims.getClaim("credentialStatus");
+        if (credentialStatus != null) {
+            JsonNode statusNode = mapper.convertValue(credentialStatus, JsonNode.class);
+            builder.credentialStatus(statusNode);
+        }
+
+        // Store credential as JsonNode
+        JsonNode jwtNode = mapper.createObjectNode()
+                .put("type", container.getCredentialType())
+                .put("format", "jwt")
+                .put("jwt", jwtString);
+        builder.credential(jwtNode);
+
+        // Store JWT representation for later use
+        builder.jwtRepresentation(jwtString);
+
+        // Set profile to VC 2.0
+        builder.profileId(ProfileId.VC20_BSSL_JWT);
+
+        log.debug("VC 2.0 JWT credential stored: type={}, profile={}",
+                  container.getCredentialType(), ProfileId.VC20_BSSL_JWT.getSpecAlias());
+        return true;
+    }
+
+    /**
+     * Extract holder DID from VC 1.1 credential claims.
+     * Tries credentialSubject.id first, then falls back to JWT 'sub' claim.
+     *
+     * @param vcClaim The VC claim map
+     * @param claims The JWT claims set
+     * @return The holder DID or null if not found
+     */
+    private String extractHolderDid(Map<String, Object> vcClaim, JWTClaimsSet claims) {
+        // Try credentialSubject.id first
+        if (vcClaim.containsKey("credentialSubject")) {
+            Object credentialSubject = vcClaim.get("credentialSubject");
+            if (credentialSubject instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> subjectMap = (Map<String, Object>) credentialSubject;
+                if (subjectMap.containsKey("id")) {
+                    return subjectMap.get("id").toString();
+                }
+            }
+        }
+
+        // Fallback to JWT 'sub' claim
+        return claims.getSubject();
+    }
+
+    /**
      * Process a JSON-LD format credential.
+     *
+     * NOTE: JSON-LD format is NOT part of the official DCP profiles (vc11-sl2021/jwt, vc20-bssl/jwt).
+     * Both official profiles use JWT format exclusively.
+     * This method serves as a placeholder for potential custom profile extensions.
      *
      * @param payload The credential payload object
      * @param container The credential container (unused but kept for consistency)
@@ -459,6 +604,14 @@ public class HolderService {
      */
     private boolean processJsonLdCredential(Object payload, CredentialMessage.CredentialContainer container,
                                            VerifiableCredential.Builder builder) {
+        log.warn("JSON-LD format is not part of official DCP profiles. Official profiles are: vc11-sl2021/jwt, vc20-bssl/jwt");
+
+        // TODO: Future implementation for custom JSON-LD profile support
+        // This would require:
+        // 1. Custom profile definition outside official DCP spec
+        // 2. JSON-LD signature verification
+        // 3. Profile resolver extension
+
         JsonNode payloadNode = null;
 
         if (payload instanceof JsonNode) {
@@ -505,33 +658,13 @@ public class HolderService {
         } catch (Exception ignored) {
         }
 
+        // Set default profile to VC20_BSSL_JWT (since no official JSON-LD profile exists)
+        builder.profileId(ProfileId.VC20_BSSL_JWT);
+
+        log.warn("Stored JSON-LD credential with default profile (not officially supported)");
         return true;
     }
 
-    /**
-     * Set the profile ID for a credential using the ProfileResolver.
-     *
-     * @param builder The VerifiableCredential builder
-     * @param format The credential format (jwt, json-ld, etc.)
-     */
-    private void setProfileId(VerifiableCredential.Builder builder, String format) {
-        Map<String, Object> attributes = new java.util.HashMap<>();
-
-        // Check if credential has credentialStatus (StatusList2021)
-        //TODO this cannot be done using calling build() before building the final object
-//        if (builder.build().getCredentialStatus() != null) {
-//            attributes.put("statusList", true);
-//        }
-
-        ProfileId profileId = profileResolver.resolve(format, attributes);
-        if (profileId != null) {
-            builder.profileId(profileId.toString());
-        } else {
-            builder.profileId(ProfileId.VC11_SL2021_JWT.toString());
-            log.debug("ProfileResolver returned null for format '{}', using default profile: {}",
-                    format, ProfileId.VC11_SL2021_JWT);
-        }
-    }
 
     /**
      * Persist credential status record.

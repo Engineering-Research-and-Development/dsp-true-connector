@@ -4,6 +4,7 @@ import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import it.eng.dcp.common.config.DidDocumentConfig;
+import it.eng.dcp.common.model.ProfileId;
 import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.model.VerifiableCredential;
 import it.eng.dcp.repository.VerifiableCredentialRepository;
@@ -48,7 +49,7 @@ class PresentationServiceHomogeneityTest {
         VerifiableCredential a = VerifiableCredential.Builder.newInstance()
                 .holderDid("did:holder:1")
                 .credentialType("typeA")
-                .profileId("profile1")
+                .profileId(ProfileId.VC11_SL2021_JWT)
                 .issuanceDate(Instant.now())
                 .credentialIds(List.of("c1"))
                 .build();
@@ -56,7 +57,7 @@ class PresentationServiceHomogeneityTest {
         VerifiableCredential b = VerifiableCredential.Builder.newInstance()
                 .holderDid("did:holder:1")
                 .credentialType("typeB")
-                .profileId("profile2")
+                .profileId(ProfileId.VC20_BSSL_JWT)
                 .issuanceDate(Instant.now())
                 .credentialIds(List.of("c2"))
                 .build();
@@ -77,7 +78,7 @@ class PresentationServiceHomogeneityTest {
         VerifiableCredential a = VerifiableCredential.Builder.newInstance()
                 .holderDid("did:holder:1")
                 .credentialType("typeA")
-                .profileId("profile1")
+                .profileId(ProfileId.VC11_SL2021_JWT)
                 .issuanceDate(Instant.now())
                 .credentialIds(List.of("c1"))
                 .build();
@@ -85,7 +86,7 @@ class PresentationServiceHomogeneityTest {
         VerifiableCredential b = VerifiableCredential.Builder.newInstance()
                 .holderDid("did:holder:1")
                 .credentialType("typeA")
-                .profileId("profile1")
+                .profileId(ProfileId.VC11_SL2021_JWT)
                 .issuanceDate(Instant.now())
                 .credentialIds(List.of("c2"))
                 .build();

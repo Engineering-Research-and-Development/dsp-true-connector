@@ -5,6 +5,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import it.eng.dcp.common.model.ProfileId;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidationException;
+import jakarta.validation.ValidatorFactory;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,15 +24,8 @@ import java.io.Serializable;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
-
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.Validation;
-import jakarta.validation.ValidationException;
-import jakarta.validation.ValidatorFactory;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -55,7 +55,7 @@ public class VerifiableCredential implements Serializable {
     /**
      * Optional profile identifier (e.g. VC11_SL2021_JWT) used for homogeneity grouping.
      */
-    private String profileId;
+    private ProfileId profileId;
 
     /**
      * Issuance date of the credential.
@@ -125,7 +125,7 @@ public class VerifiableCredential implements Serializable {
             return this;
         }
 
-        public Builder profileId(String profileId) {
+        public Builder profileId(ProfileId profileId) {
             vc.profileId = profileId;
             return this;
         }

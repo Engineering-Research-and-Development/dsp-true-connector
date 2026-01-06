@@ -1,22 +1,21 @@
 package it.eng.connector.configuration;
 
-import static org.junit.jupiter.api.Assertions.*;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dcp.common.model.ProfileId;
+import it.eng.dcp.model.PresentationResponseMessage;
+import it.eng.dcp.model.VerifiablePresentation;
+import jakarta.servlet.FilterChain;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.AuthenticationManager;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import it.eng.dcp.model.PresentationResponseMessage;
-import it.eng.dcp.model.VerifiablePresentation;
-import jakarta.servlet.FilterChain;
-import lombok.extern.slf4j.Slf4j;
-
 import java.lang.reflect.Method;
 import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Test for VcVpAuthenticationFilter JWT parsing capabilities.
@@ -164,7 +163,7 @@ class VcVpAuthenticationFilterJwtTest {
 
         // Verify profileId
         assertNotNull(vp.getProfileId(), "VP should have a profileId");
-        assertEquals("VC11_SL2021_JWT", vp.getProfileId(), "Profile ID should be VC11_SL2021_JWT");
+        assertEquals(ProfileId.VC11_SL2021_JWT, vp.getProfileId(), "Profile ID should be VC11_SL2021_JWT");
 
         // Verify verifiableCredential is present
         assertNotNull(vp.getCredentials(), "VP should have credentials");

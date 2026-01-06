@@ -52,7 +52,7 @@ class BasicVerifiablePresentationSignerTest {
         VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
                 .holderDid("did:web:localhost:8080")
                 .credentialIds(List.of("urn:uuid:test-cred-1", "urn:uuid:test-cred-2"))
-                .profileId(ProfileId.VC11_SL2021_JWT.toString())
+                .profileId(ProfileId.VC11_SL2021_JWT)
                 .build();
 
         // Act
@@ -97,7 +97,7 @@ class BasicVerifiablePresentationSignerTest {
         VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
                 .holderDid("did:web:example.com")
                 .credentialIds(List.of("urn:uuid:credential-123"))
-                .profileId(ProfileId.VC11_SL2021_JWT.toString())
+                .profileId(ProfileId.VC11_SL2021_JWT)
                 .build();
 
         // Act
@@ -129,7 +129,7 @@ class BasicVerifiablePresentationSignerTest {
         VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
                 .holderDid("did:web:localhost:8080")
                 .credentialIds(List.of("urn:uuid:test-cred-1"))
-                .profileId(ProfileId.VC20_BSSL_JWT.toString())
+                .profileId(ProfileId.VC20_BSSL_JWT)
                 .build();
 
         // Act

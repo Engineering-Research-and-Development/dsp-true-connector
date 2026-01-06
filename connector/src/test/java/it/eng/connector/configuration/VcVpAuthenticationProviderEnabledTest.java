@@ -1,15 +1,12 @@
 package it.eng.connector.configuration;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.never;
-
-import java.util.List;
-
+import it.eng.dcp.common.model.ProfileId;
 import it.eng.dcp.common.service.did.DidResolverService;
+import it.eng.dcp.model.PresentationResponseMessage;
+import it.eng.dcp.model.ValidationError;
+import it.eng.dcp.model.ValidationReport;
+import it.eng.dcp.model.VerifiablePresentation;
+import it.eng.dcp.service.PresentationValidationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,11 +15,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import it.eng.dcp.model.PresentationResponseMessage;
-import it.eng.dcp.model.ValidationError;
-import it.eng.dcp.model.ValidationReport;
-import it.eng.dcp.model.VerifiablePresentation;
-import it.eng.dcp.service.PresentationValidationService;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.*;
 
 /**
  * Tests for VcVpAuthenticationProvider behavior with dcp.vp.enabled property.
@@ -59,7 +57,7 @@ class VcVpAuthenticationProviderEnabledTest {
 
         VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
                 .holderDid("did:example:holder123")
-                .profileId("VC11_SL2021_JSONLD")
+                .profileId(ProfileId.VC20_BSSL_JWT)
                 .credentialIds(List.of("urn:uuid:cred1"))
                 .credentials(List.of(credential))
                 .build();
@@ -100,7 +98,7 @@ class VcVpAuthenticationProviderEnabledTest {
 
         VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
                 .holderDid("did:example:holder123")
-                .profileId("VC11_SL2021_JSONLD")
+                .profileId(ProfileId.VC20_BSSL_JWT)
                 .credentialIds(List.of("urn:uuid:cred1"))
                 .credentials(List.of(credential))
                 .build();
@@ -135,7 +133,7 @@ class VcVpAuthenticationProviderEnabledTest {
 
         VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
                 .holderDid("did:example:holder123")
-                .profileId("VC11_SL2021_JSONLD")
+                .profileId(ProfileId.VC20_BSSL_JWT)
                 .credentialIds(List.of("urn:uuid:cred1"))
                 .credentials(List.of(credential))
                 .build();
@@ -191,7 +189,7 @@ class VcVpAuthenticationProviderEnabledTest {
 
         VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
                 .holderDid("did:example:holder123")
-                .profileId("VC11_SL2021_JSONLD")
+                .profileId(ProfileId.VC20_BSSL_JWT)
                 .credentialIds(List.of("urn:uuid:cred1"))
                 .credentials(List.of(credential))
                 .build();
@@ -237,7 +235,7 @@ class VcVpAuthenticationProviderEnabledTest {
 
         VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
                 .holderDid("did:example:holder123")
-                .profileId("VC11_SL2021_JSONLD")
+                .profileId(ProfileId.VC20_BSSL_JWT)
                 .credentialIds(List.of("urn:uuid:cred1"))
                 .credentials(List.of(credential))
                 .build();

@@ -83,7 +83,7 @@ public class BasicVerifiablePresentationSigner implements VerifiablePresentation
                     presentation.put("holder", vp.getHolderDid());
 
                     if (vp.getProfileId() != null) {
-                        presentation.put("profileId", vp.getProfileId());
+                        presentation.put("profileId", vp.getProfileId().getSpecAlias());
                     }
 
                     // Create the proof using JWS (detached signature)
@@ -163,7 +163,7 @@ public class BasicVerifiablePresentationSigner implements VerifiablePresentation
 
             // Add profileId as metadata if present
             if (vp.getProfileId() != null) {
-                vpClaim.put("profileId", vp.getProfileId());
+                vpClaim.put("profileId", vp.getProfileId().getSpecAlias());
             }
 
             return mapper.convertValue(vpClaim, Object.class);

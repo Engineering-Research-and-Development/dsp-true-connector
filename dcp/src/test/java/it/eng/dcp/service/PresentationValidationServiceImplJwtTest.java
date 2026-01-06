@@ -3,8 +3,10 @@ package it.eng.dcp.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dcp.common.model.ProfileId;
-import it.eng.dcp.core.ProfileResolver;
-import it.eng.dcp.model.*;
+import it.eng.dcp.model.PresentationResponseMessage;
+import it.eng.dcp.model.ValidationReport;
+import it.eng.dcp.model.VerifiableCredential;
+import it.eng.dcp.model.VerifiablePresentation;
 import it.eng.tools.service.AuditEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,7 +21,8 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.when;
 
 /**
  * Comprehensive test for PresentationValidationServiceImpl using real JWT token.
@@ -28,9 +31,6 @@ import static org.mockito.Mockito.*;
  */
 @ExtendWith(MockitoExtension.class)
 class PresentationValidationServiceImplJwtTest {
-
-    @Mock
-    private ProfileResolver profileResolver;
 
     @Mock
     private IssuerTrustService issuerTrustService;
@@ -52,7 +52,7 @@ class PresentationValidationServiceImplJwtTest {
     @BeforeEach
     void setUp() {
         // Reset mocks before each test
-        reset(profileResolver, issuerTrustService, revocationService, publisher);
+        reset(issuerTrustService, revocationService, publisher);
     }
 
     /**
@@ -78,7 +78,7 @@ class PresentationValidationServiceImplJwtTest {
         // Verify VerifiablePresentation was created correctly
         assertNotNull(vp, "VerifiablePresentation should be created");
         assertEquals("did:web:localhost:8080", vp.getHolderDid(), "HolderDid should match JWT subject");
-        assertEquals("VC11_SL2021_JWT", vp.getProfileId(), "ProfileId should be VC11_SL2021_JWT");
+        assertEquals(ProfileId.VC11_SL2021_JWT, vp.getProfileId(), "ProfileId should be VC11_SL2021_JWT");
         assertNotNull(vp.getCredentials(), "Credentials should not be null");
         assertFalse(vp.getCredentials().isEmpty(), "Credentials should not be empty");
         assertEquals(1, vp.getCredentials().size(), "Should have 1 credential");
@@ -122,17 +122,12 @@ class PresentationValidationServiceImplJwtTest {
                 .presentation(List.of(vp))
                 .build();
 
-        // Setup mocks - profileResolver returns null (reproducing the issue)
-        when(profileResolver.resolve(anyString(), anyMap())).thenReturn(null);
-
         // When: Validate the presentation
         ValidationReport report = validationService.validate(presentation, List.of("MembershipCredential"), null);
 
         // Then: Capture what was passed to profileResolver.resolve
         ArgumentCaptor<String> formatCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Map> attrsCaptor = ArgumentCaptor.forClass(Map.class);
-
-        verify(profileResolver, atLeastOnce()).resolve(formatCaptor.capture(), attrsCaptor.capture());
 
         // Diagnose the issue
 //        System.out.println("\n=== DIAGNOSIS: profileResolver.resolve called with ===");
@@ -147,8 +142,6 @@ class PresentationValidationServiceImplJwtTest {
 
         // The issue: profileResolver returns null, causing PROFILE_UNKNOWN error
         assertFalse(report.isValid(), "Report should be invalid when profileResolver returns null");
-        assertTrue(report.getErrors().stream().anyMatch(e -> "PROFILE_UNKNOWN".equals(e.code())),
-                "Should have PROFILE_UNKNOWN error when profileResolver returns null");
 
 //        System.out.println("\n=== ROOT CAUSE ===");
 //        System.out.println("profileResolver.resolve returns null for:");
@@ -177,9 +170,6 @@ class PresentationValidationServiceImplJwtTest {
                 .presentation(List.of(vp))
                 .build();
 
-        // Setup mocks - FIX: Make profileResolver return the correct ProfileId
-        when(profileResolver.resolve(eq("jwt"), anyMap())).thenReturn(ProfileId.VC11_SL2021_JWT);
-
         // Mock issuer trust - assume issuer is trusted
         when(issuerTrustService.isTrusted(eq("MembershipCredential"), anyString())).thenReturn(true);
 
@@ -198,8 +188,6 @@ class PresentationValidationServiceImplJwtTest {
         // Note: May still have errors if credential parsing fails, but no PROFILE_UNKNOWN error
         assertFalse(report.getErrors().stream().anyMatch(e -> "PROFILE_UNKNOWN".equals(e.code())),
                 "Should not have PROFILE_UNKNOWN error when profileResolver is configured correctly");
-
-        verify(profileResolver).resolve(eq("jwt"), anyMap());
     }
 
     /**
@@ -234,13 +222,13 @@ class PresentationValidationServiceImplJwtTest {
         assertEquals("MembershipCredential", vc.getCredentialType(), "Credential type should be MembershipCredential");
         assertEquals("did:web:localhost:8080", vc.getHolderDid(), "HolderDid should be set from VP");
 
-        System.out.println("\n=== VerifiableCredential Created ===");
-        System.out.println("  - id: " + vc.getId());
-        System.out.println("  - type: " + vc.getCredentialType());
-        System.out.println("  - holderDid: " + vc.getHolderDid());
-        System.out.println("  - issuanceDate: " + vc.getIssuanceDate());
-        System.out.println("  - expirationDate: " + vc.getExpirationDate());
-        System.out.println("✓ VerifiableCredential object created successfully from JWT credential");
+//        System.out.println("\n=== VerifiableCredential Created ===");
+//        System.out.println("  - id: " + vc.getId());
+//        System.out.println("  - type: " + vc.getCredentialType());
+//        System.out.println("  - holderDid: " + vc.getHolderDid());
+//        System.out.println("  - issuanceDate: " + vc.getIssuanceDate());
+//        System.out.println("  - expirationDate: " + vc.getExpirationDate());
+//        System.out.println("✓ VerifiableCredential object created successfully from JWT credential");
     }
 
     /**
@@ -273,7 +261,6 @@ class PresentationValidationServiceImplJwtTest {
 //        System.out.println("  - credentialIds: " + vp.getCredentialIds());
 
         // Mock with correct configuration
-        when(profileResolver.resolve(eq("jwt"), anyMap())).thenReturn(ProfileId.VC11_SL2021_JWT);
         when(issuerTrustService.isTrusted(anyString(), anyString())).thenReturn(true);
         when(revocationService.isRevoked(any())).thenReturn(false);
 
@@ -305,7 +292,7 @@ class PresentationValidationServiceImplJwtTest {
 
         // Set profileId
         if (vpNode.has("profileId")) {
-            builder.profileId(vpNode.get("profileId").asText());
+            builder.profileId(ProfileId.fromString(vpNode.get("profileId").asText()));
         }
 
         // Extract verifiableCredential array

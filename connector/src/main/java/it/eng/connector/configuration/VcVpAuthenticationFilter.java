@@ -1,10 +1,16 @@
 package it.eng.connector.configuration;
 
-import java.io.IOException;
-import java.text.ParseException;
-import java.util.List;
-import java.util.Map;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jwt.JWT;
+import com.nimbusds.jwt.JWTParser;
+import it.eng.dcp.common.model.ProfileId;
+import it.eng.dcp.model.PresentationResponseMessage;
+import it.eng.dcp.model.VerifiablePresentation;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.Authentication;
@@ -15,17 +21,10 @@ import org.springframework.security.core.context.SecurityContextHolderStrategy;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nimbusds.jwt.JWT;
-import com.nimbusds.jwt.JWTParser;
-
-import it.eng.dcp.model.PresentationResponseMessage;
-import it.eng.dcp.model.VerifiablePresentation;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.extern.slf4j.Slf4j;
+import java.io.IOException;
+import java.text.ParseException;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Filter to extract and validate Verifiable Presentations from Authorization header.
@@ -266,12 +265,12 @@ public class VcVpAuthenticationFilter extends OncePerRequestFilter {
             // Extract profileId
             Object profileIdObj = vpMap.get("profileId");
             if (profileIdObj != null) {
-                vpBuilder.profileId(profileIdObj.toString());
+                vpBuilder.profileId(ProfileId.fromString(profileIdObj.toString()));
                 log.debug("Set profileId: {}", profileIdObj);
             } else {
                 // Default profile if not specified
-                vpBuilder.profileId("VC11_SL2021_JWT");
-                log.debug("Set default profileId: VC11_SL2021_JWT");
+                vpBuilder.profileId(ProfileId.VC20_BSSL_JWT);
+                log.debug("Set default profileId: VC20_BSSL_JWT");
             }
 
             // Build the VerifiablePresentation object

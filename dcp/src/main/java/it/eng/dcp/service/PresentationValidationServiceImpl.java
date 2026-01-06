@@ -1,12 +1,8 @@
 package it.eng.dcp.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import it.eng.dcp.core.ProfileResolver;
-import it.eng.dcp.model.PresentationResponseMessage;
-import it.eng.dcp.model.ValidationError;
-import it.eng.dcp.model.ValidationReport;
-import it.eng.dcp.model.VerifiableCredential;
-import it.eng.dcp.model.VerifiablePresentation;
+import it.eng.dcp.common.model.ProfileId;
+import it.eng.dcp.model.*;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.service.AuditEventPublisher;
@@ -14,12 +10,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class PresentationValidationServiceImpl implements PresentationValidationService {
 
-    private final ProfileResolver profileResolver;
     private final IssuerTrustService issuerTrustService;
     private final SchemaRegistryService schemaRegistryService;
 
@@ -28,12 +25,10 @@ public class PresentationValidationServiceImpl implements PresentationValidation
     private final AuditEventPublisher publisher;
 
     @Autowired
-    public PresentationValidationServiceImpl(ProfileResolver profileResolver,
-                                             IssuerTrustService issuerTrustService,
+    public PresentationValidationServiceImpl(IssuerTrustService issuerTrustService,
                                              SchemaRegistryService schemaRegistryService,
                                              RevocationService revocationService,
                                              AuditEventPublisher publisher) {
-        this.profileResolver = profileResolver;
         this.issuerTrustService = issuerTrustService;
         this.schemaRegistryService = schemaRegistryService;
         // optional collaborators may be null in some test contexts; keep them nullable
@@ -73,8 +68,8 @@ public class PresentationValidationServiceImpl implements PresentationValidation
             }
 
             // profile homogeneity: profileId present
-            String profileId = vp.getProfileId();
-            if (profileId == null || profileId.isBlank()) {
+            ProfileId profileId = vp.getProfileId();
+            if (profileId == null) {
                 report.addError(new ValidationError("PROFILE_MISSING", "Presentation missing profileId", ValidationError.Severity.ERROR));
                 continue;
             }
@@ -97,26 +92,30 @@ public class PresentationValidationServiceImpl implements PresentationValidation
                 continue;
             }
 
-            // Enforce homogeneity by resolving profile for each credential via profileResolver (format + attributes)
+            // Enforce homogeneity: all credentials must have the same profileId as the VP
+            // Profile is now stored in credentials when received, no need to re-determine
             boolean mixed = false;
             for (VerifiableCredential vc : creds) {
-                String format = determineFormat(vc);
-                Map<String, Object> attrs = new HashMap<>();
-                // look for statusList in the credential JSON (best effort)
-                try { if (vc.getCredential() != null && vc.getCredential().has("credentialStatus")) attrs.put("statusList", vc.getCredential().get("credentialStatus")); } catch (Exception ignored) {}
-                var resolved = profileResolver.resolve(format, attrs);
-                if (resolved == null) {
-                    report.addError(new ValidationError("PROFILE_UNKNOWN", "Could not resolve profile for credential " + vc.getId(), ValidationError.Severity.ERROR));
+                ProfileId credProfileId = vc.getProfileId();
+
+                if (credProfileId == null) {
+                    report.addError(new ValidationError("PROFILE_UNKNOWN",
+                            "Credential " + vc.getId() + " has no profile information",
+                            ValidationError.Severity.ERROR));
                     mixed = true;
                     break;
                 }
-                if (!resolved.name().equals(profileId)) {
+
+                if (!credProfileId.equals(profileId)) {
+                    report.addError(new ValidationError("PROFILE_MIXED",
+                            "Credential " + vc.getId() + " has profile " + credProfileId.getSpecAlias() +
+                            " but VP expects " + profileId.getSpecAlias(),
+                            ValidationError.Severity.ERROR));
                     mixed = true;
                     break;
                 }
             }
             if (mixed) {
-                report.addError(new ValidationError("PROFILE_MIXED", "Credentials inside presentation have mixed profiles", ValidationError.Severity.ERROR));
                 continue;
             }
 
@@ -221,7 +220,7 @@ public class PresentationValidationServiceImpl implements PresentationValidation
             b.holderDid("did:example:holder");
         }
 
-        if (node.has("profileId")) b.profileId(node.get("profileId").asText());
+        if (node.has("profileId")) b.profileId(ProfileId.fromString(node.get("profileId").asText()));
 
         if (node.has("credentialIds") && node.get("credentialIds").isArray()) {
             List<String> ids = new ArrayList<>();
@@ -279,7 +278,7 @@ public class PresentationValidationServiceImpl implements PresentationValidation
 
         // ProfileId
         if (map.containsKey("profileId")) {
-            b.profileId(String.valueOf(map.get("profileId")));
+            b.profileId(ProfileId.fromString(String.valueOf(map.get("profileId"))));
         }
 
         // Extract credentialIds if present (list of credential IDs)
@@ -323,6 +322,8 @@ public class PresentationValidationServiceImpl implements PresentationValidation
                             cb.credentialType(credNode.get("type").asText());
                         }
                         if (vp.getHolderDid() != null) cb.holderDid(vp.getHolderDid());
+                        // Set profileId from VP (all credentials in VP should have same profile)
+                        if (vp.getProfileId() != null) cb.profileId(vp.getProfileId());
                         if (credNode.has("issuer")) {
                             JsonNode issuerNode = credNode.get("issuer");
                             if (issuerNode.isTextual()) {
@@ -355,6 +356,8 @@ public class PresentationValidationServiceImpl implements PresentationValidation
                                 // Extract standard fields from JWT claims
                                 if (claims.getJWTID() != null) cb.id(claims.getJWTID());
                                 if (vp.getHolderDid() != null) cb.holderDid(vp.getHolderDid());
+                                // Set profileId from VP
+                                if (vp.getProfileId() != null) cb.profileId(vp.getProfileId());
                                 if (claims.getIssueTime() != null) cb.issuanceDate(claims.getIssueTime().toInstant());
                                 if (claims.getExpirationTime() != null) cb.expirationDate(claims.getExpirationTime().toInstant());
 
@@ -389,6 +392,8 @@ public class PresentationValidationServiceImpl implements PresentationValidation
                                 }
                             }
                             if (vp.getHolderDid() != null) cb.holderDid(vp.getHolderDid());
+                            // Set profileId from VP
+                            if (vp.getProfileId() != null) cb.profileId(vp.getProfileId());
 
                             // Convert map to JsonNode
                             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
@@ -411,6 +416,8 @@ public class PresentationValidationServiceImpl implements PresentationValidation
 
                             if (claims.getJWTID() != null) cb.id(claims.getJWTID());
                             if (vp.getHolderDid() != null) cb.holderDid(vp.getHolderDid());
+                            // Set profileId from VP
+                            if (vp.getProfileId() != null) cb.profileId(vp.getProfileId());
                             if (claims.getIssueTime() != null) cb.issuanceDate(claims.getIssueTime().toInstant());
                             if (claims.getExpirationTime() != null) cb.expirationDate(claims.getExpirationTime().toInstant());
 
@@ -431,21 +438,6 @@ public class PresentationValidationServiceImpl implements PresentationValidation
         return out;
     }
 
-    private String determineFormat(VerifiableCredential vc) {
-        try {
-            if (vc.getCredential() != null) {
-                // Check for explicit format field (added when parsing JWT credentials)
-                if (vc.getCredential().has("format")) {
-                    return vc.getCredential().get("format").asText();
-                }
-                // Check for proof (indicates JSON-LD)
-                if (vc.getCredential().has("proof")) {
-                    return "json-ld";
-                }
-            }
-        } catch (Exception ignored) {}
-        return "jwt"; // default guess
-    }
 
     private String extractIssuer(VerifiableCredential vc) {
         try {

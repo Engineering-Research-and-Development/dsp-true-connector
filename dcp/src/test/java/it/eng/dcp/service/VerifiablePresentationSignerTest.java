@@ -6,6 +6,7 @@ import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import it.eng.dcp.common.config.DidDocumentConfig;
+import it.eng.dcp.common.model.ProfileId;
 import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.model.VerifiablePresentation;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,7 +47,7 @@ public class VerifiablePresentationSignerTest {
         VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
                 .holderDid("did:example:holder")
                 .credentialIds(java.util.List.of("cred1", "cred2"))
-                .profileId("vc11-jwt")
+                .profileId(ProfileId.VC20_BSSL_JWT)
                 .build();
 
         Object out = signer.sign(vp, "jwt");
@@ -60,7 +61,7 @@ public class VerifiablePresentationSignerTest {
         VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
                 .holderDid("did:example:holder")
                 .credentialIds(java.util.List.of("cred1"))
-                .profileId("vc11-jsonld")
+                .profileId(ProfileId.VC11_SL2021_JWT)
                 .build();
 
         Object out = signer.sign(vp, "json-ld");
