@@ -13,11 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
@@ -169,19 +165,20 @@ public class DcpController {
      * Receives credential offers from issuers.
      *
      * @param offer The credential offer message
-     * @param authorization HTTP Authorization header with Bearer token from issuer
+//     * @param authorization HTTP Authorization header with Bearer token from issuer
      * @return Acceptance response
      */
     @PostMapping(path = "/offers")
-    public ResponseEntity<?> receiveOffer(@RequestBody Map<String, Object> offer,
-                                          @RequestHeader(value = HttpHeaders.AUTHORIZATION) String authorization)
+    public ResponseEntity<?> receiveOffer(@RequestBody Map<String, Object> offer
+//                                          @RequestHeader(value = HttpHeaders.AUTHORIZATION) String authorization
+    )
             throws JsonProcessingException {
         // Authorization is optional for offers, but if present, validate it
-       String token =  extractBearerToken(authorization);
+//       String token =  extractBearerToken(authorization);
        ObjectMapper objectMapper = new ObjectMapper();
         log.info("Received credential offer {}", objectMapper.writeValueAsString(offer));
         try {
-            holderService.authorizeIssuer(token);
+//            holderService.authorizeIssuer(token);
             CredentialOfferMessage com = objectMapper.convertValue(offer, CredentialOfferMessage.class);
             boolean accepted = holderService.processCredentialOffer(com);
             return ResponseEntity.ok(Map.of("accepted", accepted));

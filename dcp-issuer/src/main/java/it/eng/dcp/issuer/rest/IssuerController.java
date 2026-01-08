@@ -41,13 +41,13 @@ public class IssuerController {
      */
     @GetMapping(path = "/metadata")
     public ResponseEntity<?> getMetadata(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
-        if (authorization == null || !authorization.startsWith("Bearer ")) {
-            return ResponseEntity.status(401).body("Missing or invalid Authorization header");
-        }
-        String token = authorization.substring("Bearer ".length());
+//        if (authorization == null || !authorization.startsWith("Bearer ")) {
+//            return ResponseEntity.status(401).body("Missing or invalid Authorization header");
+//        }
+//        String token = authorization.substring("Bearer ".length());
 
         try {
-            issuerService.authorizeRequest(token, null);
+//            issuerService.authorizeRequest(token, null);
             IssuerMetadata metadata = issuerService.getMetadata();
             return ResponseEntity.ok(metadata);
         } catch (SecurityException e) {

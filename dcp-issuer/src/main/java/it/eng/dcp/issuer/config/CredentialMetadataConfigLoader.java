@@ -1,4 +1,4 @@
-package it.eng.dcp.config;
+package it.eng.dcp.issuer.config;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
