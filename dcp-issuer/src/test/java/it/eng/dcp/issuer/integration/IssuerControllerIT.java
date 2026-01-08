@@ -448,7 +448,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         String requestId = location.substring(location.lastIndexOf('/') + 1);
 
         // Approve the request
-        mockMvc.perform(post("/issuer/requests/{requestId}/approve", requestId)
+        mockMvc.perform(post("/api/issuer/requests/{requestId}/approve", requestId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isOk())
@@ -492,7 +492,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         customClaims.put("customField", "customValue");
         approvalBody.put("customClaims", customClaims);
 
-        mockMvc.perform(post("/issuer/requests/{requestId}/approve", requestId)
+        mockMvc.perform(post("/api/issuer/requests/{requestId}/approve", requestId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(approvalBody)))
                 .andExpect(status().isOk())
@@ -533,7 +533,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         String requestId = location.substring(location.lastIndexOf('/') + 1);
 
         // Approve the request - should fail due to delivery failure
-        mockMvc.perform(post("/issuer/requests/{requestId}/approve", requestId)
+        mockMvc.perform(post("/api/issuer/requests/{requestId}/approve", requestId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isInternalServerError())
@@ -576,7 +576,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         String requestId = location.substring(location.lastIndexOf('/') + 1);
 
         // Approve the request - should fail due to exception
-        mockMvc.perform(post("/issuer/requests/{requestId}/approve", requestId)
+        mockMvc.perform(post("/api/issuer/requests/{requestId}/approve", requestId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isInternalServerError())
@@ -589,7 +589,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
      */
     @Test
     void approveRequest_failure_invalidRequestId() throws Exception {
-        mockMvc.perform(post("/issuer/requests/{requestId}/approve", "invalid-request-id")
+        mockMvc.perform(post("/api/issuer/requests/{requestId}/approve", "invalid-request-id")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
@@ -631,7 +631,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         Map<String, String> rejectionBody = new HashMap<>();
         rejectionBody.put("reason", "Holder not verified");
 
-        mockMvc.perform(post("/issuer/requests/{requestId}/reject", requestId)
+        mockMvc.perform(post("/api/issuer/requests/{requestId}/reject", requestId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(rejectionBody)))
                 .andExpect(status().isOk())
@@ -676,7 +676,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         Map<String, String> rejectionBody = new HashMap<>();
         rejectionBody.put("reason", "Holder not verified");
 
-        mockMvc.perform(post("/issuer/requests/{requestId}/reject", requestId)
+        mockMvc.perform(post("/api/issuer/requests/{requestId}/reject", requestId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(rejectionBody)))
                 .andExpect(status().isInternalServerError())
@@ -722,7 +722,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         Map<String, String> rejectionBody = new HashMap<>();
         rejectionBody.put("reason", "Holder not verified");
 
-        mockMvc.perform(post("/issuer/requests/{requestId}/reject", requestId)
+        mockMvc.perform(post("/api/issuer/requests/{requestId}/reject", requestId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(rejectionBody)))
                 .andExpect(status().isInternalServerError())
@@ -738,7 +738,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         Map<String, String> rejectionBody = new HashMap<>();
         rejectionBody.put("reason", "Invalid holder");
 
-        mockMvc.perform(post("/issuer/requests/invalid-id/reject")
+        mockMvc.perform(post("/api/issuer/requests/invalid-id/reject")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(rejectionBody)))
                 .andExpect(status().isBadRequest());
