@@ -12,7 +12,9 @@ import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.model.CredentialRequestMessage;
 import it.eng.dcp.common.model.CredentialRequestMessage.CredentialReference;
 import it.eng.dcp.common.service.did.DidResolverService;
+import it.eng.dcp.issuer.config.CredentialMetadataConfig;
 import it.eng.dcp.issuer.service.CredentialDeliveryService;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -51,6 +53,9 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private CredentialMetadataConfig credentialMetadataConfig;
+
     @MockBean
     private DidResolverService didResolverService;
 
@@ -85,19 +90,17 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
      * Creates a self-issued ID token signed with the given key.
      *
      * @param signingKey The private EC key to sign the token
-     * @param holderDid The holder DID (iss and sub)
-     * @param audienceDid The audience DID (aud)
      * @return Signed JWT token string
      * @throws JOSEException if token creation fails
      */
-    private String createToken(ECKey signingKey, String holderDid, String audienceDid) throws JOSEException {
+    private String createToken(ECKey signingKey) throws JOSEException {
         Instant now = Instant.now();
         Instant exp = now.plusSeconds(300); // 5 minutes
 
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                .issuer(holderDid)
-                .subject(holderDid)
-                .audience(audienceDid)
+                .issuer(IssuerControllerIT.HOLDER_DID)
+                .subject(IssuerControllerIT.HOLDER_DID)
+                .audience(IssuerControllerIT.ISSUER_DID)
                 .issueTime(Date.from(now))
                 .expirationTime(Date.from(exp))
                 .notBeforeTime(Date.from(now))
@@ -128,13 +131,14 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
                 .thenReturn(holderKeyPair.toPublicJWK());
 
         // Create valid token signed with holder's private key
-        String token = createToken(holderKeyPair, HOLDER_DID, ISSUER_DID);
+        String token = createToken(holderKeyPair);
 
+        String credentialType = credentialMetadataConfig.getSupported().get(0).getCredentialType();
         CredentialRequestMessage requestMessage = CredentialRequestMessage.Builder
                 .newInstance()
                 .holderPid(HOLDER_DID)
                 .credentials(List.of(
-                        CredentialReference.Builder.newInstance().id("TestCredential").build()
+                        CredentialReference.Builder.newInstance().id(credentialType).build()
                 ))
                 .build();
 
@@ -164,7 +168,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
                 eq("capabilityInvocation")))
                 .thenThrow(new DidResolutionException("DID not found"));
 
-        String token = createToken(holderKeyPair, HOLDER_DID, ISSUER_DID);
+        String token = createToken(holderKeyPair);
 
         CredentialRequestMessage requestMessage = CredentialRequestMessage.Builder
                 .newInstance()
@@ -199,7 +203,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
                 eq("capabilityInvocation")))
                 .thenReturn(null);
 
-        String token = createToken(holderKeyPair, HOLDER_DID, ISSUER_DID);
+        String token = createToken(holderKeyPair);
 
         CredentialRequestMessage requestMessage = CredentialRequestMessage.Builder
                 .newInstance()
@@ -259,7 +263,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
                 eq("capabilityInvocation")))
                 .thenReturn(holderKeyPair.toPublicJWK());
 
-        String token = createToken(holderKeyPair, HOLDER_DID, ISSUER_DID);
+        String token = createToken(holderKeyPair);
 
         CredentialRequestMessage requestMessage = CredentialRequestMessage.Builder
                 .newInstance()
@@ -314,7 +318,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         when(didResolverService.resolvePublicKey(eq(HOLDER_DID), eq(HOLDER_KEY_ID), eq("capabilityInvocation")))
                 .thenThrow(new DidResolutionException("DID not found"));
 
-        String token = createToken(holderKeyPair, HOLDER_DID, ISSUER_DID);
+        String token = createToken(holderKeyPair);
 
         MockHttpServletRequestBuilder request = createRequest(method, endpoint)
                 .header("Authorization", "Bearer " + token);
@@ -338,7 +342,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         when(didResolverService.resolvePublicKey(eq(HOLDER_DID), eq(HOLDER_KEY_ID), eq("capabilityInvocation")))
                 .thenReturn(null);
 
-        String token = createToken(holderKeyPair, HOLDER_DID, ISSUER_DID);
+        String token = createToken(holderKeyPair);
 
         MockHttpServletRequestBuilder request = createRequest(method, endpoint)
                 .header("Authorization", "Bearer " + token);
@@ -380,7 +384,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
                 .thenReturn(holderKeyPair.toPublicJWK());
 
         // Create token that expired 10 minutes ago
-        String expiredToken = createExpiredToken(holderKeyPair, HOLDER_DID, ISSUER_DID);
+        String expiredToken = createExpiredToken(holderKeyPair);
 
         MockHttpServletRequestBuilder request = createRequest(method, endpoint)
                 .header("Authorization", "Bearer " + expiredToken);
@@ -405,13 +409,15 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         when(didResolverService.resolvePublicKey(eq(HOLDER_DID), eq(HOLDER_KEY_ID), eq("capabilityInvocation")))
                 .thenReturn(holderKeyPair.toPublicJWK());
 
-        String token = createToken(holderKeyPair, HOLDER_DID, ISSUER_DID);
-
+        String token = createToken(holderKeyPair);
+        String credentialId = credentialMetadataConfig.getSupported().get(0).getId();
+        String credentialType = credentialMetadataConfig.getSupported().get(0).getCredentialType();
         mockMvc.perform(get("/issuer/metadata")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.credentialsSupported").isArray())
-                .andExpect(jsonPath("$.credentialsSupported[0].id").value("TestCredential"));
+                .andExpect(jsonPath("$.credentialsSupported[0].id").value(credentialId))
+                .andExpect(jsonPath("$.credentialsSupported[0].credentialType").value(credentialType));
     }
 
     // ==================== POST /issuer/requests/{requestId}/approve Tests ====================
@@ -425,13 +431,14 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         when(didResolverService.resolvePublicKey(eq(HOLDER_DID), eq(HOLDER_KEY_ID), eq("capabilityInvocation")))
                 .thenReturn(holderKeyPair.toPublicJWK());
 
-        String token = createToken(holderKeyPair, HOLDER_DID, ISSUER_DID);
+        String token = createToken(holderKeyPair);
 
+        String credentialType = credentialMetadataConfig.getSupported().get(0).getCredentialType();
         CredentialRequestMessage requestMessage = CredentialRequestMessage.Builder
                 .newInstance()
                 .holderPid(HOLDER_DID)
                 .credentials(List.of(
-                        CredentialReference.Builder.newInstance().id("TestCredential").build()
+                        CredentialReference.Builder.newInstance().id(credentialType).build()
                 ))
                 .build();
 
@@ -445,6 +452,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
                 .getHeader("Location");
 
         // Extract request ID from location
+        Assertions.assertNotNull(location);
         String requestId = location.substring(location.lastIndexOf('/') + 1);
 
         // Approve the request
@@ -465,13 +473,14 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         when(didResolverService.resolvePublicKey(eq(HOLDER_DID), eq(HOLDER_KEY_ID), eq("capabilityInvocation")))
                 .thenReturn(holderKeyPair.toPublicJWK());
 
-        String token = createToken(holderKeyPair, HOLDER_DID, ISSUER_DID);
+        String token = createToken(holderKeyPair);
 
+        String credentialType = credentialMetadataConfig.getSupported().get(0).getCredentialType();
         CredentialRequestMessage requestMessage = CredentialRequestMessage.Builder
                 .newInstance()
                 .holderPid(HOLDER_DID)
                 .credentials(List.of(
-                        CredentialReference.Builder.newInstance().id("TestCredential").build()
+                        CredentialReference.Builder.newInstance().id(credentialType).build()
                 ))
                 .build();
 
@@ -484,6 +493,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
                 .getResponse()
                 .getHeader("Location");
 
+        Assertions.assertNotNull(location);
         String requestId = location.substring(location.lastIndexOf('/') + 1);
 
         // Approve with custom claims
@@ -511,13 +521,14 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         when(didResolverService.resolvePublicKey(eq(HOLDER_DID), eq(HOLDER_KEY_ID), eq("capabilityInvocation")))
                 .thenReturn(holderKeyPair.toPublicJWK());
 
-        String token = createToken(holderKeyPair, HOLDER_DID, ISSUER_DID);
+        String token = createToken(holderKeyPair);
 
+        String credentialType = credentialMetadataConfig.getSupported().get(0).getCredentialType();
         CredentialRequestMessage requestMessage = CredentialRequestMessage.Builder
                 .newInstance()
                 .holderPid(HOLDER_DID)
                 .credentials(List.of(
-                        CredentialReference.Builder.newInstance().id("TestCredential").build()
+                        CredentialReference.Builder.newInstance().id(credentialType).build()
                 ))
                 .build();
 
@@ -530,6 +541,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
                 .getResponse()
                 .getHeader("Location");
 
+        Assertions.assertNotNull(location);
         String requestId = location.substring(location.lastIndexOf('/') + 1);
 
         // Approve the request - should fail due to delivery failure
@@ -554,13 +566,14 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         when(didResolverService.resolvePublicKey(eq(HOLDER_DID), eq(HOLDER_KEY_ID), eq("capabilityInvocation")))
                 .thenReturn(holderKeyPair.toPublicJWK());
 
-        String token = createToken(holderKeyPair, HOLDER_DID, ISSUER_DID);
+        String token = createToken(holderKeyPair);
+        String credentialType = credentialMetadataConfig.getSupported().get(0).getCredentialType();
 
         CredentialRequestMessage requestMessage = CredentialRequestMessage.Builder
                 .newInstance()
                 .holderPid(HOLDER_DID)
                 .credentials(List.of(
-                        CredentialReference.Builder.newInstance().id("TestCredential").build()
+                        CredentialReference.Builder.newInstance().id(credentialType).build()
                 ))
                 .build();
 
@@ -573,6 +586,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
                 .getResponse()
                 .getHeader("Location");
 
+        Assertions.assertNotNull(location);
         String requestId = location.substring(location.lastIndexOf('/') + 1);
 
         // Approve the request - should fail due to exception
@@ -606,13 +620,14 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         when(didResolverService.resolvePublicKey(eq(HOLDER_DID), eq(HOLDER_KEY_ID), eq("capabilityInvocation")))
                 .thenReturn(holderKeyPair.toPublicJWK());
 
-        String token = createToken(holderKeyPair, HOLDER_DID, ISSUER_DID);
+        String token = createToken(holderKeyPair);
 
+        String credentialType = credentialMetadataConfig.getSupported().get(0).getCredentialType();
         CredentialRequestMessage requestMessage = CredentialRequestMessage.Builder
                 .newInstance()
                 .holderPid(HOLDER_DID)
                 .credentials(List.of(
-                        CredentialReference.Builder.newInstance().id("TestCredential").build()
+                        CredentialReference.Builder.newInstance().id(credentialType).build()
                 ))
                 .build();
 
@@ -625,6 +640,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
                 .getResponse()
                 .getHeader("Location");
 
+        Assertions.assertNotNull(location);
         String requestId = location.substring(location.lastIndexOf('/') + 1);
 
         // Reject the request
@@ -651,13 +667,14 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         when(didResolverService.resolvePublicKey(eq(HOLDER_DID), eq(HOLDER_KEY_ID), eq("capabilityInvocation")))
                 .thenReturn(holderKeyPair.toPublicJWK());
 
-        String token = createToken(holderKeyPair, HOLDER_DID, ISSUER_DID);
+        String token = createToken(holderKeyPair);
 
+        String credentialType = credentialMetadataConfig.getSupported().get(0).getCredentialType();
         CredentialRequestMessage requestMessage = CredentialRequestMessage.Builder
                 .newInstance()
                 .holderPid(HOLDER_DID)
                 .credentials(List.of(
-                        CredentialReference.Builder.newInstance().id("TestCredential").build()
+                        CredentialReference.Builder.newInstance().id(credentialType).build()
                 ))
                 .build();
 
@@ -670,6 +687,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
                 .getResponse()
                 .getHeader("Location");
 
+        Assertions.assertNotNull(location);
         String requestId = location.substring(location.lastIndexOf('/') + 1);
 
         // Reject the request - should fail due to delivery failure
@@ -697,13 +715,14 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         when(didResolverService.resolvePublicKey(eq(HOLDER_DID), eq(HOLDER_KEY_ID), eq("capabilityInvocation")))
                 .thenReturn(holderKeyPair.toPublicJWK());
 
-        String token = createToken(holderKeyPair, HOLDER_DID, ISSUER_DID);
+        String token = createToken(holderKeyPair);
 
+        String credentialType = credentialMetadataConfig.getSupported().get(0).getCredentialType();
         CredentialRequestMessage requestMessage = CredentialRequestMessage.Builder
                 .newInstance()
                 .holderPid(HOLDER_DID)
                 .credentials(List.of(
-                        CredentialReference.Builder.newInstance().id("TestCredential").build()
+                        CredentialReference.Builder.newInstance().id(credentialType).build()
                 ))
                 .build();
 
@@ -716,6 +735,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
                 .getResponse()
                 .getHeader("Location");
 
+        Assertions.assertNotNull(location);
         String requestId = location.substring(location.lastIndexOf('/') + 1);
 
         // Reject the request - should fail due to exception
@@ -755,13 +775,14 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         when(didResolverService.resolvePublicKey(eq(HOLDER_DID), eq(HOLDER_KEY_ID), eq("capabilityInvocation")))
                 .thenReturn(holderKeyPair.toPublicJWK());
 
-        String token = createToken(holderKeyPair, HOLDER_DID, ISSUER_DID);
+        String token = createToken(holderKeyPair);
+        String credentialType = credentialMetadataConfig.getSupported().get(0).getCredentialType();
 
         CredentialRequestMessage requestMessage = CredentialRequestMessage.Builder
                 .newInstance()
                 .holderPid(HOLDER_DID)
                 .credentials(List.of(
-                        CredentialReference.Builder.newInstance().id("TestCredential").build()
+                        CredentialReference.Builder.newInstance().id(credentialType).build()
                 ))
                 .build();
 
@@ -774,6 +795,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
                 .getResponse()
                 .getHeader("Location");
 
+        Assertions.assertNotNull(location);
         String requestId = location.substring(location.lastIndexOf('/') + 1);
 
         // Get the request status
@@ -799,14 +821,14 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
     /**
      * Creates an expired token (expired 10 minutes ago).
      */
-    private String createExpiredToken(ECKey signingKey, String holderDid, String audienceDid) throws JOSEException {
+    private String createExpiredToken(ECKey signingKey) throws JOSEException {
         Instant past = Instant.now().minusSeconds(600); // 10 minutes ago
         Instant exp = past.plusSeconds(300); // Expired 5 minutes ago
 
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                .issuer(holderDid)
-                .subject(holderDid)
-                .audience(audienceDid)
+                .issuer(IssuerControllerIT.HOLDER_DID)
+                .subject(IssuerControllerIT.HOLDER_DID)
+                .audience(IssuerControllerIT.ISSUER_DID)
                 .issueTime(Date.from(past))
                 .expirationTime(Date.from(exp))
                 .notBeforeTime(Date.from(past))
