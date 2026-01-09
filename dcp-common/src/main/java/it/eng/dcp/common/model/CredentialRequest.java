@@ -2,6 +2,7 @@ package it.eng.dcp.common.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import jakarta.validation.ValidationException;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
@@ -34,11 +35,16 @@ public class CredentialRequest {
     private String issuerPid;
 
     /**
-     * Holder identifier provided in the incoming request (often a DID or holderPid).
+     * Holder identifier provided in the incoming request.
      *
      * The Holder PID is supplied in the CredentialRequestMessage and is used to correlate issuance.
      */
     private String holderPid;
+
+    /**
+     * Decentralized Identifier (DID) of the holder (if available).
+     */
+    private String holderDid;
 
     /**
      * List of credential object ids requested (references into credentialsSupported).
@@ -68,6 +74,7 @@ public class CredentialRequest {
         }
         req.status = CredentialStatus.RECEIVED;
         req.createdAt = Instant.now();
+        req.holderDid = null;
         return req;
     }
 
@@ -90,6 +97,11 @@ public class CredentialRequest {
 
         public Builder holderPid(String holderPid) {
             req.holderPid = holderPid;
+            return this;
+        }
+
+        public Builder holderDid(String holderDid) {
+            req.holderDid = holderDid;
             return this;
         }
 
@@ -119,13 +131,13 @@ public class CredentialRequest {
         public CredentialRequest build() {
             // minimal validation: holderPid required and credentialIds non-empty
             if (req.holderPid == null || req.holderPid.isBlank()) {
-                throw new jakarta.validation.ValidationException("CredentialRequest - holderPid is required");
+                throw new ValidationException("CredentialRequest - holderPid is required");
             }
             if (req.credentialIds == null || req.credentialIds.isEmpty()) {
-                throw new jakarta.validation.ValidationException("CredentialRequest - at least one credential id is required");
+                throw new ValidationException("CredentialRequest - at least one credential id is required");
             }
             if (req.id == null) {
-                req.id = "req-" + java.util.UUID.randomUUID();
+                req.id = "req-" + UUID.randomUUID();
             }
             if (req.issuerPid == null) req.issuerPid = req.id;
             if (req.createdAt == null) req.createdAt = Instant.now();

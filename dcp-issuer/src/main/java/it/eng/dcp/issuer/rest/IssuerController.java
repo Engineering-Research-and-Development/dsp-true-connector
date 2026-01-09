@@ -1,5 +1,6 @@
 package it.eng.dcp.issuer.rest;
 
+import com.nimbusds.jwt.JWTClaimsSet;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.CredentialRequestMessage;
 import it.eng.dcp.common.model.IssuerMetadata;
@@ -79,8 +80,8 @@ public class IssuerController {
         String token = authorization.substring("Bearer ".length());
 
         try {
-            issuerService.authorizeRequest(token, requestMessage.getHolderPid());
-            CredentialRequest request = issuerService.createCredentialRequest(requestMessage);
+            JWTClaimsSet jwtClaimsSet = issuerService.authorizeRequest(token, requestMessage.getHolderPid());
+            CredentialRequest request = issuerService.createCredentialRequest(requestMessage, jwtClaimsSet.getSubject());
 
             log.info("Created credential request: issuerPid={}, holderPid={}, credentials={}",
                     request.getIssuerPid(), request.getHolderPid(), request.getCredentialIds());

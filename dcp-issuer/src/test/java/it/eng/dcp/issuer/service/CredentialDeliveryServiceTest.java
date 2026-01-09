@@ -62,7 +62,8 @@ class CredentialDeliveryServiceTest {
 
         testRequest = CredentialRequest.Builder.newInstance()
                 .issuerPid("issuer-pid-123")
-                .holderPid("did:web:example.com:holder")
+                .holderPid("holder-pid-123")
+                .holderDid("did:web:example.com:holder")
                 .credentialIds(List.of("MembershipCredential"))
                 .status(CredentialStatus.PENDING)
                 .createdAt(Instant.now())

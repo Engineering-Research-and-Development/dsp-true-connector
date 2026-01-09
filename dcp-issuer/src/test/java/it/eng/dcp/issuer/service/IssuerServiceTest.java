@@ -54,7 +54,7 @@ class IssuerServiceTest {
     void createCredentialRequest_success() {
         IssuerMetadata metadata = mock(IssuerMetadata.class);
         IssuerMetadata.CredentialObject credObj = mock(IssuerMetadata.CredentialObject.class);
-        when(credObj.getCredentialType()).thenReturn("cred1");
+        when(credObj.getId()).thenReturn("cred1");
         when(metadata.getCredentialsSupported()).thenReturn(List.of(credObj));
         when(credentialMetadataService.buildIssuerMetadata()).thenReturn(metadata);
         CredentialRequestMessage msg = CredentialRequestMessage.Builder.newInstance()
@@ -65,7 +65,7 @@ class IssuerServiceTest {
             .build();
         CredentialRequest req = mock(CredentialRequest.class);
         when(requestRepository.save(any())).thenReturn(req);
-        CredentialRequest result = issuerService.createCredentialRequest(msg);
+        CredentialRequest result = issuerService.createCredentialRequest(msg, jwtClaimsSet.getSubject());
         assertSame(req, result);
     }
 
@@ -73,7 +73,7 @@ class IssuerServiceTest {
     void createCredentialRequest_unsupportedCredential_throws() {
         IssuerMetadata metadata = mock(IssuerMetadata.class);
         IssuerMetadata.CredentialObject credObj = mock(IssuerMetadata.CredentialObject.class);
-        when(credObj.getCredentialType()).thenReturn("cred1");
+        when(credObj.getId()).thenReturn("cred1");
         when(metadata.getCredentialsSupported()).thenReturn(List.of(credObj));
         when(credentialMetadataService.buildIssuerMetadata()).thenReturn(metadata);
         CredentialRequestMessage msg = CredentialRequestMessage.Builder.newInstance()
@@ -82,15 +82,15 @@ class IssuerServiceTest {
                 CredentialRequestMessage.CredentialReference.Builder.newInstance().id("bad").build()
             ))
             .build();
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> issuerService.createCredentialRequest(msg));
-        assertTrue(ex.getMessage().contains("Credential type 'bad' is not supported"));
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> issuerService.createCredentialRequest(msg, jwtClaimsSet.getSubject()));
+        assertTrue(ex.getMessage().contains("Credential 'bad' is not supported by this issuer."));
     }
 
     @Test
     void createCredentialRequest_metadataNotAvailable_throws() {
         CredentialRequestMessage msg = mock(CredentialRequestMessage.class);
         when(credentialMetadataService.buildIssuerMetadata()).thenThrow(new IllegalStateException("no meta"));
-        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> issuerService.createCredentialRequest(msg));
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> issuerService.createCredentialRequest(msg, jwtClaimsSet.getSubject()));
         assertTrue(ex.getMessage().contains("Issuer metadata not configured"));
     }
 

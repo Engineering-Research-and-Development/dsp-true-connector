@@ -3,6 +3,7 @@ package it.eng.dcp.issuer.service;
 import com.nimbusds.jwt.JWTClaimsSet;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.CredentialRequestMessage;
+import it.eng.dcp.common.model.CredentialStatus;
 import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.issuer.repository.CredentialRequestRepository;
@@ -10,8 +11,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Service layer for issuer-side credential request processing.
@@ -64,15 +67,25 @@ public class IssuerService {
      * Create and persist a credential request from the incoming message.
      * Validates that all requested credentials are supported by the issuer.
      *
-     * @param msg The CredentialRequestMessage
+     * @param msg     The CredentialRequestMessage
+     * @param holderDid The DID of the holder making the request
      * @return The persisted CredentialRequest
      * @throws IllegalArgumentException if any requested credential type is not supported
      */
-    public CredentialRequest createCredentialRequest(CredentialRequestMessage msg) {
+    public CredentialRequest createCredentialRequest(CredentialRequestMessage msg, String holderDid) {
         // Validate that all requested credentials are supported
         validateRequestedCredentials(msg);
 
-        CredentialRequest req = CredentialRequest.fromMessage(msg);
+        CredentialRequest req = CredentialRequest.Builder.newInstance()
+                .issuerPid("req-" + UUID.randomUUID())
+                .holderPid(msg.getHolderPid())
+                .holderDid(holderDid)
+                .credentialIds(msg.getCredentials().stream()
+                        .map(CredentialRequestMessage.CredentialReference::getId)
+                        .toList())
+                .status(CredentialStatus.RECEIVED)
+                .createdAt(Instant.now())
+                .build();
         return requestRepository.save(req);
     }
 
@@ -92,8 +105,8 @@ public class IssuerService {
             throw new IllegalStateException("Issuer metadata not configured. Cannot process credential requests.", e);
         }
 
-        List<String> supportedCredentialTypes = metadata.getCredentialsSupported().stream()
-                .map(IssuerMetadata.CredentialObject::getCredentialType)
+        List<String> supportedCredentials = metadata.getCredentialsSupported().stream()
+                .map(IssuerMetadata.CredentialObject::getId)
                 .toList();
 
         // Validate each requested credential
@@ -101,17 +114,17 @@ public class IssuerService {
             String requestedId = credentialRef.getId();
 
             // Check if the requested credential ID matches any supported credential type
-            if (!supportedCredentialTypes.contains(requestedId)) {
-                log.warn("Unsupported credential type requested: {}. Supported types: {}",
-                        requestedId, supportedCredentialTypes);
+            if (!supportedCredentials.contains(requestedId)) {
+                log.warn("Requested credential with id {} is not supported. Supported are: {}",
+                        requestedId, supportedCredentials);
                 throw new IllegalArgumentException(
-                        String.format("Credential type '%s' is not supported by this issuer. Supported types: %s",
-                                requestedId, supportedCredentialTypes));
+                        String.format("Credential '%s' is not supported by this issuer. Supported are: %s",
+                                requestedId, supportedCredentials));
             }
         }
 
         log.debug("All requested credentials are supported: {}",
-                msg.getCredentials().stream().map(c -> c.getId()).toList());
+                msg.getCredentials().stream().map(CredentialRequestMessage.CredentialReference::getId).toList());
     }
 
     /**

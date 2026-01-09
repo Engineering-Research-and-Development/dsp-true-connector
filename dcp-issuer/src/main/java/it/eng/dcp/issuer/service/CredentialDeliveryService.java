@@ -75,16 +75,16 @@ public class CredentialDeliveryService {
             return false;
         }
 
-        String holderPid = request.getHolderPid();
-        if (holderPid == null || !holderPid.startsWith("did:")) {
-            log.error("Invalid holder PID (must be a DID): {}", holderPid);
+        String holderDid = request.getHolderDid();
+        if (holderDid == null || !holderDid.startsWith("did:")) {
+            log.error("Invalid holder DID: {}", holderDid);
             return false;
         }
 
         try {
-            String credentialServiceUrl = resolveCredentialServiceEndpoint(holderPid);
+            String credentialServiceUrl = resolveCredentialServiceEndpoint(holderDid);
             if (credentialServiceUrl == null || credentialServiceUrl.isBlank()) {
-                log.error("Could not resolve Credential Service endpoint for holder: {}", holderPid);
+                log.error("Could not resolve Credential Service endpoint for holder: {}", holderDid);
                 return false;
             }
 
@@ -92,23 +92,23 @@ public class CredentialDeliveryService {
                     ? credentialServiceUrl
                     : (credentialServiceUrl.endsWith("/") ? credentialServiceUrl + "credentials" : credentialServiceUrl + "/credentials");
 
-            log.info("Delivering {} credentials to holder {} at {}", credentials.size(), holderPid, targetUrl);
+            log.info("Delivering {} credentials to holder {} at {}", credentials.size(), holderDid, targetUrl);
 
             CredentialMessage message = CredentialMessage.Builder.newInstance()
                     .issuerPid(issuerPid)
-                    .holderPid(holderPid)
+                    .holderPid(holderDid)
                     .requestId(issuerPid)
                     .status("ISSUED")
                     .credentials(credentials)
                     .build();
 
-            String token = tokenService.createAndSignToken(holderPid, null, config.getDidDocumentConfig());
+            String token = tokenService.createAndSignToken(holderDid, null, config.getDidDocumentConfig());
             String messageJson = mapper.writeValueAsString(message);
 
             String response = sendPostRequest(targetUrl, messageJson, "Bearer " + token);
 
             if (response != null) {
-                log.info("Successfully delivered credentials to holder {}.", holderPid);
+                log.info("Successfully delivered credentials to holder {}.", holderDid);
 
                 request = CredentialRequest.Builder.newInstance()
                         .issuerPid(request.getIssuerPid())
@@ -121,12 +121,12 @@ public class CredentialDeliveryService {
 
                 return true;
             } else {
-                log.error("Failed to deliver credentials to holder {}.", holderPid);
+                log.error("Failed to deliver credentials to holder {}.", holderDid);
                 return false;
             }
 
         } catch (Exception e) {
-            log.error("Failed to deliver credentials to holder {}: {}", holderPid, e.getMessage(), e);
+            log.error("Failed to deliver credentials to holder {}: {}", holderDid, e.getMessage(), e);
             return false;
         }
     }
@@ -152,16 +152,16 @@ public class CredentialDeliveryService {
             return false;
         }
 
-        String holderPid = request.getHolderPid();
-        if (holderPid == null || !holderPid.startsWith("did:")) {
-            log.error("Invalid holder PID (must be a DID): {}", holderPid);
+        String holderDid = request.getHolderDid();
+        if (holderDid == null || !holderDid.startsWith("did:")) {
+            log.error("Invalid holder DID: {}", holderDid);
             return false;
         }
 
         try {
-            String credentialServiceUrl = resolveCredentialServiceEndpoint(holderPid);
+            String credentialServiceUrl = resolveCredentialServiceEndpoint(holderDid);
             if (credentialServiceUrl == null || credentialServiceUrl.isBlank()) {
-                log.error("Could not resolve Credential Service endpoint for holder: {}", holderPid);
+                log.error("Could not resolve Credential Service endpoint for holder: {}", holderDid);
                 return false;
             }
 
@@ -169,24 +169,24 @@ public class CredentialDeliveryService {
                     ? credentialServiceUrl
                     : (credentialServiceUrl.endsWith("/") ? credentialServiceUrl + "credentials" : credentialServiceUrl + "/credentials");
 
-            log.info("Sending rejection notification to holder {} at {}", holderPid, targetUrl);
+            log.info("Sending rejection notification to holder {} at {}", holderDid, targetUrl);
 
             CredentialMessage message = CredentialMessage.Builder.newInstance()
                     .issuerPid(issuerPid)
-                    .holderPid(holderPid)
+                    .holderPid(holderDid)
                     .requestId(issuerPid)
                     .status("REJECTED")
                     .rejectionReason(rejectionReason)
                     .credentials(List.of(CredentialMessage.CredentialContainer.Builder.newInstance().credentialType("No type").format("JWT").build()))
                     .build();
 
-            String token = tokenService.createAndSignToken(holderPid, null, config.getDidDocumentConfig());
+            String token = tokenService.createAndSignToken(holderDid, null, config.getDidDocumentConfig());
             String messageJson = mapper.writeValueAsString(message);
 
             String response = sendPostRequest(targetUrl, messageJson, "Bearer " + token);
 
             if (response != null) {
-                log.info("Successfully sent rejection notification to holder {}.", holderPid);
+                log.info("Successfully sent rejection notification to holder {}.", holderDid);
 
                 request = CredentialRequest.Builder.newInstance()
                         .issuerPid(request.getIssuerPid())
@@ -200,7 +200,7 @@ public class CredentialDeliveryService {
 
                 return true;
             } else {
-                log.error("Failed to send rejection notification to holder {}", holderPid);
+                log.error("Failed to send rejection notification to holder {}", holderDid);
                 return false;
             }
 
@@ -212,6 +212,7 @@ public class CredentialDeliveryService {
 
     private String resolveCredentialServiceEndpoint(String holderDid) {
         try {
+//            vadi credentials endpoint iz did-a
             if (holderDid.startsWith("did:web:")) {
                 String baseUrl = DidUrlConverter.convertDidToUrl(holderDid, sslEnabled);
                 return baseUrl + "/dcp/credentials";
