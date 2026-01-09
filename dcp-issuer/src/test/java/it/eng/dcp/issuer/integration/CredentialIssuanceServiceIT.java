@@ -7,7 +7,6 @@ import it.eng.dcp.common.model.ProfileId;
 import it.eng.dcp.issuer.config.CredentialMetadataConfig.CredentialConfig;
 import it.eng.dcp.issuer.config.CredentialMetadataConfigLoader;
 import it.eng.dcp.issuer.service.CredentialIssuanceService;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -28,7 +27,6 @@ public class CredentialIssuanceServiceIT extends BaseIssuerIntegrationTest {
     private CredentialMetadataConfigLoader credentialMetadataConfigLoader;
 
     @Test
-    @Disabled("Until profileExtractor is fixed for VC 1.1")
     public void generateVC11Credentials_Test() throws ParseException {
         var vc11ProfileId = credentialMetadataConfigLoader.credentialMetadataConfig().getSupported().stream()
                 .filter(cc -> ProfileId.VC11_SL2021_JWT.getSpecAlias().equals(cc.getProfile()))

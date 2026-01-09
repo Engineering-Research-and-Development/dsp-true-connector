@@ -2,6 +2,8 @@ package it.eng.dcp.issuer.service;
 
 import it.eng.dcp.common.model.*;
 import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.issuer.config.CredentialMetadataConfig;
+import it.eng.dcp.issuer.config.CredentialMetadataConfigLoader;
 import it.eng.dcp.issuer.config.IssuerDidDocumentConfiguration;
 import it.eng.dcp.issuer.config.IssuerProperties;
 import it.eng.dcp.issuer.service.credential.CredentialGeneratorFactory;
@@ -27,13 +29,16 @@ public class CredentialIssuanceService {
     private final CredentialGeneratorFactory credentialGeneratorFactory;
     private final StatusListService statusListService;
     private final ProfileExtractor profileExtractor = new ProfileExtractor();
+    private final CredentialMetadataConfigLoader credentialMetadataConfigLoader;
 
     @Autowired
     public CredentialIssuanceService(IssuerProperties issuerProperties, KeyService keyService,
                                      IssuerDidDocumentConfiguration didDocumentConfig,
-                                     StatusListService statusListService) {
+                                     StatusListService statusListService,
+                                     CredentialMetadataConfigLoader credentialMetadataConfigLoader) {
         this.issuerProperties = issuerProperties;
         this.statusListService = statusListService;
+        this.credentialMetadataConfigLoader = credentialMetadataConfigLoader;
 
         // Create JWT generator factory
         VcJwtGeneratorFactory jwtGeneratorFactory = new VcJwtGeneratorFactory(
@@ -89,22 +94,42 @@ public class CredentialIssuanceService {
             }
         }
 
-        // Create generation context
-        CredentialGenerationContext context = CredentialGenerationContext.withConstraints(
-            request,
-            customClaims != null ? customClaims : new HashMap<>(),
-            constraints
-        );
-
-        log.info("Generating {} credentials for request {} (holder: {}) with {} custom claims and {} constraints",
-                request.getCredentialIds().size(), request.getIssuerPid(), request.getHolderPid(),
-                customClaims != null ? customClaims.size() : 0,
-                constraints.size());
-
         List<CredentialMessage.CredentialContainer> credentials = new ArrayList<>();
+        // Load credential configs once
+        List<CredentialMetadataConfig.CredentialConfig> credentialConfigs = credentialMetadataConfigLoader.credentialMetadataConfig().getSupported();
+
+        // Build __credentialMetadata for all credentials in the request
+        Map<String, Map<String, Object>> credentialMetadata = new HashMap<>();
+        for (String credentialId : request.getCredentialIds()) {
+            CredentialMetadataConfig.CredentialConfig config = credentialConfigs.stream()
+                .filter(c -> credentialId.equals(c.getId()))
+                .findFirst()
+                .orElse(null);
+            if (config != null && config.getProfile() != null) {
+                Map<String, Object> meta = new HashMap<>();
+                meta.put("profile", config.getProfile());
+                credentialMetadata.put(extractCredentialType(credentialId), meta);
+            }
+        }
+
+        // Prepare customClaims with __credentialMetadata
+        Map<String, Object> claimsWithMetadata = customClaims != null ? new HashMap<>(customClaims) : new HashMap<>();
+        claimsWithMetadata.put("__credentialMetadata", credentialMetadata);
 
         for (String credentialId : request.getCredentialIds()) {
             try {
+                // Create context WITHOUT profileId, but with __credentialMetadata in claims
+                CredentialGenerationContext context = CredentialGenerationContext.withConstraints(
+                    request,
+                    claimsWithMetadata,
+                    constraints
+                );
+
+                log.info("Generating {} credentials for request {} (holder: {}) with {} custom claims and {} constraints",
+                        request.getCredentialIds().size(), request.getIssuerPid(), request.getHolderPid(),
+                        customClaims != null ? customClaims.size() : 0,
+                        constraints.size());
+
                 CredentialMessage.CredentialContainer credential = generateCredentialForType(credentialId, context);
                 credentials.add(credential);
                 log.debug("Generated credential type '{}' for holder {}", credentialId, request.getHolderPid());
@@ -163,9 +188,9 @@ public class CredentialIssuanceService {
         String credentialType = extractCredentialType(credentialId);
         // Use ProfileExtractor to get the profile
         var profile = profileExtractor.extractProfile(credentialType, context);
+//        var profile = context.getProfileId();
         if (profile == ProfileId.VC11_SL2021_JWT || profile == ProfileId.VC20_BSSL_JWT) {
-            var entryInfo = statusListService.allocateStatusEntry(
-                issuerProperties.getConnectorDid(), "revocation");
+            var entryInfo = statusListService.allocateStatusEntry(issuerProperties.getConnectorDid(), "revocation");
             return credentialGeneratorFactory
                     .createGeneratorWithStatus(credentialType)
                     .generateCredential(context, entryInfo.getStatusListId(), entryInfo.getIndex());

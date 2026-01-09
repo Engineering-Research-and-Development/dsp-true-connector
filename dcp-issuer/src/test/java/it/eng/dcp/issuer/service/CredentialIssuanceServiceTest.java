@@ -9,7 +9,11 @@ import com.nimbusds.jwt.SignedJWT;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.CredentialStatus;
+import it.eng.dcp.common.model.ProfileId;
 import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.issuer.config.CredentialMetadataConfig;
+import it.eng.dcp.issuer.config.CredentialMetadataConfig.CredentialConfig;
+import it.eng.dcp.issuer.config.CredentialMetadataConfigLoader;
 import it.eng.dcp.issuer.config.IssuerDidDocumentConfiguration;
 import it.eng.dcp.issuer.config.IssuerProperties;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,6 +52,11 @@ class CredentialIssuanceServiceTest {
     @Mock
     private StatusListService statusListService;
 
+    @Mock
+    private CredentialMetadataConfigLoader credentialMetadataConfigLoader;
+    @Mock
+    private CredentialMetadataConfig credentialMetadataConfig;
+
     @InjectMocks
     private CredentialIssuanceService issuanceService;
 
@@ -55,6 +64,20 @@ class CredentialIssuanceServiceTest {
     private ECKey testSigningKey;
 
     private AutoCloseable closeable;
+
+    private CredentialMetadataConfig mockConfig;
+
+    private void setupCredentialConfigs(Map<String, String> credentialProfiles) {
+        List<CredentialConfig> supportedConfigs = new ArrayList<>();
+        for (Map.Entry<String, String> entry : credentialProfiles.entrySet()) {
+            CredentialConfig config = mock(CredentialConfig.class);
+            when(config.getId()).thenReturn(entry.getKey());
+            when(config.getProfile()).thenReturn(entry.getValue());
+            supportedConfigs.add(config);
+        }
+        when(credentialMetadataConfig.getSupported()).thenReturn(supportedConfigs);
+        when(credentialMetadataConfigLoader.credentialMetadataConfig()).thenReturn(credentialMetadataConfig);
+    }
 
     @BeforeEach
     void setUp() throws JOSEException {
@@ -70,6 +93,10 @@ class CredentialIssuanceServiceTest {
                 .keyID("test-key-1")
                 .generate();
 
+        mockConfig = mock(CredentialMetadataConfig.class);
+        lenient().when(mockConfig.getSupported()).thenReturn(new ArrayList<>());
+        lenient().when(credentialMetadataConfigLoader.credentialMetadataConfig()).thenReturn(mockConfig);
+
         // Setup mocks BEFORE creating the service
         when(issuerProperties.getConnectorDid()).thenReturn("did:web:issuer.example.com");
         lenient().when(keyService.getSigningJwk(any())).thenReturn(testSigningKey);
@@ -77,8 +104,9 @@ class CredentialIssuanceServiceTest {
         lenient().when(statusListService.allocateStatusEntry(any(), any()))
                 .thenReturn(new StatusListService.StatusListEntryInfo("dummy-status-list-id", 0));
 
-        // Create service AFTER mocks are configured so factory gets correct issuerDid
-        issuanceService = new CredentialIssuanceService(issuerProperties, keyService, didDocumentConfig, statusListService);
+        // Remove default VC20 profile setup here. Each test must call setupCredentialConfigs explicitly.
+
+        issuanceService = new CredentialIssuanceService(issuerProperties, keyService, didDocumentConfig, statusListService, credentialMetadataConfigLoader);
     }
 
     @Test
@@ -432,11 +460,16 @@ class CredentialIssuanceServiceTest {
 
     @Test
     void generateCredentials_vc11Profile_hasNestedVcClaim() throws ParseException {
+        // VC 1.1 profile for MembershipCredential
+        Map<String, String> vc11Profiles = new HashMap<>();
+        vc11Profiles.put("MembershipCredential", "vc11-sl2021/jwt");
+        setupCredentialConfigs(vc11Profiles);
+
         // Create context with VC 1.1 profile metadata
         Map<String, Object> customClaims = new HashMap<>();
         Map<String, Map<String, Object>> metadata = new HashMap<>();
         Map<String, Object> credMetadata = new HashMap<>();
-        credMetadata.put("profile", "vc11-sl2021/jwt");
+        credMetadata.put("profile", ProfileId.VC11_SL2021_JWT.getSpecAlias());
         metadata.put("MembershipCredential", credMetadata);
         customClaims.put("__credentialMetadata", metadata);
 
@@ -460,10 +493,14 @@ class CredentialIssuanceServiceTest {
 
     @Test
     void generateCredentials_vc11Profile_hasCorrectContext() throws ParseException {
+        Map<String, String> vc11Profiles = new HashMap<>();
+        vc11Profiles.put("MembershipCredential", ProfileId.VC11_SL2021_JWT.getSpecAlias());
+        setupCredentialConfigs(vc11Profiles);
+
         Map<String, Object> customClaims = new HashMap<>();
         Map<String, Map<String, Object>> metadata = new HashMap<>();
         Map<String, Object> credMetadata = new HashMap<>();
-        credMetadata.put("profile", "vc11-sl2021/jwt");
+        credMetadata.put("profile", ProfileId.VC11_SL2021_JWT.getSpecAlias());
         metadata.put("MembershipCredential", credMetadata);
         customClaims.put("__credentialMetadata", metadata);
 
@@ -485,10 +522,14 @@ class CredentialIssuanceServiceTest {
 
     @Test
     void generateCredentials_vc11Profile_hasIssuanceDateAndExpirationDate() throws ParseException {
+        Map<String, String> vc11Profiles = new HashMap<>();
+        vc11Profiles.put("MembershipCredential", ProfileId.VC11_SL2021_JWT.getSpecAlias());
+        setupCredentialConfigs(vc11Profiles);
+
         Map<String, Object> customClaims = new HashMap<>();
         Map<String, Map<String, Object>> metadata = new HashMap<>();
         Map<String, Object> credMetadata = new HashMap<>();
-        credMetadata.put("profile", "vc11-sl2021/jwt");
+        credMetadata.put("profile", ProfileId.VC11_SL2021_JWT.getSpecAlias());
         metadata.put("MembershipCredential", credMetadata);
         customClaims.put("__credentialMetadata", metadata);
 
@@ -511,10 +552,14 @@ class CredentialIssuanceServiceTest {
 
     @Test
     void generateCredentials_vc11Profile_hasExternalProof() throws ParseException {
+        Map<String, String> vc11Profiles = new HashMap<>();
+        vc11Profiles.put("MembershipCredential", ProfileId.VC11_SL2021_JWT.getSpecAlias());
+        setupCredentialConfigs(vc11Profiles);
+
         Map<String, Object> customClaims = new HashMap<>();
         Map<String, Map<String, Object>> metadata = new HashMap<>();
         Map<String, Object> credMetadata = new HashMap<>();
-        credMetadata.put("profile", "vc11-sl2021/jwt");
+        credMetadata.put("profile", ProfileId.VC11_SL2021_JWT.getSpecAlias());
         metadata.put("MembershipCredential", credMetadata);
         customClaims.put("__credentialMetadata", metadata);
 
@@ -540,10 +585,14 @@ class CredentialIssuanceServiceTest {
 
     @Test
     void generateCredentials_vc11Profile_jwtHeaderHasStandardType() throws ParseException {
+        Map<String, String> vc11Profiles = new HashMap<>();
+        vc11Profiles.put("MembershipCredential", ProfileId.VC11_SL2021_JWT.getSpecAlias());
+        setupCredentialConfigs(vc11Profiles);
+
         Map<String, Object> customClaims = new HashMap<>();
         Map<String, Map<String, Object>> metadata = new HashMap<>();
         Map<String, Object> credMetadata = new HashMap<>();
-        credMetadata.put("profile", "vc11-sl2021/jwt");
+        credMetadata.put("profile", ProfileId.VC11_SL2021_JWT.getSpecAlias());
         metadata.put("MembershipCredential", credMetadata);
         customClaims.put("__credentialMetadata", metadata);
 
@@ -559,4 +608,3 @@ class CredentialIssuanceServiceTest {
                 "VC 1.1 should NOT use 'vc+ld+jwt' type");
     }
 }
-
