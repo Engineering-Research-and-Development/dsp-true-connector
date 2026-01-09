@@ -3,6 +3,8 @@ package it.eng.dcp.issuer.service.credential;
 import it.eng.dcp.common.model.CredentialGenerationContext;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.ProfileId;
+import it.eng.dcp.issuer.service.jwt.VC11JwtGenerator;
+import it.eng.dcp.issuer.service.jwt.VC20JwtGenerator;
 import it.eng.dcp.issuer.service.jwt.VcJwtGeneratorFactory;
 import lombok.extern.slf4j.Slf4j;
 
@@ -63,8 +65,28 @@ public class GenericCredentialGenerator implements CredentialGenerator {
     }
 
     @Override
+    public CredentialMessage.CredentialContainer generateCredential(CredentialGenerationContext context, String statusListId, Integer statusListIndex) {
+        ProfileId profile = profileExtractor.extractProfile(credentialType, context);
+        Map<String, String> claims = new HashMap<>();
+        claims.put("status", "Active");
+        claims.put("issuedBy", issuerDid);
+        String signedJwt;
+        var generator = jwtGeneratorFactory.createGenerator(profile);
+        if ((generator instanceof VC20JwtGenerator vc20) ||
+            (generator instanceof VC11JwtGenerator vc11)) {
+            signedJwt = generator.generateJwt(context.getRequest().getHolderPid(), credentialType, claims, statusListId, statusListIndex);
+        } else {
+            signedJwt = generator.generateJwt(context.getRequest().getHolderPid(), credentialType, claims);
+        }
+        return CredentialMessage.CredentialContainer.Builder.newInstance()
+                .credentialType(credentialType)
+                .format("jwt")
+                .payload(signedJwt)
+                .build();
+    }
+
+    @Override
     public String getCredentialType() {
         return credentialType;
     }
 }
-

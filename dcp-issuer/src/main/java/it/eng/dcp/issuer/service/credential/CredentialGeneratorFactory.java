@@ -64,5 +64,10 @@ public class CredentialGeneratorFactory {
         // Fall back to generic generator for unknown types
         return new GenericCredentialGenerator(jwtGeneratorFactory, profileExtractor, issuerDid, credentialType);
     }
+
+    // New method to support status list info
+    public CredentialGenerator createGeneratorWithStatus(String credentialType) {
+        return createGenerator(credentialType); // For now, same as above; logic can be extended if needed
+    }
 }
 

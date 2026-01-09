@@ -53,6 +53,10 @@ public class VC20JwtGenerator implements VcJwtGenerator {
 
     @Override
     public String generateJwt(String holderDid, String credentialType, Map<String, String> claims) {
+        return generateJwt(holderDid, credentialType, claims, null, null);
+    }
+
+    public String generateJwt(String holderDid, String credentialType, Map<String, String> claims, String statusListId, Integer statusListIndex) {
         try {
             ECKey signingKey = keyService.getSigningJwk(didDocumentConfig.getDidDocumentConfig());
 
@@ -63,15 +67,16 @@ public class VC20JwtGenerator implements VcJwtGenerator {
             Map<String, Object> credentialSubject = new HashMap<>(claims);
             credentialSubject.put("id", holderDid);
 
-            // Build credentialStatus (BitstringStatusList)
-            // TODO: Integrate with actual status list service in future phase
-            Map<String, Object> credentialStatus = new HashMap<>();
-            int statusIndex = generateStatusIndex();
-            credentialStatus.put("id", issuerDid + "/status/1#" + statusIndex);
-            credentialStatus.put("type", "BitstringStatusListEntry");
-            credentialStatus.put("statusPurpose", "revocation");
-            credentialStatus.put("statusListIndex", String.valueOf(statusIndex));
-            credentialStatus.put("statusListCredential", issuerDid + "/status/1");
+            // Build credentialStatus (BitstringStatusListEntry)
+            Map<String, Object> credentialStatus = null;
+            if (statusListId != null && statusListIndex != null) {
+                credentialStatus = new HashMap<>();
+                credentialStatus.put("id", statusListId + "#" + statusListIndex);
+                credentialStatus.put("type", "BitstringStatusListEntry");
+                credentialStatus.put("statusPurpose", "revocation");
+                credentialStatus.put("statusListIndex", String.valueOf(statusListIndex));
+                credentialStatus.put("statusListCredential", statusListId);
+            }
 
             // Build issuer object (VC 2.0 allows issuer as object)
             Map<String, Object> issuer = new HashMap<>();
@@ -95,7 +100,9 @@ public class VC20JwtGenerator implements VcJwtGenerator {
             claimsBuilder.claim("validFrom", now.toString());
             claimsBuilder.claim("validUntil", expiration.toString());
             claimsBuilder.claim("credentialSubject", credentialSubject);
-            claimsBuilder.claim("credentialStatus", credentialStatus);
+            if (credentialStatus != null) {
+                claimsBuilder.claim("credentialStatus", credentialStatus);
+            }
 
             JWTClaimsSet jwtClaims = claimsBuilder.build();
 
@@ -116,15 +123,4 @@ public class VC20JwtGenerator implements VcJwtGenerator {
             throw new RuntimeException("Failed to sign VC 2.0 JWT", e);
         }
     }
-
-    /**
-     * Generate a unique status index for the credential.
-     * TODO: Replace with actual status list management service in Phase 2.
-     *
-     * @return A random status index
-     */
-    private int generateStatusIndex() {
-        return (int) (Math.random() * 100000);
-    }
 }
-

@@ -10,6 +10,7 @@ import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.CredentialStatus;
 import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.issuer.config.CredentialMetadataConfigLoader;
 import it.eng.dcp.issuer.service.jwt.VcJwtGeneratorFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,6 +39,8 @@ class GenericCredentialGeneratorTest {
 
     @Mock
     private BaseDidDocumentConfiguration didDocumentConfig;
+    @Mock
+    private CredentialMetadataConfigLoader configLoader;
 
     private GenericCredentialGenerator generator;
     private VcJwtGeneratorFactory jwtGeneratorFactory;

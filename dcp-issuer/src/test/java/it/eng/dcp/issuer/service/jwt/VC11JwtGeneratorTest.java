@@ -189,7 +189,7 @@ class VC11JwtGeneratorTest {
         // VC 1.1 issuer is string DID
         Object issuer = vc.get("issuer");
         assertNotNull(issuer);
-        assertTrue(issuer instanceof String, "VC 1.1 issuer should be a string");
+        assertInstanceOf(String.class, issuer, "VC 1.1 issuer should be a string");
         assertEquals(ISSUER_DID, issuer);
     }
 
@@ -272,6 +272,36 @@ class VC11JwtGeneratorTest {
             "VC 1.1 should NOT have credentialSubject at root level");
         assertNull(signedJWT.getJWTClaimsSet().getClaim("validFrom"),
             "VC 1.1 should NOT have validFrom at root level");
+    }
+
+    @Test
+    void generateJwt_withStatusListInfo_hasStatusList2021Entry() throws Exception {
+        Map<String, String> claims = new HashMap<>();
+        claims.put("foo", "bar");
+        String statusListId = "did:web:issuer.example.com/status/1";
+        int statusListIndex = 42;
+        String jwt = generator.generateJwt(HOLDER_DID, "MembershipCredential", claims, statusListId, statusListIndex);
+        SignedJWT signedJWT = SignedJWT.parse(jwt);
+        Map<String, Object> vc = (Map<String, Object>) signedJWT.getJWTClaimsSet().getClaim("vc");
+        assertNotNull(vc, "VC 1.1 should have nested 'vc' claim");
+        Map<String, Object> credentialStatus = (Map<String, Object>) vc.get("credentialStatus");
+        assertNotNull(credentialStatus, "VC 1.1 should have credentialStatus when status list info is provided");
+        assertEquals("StatusList2021Entry", credentialStatus.get("type"));
+        assertEquals("revocation", credentialStatus.get("statusPurpose"));
+        assertEquals(String.valueOf(statusListIndex), credentialStatus.get("statusListIndex"));
+        assertEquals(statusListId, credentialStatus.get("statusListCredential"));
+        assertEquals(statusListId + "#" + statusListIndex, credentialStatus.get("id"));
+    }
+
+    @Test
+    void generateJwt_withoutStatusListInfo_noCredentialStatus() throws Exception {
+        Map<String, String> claims = new HashMap<>();
+        claims.put("foo", "bar");
+        String jwt = generator.generateJwt(HOLDER_DID, "MembershipCredential", claims);
+        SignedJWT signedJWT = SignedJWT.parse(jwt);
+        Map<String, Object> vc = (Map<String, Object>) signedJWT.getJWTClaimsSet().getClaim("vc");
+        assertNotNull(vc, "VC 1.1 should have nested 'vc' claim");
+        assertNull(vc.get("credentialStatus"), "VC 1.1 should NOT have credentialStatus when status list info is not provided");
     }
 
     private Map<String, String> createTestClaims() {

@@ -124,20 +124,19 @@ class VC20JwtGeneratorTest {
     @Test
     void generateJwt_hasBitstringStatusListEntry() throws ParseException {
         Map<String, String> claims = createTestClaims();
-
-        String jwt = generator.generateJwt(HOLDER_DID, "MembershipCredential", claims);
-
+        String statusListId = "did:web:issuer.example.com/status/1";
+        int statusListIndex = 42;
+        String jwt = generator.generateJwt(HOLDER_DID, "MembershipCredential", claims, statusListId, statusListIndex);
         SignedJWT signedJWT = SignedJWT.parse(jwt);
-
         @SuppressWarnings("unchecked")
         Map<String, Object> credentialStatus = (Map<String, Object>) signedJWT.getJWTClaimsSet().getClaim("credentialStatus");
-
         assertNotNull(credentialStatus, "VC 2.0 should have credentialStatus");
         assertEquals("BitstringStatusListEntry", credentialStatus.get("type"),
                 "VC 2.0 should use BitstringStatusListEntry");
         assertEquals("revocation", credentialStatus.get("statusPurpose"));
-        assertNotNull(credentialStatus.get("statusListIndex"));
-        assertNotNull(credentialStatus.get("statusListCredential"));
+        assertEquals(String.valueOf(statusListIndex), credentialStatus.get("statusListIndex"));
+        assertEquals(statusListId, credentialStatus.get("statusListCredential"));
+        assertEquals(statusListId + "#" + statusListIndex, credentialStatus.get("id"));
     }
 
     @Test
@@ -231,6 +230,30 @@ class VC20JwtGeneratorTest {
         assertNotNull(signedJWT.getJWTClaimsSet().getJWTID());
     }
 
+    @Test
+    void generateJwt_withStatusListInfo_hasBitstringStatusListEntry() throws Exception {
+        Map<String, String> claims = createTestClaims();
+        String statusListId = "did:web:issuer.example.com/status/1";
+        int statusListIndex = 42;
+        String jwt = generator.generateJwt(HOLDER_DID, "MembershipCredential", claims, statusListId, statusListIndex);
+        SignedJWT signedJWT = SignedJWT.parse(jwt);
+        Map<String, Object> credentialStatus = (Map<String, Object>) signedJWT.getJWTClaimsSet().getClaim("credentialStatus");
+        assertNotNull(credentialStatus, "VC 2.0 should have credentialStatus when status list info is provided");
+        assertEquals("BitstringStatusListEntry", credentialStatus.get("type"));
+        assertEquals("revocation", credentialStatus.get("statusPurpose"));
+        assertEquals(String.valueOf(statusListIndex), credentialStatus.get("statusListIndex"));
+        assertEquals(statusListId, credentialStatus.get("statusListCredential"));
+        assertEquals(statusListId + "#" + statusListIndex, credentialStatus.get("id"));
+    }
+
+    @Test
+    void generateJwt_withoutStatusListInfo_noCredentialStatus() throws Exception {
+        Map<String, String> claims = createTestClaims();
+        String jwt = generator.generateJwt(HOLDER_DID, "MembershipCredential", claims);
+        SignedJWT signedJWT = SignedJWT.parse(jwt);
+        assertNull(signedJWT.getJWTClaimsSet().getClaim("credentialStatus"), "VC 2.0 should NOT have credentialStatus when status list info is not provided");
+    }
+
     private Map<String, String> createTestClaims() {
         Map<String, String> claims = new HashMap<>();
         claims.put("membershipType", "Premium");
@@ -238,4 +261,3 @@ class VC20JwtGeneratorTest {
         return claims;
     }
 }
-

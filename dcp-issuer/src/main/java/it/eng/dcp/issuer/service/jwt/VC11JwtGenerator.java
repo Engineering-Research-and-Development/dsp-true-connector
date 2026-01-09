@@ -53,6 +53,10 @@ public class VC11JwtGenerator implements VcJwtGenerator {
 
     @Override
     public String generateJwt(String holderDid, String credentialType, Map<String, String> claims) {
+        return generateJwt(holderDid, credentialType, claims, null, null);
+    }
+
+    public String generateJwt(String holderDid, String credentialType, Map<String, String> claims, String statusListId, Integer statusListIndex) {
         try {
             ECKey signingKey = keyService.getSigningJwk(didDocumentConfig.getDidDocumentConfig());
 
@@ -75,14 +79,16 @@ public class VC11JwtGenerator implements VcJwtGenerator {
             credentialSubject.put("id", holderDid);
             vc.put("credentialSubject", credentialSubject);
 
-            // TODO: Add StatusList2021Entry when status list service is implemented (Phase 2)
-            // Map<String, Object> credentialStatus = new HashMap<>();
-            // credentialStatus.put("id", issuerDid + "/status/1#" + statusIndex);
-            // credentialStatus.put("type", "StatusList2021Entry");
-            // credentialStatus.put("statusPurpose", "revocation");
-            // credentialStatus.put("statusListIndex", String.valueOf(statusIndex));
-            // credentialStatus.put("statusListCredential", issuerDid + "/status/1");
-            // vc.put("credentialStatus", credentialStatus);
+            // Add StatusList2021Entry if info is provided
+            if (statusListId != null && statusListIndex != null) {
+                Map<String, Object> credentialStatus = new HashMap<>();
+                credentialStatus.put("id", statusListId + "#" + statusListIndex);
+                credentialStatus.put("type", "StatusList2021Entry");
+                credentialStatus.put("statusPurpose", "revocation");
+                credentialStatus.put("statusListIndex", String.valueOf(statusListIndex));
+                credentialStatus.put("statusListCredential", statusListId);
+                vc.put("credentialStatus", credentialStatus);
+            }
 
             // Add external proof object (placeholder - actual proof is JWT signature)
             Map<String, Object> proof = new HashMap<>();
@@ -118,4 +124,3 @@ public class VC11JwtGenerator implements VcJwtGenerator {
         }
     }
 }
-
