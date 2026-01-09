@@ -31,18 +31,23 @@ public class OrganizationCredentialGenerator implements CredentialGenerator {
     }
 
     @Override
-    public CredentialMessage.CredentialContainer generateCredential(CredentialGenerationContext context) {
+    public CredentialMessage.CredentialContainer generateCredential(CredentialGenerationContext context, String statusListId, Integer statusListIndex) {
         ProfileId profile = profileExtractor.extractProfile(getCredentialType(), context);
-
         Map<String, String> claims = new HashMap<>();
         claims.put("organizationName", "Example Organization");
         claims.put("organizationType", "Corporation");
         claims.put("status", "Verified");
-
-        String signedJwt = jwtGeneratorFactory
-                .createGenerator(profile)
+        String signedJwt;
+        if (ProfileId.VC20_BSSL_JWT.equals(profile)) {
+            signedJwt = jwtGeneratorFactory.createGenerator(profile)
+                .generateJwt(context.getRequest().getHolderPid(), getCredentialType(), claims, statusListId, statusListIndex);
+        } else if (ProfileId.VC11_SL2021_JWT.equals(profile)) {
+            signedJwt = jwtGeneratorFactory.createGenerator(profile)
+                .generateJwt(context.getRequest().getHolderPid(), getCredentialType(), claims, statusListId, statusListIndex);
+        } else {
+            signedJwt = jwtGeneratorFactory.createGenerator(profile)
                 .generateJwt(context.getRequest().getHolderPid(), getCredentialType(), claims);
-
+        }
         return CredentialMessage.CredentialContainer.Builder.newInstance()
                 .credentialType(getCredentialType())
                 .format("jwt")
@@ -51,8 +56,12 @@ public class OrganizationCredentialGenerator implements CredentialGenerator {
     }
 
     @Override
+    public CredentialMessage.CredentialContainer generateCredential(CredentialGenerationContext context) {
+        return generateCredential(context, null, null);
+    }
+
+    @Override
     public String getCredentialType() {
         return "OrganizationCredential";
     }
 }
-

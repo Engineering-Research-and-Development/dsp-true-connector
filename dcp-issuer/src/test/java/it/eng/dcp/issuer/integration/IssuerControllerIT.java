@@ -133,7 +133,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         // Create valid token signed with holder's private key
         String token = createToken(holderKeyPair);
 
-        String credentialType = credentialMetadataConfig.getSupported().get(0).getCredentialType();
+        String credentialType = credentialMetadataConfig.getSupported().get(0).getId();
         CredentialRequestMessage requestMessage = CredentialRequestMessage.Builder
                 .newInstance()
                 .holderPid(HOLDER_DID)
@@ -433,7 +433,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
 
         String token = createToken(holderKeyPair);
 
-        String credentialType = credentialMetadataConfig.getSupported().get(0).getCredentialType();
+        String credentialType = credentialMetadataConfig.getSupported().get(0).getId();
         CredentialRequestMessage requestMessage = CredentialRequestMessage.Builder
                 .newInstance()
                 .holderPid(HOLDER_DID)
@@ -475,7 +475,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
 
         String token = createToken(holderKeyPair);
 
-        String credentialType = credentialMetadataConfig.getSupported().get(0).getCredentialType();
+        String credentialType = credentialMetadataConfig.getSupported().get(0).getId();
         CredentialRequestMessage requestMessage = CredentialRequestMessage.Builder
                 .newInstance()
                 .holderPid(HOLDER_DID)
@@ -523,7 +523,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
 
         String token = createToken(holderKeyPair);
 
-        String credentialType = credentialMetadataConfig.getSupported().get(0).getCredentialType();
+        String credentialType = credentialMetadataConfig.getSupported().get(0).getId();
         CredentialRequestMessage requestMessage = CredentialRequestMessage.Builder
                 .newInstance()
                 .holderPid(HOLDER_DID)
@@ -567,7 +567,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
                 .thenReturn(holderKeyPair.toPublicJWK());
 
         String token = createToken(holderKeyPair);
-        String credentialType = credentialMetadataConfig.getSupported().get(0).getCredentialType();
+        String credentialType = credentialMetadataConfig.getSupported().get(0).getId();
 
         CredentialRequestMessage requestMessage = CredentialRequestMessage.Builder
                 .newInstance()
@@ -622,7 +622,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
 
         String token = createToken(holderKeyPair);
 
-        String credentialType = credentialMetadataConfig.getSupported().get(0).getCredentialType();
+        String credentialType = credentialMetadataConfig.getSupported().get(0).getId();
         CredentialRequestMessage requestMessage = CredentialRequestMessage.Builder
                 .newInstance()
                 .holderPid(HOLDER_DID)
@@ -669,7 +669,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
 
         String token = createToken(holderKeyPair);
 
-        String credentialType = credentialMetadataConfig.getSupported().get(0).getCredentialType();
+        String credentialType = credentialMetadataConfig.getSupported().get(0).getId();
         CredentialRequestMessage requestMessage = CredentialRequestMessage.Builder
                 .newInstance()
                 .holderPid(HOLDER_DID)
@@ -717,7 +717,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
 
         String token = createToken(holderKeyPair);
 
-        String credentialType = credentialMetadataConfig.getSupported().get(0).getCredentialType();
+        String credentialType = credentialMetadataConfig.getSupported().get(0).getId();
         CredentialRequestMessage requestMessage = CredentialRequestMessage.Builder
                 .newInstance()
                 .holderPid(HOLDER_DID)
@@ -776,7 +776,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
                 .thenReturn(holderKeyPair.toPublicJWK());
 
         String token = createToken(holderKeyPair);
-        String credentialType = credentialMetadataConfig.getSupported().get(0).getCredentialType();
+        String credentialType = credentialMetadataConfig.getSupported().get(0).getId();
 
         CredentialRequestMessage requestMessage = CredentialRequestMessage.Builder
                 .newInstance()

@@ -54,13 +54,13 @@ class IssuerServiceTest {
     void createCredentialRequest_success() {
         IssuerMetadata metadata = mock(IssuerMetadata.class);
         IssuerMetadata.CredentialObject credObj = mock(IssuerMetadata.CredentialObject.class);
-        when(credObj.getCredentialType()).thenReturn("cred1");
+        when(credObj.getId()).thenReturn("123");
         when(metadata.getCredentialsSupported()).thenReturn(List.of(credObj));
         when(credentialMetadataService.buildIssuerMetadata()).thenReturn(metadata);
         CredentialRequestMessage msg = CredentialRequestMessage.Builder.newInstance()
             .holderPid("holder1")
             .credentials(List.of(
-                CredentialRequestMessage.CredentialReference.Builder.newInstance().id("cred1").build()
+                CredentialRequestMessage.CredentialReference.Builder.newInstance().id("123").build()
             ))
             .build();
         CredentialRequest req = mock(CredentialRequest.class);
@@ -73,17 +73,17 @@ class IssuerServiceTest {
     void createCredentialRequest_unsupportedCredential_throws() {
         IssuerMetadata metadata = mock(IssuerMetadata.class);
         IssuerMetadata.CredentialObject credObj = mock(IssuerMetadata.CredentialObject.class);
-        when(credObj.getCredentialType()).thenReturn("cred1");
+        when(credObj.getId()).thenReturn("supported_id");
         when(metadata.getCredentialsSupported()).thenReturn(List.of(credObj));
         when(credentialMetadataService.buildIssuerMetadata()).thenReturn(metadata);
         CredentialRequestMessage msg = CredentialRequestMessage.Builder.newInstance()
             .holderPid("holder1")
             .credentials(List.of(
-                CredentialRequestMessage.CredentialReference.Builder.newInstance().id("bad").build()
+                CredentialRequestMessage.CredentialReference.Builder.newInstance().id("unsupported_id").build()
             ))
             .build();
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> issuerService.createCredentialRequest(msg));
-        assertTrue(ex.getMessage().contains("Credential type 'bad' is not supported"));
+        assertTrue(ex.getMessage().contains("Credential id 'unsupported_id' is not supported"));
     }
 
     @Test

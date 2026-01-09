@@ -49,9 +49,8 @@ class CredentialMetadataConfigLoaderTest {
 
         // Verify binding methods
         assertNotNull(membershipCred.getBindingMethods());
-        assertEquals(2, membershipCred.getBindingMethods().size());
+        assertEquals(1, membershipCred.getBindingMethods().size());
         assertTrue(membershipCred.getBindingMethods().contains("did:web"));
-        assertTrue(membershipCred.getBindingMethods().contains("did:key"));
     }
 
     @Test

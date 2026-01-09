@@ -92,8 +92,8 @@ public class IssuerService {
             throw new IllegalStateException("Issuer metadata not configured. Cannot process credential requests.", e);
         }
 
-        List<String> supportedCredentialTypes = metadata.getCredentialsSupported().stream()
-                .map(IssuerMetadata.CredentialObject::getCredentialType)
+        List<String> supportedCredentialIds = metadata.getCredentialsSupported().stream()
+                .map(IssuerMetadata.CredentialObject::getId)
                 .toList();
 
         // Validate each requested credential
@@ -101,17 +101,17 @@ public class IssuerService {
             String requestedId = credentialRef.getId();
 
             // Check if the requested credential ID matches any supported credential type
-            if (!supportedCredentialTypes.contains(requestedId)) {
-                log.warn("Unsupported credential type requested: {}. Supported types: {}",
-                        requestedId, supportedCredentialTypes);
+            if (!supportedCredentialIds.contains(requestedId)) {
+                log.warn("Unsupported credential id, requested: {}. Supported types: {}",
+                        requestedId, supportedCredentialIds);
                 throw new IllegalArgumentException(
-                        String.format("Credential type '%s' is not supported by this issuer. Supported types: %s",
-                                requestedId, supportedCredentialTypes));
+                        String.format("Credential id '%s' is not supported by this issuer. Supported types: %s",
+                                requestedId, supportedCredentialIds));
             }
         }
 
         log.debug("All requested credentials are supported: {}",
-                msg.getCredentials().stream().map(c -> c.getId()).toList());
+                msg.getCredentials().stream().map(CredentialRequestMessage.CredentialReference::getId).toList());
     }
 
     /**

@@ -7,7 +7,6 @@ import it.eng.dcp.issuer.service.jwt.VcJwtGeneratorFactory;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * Generator for MembershipCredential type credentials.
@@ -33,17 +32,27 @@ public class MembershipCredentialGenerator implements CredentialGenerator {
 
     @Override
     public CredentialMessage.CredentialContainer generateCredential(CredentialGenerationContext context) {
-        ProfileId profile = profileExtractor.extractProfile(getCredentialType(), context);
+        return generateCredential(context, null, null);
+    }
 
+    @Override
+    public CredentialMessage.CredentialContainer generateCredential(CredentialGenerationContext context, String statusListId, Integer statusListIndex) {
+        ProfileId profile = profileExtractor.extractProfile(getCredentialType(), context);
         Map<String, String> claims = new HashMap<>();
         claims.put("membershipType", "Premium");
         claims.put("status", "Active");
-        claims.put("membershipId", "MEMBER-" + UUID.randomUUID().toString().substring(0, 8));
-
-        String signedJwt = jwtGeneratorFactory
-                .createGenerator(profile)
+        claims.put("membershipId", "MEMBER-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        String signedJwt;
+        if (ProfileId.VC20_BSSL_JWT.equals(profile)) {
+            signedJwt = jwtGeneratorFactory.createGenerator(profile)
+                .generateJwt(context.getRequest().getHolderPid(), getCredentialType(), claims, statusListId, statusListIndex);
+        } else if (ProfileId.VC11_SL2021_JWT.equals(profile)) {
+            signedJwt = jwtGeneratorFactory.createGenerator(profile)
+                .generateJwt(context.getRequest().getHolderPid(), getCredentialType(), claims, statusListId, statusListIndex);
+        } else {
+            signedJwt = jwtGeneratorFactory.createGenerator(profile)
                 .generateJwt(context.getRequest().getHolderPid(), getCredentialType(), claims);
-
+        }
         return CredentialMessage.CredentialContainer.Builder.newInstance()
                 .credentialType(getCredentialType())
                 .format("jwt")
@@ -56,4 +65,3 @@ public class MembershipCredentialGenerator implements CredentialGenerator {
         return "MembershipCredential";
     }
 }
-

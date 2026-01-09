@@ -45,6 +45,9 @@ class CredentialIssuanceServiceTest {
     @Mock
     private IssuerDidDocumentConfiguration didDocumentConfig;
 
+    @Mock
+    private StatusListService statusListService;
+
     @InjectMocks
     private CredentialIssuanceService issuanceService;
 
@@ -70,9 +73,12 @@ class CredentialIssuanceServiceTest {
         // Setup mocks BEFORE creating the service
         when(issuerProperties.getConnectorDid()).thenReturn("did:web:issuer.example.com");
         lenient().when(keyService.getSigningJwk(any())).thenReturn(testSigningKey);
+        // Always return a dummy status list entry for any call
+        lenient().when(statusListService.allocateStatusEntry(any(), any()))
+                .thenReturn(new StatusListService.StatusListEntryInfo("dummy-status-list-id", 0));
 
         // Create service AFTER mocks are configured so factory gets correct issuerDid
-        issuanceService = new CredentialIssuanceService(issuerProperties, keyService, didDocumentConfig);
+        issuanceService = new CredentialIssuanceService(issuerProperties, keyService, didDocumentConfig, statusListService);
     }
 
     @Test

@@ -1,13 +1,11 @@
 package it.eng.dcp.issuer.service;
 
-import it.eng.dcp.common.model.ConstraintRule;
-import it.eng.dcp.common.model.CredentialGenerationContext;
-import it.eng.dcp.common.model.CredentialMessage;
-import it.eng.dcp.common.model.CredentialRequest;
+import it.eng.dcp.common.model.*;
 import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.issuer.config.IssuerDidDocumentConfiguration;
 import it.eng.dcp.issuer.config.IssuerProperties;
 import it.eng.dcp.issuer.service.credential.CredentialGeneratorFactory;
+import it.eng.dcp.issuer.service.credential.ProfileExtractor;
 import it.eng.dcp.issuer.service.jwt.VcJwtGeneratorFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,11 +25,15 @@ public class CredentialIssuanceService {
 
     private final IssuerProperties issuerProperties;
     private final CredentialGeneratorFactory credentialGeneratorFactory;
+    private final StatusListService statusListService;
+    private final ProfileExtractor profileExtractor = new ProfileExtractor();
 
     @Autowired
     public CredentialIssuanceService(IssuerProperties issuerProperties, KeyService keyService,
-                                     IssuerDidDocumentConfiguration didDocumentConfig) {
+                                     IssuerDidDocumentConfiguration didDocumentConfig,
+                                     StatusListService statusListService) {
         this.issuerProperties = issuerProperties;
+        this.statusListService = statusListService;
 
         // Create JWT generator factory
         VcJwtGeneratorFactory jwtGeneratorFactory = new VcJwtGeneratorFactory(
@@ -159,7 +161,16 @@ public class CredentialIssuanceService {
             String credentialId,
             CredentialGenerationContext context) {
         String credentialType = extractCredentialType(credentialId);
-
+        // Use ProfileExtractor to get the profile
+        var profile = profileExtractor.extractProfile(credentialType, context);
+        if (profile == ProfileId.VC11_SL2021_JWT || profile == ProfileId.VC20_BSSL_JWT) {
+            var entryInfo = statusListService.allocateStatusEntry(
+                issuerProperties.getConnectorDid(), "revocation");
+            return credentialGeneratorFactory
+                    .createGeneratorWithStatus(credentialType)
+                    .generateCredential(context, entryInfo.getStatusListId(), entryInfo.getIndex());
+        }
+        // Always use fallback generator if profile is null or not a status list type
         return credentialGeneratorFactory
                 .createGenerator(credentialType)
                 .generateCredential(context);
