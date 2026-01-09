@@ -39,14 +39,12 @@ class VC20JwtGeneratorTest {
     @InjectMocks
     private VC20JwtGenerator generator;
 
-    private ECKey testSigningKey;
-
     private static final String ISSUER_DID = "did:web:issuer.example.com";
     private static final String HOLDER_DID = "did:web:holder.example.com";
 
     @BeforeEach
     void setUp() throws Exception {
-        testSigningKey = new ECKeyGenerator(Curve.P_256)
+        ECKey testSigningKey = new ECKeyGenerator(Curve.P_256)
                 .keyID("test-key-1")
                 .generate();
 
@@ -126,7 +124,9 @@ class VC20JwtGeneratorTest {
         Map<String, String> claims = createTestClaims();
         String statusListId = "did:web:issuer.example.com/status/1";
         int statusListIndex = 42;
+        
         String jwt = generator.generateJwt(HOLDER_DID, "MembershipCredential", claims, statusListId, statusListIndex);
+
         SignedJWT signedJWT = SignedJWT.parse(jwt);
         @SuppressWarnings("unchecked")
         Map<String, Object> credentialStatus = (Map<String, Object>) signedJWT.getJWTClaimsSet().getClaim("credentialStatus");

@@ -15,36 +15,6 @@ import java.util.Map;
 @Slf4j
 public class ProfileExtractor {
 
-//    private final CredentialMetadataConfigLoader configLoader;
-//    private final CredentialMetadataConfig loadedConfig;
-//
-//    public ProfileExtractor(CredentialMetadataConfigLoader configLoader) {
-//        this.configLoader = configLoader;
-//        this.loadedConfig = configLoader.credentialMetadataConfig();
-//    }
-//
-//    /**
-//     * Extract ProfileId for a specific credentialId from loaded config.
-//     * @param credentialId The credential ID to extract profile for
-//     * @return ProfileId for the credential, or VC20_BSSL_JWT as default
-//     */
-//    public ProfileId extractProfile(String credentialId) {
-//        if (loadedConfig != null && loadedConfig.getSupported() != null) {
-//            for (CredentialMetadataConfig.CredentialConfig cc : loadedConfig.getSupported()) {
-//                if (credentialId.equals(cc.getId())) {
-//                    String profileStr = cc.getProfile();
-//                    ProfileId profile = ProfileId.fromString(profileStr);
-//                    if (profile != null) {
-//                        log.debug("Using profile {} for credentialId {} from config", profileStr, credentialId);
-//                        return profile;
-//                    }
-//                }
-//            }
-//        }
-//        log.debug("No profile found in config for {}, using default VC20_BSSL_JWT", credentialId);
-//        return ProfileId.VC20_BSSL_JWT;
-//    }
-
     /**
      * Extract ProfileId for a specific credential type from the generation context.
      * The profile information is passed via the enriched claims metadata.
@@ -65,7 +35,7 @@ public class ProfileExtractor {
                 if (profileStr != null) {
                     ProfileId profile = ProfileId.fromString(profileStr);
                     if (profile != null) {
-                        log.debug("Using profile {} for credential type {}", profileStr, credentialType);
+                        log.debug("Using profile {} for credential type {} from metadata", profileStr, credentialType);
                         return profile;
                     }
                 }
