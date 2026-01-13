@@ -8,12 +8,15 @@ import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.util.SelfSignedCertGenerator;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.security.*;
@@ -36,6 +39,7 @@ import static java.util.UUID.randomUUID;
  */
 @Service
 public class KeyService {
+    private static final Logger log = LoggerFactory.getLogger(KeyService.class);
 
     private final KeyMetadataService keyMetadataService;
 
@@ -161,14 +165,27 @@ public class KeyService {
 
     /**
      * Generates a key ID (kid) from the public key using SHA-256 hash.
+     * Loads the key pair if not provided.
      *
      * @param config DidDocumentConfig containing keystore details
      * @return Base64-URL encoded key ID
      */
     public String getKidFromPublicKey(DidDocumentConfig config) {
+        KeyPair keyPair = loadKeyPairWithActiveAlias(config);
+        return getKidFromPublicKey(config, keyPair);
+    }
+
+    /**
+     * Generates a key ID (kid) from the provided public key using SHA-256 hash.
+     *
+     * @param config DidDocumentConfig containing keystore details (for context)
+     * @param keyPair The key pair to use
+     * @return Base64-URL encoded key ID
+     */
+    public String getKidFromPublicKey(DidDocumentConfig config, KeyPair keyPair) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(loadKeyPairWithActiveAlias(config).getPublic().getEncoded());
+            byte[] hash = digest.digest(keyPair.getPublic().getEncoded());
             return Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate kid", e);
@@ -177,20 +194,32 @@ public class KeyService {
 
     /**
      * Returns a Nimbus ECKey containing public and private parts suitable for signing.
-     * This centralizes building the EC JWK from the loaded KeyPair.
+     * Loads the key pair if not provided.
      *
      * @param config DidDocumentConfig containing keystore details
      * @return ECKey for signing
      */
     public ECKey getSigningJwk(DidDocumentConfig config) {
+        KeyPair kp = loadKeyPairWithActiveAlias(config);
+        return getSigningJwk(config, kp);
+    }
+
+    /**
+     * Returns a Nimbus ECKey containing public and private parts suitable for signing.
+     * Uses the provided key pair and does not perform any loading.
+     *
+     * @param config DidDocumentConfig containing keystore details (for context)
+     * @param keyPair The key pair to use
+     * @return ECKey for signing
+     */
+    public ECKey getSigningJwk(DidDocumentConfig config, KeyPair keyPair) {
         try {
-            KeyPair kp = loadKeyPairWithActiveAlias(config);
-            if (kp == null) throw new IllegalStateException("No KeyPair available");
-            ECPublicKey pub = (ECPublicKey) kp.getPublic();
-            ECPrivateKey priv = (ECPrivateKey) kp.getPrivate();
+            if (keyPair == null) throw new IllegalStateException("No KeyPair available");
+            ECPublicKey pub = (ECPublicKey) keyPair.getPublic();
+            ECPrivateKey priv = (ECPrivateKey) keyPair.getPrivate();
             return new ECKey.Builder(Curve.forECParameterSpec(pub.getParams()), pub)
                     .privateKey(priv)
-                    .keyID(getKidFromPublicKey(config))
+                    .keyID(getKidFromPublicKey(config, keyPair))
                     .build();
         } catch (Exception e) {
             throw new RuntimeException("Failed to build signing JWK", e);
@@ -216,16 +245,28 @@ public class KeyService {
 
     /**
      * Converts the current public key to JWK (JSON Web Key) format.
+     * Loads the key pair if not provided.
      *
      * @param config DidDocumentConfig containing keystore details
      * @return Map containing JWK parameters
      */
     public Map<String, Object> convertPublicKeyToJWK(DidDocumentConfig config) {
         KeyPair kp = loadKeyPairWithActiveAlias(config);
-        String x = toBase64Url(((ECPublicKey) kp.getPublic()).getW().getAffineX());
-        String y = toBase64Url(((ECPublicKey) kp.getPublic()).getW().getAffineY());
-        String d = toBase64Url(((ECPrivateKey) kp.getPrivate()).getS());
-        String kid = config.getDid() + "#" + getKidFromPublicKey(config);
+        return convertPublicKeyToJWK(config, kp);
+    }
+
+    /**
+     * Converts the provided public key to JWK (JSON Web Key) format.
+     *
+     * @param config DidDocumentConfig containing keystore details (for context)
+     * @param keyPair The key pair to use
+     * @return Map containing JWK parameters
+     */
+    public Map<String, Object> convertPublicKeyToJWK(DidDocumentConfig config, KeyPair keyPair) {
+        String x = toBase64Url(((ECPublicKey) keyPair.getPublic()).getW().getAffineX());
+        String y = toBase64Url(((ECPublicKey) keyPair.getPublic()).getW().getAffineY());
+        String d = toBase64Url(((ECPrivateKey) keyPair.getPrivate()).getS());
+        String kid = config.getDid() + "#" + getKidFromPublicKey(config, keyPair);
         return Map.of(
                 "kty", "EC",
                 "d", d,
@@ -241,38 +282,52 @@ public class KeyService {
      *
      * @param keystorePath Path to the keystore file
      * @param password     Keystore password
-     * @param alias        New key alias
+     * @param aliasPrefix  New key alias
      */
-    public void rotateAndPersistKeyPair(String keystorePath, String password, String alias) {
+    public void rotateAndPersistKeyPair(String keystorePath, String password, String aliasPrefix) {
+        log.debug("Starting key rotation: keystorePath={}, aliasPrefix={}", keystorePath, aliasPrefix);
         try {
             // Generate new EC key pair
-            KeyPair newKeyPair = generateEcKeyPair();
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
+            kpg.initialize(new ECGenParameterSpec("secp256r1"));
+            KeyPair newKeyPair = kpg.generateKeyPair();
+            log.debug("Generated new EC key pair");
 
-            // Create a self-signed certificate for the key pair
-            Certificate cert = SelfSignedCertGenerator.generate("CN=DidKey", newKeyPair);
-
-            // Load or create keystore
-            KeyStore keystore = KeyStore.getInstance("PKCS12");
-            java.io.File file = new java.io.File(keystorePath);
-            if (file.exists()) {
-                try (InputStream is = new java.io.FileInputStream(file)) {
-                    keystore.load(is, password.toCharArray());
+            // Load existing keystore (keep KeyStore instance outside try block)
+            KeyStore ks = KeyStore.getInstance("PKCS12");
+            String subjectDn = "CN=DidKey"; // fallback subject
+            try (FileInputStream fis = new FileInputStream(keystorePath)) {
+                ks.load(fis, password.toCharArray());
+                log.debug("Loaded keystore from {}", keystorePath);
+                // Try to get the active alias from metadata or fallback to first alias
+                String activeAlias = null;
+                java.util.Enumeration<String> aliases = ks.aliases();
+                if (aliases.hasMoreElements()) {
+                    activeAlias = aliases.nextElement();
                 }
-            } else {
-                keystore.load(null, null);
+                if (activeAlias != null) {
+                    Certificate existingCert = ks.getCertificate(activeAlias);
+                    if (existingCert instanceof java.security.cert.X509Certificate) {
+                        subjectDn = ((java.security.cert.X509Certificate) existingCert).getSubjectX500Principal().getName();
+                        log.debug("Preserved subject DN from existing certificate: {}", subjectDn);
+                    }
+                }
             }
-
-            // Store new key and certificate
-            keystore.setKeyEntry(alias, newKeyPair.getPrivate(), password.toCharArray(), new Certificate[]{cert});
-
-            // Save keystore
-            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(file)) {
-                keystore.store(fos, password.toCharArray());
+            // Generate self-signed certificate with preserved subject
+            Certificate cert = SelfSignedCertGenerator.generate(subjectDn, newKeyPair);
+            log.debug("Generated self-signed certificate for new key");
+            // Generate new alias
+            log.debug("Using new alias: {}", aliasPrefix);
+            // Add new key/cert to keystore
+            ks.setKeyEntry(aliasPrefix, newKeyPair.getPrivate(), password.toCharArray(), new Certificate[]{cert});
+            log.debug("Added new key entry to keystore under alias: {}", aliasPrefix);
+            // Write updated keystore back to file
+            try (FileOutputStream fos = new FileOutputStream(keystorePath)) {
+                ks.store(fos, password.toCharArray());
+                log.debug("Stored updated keystore to {}", keystorePath);
             }
-
-            // Update cached keyPair
-            this.keyPair = newKeyPair;
         } catch (Exception e) {
+            log.error("Failed to rotate and persist KeyPair: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to rotate and persist KeyPair", e);
         }
     }
@@ -313,13 +368,14 @@ public class KeyService {
      *
      * @param keystorePath Path to the PKCS12 keystore file
      * @param password     Keystore password
+     * @param exitingAlias The existing alias to base the new alias on
      * @return The new key alias
      */
     @Transactional
-    public String rotateKeyAndUpdateMetadata(String keystorePath, String password) {
+    public String rotateKeyAndUpdateMetadata(String keystorePath, String password, String exitingAlias) {
         // Generate a unique alias for the new key
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-        String alias = "dsptrueconnector-" + timestamp + "-" + randomUUID().toString().substring(0, 8);
+        String alias = exitingAlias + "-" + timestamp + "-" + randomUUID().toString().substring(0, 8);
 
         // Rotate and persist the new key
         rotateAndPersistKeyPair(keystorePath, password, alias);

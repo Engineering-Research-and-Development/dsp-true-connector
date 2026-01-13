@@ -1,13 +1,11 @@
 package it.eng.dcp.common.service;
 
 import com.nimbusds.jose.jwk.Curve;
-import com.nimbusds.jose.jwk.KeyUse;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.jupiter.api.DisplayName;
@@ -15,20 +13,19 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.File;
-import java.io.FileOutputStream;
+import java.io.*;
 import java.math.BigInteger;
-import java.nio.file.Files;
-import java.security.*;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.KeyStore;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.Date;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class KeyServiceTest {
@@ -64,17 +61,17 @@ class KeyServiceTest {
         KeyStore ks = KeyStore.getInstance("PKCS12");
         ks.load(null, password.toCharArray());
         ks.setKeyEntry(alias, kp.getPrivate(), password.toCharArray(), new Certificate[]{cert});
-        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ks.store(baos, password.toCharArray());
         byte[] keystoreBytes = baos.toByteArray();
         baos.close();
-        java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(keystoreBytes);
+        ByteArrayInputStream bais = new ByteArrayInputStream(keystoreBytes);
 
         // Mock getResourceAsStream to return our in-memory keystore
-        ClassLoader cl = Mockito.mock(ClassLoader.class);
-        Mockito.when(cl.getResourceAsStream(Mockito.anyString())).thenReturn(bais);
-        KeyService keyServiceSpy = Mockito.spy(new KeyService(keyMetadataService));
-        Mockito.doReturn(cl).when(keyServiceSpy).getClassLoader();
+        ClassLoader cl = mock(ClassLoader.class);
+        when(cl.getResourceAsStream(anyString())).thenReturn(bais);
+        KeyService keyServiceSpy = spy(new KeyService(keyMetadataService));
+        doReturn(cl).when(keyServiceSpy).getClassLoader();
 
         // Prepare config
         DidDocumentConfig config = DidDocumentConfig.builder()
@@ -90,5 +87,56 @@ class KeyServiceTest {
         assertEquals(keyServiceSpy.getKidFromPublicKey(config), signing.getKeyID(), "kid must match computed kid from public key");
         assertNotNull(signing.toPublicJWK());
         assertEquals(Curve.P_256, signing.getCurve());
+    }
+
+    @Test
+    @DisplayName("rotateKeyAndUpdateMetadata returns new alias and updates metadata (success)")
+    void rotateKeyAndUpdateMetadata_success() throws Exception {
+        // Use a temp file for keystore
+        File tempKeystore = File.createTempFile("test-keystore", ".p12");
+        tempKeystore.deleteOnExit();
+        String password = "testpass";
+        // Create an empty PKCS12 keystore
+        KeyStore ks = KeyStore.getInstance("PKCS12");
+        ks.load(null, password.toCharArray());
+        try (FileOutputStream fos = new FileOutputStream(tempKeystore)) {
+            ks.store(fos, password.toCharArray());
+        }
+        KeyService keyServiceSpy = spy(new KeyService(keyMetadataService));
+        doNothing().when(keyServiceSpy).invalidateAllCache();
+        doCallRealMethod().when(keyServiceSpy).rotateAndPersistKeyPair(anyString(), anyString(), anyString());
+
+        // Call method
+        String alias = keyServiceSpy.rotateKeyAndUpdateMetadata(tempKeystore.getAbsolutePath(), password, "dsptrueconnector-");
+
+        assertNotNull(alias);
+        assertTrue(alias.startsWith("dsptrueconnector-"));
+        verify(keyMetadataService).saveNewKeyMetadata(alias);
+        verify(keyServiceSpy).invalidateAllCache();
+
+        // --- NEW: Verify rotated key can be read ---
+        KeyStore ks2 = KeyStore.getInstance("PKCS12");
+        try (FileInputStream fis = new FileInputStream(tempKeystore)) {
+            ks2.load(fis, password.toCharArray());
+        }
+        boolean aliasFound = false;
+        System.out.println("Aliases in keystore after rotation:");
+        for (java.util.Enumeration<String> e = ks2.aliases(); e.hasMoreElements(); ) {
+            String a = e.nextElement();
+            System.out.println("  alias: " + a);
+            if (a.equals(alias)) aliasFound = true;
+        }
+    }
+
+    @Test
+    @DisplayName("rotateKeyAndUpdateMetadata throws exception if rotation fails")
+    void rotateKeyAndUpdateMetadata_failure() {
+        KeyService keyServiceSpy = spy(new KeyService(keyMetadataService));
+        // Force rotateAndPersistKeyPair to throw
+        doThrow(new RuntimeException("Rotation failed")).when(keyServiceSpy)
+                .rotateAndPersistKeyPair(anyString(), anyString(), anyString());
+        String path = "dummy.p12";
+        String password = "failpass";
+        assertThrows(RuntimeException.class, () -> keyServiceSpy.rotateKeyAndUpdateMetadata(path, password, "dsptrueconnector-"));
     }
 }

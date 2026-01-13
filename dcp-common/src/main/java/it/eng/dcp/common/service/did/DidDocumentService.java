@@ -9,6 +9,7 @@ import it.eng.dcp.common.service.KeyService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.security.KeyPair;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -39,8 +40,8 @@ public class DidDocumentService {
      */
     public DidDocument provideDidDocument(BaseDidDocumentConfiguration config) {
         DidDocumentConfig didConfig = config.getDidDocumentConfig();
-        // Load key pair with active alias (handles metadata and caching)
-        keyService.loadKeyPairWithActiveAlias(didConfig);
+        // Load key pair with active alias ONCE (handles metadata and caching)
+        KeyPair keyPair = keyService.loadKeyPairWithActiveAlias(didConfig);
 
         String baseUrl = didConfig.getEffectiveBaseUrl();
 
@@ -53,13 +54,17 @@ public class DidDocumentService {
                 ))
                 .collect(Collectors.toList());
 
+        // Compute kid and JWK using the loaded keyPair (no reloading!)
+        String kid = keyService.getKidFromPublicKey(didConfig, keyPair);
+        java.util.Map<String, Object> jwk = keyService.convertPublicKeyToJWK(didConfig, keyPair);
+
         // Build verification methods
         List<VerificationMethod> verificationMethods = List.of(
                 VerificationMethod.Builder.newInstance()
-                        .id(didConfig.getDid() + "#" + keyService.getKidFromPublicKey(didConfig))
+                        .id(didConfig.getDid() + "#" + kid)
                         .type("JsonWebKey2020")
                         .controller(didConfig.getEffectiveController())
-                        .publicKeyJwk(keyService.convertPublicKeyToJWK(didConfig))
+                        .publicKeyJwk(jwk)
                         .build()
         );
         String verificationMethodId = verificationMethods.get(0).getId();

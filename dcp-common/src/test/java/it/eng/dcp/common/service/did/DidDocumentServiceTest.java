@@ -3,7 +3,6 @@ package it.eng.dcp.common.service.did;
 import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.DidDocument;
-import it.eng.dcp.common.model.KeyMetadata;
 import it.eng.dcp.common.model.ServiceEntry;
 import it.eng.dcp.common.model.VerificationMethod;
 import it.eng.dcp.common.service.KeyService;
@@ -14,12 +13,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -33,15 +32,24 @@ class DidDocumentServiceTest {
     private KeyService keyService;
 
     private DidDocumentService didDocumentService;
+    private KeyPair testKeyPair;
 
     /**
      * Set up test fixtures.
      */
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         didDocumentService = new DidDocumentService(keyService);
-        when(keyService.getKidFromPublicKey(any(DidDocumentConfig.class))).thenReturn("kid123");
-        when(keyService.convertPublicKeyToJWK(any(DidDocumentConfig.class))).thenReturn(Map.of("kty", "EC"));
+
+        // Generate a test key pair
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
+        kpg.initialize(256);
+        testKeyPair = kpg.generateKeyPair();
+
+        // Mock the overloaded methods that accept KeyPair
+        when(keyService.loadKeyPairWithActiveAlias(any(DidDocumentConfig.class))).thenReturn(testKeyPair);
+        when(keyService.getKidFromPublicKey(any(DidDocumentConfig.class), any(KeyPair.class))).thenReturn("kid123");
+        when(keyService.convertPublicKeyToJWK(any(DidDocumentConfig.class), any(KeyPair.class))).thenReturn(Map.of("kty", "EC"));
     }
 
     /**
