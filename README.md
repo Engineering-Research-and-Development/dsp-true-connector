@@ -50,8 +50,11 @@ Project is structured as multi-module maven project:
 
 **For Non-Technical Readers:**
 - [Verifiable Credentials: A Simple Overview](dcp/doc/verifiable-credentials-overview.md) - What VCs are and why they matter
+- [VC Profiles Guide (Non-Technical)](doc/dcp/VERIFIABLE_CREDENTIALS_GUIDE_NON_TECHNICAL.md) - Understanding VC 1.1 vs VC 2.0 profiles
 
 **For Developers:**
 - [Verifiable Credentials: Technical Guide](dcp/doc/verifiable-credentials-technical.md) - Implementation details, API examples, and debugging
+- [VC Profiles Guide (Technical)](doc/dcp/VERIFIABLE_CREDENTIALS_GUIDE_TECHNICAL.md) - Complete technical guide for VC 1.1 and VC 2.0 implementation
 - [Verifiable Credentials: Quick Reference](dcp/doc/verifiable-credentials-quick-reference.md) - Cheat sheet with commands and troubleshooting
+- [VC Examples Comparison](doc/dcp/VC_EXAMPLES_COMPARISON.md) - Detailed examples comparing VC 1.1 and VC 2.0 structures
 

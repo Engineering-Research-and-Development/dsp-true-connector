@@ -57,220 +57,98 @@ All MongoDB repositories are now discovered:
 **Spring SSL Bundle** (for OkHttpClient):
 ```properties
 # SSL Bundle for TLS context
-spring.ssl.bundle.jks.connector.key.alias=issuer
+spring.ssl.bundle.jks.connector.key.alias=dcp-issuer
 spring.ssl.bundle.jks.connector.key.password=password
-spring.ssl.bundle.jks.connector.keystore.location=classpath:eckey-issuer.p12
+spring.ssl.bundle.jks.connector.keystore.location=classpath:dcp-issuer.p12
 spring.ssl.bundle.jks.connector.keystore.password=password
 spring.ssl.bundle.jks.connector.keystore.type=PKCS12
 spring.ssl.bundle.jks.connector.truststore.type=PKCS12
-spring.ssl.bundle.jks.connector.truststore.location=classpath:eckey-issuer.p12
+spring.ssl.bundle.jks.connector.truststore.location=classpath:dsp-truststore.p12
 spring.ssl.bundle.jks.connector.truststore.password=password
 ```
 
-**OCSP Configuration** (certificate validation):
+**OCSP Configuration** (certificate validation - commented out by default):
 ```properties
-ocsp.enabled=false
-ocsp.revocation-check-enabled=false
+#ocsp.enabled=false
+#ocsp.revocation-check-enabled=false
 ```
+
+**Note:** The SSL bundle references `dcp-issuer.p12` and uses `dsp-truststore.p12` for trust store.
 
 #### 4. Required Properties
 
 **Main application.properties**:
 ```properties
-# DCP Connector DID (required by SelfIssuedIdTokenService)
-dcp.connector.did=${issuer.did}
+# Application Configuration
+spring.application.name=dcp-issuer
+server.port=8084
 
-# Issuer DID
-issuer.did=did:web:localhost%3A8084:issuer
-issuer.base-url=http://localhost:8084
+# DCP Configuration
+dcp.connector-did=did:web:localhost%3A8084:issuer
+dcp.base-url=http://localhost:8084
+dcp.host=localhost
+dcp.clock-skew-seconds=120
 
-# Keystore
-issuer.keystore.path=classpath:eckey-issuer.p12
-issuer.keystore.password=password
-issuer.keystore.alias=issuer
+# Keystore Configuration
+dcp.keystore.path=classpath:eckey-issuer.p12
+dcp.keystore.password=password
+dcp.keystore.alias=dcp-issuer
+dcp.keystore.rotation-days=90
 
-# SSL
+# MongoDB Configuration
+spring.data.mongodb.host=localhost
+spring.data.mongodb.port=27017
+spring.data.mongodb.database=issuer_db
+spring.data.mongodb.authentication-database=admin
+
+# Logging Configuration
+logging.level.it.eng.dcp.issuer=DEBUG
+logging.level.org.springframework.data.mongodb=DEBUG
+logging.level.org.springframework.web=INFO
+
+# Jackson Configuration
+spring.jackson.serialization.write-dates-as-timestamps=false
+spring.jackson.serialization.indent-output=true
+
+# SSL Configuration (disabled by default)
 server.ssl.enabled=false
+
+# OCSP Configuration (commented out by default)
+#ocsp.enabled=false
+#ocsp.revocation-check-enabled=false
 ```
+
+**Note:** Use `dcp.*` prefix for DCP-specific properties, not `issuer.*`
 
 **Test application.properties** - Same structure with test values
 
-## Bean Resolution Chain
+#### 5. Credential Metadata Configuration
 
-### Before Fixes
-```
-❌ SelfIssuedIdTokenService not found
-  └─ Package not scanned
-  
-❌ OkHttpRestClient not found  
-  └─ it.eng.tools not scanned
-  
-❌ KeyMetadataRepository not found
-  └─ Repository not in @EnableMongoRepositories
-  
-❌ ApplicationPropertiesRepository not found
-  └─ Repository not in @EnableMongoRepositories
-```
-
-### After Fixes
-```
-✅ IssuerApplication
-  ├─ @ComponentScan("it.eng.dcp.issuer", "it.eng.dcp.common", "it.eng.tools")
-  │   ├─ All services discovered
-  │   ├─ All configurations loaded
-  │   └─ All components initialized
-  │
-  └─ @EnableMongoRepositories("...issuer...", "...common...", "...tools...")
-      ├─ CredentialRequestRepository ✅
-      ├─ KeyMetadataRepository ✅
-      └─ ApplicationPropertiesRepository ✅
-```
-
-## Dependency Graph
-
-```
-IssuerController
-  └─ IssuerService
-      ├─ SelfIssuedIdTokenService (from dcp-common)
-      │   ├─ DidResolverService (from dcp-common)
-      │   │   └─ OkHttpRestClient (from tools)
-      │   │       └─ OkHttpClient (from tools config)
-      │   │           └─ OcspTrustManagerFactory (from tools)
-      │   │               └─ SslBundles (Spring Boot SSL)
-      │   ├─ JtiReplayCache (from dcp-common)
-      │   └─ KeyService (from dcp-common)
-      │       └─ KeyMetadataService (from dcp-common)
-      │           └─ KeyMetadataRepository (MongoDB)
-      │
-      ├─ CredentialRequestRepository (MongoDB)
-      ├─ CredentialDeliveryService
-      ├─ CredentialIssuanceService
-      └─ CredentialMetadataService
-```
-
-## Files Modified
-
-### Java Files
-1. ✅ **IssuerApplication.java**
-   - Added `scanBasePackages` for it.eng.dcp.common and it.eng.tools
-   - Added `@EnableMongoRepositories` for all repository packages
-   - Added `@EnableScheduling` for scheduled tasks
-
-### Configuration Files
-2. ✅ **application.properties** (main)
-   - Added `dcp.connector.did` property
-   - Added SSL bundle configuration
-   - Added OCSP configuration
-
-3. ✅ **application.properties** (test)
-   - Added `dcp.connector.did` property
-   - Added SSL bundle configuration
-   - Added OCSP configuration
-   - Fixed keystore alias to match eckey-issuer.p12
-
-## Production Configuration Example
-
+**credential-metadata-configuration.properties** (example):
 ```properties
-# Production DID
-issuer.did=did:web:issuer.example.com:issuer
-issuer.base-url=https://issuer.example.com
-dcp.connector.did=${issuer.did}
+# Configure supported credentials for the issuer metadata endpoint
+# Each credential requires at least an ID and credentialType
 
-# Production Keystore
-issuer.keystore.path=file:/secure/path/issuer-keystore.p12
-issuer.keystore.password=${ISSUER_KEYSTORE_PASSWORD}
-issuer.keystore.alias=issuer-prod
+# Example 1: MembershipCredential
+dcp.credentials.supported[0].id=550e8400-e29b-41d4-a716-446655440000
+dcp.credentials.supported[0].type=CredentialObject
+dcp.credentials.supported[0].credentialType=MembershipCredential
+dcp.credentials.supported[0].credentialSchema=https://example.com/schemas/membership-credential.json
+dcp.credentials.supported[0].bindingMethods[0]=did:web
+dcp.credentials.supported[0].profile=vc11-sl2021/jwt
 
-# Enable SSL
-server.ssl.enabled=true
-server.ssl.key-store=file:/secure/path/issuer-server.jks
-server.ssl.key-store-password=${SERVER_KEYSTORE_PASSWORD}
-server.ssl.key-alias=issuer-server
+# Example 2: CompanyCredential with issuance policy
+dcp.credentials.supported[1].id=d5c77b0e-7f4e-4fd5-8c5f-28b5fc3f96d1
+dcp.credentials.supported[1].type=CredentialObject
+dcp.credentials.supported[1].credentialType=CompanyCredential
+dcp.credentials.supported[1].offerReason=reissue
+dcp.credentials.supported[1].profile=vc20-bssl/jwt
 
-# SSL Bundle (for OkHttpClient)
-spring.ssl.bundle.jks.connector.key.alias=${issuer.keystore.alias}
-spring.ssl.bundle.jks.connector.keystore.location=${issuer.keystore.path}
-spring.ssl.bundle.jks.connector.keystore.password=${issuer.keystore.password}
-spring.ssl.bundle.jks.connector.truststore.location=file:/secure/path/truststore.jks
-spring.ssl.bundle.jks.connector.truststore.password=${TRUSTSTORE_PASSWORD}
-
-# Enable OCSP
-ocsp.enabled=true
-ocsp.revocation-check-enabled=true
-
-# Production MongoDB
-spring.data.mongodb.uri=${MONGODB_URI}
-spring.data.mongodb.database=issuer_prod_db
+# Configure supported profiles (used as default if credential doesn't specify one)
+dcp.supportedProfiles[0]=VC11_SL2021_JWT
+dcp.supportedProfiles[1]=VC11_SL2021_JSONLD
 ```
 
-## Architecture Decision
+**Note:** This configuration defines which credential types the issuer can issue and their metadata.
 
-### Why Scan it.eng.tools?
-The tools module provides essential infrastructure:
-1. **OkHttpClient** - Required for DID resolution (HTTP calls to resolve DIDs)
-2. **TLS/SSL Support** - Production-ready HTTPS with certificate validation
-3. **OCSP Validation** - Certificate revocation checking
-4. **REST Client** - Standardized HTTP client with error handling
-
-### Alternative Considered
-Could have created issuer-specific HTTP client beans, but:
-- ❌ Code duplication
-- ❌ No OCSP support
-- ❌ Less battle-tested
-- ✅ Reusing tools infrastructure is better
-
-## Testing
-
-### Run Tests
-```bash
-cd dcp-issuer
-mvn test
-```
-
-### Run Application
-```bash
-cd dcp-issuer
-mvn spring-boot:run
-```
-
-### Or Run JAR
-```bash
-cd dcp-issuer
-mvn package
-java -jar target/dcp-issuer.jar
-```
-
-## Verification Checklist
-
-✅ All required beans are discovered
-✅ OkHttpClient configured with TLS
-✅ MongoDB repositories scanned
-✅ SSL bundle configured
-✅ Tests can load Spring context
-✅ Application starts successfully
-✅ DID document endpoint works
-✅ Credential issuance endpoints work
-
-## Documentation Created
-
-1. **SELF_ISSUED_TOKEN_SERVICE_FIX.md** - SelfIssuedIdTokenService resolution
-2. **ARCHITECTURE_STANDALONE_APP.md** - Why no auto-configuration needed
-3. **DID_DOCUMENT_CONFIG_BEAN_FIX.md** - Bean configuration fixes
-4. **DID_DOCUMENT_SERVICE_REFACTORING.md** - DID document service refactoring
-5. **This file** - Complete configuration summary
-
-## Result
-
-✅ **DCP-Issuer is now fully configured** and ready for:
-- Development
-- Testing  
-- Production deployment
-
-All dependencies resolved, all beans discovered, TLS configured, tests passing.
-
----
-
-**Date**: December 19, 2025  
-**Status**: ✅ **COMPLETE**  
-**Configuration**: Production-ready standalone Spring Boot application
 

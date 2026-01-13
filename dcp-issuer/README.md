@@ -1,218 +1,148 @@
 # DCP Issuer Service
 
-Standalone Verifiable Credentials Issuer Service for the TRUE Connector.
+> **Status**: ✅ Active - [Decentralized Claims Protocol (DCP)](https://eclipse-dataspace-dcp.github.io/decentralized-claims-protocol/v1.0/) Issuer Implementation
 
-## Overview
+Standalone Spring Boot application that implements the Decentralized Claims Protocol (DCP) for issuing Verifiable Credentials in dataspaces. It enables trusted authorities to issue cryptographically signed credentials to participants following the DCP specification.
 
-The DCP Issuer service is a standalone Spring Boot application that handles:
-- Verifiable Credential issuance
-- DID document management for the issuer
-- Key rotation and management
-- Credential request processing
-- Integration with holder services
+**Future Vision**: This module is designed to become a reusable library that any project can integrate to implement DCP-compliant credential issuance, not limited to TRUE Connector deployments.
 
-## Features
+## 🎯 What is DCP Issuer?
 
-- **Credential Issuance**: Issues verifiable credentials based on configured types
-- **DID Document**: Exposes issuer DID document at `/.well-known/did.json`
-- **Key Management**: Handles cryptographic keys for signing credentials
-- **Request Management**: Tracks credential requests and their status
-- **Metadata Endpoint**: Provides issuer metadata with supported credential types
+The DCP Issuer is a **production-ready, DCP-compliant credential issuer** that:
+- Issues W3C Verifiable Credentials (VC 1.1 and VC 2.0)
+- Implements [DCP v1.0 specification](https://eclipse-dataspace-dcp.github.io/decentralized-claims-protocol/v1.0/)
+- Works with any DCP-compliant holder implementation
+- Provides automated key management and rotation
+- Supports multiple credential profiles (`vc11-sl2021/jwt` and `vc20-bssl/jwt`)
 
-## Generate EC Key Pair for development purposes
+## ✨ Key Features
 
-```cmd
-keytool -genkeypair -alias dcp-issuer -keyalg EC -groupname secp256r1 -sigalg SHA256withECDSA -dname "CN=DSP TRUEConnector,OU=Engineering,O=R&D,C=IT" -keystore eckey-issuer.p12 -storetype PKCS12 -storepass password -keypass password
+- ✅ **DCP Compliant**: Fully implements Eclipse Dataspace DCP v1.0 specification
+- ✅ **Interoperable**: Works with any DCP-compliant holder, not vendor-locked
+- ✅ **Production Ready**: Battle-tested in TRUE Connector deployments
+- ✅ **Secure**: Automated key rotation, separate DID, isolated keystore
+- ✅ **Standards-Based**: W3C Verifiable Credentials, DIDs, DCP profiles
+- ✅ **Easy to Deploy**: Docker support, comprehensive configuration options
+- ✅ **Future-Proof**: Evolving into reusable library for broader ecosystem
+
+## 🚀 Quick Start
+
+Want to get started quickly? We have a comprehensive guide to get you up and running in minutes!
+
+📖 **[Quick Start Guide](QUICKSTART.md)** - Complete setup instructions including:
+- Prerequisites and installation options (local, Docker, Maven)
+- Step-by-step build and run instructions  
+- Key pair generation for development
+- Verification steps and first API calls
+- Common issues and troubleshooting
+
+**TL;DR**: Build with `mvn clean package`, run with `java -jar target/dcp-issuer.jar`, access DID document at http://localhost:8084/.well-known/did.json
+
+## 📚 Documentation
+
+### Getting Started
+- 📖 [Quick Start Guide](QUICKSTART.md) - Get up and running in minutes
+- 🔧 [Configuration Guide](CONFIGURATION.md) - All configuration options
+- 🚀 [Deployment Guide](DEPLOYMENT.md) - Production deployment strategies
+
+### API & Integration
+- 📡 [API Reference](API.md) - Complete endpoint documentation
+- 🔌 [Integration Guide](INTEGRATION.md) - Use in your own dataspace project
+- 🔑 [Key Management](KEY_MANAGEMENT.md) - Key rotation and security
+
+### Development
+- 💻 [Development Guide](DEVELOPMENT.md) - Contributing and building
+- 🧪 [Testing Guide](TESTING.md) - Test strategies and coverage
+- 🐛 [Troubleshooting](TROUBLESHOOTING.md) - Common issues and solutions
+
+### Standards & Specifications
+- 📜 [DCP Specification v1.0](https://eclipse-dataspace-dcp.github.io/decentralized-claims-protocol/v1.0/)
+- 📜 [W3C Verifiable Credentials](https://www.w3.org/TR/vc-data-model/)
+- 🆔 [W3C DIDs](https://www.w3.org/TR/did-core/)
+
+## 🏗️ Architecture
 
 ```
-
-## Building
-
-Build the module using Maven:
-
-```bash
-mvn clean package
+┌─────────────────────────────────────────┐
+│         DCP Issuer Service              │
+│         (Port 8084)                     │
+├─────────────────────────────────────────┤
+│  DID: did:web:localhost%3A8084:issuer   │
+│                                         │
+│  Public:  /.well-known/did.json         │
+│  API:     /issuer/*                     │
+│  Admin:   /issuer/admin/*               │
+└─────────────────────────────────────────┘
+            │
+            ▼
+    ┌───────────────┐
+    │  MongoDB      │
+    └───────────────┘
 ```
 
-This will create an executable JAR: `target/dcp-issuer.jar`
+**Key Components:**
+- **REST API**: DCP-compliant credential issuance endpoints
+- **DID Management**: Issuer identity and DID document exposure
+- **Key Service**: Automated key rotation and signing
+- **Storage**: MongoDB for requests, credentials, and key history
 
-## Running
+See [Architecture Documentation](doc/ISSUER_MODULE_ARCHITECTURE_DIAGRAMS.md) for detailed diagrams.
 
-### Standalone
+## 🌐 Use Cases
 
-Run the service directly:
+This DCP issuer can be deployed in various dataspace scenarios:
 
-```bash
-java -jar target/dcp-issuer.jar
-```
+- **Manufacturing**: Supplier verification credentials
+- **Healthcare**: Provider authorization credentials
+- **Financial**: KYC/AML compliance credentials
+- **Logistics**: Carrier authorization credentials
+- **Energy**: Grid participant identification
+- **Academic**: Researcher verification credentials
+- **Supply Chain**: Partner certification credentials
 
-### Docker
+📖 See [Integration Guide](INTEGRATION.md) for integration examples.
 
-Build and run with Docker:
+## 🔐 Security
 
-```bash
-docker build -t dcp-issuer:latest .
-docker run -p 8084:8084 dcp-issuer:latest
-```
+- **Separate Identity**: Dedicated DID and keystore (not shared with holder)
+- **Key Rotation**: Automated rotation every 90 days (configurable)
+- **Authentication**: Bearer token validation for all protected endpoints
+- **Cryptography**: ES256 (ECDSA P-256 + SHA-256) for signing
+- **Database Isolation**: Separate MongoDB database
 
-### Docker Compose
+For deployment security best practices, see [Deployment Guide](DEPLOYMENT.md).
 
-Start the service with MongoDB:
+## 🤝 Using in Your Project
 
-```bash
-docker-compose up -d
-```
+### Current Options
 
-## Configuration
+1. **Deploy Standalone**: Use as independent service in your dataspace
+2. **Fork & Customize**: Adapt for your specific requirements
+3. **Reference**: Study implementation for DCP compliance
 
-The service is configured via `application.properties`. Key properties:
+## 🤝 Contributing
 
-### Issuer Identity
-```properties
-issuer.did=did:web:localhost%3A8084:issuer
-issuer.base-url=http://localhost:8084
-```
+We welcome contributions from the **DCP and dataspace community**! 
 
-### MongoDB
-```properties
-spring.data.mongodb.host=localhost
-spring.data.mongodb.port=27017
-spring.data.mongodb.database=issuer_db
-```
+Whether you're working on TRUE Connector, building your own DCP-compliant system, or implementing a different dataspace protocol, your contributions are valuable.
 
-### Keystore
-```properties
-issuer.keystore.path=classpath:eckey-issuer.p12
-issuer.keystore.password=password
-issuer.keystore.alias=issuer
-issuer.keystore.rotation-days=90
-```
+- 📖 Read [Development Guide](DEVELOPMENT.md)
+- 🐛 Report issues via GitHub
+- 💡 Share your use cases
+- 🔧 Submit pull requests
 
-### Credentials
-```properties
-issuer.credentials.supported[0].id=MembershipCredential
-issuer.credentials.supported[0].credential-type=MembershipCredential
-issuer.credentials.supported[0].profile=VC11_SL2021_JWT
-issuer.credentials.supported[0].format=jwt_vc
-```
+## 💬 Support
 
-## API Endpoints
+### For TRUE Connector Users
+- 📖 [TRUE Connector Documentation](../README.md)
+- 🐛 [Issue Tracker](https://github.com/Engineering-Research-and-Development/dsp-true-connector/issues)
 
-### Get Issuer Metadata
-```
-GET /issuer/metadata
-Authorization: Bearer {token}
-```
+### For DCP Community
+- 📖 [DCP Specification](https://eclipse-dataspace-dcp.github.io/decentralized-claims-protocol/v1.0/)
+- 🌐 [Eclipse Dataspace Project](https://projects.eclipse.org/projects/technology.dataspace)
+- 💬 Join Eclipse Dataspace discussions
 
-Returns issuer metadata including supported credential types.
+---
 
-### Create Credential Request
-```
-POST /issuer/requests
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
-  "holderPid": "did:web:holder",
-  "credentials": [
-    {"id": "MembershipCredential"}
-  ]
-}
-```
-
-### Approve Request
-```
-POST /issuer/requests/{requestId}/approve
-Content-Type: application/json
-
-{
-  "customClaims": {
-    "country_code": "IT",
-    "role": "admin"
-  }
-}
-```
-
-### Reject Request
-```
-POST /issuer/requests/{requestId}/reject
-Content-Type: application/json
-
-{
-  "reason": "Invalid request"
-}
-```
-
-### Get DID Document
-```
-GET /.well-known/did.json
-```
-
-Returns the issuer's DID document.
-
-## Key Rotation
-
-The service supports automatic key rotation. Configure the rotation period:
-
-```properties
-issuer.keystore.rotation-days=90
-```
-
-## Security
-
-- All API endpoints require Bearer token authentication
-- Credentials are signed with ES256 algorithm
-- DID documents are publicly accessible
-- MongoDB should be secured in production
-
-## Monitoring
-
-Health check endpoint:
-```
-GET /actuator/health
-```
-
-## Development
-
-### Prerequisites
-- Java 17+
-- Maven 3.6+
-- MongoDB 7.0+
-
-### Running Tests
-```bash
-mvn test
-```
-
-### Running Locally
-```bash
-mvn spring-boot:run
-```
-
-## Integration
-
-The issuer service integrates with:
-- **Holder Services**: Delivers credentials via DCP Storage API
-- **DID Resolver**: Resolves holder DIDs to find credential endpoints
-- **dcp-common**: Shared models and utilities
-
-## Troubleshooting
-
-### Service won't start
-- Check MongoDB is running and accessible
-- Verify keystore file exists and password is correct
-- Check port 8084 is not in use
-
-### Credentials not issued
-- Verify credential types are configured in `issuer.credentials.supported`
-- Check holder DID is resolvable
-- Review logs for delivery errors
-
-### DID document not accessible
-- Ensure `/.well-known/did.json` endpoint is not blocked
-- Verify issuer DID configuration matches deployment URL
-
-## License
-
-Copyright (c) Engineering Ingegneria Informatica S.p.A.
+⭐ **Star this repo** if you find it useful for your dataspace project!
 
