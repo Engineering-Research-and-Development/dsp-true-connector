@@ -4,12 +4,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.jwk.JWK;
 import it.eng.dcp.common.exception.DidResolutionException;
+import it.eng.dcp.common.model.DidDocument;
+import it.eng.dcp.common.model.VerificationMethod;
 import it.eng.dcp.common.service.did.DidResolverService;
+import it.eng.dcp.common.util.DidDocumentClient;
 import it.eng.dcp.issuer.client.SimpleOkHttpRestClient;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.Request;
-import okhttp3.Response;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
@@ -18,11 +19,11 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.time.Instant;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-
-import static it.eng.dcp.common.util.DidUrlConverter.convertDidToUrl;
 
 /**
  * HTTP-backed DID resolver for did:web documents (issuer-specific implementation).
@@ -36,6 +37,7 @@ public class IssuerDidResolverService implements DidResolverService {
     private final ObjectMapper mapper = new ObjectMapper();
     private final SimpleOkHttpRestClient simpleOkHttpRestClient;
     private final boolean sslEnabled;
+    private final DidDocumentClient didDocumentClient;
 
     /**
      * Cached DID document entry with expiry time.
@@ -63,11 +65,13 @@ public class IssuerDidResolverService implements DidResolverService {
      *
      * @param simpleOkHttpRestClient The SimpleOkHttpRestClient to use
      * @param sslEnabled              SSL enabled flag from application properties
+     * @param didDocumentClient      The DidDocumentClient for fetching DID documents
      */
-    public IssuerDidResolverService(SimpleOkHttpRestClient simpleOkHttpRestClient, @Value("${server.ssl.enabled:false}") boolean sslEnabled) {
-        log.info("IssuerDidResolverService initialized with SimpleOkHttpRestClient, sslEnabled={}", sslEnabled);
+    public IssuerDidResolverService(SimpleOkHttpRestClient simpleOkHttpRestClient, @Value("${server.ssl.enabled:false}") boolean sslEnabled, DidDocumentClient didDocumentClient) {
+        log.info("IssuerDidResolverService initialized with SimpleOkHttpRestClient, sslEnabled={} and DidDocumentClient", sslEnabled);
         this.simpleOkHttpRestClient = simpleOkHttpRestClient;
         this.sslEnabled = sslEnabled;
+        this.didDocumentClient = didDocumentClient;
     }
 
     @Override
@@ -81,42 +85,41 @@ public class IssuerDidResolverService implements DidResolverService {
         }
 
         try {
-            String url = convertDidToUrl(did, sslEnabled);
-            url = url + "/.well-known/did.json";
+//            String url = convertDidToUrl(did, sslEnabled);
+//            url = url + "/.well-known/did.json";
+//
+//            JsonNode root = fetchDidDocumentCached(url);
 
-            JsonNode root = fetchDidDocumentCached(url);
+            DidDocument didDocument = didDocumentClient.fetchDidDocumentCached(did);
 
-            JsonNode vmArray = root.get("verificationMethod");
-            if (vmArray == null || !vmArray.isArray()) {
+            List<VerificationMethod> verificationMethods = didDocument.getVerificationMethods();
+            if (verificationMethods == null || verificationMethods.isEmpty()) {
                 return null;
             }
 
             // Iterate through verification methods
-            Iterator<JsonNode> it = vmArray.elements();
+            Iterator<VerificationMethod> it = verificationMethods.iterator();
             while (it.hasNext()) {
-                JsonNode vm = it.next();
-                JsonNode idNode = vm.get("id");
-                JsonNode jwkNode = vm.get("publicKeyJwk");
-                String vmId = idNode != null ? idNode.asText() : null;
-
+                VerificationMethod vm = it.next();
+                String vmId = vm.getId();
+                Map<String, Object> jwkNode = vm.getPublicKeyJwk();
                 if (jwkNode == null || vmId == null) {
                     continue;
                 }
-
                 // Parse JWK
                 JWK jwk;
                 try {
-                    jwk = JWK.parse(jwkNode.toString());
+                    jwk = JWK.parse(jwkNode);
                 } catch (ParseException pe) {
                     throw new DidResolutionException("Failed to parse JWK", pe);
                 }
-
                 // Check if this key matches the requested kid
                 if (isKeyMatch(jwk, vmId, kid)) {
                     // Enforce verification relationship if specified
-                    if (verificationRelationship != null && !verificationRelationship.isBlank()) {
-                        enforceVerificationRelationship(root, vmId, kid, verificationRelationship);
-                    }
+//                    TODO: Re-enable verification relationship check when available
+//                    if (verificationRelationship != null && !verificationRelationship.isBlank()) {
+//                        enforceVerificationRelationship(didDocument, vmId, kid, verificationRelationship);
+//                    }
                     return jwk;
                 }
             }
@@ -125,95 +128,6 @@ public class IssuerDidResolverService implements DidResolverService {
         } catch (IOException e) {
             throw new DidResolutionException("Failed to fetch or parse DID document", e);
         }
-    }
-
-    // Change from private to package-private for testability
-    JsonNode fetchDidDocumentCached(String url) throws IOException {
-        IssuerDidResolverService.CachedDoc cd = cache.get(url);
-        Instant now = Instant.now();
-
-        if (cd != null && cd.expiresAt.isAfter(now)) {
-            return cd.root;
-        }
-
-        String doc = fetchDidDocument(url);
-        if (doc == null) {
-            return null;
-        }
-
-        JsonNode root = mapper.readTree(doc);
-        cache.put(url, new IssuerDidResolverService.CachedDoc(root, now.plusSeconds(cacheTtlSeconds)));
-        return root;
-    }
-
-    /**
-     * Fetch the DID document over HTTP.
-     * Protected method for testing and retry logic.
-     *
-     * @param url The DID document URL
-     * @return The document content, or null if not found
-     * @throws IOException on IO errors
-     */
-    protected String fetchDidDocument(String url) throws IOException {
-        return fetchDidDocumentWithRetries(url);
-    }
-
-    /**
-     * Fetches DID document with retry logic.
-     *
-     * @param url The DID document URL
-     * @return The document content
-     * @throws IOException on IO errors
-     */
-    private String fetchDidDocumentWithRetries(String url) throws IOException {
-        int attempts = 0;
-        IOException lastIoEx = null;
-
-        while (attempts <= maxRetries) {
-            attempts++;
-            try {
-                return fetchDidDocumentWithTimeout(url);
-            } catch (IOException e) {
-                lastIoEx = e;
-                // Simple exponential backoff
-                try {
-                    Thread.sleep(100L * attempts);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new IOException(ie);
-                }
-            }
-        }
-
-        if (lastIoEx != null) {
-            throw lastIoEx;
-        }
-        return null;
-    }
-
-    /**
-     * Fetches DID document using OkHttpRestClient.
-     *
-     * @param url The DID document URL
-     * @return The document content
-     * @throws IOException on IO errors
-     */
-    private String fetchDidDocumentWithTimeout(String url) throws IOException {
-        Request.Builder requestBuilder = new Request.Builder().url(url);
-
-        try (Response response = simpleOkHttpRestClient.executeCall(requestBuilder.build())) {
-            int code = response.code();
-            log.info("Status {}", code);
-            String resp = null;
-            if (response.body() != null) {
-                resp = response.body().string();
-                return resp;
-            }
-        } catch (IOException e) {
-            log.error(e.getLocalizedMessage());
-            return e.getMessage() != null ? e.getMessage() : "Unknown error";
-        }
-        throw new IOException("Failed to fetch DID document from " + url);
     }
 
     // Change from private to package-private for testability

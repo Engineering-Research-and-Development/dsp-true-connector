@@ -1,8 +1,11 @@
 package it.eng.dcp.issuer.service;
 
-import com.nimbusds.jose.jwk.JWK;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.nimbusds.jose.jwk.JWK;
 import it.eng.dcp.common.exception.DidResolutionException;
+import it.eng.dcp.common.model.DidDocument;
+import it.eng.dcp.common.model.VerificationMethod;
+import it.eng.dcp.common.util.DidDocumentClient;
 import it.eng.dcp.issuer.client.SimpleOkHttpRestClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -10,16 +13,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.IOException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.ECPublicKey;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class IssuerDidResolverServiceTest {
@@ -27,11 +31,14 @@ class IssuerDidResolverServiceTest {
     @Mock
     private SimpleOkHttpRestClient simpleOkHttpRestClient;
 
+    @Mock
+    private DidDocumentClient didDocumentClient;
+
     private IssuerDidResolverService resolverService;
 
     @BeforeEach
     void setUp() {
-        resolverService = new IssuerDidResolverService(simpleOkHttpRestClient, false);
+        resolverService = new IssuerDidResolverService(simpleOkHttpRestClient, false, didDocumentClient);
         resolverService.setCacheTtlSeconds(1); // Short cache for tests
         resolverService.setMaxRetries(0); // No retry for tests
     }
@@ -49,79 +56,56 @@ class IssuerDidResolverServiceTest {
 
     @Test
     void resolvePublicKey_fetchDidDocumentThrows_throwsResolutionException() throws Exception {
-        IssuerDidResolverService resolver = spy(new IssuerDidResolverService(simpleOkHttpRestClient, false));
-        doThrow(new IOException("fail")).when(resolver).fetchDidDocument(anyString());
-        DidResolutionException ex = assertThrows(DidResolutionException.class, () -> resolver.resolvePublicKey("did:web:test", "kid", null));
+        when(didDocumentClient.fetchDidDocumentCached(anyString())).thenThrow(new java.io.IOException("Network error"));
+        DidResolutionException ex = assertThrows(DidResolutionException.class, () -> resolverService.resolvePublicKey("did:web:test", "kid", null));
         assertTrue(ex.getMessage().contains("Failed to fetch or parse DID document"));
+        assertNotNull(ex.getCause());
+        assertInstanceOf(java.io.IOException.class, ex.getCause());
     }
 
     @Test
     void resolvePublicKey_noVerificationMethod_returnsNull() throws Exception {
-        IssuerDidResolverService resolver = spy(new IssuerDidResolverService(simpleOkHttpRestClient, false));
-        JsonNode root = mock(JsonNode.class);
-        doReturn(root).when(resolver).fetchDidDocumentCached(anyString());
-        when(root.get("verificationMethod")).thenReturn(null);
-        assertNull(resolver.resolvePublicKey("did:web:test", "kid", null));
-    }
-
-    @Test
-    void resolvePublicKey_verificationMethodNotArray_returnsNull() throws Exception {
-        IssuerDidResolverService resolver = spy(new IssuerDidResolverService(simpleOkHttpRestClient, false));
-        JsonNode root = mock(JsonNode.class);
-        doReturn(root).when(resolver).fetchDidDocumentCached(anyString());
-        JsonNode vmNode = mock(JsonNode.class);
-        when(root.get("verificationMethod")).thenReturn(vmNode);
-        when(vmNode.isArray()).thenReturn(false);
-        assertNull(resolver.resolvePublicKey("did:web:test", "kid", null));
+        DidDocument didDocument = DidDocument.Builder.newInstance()
+                .id("did:web:test")
+                .build();
+        when(didDocumentClient.fetchDidDocumentCached(anyString())).thenReturn(didDocument);
+        assertNull(resolverService.resolvePublicKey("did:web:test", "kid", null));
     }
 
     @Test
     void resolvePublicKey_keyNotFound_returnsNull() throws Exception {
-        IssuerDidResolverService resolver = spy(new IssuerDidResolverService(simpleOkHttpRestClient, false));
-        JsonNode root = mock(JsonNode.class);
-        JsonNode vmArray = mock(JsonNode.class);
-        doReturn(root).when(resolver).fetchDidDocumentCached(anyString());
-        when(root.get("verificationMethod")).thenReturn(vmArray);
-        when(vmArray.isArray()).thenReturn(true);
-        when(vmArray.elements()).thenReturn(new java.util.ArrayList<JsonNode>().iterator());
-        assertNull(resolver.resolvePublicKey("did:web:test", "kid", null));
+        DidDocument didDocument = DidDocument.Builder.newInstance()
+                .id("did:web:test")
+                .verificationMethod(Collections.emptyList())
+                .build();
+        when(didDocumentClient.fetchDidDocumentCached(anyString())).thenReturn(didDocument);
+        assertNull(resolverService.resolvePublicKey("did:web:test", "kid", null));
     }
 
     @Test
     void resolvePublicKey_jwkParseFails_throwsResolutionException() throws Exception {
-        IssuerDidResolverService resolver = spy(new IssuerDidResolverService(simpleOkHttpRestClient, false));
-        JsonNode root = mock(JsonNode.class);
-        JsonNode vmArray = mock(JsonNode.class);
-        JsonNode vm = mock(JsonNode.class);
-        JsonNode idNode = mock(JsonNode.class);
-        JsonNode jwkNode = mock(JsonNode.class);
-        doReturn(root).when(resolver).fetchDidDocumentCached(anyString());
-        when(root.get("verificationMethod")).thenReturn(vmArray);
-        when(vmArray.isArray()).thenReturn(true);
-        when(vmArray.elements()).thenReturn(List.of(vm).iterator());
-        when(vm.get("id")).thenReturn(idNode);
-        when(vm.get("publicKeyJwk")).thenReturn(jwkNode);
-        when(idNode.asText()).thenReturn("vmId");
-        when(jwkNode.toString()).thenReturn("invalid-jwk"); // This will cause JWK.parse to throw
-        // Remove doThrow on isKeyMatch, let JWK.parse fail naturally
-        assertThrows(DidResolutionException.class, () -> resolver.resolvePublicKey("did:web:test", "kid", null));
+        // Create a verification method with invalid JWK data
+        Map<String, Object> invalidJwk = new java.util.HashMap<>();
+        invalidJwk.put("kty", "invalid");
+
+        VerificationMethod vm = VerificationMethod.Builder.newInstance()
+                .id("did:web:test#key-1")
+                .type("JsonWebKey2020")
+                .controller("did:web:test")
+                .publicKeyJwk(invalidJwk)
+                .build();
+
+        DidDocument didDocument = DidDocument.Builder.newInstance()
+                .id("did:web:test")
+                .verificationMethod(List.of(vm))
+                .build();
+
+        when(didDocumentClient.fetchDidDocumentCached(anyString())).thenReturn(didDocument);
+        assertThrows(DidResolutionException.class, () -> resolverService.resolvePublicKey("did:web:test", "key-1", null));
     }
 
     @Test
     void resolvePublicKey_keyFound_returnsJwk() throws Exception {
-        IssuerDidResolverService resolver = spy(new IssuerDidResolverService(simpleOkHttpRestClient, false));
-        JsonNode root = mock(JsonNode.class);
-        JsonNode vmArray = mock(JsonNode.class);
-        JsonNode vm = mock(JsonNode.class);
-        JsonNode idNode = mock(JsonNode.class);
-        JsonNode jwkNode = mock(JsonNode.class);
-        doReturn(root).when(resolver).fetchDidDocumentCached(anyString());
-        when(root.get("verificationMethod")).thenReturn(vmArray);
-        when(vmArray.isArray()).thenReturn(true);
-        when(vmArray.elements()).thenReturn(Collections.singletonList(vm).iterator());
-        when(vm.get("id")).thenReturn(idNode);
-        when(vm.get("publicKeyJwk")).thenReturn(jwkNode);
-        when(idNode.asText()).thenReturn("vmId");
         // Robustly generate a valid ECKey for P-256 curve
         com.nimbusds.jose.jwk.ECKey ecKey = null;
         for (int i = 0; i < 10; i++) {
@@ -132,7 +116,7 @@ class IssuerDidResolverServiceTest {
             try {
                 ecKey = new com.nimbusds.jose.jwk.ECKey.Builder(
                     com.nimbusds.jose.jwk.Curve.P_256, ecPublicKey)
-                    .keyID("kid")
+                    .keyID("key-1")
                     .keyUse(com.nimbusds.jose.jwk.KeyUse.SIGNATURE)
                     .build();
                 break;
@@ -141,12 +125,25 @@ class IssuerDidResolverServiceTest {
             }
         }
         assertNotNull(ecKey, "Failed to generate valid ECKey for P-256 curve");
-        String jwkJson = ecKey.toJSONString();
-        when(jwkNode.toString()).thenReturn(jwkJson);
-        doReturn(true).when(resolver).isKeyMatch(any(JWK.class), eq("vmId"), eq("kid"));
-        JWK result = resolver.resolvePublicKey("did:web:test", "kid", null);
+
+        // Create verification method with the valid JWK
+        VerificationMethod vm = VerificationMethod.Builder.newInstance()
+                .id("did:web:test#key-1")
+                .type("JsonWebKey2020")
+                .controller("did:web:test")
+                .publicKeyJwk(ecKey.toJSONObject())
+                .build();
+
+        DidDocument didDocument = DidDocument.Builder.newInstance()
+                .id("did:web:test")
+                .verificationMethod(List.of(vm))
+                .build();
+
+        when(didDocumentClient.fetchDidDocumentCached(anyString())).thenReturn(didDocument);
+
+        JWK result = resolverService.resolvePublicKey("did:web:test", "key-1", null);
         assertNotNull(result);
-        assertEquals("kid", result.getKeyID());
+        assertEquals("key-1", result.getKeyID());
     }
 
     @Test
@@ -159,7 +156,7 @@ class IssuerDidResolverServiceTest {
     }
 
     @Test
-    void enforceVerificationRelationship_found_succeeds() throws Exception {
+    void enforceVerificationRelationship_found_succeeds() {
         JsonNode root = mock(JsonNode.class);
         JsonNode relArray = mock(JsonNode.class);
         JsonNode rel = mock(JsonNode.class);
