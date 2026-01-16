@@ -15,10 +15,6 @@
 	<dependencies>
 		<dependency>
 			<groupId>it.eng</groupId>
-			<artifactId>dcp</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>it.eng</groupId>
 			<artifactId>tools</artifactId>
 		</dependency>
 		<dependency>
