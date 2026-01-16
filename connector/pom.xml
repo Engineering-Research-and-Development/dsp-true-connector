@@ -212,6 +212,12 @@
             <version>${dsp.tck.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>it.eng</groupId>
+            <artifactId>dcp-holder</artifactId>
+            <version>0.6.4-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
 
     <!-- <build> -->

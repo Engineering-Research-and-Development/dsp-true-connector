@@ -8,19 +8,16 @@
         <version>${revision}</version>
     </parent>
     <artifactId>dcp</artifactId>
+    <packaging>pom</packaging>
     <name>Decentralized claims protocol</name>
+    <modules>
+        <module>dcp-common</module>
+        <module>dcp-holder</module>
+        <module>dcp-verifier</module>
+        <module>dcp-issuer</module>
+    </modules>
 
     <dependencies>
-        <dependency>
-            <groupId>it.eng</groupId>
-            <artifactId>dcp-common</artifactId>
-            <version>${revision}</version>
-        </dependency>
-        <dependency>
-            <groupId>it.eng</groupId>
-            <artifactId>tools</artifactId>
-            <version>${revision}</version>
-        </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
@@ -40,11 +37,22 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.19.0</version>
+        </dependency>
 
         <dependency>
             <groupId>com.nimbusds</groupId>
             <artifactId>nimbus-jose-jwt</artifactId>
             <version>10.5</version>
+        </dependency>
+
+        <!-- Jakarta Validation (Hibernate Validator) for @NotNull, @Valid, etc. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
         <!-- TEST-->

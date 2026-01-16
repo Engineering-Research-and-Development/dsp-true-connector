@@ -1,0 +1,78 @@
+package it.eng.dcp.service;
+
+import com.nimbusds.jose.jwk.JWKSet;
+import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
+import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.common.service.did.InMemoryDidResolverService;
+import it.eng.dcp.common.service.sts.InMemoryJtiReplayCache;
+import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+//TODO refactor to proper integration test, like ones from connector module
+@Disabled
+class KeyServiceIT {
+
+    private Path tempKeystore;
+    private BaseDidDocumentConfiguration config;
+
+    @AfterEach
+    void cleanup() throws Exception {
+        if (tempKeystore != null && Files.exists(tempKeystore)) {
+            Files.deleteIfExists(tempKeystore);
+        }
+    }
+
+    @Test
+    @DisplayName("KeyService rotates and persists keystore; SelfIssuedIdTokenService signs and validates using KeyService")
+    void keyServiceSigningPathWorks() throws Exception {
+        // create a temporary keystore path (file should NOT exist so KeyService will create it)
+        tempKeystore = Files.createTempFile("test-eckey-", ".p12");
+        // delete the temp file so rotateAndPersistKeyPair treats it as non-existing (it will create the keystore)
+        Files.deleteIfExists(tempKeystore);
+        String keystorePath = tempKeystore.toAbsolutePath().toString();
+        String password = "password";
+        String alias = "testalias";
+
+        // instantiate KeyService (KeyMetadataService not required for rotateAndPersistKeyPair)
+        KeyService keyService = new KeyService(null);
+
+        // rotate and persist a new key pair into the temporary keystore
+        keyService.rotateAndPersistKeyPair(keystorePath, password, alias);
+
+        // after rotation, keyPair should be available and getSigningJwk should succeed
+        var signingJwk = keyService.getSigningJwk(config.getDidDocumentConfig());
+        assertNotNull(signingJwk);
+        assertNotNull(signingJwk.getKeyID());
+
+        // Prepare token service using real keyService
+        String connectorDid = "did:example:connector";
+
+        InMemoryDidResolverService didResolver = new InMemoryDidResolverService();
+        InMemoryJtiReplayCache jtiCache = new InMemoryJtiReplayCache();
+
+        SelfIssuedIdTokenService svc = new SelfIssuedIdTokenService(didResolver, jtiCache, keyService, config);
+
+        // register public JWK in resolver so validation can fetch it
+        didResolver.put(connectorDid, new JWKSet(signingJwk.toPublicJWK()));
+
+        // create and validate token using the real signing key
+        String token = svc.createAndSignToken("did:example:aud", null, config.getDidDocumentConfig());
+        assertNotNull(token);
+
+        var claims = svc.validateToken(token);
+        assertEquals(connectorDid, claims.getIssuer());
+
+        // Disable replay detection for now
+        // second validation should be rejected due to replay detection
+//        assertThrows(IllegalStateException.class, () -> svc.validateToken(token));
+    }
+}
