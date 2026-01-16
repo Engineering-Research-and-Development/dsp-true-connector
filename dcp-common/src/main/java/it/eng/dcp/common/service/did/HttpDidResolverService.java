@@ -3,13 +3,15 @@ package it.eng.dcp.common.service.did;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.jwk.JWK;
+import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.model.VerificationMethod;
-import it.eng.dcp.common.util.DidDocumentClient;
-import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.dcp.common.util.DidUrlConverter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
@@ -52,23 +54,14 @@ import java.util.concurrent.ConcurrentMap;
 public class HttpDidResolverService implements DidResolverService {
 
     private final ObjectMapper mapper = new ObjectMapper();
-    private final OkHttpRestClient httpClient;
-    private final DidDocumentClient didDocumentClient;
+    private final SimpleOkHttpRestClient httpClient;
 
     /**
      * Cached DID document entry with expiry time.
      */
-    private static class CachedDoc {
-        final JsonNode root;
-        final Instant expiresAt;
+    private record CachedDoc(DidDocument didDocument, Instant expiresAt) { }
 
-        CachedDoc(JsonNode root, Instant expiresAt) {
-            this.root = root;
-            this.expiresAt = expiresAt;
-        }
-    }
-
-    private final ConcurrentMap<String, CachedDoc> cache = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, HttpDidResolverService.CachedDoc> cache = new ConcurrentHashMap<>();
 
     /**
      * Cache TTL in seconds. Default: 300 seconds (5 minutes).
@@ -88,11 +81,9 @@ public class HttpDidResolverService implements DidResolverService {
      * Constructor with OkHttpRestClient injection.
      *
      * @param httpClient The OkHttpRestClient to use for HTTP requests
-     * @param didDocumentClient The DidDocumentClient for fetching DID documents
      */
-    public HttpDidResolverService(OkHttpRestClient httpClient, DidDocumentClient didDocumentClient) {
-        this.didDocumentClient = didDocumentClient;
-        log.info("HttpDidResolverService initialized with OkHttpRestClient");
+    public HttpDidResolverService(SimpleOkHttpRestClient httpClient) {
+        log.info("HttpDidResolverService initialized with SimpleOkHttpRestClient");
         this.httpClient = httpClient;
     }
 
@@ -115,7 +106,7 @@ public class HttpDidResolverService implements DidResolverService {
 //            // TODO: consider moving this to service or handle in uniform way across resolvers
 //            JsonNode root = fetchDidDocumentCached(baseUrl + "/.well-known/did.json");
 
-            DidDocument didDocument = didDocumentClient.fetchDidDocumentCached(did);
+            DidDocument didDocument = fetchDidDocumentCached(did);
 
             List<VerificationMethod> verificationMethods = didDocument.getVerificationMethods();
             if (verificationMethods == null || verificationMethods.isEmpty()) {
@@ -221,5 +212,101 @@ public class HttpDidResolverService implements DidResolverService {
             throw new DidResolutionException(
                 "Key found but not referenced in verification relationship '" + verificationRelationship + "'");
         }
+    }
+
+    /**
+     * Fetches DID document with caching support.
+     * @param did The DID
+     * @return The parsed JSON root node
+     * @throws IOException on IO errors
+     */
+    @Override
+    public DidDocument fetchDidDocumentCached(String did) throws IOException {
+        String url = DidUrlConverter.convertDidToUrl(did, sslEnabled);
+        String baseUrl = DidUrlConverter.extractBaseUrl(url);
+        String didDocumentUrl = baseUrl + "/.well-known/did.json";
+
+        HttpDidResolverService.CachedDoc cd = cache.get(didDocumentUrl);
+        Instant now = Instant.now();
+
+        if (cd != null && cd.expiresAt.isAfter(now)) {
+            return cd.didDocument;
+        }
+
+        String doc = fetchDidDocument(didDocumentUrl);
+        if (doc == null) {
+            return null;
+        }
+
+        JsonNode jsonDid = mapper.readTree(doc);
+        DidDocument didDocument = mapper.treeToValue(jsonDid, DidDocument.class);
+        cache.put(didDocumentUrl, new HttpDidResolverService.CachedDoc(didDocument, now.plusSeconds(cacheTtlSeconds)));
+        return didDocument;
+    }
+
+    /**
+     * Fetches DID document with retry logic.
+     * @param url The DID document URL
+     * @return The document content
+     * @throws IOException on IO errors
+     */
+    private String fetchDidDocumentWithRetries(String url) throws IOException {
+        int attempts = 0;
+        IOException lastIoEx = null;
+
+        while (attempts <= maxRetries) {
+            attempts++;
+            try {
+                return fetchDidDocumentWithTimeout(url);
+            } catch (IOException e) {
+                lastIoEx = e;
+                // Simple exponential backoff
+                try {
+                    Thread.sleep(100L * attempts);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException(ie);
+                }
+            }
+        }
+
+        if (lastIoEx != null) {
+            throw lastIoEx;
+        }
+        return null;
+    }
+
+    /**
+     * Fetches DID document using OkHttpRestClient.
+     * @param url The DID document URL
+     * @return The document content
+     * @throws IOException on IO errors
+     */
+    private String fetchDidDocumentWithTimeout(String url) throws IOException {
+        Request.Builder requestBuilder = new Request.Builder().url(url);
+
+        try (Response response = httpClient.executeCall(requestBuilder.build())) {
+            int code = response.code();
+            log.info("Status {}", code);
+            if (response.body() != null) {
+                return response.body().string();
+            }
+        } catch (IOException e) {
+            log.error(e.getLocalizedMessage());
+            throw new IOException("Failed to fetch DID document from " + url + ": " + e.getLocalizedMessage());
+        }
+        throw new IOException("Failed to fetch DID document from " + url);
+    }
+
+    /**
+     * Fetch the DID document over HTTP.
+     * Protected method for testing and retry logic.
+     *
+     * @param url The DID document URL
+     * @return The document content, or null if not found
+     * @throws IOException on IO errors
+     */
+    protected String fetchDidDocument(String url) throws IOException {
+        return fetchDidDocumentWithRetries(url);
     }
 }

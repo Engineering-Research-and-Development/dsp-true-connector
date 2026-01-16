@@ -3,11 +3,11 @@ package it.eng.dcp.core;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.OctetSequenceKey;
 import com.nimbusds.jose.util.Base64URL;
+import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.model.VerificationMethod;
 import it.eng.dcp.common.service.did.HttpDidResolverService;
-import it.eng.dcp.common.util.DidDocumentClient;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -16,8 +16,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 class HttpDidResolverServiceTest {
 
@@ -44,11 +43,13 @@ class HttpDidResolverServiceTest {
                 .verificationMethod(List.of(vm))
                 .build();
 
-        // Mock DidDocumentClient
-        DidDocumentClient mockClient = mock(DidDocumentClient.class);
-        when(mockClient.fetchDidDocumentCached(anyString())).thenReturn(didDocument);
+        // Create a spy of HttpDidResolverService to override fetchDidDocumentCached
+        SimpleOkHttpRestClient mockHttpClient = mock(SimpleOkHttpRestClient.class);
+        HttpDidResolverService svc = spy(new HttpDidResolverService(mockHttpClient));
 
-        HttpDidResolverService svc = new HttpDidResolverService(null, mockClient);
+        // Stub the fetchDidDocumentCached method to return our test document
+        // Use doReturn().when() syntax for spies to avoid calling the real method
+        doReturn(didDocument).when(svc).fetchDidDocumentCached(anyString());
 
         JWK jwk = svc.resolvePublicKey(DID, "kid-ec", "capabilityInvocation");
         assertNotNull(jwk);
@@ -74,11 +75,12 @@ class HttpDidResolverServiceTest {
                 .verificationMethod(List.of(vm))
                 .build();
 
-        // Mock DidDocumentClient
-        DidDocumentClient mockClient = mock(DidDocumentClient.class);
-        when(mockClient.fetchDidDocumentCached(anyString())).thenReturn(didDocument);
+        // Create a spy of HttpDidResolverService to override fetchDidDocumentCached
+        SimpleOkHttpRestClient mockHttpClient = mock(SimpleOkHttpRestClient.class);
+        HttpDidResolverService svc = spy(new HttpDidResolverService(mockHttpClient));
 
-        HttpDidResolverService svc = new HttpDidResolverService(null, mockClient);
+        // Stub the fetchDidDocumentCached method to return our test document
+        doReturn(didDocument).when(svc).fetchDidDocumentCached(anyString());
 
         // Request a different key ID that doesn't exist
         JWK jwk = svc.resolvePublicKey(DID, "non-existent-kid", "capabilityInvocation");
