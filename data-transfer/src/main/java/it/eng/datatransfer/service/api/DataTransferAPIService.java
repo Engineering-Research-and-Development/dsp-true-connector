@@ -115,6 +115,7 @@ public class DataTransferAPIService {
         if (DataTransferFormat.HTTP_PUSH.format().equals(dataTransferRequest.getFormat())) {
 
             BucketCredentialsEntity bucketCredentials = bucketCredentialsService.getBucketCredentials(s3Properties.getBucketName());
+            String endpointOverride = resolveExternalPresignedEndpoint();
 
             List<EndpointProperty> endpointProperties = List.of(
                     EndpointProperty.Builder.newInstance()
@@ -139,7 +140,7 @@ public class DataTransferAPIService {
                             .build(),
                     EndpointProperty.Builder.newInstance()
                             .name(S3Utils.ENDPOINT_OVERRIDE)
-                            .value(s3Properties.getExternalPresignedEndpoint())
+                            .value(endpointOverride)
                             .build()
             );
 
@@ -227,6 +228,25 @@ public class DataTransferAPIService {
             }
         }
         return TransferSerializer.serializePlainJsonNode(transferProcessForDB);
+    }
+
+    private String resolveExternalPresignedEndpoint() {
+        String endpoint = s3Properties.getExternalPresignedEndpoint();
+        if (endpoint != null && !endpoint.isBlank()) {
+            return endpoint;
+        }
+        String region = s3Properties.getRegion();
+        if (region == null || region.isBlank()) {
+            throw new IllegalStateException("S3 region must be configured when externalPresignedEndpoint is blank");
+        }
+        String bucket = s3Properties.getBucketName();
+        if (bucket == null || bucket.isBlank()) {
+            throw new IllegalStateException("S3 bucketName must be configured when externalPresignedEndpoint is blank");
+        }
+        if ("us-east-1".equals(region)) {
+            return String.format("https://%s.s3.amazonaws.com", bucket);
+        }
+        return String.format("https://%s.s3.%s.amazonaws.com", bucket, region);
     }
 
     /**

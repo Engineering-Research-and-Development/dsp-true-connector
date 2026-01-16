@@ -40,4 +40,12 @@ public class S3Properties {
      * This is used for generating presigned URLs for external access.
      */
     private String externalPresignedEndpoint;
+
+    /**
+     * The S3 upload mode (SYNC or ASYNC).
+     * ASYNC uses S3AsyncClient for parallel uploads (faster).
+     * SYNC uses S3Client for sequential uploads (more compatible with reverse proxies).
+     * Defaults to SYNC if not specified.
+     */
+    private String uploadMode = "SYNC";
 }

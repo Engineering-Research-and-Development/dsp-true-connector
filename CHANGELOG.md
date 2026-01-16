@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.4-SNAPSHOT] - 24.12.2025.
+
+### Changed
+
+- Enhanced S3 configuration to support both MinIO and AWS S3 endpoints
+- S3ClientProvider now handles AWS-specific client creation and caching
+- BucketCredentials management adapted for AWS IAM users
+- S3BucketProvisionService updated to work with both MinIO and AWS S3
+
+## [0.6.3-SNAPSHOT] - 01.12.2025.
+
+### Added
+
+- Logic for deciding which S3 client to use - synchronous or asynchronous based on s3.upload.mode property 
+or ApplicationProperty in Mongo
+- New S3UploadStrategy and implementation classes for synchronous and asynchronous upload
+
+### Changed
+
+- Conditional GlobalSSLConfiguration creation based on ssl.enabled property (FTP impact)
+- Improved logic for async S3 Multipart upload - now using CompletableFuture.supplyAsync for each part upload
+- testcontainers version bumped to 2.0.2 (docker 4.53.0 compliance)
+
 ## [0.6.0-SNAPSHOT] - 28.11.2025.
 
 ### Added

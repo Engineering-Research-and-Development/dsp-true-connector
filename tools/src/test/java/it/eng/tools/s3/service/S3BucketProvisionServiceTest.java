@@ -44,6 +44,9 @@ public class S3BucketProvisionServiceTest {
         s3BucketProvisionService = new S3BucketProvisionService(s3ClientProvider, s3Properties,
                 bucketCredentialsService, iamUserManagementService);
         lenient().when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
+        // Default to Minio-style endpoint/region unless overridden per test
+        lenient().when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+        lenient().when(s3Properties.getRegion()).thenReturn("us-east-1");
     }
 
     @Test
