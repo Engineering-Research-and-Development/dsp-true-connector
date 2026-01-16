@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.4-SNAPSHOT] - 24.12.2025.
+
+### Changed
+
+- Enhanced S3 configuration to support both MinIO and AWS S3 endpoints
+- S3ClientProvider now handles AWS-specific client creation and caching
+- BucketCredentials management adapted for AWS IAM users
+- S3BucketProvisionService updated to work with both MinIO and AWS S3
+
 ## [0.6.3-SNAPSHOT] - 01.12.2025.
 
 ### Added
