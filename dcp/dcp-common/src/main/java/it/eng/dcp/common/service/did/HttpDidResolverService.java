@@ -1,14 +1,13 @@
 package it.eng.dcp.common.service.did;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.jwk.JWK;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.exception.DidResolutionException;
+import it.eng.dcp.common.model.DidDocument;
+import it.eng.dcp.common.model.VerificationMethod;
+import it.eng.dcp.common.util.DidUrlConverter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.Request;
-import okhttp3.Response;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
@@ -16,13 +15,11 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Instant;
-import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-
-import static it.eng.dcp.common.util.DidUrlConverter.convertDidToUrl;
-import static it.eng.dcp.common.util.DidUrlConverter.extractBaseUrl;
 
 /**
  * HTTP-backed DID resolver for did:web documents.
@@ -51,18 +48,17 @@ import static it.eng.dcp.common.util.DidUrlConverter.extractBaseUrl;
 @Slf4j
 public class HttpDidResolverService implements DidResolverService {
 
-    private final ObjectMapper mapper = new ObjectMapper();
     private final SimpleOkHttpRestClient httpClient;
 
     /**
      * Cached DID document entry with expiry time.
      */
     private static class CachedDoc {
-        final JsonNode root;
+        final DidDocument didDocument;
         final Instant expiresAt;
 
-        CachedDoc(JsonNode root, Instant expiresAt) {
-            this.root = root;
+        CachedDoc(DidDocument didDocument, Instant expiresAt) {
+            this.didDocument = didDocument;
             this.expiresAt = expiresAt;
         }
     }
@@ -109,23 +105,17 @@ public class HttpDidResolverService implements DidResolverService {
         }
 
         try {
-            String url = convertDidToUrl(did, sslEnabled);
-            String baseUrl = extractBaseUrl(url);
-            // TODO: consider moving this to service or handle in uniform way across resolvers
-            JsonNode root = fetchDidDocumentCached(baseUrl + "/.well-known/did.json");
+            DidDocument didDocument = fetchDidDocumentCached(did);
 
-            JsonNode vmArray = root.get("verificationMethod");
-            if (vmArray == null || !vmArray.isArray()) {
+            List<VerificationMethod> verificationMethods = didDocument.getVerificationMethods();
+            if (verificationMethods == null || verificationMethods.isEmpty()) {
                 return null;
             }
 
             // Iterate through verification methods
-            Iterator<JsonNode> it = vmArray.elements();
-            while (it.hasNext()) {
-                JsonNode vm = it.next();
-                JsonNode idNode = vm.get("id");
-                JsonNode jwkNode = vm.get("publicKeyJwk");
-                String vmId = idNode != null ? idNode.asText() : null;
+            for (VerificationMethod vm : verificationMethods) {
+                String vmId = vm.getId();
+                Map<String, Object> jwkNode = vm.getPublicKeyJwk();
 
                 if (jwkNode == null || vmId == null) {
                     continue;
@@ -134,7 +124,7 @@ public class HttpDidResolverService implements DidResolverService {
                 // Parse JWK
                 JWK jwk;
                 try {
-                    jwk = JWK.parse(jwkNode.toString());
+                    jwk = JWK.parse(jwkNode);
                 } catch (ParseException pe) {
                     throw new DidResolutionException("Failed to parse JWK", pe);
                 }
@@ -143,7 +133,7 @@ public class HttpDidResolverService implements DidResolverService {
                 if (isKeyMatch(jwk, vmId, kid)) {
                     // Enforce verification relationship if specified
                     if (verificationRelationship != null && !verificationRelationship.isBlank()) {
-                        enforceVerificationRelationship(root, vmId, kid, verificationRelationship);
+                        enforceVerificationRelationship(didDocument, vmId, kid, verificationRelationship);
                     }
                     return jwk;
                 }
@@ -157,26 +147,31 @@ public class HttpDidResolverService implements DidResolverService {
 
     /**
      * Fetches DID document with caching support.
-     * @param url The DID document URL
+     * @param did The DID document URL
      * @return The parsed JSON root node
      * @throws IOException on IO errors
      */
-    private JsonNode fetchDidDocumentCached(String url) throws IOException {
-        CachedDoc cd = cache.get(url);
+    public DidDocument fetchDidDocumentCached(String did) throws IOException {
+        String url = DidUrlConverter.convertDidToUrl(did, sslEnabled);
+        String baseUrl = DidUrlConverter.extractBaseUrl(url);
+        String didDocumentUrl = baseUrl + "/.well-known/did.json";
+
+        CachedDoc cd = cache.get(didDocumentUrl);
         Instant now = Instant.now();
 
         if (cd != null && cd.expiresAt.isAfter(now)) {
-            return cd.root;
+            return cd.didDocument;
         }
 
-        String doc = fetchDidDocument(url);
-        if (doc == null) {
-            return null;
+        DidDocument fetchedDoc = fetchDidDocumentWithRetries(url);
+
+        // Cache the fetched document
+        if (fetchedDoc != null) {
+            Instant expiresAt = now.plusSeconds(cacheTtlSeconds);
+            cache.put(didDocumentUrl, new CachedDoc(fetchedDoc, expiresAt));
         }
 
-        JsonNode root = mapper.readTree(doc);
-        cache.put(url, new CachedDoc(root, now.plusSeconds(cacheTtlSeconds)));
-        return root;
+        return fetchedDoc;
     }
 
     /**
@@ -204,44 +199,60 @@ public class HttpDidResolverService implements DidResolverService {
 
     /**
      * Enforces that the key is referenced in the specified verification relationship.
-     * @param root The DID document root node
+     *
+     * @param didDocument The DID document containing verification relationships
      * @param vmId The verification method ID
      * @param kid The requested key ID
-     * @param verificationRelationship The verification relationship to check
+     * @param verificationRelationship The verification relationship to check (authentication, assertionMethod, etc.)
      * @throws DidResolutionException if the key is not referenced properly
      */
-    private void enforceVerificationRelationship(JsonNode root, String vmId, String kid,
+    private void enforceVerificationRelationship(DidDocument didDocument, String vmId, String kid,
                                                    String verificationRelationship) throws DidResolutionException {
-        JsonNode relArray = root.get(verificationRelationship);
-        if (relArray == null) {
+
+        // Get the appropriate verification relationship array based on the relationship name
+        List<String> relationshipRefs = getVerificationRelationshipRefs(didDocument, verificationRelationship);
+
+        if (relationshipRefs == null || relationshipRefs.isEmpty()) {
             throw new DidResolutionException(
                 "Verification relationship '" + verificationRelationship + "' not present in DID document");
         }
 
+        // Check if any reference in the relationship array matches our key
         boolean found = false;
-        for (JsonNode rel : relArray) {
-            if (rel.isTextual()) {
-                String relText = rel.asText();
-                if (relText.equals(vmId) || relText.endsWith('#' + kid) || relText.equals(kid)) {
-                    found = true;
-                    break;
-                }
-            } else if (rel.isObject()) {
-                JsonNode rid = rel.get("id");
-                if (rid != null) {
-                    String ridText = rid.asText();
-                    if (ridText.equals(vmId) || ridText.endsWith('#' + kid) || ridText.equals(kid)) {
-                        found = true;
-                        break;
-                    }
-                }
+        for (String ref : relationshipRefs) {
+            // References can be:
+            // 1. Full verification method ID: "did:web:example.com#key-1"
+            // 2. Fragment only: "#key-1" or "key-1"
+            // 3. Full DID URL
+            if (ref.equals(vmId) || ref.equals("#" + kid) || ref.equals(kid) || ref.endsWith("#" + kid)) {
+                found = true;
+                break;
             }
         }
 
         if (!found) {
             throw new DidResolutionException(
-                "Key found but not referenced in verification relationship '" + verificationRelationship + "'");
+                "Key '" + kid + "' found but not referenced in verification relationship '" + verificationRelationship + "'");
         }
+    }
+
+    /**
+     * Gets the verification relationship reference list from the DID document.
+     *
+     * @param didDocument The DID document
+     * @param relationshipName The verification relationship name
+     * @return The list of references, or null if not found
+     */
+    private List<String> getVerificationRelationshipRefs(DidDocument didDocument, String relationshipName) {
+        // Currently only capabilityInvocation is supported in DidDocument
+        // For other verification relationships, we would need to extend the DidDocument model
+        return switch (relationshipName.toLowerCase(Locale.ROOT)) {
+            case "capabilityinvocation" -> didDocument.getCapabilityInvocation();
+            case "authentication", "assertionmethod", "keyagreement", "capabilitydelegation" ->
+                // These are not currently stored in DidDocument, return null
+                null;
+            default -> null;
+        };
     }
 
     /**
@@ -250,15 +261,15 @@ public class HttpDidResolverService implements DidResolverService {
      * @return The document content
      * @throws IOException on IO errors
      */
-    private String fetchDidDocumentWithRetries(String url) throws IOException {
+    DidDocument fetchDidDocumentWithRetries(String url) throws IOException {
         int attempts = 0;
         IOException lastIoEx = null;
 
         while (attempts <= maxRetries) {
             attempts++;
             try {
-                return fetchDidDocumentWithTimeout(url);
-            } catch (IOException e) {
+                return httpClient.executeAndDeserialize(url, "GET", null, null, DidDocument.class);
+                } catch (IOException e) {
                 lastIoEx = e;
                 // Simple exponential backoff
                 try {
@@ -274,39 +285,5 @@ public class HttpDidResolverService implements DidResolverService {
             throw lastIoEx;
         }
         return null;
-    }
-
-    /**
-     * Fetches DID document using OkHttpRestClient.
-     * @param url The DID document URL
-     * @return The document content
-     * @throws IOException on IO errors
-     */
-    private String fetchDidDocumentWithTimeout(String url) throws IOException {
-        Request.Builder requestBuilder = new Request.Builder().url(url);
-
-        try (Response response = httpClient.executeCall(requestBuilder.build())) {
-            int code = response.code();
-            log.info("Status {}", code);
-            if (response.body() != null) {
-                return response.body().string();
-            }
-        } catch (IOException e) {
-            log.error(e.getLocalizedMessage());
-            throw new IOException("Failed to fetch DID document from " + url + ": " + e.getLocalizedMessage());
-        }
-        throw new IOException("Failed to fetch DID document from " + url);
-    }
-
-    /**
-     * Fetch the DID document over HTTP.
-     * Protected method for testing and retry logic.
-     *
-     * @param url The DID document URL
-     * @return The document content, or null if not found
-     * @throws IOException on IO errors
-     */
-    protected String fetchDidDocument(String url) throws IOException {
-        return fetchDidDocumentWithRetries(url);
     }
 }

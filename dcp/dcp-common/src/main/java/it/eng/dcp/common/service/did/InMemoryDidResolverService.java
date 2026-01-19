@@ -3,8 +3,10 @@ package it.eng.dcp.common.service.did;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import it.eng.dcp.common.exception.DidResolutionException;
+import it.eng.dcp.common.model.DidDocument;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -61,5 +63,13 @@ public class InMemoryDidResolverService implements DidResolverService {
 
         return set.getKeyByKeyId(kid);
     }
+
+    @Override
+    public DidDocument fetchDidDocumentCached(String did) throws IOException {
+        throw new UnsupportedOperationException(
+                "InMemoryDidResolverService does not support DID document fetching. Use HttpDidResolverService for did:web resolution.");
+    }
+
+
 }
 

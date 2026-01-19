@@ -3,9 +3,13 @@ package it.eng.dcp.common.service.did;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.OctetSequenceKey;
 import com.nimbusds.jose.util.Base64URL;
+import it.eng.dcp.common.model.DidDocument;
+import it.eng.dcp.common.model.VerificationMethod;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -21,16 +25,23 @@ class HttpDidResolverServiceCacheTest {
                 .build();
 
         String vmId = "did:web:example.com:connector#k";
-        String didDoc = "{" +
-                "\"id\": \"did:web:example.com:connector\"," +
-                "\"verificationMethod\": [ { \"id\": \"" + vmId + "\", \"type\": \"JsonWebKey2020\", \"publicKeyJwk\": " + key.toJSONString() + " } ]," +
-                "\"capabilityInvocation\": [ \"" + vmId + "\" ]" +
-                "}";
+
+        VerificationMethod vm = VerificationMethod.Builder.newInstance()
+                .id(vmId)
+                .type("JsonWebKey2020")
+                .publicKeyJwk(key.toJSONObject())
+                .build();
+
+        DidDocument didDoc = DidDocument.Builder.newInstance()
+                .id("did:web:example.com:connector")
+                .verificationMethod(List.of(vm))
+                .capabilityInvocation(List.of(vmId))
+                .build();
 
         AtomicInteger calls = new AtomicInteger(0);
         HttpDidResolverService svc = new HttpDidResolverService(null) {
             @Override
-            protected String fetchDidDocument(String url) {
+            DidDocument fetchDidDocumentWithRetries(String url) throws IOException {
                 calls.incrementAndGet();
                 return didDoc;
             }
