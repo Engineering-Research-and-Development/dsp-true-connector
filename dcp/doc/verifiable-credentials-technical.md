@@ -1277,7 +1277,7 @@ Content-Type: application/json
 ```
 dcp/src/main/java/it/eng/dcp/
 ├── autoconfigure/
-│   └── DcpAutoConfiguration.java          # Auto-configuration
+│   └── DcpHolderAutoConfiguration.java          # Auto-configuration
 ├── config/
 │   └── DcpProperties.java                 # Configuration properties
 ├── model/

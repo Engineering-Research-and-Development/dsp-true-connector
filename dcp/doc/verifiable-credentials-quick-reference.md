@@ -297,8 +297,8 @@ dcp.enabled=true
 
 **Verify:**
 ```bash
-# Check logs for: "DcpAutoConfiguration matched"
-grep "DcpAutoConfiguration" logs/connector.log
+# Check logs for: "DcpHolderAutoConfiguration matched"
+grep "DcpHolderAutoConfiguration" logs/connector.log
 ```
 
 ---
@@ -516,7 +516,7 @@ Before sending API requests, verify:
   
 - [ ] **DCP Module Active**
   - [ ] Health check returns UP (`curl http://localhost:8080/actuator/health`)
-  - [ ] Logs show "DcpAutoConfiguration matched"
+  - [ ] Logs show "DcpHolderAutoConfiguration matched"
   - [ ] No errors in startup logs
   
 - [ ] **DIDs Configured**
