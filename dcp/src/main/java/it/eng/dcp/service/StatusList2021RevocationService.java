@@ -2,18 +2,19 @@ package it.eng.dcp.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.exception.RevocationListFetchException;
 import it.eng.dcp.exception.RevocationListFormatException;
 import it.eng.dcp.model.CachedStatusList;
 import it.eng.dcp.model.VerifiableCredential;
-import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayInputStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
@@ -21,7 +22,6 @@ import java.util.BitSet;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.zip.GZIPInputStream;
-import java.io.ByteArrayInputStream;
 
 /**
  * Production RevocationService implementing StatusList2021 with caching.
@@ -34,14 +34,14 @@ import java.io.ByteArrayInputStream;
 public class StatusList2021RevocationService implements RevocationService {
 
     private final Map<String, CachedStatusList> cache = new ConcurrentHashMap<>();
-    private final OkHttpRestClient httpClient;
+    private final SimpleOkHttpRestClient httpClient;
     private final ObjectMapper objectMapper;
 
     @Value("${dcp.revocation.cache.ttlSeconds:300}")
     private long cacheTtlSeconds;
 
     @Autowired
-    public StatusList2021RevocationService(OkHttpRestClient httpClient, ObjectMapper objectMapper) {
+    public StatusList2021RevocationService(SimpleOkHttpRestClient httpClient, ObjectMapper objectMapper) {
         this.httpClient = httpClient;
         this.objectMapper = objectMapper;
     }
@@ -162,14 +162,14 @@ public class StatusList2021RevocationService implements RevocationService {
     private CachedStatusList fetchAndDecodeStatusList(String statusListUrl) {
         try {
             // Fetch the status list credential
-            GenericApiResponse<String> response = httpClient.sendRequestProtocol(statusListUrl, null, null);
+            String response = httpClient.executeAndDeserialize(statusListUrl, "GET", null, null, String.class   );
 
-            if (!response.isSuccess() || response.getData() == null) {
-                throw new RevocationListFetchException("Failed to fetch status list from " + statusListUrl + ": " + response.getMessage());
+            if (StringUtils.isBlank(response)) {
+                throw new RevocationListFetchException("Failed to fetch status list from " + statusListUrl);
             }
 
             // Parse the credential
-            JsonNode statusListVc = objectMapper.readTree(response.getData());
+            JsonNode statusListVc = objectMapper.readTree(response);
 
             // Extract and decode the encodedList
             BitSet decodedBits = decodeEncodedList(statusListVc);

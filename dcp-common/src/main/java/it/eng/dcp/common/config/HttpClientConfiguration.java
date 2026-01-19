@@ -1,5 +1,6 @@
 package it.eng.dcp.common.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.ConnectionSpec;
@@ -81,7 +82,7 @@ public class HttpClientConfiguration {
     public SimpleOkHttpRestClient simpleOkHttpRestClient() throws KeyStoreException,
             NoSuchSslBundleException, KeyManagementException, NoSuchAlgorithmException {
         log.info("Creating SimpleOkHttpRestClient for DID resolution");
-        return new SimpleOkHttpRestClient(okHttpClient());
+        return new SimpleOkHttpRestClient(okHttpClient(), new ObjectMapper());
     }
 
     /**

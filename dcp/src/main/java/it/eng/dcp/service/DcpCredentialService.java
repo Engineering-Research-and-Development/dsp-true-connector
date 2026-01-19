@@ -3,7 +3,6 @@ package it.eng.dcp.service;
 import it.eng.dcp.common.util.DidUrlConverter;
 import it.eng.dcp.model.PresentationQueryMessage;
 import it.eng.dcp.model.PresentationResponseMessage;
-import it.eng.tools.credential.VpCredentialService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +24,7 @@ import java.util.List;
  * The mode is controlled by the dcp.vp.use-dcp-compliant property.
  */
 @Service
-public class DcpCredentialService implements VpCredentialService {
+public class DcpCredentialService { //implements VpCredentialService {
 
     private static final Logger logger = LoggerFactory.getLogger(DcpCredentialService.class);
 
@@ -70,7 +69,7 @@ public class DcpCredentialService implements VpCredentialService {
      * Check if VP JWT authentication is enabled.
      * @return true if VP is enabled via property
      */
-    @Override
+//    @Override
     public boolean isVpJwtEnabled() {
         return vpEnabled;
     }
@@ -158,7 +157,7 @@ public class DcpCredentialService implements VpCredentialService {
      *
      * @return "Bearer {JWT}" or null if generation fails
      */
-    @Override
+//    @Override
     public String getBearerToken() {
         return getBearerToken(null);
     }
@@ -180,7 +179,7 @@ public class DcpCredentialService implements VpCredentialService {
      * @param targetUrl The full URL where the request will be sent (can be null to use configured DID)
      * @return "Bearer {JWT}" or null if generation fails
      */
-    @Override
+//    @Override
     public String getBearerToken(String targetUrl) {
         if (useDcpCompliant) {
             // NEW: DCP-compliant mode - use token claim

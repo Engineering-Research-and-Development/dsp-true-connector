@@ -1,9 +1,9 @@
 package it.eng.dcp.service;
 
+import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.common.model.IssuerMetadata.CredentialObject;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
-import it.eng.tools.client.rest.OkHttpRestClient;
 import okhttp3.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,7 +25,7 @@ import static org.mockito.Mockito.when;
 class CredentialIssuanceClientRequestTest {
 
     @Mock
-    private OkHttpRestClient restClient;
+    private SimpleOkHttpRestClient restClient;
 
     @Mock
     private SelfIssuedIdTokenService tokenService;

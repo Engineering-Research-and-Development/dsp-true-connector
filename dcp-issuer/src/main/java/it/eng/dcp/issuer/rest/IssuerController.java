@@ -3,10 +3,9 @@ package it.eng.dcp.issuer.rest;
 import com.nimbusds.jwt.JWTClaimsSet;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.CredentialRequestMessage;
+import it.eng.dcp.common.model.DCPConstants;
 import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.issuer.service.IssuerService;
-import it.eng.tools.model.DSpaceConstants;
-import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -90,13 +89,13 @@ public class IssuerController {
             return ResponseEntity.created(URI.create(location)).header(HttpHeaders.LOCATION, location).build();
         } catch (SecurityException e) {
             log.warn("Authorization failed: {}", e.getMessage());
-            return ResponseEntity.status(401).body(GenericApiResponse.error("Unauthorized: " + e.getMessage()));
+            return ResponseEntity.status(401).body("Unauthorized: " + e.getMessage());
         } catch (IllegalArgumentException e) {
             log.warn("Invalid request: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(GenericApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body("Invalid request: " + e.getMessage());
         } catch (Exception e) {
             log.error("Error creating credential request: {}", e.getMessage(), e);
-            return ResponseEntity.status(500).body(GenericApiResponse.error("Internal error: " + e.getMessage()));
+            return ResponseEntity.status(500).body("Internal error: " + e.getMessage());
         }
     }
 
@@ -113,7 +112,7 @@ public class IssuerController {
                     .map(r -> {
                         Map<String, Object> body = new HashMap<>();
                         body.put("type", "CredentialStatus");
-                        body.put("@context", List.of(DSpaceConstants.DCP_CONTEXT));
+                        body.put("@context", List.of(DCPConstants.DCP_CONTEXT));
                         body.put("issuerPid", r.getIssuerPid());
                         body.put("holderPid", r.getHolderPid());
                         body.put("status", r.getStatus() != null ? r.getStatus().toString() : null);
@@ -124,7 +123,7 @@ public class IssuerController {
                     .orElseGet(() -> ResponseEntity.notFound().build());
         } catch (Exception e) {
             log.error("Error retrieving request: {}", e.getMessage(), e);
-            return ResponseEntity.status(500).body(GenericApiResponse.error("Internal error: " + e.getMessage()));
+            return ResponseEntity.status(500).body("Internal error: " + e.getMessage());
         }
     }
 }

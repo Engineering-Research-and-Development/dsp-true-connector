@@ -6,7 +6,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ValidationException;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -20,7 +19,7 @@ import java.util.stream.Collectors;
 @JsonDeserialize(builder = IssuerMetadata.Builder.class)
 @NoArgsConstructor(access = lombok.AccessLevel.PRIVATE)
 @Getter
-@JsonPropertyOrder({DSpaceConstants.CONTEXT, "type", "issuer", "credentialsSupported"})
+@JsonPropertyOrder({DCPConstants.CONTEXT, "type", "issuer", "credentialsSupported"})
 public class IssuerMetadata extends BaseDcpMessage {
 
     @Serial
@@ -29,7 +28,7 @@ public class IssuerMetadata extends BaseDcpMessage {
     // public static final String MESSAGE_TYPE = "IssuerMetadata";
 
     @Override
-    @JsonProperty(value = DSpaceConstants.TYPE, access = JsonProperty.Access.READ_ONLY)
+    @JsonProperty(value = DCPConstants.TYPE, access = JsonProperty.Access.READ_ONLY)
     public String getType() {
         return IssuerMetadata.class.getSimpleName();
     }
@@ -48,7 +47,7 @@ public class IssuerMetadata extends BaseDcpMessage {
 
         private Builder() {
             meta = new IssuerMetadata();
-            meta.getContext().add(DSpaceConstants.DCP_CONTEXT);
+            meta.getContext().add(DCPConstants.DCP_CONTEXT);
         }
 
         @JsonCreator
@@ -56,7 +55,7 @@ public class IssuerMetadata extends BaseDcpMessage {
             return new Builder();
         }
 
-        @JsonProperty(DSpaceConstants.CONTEXT)
+        @JsonProperty(DCPConstants.CONTEXT)
         public Builder context(List<String> context) {
             if (context != null) {
                 meta.getContext().clear();

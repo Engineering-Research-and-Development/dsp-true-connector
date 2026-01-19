@@ -6,8 +6,8 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import it.eng.tools.serializer.InstantDeserializer;
-import it.eng.tools.serializer.InstantSerializer;
+import it.eng.dcp.common.serializer.InstantDeserializer;
+import it.eng.dcp.common.serializer.InstantSerializer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

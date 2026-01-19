@@ -6,7 +6,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import it.eng.dcp.common.model.BaseDcpMessage;
-import it.eng.tools.model.DSpaceConstants;
+import it.eng.dcp.common.model.DCPConstants;
+import jakarta.validation.ValidationException;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -14,9 +15,6 @@ import java.io.Serial;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import jakarta.validation.ValidationException;
-import jakarta.validation.constraints.NotNull;
 
 @Getter
 @JsonDeserialize(builder = PresentationQueryMessage.Builder.class)
@@ -27,7 +25,7 @@ public class PresentationQueryMessage extends BaseDcpMessage {
     private static final long serialVersionUID = 1L;
 
     @Override
-    @JsonProperty(value = DSpaceConstants.TYPE, access = JsonProperty.Access.READ_ONLY)
+    @JsonProperty(value = DCPConstants.TYPE, access = JsonProperty.Access.READ_ONLY)
     public String getType() {
         return PresentationQueryMessage.class.getSimpleName();
     }
@@ -51,8 +49,8 @@ public class PresentationQueryMessage extends BaseDcpMessage {
         private Builder() {
             msg = new PresentationQueryMessage();
             // default context to DCP namespace and context
-            msg.getContext().add(DSpaceConstants.DCP_NAMESPACE);
-            msg.getContext().add(DSpaceConstants.DCP_CONTEXT);
+            msg.getContext().add(DCPConstants.DCP_NAMESPACE);
+            msg.getContext().add(DCPConstants.DCP_CONTEXT);
         }
 
         @JsonCreator
@@ -60,7 +58,7 @@ public class PresentationQueryMessage extends BaseDcpMessage {
             return new Builder();
         }
 
-        @JsonProperty(DSpaceConstants.CONTEXT)
+        @JsonProperty(DCPConstants.CONTEXT)
         public Builder context(List<String> context) {
             if (context != null) {
                 msg.getContext().clear();

@@ -3,10 +3,8 @@ package it.eng.dcp.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.dcp.common.model.ProfileId;
 import it.eng.dcp.model.*;
-import it.eng.tools.event.AuditEvent;
-import it.eng.tools.event.AuditEventType;
-import it.eng.tools.service.AuditEventPublisher;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -22,13 +20,13 @@ public class PresentationValidationServiceImpl implements PresentationValidation
 
     private final RevocationService revocationService;
 
-    private final AuditEventPublisher publisher;
+    private final ApplicationEventPublisher publisher;
 
     @Autowired
     public PresentationValidationServiceImpl(IssuerTrustService issuerTrustService,
                                              SchemaRegistryService schemaRegistryService,
                                              RevocationService revocationService,
-                                             AuditEventPublisher publisher) {
+                                             ApplicationEventPublisher publisher) {
         this.issuerTrustService = issuerTrustService;
         this.schemaRegistryService = schemaRegistryService;
         // optional collaborators may be null in some test contexts; keep them nullable
@@ -129,19 +127,19 @@ public class PresentationValidationServiceImpl implements PresentationValidation
                 }
                 if (!issuerTrustService.isTrusted(vc.getCredentialType(), issuer)) {
                     report.addError(new ValidationError("ISSUER_UNTRUSTED", "Issuer not trusted: " + issuer + " for type " + vc.getCredentialType(), ValidationError.Severity.ERROR));
-                    if (publisher != null) {
-                        publisher.publishEvent(AuditEvent.Builder.newInstance()
-                                .eventType(AuditEventType.PRESENTATION_INVALID)
-                                .description("Untrusted issuer detected during presentation validation")
-                                .details(Map.of(
-                                        "errorCode", "ISSUER_UNTRUSTED",
-                                        "credentialId", vc.getId(),
-                                        "credentialType", vc.getCredentialType(),
-                                        "issuerDid", issuer,
-                                        "trustedIssuers", issuerTrustService.getTrustedIssuers(vc.getCredentialType())
-                                ))
-                                .build());
-                    }
+//                    if (publisher != null) {
+//                        publisher.publishEvent(AuditEvent.Builder.newInstance()
+//                                .eventType(AuditEventType.PRESENTATION_INVALID)
+//                                .description("Untrusted issuer detected during presentation validation")
+//                                .details(Map.of(
+//                                        "errorCode", "ISSUER_UNTRUSTED",
+//                                        "credentialId", vc.getId(),
+//                                        "credentialType", vc.getCredentialType(),
+//                                        "issuerDid", issuer,
+//                                        "trustedIssuers", issuerTrustService.getTrustedIssuers(vc.getCredentialType())
+//                                ))
+//                                .build());
+//                    }
                 }
 
                 // dates
@@ -158,11 +156,11 @@ public class PresentationValidationServiceImpl implements PresentationValidation
                     if (revocationService != null && revocationService.isRevoked(vc)) {
                         report.addError(new ValidationError("VC_REVOKED", "Credential revoked: " + vc.getId(), ValidationError.Severity.ERROR));
                         // publish credential revoked event
-                        if (publisher != null) {
-                            publisher.publishEvent(AuditEventType.CREDENTIAL_REVOKED,
-                                    "Credential revoked detected during presentation validation",
-                                    Map.of("credentialId", vc.getId(), "credentialType", vc.getCredentialType()));
-                        }
+//                        if (publisher != null) {
+//                            publisher.publishEvent(AuditEventType.CREDENTIAL_REVOKED,
+//                                    "Credential revoked detected during presentation validation",
+//                                    Map.of("credentialId", vc.getId(), "credentialType", vc.getCredentialType()));
+//                        }
                     }
                 } catch (Exception e) {
                     report.addError(new ValidationError("REVOCATION_CHECK_FAILED", "Failed to check revocation for " + vc.getId() + ": " + e.getMessage(), ValidationError.Severity.WARNING));
@@ -195,13 +193,13 @@ public class PresentationValidationServiceImpl implements PresentationValidation
 
         // If validation produced any errors, publish a PRESENTATION_INVALID audit event with details
         if (!report.getErrors().isEmpty()) {
-            if (publisher != null) {
-                publisher.publishEvent(AuditEvent.Builder.newInstance()
-                        .eventType(AuditEventType.PRESENTATION_INVALID)
-                        .description("Presentation validation produced errors")
-                        .details(Map.of("errors", report.getErrors(), "accepted", report.getAcceptedCredentialTypes()))
-                        .build());
-            }
+//            if (publisher != null) {
+//                publisher.publishEvent(AuditEvent.Builder.newInstance()
+//                        .eventType(AuditEventType.PRESENTATION_INVALID)
+//                        .description("Presentation validation produced errors")
+//                        .details(Map.of("errors", report.getErrors(), "accepted", report.getAcceptedCredentialTypes()))
+//                        .build());
+//            }
         }
 
         return report;

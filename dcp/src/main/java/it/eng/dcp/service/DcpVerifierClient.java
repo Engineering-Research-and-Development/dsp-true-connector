@@ -2,113 +2,212 @@ package it.eng.dcp.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.exception.InsecureEndpointException;
 import it.eng.dcp.exception.RemoteHolderAuthException;
 import it.eng.dcp.exception.RemoteHolderClientException;
 import it.eng.dcp.model.PresentationQueryMessage;
 import it.eng.dcp.model.PresentationResponseMessage;
-import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.MediaType;
+import okhttp3.RequestBody;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Slf4j
 public class DcpVerifierClient {
 
-    private final OkHttpRestClient httpClient;
+    private static final int MAX_RETRIES = 3;
+    private static final long INITIAL_BACKOFF_MS = 200L;
+    private static final String DCP_PRESENTATIONS_QUERY_PATH = "/dcp/presentations/query";
+
+    private final SimpleOkHttpRestClient httpClient;
     private final ObjectMapper mapper;
 
     @Autowired
-    public DcpVerifierClient(OkHttpRestClient httpClient, ObjectMapper mapper) {
+    public DcpVerifierClient(SimpleOkHttpRestClient httpClient, ObjectMapper mapper) {
         this.httpClient = httpClient;
         this.mapper = mapper;
     }
 
     /**
      * Fetch presentations from a remote holder.
-     * @param holderBase base url for holder (e.g. https://holder.example)
-     * @param requiredTypes list of credential types to request (may be empty)
-     * @param accessToken optional access token (raw token string, not including "Bearer ")
-     * @return PresentationResponseMessage deserialized
+     *
+     * @param holderBase    base URL for holder (e.g., {@code https://holder.example})
+     * @param requiredTypes list of credential types to request (may be empty or null)
+     * @param accessToken   optional access token (raw token string, not including "Bearer ")
+     * @return PresentationResponseMessage deserialized from the response
+     * @throws IllegalArgumentException    if holderBase is null or blank
+     * @throws InsecureEndpointException   if the holder endpoint is not HTTPS
+     * @throws RemoteHolderAuthException   if authentication fails (401/403)
+     * @throws RemoteHolderClientException if a client error occurs (4xx)
+     * @throws RuntimeException            if the request fails after all retries
      */
     public PresentationResponseMessage fetchPresentations(String holderBase, List<String> requiredTypes, String accessToken) {
-        if (holderBase == null || holderBase.isBlank()) throw new IllegalArgumentException("holderBase is required");
-        // enforce https
+        if (holderBase == null || holderBase.isBlank()) {
+            throw new IllegalArgumentException("holderBase is required");
+        }
+
+        // Enforce HTTPS
+        validateSecureEndpoint(holderBase);
+
+        // Construct target URL
+        String target = buildTargetUrl(holderBase);
+
+        // Build query message
+        PresentationQueryMessage query = buildQueryMessage(requiredTypes);
+
+        // Execute request with retry mechanism
+        return executeWithRetries(target, query, accessToken);
+    }
+
+    /**
+     * Validates that the endpoint uses HTTPS protocol.
+     *
+     * @param holderBase the base URL to validate
+     * @throws InsecureEndpointException if the endpoint is not HTTPS
+     */
+    private void validateSecureEndpoint(String holderBase) {
         try {
-            URI u = new URI(holderBase);
-            if (!"https".equalsIgnoreCase(u.getScheme())) {
+            URI uri = new URI(holderBase);
+            if (!"https".equalsIgnoreCase(uri.getScheme())) {
                 throw new InsecureEndpointException("Insecure holder endpoint: " + holderBase);
             }
         } catch (URISyntaxException e) {
-            // allow non-absolute, but still require https prefix
+            // Allow non-absolute URIs, but still require https prefix
             if (!holderBase.toLowerCase().startsWith("https://")) {
                 throw new InsecureEndpointException("Insecure or invalid holder endpoint: " + holderBase);
             }
         }
+    }
 
-        String target = holderBase.endsWith("/") ? holderBase + "dcp/presentations/query" : holderBase + "/dcp/presentations/query";
+    /**
+     * Builds the target URL for the presentations query endpoint.
+     *
+     * @param holderBase the base URL of the holder
+     * @return the complete URL for the presentations query endpoint
+     */
+    private String buildTargetUrl(String holderBase) {
+        return holderBase.endsWith("/")
+                ? holderBase + "dcp/presentations/query"
+                : holderBase + DCP_PRESENTATIONS_QUERY_PATH;
+    }
 
-        PresentationQueryMessage.Builder b = PresentationQueryMessage.Builder.newInstance();
-        if (requiredTypes != null && !requiredTypes.isEmpty()) b.scope(requiredTypes);
-        PresentationQueryMessage query = b.build();
+    /**
+     * Builds a PresentationQueryMessage with the required credential types.
+     *
+     * @param requiredTypes list of credential types to request
+     * @return the constructed PresentationQueryMessage
+     */
+    private PresentationQueryMessage buildQueryMessage(List<String> requiredTypes) {
+        PresentationQueryMessage.Builder builder = PresentationQueryMessage.Builder.newInstance();
+        if (requiredTypes != null && !requiredTypes.isEmpty()) {
+            builder.scope(requiredTypes);
+        }
+        return builder.build();
+    }
 
-        JsonNode body = mapper.valueToTree(query);
-
-        String authHeader = null;
-        if (StringUtils.isNotBlank(accessToken)) authHeader = "Bearer " + accessToken;
-
-        int maxRetries = 3;
+    /**
+     * Executes the HTTP request with retry logic and exponential backoff.
+     *
+     * @param target      the target URL
+     * @param query       the query message
+     * @param accessToken optional access token
+     * @return the deserialized PresentationResponseMessage
+     * @throws RemoteHolderAuthException   if authentication fails
+     * @throws RemoteHolderClientException if a client error occurs
+     * @throws RuntimeException            if all retry attempts fail
+     */
+    private PresentationResponseMessage executeWithRetries(String target, PresentationQueryMessage query, String accessToken) {
         int attempt = 0;
-        long backoffMs = 200L;
-        while (true) {
+        long backoffMs = INITIAL_BACKOFF_MS;
+
+        while (attempt < MAX_RETRIES) {
             attempt++;
             try {
-                GenericApiResponse<String> resp = httpClient.sendRequestProtocol(target, body, authHeader);
-                if (resp == null) throw new RuntimeException("No response from holder");
-                if (resp.isSuccess()) {
-                    String data = resp.getData();
-                    if (data == null) data = "{}";
-                    PresentationResponseMessage prm = mapper.readValue(data, PresentationResponseMessage.class);
-                    return prm;
-                } else {
-                    // inspect message for http error codes - OkHttpRestClient returns error with body message
-                    // We don't have direct status code here, so attempt simple heuristics
-                    String msg = resp.getMessage() != null ? resp.getMessage() : resp.getData();
-                    if (msg != null && msg.contains("401")) {
-                        throw new RemoteHolderAuthException("Unauthorized when calling holder: " + msg);
+                return executeRequest(target, query, accessToken);
+            } catch (IOException e) {
+                log.warn("Attempt {}/{} failed for {}: {}", attempt, MAX_RETRIES, target, e.getMessage());
+
+                // Check if the error is an auth or client error (non-retryable)
+                String errorMessage = e.getMessage();
+                if (errorMessage != null) {
+                    if (errorMessage.contains("401") || errorMessage.toLowerCase().contains("unauthorized")) {
+                        throw new RemoteHolderAuthException("Unauthorized when calling holder: " + errorMessage);
                     }
-                    if (msg != null && (msg.contains("403") || msg.toLowerCase().contains("forbid"))) {
-                        throw new RemoteHolderAuthException("Forbidden when calling holder: " + msg);
+                    if (errorMessage.contains("403") || errorMessage.toLowerCase().contains("forbidden")) {
+                        throw new RemoteHolderAuthException("Forbidden when calling holder: " + errorMessage);
                     }
-                    // treat as client error if 4xx
-                    if (msg != null && (msg.contains("400") || msg.contains("404") || msg.contains("422"))) {
-                        throw new RemoteHolderClientException("Client error from holder: " + msg);
+                    if (errorMessage.contains("400") || errorMessage.contains("404") || errorMessage.contains("422")) {
+                        throw new RemoteHolderClientException("Client error from holder: " + errorMessage);
                     }
-                    // otherwise consider retryable
-                    if (attempt >= maxRetries) {
-                        throw new RuntimeException("Failed to fetch presentations after retries: " + msg);
-                    }
-                    log.warn("Attempt {} failed, retrying in {}ms: {}", attempt, backoffMs, msg);
+                }
+
+                // If this was the last attempt, throw the exception
+                if (attempt >= MAX_RETRIES) {
+                    throw new RuntimeException("Failed to fetch presentations from holder after " + MAX_RETRIES + " attempts: " + e.getMessage(), e);
+                }
+
+                // Otherwise, wait and retry with exponential backoff
+                log.info("Retrying in {}ms...", backoffMs);
+                try {
                     Thread.sleep(backoffMs);
-                    backoffMs *= 2;
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted while waiting to retry", ie);
                 }
-            } catch (RemoteHolderAuthException | RemoteHolderClientException e) {
-                throw e;
-            } catch (Exception e) {
-                if (attempt >= maxRetries) {
-                    throw new RuntimeException("Failed to fetch presentations from holder: " + e.getMessage(), e);
-                }
-                log.warn("Exception while calling holder (attempt {}): {}", attempt, e.getMessage());
-                try { Thread.sleep(backoffMs); } catch (InterruptedException ignored) {}
                 backoffMs *= 2;
             }
         }
+
+        throw new RuntimeException("Failed to fetch presentations from holder after " + MAX_RETRIES + " attempts");
+    }
+
+    /**
+     * Executes a single HTTP request to fetch presentations.
+     *
+     * @param target      the target URL
+     * @param query       the query message
+     * @param accessToken optional access token
+     * @return the deserialized PresentationResponseMessage
+     * @throws IOException if the request fails or response cannot be deserialized
+     */
+    private PresentationResponseMessage executeRequest(String target, PresentationQueryMessage query, String accessToken) throws IOException {
+        // Serialize query to JSON
+        JsonNode bodyNode = mapper.valueToTree(query);
+        String jsonBody = bodyNode.toPrettyString();
+
+        // Create request body
+        RequestBody requestBody = RequestBody.create(jsonBody, MediaType.parse("application/json"));
+
+        // Build headers
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        headers.put("Accept", "application/json");
+
+        // Add authorization if provided
+        if (StringUtils.isNotBlank(accessToken)) {
+            headers.put("Authorization", "Bearer " + accessToken);
+        }
+
+        log.debug("Sending presentation query to {}", target);
+
+        // Execute request and deserialize response
+        return httpClient.executeAndDeserialize(
+                target,
+                "POST",
+                headers,
+                requestBody,
+                PresentationResponseMessage.class
+        );
     }
 }

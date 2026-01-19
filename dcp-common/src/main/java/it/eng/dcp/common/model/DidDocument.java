@@ -6,7 +6,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
@@ -27,14 +26,14 @@ import java.util.stream.Collectors;
 @JsonDeserialize(builder = DidDocument.Builder.class)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-@JsonPropertyOrder(value = {DSpaceConstants.CONTEXT, DSpaceConstants.ID, "it/eng/dcp/service", "verificationMethod"}, alphabetic = true)
+@JsonPropertyOrder(value = {DCPConstants.CONTEXT, DCPConstants.ID, "it/eng/dcp/service", "verificationMethod"}, alphabetic = true)
 public class DidDocument implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
-    @JsonProperty(value = DSpaceConstants.CONTEXT, access = JsonProperty.Access.READ_ONLY)
-    private List<String> context = List.of(DSpaceConstants.DID_CONTEXT, DSpaceConstants.DCP_NAMESPACE);
+    @JsonProperty(value = DCPConstants.CONTEXT, access = JsonProperty.Access.READ_ONLY)
+    private List<String> context = List.of(DCPConstants.DID_CONTEXT, DCPConstants.DCP_NAMESPACE);
 
     @NotNull
     private String id;

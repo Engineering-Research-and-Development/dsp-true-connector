@@ -2,17 +2,16 @@ package it.eng.dcp.common.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
-import it.eng.tools.model.DSpaceConstants;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
 import jakarta.validation.ValidatorFactory;
-import java.io.Serializable;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import java.io.Serial;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -30,10 +29,10 @@ public abstract class BaseDcpMessage implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    @JsonProperty(value = DSpaceConstants.CONTEXT, access = Access.READ_ONLY)
+    @JsonProperty(value = DCPConstants.CONTEXT, access = Access.READ_ONLY)
     private final List<String> context = new ArrayList<>();
 
-    @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
+    @JsonProperty(value = DCPConstants.TYPE, access = Access.READ_ONLY)
     public abstract String getType();
 
     /**

@@ -2,7 +2,6 @@ package it.eng.dcp.issuer.rest.api;
 
 import it.eng.dcp.issuer.service.IssuerService;
 import it.eng.dcp.issuer.service.api.IssuerAPIService;
-import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -51,13 +50,13 @@ public class IssuerAPIController {
             log.info("Approved and delivered {} credentials for request {}: types={}",
                     result.getCredentialsCount(), requestId, result.getCredentialTypes());
 
-            return ResponseEntity.ok(GenericApiResponse.success(result, "Credentials issued and delivered successfully"));
+            return ResponseEntity.ok("Credentials issued and delivered successfully");
         } catch (IllegalArgumentException e) {
             log.warn("Invalid approval request: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(GenericApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body("Invalid approval request: " + e.getMessage());
         } catch (Exception e) {
             log.error("Error approving request: {}", e.getMessage(), e);
-            return ResponseEntity.status(500).body(GenericApiResponse.error("Internal error: " + e.getMessage()));
+            return ResponseEntity.status(500).body("Internal error: " + e.getMessage());
         }
     }
 
@@ -76,23 +75,23 @@ public class IssuerAPIController {
 
         String rejectionReason = requestBody.get("reason");
         if (rejectionReason == null || rejectionReason.isBlank()) {
-            return ResponseEntity.badRequest().body(GenericApiResponse.error("Rejection reason is required"));
+            return ResponseEntity.badRequest().body("Rejection reason is required");
         }
 
         try {
             boolean success = issuerAPIService.rejectCredentialRequest(requestId, rejectionReason);
             if (success) {
                 log.info("Rejected credential request {}: {}", requestId, rejectionReason);
-                return ResponseEntity.ok(GenericApiResponse.success(null, "Credential request rejected successfully"));
+                return ResponseEntity.ok("Credential request rejected successfully");
             } else {
-                return ResponseEntity.status(500).body(GenericApiResponse.error("Failed to reject request"));
+                return ResponseEntity.status(500).body("Failed to reject request");
             }
         } catch (IllegalArgumentException e) {
             log.warn("Invalid rejection request: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(GenericApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body("Invalid rejection request: " + e.getMessage());
         } catch (Exception e) {
             log.error("Error rejecting request: {}", e.getMessage(), e);
-            return ResponseEntity.status(500).body(GenericApiResponse.error("Internal error: " + e.getMessage()));
+            return ResponseEntity.status(500).body("Internal error: " + e.getMessage());
         }
     }
 }

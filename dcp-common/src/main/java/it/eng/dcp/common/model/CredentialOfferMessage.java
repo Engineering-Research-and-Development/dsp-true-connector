@@ -6,36 +6,37 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-import it.eng.tools.model.DSpaceConstants;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-
-import java.io.Serial;
-import java.io.Serializable;
-import java.util.*;
-import java.util.stream.Collectors;
-
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
 import jakarta.validation.ValidatorFactory;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+import java.io.Serial;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @JsonDeserialize(builder = CredentialOfferMessage.Builder.class)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-@JsonPropertyOrder({DSpaceConstants.CONTEXT, "type", "issuer", "credentials"})
+@JsonPropertyOrder({DCPConstants.CONTEXT, "type", "issuer", "credentials"})
 public class CredentialOfferMessage implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
-    @JsonProperty(value = DSpaceConstants.CONTEXT, access = JsonProperty.Access.READ_ONLY)
-    private List<String> context = List.of("https://w3id.org/dspace-dcp/v1.0/dcp.jsonld");
+    @JsonProperty(value = DCPConstants.CONTEXT, access = JsonProperty.Access.READ_ONLY)
+    private List<String> context = List.of(DCPConstants.DCP_CONTEXT);
 
-    @JsonProperty(value = DSpaceConstants.TYPE, access = JsonProperty.Access.READ_ONLY)
+    @JsonProperty(value = DCPConstants.TYPE, access = JsonProperty.Access.READ_ONLY)
     private String type;
 
     @NotNull

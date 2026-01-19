@@ -7,7 +7,6 @@ import it.eng.dcp.common.model.CredentialOfferMessage;
 import it.eng.dcp.model.PresentationQueryMessage;
 import it.eng.dcp.model.PresentationResponseMessage;
 import it.eng.dcp.service.HolderService;
-import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -156,7 +155,7 @@ public class DcpController {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             log.error("Error processing credential message: {}", e.getMessage(), e);
-            return ResponseEntity.status(500).body(GenericApiResponse.error("Internal error: " + e.getMessage()));
+            return ResponseEntity.status(500).body("Internal error: " + e.getMessage());
         }
     }
 
@@ -187,7 +186,7 @@ public class DcpController {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             log.error("Error processing credential offer: {}", e.getMessage(), e);
-            return ResponseEntity.status(500).body(GenericApiResponse.error("Internal error: " + e.getMessage()));
+            return ResponseEntity.status(500).body("Internal error: " + e.getMessage());
         }
     }
 }

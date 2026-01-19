@@ -5,7 +5,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-import it.eng.tools.model.DSpaceConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
@@ -31,7 +30,7 @@ public class CredentialMessage extends BaseDcpMessage {
     private static final long serialVersionUID = 1L;
 
     @Override
-    @JsonProperty(value = DSpaceConstants.TYPE, access = JsonProperty.Access.READ_ONLY)
+    @JsonProperty(value = DCPConstants.TYPE, access = JsonProperty.Access.READ_ONLY)
     public String getType() {
         return CredentialMessage.class.getSimpleName();
     }
@@ -61,7 +60,7 @@ public class CredentialMessage extends BaseDcpMessage {
 
         private Builder() {
             msg = new CredentialMessage();
-            msg.getContext().add(DSpaceConstants.DCP_CONTEXT);
+            msg.getContext().add(DCPConstants.DCP_CONTEXT);
         }
 
         @JsonCreator
@@ -69,7 +68,7 @@ public class CredentialMessage extends BaseDcpMessage {
             return new Builder();
         }
 
-        @JsonProperty(DSpaceConstants.CONTEXT)
+        @JsonProperty(DCPConstants.CONTEXT)
         public Builder context(List<String> context) {
             if (context != null) {
                 msg.getContext().clear();

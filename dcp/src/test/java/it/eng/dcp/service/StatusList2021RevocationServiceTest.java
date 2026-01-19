@@ -2,11 +2,9 @@ package it.eng.dcp.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.exception.RevocationListFetchException;
-import it.eng.dcp.exception.RevocationListFormatException;
 import it.eng.dcp.model.VerifiableCredential;
-import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.response.GenericApiResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.Base64;
 import java.util.BitSet;
 import java.util.zip.GZIPOutputStream;
@@ -36,7 +35,7 @@ import static org.mockito.Mockito.*;
 class StatusList2021RevocationServiceTest {
 
     @Mock
-    private OkHttpRestClient httpClient;
+    private SimpleOkHttpRestClient httpClient;
 
     private ObjectMapper objectMapper;
     private StatusList2021RevocationService service;
@@ -77,18 +76,15 @@ class StatusList2021RevocationServiceTest {
 
         // Create status list credential response
         String statusListVc = createStatusListCredential(encodedList);
-        GenericApiResponse<String> response = GenericApiResponse.<String>builder()
-                .success(true)
-                .data(statusListVc)
-                .build();
 
-        when(httpClient.sendRequestProtocol(anyString(), any(), any())).thenReturn(response);
+        when(httpClient.executeAndDeserialize(anyString(), eq("GET"), isNull(), isNull(), eq(String.class)))
+                .thenReturn(statusListVc);
 
         // Create VC with credentialStatus pointing to index 5
         VerifiableCredential vc = createVCWithStatus("https://example.com/status/1", 5);
 
         assertTrue(service.isRevoked(vc));
-        verify(httpClient, times(1)).sendRequestProtocol(anyString(), any(), any());
+        verify(httpClient, times(1)).executeAndDeserialize(anyString(), eq("GET"), isNull(), isNull(), eq(String.class));
     }
 
     @Test
@@ -100,12 +96,9 @@ class StatusList2021RevocationServiceTest {
         String encodedList = createEncodedList(bits);
 
         String statusListVc = createStatusListCredential(encodedList);
-        GenericApiResponse<String> response = GenericApiResponse.<String>builder()
-                .success(true)
-                .data(statusListVc)
-                .build();
 
-        when(httpClient.sendRequestProtocol(anyString(), any(), any())).thenReturn(response);
+        when(httpClient.executeAndDeserialize(anyString(), eq("GET"), isNull(), isNull(), eq(String.class)))
+                .thenReturn(statusListVc);
 
         // Create VC with credentialStatus pointing to index 3 (not revoked)
         VerifiableCredential vc = createVCWithStatus("https://example.com/status/1", 3);
@@ -121,12 +114,9 @@ class StatusList2021RevocationServiceTest {
         String encodedList = createEncodedList(bits);
 
         String statusListVc = createStatusListCredential(encodedList);
-        GenericApiResponse<String> response = GenericApiResponse.<String>builder()
-                .success(true)
-                .data(statusListVc)
-                .build();
 
-        when(httpClient.sendRequestProtocol(anyString(), any(), any())).thenReturn(response);
+        when(httpClient.executeAndDeserialize(anyString(), eq("GET"), isNull(), isNull(), eq(String.class)))
+                .thenReturn(statusListVc);
 
         // First call - should hit the network
         VerifiableCredential vc1 = createVCWithStatus("https://example.com/status/1", 5);
@@ -137,12 +127,12 @@ class StatusList2021RevocationServiceTest {
         assertFalse(service.isRevoked(vc2));
 
         // Verify only one network call was made
-        verify(httpClient, times(1)).sendRequestProtocol(anyString(), any(), any());
+        verify(httpClient, times(1)).executeAndDeserialize(anyString(), eq("GET"), isNull(), isNull(), eq(String.class));
     }
 
     @Test
     @DisplayName("Malformed encodedList throws RevocationListFetchException")
-    void testIsRevoked_MalformedEncodedList() {
+    void testIsRevoked_MalformedEncodedList() throws Exception {
         String statusListVc = """
             {
                 "credentialSubject": {
@@ -151,12 +141,8 @@ class StatusList2021RevocationServiceTest {
             }
             """;
 
-        GenericApiResponse<String> response = GenericApiResponse.<String>builder()
-                .success(true)
-                .data(statusListVc)
-                .build();
-
-        when(httpClient.sendRequestProtocol(anyString(), any(), any())).thenReturn(response);
+        when(httpClient.executeAndDeserialize(anyString(), eq("GET"), isNull(), isNull(), eq(String.class)))
+                .thenReturn(statusListVc);
 
         VerifiableCredential vc = createVCWithStatus("https://example.com/status/1", 5);
 
@@ -165,19 +151,15 @@ class StatusList2021RevocationServiceTest {
 
     @Test
     @DisplayName("Missing credentialSubject throws RevocationListFetchException")
-    void testIsRevoked_MissingCredentialSubject() {
+    void testIsRevoked_MissingCredentialSubject() throws Exception {
         String statusListVc = """
             {
                 "id": "https://example.com/status/1"
             }
             """;
 
-        GenericApiResponse<String> response = GenericApiResponse.<String>builder()
-                .success(true)
-                .data(statusListVc)
-                .build();
-
-        when(httpClient.sendRequestProtocol(anyString(), any(), any())).thenReturn(response);
+        when(httpClient.executeAndDeserialize(anyString(), eq("GET"), isNull(), isNull(), eq(String.class)))
+                .thenReturn(statusListVc);
 
         VerifiableCredential vc = createVCWithStatus("https://example.com/status/1", 5);
 
@@ -186,13 +168,9 @@ class StatusList2021RevocationServiceTest {
 
     @Test
     @DisplayName("Network failure throws RevocationListFetchException")
-    void testIsRevoked_NetworkFailure() {
-        GenericApiResponse<String> response = GenericApiResponse.<String>builder()
-                .success(false)
-                .message("Network timeout")
-                .build();
-
-        when(httpClient.sendRequestProtocol(anyString(), any(), any())).thenReturn(response);
+    void testIsRevoked_NetworkFailure() throws Exception {
+        when(httpClient.executeAndDeserialize(anyString(), eq("GET"), isNull(), isNull(), eq(String.class)))
+                .thenThrow(new IOException("Network timeout"));
 
         VerifiableCredential vc = createVCWithStatus("https://example.com/status/1", 5);
 
@@ -206,12 +184,9 @@ class StatusList2021RevocationServiceTest {
         String encodedList = createEncodedList(bits);
 
         String statusListVc = createStatusListCredential(encodedList);
-        GenericApiResponse<String> response = GenericApiResponse.<String>builder()
-                .success(true)
-                .data(statusListVc)
-                .build();
 
-        when(httpClient.sendRequestProtocol(anyString(), any(), any())).thenReturn(response);
+        when(httpClient.executeAndDeserialize(anyString(), eq("GET"), isNull(), isNull(), eq(String.class)))
+                .thenReturn(statusListVc);
 
         assertEquals(0, service.getCacheSize());
 
@@ -231,12 +206,9 @@ class StatusList2021RevocationServiceTest {
         String encodedList = createEncodedList(bits);
 
         String statusListVc = createStatusListCredential(encodedList);
-        GenericApiResponse<String> response = GenericApiResponse.<String>builder()
-                .success(true)
-                .data(statusListVc)
-                .build();
 
-        when(httpClient.sendRequestProtocol(anyString(), any(), any())).thenReturn(response);
+        when(httpClient.executeAndDeserialize(anyString(), eq("GET"), isNull(), isNull(), eq(String.class)))
+                .thenReturn(statusListVc);
 
         VerifiableCredential vc = createVCWithStatus("https://example.com/status/1", 1);
         service.isRevoked(vc);
@@ -293,4 +265,3 @@ class StatusList2021RevocationServiceTest {
         return objectMapper.writeValueAsString(credential);
     }
 }
-

@@ -1,14 +1,14 @@
 package it.eng.dcp.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.model.CredentialRequestMessage;
+import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.model.IssuerMetadata;
+import it.eng.dcp.common.model.ServiceEntry;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.exception.IssuerServiceNotFoundException;
-import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.response.GenericApiResponse;
 import okhttp3.MediaType;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -21,10 +21,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Client for interacting with external Issuer Services for credential issuance (Phase 3).
@@ -35,13 +38,13 @@ public class CredentialIssuanceClient {
     private static final Logger LOG = LoggerFactory.getLogger(CredentialIssuanceClient.class);
 
     // replaced RestTemplate with OkHttpRestClient
-    private final OkHttpRestClient rest;
+    private final SimpleOkHttpRestClient rest;
     private final SelfIssuedIdTokenService tokenService;
     private final ObjectMapper mapper = new ObjectMapper();
     private final BaseDidDocumentConfiguration config;
 
     @Autowired
-    public CredentialIssuanceClient(OkHttpRestClient rest, SelfIssuedIdTokenService tokenService, BaseDidDocumentConfiguration config) {
+    public CredentialIssuanceClient(SimpleOkHttpRestClient rest, SelfIssuedIdTokenService tokenService, BaseDidDocumentConfiguration config) {
         this.rest = rest;
         this.tokenService = tokenService;
         this.config = config;
@@ -62,22 +65,15 @@ public class CredentialIssuanceClient {
         if (issuer.toLowerCase().startsWith("did:")) {
             String url = buildDidDocumentUrl(issuer);
             try {
-                GenericApiResponse<String> resp = rest.sendGETRequest(url, null);
-                if (resp != null && resp.isSuccess() && resp.getData() != null) {
-                    String body = resp.getData();
-                    JsonNode root = mapper.readTree(body);
-                    JsonNode services = root.get("service");
-                    if (services != null && services.isArray()) {
-                        for (JsonNode s : services) {
-                            JsonNode typeNode = s.get("type");
-                            JsonNode seNode = s.get("serviceEndpoint");
-                            if (typeNode != null && seNode != null && "IssuerService".equals(typeNode.asText())) {
-                                return seNode.asText();
-                            }
+                DidDocument didDocument = rest.executeAndDeserialize(url, "GET", null, null, DidDocument.class);
+                if (didDocument != null && didDocument.getServices() != null) {
+                    for (ServiceEntry service : didDocument.getServices()) {
+                        if ("IssuerService".equals(service.type())) {
+                            return service.serviceEndpoint();
                         }
                     }
                 }
-            } catch (Exception e) {
+            } catch (IOException e) {
                 LOG.debug("Failed to fetch or parse DID document {}: {}", url, e.getMessage());
             }
             throw new IssuerServiceNotFoundException("IssuerService entry not found in DID document for issuer: " + issuer);
@@ -183,14 +179,15 @@ public class CredentialIssuanceClient {
      */
     public IssuerMetadata getIssuerMetadata(String metadataUrl) {
         if (metadataUrl == null) throw new IllegalArgumentException("metadataUrl required");
-        GenericApiResponse<String> resp = rest.sendGETRequest(metadataUrl, "Bearer geefghsdfgsd");
-        if (resp == null || !resp.isSuccess() || resp.getData() == null) {
-            throw new RuntimeException("Failed to fetch issuer metadata from " + metadataUrl);
-        }
+
+        Map<String, String> headers = new HashMap<>();
+        //TODO add SelfIssuedIdTokenService token generation here
+        headers.put(HttpHeaders.AUTHORIZATION, "Bearer geefghsdfgsd");
+
         try {
-            return mapper.readValue(resp.getData(), IssuerMetadata.class);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to parse issuer metadata: " + e.getMessage(), e);
+            return rest.executeAndDeserialize(metadataUrl, "GET", headers, null, IssuerMetadata.class);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to fetch issuer metadata from " + metadataUrl + ": " + e.getMessage(), e);
         }
     }
 

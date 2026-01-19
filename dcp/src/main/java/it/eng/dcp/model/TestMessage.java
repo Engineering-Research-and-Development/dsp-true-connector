@@ -4,10 +4,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import it.eng.dcp.common.model.BaseDcpMessage;
-import it.eng.tools.model.DSpaceConstants;
-import lombok.NoArgsConstructor;
-
+import it.eng.dcp.common.model.DCPConstants;
 import jakarta.validation.constraints.NotNull;
+import lombok.NoArgsConstructor;
 
 /**
  * Simple concrete message used in tests to exercise BaseDcpMessage behavior.
@@ -23,7 +22,7 @@ public class TestMessage extends BaseDcpMessage {
     private String payload;
 
     @Override
-    @JsonProperty(value = DSpaceConstants.TYPE, access = JsonProperty.Access.READ_ONLY)
+    @JsonProperty(value = DCPConstants.TYPE, access = JsonProperty.Access.READ_ONLY)
     public String getType() {
         return typeOverride; // intentionally null when not set so builders must provide type to pass validation
     }
@@ -35,7 +34,7 @@ public class TestMessage extends BaseDcpMessage {
         private Builder() {
             msg = new TestMessage();
             // set default context
-            msg.getContext().add(DSpaceConstants.DCP_CONTEXT);
+            msg.getContext().add(DCPConstants.DCP_CONTEXT);
         }
 
         public static Builder newInstance() {

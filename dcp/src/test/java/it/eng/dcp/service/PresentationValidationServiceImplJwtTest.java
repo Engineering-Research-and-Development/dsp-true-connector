@@ -7,7 +7,6 @@ import it.eng.dcp.model.PresentationResponseMessage;
 import it.eng.dcp.model.ValidationReport;
 import it.eng.dcp.model.VerifiableCredential;
 import it.eng.dcp.model.VerifiablePresentation;
-import it.eng.tools.service.AuditEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +14,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.Map;
@@ -39,7 +39,7 @@ class PresentationValidationServiceImplJwtTest {
     private RevocationService revocationService;
 
     @Mock
-    private AuditEventPublisher publisher;
+    private ApplicationEventPublisher publisher;
 
     @InjectMocks
     private PresentationValidationServiceImpl validationService;

@@ -1,6 +1,5 @@
 package it.eng.dcp.common.model;
 
-import it.eng.tools.model.DSpaceConstants;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -34,14 +33,14 @@ class BaseDcpMessageTest {
             }
         };
         
-        message.getContext().add(DSpaceConstants.DCP_CONTEXT);
+        message.getContext().add(DCPConstants.DCP_CONTEXT);
         
         // Should not throw exception
         assertDoesNotThrow(() -> message.validateBase());
         
         assertEquals("TestType", message.getType());
         assertFalse(message.getContext().isEmpty());
-        assertTrue(message.getContext().contains(DSpaceConstants.DCP_CONTEXT));
+        assertTrue(message.getContext().contains(DCPConstants.DCP_CONTEXT));
     }
 }
 

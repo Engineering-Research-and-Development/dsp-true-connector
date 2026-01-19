@@ -460,8 +460,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.credentialsCount").exists());
+                .andExpect(content().string("Credentials issued and delivered successfully"));
     }
 
     /**
@@ -506,7 +505,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(approvalBody)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(content().string("Credentials issued and delivered successfully"));
     }
 
     /**
@@ -549,8 +548,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value(containsString("Failed to deliver credentials")));
+                .andExpect(content().string(containsString("Internal error")));
     }
 
     /**
@@ -594,8 +592,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value(containsString("Internal error")));
+                .andExpect(content().string(containsString("Internal error")));
     }
 
     /**
@@ -651,8 +648,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(rejectionBody)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Credential request rejected successfully"));
+                .andExpect(content().string("Credential request rejected successfully"));
     }
 
     /**
@@ -698,8 +694,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(rejectionBody)))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("Failed to reject request"));
+                .andExpect(content().string("Failed to reject request"));
     }
 
     /**
@@ -746,8 +741,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(rejectionBody)))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value(containsString("Internal error")));
+                .andExpect(content().string(containsString("Internal error")));
     }
 
     /**

@@ -1,7 +1,7 @@
 package it.eng.dcp.model;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import it.eng.tools.model.DSpaceConstants;
+import it.eng.dcp.common.model.DCPConstants;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -22,14 +22,14 @@ class PresentationResponseMessageTest {
 
         assertEquals(PresentationResponseMessage.class.getSimpleName(), msg.getType());
         assertNotNull(msg.getContext());
-        assertTrue(msg.getContext().contains(DSpaceConstants.DCP_CONTEXT));
+        assertTrue(msg.getContext().contains(DCPConstants.DCP_CONTEXT));
         assertEquals(1, msg.getPresentation().size());
 
         ObjectMapper mapper = new ObjectMapper();
         String json = mapper.writeValueAsString(msg);
         assertNotNull(json);
         assertTrue(json.contains("vp-1"));
-        assertTrue(json.contains("@type"), "JSON should contain @type field");
+        assertTrue(json.contains(DCPConstants.TYPE), "JSON should contain type field");
         assertTrue(json.contains("PresentationResponseMessage"), "JSON should contain PresentationResponseMessage type");
 
         PresentationResponseMessage deserialized = mapper.readValue(json, PresentationResponseMessage.class);

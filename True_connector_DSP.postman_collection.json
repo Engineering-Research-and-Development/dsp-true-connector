@@ -2274,7 +2274,7 @@
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n    \"Forward-To\" : \"http://localhost:8090\"\r\n}",
+									"raw": "{\r\n    \"Forward-To\" : \"https://localhost:8080\"\r\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -3217,7 +3217,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\"audienceDid\": \"did:web:localhost:8080\"}",
+							"raw": "{\"audienceDid\": \"did:web:localhost%3A8084:issuer\"}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -3225,8 +3225,8 @@
 							}
 						},
 						"url": {
-							"raw": "https://localhost:8080/api/dev/token/generate",
-							"protocol": "https",
+							"raw": "http://localhost:8080/api/dev/token/generate",
+							"protocol": "http",
 							"host": [
 								"localhost"
 							],
@@ -3298,7 +3298,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"@context\": [\r\n        \"https://w3id.org/dspace/2024/1/context.json\"\r\n    ],\r\n    \"holderPid\": \"did:web:localhost:8080\",\r\n    \"requestId\": \"req-12345\",\r\n    \"credentials\": [\r\n        {\r\n            \"id\": \"MembershipCredential\"\r\n        },\r\n        {\r\n            \"id\": \"ComplianceCredential\"\r\n        }\r\n    ]\r\n}",
+							"raw": "{\r\n    \"@context\": [\r\n        \"https://w3id.org/dspace/2024/1/context.json\"\r\n    ],\r\n    \"type\": \"CredentialRequestMessage\",\r\n    \"holderPid\": \"did:web:localhost:8080:holder\",\r\n    \"requestId\": \"req-22345\",\r\n    \"credentials\": [\r\n        {\r\n            \"id\": \"550e8400-e29b-41d4-a716-446655440000\"\r\n        }\r\n    ]\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -3306,12 +3306,12 @@
 							}
 						},
 						"url": {
-							"raw": "https://localhost:8080/issuer/credentials",
-							"protocol": "https",
+							"raw": "http://localhost:8084/issuer/credentials",
+							"protocol": "http",
 							"host": [
 								"localhost"
 							],
-							"port": "8080",
+							"port": "8084",
 							"path": [
 								"issuer",
 								"credentials"
@@ -3329,12 +3329,12 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "https://localhost:8080{{location}}",
-							"protocol": "https",
+							"raw": "http://localhost:8084{{location}}",
+							"protocol": "http",
 							"host": [
 								"localhost"
 							],
-							"port": "8080{{location}}"
+							"port": "8084{{location}}"
 						}
 					},
 					"response": []
@@ -3364,8 +3364,8 @@
 							}
 						},
 						"url": {
-							"raw": "https://localhost:8080/dcp/credentials",
-							"protocol": "https",
+							"raw": "http://localhost:8080/dcp/credentials",
+							"protocol": "http",
 							"host": [
 								"localhost"
 							],
@@ -3395,7 +3395,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"credentials\": [\r\n    {\r\n      \"credentialType\": \"MembershipCredential\",\r\n      \"payload\": \"eyJraWQiOiJkaWQ6ZXhhbXBsZTppc3N1ZXI0NTYja2V5LTEiLCJhbGciOiJFUzI1NiJ9.eyJzdWIiOiJkaWQ6ZXhhbXBsZTpob2xkZXIxMjMiLCJpc3MiOiJkaWQ6ZXhhbXBsZTppc3N1ZXI0NTYiLCJleHAiOjE3OTY3NDA4OTYsImlhdCI6MTc2NTIwNDg5NiwidmMiOnsiQGNvbnRleHQiOlsiaHR0cHM6Ly93d3cudzMub3JnLzIwMTgvY3JlZGVudGlhbHMvdjEiLCJodHRwczovL2V4YW1wbGUub3JnL2NyZWRlbnRpYWxzL3YxIl0sInR5cGUiOlsiVmVyaWZpYWJsZUNyZWRlbnRpYWwiLCJNZW1iZXJzaGlwQ3JlZGVudGlhbCJdLCJjcmVkZW50aWFsU3ViamVjdCI6eyJpZCI6ImRpZDpleGFtcGxlOmhvbGRlcjEyMyIsInN0YXR1cyI6IkFjdGl2ZSIsIm1lbWJlcnNoaXBJZCI6Ik1FTUJFUi0yMDI0LTAwMSIsIm1lbWJlcnNoaXBUeXBlIjoiUHJlbWl1bSJ9fSwianRpIjoidXJuOnV1aWQ6Y3JlZGVudGlhbC02ZTE3MWNiNS0xODQ5LTQ1YWItYTgyNy1kNWZkNDRjODY2ZjUifQ.mHLPbCQmQb4gn9kvdjNMHuuOGWPHoN-ZmufAmNZH2sLKrnuepFPy3qkAG55qQWcDEdEwLzeIb7AHIB0oPdXMaA\",\r\n      \"format\": \"jwt\"\r\n    }\r\n  ]\r\n}",
+							"raw": "",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -3403,13 +3403,14 @@
 							}
 						},
 						"url": {
-							"raw": "https://localhost:8080/issuer/requests/{{request-id}}/approve",
-							"protocol": "https",
+							"raw": "http://localhost:8084/api/issuer/requests/{{request-id}}/approve",
+							"protocol": "http",
 							"host": [
 								"localhost"
 							],
-							"port": "8080",
+							"port": "8084",
 							"path": [
+								"api",
 								"issuer",
 								"requests",
 								"{{request-id}}",
@@ -3420,7 +3421,7 @@
 					"response": []
 				},
 				{
-					"name": "Get did-json",
+					"name": "Holder - did.json",
 					"request": {
 						"auth": {
 							"type": "noauth"
@@ -3428,15 +3429,187 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:8080/.well-known/did.json",
+							"raw": "http://localhost:8080/holder/did.json",
 							"protocol": "http",
 							"host": [
 								"localhost"
 							],
 							"port": "8080",
 							"path": [
+								"holder",
+								"did.json"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Holder - query presentation",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"@context\": [\"https://w3id.org/dspace-dcp/v1.0/dcp.jsonld\"],\r\n  \"type\": \"PresentationQueryMessage\",\r\n  \"scope\": [\r\n    \"MembershipCredential\"\r\n  ]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/dcp/presentations/query",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"dcp",
+								"presentations",
+								"query"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Issuer - did.json",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8084/.well-known/did.json",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8084",
+							"path": [
 								".well-known",
 								"did.json"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Issuer - Metadata",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:8084/issuer/metadata",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8084",
+							"path": [
+								"issuer",
+								"metadata"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Holder - post offer",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"type\": \"CredentialOffer\",\r\n    \"offeredCredentials\": [\r\n        {\r\n            \"credentialType\": \"ProofCredential\",\r\n            \"format\": \"jwt\",\r\n            \"issuancePolicy\": {\r\n                \"pol\": true\r\n            }\r\n        }\r\n    ],\r\n    \"@context\": [\r\n        \"https://w3id.org/dspace-dcp/v1.0/dcp.jsonld\"\r\n    ]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/dcp/offers",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"dcp",
+								"offers"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Issuer - key rotate",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8084/api/issuer/key/rotate",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8084",
+							"path": [
+								"api",
+								"issuer",
+								"key",
+								"rotate"
 							]
 						}
 					},
