@@ -67,13 +67,14 @@ public class DidDocumentService {
                         .publicKeyJwk(jwk)
                         .build()
         );
-        String verificationMethodId = verificationMethods.get(0).getId();
 
         return DidDocument.Builder.newInstance()
                 .id(didConfig.getDid())
                 .service(services)
                 .verificationMethod(verificationMethods)
-                .capabilityInvocation(List.of(verificationMethodId))
+//                .capabilityInvocation(List.of(verificationMethodId))
+//                TODO: enable when available
+//                .verificationRelationships()
                 .build();
     }
 

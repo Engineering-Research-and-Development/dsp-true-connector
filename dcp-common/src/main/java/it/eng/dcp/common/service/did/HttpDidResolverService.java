@@ -3,11 +3,15 @@ package it.eng.dcp.common.service.did;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.jwk.JWK;
+import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.exception.DidResolutionException;
-import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.response.GenericApiResponse;
+import it.eng.dcp.common.model.DidDocument;
+import it.eng.dcp.common.model.VerificationMethod;
+import it.eng.dcp.common.util.DidUrlConverter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
@@ -16,12 +20,11 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.time.Instant;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-
-import static it.eng.dcp.common.util.DidUrlConverter.convertDidToUrl;
-import static it.eng.dcp.common.util.DidUrlConverter.extractBaseUrl;
 
 /**
  * HTTP-backed DID resolver for did:web documents.
@@ -51,22 +54,14 @@ import static it.eng.dcp.common.util.DidUrlConverter.extractBaseUrl;
 public class HttpDidResolverService implements DidResolverService {
 
     private final ObjectMapper mapper = new ObjectMapper();
-    private final OkHttpRestClient httpClient;
+    private final SimpleOkHttpRestClient httpClient;
 
     /**
      * Cached DID document entry with expiry time.
      */
-    private static class CachedDoc {
-        final JsonNode root;
-        final Instant expiresAt;
+    private record CachedDoc(DidDocument didDocument, Instant expiresAt) { }
 
-        CachedDoc(JsonNode root, Instant expiresAt) {
-            this.root = root;
-            this.expiresAt = expiresAt;
-        }
-    }
-
-    private final ConcurrentMap<String, CachedDoc> cache = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, HttpDidResolverService.CachedDoc> cache = new ConcurrentHashMap<>();
 
     /**
      * Cache TTL in seconds. Default: 300 seconds (5 minutes).
@@ -87,8 +82,8 @@ public class HttpDidResolverService implements DidResolverService {
      *
      * @param httpClient The OkHttpRestClient to use for HTTP requests
      */
-    public HttpDidResolverService(OkHttpRestClient httpClient) {
-        log.info("HttpDidResolverService initialized with OkHttpRestClient");
+    public HttpDidResolverService(SimpleOkHttpRestClient httpClient) {
+        log.info("HttpDidResolverService initialized with SimpleOkHttpRestClient");
         this.httpClient = httpClient;
     }
 
@@ -106,23 +101,24 @@ public class HttpDidResolverService implements DidResolverService {
         }
 
         try {
-            String url = convertDidToUrl(did, sslEnabled);
-            String baseUrl = extractBaseUrl(url);
-            // TODO: consider moving this to service or handle in uniform way across resolvers
-            JsonNode root = fetchDidDocumentCached(baseUrl + "/.well-known/did.json");
+//            String url = convertDidToUrl(did, sslEnabled);
+//            String baseUrl = extractBaseUrl(url);
+//            // TODO: consider moving this to service or handle in uniform way across resolvers
+//            JsonNode root = fetchDidDocumentCached(baseUrl + "/.well-known/did.json");
 
-            JsonNode vmArray = root.get("verificationMethod");
-            if (vmArray == null || !vmArray.isArray()) {
+            DidDocument didDocument = fetchDidDocumentCached(did);
+
+            List<VerificationMethod> verificationMethods = didDocument.getVerificationMethods();
+            if (verificationMethods == null || verificationMethods.isEmpty()) {
                 return null;
             }
 
             // Iterate through verification methods
-            Iterator<JsonNode> it = vmArray.elements();
+            Iterator<VerificationMethod> it = verificationMethods.iterator();
             while (it.hasNext()) {
-                JsonNode vm = it.next();
-                JsonNode idNode = vm.get("id");
-                JsonNode jwkNode = vm.get("publicKeyJwk");
-                String vmId = idNode != null ? idNode.asText() : null;
+                VerificationMethod vm = it.next();
+                String vmId = vm.getId();
+                Map<String, Object> jwkNode = vm.getPublicKeyJwk();
 
                 if (jwkNode == null || vmId == null) {
                     continue;
@@ -131,17 +127,18 @@ public class HttpDidResolverService implements DidResolverService {
                 // Parse JWK
                 JWK jwk;
                 try {
-                    jwk = JWK.parse(jwkNode.toString());
+                    jwk = JWK.parse(jwkNode);
                 } catch (ParseException pe) {
                     throw new DidResolutionException("Failed to parse JWK", pe);
                 }
 
-                // Check if this key matches the requested kid
                 if (isKeyMatch(jwk, vmId, kid)) {
                     // Enforce verification relationship if specified
-                    if (verificationRelationship != null && !verificationRelationship.isBlank()) {
-                        enforceVerificationRelationship(root, vmId, kid, verificationRelationship);
-                    }
+//                  TODO: re-enable this when available
+
+//                    if (verificationRelationship != null && !verificationRelationship.isBlank()) {
+//                        enforceVerificationRelationship(root, vmId, kid, verificationRelationship);
+//                    }
                     return jwk;
                 }
             }
@@ -150,30 +147,6 @@ public class HttpDidResolverService implements DidResolverService {
         } catch (IOException e) {
             throw new DidResolutionException("Failed to fetch or parse DID document", e);
         }
-    }
-
-    /**
-     * Fetches DID document with caching support.
-     * @param url The DID document URL
-     * @return The parsed JSON root node
-     * @throws IOException on IO errors
-     */
-    private JsonNode fetchDidDocumentCached(String url) throws IOException {
-        CachedDoc cd = cache.get(url);
-        Instant now = Instant.now();
-
-        if (cd != null && cd.expiresAt.isAfter(now)) {
-            return cd.root;
-        }
-
-        String doc = fetchDidDocument(url);
-        if (doc == null) {
-            return null;
-        }
-
-        JsonNode root = mapper.readTree(doc);
-        cache.put(url, new CachedDoc(root, now.plusSeconds(cacheTtlSeconds)));
-        return root;
     }
 
     /**
@@ -242,6 +215,36 @@ public class HttpDidResolverService implements DidResolverService {
     }
 
     /**
+     * Fetches DID document with caching support.
+     * @param did The DID
+     * @return The parsed JSON root node
+     * @throws IOException on IO errors
+     */
+    @Override
+    public DidDocument fetchDidDocumentCached(String did) throws IOException {
+        String url = DidUrlConverter.convertDidToUrl(did, sslEnabled);
+        String baseUrl = DidUrlConverter.extractBaseUrl(url);
+        String didDocumentUrl = baseUrl + "/.well-known/did.json";
+
+        HttpDidResolverService.CachedDoc cd = cache.get(didDocumentUrl);
+        Instant now = Instant.now();
+
+        if (cd != null && cd.expiresAt.isAfter(now)) {
+            return cd.didDocument;
+        }
+
+        String doc = fetchDidDocument(didDocumentUrl);
+        if (doc == null) {
+            return null;
+        }
+
+        JsonNode jsonDid = mapper.readTree(doc);
+        DidDocument didDocument = mapper.treeToValue(jsonDid, DidDocument.class);
+        cache.put(didDocumentUrl, new HttpDidResolverService.CachedDoc(didDocument, now.plusSeconds(cacheTtlSeconds)));
+        return didDocument;
+    }
+
+    /**
      * Fetches DID document with retry logic.
      * @param url The DID document URL
      * @return The document content
@@ -280,18 +283,19 @@ public class HttpDidResolverService implements DidResolverService {
      * @throws IOException on IO errors
      */
     private String fetchDidDocumentWithTimeout(String url) throws IOException {
-        GenericApiResponse<String> response = httpClient.sendGETRequest(url, null);
+        Request.Builder requestBuilder = new Request.Builder().url(url);
 
-        if (response == null) {
-            throw new IOException("No response received from " + url);
+        try (Response response = httpClient.executeCall(requestBuilder.build())) {
+            int code = response.code();
+            log.info("Status {}", code);
+            if (response.body() != null) {
+                return response.body().string();
+            }
+        } catch (IOException e) {
+            log.error(e.getLocalizedMessage());
+            throw new IOException("Failed to fetch DID document from " + url + ": " + e.getLocalizedMessage());
         }
-
-        if (response.isSuccess()) {
-            return response.getData();
-        }
-
-        String errorMsg = response.getMessage() != null ? response.getMessage() : "Unknown error";
-        throw new IOException("Failed to fetch DID document from " + url + ": " + errorMsg);
+        throw new IOException("Failed to fetch DID document from " + url);
     }
 
     /**

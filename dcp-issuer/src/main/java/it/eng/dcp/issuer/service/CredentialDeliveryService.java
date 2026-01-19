@@ -2,13 +2,14 @@ package it.eng.dcp.issuer.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.CredentialStatus;
+import it.eng.dcp.common.model.DidDocument;
+import it.eng.dcp.common.service.did.DidResolverService;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
-import it.eng.dcp.common.util.DidUrlConverter;
-import it.eng.dcp.issuer.client.SimpleOkHttpRestClient;
 import it.eng.dcp.issuer.repository.CredentialRequestRepository;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.MediaType;
@@ -34,18 +35,20 @@ public class CredentialDeliveryService {
     private final ObjectMapper mapper = new ObjectMapper();
     private final SimpleOkHttpRestClient httpClient;
     private final BaseDidDocumentConfiguration config;
+    private final DidResolverService didResolverService;
 
     private final boolean sslEnabled;
 
     @Autowired
     public CredentialDeliveryService(CredentialRequestRepository requestRepository,
                                      SelfIssuedIdTokenService tokenService,
-                                     SimpleOkHttpRestClient httpClient, BaseDidDocumentConfiguration config,
+                                     SimpleOkHttpRestClient httpClient, BaseDidDocumentConfiguration config, DidResolverService didResolverService,
                                      @Value("${dcp.ssl.enabled:false}") boolean sslEnabled) {
         this.requestRepository = requestRepository;
         this.tokenService = tokenService;
         this.httpClient = httpClient;
         this.config = config;
+        this.didResolverService = didResolverService;
         this.sslEnabled = sslEnabled;
     }
 
@@ -88,11 +91,7 @@ public class CredentialDeliveryService {
                 return false;
             }
 
-            String targetUrl = credentialServiceUrl.endsWith("/credentials")
-                    ? credentialServiceUrl
-                    : (credentialServiceUrl.endsWith("/") ? credentialServiceUrl + "credentials" : credentialServiceUrl + "/credentials");
-
-            log.info("Delivering {} credentials to holder {} at {}", credentials.size(), holderDid, targetUrl);
+            log.info("Delivering {} credentials to holder {} at {}", credentials.size(), holderDid, credentialServiceUrl);
 
             CredentialMessage message = CredentialMessage.Builder.newInstance()
                     .issuerPid(issuerPid)
@@ -105,7 +104,7 @@ public class CredentialDeliveryService {
             String token = tokenService.createAndSignToken(holderDid, null, config.getDidDocumentConfig());
             String messageJson = mapper.writeValueAsString(message);
 
-            String response = sendPostRequest(targetUrl, messageJson, "Bearer " + token);
+            String response = sendPostRequest(credentialServiceUrl, messageJson, "Bearer " + token);
 
             if (response != null) {
                 log.info("Successfully delivered credentials to holder {}.", holderDid);
@@ -161,15 +160,10 @@ public class CredentialDeliveryService {
         try {
             String credentialServiceUrl = resolveCredentialServiceEndpoint(holderDid);
             if (credentialServiceUrl == null || credentialServiceUrl.isBlank()) {
-                log.error("Could not resolve Credential Service endpoint for holder: {}", holderDid);
                 return false;
             }
 
-            String targetUrl = credentialServiceUrl.endsWith("/credentials")
-                    ? credentialServiceUrl
-                    : (credentialServiceUrl.endsWith("/") ? credentialServiceUrl + "credentials" : credentialServiceUrl + "/credentials");
-
-            log.info("Sending rejection notification to holder {} at {}", holderDid, targetUrl);
+            log.info("Sending rejection notification to holder {} at {}", holderDid, credentialServiceUrl);
 
             CredentialMessage message = CredentialMessage.Builder.newInstance()
                     .issuerPid(issuerPid)
@@ -183,7 +177,7 @@ public class CredentialDeliveryService {
             String token = tokenService.createAndSignToken(holderDid, null, config.getDidDocumentConfig());
             String messageJson = mapper.writeValueAsString(message);
 
-            String response = sendPostRequest(targetUrl, messageJson, "Bearer " + token);
+            String response = sendPostRequest(credentialServiceUrl, messageJson, "Bearer " + token);
 
             if (response != null) {
                 log.info("Successfully sent rejection notification to holder {}.", holderDid);
@@ -212,13 +206,17 @@ public class CredentialDeliveryService {
 
     private String resolveCredentialServiceEndpoint(String holderDid) {
         try {
-//            vadi credentials endpoint iz did-a
-            if (holderDid.startsWith("did:web:")) {
-                String baseUrl = DidUrlConverter.convertDidToUrl(holderDid, sslEnabled);
-                return baseUrl + "/dcp/credentials";
-            }
-            log.error("Unable to resolve Credential Service endpoint for DID: {}", holderDid);
-            return null;
+            DidDocument document = didResolverService.fetchDidDocumentCached(holderDid);
+            String credentialServiceUrl = document.getServices().stream()
+                    .filter(s -> s.type().equals("CredentialService"))
+                    .findFirst().orElseThrow(() -> new IllegalArgumentException("No CredentialService found in DID Document for " + holderDid))
+                    .serviceEndpoint();
+
+            String targetUrl = credentialServiceUrl.endsWith("/credentials")
+                    ? credentialServiceUrl
+                    : (credentialServiceUrl.endsWith("/") ? credentialServiceUrl + "credentials" : credentialServiceUrl + "/credentials");
+
+            return targetUrl;
         } catch (Exception e) {
             log.error("Failed to resolve DID {}: {}", holderDid, e.getMessage(), e);
             return null;

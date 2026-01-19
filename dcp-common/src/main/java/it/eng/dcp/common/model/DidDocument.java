@@ -7,6 +7,11 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import it.eng.tools.model.DSpaceConstants;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidationException;
+import jakarta.validation.ValidatorFactory;
+import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,12 +20,6 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.Validation;
-import jakarta.validation.ValidationException;
-import jakarta.validation.ValidatorFactory;
-import jakarta.validation.constraints.NotNull;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -46,7 +45,10 @@ public class DidDocument implements Serializable {
     @JsonProperty("verificationMethod")
     private List<VerificationMethod> verificationMethods = new ArrayList<>();
 
-    private List<String> capabilityInvocation;
+//    This is only one type of verification relationship thus it will be modeled as a list of strings, see below
+//    private List<String> capabilityInvocation;
+//    TODO: to be implemented in future releases (currently not used by DCP TCK)
+//    private List<VerificationRelationships> verificationRelationships;
 
 
     @JsonPOJOBuilder(withPrefix = "")
@@ -80,10 +82,10 @@ public class DidDocument implements Serializable {
             return this;
         }
 
-        public Builder capabilityInvocation(List<String> capabilityInvocation) {
-            document.capabilityInvocation = capabilityInvocation;
-            return this;
-        }
+//        public Builder verificationRelationships(List<VerificationRelationships> verificationRelationships) {
+//            document.verificationRelationships = verificationRelationships;
+//            return this;
+//        }
 
         public DidDocument build() {
             try (ValidatorFactory vf = Validation.buildDefaultValidatorFactory()) {

@@ -1,6 +1,6 @@
-package it.eng.dcp.issuer.config;
+package it.eng.dcp.common.config;
 
-import it.eng.dcp.issuer.client.SimpleOkHttpRestClient;
+import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.ConnectionSpec;
 import okhttp3.OkHttpClient;
@@ -9,7 +9,6 @@ import org.springframework.boot.ssl.NoSuchSslBundleException;
 import org.springframework.boot.ssl.SslBundles;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -27,7 +26,7 @@ import java.util.concurrent.TimeUnit;
  */
 @Configuration
 @Slf4j
-public class IssuerHttpClientConfiguration {
+public class HttpClientConfiguration {
 
     private final boolean isSSLEnabled;
     private final SslBundles sslBundles;
@@ -38,7 +37,7 @@ public class IssuerHttpClientConfiguration {
      * @param isSSLEnabled Whether SSL is enabled
      * @param sslBundles SSL bundles for TLS configuration
      */
-    public IssuerHttpClientConfiguration(
+    public HttpClientConfiguration(
             @Value("${server.ssl.enabled:false}") boolean isSSLEnabled,
             SslBundles sslBundles) {
         this.isSSLEnabled = isSSLEnabled;
@@ -46,7 +45,7 @@ public class IssuerHttpClientConfiguration {
     }
 
     /**
-     * Creates OkHttpClient bean with TLS support.
+     * Creates OkHttpClient with TLS support.
      * For development (SSL disabled), creates insecure client that accepts all certificates.
      * For production (SSL enabled), creates secure client with proper certificate validation.
      *
@@ -56,9 +55,7 @@ public class IssuerHttpClientConfiguration {
      * @throws KeyManagementException If there's an error managing keys
      * @throws NoSuchAlgorithmException If the algorithm is not available
      */
-    @Bean
-    @Primary
-    public OkHttpClient okHttpClient() throws KeyStoreException, NoSuchSslBundleException,
+    private OkHttpClient okHttpClient() throws KeyStoreException, NoSuchSslBundleException,
             KeyManagementException, NoSuchAlgorithmException {
         if (!isSSLEnabled) {
             log.warn("Creating insecure OkHttpClient (server.ssl.enabled=false)");
@@ -74,24 +71,27 @@ public class IssuerHttpClientConfiguration {
      * Creates SimpleOkHttpRestClient bean for DID resolution.
      * This is a minimal wrapper around OkHttpClient without dependencies on tools module.
      *
-     * @param okHttpClient The OkHttpClient to wrap
      * @return SimpleOkHttpRestClient for DID resolution
+     * @throws KeyStoreException If there's an error accessing the key store
+     * @throws NoSuchSslBundleException If SSL bundle is not found
+     * @throws KeyManagementException If there's an error managing keys
+     * @throws NoSuchAlgorithmException If the algorithm is not available
      */
     @Bean
-    public SimpleOkHttpRestClient simpleOkHttpRestClient(OkHttpClient okHttpClient) {
+    public SimpleOkHttpRestClient simpleOkHttpRestClient() throws KeyStoreException,
+            NoSuchSslBundleException, KeyManagementException, NoSuchAlgorithmException {
         log.info("Creating SimpleOkHttpRestClient for DID resolution");
-        return new SimpleOkHttpRestClient(okHttpClient);
+        return new SimpleOkHttpRestClient(okHttpClient());
     }
 
     /**
      * Creates a secure OkHttpClient with TLS validation.
      *
      * @return Secure OkHttpClient
-     * @throws KeyStoreException If there's an error accessing the key store
      * @throws NoSuchAlgorithmException If the algorithm is not available
      * @throws KeyManagementException If there's an error managing keys
      */
-    private OkHttpClient createSecureClient() throws KeyStoreException, NoSuchAlgorithmException,
+    private OkHttpClient createSecureClient() throws NoSuchAlgorithmException,
             KeyManagementException {
         log.info("Creating secured OkHttpClient - remote certificates will be validated");
 
@@ -99,8 +99,7 @@ public class IssuerHttpClientConfiguration {
         TrustManager[] trustManagers = sslBundles.getBundle("connector").getManagers().getTrustManagers();
         log.debug("Created {} trust manager(s) from SSL bundle", trustManagers.length);
 
-        if (trustManagers.length > 0 && trustManagers[0] instanceof X509TrustManager) {
-            X509TrustManager x509TrustManager = (X509TrustManager) trustManagers[0];
+        if (trustManagers.length > 0 && trustManagers[0] instanceof X509TrustManager x509TrustManager) {
             int acceptedIssuersCount = x509TrustManager.getAcceptedIssuers() != null
                     ? x509TrustManager.getAcceptedIssuers().length : 0;
             log.info("Trust manager has {} accepted issuer(s) in truststore", acceptedIssuersCount);

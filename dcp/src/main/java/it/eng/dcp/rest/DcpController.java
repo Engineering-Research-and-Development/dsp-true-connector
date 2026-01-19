@@ -97,7 +97,7 @@ public class DcpController {
                 msg != null ? msg.getIssuerPid() : "null",
                 msg != null ? msg.getHolderPid() : "null");
 
-        String token = extractBearerToken(authorization);
+         String token = extractBearerToken(authorization);
 
         try {
             // Authorize issuer

@@ -2,6 +2,9 @@ package it.eng.dcp.common.service.did;
 
 import com.nimbusds.jose.jwk.JWK;
 import it.eng.dcp.common.exception.DidResolutionException;
+import it.eng.dcp.common.model.DidDocument;
+
+import java.io.IOException;
 
 /**
  * Service for resolving DIDs and extracting public keys.
@@ -29,5 +32,17 @@ public interface DidResolverService {
      * @throws DidResolutionException when resolution fails, DID document is malformed, or key not found
      */
     JWK resolvePublicKey(String did, String kid, String verificationRelationship) throws DidResolutionException;
+
+    /**
+     * Fetches and returns a DID document for the given DID.
+     *
+     * <p>Implementations may cache documents to improve performance.
+     * The caching strategy is implementation-specific.
+     *
+     * @param did The DID to resolve (e.g., "did:web:example.com:connector")
+     * @return The parsed DID document, or null if not found
+     * @throws IOException if the document cannot be fetched or parsed
+     */
+    DidDocument fetchDidDocumentCached(String did) throws IOException;
 }
 

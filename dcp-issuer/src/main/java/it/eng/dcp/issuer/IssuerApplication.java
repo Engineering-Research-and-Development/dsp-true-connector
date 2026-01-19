@@ -3,7 +3,6 @@ package it.eng.dcp.issuer;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.FilterType;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
@@ -11,14 +10,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * Main Spring Boot application class for the DCP Issuer service.
  * This service handles verifiable credential issuance.
  * Scans issuer-specific and common packages for components.
- * HTTP client configuration is provided by IssuerHttpClientConfiguration.
+ * HTTP client configuration is provided by HttpClientConfiguration.
  */
 @SpringBootApplication
-@ComponentScan(
-    basePackages = {"it.eng.dcp.issuer", "it.eng.dcp.common"},
-        //for now must exclude okHttpClient based HttpDidResolverService from common module
-    excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, value = it.eng.dcp.common.service.did.HttpDidResolverService.class)
-)
+@ComponentScan({"it.eng.dcp.issuer", "it.eng.dcp.common"})
 @EnableMongoRepositories(basePackages = {
     "it.eng.dcp.issuer.repository",
     "it.eng.dcp.common.repository"

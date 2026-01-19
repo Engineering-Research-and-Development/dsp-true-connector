@@ -25,7 +25,6 @@ import java.util.List;
 @Component
 @Slf4j
 public class VcVpAuthenticationProvider implements AuthenticationProvider {
-
     private final PresentationValidationService presentationValidationService;
     private final DidResolverService didResolverService;
 
