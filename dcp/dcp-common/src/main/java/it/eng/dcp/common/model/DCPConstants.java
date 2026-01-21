@@ -7,6 +7,6 @@ public class DCPConstants {
     public static final String DCP_NAMESPACE = "https://w3id.org/dspace-dcp/v1.0";
 
     public static final String ID = "@id";
-    public static final String TYPE = "@type";
+    public static final String TYPE = "type";
     public static final String CONTEXT = "@context";
 }

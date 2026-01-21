@@ -29,7 +29,7 @@ class PresentationResponseMessageTest {
         String json = mapper.writeValueAsString(msg);
         assertNotNull(json);
         assertTrue(json.contains("vp-1"));
-        assertTrue(json.contains("@type"), "JSON should contain @type field");
+        assertTrue(json.contains(DCPConstants.TYPE), "JSON should contain type field");
         assertTrue(json.contains("PresentationResponseMessage"), "JSON should contain PresentationResponseMessage type");
 
         PresentationResponseMessage deserialized = mapper.readValue(json, PresentationResponseMessage.class);
