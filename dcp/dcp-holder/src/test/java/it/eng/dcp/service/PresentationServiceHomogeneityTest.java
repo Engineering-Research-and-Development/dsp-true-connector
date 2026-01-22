@@ -4,6 +4,7 @@ import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import it.eng.dcp.common.config.DidDocumentConfig;
+import it.eng.dcp.common.model.PresentationQueryMessage;
 import it.eng.dcp.common.model.ProfileId;
 import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.model.VerifiableCredential;
@@ -64,7 +65,7 @@ class PresentationServiceHomogeneityTest {
 
         when(repo.findByCredentialTypeIn(List.of("typeA", "typeB"))).thenReturn(List.of(a, b));
 
-        var query = it.eng.dcp.model.PresentationQueryMessage.Builder.newInstance()
+        var query = PresentationQueryMessage.Builder.newInstance()
                 .scope(List.of("typeA", "typeB"))
                 .build();
 
@@ -93,7 +94,7 @@ class PresentationServiceHomogeneityTest {
 
         when(repo.findByCredentialTypeIn(List.of("typeA"))).thenReturn(List.of(a, b));
 
-        var query = it.eng.dcp.model.PresentationQueryMessage.Builder.newInstance()
+        var query = PresentationQueryMessage.Builder.newInstance()
                 .scope(List.of("typeA"))
                 .build();
 

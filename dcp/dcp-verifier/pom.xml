@@ -9,4 +9,12 @@
     <artifactId>dcp-verifier</artifactId>
     <name>Decentralized claims protocol - Verifier</name>
     <description>Verifier related functionalities, verify jwt</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>it.eng</groupId>
+            <artifactId>dcp-common</artifactId>
+            <version>${revision}</version>
+        </dependency>
+    </dependencies>
 </project>

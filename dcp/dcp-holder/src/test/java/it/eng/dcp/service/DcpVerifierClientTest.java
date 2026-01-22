@@ -1,10 +1,10 @@
 package it.eng.dcp.service;
 
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
+import it.eng.dcp.common.model.PresentationResponseMessage;
 import it.eng.dcp.exception.InsecureEndpointException;
 import it.eng.dcp.exception.RemoteHolderAuthException;
 import it.eng.dcp.exception.RemoteHolderClientException;
-import it.eng.dcp.model.PresentationResponseMessage;
 import okhttp3.RequestBody;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

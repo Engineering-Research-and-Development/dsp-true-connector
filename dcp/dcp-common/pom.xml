@@ -73,6 +73,11 @@
             <scope>provided</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
         <!-- Spring TX for @Transactional -->
         <dependency>
             <groupId>org.springframework</groupId>

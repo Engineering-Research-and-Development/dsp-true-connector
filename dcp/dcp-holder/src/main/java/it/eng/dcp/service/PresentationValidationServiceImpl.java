@@ -1,8 +1,12 @@
 package it.eng.dcp.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import it.eng.dcp.common.model.PresentationResponseMessage;
 import it.eng.dcp.common.model.ProfileId;
-import it.eng.dcp.model.*;
+import it.eng.dcp.model.ValidationError;
+import it.eng.dcp.model.ValidationReport;
+import it.eng.dcp.model.VerifiableCredential;
+import it.eng.dcp.model.VerifiablePresentation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -35,7 +39,8 @@ public class PresentationValidationServiceImpl implements PresentationValidation
     }
 
     @Override
-    public ValidationReport validate(PresentationResponseMessage rsp, List<String> requiredCredentialTypes, TokenContext tokenCtx) {
+    public ValidationReport validate(PresentationResponseMessage rsp, List<String> requiredCredentialTypes,
+                                     TokenContext tokenCtx) {
         ValidationReport report = ValidationReport.Builder.newInstance().build();
         if (rsp == null) {
             report.addError(new ValidationError("RSP_NULL", "PresentationResponseMessage is null", ValidationError.Severity.ERROR));

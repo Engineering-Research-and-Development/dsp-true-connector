@@ -1,8 +1,8 @@
 package it.eng.dcp.service;
 
+import it.eng.dcp.common.model.PresentationQueryMessage;
+import it.eng.dcp.common.model.PresentationResponseMessage;
 import it.eng.dcp.common.model.ProfileId;
-import it.eng.dcp.model.PresentationQueryMessage;
-import it.eng.dcp.model.PresentationResponseMessage;
 import it.eng.dcp.model.VerifiableCredential;
 import it.eng.dcp.model.VerifiablePresentation;
 import it.eng.dcp.repository.VerifiableCredentialRepository;

@@ -1,8 +1,8 @@
 package it.eng.connector.configuration;
 
+import it.eng.dcp.common.model.PresentationResponseMessage;
 import it.eng.dcp.common.model.ProfileId;
 import it.eng.dcp.common.service.did.DidResolverService;
-import it.eng.dcp.model.PresentationResponseMessage;
 import it.eng.dcp.model.ValidationError;
 import it.eng.dcp.model.ValidationReport;
 import it.eng.dcp.model.VerifiablePresentation;

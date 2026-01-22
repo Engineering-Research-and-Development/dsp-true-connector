@@ -1,16 +1,15 @@
 package it.eng.connector.configuration;
 
-import java.io.Serial;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-
+import it.eng.dcp.common.model.PresentationResponseMessage;
 import lombok.Getter;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
-import it.eng.dcp.model.PresentationResponseMessage;
+import java.io.Serial;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * Authentication token for Verifiable Credentials / Verifiable Presentations.

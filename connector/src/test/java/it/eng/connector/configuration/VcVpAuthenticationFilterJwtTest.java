@@ -1,8 +1,8 @@
 package it.eng.connector.configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dcp.common.model.PresentationResponseMessage;
 import it.eng.dcp.common.model.ProfileId;
-import it.eng.dcp.model.PresentationResponseMessage;
 import it.eng.dcp.model.VerifiablePresentation;
 import jakarta.servlet.FilterChain;
 import lombok.extern.slf4j.Slf4j;

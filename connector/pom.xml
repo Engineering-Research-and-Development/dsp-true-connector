@@ -32,6 +32,21 @@
             <artifactId>datatransfer</artifactId>
             <version>${revision}</version>
         </dependency>
+
+        <!-- DCP modules-->
+        <dependency>
+            <groupId>it.eng</groupId>
+            <artifactId>dcp-holder</artifactId>
+            <version>${revision}</version>
+<!--            <scope>compile</scope>-->
+        </dependency>
+        <dependency>
+            <groupId>it.eng</groupId>
+            <artifactId>dcp-verifier</artifactId>
+            <version>${revision}</version>
+<!--            <scope>compile</scope>-->
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
@@ -206,12 +221,6 @@
             <artifactId>dsp-contract-negotiation</artifactId>
             <version>${dsp.tck.version}</version>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>it.eng</groupId>
-            <artifactId>dcp-holder</artifactId>
-            <version>0.6.4-SNAPSHOT</version>
-            <scope>compile</scope>
         </dependency>
     </dependencies>
 

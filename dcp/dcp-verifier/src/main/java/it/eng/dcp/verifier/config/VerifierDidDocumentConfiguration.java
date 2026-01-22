@@ -1,4 +1,4 @@
-package it.eng.dcp.config;
+package it.eng.dcp.verifier.config;
 
 import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.config.DcpProperties;
@@ -8,19 +8,16 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 
 import java.util.List;
 
 /**
- * Configuration for DID document in the holder (dcp) module.
- * This is marked as @Primary to serve as the default configuration when multiple
- * BaseDidDocumentConfiguration beans are present (e.g., both holder and verifier).
+ * Configuration for DID document in the verifier role.
+ * Uses the same DcpProperties as holder but with a different DID identifier (connectorDidVerifier).
  */
 @Configuration
-@Primary
 @RequiredArgsConstructor
-public class HolderDidDocumentConfiguration implements BaseDidDocumentConfiguration {
+public class VerifierDidDocumentConfiguration implements BaseDidDocumentConfiguration {
 
     private final DcpProperties dcpProperties;
 
@@ -30,17 +27,23 @@ public class HolderDidDocumentConfiguration implements BaseDidDocumentConfigurat
     @Value("${server.port}")
     private String port;
 
-
     /**
-     * Create the DID document configuration bean for the holder.
+     * Create the DID document configuration bean for the verifier.
+     * Uses connectorDidVerifier if set, otherwise falls back to connectorDid.
      *
-     * @return DidDocumentConfig configured for the holder
+     * @return DidDocumentConfig configured for the verifier
      */
-    @Bean(name = "holderDidDocumentConfig")
-    public DidDocumentConfig holderDidDocumentConfig() {
+    @Bean(name = "verifierDidDocumentConfig")
+    public DidDocumentConfig verifierDidDocumentConfig() {
         String protocol = sslEnabled ? "https" : "http";
+
+        // Use connectorDidVerifier if set, otherwise fall back to connectorDid
+        String verifierDid = dcpProperties.getConnectorDidVerifier() != null
+            ? dcpProperties.getConnectorDidVerifier()
+            : dcpProperties.getConnectorDid();
+
         return DidDocumentConfig.builder()
-                .did(dcpProperties.getConnectorDid())
+                .did(verifierDid)
                 .baseUrl(dcpProperties.getBaseUrl() != null && !dcpProperties.getBaseUrl().isBlank()
                         ? dcpProperties.getBaseUrl() : null)
                 .protocol(protocol)
@@ -52,14 +55,9 @@ public class HolderDidDocumentConfiguration implements BaseDidDocumentConfigurat
                 .keystoreAlias(dcpProperties.getKeystore().getAlias())
                 .serviceEntries(List.of(
                         DidDocumentConfig.ServiceEntryConfig.builder()
-                                .id("TRUEConnector-Credential-Service")
-                                .type("CredentialService")
-                                .endpointPath("/dcp")
-                                .build(),
-                        DidDocumentConfig.ServiceEntryConfig.builder()
-                                .id("TRUEConnector-Issuer-Service")
-                                .type("IssuerService")
-                                .issuerLocation(dcpProperties.getIssuer().getLocation())
+                                .id("TRUEConnector-Verifier-Service")
+                                .type("VerifierService")
+                                .endpointPath("/dcp/verifier")
                                 .build()
                 ))
                 .build();
@@ -67,17 +65,17 @@ public class HolderDidDocumentConfiguration implements BaseDidDocumentConfigurat
 
     @Override
     public DidDocumentConfig getDidDocumentConfig() {
-        return holderDidDocumentConfig();
+        return verifierDidDocumentConfig();
     }
 
     /**
-     * Register this configuration as 'holder' for the generic DID document controller.
+     * Register this configuration as 'verifier' for the generic DID document controller.
      *
      * @return This configuration instance
      */
-    @Bean(name = "holder")
-    @Qualifier("holder")
-    public BaseDidDocumentConfiguration holderConfiguration() {
+    @Bean(name = "verifier")
+    @Qualifier("verifier")
+    public BaseDidDocumentConfiguration verifierConfiguration() {
         return this;
     }
 }

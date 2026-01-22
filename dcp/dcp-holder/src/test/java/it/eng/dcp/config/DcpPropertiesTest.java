@@ -14,7 +14,7 @@ class DcpPropertiesTest {
     @Test
     @DisplayName("basic getters and setters")
     void basicGettersSetters() {
-        DcpProperties p = new DcpProperties();
+        it.eng.dcp.common.config.DcpProperties p = new it.eng.dcp.common.config.DcpProperties();
         assertEquals(120, p.getClockSkewSeconds());
         assertTrue(p.getSupportedProfiles().isEmpty());
 

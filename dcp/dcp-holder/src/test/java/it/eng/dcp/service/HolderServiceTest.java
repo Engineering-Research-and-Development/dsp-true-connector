@@ -2,14 +2,9 @@ package it.eng.dcp.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jwt.JWTClaimsSet;
-import it.eng.dcp.common.model.CredentialMessage;
-import it.eng.dcp.common.model.CredentialOfferMessage;
-import it.eng.dcp.common.model.CredentialStatus;
-import it.eng.dcp.common.model.IssuerMetadata;
+import it.eng.dcp.common.model.*;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.model.CredentialStatusRecord;
-import it.eng.dcp.model.PresentationQueryMessage;
-import it.eng.dcp.model.PresentationResponseMessage;
 import it.eng.dcp.repository.CredentialStatusRepository;
 import it.eng.dcp.repository.VerifiableCredentialRepository;
 import org.junit.jupiter.api.BeforeEach;

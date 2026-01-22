@@ -1,4 +1,4 @@
-package it.eng.dcp.config;
+package it.eng.dcp.common.config;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -13,6 +13,7 @@ import java.util.Map;
 /**
  * Configuration properties for the DCP module.
  * Binds properties under the `dcp` prefix (e.g. `dcp.connector.did`).
+ * Used by both holder and verifier modules.
  */
 @Setter
 @Getter
@@ -22,6 +23,10 @@ public class DcpProperties {
     /** The connector DID (e.g. did:web:example.com:connector). */
     @NotNull
     private String connectorDid;
+
+    /** The connector DID for verifier role (e.g., did:web:example.com:connector:verifier).
+     * If not set, falls back to connectorDid. */
+    private String connectorDidVerifier;
 
     /** Base URL used by the connector when constructing endpoints. */
     private String baseUrl;

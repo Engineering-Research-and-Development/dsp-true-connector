@@ -2,8 +2,8 @@ package it.eng.dcp.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dcp.common.model.PresentationResponseMessage;
 import it.eng.dcp.common.model.ProfileId;
-import it.eng.dcp.model.PresentationResponseMessage;
 import it.eng.dcp.model.ValidationReport;
 import it.eng.dcp.model.VerifiableCredential;
 import it.eng.dcp.model.VerifiablePresentation;

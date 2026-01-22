@@ -1,6 +1,6 @@
 package it.eng.dcp.service;
 
-import it.eng.dcp.model.PresentationResponseMessage;
+import it.eng.dcp.common.model.PresentationResponseMessage;
 import it.eng.dcp.model.ValidationReport;
 
 import java.util.List;

@@ -1,8 +1,8 @@
 package it.eng.dcp.service;
 
+import it.eng.dcp.common.model.PresentationQueryMessage;
+import it.eng.dcp.common.model.PresentationResponseMessage;
 import it.eng.dcp.common.util.DidUrlConverter;
-import it.eng.dcp.model.PresentationQueryMessage;
-import it.eng.dcp.model.PresentationResponseMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

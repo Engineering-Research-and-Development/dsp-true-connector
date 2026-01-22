@@ -8,11 +8,12 @@ import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import it.eng.dcp.common.config.DcpProperties;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.service.KeyService;
-import it.eng.dcp.config.DcpProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -47,7 +48,8 @@ public class DcpCompliantTokenService {
     @Autowired
     public DcpCompliantTokenService(DcpProperties props,
                                     KeyService keyService,
-                                    PresentationAccessTokenGenerator tokenGenerator, DidDocumentConfig config) {
+                                    PresentationAccessTokenGenerator tokenGenerator,
+                                    @Qualifier("holderDidDocumentConfig") DidDocumentConfig config) {
         this.props = props;
         this.keyService = keyService;
         this.tokenGenerator = tokenGenerator;

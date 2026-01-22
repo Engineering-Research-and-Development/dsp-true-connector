@@ -1,12 +1,10 @@
-package it.eng.dcp.model;
+package it.eng.dcp.common.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-import it.eng.dcp.common.model.BaseDcpMessage;
-import it.eng.dcp.common.model.DCPConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
@@ -22,7 +20,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-
+/**
+ * DCP Presentation Response Message.
+ *
+ * <p>Returned by holder's credential service in response to a presentation query.
+ * Contains the verifiable presentations matching the requested scopes.
+ *
+ * <p>This is a shared protocol message used by both holder and verifier modules.
+ */
 @Getter
 @JsonDeserialize(builder = PresentationResponseMessage.Builder.class)
 @NoArgsConstructor(access = lombok.AccessLevel.PRIVATE)
