@@ -16,6 +16,7 @@ import okhttp3.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -44,8 +45,9 @@ public class CredentialIssuanceClient {
     private final BaseDidDocumentConfiguration config;
 
     @Autowired
-    public CredentialIssuanceClient(SimpleOkHttpRestClient rest, SelfIssuedIdTokenService tokenService,
-                                    BaseDidDocumentConfiguration config) {
+    public CredentialIssuanceClient(SimpleOkHttpRestClient rest,
+                                    @Qualifier("selfIssuedIdTokenService") SelfIssuedIdTokenService tokenService,
+                                    @Qualifier("holder") BaseDidDocumentConfiguration config) {
         this.rest = rest;
         this.tokenService = tokenService;
         this.config = config;

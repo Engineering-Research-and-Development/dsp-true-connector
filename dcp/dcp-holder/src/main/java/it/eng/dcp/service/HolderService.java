@@ -13,6 +13,7 @@ import it.eng.dcp.repository.CredentialStatusRepository;
 import it.eng.dcp.repository.VerifiableCredentialRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -38,7 +39,7 @@ public class HolderService {
     private final CredentialIssuanceClient issuanceClient;
 
     @Autowired
-    public HolderService(SelfIssuedIdTokenService tokenService,
+    public HolderService(@Qualifier("selfIssuedIdTokenService") SelfIssuedIdTokenService tokenService,
                          PresentationService presentationService,
                          PresentationRateLimiter rateLimiter,
                          VerifiableCredentialRepository credentialRepository,

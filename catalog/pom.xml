@@ -19,7 +19,7 @@
 		</dependency>
 		<dependency>
 			<groupId>it.eng</groupId>
-			<artifactId>dcp-holder</artifactId>
+			<artifactId>dcp-verifier</artifactId>
 			<version>${revision}</version>
 		</dependency>
 		<dependency>

@@ -3,8 +3,8 @@ package it.eng.dcp.verifier.rest;
 import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.service.did.DidDocumentService;
-import it.eng.dcp.verifier.config.VerifierDidDocumentConfiguration;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,7 +20,7 @@ public class VerifierDidDocumentController {
     private final BaseDidDocumentConfiguration verifierDidDocumentConfig;
 
     public VerifierDidDocumentController(DidDocumentService didDocumentService,
-                                         VerifierDidDocumentConfiguration verifierDidDocumentConfig) {
+                                         @Qualifier("verifier") BaseDidDocumentConfiguration verifierDidDocumentConfig) {
         this.didDocumentService = didDocumentService;
         this.verifierDidDocumentConfig = verifierDidDocumentConfig;
     }

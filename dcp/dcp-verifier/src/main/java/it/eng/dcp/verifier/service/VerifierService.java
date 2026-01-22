@@ -8,6 +8,7 @@ import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.model.DidDocument;
+import it.eng.dcp.common.model.PresentationQueryMessage;
 import it.eng.dcp.common.model.PresentationResponseMessage;
 import it.eng.dcp.common.model.ServiceEntry;
 import it.eng.dcp.common.service.did.HttpDidResolverService;
@@ -66,7 +67,7 @@ public class VerifierService {
     /**
      * Constructor with explicit verifier configuration injection.
      *
-     * @param tokenService The token service for validation (uses @Primary holder config internally)
+     * @param tokenService The token service configured with verifier's DID (for aud validation)
      * @param didResolverService Service for resolving DIDs to DID documents
      * @param httpClient HTTP client for making REST calls
      * @param objectMapper JSON mapper for request/response serialization
@@ -74,7 +75,7 @@ public class VerifierService {
      */
     @Autowired
     public VerifierService(
-            SelfIssuedIdTokenService tokenService,
+            @Qualifier("verifierTokenService") SelfIssuedIdTokenService tokenService,
             HttpDidResolverService didResolverService,
             SimpleOkHttpRestClient httpClient,
             ObjectMapper objectMapper,
@@ -182,7 +183,7 @@ public class VerifierService {
      *
      * @param credentialServiceUrl The holder's credential service base URL
      * @param accessToken The access token (from "token" claim of self-issued ID token)
-     * @param presentationQueryMessage The query message body (type, scope, etc.)
+     * @param presentationQueryMessage The query message with scopes
      * @return The presentation response from holder
      * @throws IOException if HTTP request fails
      * @throws SecurityException if access token is rejected by holder
@@ -190,7 +191,7 @@ public class VerifierService {
     private PresentationResponseMessage queryHolderPresentations(
             String credentialServiceUrl,
             String accessToken,
-            Object presentationQueryMessage) throws IOException, SecurityException {
+            PresentationQueryMessage presentationQueryMessage) throws IOException, SecurityException {
 
         String queryUrl = credentialServiceUrl + PRESENTATIONS_QUERY_PATH;
         log.debug("STEP 4: Querying holder credential service: {}", queryUrl);
@@ -353,10 +354,10 @@ public class VerifierService {
         try {
             log.info("STEP 4: Building PresentationQueryMessage with scopes: {}", scopes);
 
-            // Build query message with scopes from access token
-            Map<String, Object> queryMessage = new HashMap<>();
-            queryMessage.put("@type", "PresentationQueryMessage");
-            queryMessage.put("scope", scopes);
+            // Build query message with scopes from access token using Builder pattern
+            PresentationQueryMessage queryMessage = PresentationQueryMessage.Builder.newInstance()
+                    .scope(scopes)
+                    .build();
 
             log.info("STEP 4: Querying holder credential service...");
             log.debug("Query URL: {}", credentialServiceUrl + PRESENTATIONS_QUERY_PATH);

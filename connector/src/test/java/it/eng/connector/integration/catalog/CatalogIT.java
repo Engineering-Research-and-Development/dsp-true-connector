@@ -141,6 +141,7 @@ public class CatalogIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Get catalog - unauthorized")
+    @Disabled("Disabled - Basic auth is not used anymore, auth moved to controller, not SprigSecurity")
     public void getCatalogUnauthorizedTest() throws Exception {
 
         String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.CATALOG_REQUEST_MESSAGE);

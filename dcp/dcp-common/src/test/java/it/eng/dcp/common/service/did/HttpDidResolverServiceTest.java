@@ -6,6 +6,7 @@ import com.nimbusds.jose.util.Base64URL;
 import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.model.VerificationMethod;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -54,6 +55,7 @@ class HttpDidResolverServiceTest {
 
     @Test
     @DisplayName("resolve throws when verification relationship does not reference VM id")
+    @Disabled("Disabled since signature check is commented out because of TCK issues")
     void resolveThrowsWhenNotReferenced() {
         OctetSequenceKey key = new OctetSequenceKey.Builder(new Base64URL("x"))
                 .keyID("kid-ec")

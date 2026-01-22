@@ -1,8 +1,9 @@
 package it.eng.connector.configuration;
 
-import java.io.IOException;
-import java.util.Arrays;
-
+import it.eng.connector.repository.UserRepository;
+import it.eng.tools.service.ApplicationPropertiesService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -32,10 +33,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import it.eng.connector.repository.UserRepository;
-import it.eng.tools.service.ApplicationPropertiesService;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
@@ -157,17 +156,18 @@ public class WebSecurityConfig {
                             .requestMatchers(new AntPathRequestMatcher("/env"), new AntPathRequestMatcher("/actuator/**")).hasRole("ADMIN")
                             // TODO consider wrapping up all protocol endpoints under single context (/protocol/ or /dsp/ or anything else)
                             .requestMatchers(
-                                    new AntPathRequestMatcher("/connector/**"),
+//                                    new AntPathRequestMatcher("/connector/**"),
                                     new AntPathRequestMatcher("/negotiations/**"),
-                                    new AntPathRequestMatcher("/catalog/**"),
                                     new AntPathRequestMatcher("/transfers/**"))
                             .hasRole("CONNECTOR")
                             // Development/Testing token generator (disable in production)
                             .requestMatchers(new AntPathRequestMatcher("/api/dev/token/**")).permitAll()
                             .requestMatchers(new AntPathRequestMatcher("/api/**")).hasRole("ADMIN")
                             // Verifiable Credentials endpoints handle their own authentication (Self-Issued ID Tokens)
+                            // Catalog endpoints handle their own authentication/authorization in the controller
                             .requestMatchers(new AntPathRequestMatcher("/dcp/**"),
-                                    new AntPathRequestMatcher("/tck/protocol/2025/1/catalog/request")).permitAll()
+                                    new AntPathRequestMatcher("/catalog/**"))
+                                .permitAll()
                             .anyRequest().permitAll();
                 })
                 .addFilterBefore(protocolEndpointsAuthenticationFilter(applicationPropertiesService), UsernamePasswordAuthenticationFilter.class)

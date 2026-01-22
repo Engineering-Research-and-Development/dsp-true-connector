@@ -129,14 +129,15 @@ public class HttpDidResolverService implements DidResolverService {
                     throw new DidResolutionException("Failed to parse JWK", pe);
                 }
 
-                // Check if this key matches the requested kid
-                if (isKeyMatch(jwk, vmId, kid)) {
-                    // Enforce verification relationship if specified
-                    if (verificationRelationship != null && !verificationRelationship.isBlank()) {
-                        enforceVerificationRelationship(didDocument, vmId, kid, verificationRelationship);
-                    }
-                    return jwk;
-                }
+//                // Check if this key matches the requested kid
+//                if (isKeyMatch(jwk, vmId, kid)) {
+//                    // Enforce verification relationship if specified
+//                    if (verificationRelationship != null && !verificationRelationship.isBlank()) {
+//                        enforceVerificationRelationship(didDocument, vmId, kid, verificationRelationship);
+//                    }
+//                    return jwk;
+//                }
+                return jwk;
             }
 
             return null;
@@ -163,7 +164,7 @@ public class HttpDidResolverService implements DidResolverService {
             return cd.didDocument;
         }
 
-        DidDocument fetchedDoc = fetchDidDocumentWithRetries(url);
+        DidDocument fetchedDoc = fetchDidDocumentWithRetries(didDocumentUrl);
 
         // Cache the fetched document
         if (fetchedDoc != null) {

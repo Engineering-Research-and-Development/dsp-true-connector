@@ -50,7 +50,7 @@ public class IssuerDidDocumentConfiguration implements BaseDidDocumentConfigurat
                         DidDocumentConfig.ServiceEntryConfig.builder()
                                 .id("TRUEConnector-Issuer-Service")
                                 .type("IssuerService")
-                                .endpointPath("")
+                                .endpointPath("/issuer")
                                 .build(),
                         DidDocumentConfig.ServiceEntryConfig.builder()
                                 .id("TRUEConnector-Credential-Service")

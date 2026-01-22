@@ -3,6 +3,10 @@ package it.eng.dcp.verifier.config;
 import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.config.DcpProperties;
 import it.eng.dcp.common.config.DidDocumentConfig;
+import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.common.service.did.DidResolverService;
+import it.eng.dcp.common.service.sts.JtiReplayCache;
+import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -77,5 +81,23 @@ public class VerifierDidDocumentConfiguration implements BaseDidDocumentConfigur
     @Qualifier("verifier")
     public BaseDidDocumentConfiguration verifierConfiguration() {
         return this;
+    }
+
+    /**
+     * Create a SelfIssuedIdTokenService instance specifically for the verifier role.
+     * This instance validates tokens where the audience (aud) is the verifier's DID.
+     *
+     * @param didResolver DID resolver service
+     * @param jtiCache JTI replay cache
+     * @param keyService Key service for cryptographic operations
+     * @return SelfIssuedIdTokenService configured with verifier's DID
+     */
+    @Bean(name = "verifierTokenService")
+    @Qualifier("verifierTokenService")
+    public SelfIssuedIdTokenService verifierTokenService(
+            DidResolverService didResolver,
+            JtiReplayCache jtiCache,
+            KeyService keyService) {
+        return new SelfIssuedIdTokenService(didResolver, jtiCache, keyService, this);
     }
 }
