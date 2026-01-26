@@ -86,14 +86,36 @@ public class HolderService {
     }
 
     /**
-     * Create a presentation response for a query.
+     * Create a presentation response for a query with scope enforcement.
+     *
+     * <p>Per DCP Protocol v1.0 Section 5.1, the access token scopes define which
+     * credentials the verifier is authorized to access. The verifier's requested
+     * scopes must be validated against the authorized scopes from the access token.
+     *
+     * @param query The presentation query message containing requested scopes
+     * @param holderDid The holder's DID for logging
+     * @param accessTokenClaims The validated access token claims containing authorized scopes
+     * @return PresentationResponseMessage with only authorized credentials
+     */
+    public PresentationResponseMessage createPresentation(PresentationQueryMessage query, String holderDid,
+                                                          JWTClaimsSet accessTokenClaims) {
+        log.info("Creating presentation response with scope enforcement for holder: {}", holderDid);
+        PresentationResponseMessage response = presentationService.createPresentation(query, accessTokenClaims);
+        log.info("Successfully created presentation response for holder: {}", holderDid);
+        return response;
+    }
+
+    /**
+     * Create a presentation response for a query without scope enforcement.
      *
      * @param query The presentation query message
      * @param holderDid The holder's DID for logging
      * @return PresentationResponseMessage
+     * @deprecated Use {@link #createPresentation(PresentationQueryMessage, String, JWTClaimsSet)} for scope enforcement
      */
+    @Deprecated
     public PresentationResponseMessage createPresentation(PresentationQueryMessage query, String holderDid) {
-        log.info("Creating presentation response for holder: {}", holderDid);
+        log.warn("Creating presentation WITHOUT scope enforcement for holder: {} - consider updating caller", holderDid);
         PresentationResponseMessage response = presentationService.createPresentation(query);
         log.info("Successfully created presentation response for holder: {}", holderDid);
         return response;

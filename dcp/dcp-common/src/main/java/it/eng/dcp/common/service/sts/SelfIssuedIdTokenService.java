@@ -1,9 +1,6 @@
 package it.eng.dcp.common.service.sts;
 
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.JWSSigner;
+import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.JWK;
@@ -246,23 +243,31 @@ public class SelfIssuedIdTokenService {
     }
 
     /**
-     * Creates a wrapper JWT token that contains a nested Self-Issued ID Token in the "token" claim.
+     * Creates a wrapper JWT token that contains a nested Access Token in the "token" claim.
      * This format is used by STS-compatible endpoints where the access_token field contains a JWT
-     * with a nested token claim.
+     * with a nested token claim containing scope-based authorization.
+     *
+     * <p>Per DCP Protocol v1.0 Section 4.3.1 and 5.1:
+     * <ul>
+     *   <li>Outer JWT: Self-Issued ID Token (iss==sub, contains "token" claim)</li>
+     *   <li>Inner JWT: Access Token (contains "scope" claim for authorization)</li>
+     * </ul>
      *
      * @param audienceDid The DID of the intended audience (verifier)
      * @param config DidDocumentConfig containing keystore details for signing
-     * @return Signed JWT token with nested token claim
+     * @param scopes The credential types or scopes the verifier is authorized to access
+     * @return Signed JWT token with nested access token containing scopes
      * @throws IllegalArgumentException if audienceDid is null or blank
      * @throws IllegalStateException if connectorDid is not configured
      * @throws RuntimeException if signing fails
      */
-    public String createStsCompatibleToken(String audienceDid, DidDocumentConfig config) {
+    public String createStsCompatibleToken(String audienceDid, DidDocumentConfig config, String... scopes) {
         if (audienceDid == null || audienceDid.isBlank()) {
             throw new IllegalArgumentException("audienceDid required");
         }
 
-        log.info("Creating STS-compatible wrapper token for audience: {}", audienceDid);
+        log.info("Creating STS-compatible wrapper token for audience: {} with {} scopes",
+                 audienceDid, scopes != null ? scopes.length : 0);
 
         if (config.getDid() == null || config.getDid().isBlank()) {
             log.error("connectorDid is null or blank!");
@@ -270,21 +275,22 @@ public class SelfIssuedIdTokenService {
         }
 
         try {
-            // First, create the inner Self-Issued ID Token
-            String innerToken = createAndSignToken(audienceDid, null, config);
+            // First, create the inner Access Token with scopes
+            // Generate self issued access token with scope claim - holder for holder
+            String innerToken = createAccessTokenWithScopes(config.getDid(), config, scopes);
 
-            // Now create a wrapper JWT that contains the inner token in the "token" claim
+            // Now create a wrapper Self-Issued ID Token that contains the inner token in the "token" claim
             Instant now = Instant.now();
             Instant exp = now.plusSeconds(300); // 5 minutes expiry
-            String jti = UUID.randomUUID().toString();
+            String jti = "urn:uuid:" + UUID.randomUUID();
 
             JWTClaimsSet.Builder cb = new JWTClaimsSet.Builder();
-            cb.issuer(config.getDid()).subject(config.getDid());
+            cb.issuer(config.getDid()).subject(config.getDid()); // Self-issued: iss == sub
             cb.audience(audienceDid);
             cb.issueTime(Date.from(now));
             cb.expirationTime(Date.from(exp));
             cb.jwtID(jti);
-            cb.claim("token", innerToken); // Nested token claim
+            cb.claim("token", innerToken); // Nested access token claim
 
             JWTClaimsSet claims = cb.build();
 
@@ -311,5 +317,85 @@ public class SelfIssuedIdTokenService {
         } catch (JOSEException e) {
             throw new RuntimeException("Failed to create and sign STS-compatible token", e);
         }
+    }
+
+    /**
+     * Creates an Access Token with scope-based authorization for presentation queries.
+     * This token is embedded in the Self-Issued ID Token's "token" claim.
+     *
+     * <p>Per DCP Protocol v1.0 Section 5.1, the access token MUST include:
+     * <ul>
+     *   <li>iss: Holder's DID (who issued the token)</li>
+     *   <li>sub: Holder's DID (subject of the token)</li>
+     *   <li>aud: Verifier's DID (who can use the token)</li>
+     *   <li>scope: Credential types the verifier can access (CRITICAL for security)</li>
+     *   <li>Standard claims: iat, exp, nbf, jti</li>
+     * </ul>
+     *
+     * @param verifierDid The DID of the verifier who will use this token
+     * @param config DidDocumentConfig containing holder's DID and keystore
+     * @param scopes The credential types authorized for access
+     * @return Signed JWT access token with scope claim
+     * @throws JOSEException if signing fails
+     */
+    private String createAccessTokenWithScopes(String verifierDid, DidDocumentConfig config, String... scopes)
+            throws JOSEException {
+        Instant now = Instant.now();
+        Instant exp = now.plusSeconds(300); // 5 minutes validity
+        String jti = "urn:uuid:" + UUID.randomUUID();
+
+        JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder()
+            .issuer(config.getDid())
+            .subject(config.getDid()) // Per spec: holder is both issuer and subject of access token
+            .audience(verifierDid)
+            .issueTime(Date.from(now))
+            .expirationTime(Date.from(exp))
+            .notBeforeTime(Date.from(now)) // Valid immediately
+            .jwtID(jti);
+
+        // Add scopes if provided (CRITICAL for security)
+        if (scopes != null && scopes.length > 0) {
+            claimsBuilder.claim("scope", java.util.Arrays.asList(scopes));
+            log.debug("Access token scopes: {}", java.util.Arrays.toString(scopes));
+        } else {
+            // No scopes means access to all presentations (use with caution)
+            log.warn("Generating access token with NO scope restrictions for verifier: {}. " +
+                     "This grants access to ALL credentials!", verifierDid);
+        }
+
+        JWTClaimsSet claims = claimsBuilder.build();
+
+        // Sign the access token
+        ECKey signingJwk;
+        if (overrideSigningKey != null) {
+            signingJwk = overrideSigningKey;
+        } else {
+            signingJwk = keyService.getSigningJwk(config);
+        }
+
+        JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.ES256)
+                .keyID(signingJwk.getKeyID())
+                .type(JOSEObjectType.JWT)
+                .build();
+
+        SignedJWT jwt = new SignedJWT(header, claims);
+        JWSSigner signer = new ECDSASigner(signingJwk.toECPrivateKey());
+        jwt.sign(signer);
+
+        return jwt.serialize();
+    }
+
+    /**
+     * Backward-compatible overload without scopes.
+     *
+     * @param audienceDid The DID of the intended audience (verifier)
+     * @param config DidDocumentConfig containing keystore details for signing
+     * @return Signed JWT token with nested token claim (without scope restrictions)
+     * @deprecated Use {@link #createStsCompatibleToken(String, DidDocumentConfig, String...)} with explicit scopes
+     */
+    @Deprecated
+    public String createStsCompatibleToken(String audienceDid, DidDocumentConfig config) {
+        log.warn("Creating STS-compatible token WITHOUT scopes - consider specifying scopes for security");
+        return createStsCompatibleToken(audienceDid, config, new String[0]);
     }
 }

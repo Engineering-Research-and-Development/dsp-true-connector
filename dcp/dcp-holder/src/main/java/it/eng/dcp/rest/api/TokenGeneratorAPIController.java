@@ -80,12 +80,13 @@ public class TokenGeneratorAPIController {
             @RequestParam(value = "bearer_access_scope", required = false) String bearerAccessScope) {
 
         log.info("Received form-urlencoded request to generate Self-Issued ID Token");
-        log.debug("grant_type: {}, client_id: {}, audience: {}, bearer_access_scope: {}",
+        log.info("grant_type: {}, client_id: {}, audience: {}, bearer_access_scope: {}",
                 grantType, clientId, audience, bearerAccessScope);
 
         try {
+//            audience = "did:web:localhost:8080:holder";  // Hardcoded for dummy testing
             // Generate STS-compatible token with nested token claim for dummy testing
-            String token = tokenService.createStsCompatibleToken(audience, config.getDidDocumentConfig());
+            String token = tokenService.createStsCompatibleToken(audience, config.getDidDocumentConfig(), bearerAccessScope);
             return ResponseEntity.ok(Map.of(
                 "access_token", token,
                 "token_type", "Bearer",
