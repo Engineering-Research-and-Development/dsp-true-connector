@@ -1,5 +1,6 @@
 package it.eng.dcp.common.service.did;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.jwk.JWK;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.exception.DidResolutionException;
@@ -48,22 +49,15 @@ import java.util.concurrent.ConcurrentMap;
 @Slf4j
 public class HttpDidResolverService implements DidResolverService {
 
+    private final ObjectMapper mapper = new ObjectMapper();
     private final SimpleOkHttpRestClient httpClient;
 
     /**
      * Cached DID document entry with expiry time.
      */
-    private static class CachedDoc {
-        final DidDocument didDocument;
-        final Instant expiresAt;
+    private record CachedDoc(DidDocument didDocument, Instant expiresAt) { }
 
-        CachedDoc(DidDocument didDocument, Instant expiresAt) {
-            this.didDocument = didDocument;
-            this.expiresAt = expiresAt;
-        }
-    }
-
-    private final ConcurrentMap<String, CachedDoc> cache = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, HttpDidResolverService.CachedDoc> cache = new ConcurrentHashMap<>();
 
     /**
      * Cache TTL in seconds. Default: 300 seconds (5 minutes).
@@ -129,16 +123,17 @@ public class HttpDidResolverService implements DidResolverService {
                     throw new DidResolutionException("Failed to parse JWK", pe);
                 }
 
-//                // Check if this key matches the requested kid
 //                if (isKeyMatch(jwk, vmId, kid)) {
 //                    // Enforce verification relationship if specified
-//                    if (verificationRelationship != null && !verificationRelationship.isBlank()) {
-//                        enforceVerificationRelationship(didDocument, vmId, kid, verificationRelationship);
-//                    }
+////                  TODO: re-enable this when available
+//
+////                    if (verificationRelationship != null && !verificationRelationship.isBlank()) {
+////                        enforceVerificationRelationship(root, vmId, kid, verificationRelationship);
+////                    }
 //                    return jwk;
 //                }
-                return jwk;
-            }
+                    return jwk;
+                }
 
             return null;
         } catch (IOException e) {
@@ -248,7 +243,7 @@ public class HttpDidResolverService implements DidResolverService {
         // Currently only capabilityInvocation is supported in DidDocument
         // For other verification relationships, we would need to extend the DidDocument model
         return switch (relationshipName.toLowerCase(Locale.ROOT)) {
-            case "capabilityinvocation" -> didDocument.getCapabilityInvocation();
+//            case "capabilityinvocation" -> didDocument.getCapabilityInvocation();
             case "authentication", "assertionmethod", "keyagreement", "capabilitydelegation" ->
                 // These are not currently stored in DidDocument, return null
                 null;
