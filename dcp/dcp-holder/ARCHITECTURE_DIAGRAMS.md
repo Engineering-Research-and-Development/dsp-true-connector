@@ -85,7 +85,7 @@ trueconnector (parent)
 │ 2. Classpath Scanning                                            │
 │    • Scans for META-INF/spring/*.AutoConfiguration.imports      │
 │    • Finds dcp-holder.jar                                        │
-│    • Reads: it.eng.dcp.autoconfigure.DcpHolderAutoConfiguration       │
+│    • Reads: it.eng.dcp.holder.autoconfigure.DcpHolderAutoConfiguration       │
 └───────────────────────────┬─────────────────────────────────────┘
                             │
                             ▼
@@ -207,11 +207,11 @@ dcp-holder.jar
 └── META-INF/
     ├── spring.factories
     │   └── org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-    │       it.eng.dcp.autoconfigure.DcpHolderAutoConfiguration
+    │       it.eng.dcp.holder.autoconfigure.DcpHolderAutoConfiguration
     │
     └── spring/
         └── org.springframework.boot.autoconfigure.AutoConfiguration.imports
-            └── it.eng.dcp.autoconfigure.DcpHolderAutoConfiguration
+            └── it.eng.dcp.holder.autoconfigure.DcpHolderAutoConfiguration
 
 Spring Boot reads these files and automatically loads DcpHolderAutoConfiguration!
 ```

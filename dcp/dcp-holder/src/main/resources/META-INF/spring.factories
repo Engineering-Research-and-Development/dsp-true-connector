@@ -1,3 +1,3 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-it.eng.dcp.autoconfigure.DcpHolderAutoConfiguration
+it.eng.dcp.holder.autoconfigure.DcpHolderAutoConfiguration
 

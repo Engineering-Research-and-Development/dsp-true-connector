@@ -13,7 +13,7 @@ Two autoconfiguration descriptor files have been created:
 - **`META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`** (Spring Boot 3.x format)
 - **`META-INF/spring.factories`** (Spring Boot 2.x format - for backward compatibility)
 
-Both files register the `it.eng.dcp.autoconfigure.DcpHolderAutoConfiguration` class.
+Both files register the `it.eng.dcp.holder.autoconfigure.DcpHolderAutoConfiguration` class.
 
 ### 2. DcpHolderAutoConfiguration Class
 

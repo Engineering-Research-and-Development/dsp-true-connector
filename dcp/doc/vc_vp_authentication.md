@@ -253,7 +253,7 @@ Enable debug logging to see authentication flow:
 ```properties
 logging.level.it.eng.connector.configuration.VcVpAuthenticationFilter=DEBUG
 logging.level.it.eng.connector.configuration.VcVpAuthenticationProvider=DEBUG
-logging.level.it.eng.dcp.service.PresentationValidationServiceImpl=DEBUG
+logging.level.it.eng.dcp.holder.service.PresentationValidationServiceImpl=DEBUG
 ```
 
 ## Related Documentation

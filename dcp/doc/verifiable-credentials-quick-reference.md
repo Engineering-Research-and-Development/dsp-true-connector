@@ -363,7 +363,7 @@ curl https://localhost:8080/.well-known/did.json
 **Fix - Enable Debug Logging:**
 ```properties
 logging.level.it.eng.dcp=DEBUG
-logging.level.it.eng.dcp.service.PresentationValidationService=TRACE
+logging.level.it.eng.dcp.holder.service.PresentationValidationService=TRACE
 ```
 
 **Check logs for:**

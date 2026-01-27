@@ -5,7 +5,7 @@ import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTParser;
 import it.eng.dcp.common.model.PresentationResponseMessage;
 import it.eng.dcp.common.model.ProfileId;
-import it.eng.dcp.model.VerifiablePresentation;
+import it.eng.dcp.holder.model.VerifiablePresentation;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

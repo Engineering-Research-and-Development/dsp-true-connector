@@ -184,7 +184,7 @@ String credentials = credentialUtils.getConnectorCredentials();
 # application.properties
 dcp.vp.enabled=true
 dcp.vp.use-dcp-compliant=false
-logging.level.it.eng.dcp.service.DcpCredentialService=DEBUG
+logging.level.it.eng.dcp.holder.service.DcpCredentialService=DEBUG
 ```
 
 **Expected Log:**
@@ -201,7 +201,7 @@ dcp.vp.enabled=true
 dcp.vp.use-dcp-compliant=true
 dcp.vp.target-verifier-did=did:web:localhost:8081
 dcp.vp.scope=MembershipCredential
-logging.level.it.eng.dcp.service.DcpCredentialService=DEBUG
+logging.level.it.eng.dcp.holder.service.DcpCredentialService=DEBUG
 ```
 
 **Expected Log:**

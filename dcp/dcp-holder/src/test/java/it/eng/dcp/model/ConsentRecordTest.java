@@ -1,5 +1,6 @@
 package it.eng.dcp.model;
 
+import it.eng.dcp.holder.model.ConsentRecord;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

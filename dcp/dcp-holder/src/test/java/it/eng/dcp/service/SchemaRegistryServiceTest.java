@@ -3,6 +3,8 @@ package it.eng.dcp.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import it.eng.dcp.holder.service.InMemorySchemaRegistryService;
+import it.eng.dcp.holder.service.SchemaRegistryService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

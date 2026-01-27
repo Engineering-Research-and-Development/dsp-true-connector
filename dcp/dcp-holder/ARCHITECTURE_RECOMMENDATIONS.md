@@ -144,7 +144,7 @@ public class ConnectorApplication {
 **Step 1: Classpath Scanning**
 - Spring Boot scans classpath for autoconfiguration classes
 - Finds `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`
-- Registers `it.eng.dcp.autoconfigure.DcpHolderAutoConfiguration` (only once, even though dcp-holder JAR is referenced by 3 modules)
+- Registers `it.eng.dcp.holder.autoconfigure.DcpHolderAutoConfiguration` (only once, even though dcp-holder JAR is referenced by 3 modules)
 
 **Step 2: Autoconfiguration Execution**
 - Spring evaluates `@ConditionalOnProperty` → passes (dcp.enabled=true)

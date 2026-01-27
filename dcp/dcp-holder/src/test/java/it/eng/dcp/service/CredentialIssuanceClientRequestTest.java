@@ -4,6 +4,7 @@ import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.common.model.IssuerMetadata.CredentialObject;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
+import it.eng.dcp.holder.service.CredentialIssuanceClient;
 import okhttp3.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

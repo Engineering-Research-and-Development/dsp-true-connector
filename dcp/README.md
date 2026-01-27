@@ -33,7 +33,7 @@ Enables credential issuance capabilities:
 
 ### What the auto-configuration does
 
-- Registers `it.eng.dcp.autoconfigure.DcpHolderAutoConfiguration` via Spring Boot's auto-configuration discovery (file: `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`).
+- Registers `it.eng.dcp.holder.autoconfigure.DcpHolderAutoConfiguration` via Spring Boot's auto-configuration discovery (file: `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`).
 - Binds the configuration properties under the `dcp.*` prefix to `it.eng.dcp.common.config.DcpProperties` (enabled via `@EnableConfigurationProperties` in the auto-config).
 - Imports `DCPMongoConfig` to enable the module's Mongo repositories and related configuration.
 - Component-scans only the `it.eng.dcp` package to register controllers, services and other beans belonging to this module.
