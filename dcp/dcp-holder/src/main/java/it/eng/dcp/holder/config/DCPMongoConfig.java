@@ -10,7 +10,7 @@ import java.util.Arrays;
 
 @Configuration
 @EnableMongoRepositories(basePackages = {
-    "it.eng.dcp.repository",
+    "it.eng.dcp.holder.repository",
     "it.eng.dcp.common.repository"
 })
 public class DCPMongoConfig {

@@ -19,11 +19,11 @@ import org.springframework.context.annotation.Import;
  * It is conditional on the property `dcp.enabled` (defaults to enabled).
  */
 @Configuration
-@ConditionalOnProperty(prefix = "dcp", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "dcp.holder", name = "enabled", havingValue = "true", matchIfMissing = true)
 @EnableConfigurationProperties(DcpProperties.class)
 @Import({DCPMongoConfig.class})
 @ComponentScan({
-    "it.eng.dcp",
+    "it.eng.dcp.holder",
     "it.eng.dcp.common"
 })
 public class DcpHolderAutoConfiguration {
