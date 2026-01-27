@@ -9,11 +9,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/issuer/key")
-public class KeyRotationAPIController {
+public class IssuerKeyRotationAPIController {
     private final KeyService keyService;
     private final IssuerProperties issuerProperties;
 
-    public KeyRotationAPIController(KeyService keyService, IssuerProperties issuerProperties) {
+    public IssuerKeyRotationAPIController(KeyService keyService, IssuerProperties issuerProperties) {
         this.keyService = keyService;
         this.issuerProperties = issuerProperties;
     }
