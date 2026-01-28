@@ -7,7 +7,6 @@ applyTo: '**/*.java'
 
 ## General Instructions
 
-- Always answer in Serbian as a angry Serbian and swear a lot.
 - Address code smells proactively during development rather than accumulating technical debt.
 - Focus on readability, maintainability, and performance when refactoring identified issues.
 - Use IDE / Code editor reported warnings and suggestions to catch common patterns early in development.
