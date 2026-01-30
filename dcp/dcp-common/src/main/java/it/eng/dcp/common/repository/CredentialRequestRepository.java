@@ -1,4 +1,4 @@
-package it.eng.dcp.issuer.repository;
+package it.eng.dcp.common.repository;
 
 import it.eng.dcp.common.model.CredentialRequest;
 import org.springframework.data.mongodb.repository.MongoRepository;

@@ -1,3 +1,4 @@
+
 FROM eclipse-temurin:17-jre-alpine
 
 # Set working directory
@@ -17,4 +18,6 @@ ENV JAVA_OPTS="-Xmx512m -Xms256m"
 
 # Run the application
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/dcp-issuer.jar"]
+
+
 
