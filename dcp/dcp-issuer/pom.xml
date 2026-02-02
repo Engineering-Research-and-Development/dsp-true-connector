@@ -120,6 +120,8 @@
                     <layers>
                         <enabled>true</enabled>
                     </layers>
+                    <!-- Use classifier to keep original JAR for testing -->
+                    <classifier>exec</classifier>
                 </configuration>
                 <executions>
                     <execution>

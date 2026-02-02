@@ -11,6 +11,7 @@ maintainability, and high code quality.
 
 - Name the test class `<ClassUnderTest>Test.java` and place it in the corresponding test package.
 - Use JUnit 5 (`org.junit.jupiter`), not JUnit 4.
+- Don't use fully qualified names in code; use imports instead.
 
 ## 2. Annotations and Setup
 

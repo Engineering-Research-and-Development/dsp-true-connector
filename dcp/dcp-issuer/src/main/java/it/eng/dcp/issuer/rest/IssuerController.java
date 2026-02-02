@@ -17,6 +17,7 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * REST controller for issuer-side credential operations.
@@ -35,24 +36,15 @@ public class IssuerController {
 
     /**
      * Get Issuer Metadata endpoint.
+     * This is a public discovery endpoint per DCP spec 6.7 - no authentication required.
      *
-     * @param authorization HTTP Authorization header with Bearer token
      * @return ResponseEntity with issuer metadata or error
      */
     @GetMapping(path = "/metadata")
-    public ResponseEntity<?> getMetadata(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
-        if (authorization == null || !authorization.startsWith("Bearer ")) {
-            return ResponseEntity.status(401).body("Missing or invalid Authorization header");
-        }
-        String token = authorization.substring("Bearer ".length());
-
+    public ResponseEntity<?> getMetadata() {
         try {
-            issuerService.authorizeRequest(token, null);
             IssuerMetadata metadata = issuerService.getMetadata();
             return ResponseEntity.ok(metadata);
-        } catch (SecurityException e) {
-            log.warn("Authorization failed for metadata request: {}", e.getMessage());
-            return ResponseEntity.status(401).body("Unauthorized: " + e.getMessage());
         } catch (Exception e) {
             log.error("Error retrieving metadata: {}", e.getMessage(), e);
             return ResponseEntity.status(500).body("Internal error: " + e.getMessage());
@@ -101,26 +93,45 @@ public class IssuerController {
 
     /**
      * Get credential request by ID endpoint.
+     * Requires authentication per DCP spec 6.8 - only the client that made the request may access.
      *
+     * @param authorization HTTP Authorization header with Bearer token
      * @param requestId The credential request ID
      * @return ResponseEntity with the request or error
      */
     @GetMapping(path = "/requests/{requestId}")
-    public ResponseEntity<?> getRequest(@PathVariable String requestId) {
+    public ResponseEntity<?> getRequest(
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
+            @PathVariable String requestId) {
+
+        // Validate authorization header
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body("Missing or invalid Authorization header");
+        }
+        String token = authorization.substring("Bearer ".length());
+
         try {
-            return issuerService.getRequestByIssuerPid(requestId)
-                    .map(r -> {
-                        Map<String, Object> body = new HashMap<>();
-                        body.put("type", "CredentialStatus");
-                        body.put("@context", List.of(DCPConstants.DCP_CONTEXT));
-                        body.put("issuerPid", r.getIssuerPid());
-                        body.put("holderPid", r.getHolderPid());
-                        body.put("status", r.getStatus() != null ? r.getStatus().toString() : null);
-                        body.put("rejectionReason", r.getRejectionReason());
-//                        body.put("createdAt", r.getCreatedAt() != null ? r.getCreatedAt().toString() : null);
-                        return ResponseEntity.ok(body);
-                    })
-                    .orElseGet(() -> ResponseEntity.notFound().build());
+            // Validate the token
+            issuerService.authorizeRequest(token, null);
+
+            Optional<CredentialRequest> requestOpt = issuerService.getRequestByIssuerPid(requestId);
+            if (requestOpt.isEmpty()) {
+                return ResponseEntity.status(404).body("Request not found");
+            }
+
+            CredentialRequest r = requestOpt.get();
+            Map<String, Object> body = new HashMap<>();
+            body.put("type", "CredentialStatus");
+            body.put("@context", List.of(DCPConstants.DCP_CONTEXT));
+            body.put("issuerPid", r.getIssuerPid());
+            body.put("holderPid", r.getHolderPid());
+            body.put("status", r.getStatus() != null ? r.getStatus().toString() : null);
+            body.put("rejectionReason", r.getRejectionReason());
+//          body.put("createdAt", r.getCreatedAt() != null ? r.getCreatedAt().toString() : null);
+            return ResponseEntity.ok(body);
+        } catch (SecurityException e) {
+            log.warn("Authorization failed for status request: {}", e.getMessage());
+            return ResponseEntity.status(401).body("Unauthorized: " + e.getMessage());
         } catch (Exception e) {
             log.error("Error retrieving request: {}", e.getMessage(), e);
             return ResponseEntity.status(500).body("Internal error: " + e.getMessage());
