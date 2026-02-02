@@ -35,6 +35,7 @@ applyTo: '**/*.java'
     - `lowercase` for package names.
 - Use nouns for classes (`UserService`) and verbs for methods (`getUserById`).
 - Avoid abbreviations and Hungarian notation.
+- Don't use fully qualified names in code; use imports instead.
 
 ### Common Bug Patterns
 
