@@ -8,15 +8,16 @@ import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.CredentialStatus;
 import it.eng.dcp.common.model.DidDocument;
+import it.eng.dcp.common.repository.CredentialRequestRepository;
 import it.eng.dcp.common.service.did.DidResolverService;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
-import it.eng.dcp.issuer.repository.CredentialRequestRepository;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.MediaType;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -38,7 +39,7 @@ public class CredentialDeliveryService {
 
     @Autowired
     public CredentialDeliveryService(CredentialRequestRepository requestRepository,
-                                     SelfIssuedIdTokenService tokenService,
+                                     @Qualifier("selfIssuedIdTokenService") SelfIssuedIdTokenService tokenService,
                                      SimpleOkHttpRestClient httpClient, BaseDidDocumentConfiguration config,
                                      DidResolverService didResolverService) {
         this.requestRepository = requestRepository;

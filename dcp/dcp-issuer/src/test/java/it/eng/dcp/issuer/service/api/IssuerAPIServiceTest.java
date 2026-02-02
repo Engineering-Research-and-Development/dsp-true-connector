@@ -3,7 +3,7 @@ package it.eng.dcp.issuer.service.api;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.IssuerMetadata;
-import it.eng.dcp.issuer.repository.CredentialRequestRepository;
+import it.eng.dcp.common.repository.CredentialRequestRepository;
 import it.eng.dcp.issuer.service.CredentialDeliveryService;
 import it.eng.dcp.issuer.service.CredentialIssuanceService;
 import it.eng.dcp.issuer.service.CredentialMetadataService;

@@ -116,32 +116,18 @@
                 <configuration>
                     <mainClass>it.eng.dcp.issuer.IssuerApplication</mainClass>
                     <layout>JAR</layout>
-                    <!-- Add classifier to distinguish executable JAR from original -->
+                    <!-- Use classifier to keep both original JAR (for dependencies) and executable JAR -->
                     <classifier>exec</classifier>
+                    <!-- Enable layered JARs for better Docker caching -->
+                    <layers>
+                        <enabled>true</enabled>
+                    </layers>
                 </configuration>
                 <executions>
                     <execution>
                         <goals>
                             <goal>repackage</goal>
                         </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <!-- Maven Dependency Plugin to copy dependencies -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>copy-dependencies</id>
-                        <phase>prepare-package</phase>
-                        <goals>
-                            <goal>copy-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/dependency-jars</outputDirectory>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>

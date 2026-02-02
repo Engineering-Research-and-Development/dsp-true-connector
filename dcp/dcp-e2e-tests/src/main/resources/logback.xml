@@ -9,13 +9,13 @@
   <!-- File appender - logs to file in JSON format (LogstashEncoder) -->
   <!-- Uncomment the appender-ref lines below to enable file logging -->
   <appender name="FILE" class="ch.qos.logback.core.FileAppender">
-    <file>true_connector_issuer.log</file>
+    <file>true_connector_e2e_tests.log</file>
     <append>true</append>
     <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
   </appender>
 
   <!-- Application logger - logs all it.eng.* packages -->
-  <logger name="it.eng.dcp" level="INFO" additivity="false">
+  <logger name="it.eng" level="INFO" additivity="false">
     <appender-ref ref="STDOUT"/>
     <!-- Uncomment the line below to enable file logging for application logs -->
     <!-- <appender-ref ref="FILE"/> -->
