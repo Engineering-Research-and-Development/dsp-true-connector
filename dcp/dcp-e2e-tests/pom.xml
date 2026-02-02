@@ -191,7 +191,7 @@
                 <configuration>
                     <!-- By default, exclude all integration tests; use profiles to include specific groups -->
                     <excludes>
-                        <exclude>**/*IT.java</exclude>
+                        <exclude>**/*TestE2E.java</exclude>
                     </excludes>
                 </configuration>
             </plugin>
@@ -217,7 +217,7 @@
                         <configuration>
                             <includes>
                                 <!-- Include tests from spring package -->
-                                <include>**/spring/**/*IT.java</include>
+                                <include>**/spring/**/*TestE2E.java</include>
                             </includes>
                         </configuration>
                     </plugin>
@@ -242,7 +242,7 @@
                         <configuration>
                             <includes>
                                 <!-- Include tests from docker package -->
-                                <include>**/docker/**/*IT.java</include>
+                                <include>**/docker/**/*TestE2E.java</include>
                             </includes>
                         </configuration>
                     </plugin>
