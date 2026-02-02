@@ -367,11 +367,13 @@ public abstract class BaseDcpE2ETest {
                 .from("eclipse-temurin:17-jre-alpine")
                 .workDir("/app")
                 .copy(jarRelativePath, "/app/app.jar")
+                .copy("src/main/resources/eckey.p12", "/app/eckey.p12")
                 .expose(8087)
                 .env("JAVA_OPTS", "-Xmx512m -Xms256m")
                 .entryPoint("sh", "-c", "java $JAVA_OPTS -jar /app/app.jar")
                 .build())
-            .withFileFromPath(jarRelativePath, holderVerifierJar);
+            .withFileFromPath(jarRelativePath, holderVerifierJar)
+            .withFileFromPath("src/main/resources/eckey.p12", holderVerifierPath.resolve("src/main/resources/eckey.p12"));
         imagesToCleanup.add("dcp-holder-verifier-test-e2e");
 
         holderVerifierContainer = new GenericContainer<>(holderVerifierImage)
@@ -383,6 +385,8 @@ public abstract class BaseDcpE2ETest {
             .withEnv("SPRING_DATA_MONGODB_PORT", "27017")
             .withEnv("SPRING_DATA_MONGODB_DATABASE", "holder-verifier-e2e-test")
             .withEnv("SERVER_PORT", "8087")
+            // Override keystore path to use filesystem location instead of classpath
+            .withEnv("DCP_KEYSTORE_PATH", "/app/eckey.p12")
             .waitingFor(Wait.forLogMessage(".*Started.*Application.*", 1)
                 .withStartupTimeout(Duration.ofMinutes(3)))
             .withReuse(false);
@@ -422,6 +426,8 @@ public abstract class BaseDcpE2ETest {
             .withEnv("SPRING_DATA_MONGODB_PORT", "27017")
             .withEnv("SPRING_DATA_MONGODB_DATABASE", "issuer-e2e-test")
             .withEnv("SERVER_PORT", "8084")
+            // Override keystore path to use filesystem location instead of classpath
+            .withEnv("DCP_KEYSTORE_PATH", "/app/eckey-issuer.p12")
             .waitingFor(Wait.forLogMessage(".*Started IssuerApplication.*", 1)
                 .withStartupTimeout(Duration.ofMinutes(3)))
             .withReuse(false);
