@@ -61,6 +61,16 @@
                 <artifactId>dcp</artifactId>
                 <version>${revision}</version>
             </dependency>
+            <dependency>
+                <groupId>com.auth0</groupId>
+                <artifactId>java-jwt</artifactId>
+                <version>4.4.0</version>
+            </dependency>
+            <dependency>
+                <groupId>com.auth0</groupId>
+                <artifactId>jwks-rsa</artifactId>
+                <version>0.22.1</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
