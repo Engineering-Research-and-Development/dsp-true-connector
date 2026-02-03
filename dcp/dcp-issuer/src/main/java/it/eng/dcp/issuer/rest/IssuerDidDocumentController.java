@@ -12,8 +12,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for serving the issuer DID document.
- * This exposes the issuer's DID document at /.well-known/did.json
+ * REST controller for serving the issuer DID document at role-specific location.
+ *
+ * <p>The well-known endpoint (/.well-known/did.json) is handled by
+ * GenericDidDocumentController in dcp-common to avoid conflicts in multi-module scenarios.
  */
 @RestController
 @RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE)
@@ -37,12 +39,12 @@ public class IssuerDidDocumentController {
     }
 
     /**
-     * Expose the issuer DID document at /.well-known/did.json.
+     * Get the issuer DID document at role-specific endpoint.
      *
      * @return The DID document as JSON
      */
-    @GetMapping(path = "/.well-known/did.json")
-    public ResponseEntity<String> getDidDocument() {
+    @GetMapping(path = "/issuer/did.json")
+    public ResponseEntity<String> getIssuerDidDocument() {
         try {
             String didDocument = didDocumentService.getDidDocument(issuerDidDocumentConfig);
             log.debug("Serving issuer DID document");
@@ -53,15 +55,5 @@ public class IssuerDidDocumentController {
             log.error("Failed to retrieve issuer DID document: {}", e.getMessage(), e);
             return ResponseEntity.status(500).body("{\"error\": \"Failed to retrieve DID document\"}");
         }
-    }
-
-    /**
-     * Alternative endpoint for issuer DID document.
-     *
-     * @return The DID document as JSON
-     */
-    @GetMapping(path = "/issuer/did.json")
-    public ResponseEntity<String> getIssuerDidDocument() {
-        return getDidDocument();
     }
 }

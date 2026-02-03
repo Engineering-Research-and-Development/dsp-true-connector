@@ -1,30 +1,30 @@
 <configuration>
-  <appender name="jsonConsoleAppender" class="ch.qos.logback.core.ConsoleAppender">
-    <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
-  </appender>
-  
+  <!-- Console appender - logs to console (default behavior) -->
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>
       <pattern>%d{dd-MM-yyyy HH:mm:ss.SSS} [%thread] [%X{correlationId:-}] %-5level %logger{35} - %msg %n</pattern>
     </encoder>
   </appender>
 
-	<appender name="FILE" class="ch.qos.logback.core.FileAppender">
-		<file>true_connector_audit.log</file>
-		<append>true</append>
-		<encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
-	</appender>
-  
-  <logger name="JSON" level="INFO">
-<!--     <appender-ref ref="jsonConsoleAppender"/> -->
-<!--     <appender-ref ref="FILE"/> -->
+  <!-- File appender - logs to file in JSON format (LogstashEncoder) -->
+  <!-- Uncomment the appender-ref lines below to enable file logging -->
+  <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+    <file>true_connector_issuer.log</file>
+    <append>true</append>
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
+  </appender>
+
+  <!-- Application logger - logs all it.eng.* packages -->
+  <logger name="it.eng.dcp" level="INFO" additivity="false">
+    <appender-ref ref="STDOUT"/>
+    <!-- Uncomment the line below to enable file logging for application logs -->
+    <!-- <appender-ref ref="FILE"/> -->
   </logger>
-  
-   <logger name="it.eng" level="DEBUG" additivity="false">
-        <appender-ref ref="STDOUT"/>
-    </logger>
-  
+
+  <!-- Root logger - catches all other logs -->
   <root level="INFO">
-  	<appender-ref ref="STDOUT"/>
+    <appender-ref ref="STDOUT"/>
+    <!-- Uncomment the line below to enable file logging for all logs -->
+    <!-- <appender-ref ref="FILE"/> -->
   </root>
 </configuration>

@@ -6,25 +6,16 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 /**
  * Test application configuration for Holder+Verifier E2E tests.
  *
- * <p>This Spring Boot application relies on auto-configuration to load DCP Holder
- * and Verifier beans from their respective auto-configurable JARs. The auto-configuration
- * classes ({@code DcpHolderAutoConfiguration} and {@code DcpVerifierAutoConfiguration})
- * are automatically discovered via Spring Boot's auto-configuration mechanism.
+ * <p>This is a minimal Spring Boot application used for testing purposes.
+ * It scans only holder and verifier packages to avoid bean conflicts with issuer.
  *
- * <p>The issuer module is explicitly excluded to prevent bean conflicts, and
- * DataSourceAutoConfiguration is excluded as this test application does not require a database.
- *
- * <p>Note: Do not use {@code scanBasePackages} here, as it disables Spring Boot's
- * auto-configuration discovery mechanism.
+ * <p>Note: dcp-common beans are automatically included through holder and verifier
+ * auto-configuration dependencies.
  */
+
 @SpringBootApplication
 public class HolderVerifierTestApplication {
 
-    /**
-     * Main entry point for the Holder+Verifier test application.
-     *
-     * @param args command line arguments
-     */
     public static void main(String[] args) {
         SpringApplication.run(HolderVerifierTestApplication.class, args);
     }

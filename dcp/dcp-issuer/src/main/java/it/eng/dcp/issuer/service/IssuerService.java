@@ -9,6 +9,7 @@ import it.eng.dcp.common.repository.CredentialRequestRepository;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -29,7 +30,7 @@ public class IssuerService {
     private final CredentialMetadataService credentialMetadataService;
 
     @Autowired
-    public IssuerService(SelfIssuedIdTokenService tokenService,
+    public IssuerService(@Qualifier("selfIssuedIdTokenService") SelfIssuedIdTokenService tokenService,
                         CredentialRequestRepository requestRepository,
                         CredentialMetadataService credentialMetadataService) {
         this.tokenService = tokenService;

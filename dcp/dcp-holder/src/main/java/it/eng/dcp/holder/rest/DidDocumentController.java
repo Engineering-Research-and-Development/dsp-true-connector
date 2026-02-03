@@ -13,7 +13,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for holder DID document at well-known location.
+ * REST controller for holder DID document at role-specific location.
+ *
+ * <p>The well-known endpoint (/.well-known/did.json) is handled by
+ * GenericDidDocumentController in dcp-common to avoid conflicts in multi-module scenarios.
  */
 @RestController
 @RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE)
@@ -37,15 +40,10 @@ public class DidDocumentController {
     }
 
     /**
-     * Get the holder DID document at well-known location.
+     * Get the holder DID document at role-specific endpoint.
      *
      * @return DID document for the holder
      */
-    @GetMapping(value = "/.well-known/did.json")
-    public ResponseEntity<DidDocument> getDidDocument() {
-        DidDocument didDocument = didDocumentService.provideDidDocument(holderDidDocumentConfig);
-        return ResponseEntity.ok(didDocument);
-    }
 
     @GetMapping(value = "/holder/did.json")
     public ResponseEntity<DidDocument> getHolderDidDocument() {

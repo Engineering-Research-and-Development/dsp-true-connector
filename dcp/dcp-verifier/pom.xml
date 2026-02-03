@@ -21,4 +21,16 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
     </dependencies>
+
+    <build>
+        <resources>
+            <!-- Exclude all resources except META-INF (needed for Spring Boot auto-configuration) -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <includes>
+                    <include>META-INF/**</include>
+                </includes>
+            </resource>
+        </resources>
+    </build>
 </project>

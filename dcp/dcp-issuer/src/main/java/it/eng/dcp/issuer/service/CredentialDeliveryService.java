@@ -17,6 +17,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -38,7 +39,7 @@ public class CredentialDeliveryService {
 
     @Autowired
     public CredentialDeliveryService(CredentialRequestRepository requestRepository,
-                                     SelfIssuedIdTokenService tokenService,
+                                     @Qualifier("selfIssuedIdTokenService") SelfIssuedIdTokenService tokenService,
                                      SimpleOkHttpRestClient httpClient, BaseDidDocumentConfiguration config,
                                      DidResolverService didResolverService) {
         this.requestRepository = requestRepository;

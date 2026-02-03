@@ -116,6 +116,8 @@
                 <configuration>
                     <mainClass>it.eng.dcp.issuer.IssuerApplication</mainClass>
                     <layout>JAR</layout>
+                    <!-- Use classifier to keep both original JAR (for dependencies) and executable JAR -->
+                    <classifier>exec</classifier>
                     <!-- Enable layered JARs for better Docker caching -->
                     <layers>
                         <enabled>true</enabled>

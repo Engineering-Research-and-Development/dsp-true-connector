@@ -15,8 +15,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @ComponentScan(
     basePackages = {"it.eng.dcp.issuer", "it.eng.dcp.common"}
-        //for now must exclude okHttpClient based HttpDidResolverService from common module
-//    excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, value = it.eng.dcp.common.service.did.HttpDidResolverService.class)
 )
 @EnableMongoRepositories(basePackages = {
     "it.eng.dcp.issuer.repository",
