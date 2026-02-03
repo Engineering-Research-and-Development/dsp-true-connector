@@ -107,7 +107,32 @@
 
     <build>
         <finalName>dcp-issuer</finalName>
+        <resources>
+            <!-- Include all resources by default for development -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+            </resource>
+        </resources>
         <plugins>
+            <!-- Maven JAR Plugin - exclude sensitive files from the base JAR -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.3.0</version>
+                <configuration>
+                    <excludes>
+                        <exclude>**/*.p12</exclude>
+                        <exclude>**/*.properties</exclude>
+                    </excludes>
+                    <archive>
+                        <manifestEntries>
+                            <!-- Add external directories to classpath for runtime configuration -->
+                            <Class-Path>. /config/ /cert/</Class-Path>
+                        </manifestEntries>
+                    </archive>
+                </configuration>
+            </plugin>
             <!-- Spring Boot Maven Plugin for executable JAR -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
@@ -122,12 +147,22 @@
                     <layers>
                         <enabled>true</enabled>
                     </layers>
+                    <!-- Exclude dependencies - keep only application code -->
+                    <excludes>
+                        <exclude>
+                            <groupId>*</groupId>
+                            <artifactId>*</artifactId>
+                        </exclude>
+                    </excludes>
                 </configuration>
                 <executions>
                     <execution>
                         <goals>
                             <goal>repackage</goal>
                         </goals>
+                        <configuration>
+                            <excludeGroupIds>org.projectlombok</excludeGroupIds>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

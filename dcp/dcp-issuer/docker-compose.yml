@@ -5,41 +5,69 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: dcp-issuer:latest
     container_name: dcp-issuer
     ports:
       - "8084:8084"
     environment:
+      - JAVA_OPTS=-Xmx512m -Xms256m
       - SPRING_APPLICATION_NAME=dcp-issuer
       - SERVER_PORT=8084
       - ISSUER_DID=did:web:localhost%3A8084:issuer
       - ISSUER_BASE_URL=http://localhost:8084
-      - SPRING_DATA_MONGODB_HOST=issuer-mongodb
+      - SPRING_DATA_MONGODB_HOST=mongodb
       - SPRING_DATA_MONGODB_PORT=27017
       - SPRING_DATA_MONGODB_DATABASE=issuer_db
-      - ISSUER_KEYSTORE_PATH=/app/eckey-issuer.p12
+      - ISSUER_KEYSTORE_PATH=/cert/eckey-issuer.p12
       - ISSUER_KEYSTORE_PASSWORD=password
       - ISSUER_KEYSTORE_ALIAS=issuer
+      # Spring Boot will automatically look for application.properties in /config/ due to classpath
+      - SPRING_CONFIG_LOCATION=optional:classpath:/,optional:file:/config/
+    volumes:
+      # Mount external config directory for application.properties and other config files
+      - ./config:/config
+      # Mount external cert directory for .p12 keystores and certificates
+      - ./cert:/cert
     depends_on:
-      - issuer-mongodb
+      mongodb:
+        condition: service_healthy
     networks:
-      - issuer-network
+      - dcp-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8084/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
-  issuer-mongodb:
-    image: mongo:7.0
-    container_name: issuer-mongodb
+  mongodb:
+    image: mongo:7.0.12
+    container_name: dcp-issuer-mongodb
     ports:
-      - "27018:27017"
+      - "27017:27017"
     environment:
       - MONGO_INITDB_DATABASE=issuer_db
     volumes:
-      - issuer-mongodb-data:/data/db
+      - mongodb-data:/data/db
+      - mongodb-config:/data/configdb
     networks:
-      - issuer-network
+      - dcp-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
 networks:
-  issuer-network:
+  dcp-network:
     driver: bridge
+    name: dcp-network
 
 volumes:
-  issuer-mongodb-data:
-
+  mongodb-data:
+    driver: local
+  mongodb-config:
+    driver: local

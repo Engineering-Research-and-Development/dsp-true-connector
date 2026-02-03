@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * End-to-end test for complete DCP flow - verifies application containers start successfully.
  */
-class DcpCompleteFlowE2EIT extends BaseDcpE2ETest {
+class DcpCompleteFlowTestE2E extends BaseDcpE2ETest {
 
     /**
      * Test that verifies all Docker containers start successfully and can serve DID documents.

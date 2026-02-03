@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li>Verifier requests and validates presentations from Holder (Section 5.4)</li>
  * </ol>
  */
-class DcpCredentialFlowE2EIT extends BaseDcpE2ETest {
+class DcpCredentialFlowTestE2E extends BaseDcpE2ETest {
 
     /**
      * Test the complete DID discovery flow.

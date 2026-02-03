@@ -12,7 +12,7 @@
 
     <artifactId>dcp-e2e-tests</artifactId>
     <packaging>jar</packaging>
-    <name>DCP End-to-End Tests</name>
+    <name>Decentralized claims protocol - End-to-End Tests</name>
     <description>End-to-end integration tests for DCP protocol with multiple applications</description>
 
     <properties>
@@ -189,10 +189,8 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <!-- By default, exclude all integration tests; use profiles to include specific groups -->
-                    <excludes>
-                        <exclude>**/*TestE2E.java</exclude>
-                    </excludes>
+                    <!-- By default, skip all tests unless a profile is activated -->
+                    <skipITs>true</skipITs>
                 </configuration>
             </plugin>
         </plugins>
@@ -215,6 +213,7 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
                         <configuration>
+                            <skipITs>false</skipITs>
                             <includes>
                                 <!-- Include tests from spring package -->
                                 <include>**/spring/**/*TestE2E.java</include>
@@ -240,6 +239,7 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
                         <configuration>
+                            <skipITs>false</skipITs>
                             <includes>
                                 <!-- Include tests from docker package -->
                                 <include>**/docker/**/*TestE2E.java</include>
@@ -265,8 +265,9 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
                         <configuration>
+                            <skipITs>false</skipITs>
                             <includes>
-                                <include>**/*JavaInTst.java</include>
+                                <include>**/*TestE2E.java</include>
                             </includes>
                         </configuration>
                     </plugin>
