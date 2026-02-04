@@ -38,13 +38,23 @@ public class IssuerController {
      * Get Issuer Metadata endpoint.
      * This is a public discovery endpoint per DCP spec 6.7 - no authentication required.
      *
+     * @param authorization HTTP Authorization header with Bearer token
      * @return ResponseEntity with issuer metadata or error
      */
     @GetMapping(path = "/metadata")
-    public ResponseEntity<?> getMetadata() {
+    public ResponseEntity<?> getMetadata(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body("Missing or invalid Authorization header");
+        }
+        String token = authorization.substring("Bearer ".length());
+
         try {
+            issuerService.authorizeRequest(token, null);
             IssuerMetadata metadata = issuerService.getMetadata();
             return ResponseEntity.ok(metadata);
+        } catch (SecurityException e) {
+            log.warn("Authorization failed for metadata request: {}", e.getMessage());
+            return ResponseEntity.status(401).body("Unauthorized: " + e.getMessage());
         } catch (Exception e) {
             log.error("Error retrieving metadata: {}", e.getMessage(), e);
             return ResponseEntity.status(500).body("Internal error: " + e.getMessage());

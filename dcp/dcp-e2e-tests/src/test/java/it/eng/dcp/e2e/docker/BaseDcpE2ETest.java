@@ -1,6 +1,7 @@
 package it.eng.dcp.e2e.docker;
 
 import com.github.dockerjava.api.command.RemoveImageCmd;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,6 +63,7 @@ import java.util.concurrent.TimeUnit;
  *
  * @see <a href="../../../../../doc/E2E_TESTING_QUICKSTART.md">E2E Testing Quick Start Guide</a>
  */
+@Slf4j
 @Testcontainers
 public abstract class BaseDcpE2ETest {
 
@@ -74,14 +76,14 @@ public abstract class BaseDcpE2ETest {
         // This helps Testcontainers find Docker Desktop on Windows systems
         String os = System.getProperty("os.name").toLowerCase();
         if (os.contains("win")) {
-            System.out.println("Detected Windows OS - configuring Docker environment...");
+            log.info("Detected Windows OS - configuring Docker environment...");
 
             // Try to use TCP if DOCKER_HOST is not set and npipe fails
             // This can help in some Docker Desktop configurations
             if (System.getenv("DOCKER_HOST") == null) {
-                System.out.println("DOCKER_HOST not set - Testcontainers will auto-detect");
+                log.info("DOCKER_HOST not set - Testcontainers will auto-detect");
             } else {
-                System.out.println("DOCKER_HOST is set to: " + System.getenv("DOCKER_HOST"));
+                log.info("DOCKER_HOST is set to: {}", System.getenv("DOCKER_HOST"));
             }
         }
     }
@@ -169,7 +171,7 @@ public abstract class BaseDcpE2ETest {
             }
 
             Path jarFile = matchingJars.get(0);
-            System.out.println("  Found JAR: " + jarFile.getFileName());
+            log.info("  Found JAR: {}", jarFile.getFileName());
             return jarFile;
         } catch (Exception e) {
             throw new RuntimeException("Failed to find JAR file with pattern: " + jarPattern + " in " + targetPath, e);
@@ -187,9 +189,9 @@ public abstract class BaseDcpE2ETest {
         Path jarPath = targetPath.resolve(jarFileName);
         boolean exists = java.nio.file.Files.exists(jarPath);
         if (exists) {
-            System.out.println("  ✓ Found existing JAR: " + jarFileName);
+            log.info("  ✓ Found existing JAR: {}", jarFileName);
         } else {
-            System.out.println("  ✗ JAR not found: " + jarFileName);
+            log.info("  ✗ JAR not found: {}", jarFileName);
         }
         return exists;
     }
@@ -202,15 +204,14 @@ public abstract class BaseDcpE2ETest {
      * @throws RuntimeException if the Maven build fails
      */
     private static void buildModule(Path modulePath, String moduleName) {
-        System.out.println("Building " + moduleName + " module...");
-        System.out.println("  Module path: " + modulePath.toAbsolutePath());
+        log.info("Building {} module...", moduleName);
+        log.info("  Module path: {}", modulePath.toAbsolutePath());
         try {
-            // Determine the Maven command based on OS
-            String os = System.getProperty("os.name").toLowerCase();
-            String mavenCmd = os.contains("win") ? "mvn.cmd" : "mvn";
+            // Determine the correct Maven command for the OS
+            String mvnCommand = getMavenCommand();
 
             ProcessBuilder processBuilder = new ProcessBuilder(
-                mavenCmd, "clean", "package", "-DskipTests"
+                mvnCommand, "clean", "package", "-DskipTests"
             );
             processBuilder.directory(modulePath.toFile());
             processBuilder.redirectErrorStream(true);
@@ -222,7 +223,7 @@ public abstract class BaseDcpE2ETest {
                 new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    System.out.println("  [" + moduleName + "] " + line);
+                    log.info("  [{}] {}", moduleName, line);
                 }
             }
 
@@ -238,10 +239,45 @@ public abstract class BaseDcpE2ETest {
                 throw new RuntimeException("Maven build failed for " + moduleName + " with exit code: " + exitCode);
             }
 
-            System.out.println("✓ " + moduleName + " built successfully");
+            log.info("✓ {} built successfully", moduleName);
         } catch (Exception e) {
             throw new RuntimeException("Failed to build " + moduleName + ": " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Gets the appropriate Maven command for the current operating system.
+     * On Windows, tries mvn.cmd first, then falls back to mvn.
+     * On Unix-like systems, uses mvn.
+     *
+     * @return the Maven command to use
+     */
+    private static String getMavenCommand() {
+        String os = System.getProperty("os.name").toLowerCase();
+        if (os.contains("win")) {
+            // On Windows, try to find mvn.cmd or mvn.bat
+            // First check if M2_HOME is set
+            String m2Home = System.getenv("M2_HOME");
+            if (m2Home != null) {
+                Path mvnCmd = Paths.get(m2Home, "bin", "mvn.cmd");
+                if (java.nio.file.Files.exists(mvnCmd)) {
+                    return mvnCmd.toString();
+                }
+            }
+
+            // Try MAVEN_HOME
+            String mavenHome = System.getenv("MAVEN_HOME");
+            if (mavenHome != null) {
+                Path mvnCmd = Paths.get(mavenHome, "bin", "mvn.cmd");
+                if (java.nio.file.Files.exists(mvnCmd)) {
+                    return mvnCmd.toString();
+                }
+            }
+
+            // Fall back to mvn.cmd in PATH
+            return "mvn.cmd";
+        }
+        return "mvn";
     }
 
     /**
@@ -256,12 +292,9 @@ public abstract class BaseDcpE2ETest {
      * @param imageName the Docker image name to pull (e.g., "eclipse-temurin:17-jre-alpine")
      */
     private static void ensureBaseImageAvailable(String imageName) {
-        System.out.println("Ensuring base image is available: " + imageName);
+        log.info("Ensuring base image is available: {}", imageName);
         try {
-            String os = System.getProperty("os.name").toLowerCase();
-            String dockerCmd = os.contains("win") ? "docker" : "docker";
-
-            ProcessBuilder processBuilder = new ProcessBuilder(dockerCmd, "pull", imageName);
+            ProcessBuilder processBuilder = new ProcessBuilder("docker", "pull", imageName);
             processBuilder.redirectErrorStream(true);
 
             Process process = processBuilder.start();
@@ -271,25 +304,25 @@ public abstract class BaseDcpE2ETest {
                 new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    System.out.println("  [Docker] " + line);
+                    log.info("  [Docker] {}", line);
                 }
             }
 
             boolean finished = process.waitFor(5, TimeUnit.MINUTES);
             if (!finished) {
                 process.destroyForcibly();
-                System.out.println("⚠ Base image pull timeout - continuing anyway (may already be cached)");
+                log.info("⚠ Base image pull timeout - continuing anyway (may already be cached)");
                 return;
             }
 
             int exitCode = process.exitValue();
             if (exitCode == 0) {
-                System.out.println("✓ Base image is ready");
+                log.info("✓ Base image is ready");
             } else {
-                System.out.println("⚠ Base image pull returned exit code " + exitCode + " - continuing anyway");
+                log.info("⚠ Base image pull returned exit code {} - continuing anyway", exitCode);
             }
         } catch (Exception e) {
-            System.out.println("⚠ Base image pull failed: " + e.getMessage() + " - continuing anyway");
+            log.info("⚠ Base image pull failed: {} - continuing anyway", e.getMessage());
         }
     }
 
@@ -299,39 +332,47 @@ public abstract class BaseDcpE2ETest {
      */
     @BeforeAll
     static void startContainers() {
-        System.out.println("═══════════════════════════════════════════════");
-        System.out.println("Starting DCP E2E Test Environment...");
-        System.out.println("═══════════════════════════════════════════════");
+        log.info("═══════════════════════════════════════════════");
+        log.info("Starting DCP E2E Test Environment...");
+        log.info("═══════════════════════════════════════════════");
 
         // Determine base path for Maven builds and Dockerfiles
         // Current directory is dcp-e2e-tests, parent is dcp (the root folder for all DCP modules)
         Path dcpRoot = Paths.get(".").toAbsolutePath().normalize().getParent();
-        System.out.println("DCP Root Path: " + dcpRoot);
+        log.info("DCP Root Path: {}", dcpRoot);
 
         // Build modules with Maven only if JAR files don't exist (optimization for CI/CD)
-        System.out.println("\n--- Checking and Building Maven Modules ---");
+        log.info("\n--- Checking and Building Maven Modules ---");
 
         // Check if issuer JAR exists, build only if missing
         Path issuerPath = dcpRoot.resolve("dcp-issuer");
         Path issuerTargetPath = issuerPath.resolve("target");
         if (!jarExists(issuerTargetPath, "dcp-issuer-exec.jar")) {
-            System.out.println("Issuer JAR not found - building module...");
+            log.info("Issuer JAR not found - building module...");
             buildModule(issuerPath, "Issuer");
         } else {
-            System.out.println("✓ Issuer JAR already exists - skipping build");
+            log.info("✓ Issuer JAR already exists - skipping build");
         }
 
-        // Note: dcp-e2e-tests module is always built by Maven before running this test
-        // so we don't need to check/build it here
+        // Check if e2e-tests JAR exists, build only if missing
+        // This is needed when running tests from IDE without mvn package
+        Path e2eTestsPath = dcpRoot.resolve("dcp-e2e-tests");
+        Path e2eTestsTargetPath = e2eTestsPath.resolve("target");
+        if (!jarExists(e2eTestsTargetPath, "dcp-e2e-tests-exec.jar")) {
+            log.info("E2E Tests JAR not found - building module...");
+            buildModule(e2eTestsPath, "E2E Tests");
+        } else {
+            log.info("✓ E2E Tests JAR already exists - skipping build");
+        }
 
-        System.out.println("--- Maven Build Check Complete ---\n");
+        log.info("--- Maven Build Check Complete ---\n");
 
         // Ensure base Docker image is available before building custom images
         ensureBaseImageAvailable("eclipse-temurin:17-jre-alpine");
 
         // Create shared network
         network = Network.newNetwork();
-        System.out.println("✓ Created Docker network");
+        log.info("✓ Created Docker network");
 
         // Start MongoDB container
         mongoDBContainer = new MongoDBContainer(DockerImageName.parse("mongo:7.0.12"))
@@ -339,23 +380,22 @@ public abstract class BaseDcpE2ETest {
             .withNetworkAliases("mongodb")
             .withReuse(false);
         mongoDBContainer.start();
-        System.out.println("✓ MongoDB started on port: " + mongoDBContainer.getFirstMappedPort());
-        System.out.println("  - Container network alias: mongodb");
-        System.out.println("  - Internal port (for containers): 27017");
-        System.out.println("  - Host-mapped port (for tests): " + mongoDBContainer.getFirstMappedPort());
+        log.info("✓ MongoDB started on port: {}", mongoDBContainer.getFirstMappedPort());
+        log.info("  - Container network alias: mongodb");
+        log.info("  - Internal port (for containers): 27017");
+        log.info("  - Host-mapped port (for tests): {}", mongoDBContainer.getFirstMappedPort());
 
-        createAdnRunHolderVerifierDockerEnvironment(dcpRoot);
+        createAndRunHolderVerifierDockerEnvironment(dcpRoot);
 
         createAndRunIssuerDockerEnvironment(dcpRoot);
 
-        System.out.println("═══════════════════════════════════════════════");
-        System.out.println("✓ All containers started successfully");
-        System.out.println("═══════════════════════════════════════════════");
+        log.info("═══════════════════════════════════════════════");
+        log.info("✓ All containers started successfully");
+        log.info("═══════════════════════════════════════════════");
     }
 
-    private static void createAdnRunHolderVerifierDockerEnvironment(Path dcpRoot) {
-        // Build and start combined Holder+Verifier container
-        System.out.println("Building Holder+Verifier Docker image (using DSL)...");
+    private static void createAndRunHolderVerifierDockerEnvironment(Path dcpRoot) {
+        log.info("Building Holder+Verifier Docker image (using DSL)...");
         Path holderVerifierPath = dcpRoot.resolve("dcp-e2e-tests");
 
         // Use exact JAR name defined by <finalName> in pom.xml
@@ -385,18 +425,33 @@ public abstract class BaseDcpE2ETest {
             .withEnv("SPRING_DATA_MONGODB_PORT", "27017")
             .withEnv("SPRING_DATA_MONGODB_DATABASE", "holder-verifier-e2e-test")
             .withEnv("SERVER_PORT", "8087")
+            // DCP Configuration for Holder (Primary)
+            .withEnv("DCP_CONNECTOR_DID", "did:web:holder-verifier%3A8087:holder")
+            .withEnv("DCP_BASE_URL", "http://holder-verifier:8087")
+            .withEnv("DCP_HOST", "holder-verifier")
             // Override keystore path to use filesystem location instead of classpath
-            .withEnv("DCP_KEYSTORE_PATH", "/app/eckey.p12")
+            .withEnv("DCP_KEYSTORE_PATH", "file:/app/eckey.p12")
+            .withEnv("DCP_KEYSTORE_PASSWORD", "password")
+            .withEnv("DCP_KEYSTORE_ALIAS", "dsptrueconnector")
+            // Enable debug logging for DCP module
+            .withEnv("LOGGING_LEVEL_IT_ENG_DCP", "DEBUG")
+            .withLogConsumer(outputFrame -> log.debug("[Holder-Verifier] {}", outputFrame.getUtf8String().trim()))
             .waitingFor(Wait.forLogMessage(".*Started.*Application.*", 1)
                 .withStartupTimeout(Duration.ofMinutes(3)))
             .withReuse(false);
         holderVerifierContainer.start();
-        System.out.println("✓ Holder+Verifier started on port: " + holderVerifierContainer.getMappedPort(8087));
+        log.info("✓ Holder+Verifier started on port: {}", holderVerifierContainer.getMappedPort(8087));
+
+        // Give the container a moment to fully initialize
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private static void createAndRunIssuerDockerEnvironment(Path dcpRoot) {
-        // Build and start Issuer container
-        System.out.println("Building Issuer Docker image (using DSL)...");
+        log.info("Building Issuer Docker image (using DSL)...");
         Path issuerPath = dcpRoot.resolve("dcp-issuer");
 
         // Dynamically find the executable JAR (version-agnostic)
@@ -426,14 +481,31 @@ public abstract class BaseDcpE2ETest {
             .withEnv("SPRING_DATA_MONGODB_PORT", "27017")
             .withEnv("SPRING_DATA_MONGODB_DATABASE", "issuer-e2e-test")
             .withEnv("SERVER_PORT", "8084")
+            // DCP Configuration
+            .withEnv("DCP_CONNECTOR_DID", "did:web:issuer%3A8084")
+            .withEnv("DCP_BASE_URL", "http://issuer:8084")
+            .withEnv("DCP_HOST", "issuer")
             // Override keystore path to use filesystem location instead of classpath
-            .withEnv("DCP_KEYSTORE_PATH", "/app/eckey-issuer.p12")
+            .withEnv("DCP_KEYSTORE_PATH", "file:/app/eckey-issuer.p12")
+            .withEnv("DCP_KEYSTORE_PASSWORD", "password")
+            .withEnv("DCP_KEYSTORE_ALIAS", "dcp-issuer")
+            // Enable debug logging for DCP module
+            .withEnv("LOGGING_LEVEL_IT_ENG_DCP", "DEBUG")
+            .withEnv("LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB", "DEBUG")
+            .withLogConsumer(outputFrame -> log.debug("[Issuer] {}", outputFrame.getUtf8String().trim()))
             .waitingFor(Wait.forLogMessage(".*Started IssuerApplication.*", 1)
                 .withStartupTimeout(Duration.ofMinutes(3)))
             .withReuse(false);
 
         issuerContainer.start();
-        System.out.println("✓ Issuer started on port: " + issuerContainer.getMappedPort(8084));
+        log.info("✓ Issuer started on port: {}", issuerContainer.getMappedPort(8084));
+
+        // Give the container a moment to fully initialize
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     /**
@@ -441,25 +513,25 @@ public abstract class BaseDcpE2ETest {
      */
     @AfterAll
     static void stopContainersAndCleanup() {
-        System.out.println("═══════════════════════════════════════════════");
-        System.out.println("Stopping containers and cleaning up...");
+        log.info("═══════════════════════════════════════════════");
+        log.info("Stopping containers and cleaning up...");
 
         // Stop containers
         if (holderVerifierContainer != null) {
             holderVerifierContainer.stop();
-            System.out.println("✓ Holder+Verifier container stopped");
+            log.info("✓ Holder+Verifier container stopped");
         }
         if (issuerContainer != null) {
             issuerContainer.stop();
-            System.out.println("✓ Issuer container stopped");
+            log.info("✓ Issuer container stopped");
         }
         if (mongoDBContainer != null) {
             mongoDBContainer.stop();
-            System.out.println("✓ MongoDB container stopped");
+            log.info("✓ MongoDB container stopped");
         }
         if (network != null) {
             network.close();
-            System.out.println("✓ Network closed");
+            log.info("✓ Network closed");
         }
 
         // Clean up Docker images
@@ -470,18 +542,18 @@ public abstract class BaseDcpE2ETest {
                         .removeImageCmd(imageName)
                         .withForce(true);
                     removeImageCmd.exec();
-                    System.out.println("✓ Removed Docker image: " + imageName);
+                    log.info("✓ Removed Docker image: {}", imageName);
                 } catch (Exception e) {
-                    System.err.println("⚠ Failed to remove image " + imageName + ": " + e.getMessage());
+                    log.error("⚠ Failed to remove image {}: {}", imageName, e.getMessage());
                 }
             }
         } catch (Exception e) {
-            System.err.println("⚠ Error during image cleanup: " + e.getMessage());
+            log.error("⚠ Error during image cleanup: {}", e.getMessage());
         }
 
-        System.out.println("═══════════════════════════════════════════════");
-        System.out.println("✓ Cleanup complete");
-        System.out.println("═══════════════════════════════════════════════");
+        log.info("═══════════════════════════════════════════════");
+        log.info("✓ Cleanup complete");
+        log.info("═══════════════════════════════════════════════");
     }
 
     /**
@@ -493,11 +565,11 @@ public abstract class BaseDcpE2ETest {
         int issuerPort = issuerContainer.getMappedPort(8084);
         int holderVerifierPort = holderVerifierContainer.getMappedPort(8087);
 
-        System.out.println("───────────────────────────────────────────────");
-        System.out.println("Test URLs:");
-        System.out.println("  Issuer: http://localhost:" + issuerPort);
-        System.out.println("  Holder+Verifier: http://localhost:" + holderVerifierPort);
-        System.out.println("───────────────────────────────────────────────");
+        log.info("───────────────────────────────────────────────");
+        log.info("Test URLs:");
+        log.info("  Issuer: http://localhost:{}", issuerPort);
+        log.info("  Holder+Verifier: http://localhost:{}", holderVerifierPort);
+        log.info("───────────────────────────────────────────────");
 
         issuerClient = new RestTemplateBuilder()
             .rootUri("http://localhost:" + issuerPort)
@@ -562,5 +634,4 @@ public abstract class BaseDcpE2ETest {
     }
 
 }
-
 
