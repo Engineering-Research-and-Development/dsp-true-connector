@@ -147,13 +147,6 @@
                     <layers>
                         <enabled>true</enabled>
                     </layers>
-                    <!-- Exclude dependencies - keep only application code -->
-                    <excludes>
-                        <exclude>
-                            <groupId>*</groupId>
-                            <artifactId>*</artifactId>
-                        </exclude>
-                    </excludes>
                 </configuration>
                 <executions>
                     <execution>

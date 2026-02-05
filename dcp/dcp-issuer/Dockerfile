@@ -4,8 +4,8 @@ FROM eclipse-temurin:17-jre-alpine
 # Set working directory
 WORKDIR /app
 
-# Copy the executable JAR
-COPY target/dcp-issuer.jar /app/dcp-issuer.jar
+# Copy the executable JAR (note: Maven creates dcp-issuer-exec.jar due to classifier)
+COPY target/dcp-issuer-exec.jar /app/dcp-issuer.jar
 
 # Expose the application port
 EXPOSE 8084
