@@ -8,6 +8,7 @@ import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.model.CredentialRequestMessage;
 import it.eng.dcp.common.model.CredentialRequestMessage.CredentialReference;
@@ -55,6 +56,9 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
     @Autowired
     private CredentialMetadataConfig credentialMetadataConfig;
 
+    @Autowired
+    private BaseDidDocumentConfiguration config;
+
     @MockBean
     private DidResolverService didResolverService;
 
@@ -96,10 +100,11 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         Instant now = Instant.now();
         Instant exp = now.plusSeconds(300); // 5 minutes
 
+        String aud = config.getDidDocumentConfig().getDid();
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
                 .issuer(IssuerControllerIT.HOLDER_DID)
                 .subject(IssuerControllerIT.HOLDER_DID)
-                .audience(IssuerControllerIT.ISSUER_DID)
+                .audience(aud)
                 .issueTime(Date.from(now))
                 .expirationTime(Date.from(exp))
                 .notBeforeTime(Date.from(now))
@@ -798,7 +803,9 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         String requestId = location.substring(location.lastIndexOf('/') + 1);
 
         // Get the request status
-        mockMvc.perform(get("/issuer/requests/{requestId}", requestId))
+        token = createToken(holderKeyPair);
+        mockMvc.perform(get("/issuer/requests/{requestId}", requestId)
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.type").value("CredentialStatus"))
                 .andExpect(jsonPath("$.issuerPid").value(requestId))
@@ -811,7 +818,12 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
      */
     @Test
     void getRequest_notFound() throws Exception {
-        mockMvc.perform(get("/issuer/requests/{requestId}", "non-existent-id"))
+        when(didResolverService.resolvePublicKey(eq(HOLDER_DID), eq(HOLDER_KEY_ID), eq("capabilityInvocation")))
+                .thenReturn(holderKeyPair.toPublicJWK());
+
+        String token = createToken(holderKeyPair);
+        mockMvc.perform(get("/issuer/requests/{requestId}", "non-existent-id")
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound());
     }
 
