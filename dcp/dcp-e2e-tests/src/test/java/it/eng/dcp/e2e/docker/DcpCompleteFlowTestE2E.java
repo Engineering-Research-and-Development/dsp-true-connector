@@ -1,6 +1,7 @@
 package it.eng.dcp.docker;
 
 import it.eng.dcp.common.model.DidDocument;
+import it.eng.dcp.e2e.docker.BaseDcpE2ETest;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -12,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * End-to-end test for complete DCP flow - verifies application containers start successfully.
  */
 @Slf4j
-class DcpCompleteFlowE2ETest extends BaseDcpE2ETest {
+class DcpCompleteFlowTestE2E extends BaseDcpE2ETest {
 
     /**
      * Test that verifies all Docker containers start successfully and can serve DID documents.

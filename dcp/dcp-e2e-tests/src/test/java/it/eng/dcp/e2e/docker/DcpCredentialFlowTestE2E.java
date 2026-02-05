@@ -1,4 +1,4 @@
-package it.eng.dcp.docker;
+package it.eng.dcp.e2e.docker;
 
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.model.IssuerMetadata;
@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * </ol>
  */
 @Slf4j
-class DcpCredentialFlowE2ETest extends BaseDcpE2ETest {
+class DcpCredentialFlowTestE2E extends BaseDcpE2ETest {
 
     /**
      * Test the complete DID discovery flow.
