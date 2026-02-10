@@ -2,6 +2,8 @@ package it.eng.dcp.holder.rest;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialOfferMessage;
 import it.eng.dcp.common.model.PresentationQueryMessage;
@@ -59,7 +61,9 @@ public class DcpController {
 
         try {
             // Authorize request
-            var claims = holderService.authorizePresentationQuery(token);
+            SignedJWT jwt = SignedJWT.parse(token);
+            JWTClaimsSet claims = jwt.getJWTClaimsSet();
+//            var claims = holderService.authorizePresentationQuery(token);
             String holderDid = claims.getSubject();
             log.info("Presentation query from holder: {}", holderDid);
 
@@ -69,7 +73,7 @@ public class DcpController {
             }
 
             // Create presentation
-            PresentationResponseMessage resp = holderService.createPresentation(query, holderDid);
+            PresentationResponseMessage resp = holderService.createPresentation(query, holderDid, claims);
             return ResponseEntity.ok(resp);
         } catch (SecurityException se) {
             log.error("Security exception during presentation query - invalid token: {}", se.getMessage());
