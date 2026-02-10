@@ -141,15 +141,19 @@ class HolderServiceTest {
         String holderDid = "did:example:holder123";
         PresentationResponseMessage expectedResponse = mock(PresentationResponseMessage.class);
 
-        when(presentationService.createPresentation(query)).thenReturn(expectedResponse);
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .subject(holderDid)
+                .build();
+
+        when(presentationService.createPresentation(query, claims)).thenReturn(expectedResponse);
 
         // Act
-        PresentationResponseMessage result = holderService.createPresentation(query, holderDid);
+        PresentationResponseMessage result = holderService.createPresentation(query, holderDid, claims);
 
         // Assert
         assertNotNull(result);
         assertEquals(expectedResponse, result);
-        verify(presentationService).createPresentation(query);
+        verify(presentationService).createPresentation(query, claims);
     }
 
     @Test

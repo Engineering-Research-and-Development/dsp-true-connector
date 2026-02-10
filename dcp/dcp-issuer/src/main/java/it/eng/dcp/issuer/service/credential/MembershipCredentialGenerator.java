@@ -45,13 +45,13 @@ public class MembershipCredentialGenerator implements CredentialGenerator {
         String signedJwt;
         if (ProfileId.VC20_BSSL_JWT.equals(profile)) {
             signedJwt = jwtGeneratorFactory.createGenerator(profile)
-                .generateJwt(context.getRequest().getHolderPid(), getCredentialType(), claims, statusListId, statusListIndex);
+                .generateJwt(context.getRequest().getHolderDid(), getCredentialType(), claims, statusListId, statusListIndex);
         } else if (ProfileId.VC11_SL2021_JWT.equals(profile)) {
             signedJwt = jwtGeneratorFactory.createGenerator(profile)
-                .generateJwt(context.getRequest().getHolderPid(), getCredentialType(), claims, statusListId, statusListIndex);
+                .generateJwt(context.getRequest().getHolderDid(), getCredentialType(), claims, statusListId, statusListIndex);
         } else {
             signedJwt = jwtGeneratorFactory.createGenerator(profile)
-                .generateJwt(context.getRequest().getHolderPid(), getCredentialType(), claims);
+                .generateJwt(context.getRequest().getHolderDid(), getCredentialType(), claims);
         }
         return CredentialMessage.CredentialContainer.Builder.newInstance()
                 .credentialType(getCredentialType())

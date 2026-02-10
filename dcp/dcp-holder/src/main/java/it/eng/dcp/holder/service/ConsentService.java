@@ -1,5 +1,6 @@
 package it.eng.dcp.holder.service;
 
+import it.eng.dcp.common.util.DidUrlConverter;
 import it.eng.dcp.holder.model.ConsentRecord;
 import org.springframework.stereotype.Service;
 
@@ -18,7 +19,9 @@ public class ConsentService {
     private final Map<String, ConsentRecord> store = new HashMap<>();
 
     public Optional<ConsentRecord> findByHolderDid(String holderDid) {
-        return store.values().stream().filter(c -> c.getHolderDid().equals(holderDid)).findFirst();
+        return store.values().stream()
+                .filter(c -> DidUrlConverter.compareDids(c.getHolderDid(), holderDid))
+                .findFirst();
     }
 
     public void save(ConsentRecord rec) {

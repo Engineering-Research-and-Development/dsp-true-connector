@@ -9,4 +9,8 @@ public class DCPConstants {
     public static final String ID = "@id";
     public static final String TYPE = "type";
     public static final String CONTEXT = "@context";
+
+    // DCP Scope Aliases (per DCP spec Section 5.4.1.2)
+    public static final String SCOPE_ALIAS_VC_TYPE = "org.eclipse.dspace.dcp.vc.type";
+    public static final String SCOPE_ALIAS_VC_ID = "org.eclipse.dspace.dcp.vc.id";
 }

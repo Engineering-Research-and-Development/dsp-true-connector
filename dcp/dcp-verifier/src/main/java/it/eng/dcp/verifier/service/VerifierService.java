@@ -18,7 +18,6 @@ import it.eng.dcp.common.model.ServiceEntry;
 import it.eng.dcp.common.service.did.HttpDidResolverService;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.common.util.DidUrlConverter;
-import it.eng.dcp.common.util.DidUtils;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.MediaType;
@@ -288,8 +287,7 @@ public class VerifierService {
                 }
 
                 // Verify holder DID matches expected holder from access token
-                if (!DidUtils.compareIgnoringFragment(DidUrlConverter.normalizeDid(holderDid),
-                        DidUrlConverter.normalizeDid(expectedHolderDid))) {
+                if (!DidUrlConverter.compareDids(holderDid, expectedHolderDid)) {
                     throw new SecurityException(String.format(
                         "Presentation holder DID mismatch: expected=%s, actual=%s",
                         expectedHolderDid, holderDid));
@@ -403,9 +401,7 @@ public class VerifierService {
 
             // Verify subject matches holder DID
             String subject = credentialClaims.getSubject();
-            if (subject != null && !DidUtils.compareIgnoringFragment(
-                    DidUrlConverter.normalizeDid(subject),
-                    DidUrlConverter.normalizeDid(expectedHolderDid))) {
+            if (subject != null && !DidUrlConverter.compareDids(subject, expectedHolderDid)) {
                 // For VC 1.1, subject might be in nested vc.credentialSubject.id
                 // Check nested vc claim
                 Object vcClaimObj = credentialClaims.getClaim("vc");
@@ -417,9 +413,7 @@ public class VerifierService {
                         @SuppressWarnings("unchecked")
                         Map<String, Object> credSubject = (Map<String, Object>) credSubjectObj;
                         String nestedSubject = (String) credSubject.get("id");
-                        if (nestedSubject != null && !DidUtils.compareIgnoringFragment(
-                                DidUrlConverter.normalizeDid(nestedSubject),
-                                DidUrlConverter.normalizeDid(expectedHolderDid))) {
+                        if (nestedSubject != null && !DidUrlConverter.compareDids(nestedSubject, expectedHolderDid)) {
                             throw new SecurityException(String.format(
                                 "Credential subject mismatch: expected=%s, actual=%s",
                                 expectedHolderDid, nestedSubject));

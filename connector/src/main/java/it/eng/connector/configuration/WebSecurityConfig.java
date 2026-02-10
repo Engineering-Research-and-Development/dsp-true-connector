@@ -52,55 +52,69 @@ public class WebSecurityConfig {
 
     @Value("${application.cors.allowed.credentials:}")
     private String allowedCredentials;
-    
-    @Value("${dcp.vp.enabled:false}")
-    private boolean vcVpEnabled;
 
     @Autowired
     @Qualifier("delegatedAuthenticationEntryPoint")
     private AuthenticationEntryPoint authEntryPoint;
 
-    private final JwtAuthenticationProvider jwtAuthenticationProvider;
-    private final VcVpAuthenticationProvider vcVpAuthenticationProvider;
+    private final DcpVerifierAuthenticationProvider dcpVerifierAuthenticationProvider;
     private final UserRepository userRepository;
     private final ApplicationPropertiesService applicationPropertiesService;
 
-    public WebSecurityConfig(JwtAuthenticationProvider jwtAuthenticationProvider,
-                             VcVpAuthenticationProvider vcVpAuthenticationProvider,
+    public WebSecurityConfig(DcpVerifierAuthenticationProvider dcpVerifierAuthenticationProvider,
                              UserRepository userRepository,
     		ApplicationPropertiesService applicationPropertiesService) {
-        this.jwtAuthenticationProvider = jwtAuthenticationProvider;
-        this.vcVpAuthenticationProvider = vcVpAuthenticationProvider;
+        this.dcpVerifierAuthenticationProvider = dcpVerifierAuthenticationProvider;
         this.userRepository = userRepository;
         this.applicationPropertiesService = applicationPropertiesService;
     }
 
+    /**
+     * Bean for DCP Verifier authentication filter (Filter+Provider pattern).
+     * This filter extracts Bearer tokens and delegates validation to DcpVerifierAuthenticationProvider.
+     * Only applied to /catalog/**, /negotiation/**, and /transfers/** endpoints.
+     *
+     * @return The configured DcpVerifierAuthenticationFilterV2 instance
+     */
     @Bean
-    JwtAuthenticationFilter jwtAuthenticationFilter(HttpSecurity http) {
-        return new JwtAuthenticationFilter(authenticationManager());
+    DcpVerifierAuthenticationFilter dcpVerifierAuthenticationFilterV2() {
+        return new DcpVerifierAuthenticationFilter(authenticationManager());
     }
 
-    @Bean
-    VcVpAuthenticationFilter vcVpAuthenticationFilter(com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
-        return new VcVpAuthenticationFilter(authenticationManager(), objectMapper, vcVpEnabled);
-    }
-
+    /**
+     * Bean for Basic authentication filter using username and password.
+     *
+     * @return The configured BasicAuthenticationFilter instance
+     */
     @Bean
     BasicAuthenticationFilter basicAuthenticationFilter() {
         return new BasicAuthenticationFilter(authenticationManager());
     }
     
+    /**
+     * Bean for Dataspace Protocol endpoints authentication filter.
+     * This filter enables/disables authentication based on application configuration.
+     *
+     * @param applicationPropertiesService Service providing application configuration properties
+     * @return The configured DataspaceProtocolEndpointsAuthenticationFilter instance
+     */
     @Bean
     DataspaceProtocolEndpointsAuthenticationFilter protocolEndpointsAuthenticationFilter(ApplicationPropertiesService applicationPropertiesService) {
     	return new DataspaceProtocolEndpointsAuthenticationFilter(applicationPropertiesService);
     }
 
+    /**
+     * Authentication manager bean.
+     * Configures authentication providers: DCP VP provider first, then DAO provider (Basic auth fallback).
+     * Uses Spring Security's standard ProviderManager to chain providers.
+     *
+     * @return The configured AuthenticationManager instance
+     */
     @Bean
     AuthenticationManager authenticationManager() {
-        // VcVpAuthenticationProvider is listed first to give priority to VC/VP authentication
-//        jwtAuthenticationProvider
-        // If VP validation fails, it will fall back to username/password (DAO)
-        return new ProviderManager(vcVpAuthenticationProvider, daoAUthenticationProvider());
+        // DCP VP authentication via provider (checks dcp.vp.enabled internally)
+        // If disabled or validation fails, falls back to Basic auth via DAO provider
+        return new ProviderManager(dcpVerifierAuthenticationProvider, daoAUthenticationProvider());
     }
 
     @Bean
@@ -154,26 +168,24 @@ public class WebSecurityConfig {
                 .authorizeHttpRequests((authorize) -> {
                     authorize
                             .requestMatchers(new AntPathRequestMatcher("/env"), new AntPathRequestMatcher("/actuator/**")).hasRole("ADMIN")
-                            // TODO consider wrapping up all protocol endpoints under single context (/protocol/ or /dsp/ or anything else)
+                            // DSP protocol endpoints require CONNECTOR role
+                            // These are authenticated via DCP VP (if enabled) or Basic auth (fallback)
                             .requestMatchers(
-//                                    new AntPathRequestMatcher("/connector/**"),
+                                    new AntPathRequestMatcher("/catalog/**"),
                                     new AntPathRequestMatcher("/negotiations/**"),
                                     new AntPathRequestMatcher("/transfers/**"))
                             .hasRole("CONNECTOR")
                             // Development/Testing token generator (disable in production)
                             .requestMatchers(new AntPathRequestMatcher("/api/dev/token/**")).permitAll()
                             .requestMatchers(new AntPathRequestMatcher("/api/**")).hasRole("ADMIN")
-                            // Verifiable Credentials endpoints handle their own authentication (Self-Issued ID Tokens)
-                            // Catalog endpoints handle their own authentication/authorization in the controller
-                            .requestMatchers(new AntPathRequestMatcher("/dcp/**"),
-                                    new AntPathRequestMatcher("/catalog/**"))
+                            // DCP endpoints handle their own authentication (Self-Issued ID Tokens)
+                            .requestMatchers(new AntPathRequestMatcher("/dcp/**"))
                                 .permitAll()
                             .anyRequest().permitAll();
                 })
                 .addFilterBefore(protocolEndpointsAuthenticationFilter(applicationPropertiesService), UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(vcVpAuthenticationFilter(objectMapper), UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(jwtAuthenticationFilter(http), UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(basicAuthenticationFilter(), JwtAuthenticationFilter.class)
+                .addFilterBefore(dcpVerifierAuthenticationFilterV2(), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(basicAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling((exHandler) -> exHandler.authenticationEntryPoint(authEntryPoint));
         return http.build();
     }
@@ -218,4 +230,4 @@ public class WebSecurityConfig {
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
-} 
+}

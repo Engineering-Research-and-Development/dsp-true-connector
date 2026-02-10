@@ -67,6 +67,8 @@ class CredentialIssuanceServiceTest {
 
     private CredentialMetadataConfig mockConfig;
 
+    private static final String HOLDER_DID = "did:web:holder.example.com";
+
     private void setupCredentialConfigs(Map<String, String> credentialProfiles) {
         List<CredentialConfig> supportedConfigs = new ArrayList<>();
         for (Map.Entry<String, String> entry : credentialProfiles.entrySet()) {
@@ -83,7 +85,8 @@ class CredentialIssuanceServiceTest {
     void setUp() throws JOSEException {
         testRequest = CredentialRequest.Builder.newInstance()
                 .issuerPid("issuer-pid-123")
-                .holderPid("did:web:example.com:holder")
+                .holderPid("holder-pid-456")
+                .holderDid(HOLDER_DID)
                 .credentialIds(List.of("MembershipCredential"))
                 .status(CredentialStatus.PENDING)
                 .createdAt(Instant.now())
@@ -125,7 +128,12 @@ class CredentialIssuanceServiceTest {
             SignedJWT jwt = SignedJWT.parse((String) credential.getPayload());
             assertNotNull(jwt.getJWTClaimsSet());
             assertEquals("did:web:issuer.example.com", jwt.getJWTClaimsSet().getIssuer());
-            assertEquals("did:web:example.com:holder", jwt.getJWTClaimsSet().getSubject());
+
+            // VC 2.0 doesn't use JWT sub claim - check credentialSubject.id instead
+            @SuppressWarnings("unchecked")
+            Map<String, Object> credentialSubject = (Map<String, Object>) jwt.getJWTClaimsSet().getClaim("credentialSubject");
+            assertNotNull(credentialSubject);
+            assertEquals(HOLDER_DID, credentialSubject.get("id"));
         });
     }
 
@@ -133,7 +141,8 @@ class CredentialIssuanceServiceTest {
     void generateCredentials_success_organizationCredential() {
         CredentialRequest orgRequest = CredentialRequest.Builder.newInstance()
                 .issuerPid("issuer-pid-123")
-                .holderPid("did:web:example.com:holder")
+                .holderPid("test-holder-pid")
+                .holderDid(HOLDER_DID)
                 .credentialIds(List.of("OrganizationCredential"))
                 .status(CredentialStatus.PENDING)
                 .createdAt(Instant.now())
@@ -261,7 +270,7 @@ class CredentialIssuanceServiceTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> credentialSubject = (Map<String, Object>) jwt.getJWTClaimsSet().getClaim("credentialSubject");
         assertNotNull(credentialSubject);
-        assertEquals("did:web:example.com:holder", credentialSubject.get("id"));
+        assertEquals(HOLDER_DID, credentialSubject.get("id"));
     }
 
     @Test

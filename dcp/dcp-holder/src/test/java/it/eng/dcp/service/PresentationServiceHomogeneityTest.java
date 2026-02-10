@@ -3,6 +3,7 @@ package it.eng.dcp.service;
 import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
+import com.nimbusds.jwt.JWTClaimsSet;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.PresentationQueryMessage;
 import it.eng.dcp.common.model.ProfileId;
@@ -49,6 +50,10 @@ class PresentationServiceHomogeneityTest {
 
     @Test
     void mixedProfilesProduceMultiplePresentations() {
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .subject("did:holder:1")
+                .build();
+
         VerifiableCredential a = VerifiableCredential.Builder.newInstance()
                 .holderDid("did:holder:1")
                 .credentialType("typeA")
@@ -71,13 +76,17 @@ class PresentationServiceHomogeneityTest {
                 .scope(List.of("typeA", "typeB"))
                 .build();
 
-        var resp = svc.createPresentation(query);
+        var resp = svc.createPresentation(query, claims);
         assertNotNull(resp);
         assertTrue(resp.getPresentation().size() >= 2, "Should produce separate presentations for different profiles");
     }
 
     @Test
     void singleProfileGroupsAll() {
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .subject("did:holder:1")
+                .build();
+
         VerifiableCredential a = VerifiableCredential.Builder.newInstance()
                 .holderDid("did:holder:1")
                 .credentialType("typeA")
@@ -100,7 +109,7 @@ class PresentationServiceHomogeneityTest {
                 .scope(List.of("typeA"))
                 .build();
 
-        var resp = svc.createPresentation(query);
+        var resp = svc.createPresentation(query, claims);
         assertNotNull(resp);
         assertEquals(1, resp.getPresentation().size(), "Single profile should yield one presentation grouping both creds");
     }

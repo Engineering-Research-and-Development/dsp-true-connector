@@ -9,6 +9,8 @@ public interface VerifiableCredentialRepository extends MongoRepository<Verifiab
 
     List<VerifiableCredential> findByCredentialTypeIn(List<String> types);
 
+    List<VerifiableCredential> findByIdIn(List<String> ids);
+
     List<VerifiableCredential> findByHolderDid(String holderDid);
 
 }

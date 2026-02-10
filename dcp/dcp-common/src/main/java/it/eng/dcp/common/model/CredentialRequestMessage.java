@@ -5,7 +5,10 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
+import jakarta.validation.ValidatorFactory;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -126,12 +129,12 @@ public class CredentialRequestMessage extends BaseDcpMessage {
             }
 
             public CredentialReference build() {
-                try (jakarta.validation.ValidatorFactory vf = jakarta.validation.Validation.buildDefaultValidatorFactory()) {
-                    java.util.Set<jakarta.validation.ConstraintViolation<CredentialReference>> violations = vf.getValidator().validate(ref);
+                try (ValidatorFactory vf = Validation.buildDefaultValidatorFactory()) {
+                    java.util.Set<ConstraintViolation<CredentialReference>> violations = vf.getValidator().validate(ref);
                     if (violations.isEmpty()) {
                         return ref;
                     }
-                    throw new jakarta.validation.ValidationException("CredentialReference - " +
+                    throw new ValidationException("CredentialReference - " +
                             violations.stream().map(v -> v.getPropertyPath() + " " + v.getMessage()).collect(Collectors.joining(",")));
                 }
             }

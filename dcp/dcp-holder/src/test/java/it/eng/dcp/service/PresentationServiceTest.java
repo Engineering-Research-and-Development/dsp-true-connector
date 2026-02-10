@@ -1,5 +1,7 @@
 package it.eng.dcp.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.nimbusds.jwt.JWTClaimsSet;
 import it.eng.dcp.common.model.PresentationQueryMessage;
 import it.eng.dcp.common.model.PresentationResponseMessage;
@@ -41,6 +43,10 @@ class PresentationServiceTest {
     @Test
     void testCreatePresentation_JwtFormat() {
         // Arrange
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .subject("did:web:localhost:8080")
+                .build();
+
         PresentationQueryMessage query = PresentationQueryMessage.Builder.newInstance()
                 .scope(List.of("MembershipCredential"))
                 .build();
@@ -57,7 +63,7 @@ class PresentationServiceTest {
                 .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.signature");
 
         // Act
-        PresentationResponseMessage response = presentationService.createPresentation(query);
+        PresentationResponseMessage response = presentationService.createPresentation(query, claims);
 
         // Assert
         assertNotNull(response);
@@ -84,6 +90,10 @@ class PresentationServiceTest {
         format.put("jwt_vp", new java.util.HashMap<>()); // JWT VP format
         presentationDef.put("format", format);
 
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .subject("did:web:localhost:8080")
+                .build();
+
         PresentationQueryMessage query = PresentationQueryMessage.Builder.newInstance()
                 .scope(List.of("MembershipCredential"))
                 .presentationDefinition(presentationDef)
@@ -101,7 +111,7 @@ class PresentationServiceTest {
                 .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.signature");
 
         // Act
-        PresentationResponseMessage response = presentationService.createPresentation(query);
+        PresentationResponseMessage response = presentationService.createPresentation(query, claims);
 
         // Assert
         assertNotNull(response);
@@ -123,6 +133,10 @@ class PresentationServiceTest {
         format.put("ldp_vp", new java.util.HashMap<>()); // JSON-LD VP format
         presentationDef.put("format", format);
 
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .subject("did:web:localhost:8080")
+                .build();
+
         PresentationQueryMessage query = PresentationQueryMessage.Builder.newInstance()
                 .scope(List.of("MembershipCredential"))
                 .presentationDefinition(presentationDef)
@@ -137,15 +151,15 @@ class PresentationServiceTest {
 
         when(credentialRepository.findByCredentialTypeIn(anyList())).thenReturn(List.of(vc));
 
-        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-        com.fasterxml.jackson.databind.node.ObjectNode jsonLdPresentation = mapper.createObjectNode();
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectNode jsonLdPresentation = mapper.createObjectNode();
         jsonLdPresentation.put("id", "urn:uuid:vp-123");
 
         when(vpSigner.sign(any(VerifiablePresentation.class), eq("json-ld")))
                 .thenReturn(jsonLdPresentation);
 
         // Act
-        PresentationResponseMessage response = presentationService.createPresentation(query);
+        PresentationResponseMessage response = presentationService.createPresentation(query, claims);
 
         // Assert
         assertNotNull(response);
@@ -356,7 +370,7 @@ class PresentationServiceTest {
 
             VerifiableCredential vc = VerifiableCredential.Builder.newInstance()
                     .id("urn:uuid:test-123")
-                    .credentialType(complexScope)
+                    .credentialType("SomeOtherCredential")  // Stored without action suffix
                     .holderDid("did:web:localhost:8080")
                     .profileId(ProfileId.VC20_BSSL_JWT)
                     .build();
@@ -368,12 +382,12 @@ class PresentationServiceTest {
             // When
             PresentationResponseMessage response = presentationService.createPresentation(query, claims);
 
-            // Then: Should parse complex scope to credential type (SomeOtherCredential)
+            // Then: Should strip :read and query by base type only
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
             verify(credentialRepository).findByCredentialTypeIn(scopeCaptor.capture());
 
             List<String> fetchedScopes = scopeCaptor.getValue();
-            // The scope is parsed: "org.eclipse.dspace.dcp.vc.type:SomeOtherCredential:read" → "SomeOtherCredential"
+            // Action suffix stripped: "org.eclipse.dspace.dcp.vc.type:SomeOtherCredential:read" → "SomeOtherCredential"
             assertThat(fetchedScopes).containsExactly("SomeOtherCredential");
             assertThat(fetchedScopes).doesNotContain("Iso27001Credential", "MembershipCredential");
 
@@ -400,14 +414,14 @@ class PresentationServiceTest {
 
             VerifiableCredential vc1 = VerifiableCredential.Builder.newInstance()
                     .id("urn:uuid:test-123")
-                    .credentialType(scope1)
+                    .credentialType("MembershipCredential")  // Stored without action suffix
                     .holderDid("did:web:localhost:8080")
                     .profileId(ProfileId.VC20_BSSL_JWT)
                     .build();
 
             VerifiableCredential vc2 = VerifiableCredential.Builder.newInstance()
                     .id("urn:uuid:test-456")
-                    .credentialType(scope2)
+                    .credentialType("SomeOtherCredential")  // Stored without action suffix
                     .holderDid("did:web:localhost:8080")
                     .profileId(ProfileId.VC20_BSSL_JWT)
                     .build();
@@ -419,7 +433,7 @@ class PresentationServiceTest {
             // When
             PresentationResponseMessage response = presentationService.createPresentation(query, claims);
 
-            // Then: Should parse scopes to credential types and match intersection
+            // Then: Should strip action suffixes and query by base types only
             // scope1 "org.eclipse.dspace.dcp.vc.type:MembershipCredential:read" → "MembershipCredential"
             // scope2 "org.eclipse.dspace.dcp.vc.type:SomeOtherCredential:read" → "SomeOtherCredential"
             // scope3 "org.eclipse.dspace.dcp.vc.type:BankAccount:write" → "BankAccount" (not in authorized)
@@ -435,31 +449,45 @@ class PresentationServiceTest {
         }
 
         @Test
-        @DisplayName("Should handle partial scope match (security test)")
+        @DisplayName("Should match credentials ignoring action suffixes (action policy evaluated later)")
         void shouldNotMatchPartialScopes() {
-            // Given: Access token with specific scope
+            // Given: Access token with specific scope including :read action
             String authorizedScope = "org.eclipse.dspace.dcp.vc.type:MembershipCredential:read";
             JWTClaimsSet claims = new JWTClaimsSet.Builder()
                     .claim("scope", List.of(authorizedScope))
                     .build();
 
-            // And: Query requests similar but different scope (different permission)
+            // And: Query requests same credential type but with :write action
             String requestedScope = "org.eclipse.dspace.dcp.vc.type:MembershipCredential:write";
             PresentationQueryMessage query = PresentationQueryMessage.Builder.newInstance()
                     .scope(List.of(requestedScope))
                     .build();
 
+            VerifiableCredential vc = VerifiableCredential.Builder.newInstance()
+                    .id("urn:uuid:test-123")
+                    .credentialType("MembershipCredential")
+                    .holderDid("did:web:localhost:8080")
+                    .profileId(ProfileId.VC20_BSSL_JWT)
+                    .build();
+
+            when(credentialRepository.findByCredentialTypeIn(anyList())).thenReturn(List.of(vc));
             when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
             // When
             PresentationResponseMessage response = presentationService.createPresentation(query, claims);
 
-            // Then: Should NOT match (exact string comparison, no partial matching)
-            verify(credentialRepository, never()).findByCredentialTypeIn(anyList());
+            // Then: Should MATCH because action suffixes are stripped for credential selection
+            // Both ":read" and ":write" normalize to "MembershipCredential"
+            // Action policy enforcement happens downstream in the negotiation module
+            ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
+            verify(credentialRepository).findByCredentialTypeIn(scopeCaptor.capture());
+
+            List<String> queriedTypes = scopeCaptor.getValue();
+            assertThat(queriedTypes).containsExactly("MembershipCredential");
 
             assertNotNull(response);
-            assertThat(response.getPresentation()).isEmpty();
+            assertThat(response.getPresentation()).isNotEmpty();
         }
 
         @Test
@@ -634,7 +662,7 @@ class PresentationServiceTest {
             JWTClaimsSet claims = new JWTClaimsSet.Builder()
                     .claim("scope", List.of(
                             "MembershipCredential",  // Simple
-                            "org.eclipse.dspace.dcp.vc.type:SensitiveDataCredential:read"  // DCP
+                            "org.eclipse.dspace.dcp.vc.type:SensitiveDataCredential:read"  // DCP with action
                     ))
                     .build();
 
@@ -666,7 +694,7 @@ class PresentationServiceTest {
             // When
             PresentationResponseMessage response = presentationService.createPresentation(query, claims);
 
-            // Then: Should handle both formats
+            // Then: Should strip :read for query and handle both formats
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
             verify(credentialRepository).findByCredentialTypeIn(scopeCaptor.capture());
 
@@ -863,6 +891,352 @@ class PresentationServiceTest {
             List<String> fetchedTypes = scopeCaptor.getValue();
             assertThat(fetchedTypes).containsExactlyInAnyOrder(
                     "MembershipCredential", "EmployeeCredential", "SensitiveDataCredential");
+
+            assertNotNull(response);
+        }
+
+        @Test
+        @DisplayName("Should match scopes with different formats (normalized comparison)")
+        void shouldMatchScopesWithDifferentFormats() {
+            // Given: Access token authorizes with full DCP format
+            String authorizedScope = "org.eclipse.dspace.dcp.vc.type:MembershipCredential:read";
+            JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                    .claim("scope", List.of(authorizedScope))
+                    .build();
+
+            // And: Query requests with simple format (just credential type)
+            String requestedScope = "MembershipCredential";
+            PresentationQueryMessage query = PresentationQueryMessage.Builder.newInstance()
+                    .scope(List.of(requestedScope))
+                    .build();
+
+            VerifiableCredential vc = VerifiableCredential.Builder.newInstance()
+                    .id("urn:uuid:test-123")
+                    .credentialType("MembershipCredential")
+                    .holderDid("did:web:localhost:8080")
+                    .profileId(ProfileId.VC20_BSSL_JWT)
+                    .build();
+
+            when(credentialRepository.findByCredentialTypeIn(anyList())).thenReturn(List.of(vc));
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+                    .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
+
+            // When
+            PresentationResponseMessage response = presentationService.createPresentation(query, claims);
+
+            // Then: Should match because both normalize to "MembershipCredential"
+            ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
+            verify(credentialRepository).findByCredentialTypeIn(scopeCaptor.capture());
+
+            List<String> fetchedTypes = scopeCaptor.getValue();
+            assertThat(fetchedTypes).containsExactly("MembershipCredential");
+
+            assertNotNull(response);
+            assertThat(response.getPresentation()).isNotEmpty();
+        }
+
+        @Test
+        @DisplayName("Should match scopes with different formats reversed (simple authorized, full requested)")
+        void shouldMatchScopesWithDifferentFormatsReversed() {
+            // Given: Access token authorizes with simple format
+            String authorizedScope = "MembershipCredential";
+            JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                    .claim("scope", List.of(authorizedScope))
+                    .build();
+
+            // And: Query requests with full DCP format
+            String requestedScope = "org.eclipse.dspace.dcp.vc.type:MembershipCredential:read";
+            PresentationQueryMessage query = PresentationQueryMessage.Builder.newInstance()
+                    .scope(List.of(requestedScope))
+                    .build();
+
+            VerifiableCredential vc = VerifiableCredential.Builder.newInstance()
+                    .id("urn:uuid:test-123")
+                    .credentialType("MembershipCredential")
+                    .holderDid("did:web:localhost:8080")
+                    .profileId(ProfileId.VC20_BSSL_JWT)
+                    .build();
+
+            when(credentialRepository.findByCredentialTypeIn(anyList())).thenReturn(List.of(vc));
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+                    .thenReturn("eyJhbGciOiJno25lIn0.eyJ2cElkIjoidGVzdCJ9.");
+
+            // When
+            PresentationResponseMessage response = presentationService.createPresentation(query, claims);
+
+            // Then: Should match because both normalize to "MembershipCredential"
+            ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
+            verify(credentialRepository).findByCredentialTypeIn(scopeCaptor.capture());
+
+            List<String> fetchedTypes = scopeCaptor.getValue();
+            assertThat(fetchedTypes).containsExactly("MembershipCredential");
+
+            assertNotNull(response);
+            assertThat(response.getPresentation()).isNotEmpty();
+        }
+
+        @Test
+        @DisplayName("Should match multiple scopes with mixed formats")
+        void shouldMatchMultipleScopesWithMixedFormats() {
+            // Given: Access token with mixed scope formats
+            JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                    .claim("scope", List.of(
+                            "org.eclipse.dspace.dcp.vc.type:MembershipCredential:read",
+                            "EmployeeCredential",
+                            "org.eclipse.dspace.dcp.vc.type:BankAccount:write"
+                    ))
+                    .build();
+
+            // And: Query requests with different formats
+            PresentationQueryMessage query = PresentationQueryMessage.Builder.newInstance()
+                    .scope(List.of(
+                            "MembershipCredential",  // matches first authorized (normalized)
+                            "org.eclipse.dspace.dcp.vc.type:EmployeeCredential:read",  // matches second (normalized)
+                            "ContractCredential"  // NOT authorized
+                    ))
+                    .build();
+
+            VerifiableCredential vc1 = VerifiableCredential.Builder.newInstance()
+                    .id("urn:uuid:test-123")
+                    .credentialType("MembershipCredential")
+                    .holderDid("did:web:localhost:8080")
+                    .profileId(ProfileId.VC20_BSSL_JWT)
+                    .build();
+
+            VerifiableCredential vc2 = VerifiableCredential.Builder.newInstance()
+                    .id("urn:uuid:test-456")
+                    .credentialType("EmployeeCredential")
+                    .holderDid("did:web:localhost:8080")
+                    .profileId(ProfileId.VC20_BSSL_JWT)
+                    .build();
+
+            when(credentialRepository.findByCredentialTypeIn(anyList())).thenReturn(List.of(vc1, vc2));
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+                    .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
+
+            // When
+            PresentationResponseMessage response = presentationService.createPresentation(query, claims);
+
+            // Then: Should match first two (MembershipCredential and EmployeeCredential)
+            // ContractCredential should be excluded (not authorized)
+            // BankAccount should be excluded (not requested)
+            // Action suffixes stripped for querying
+            ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
+            verify(credentialRepository).findByCredentialTypeIn(scopeCaptor.capture());
+
+            List<String> fetchedTypes = scopeCaptor.getValue();
+            assertThat(fetchedTypes).containsExactlyInAnyOrder("MembershipCredential", "EmployeeCredential");
+            assertThat(fetchedTypes).doesNotContain("ContractCredential", "BankAccount");
+
+            assertNotNull(response);
+            assertThat(response.getPresentation()).isNotEmpty();
+        }
+
+        @Test
+        @DisplayName("Should query credentials by ID using org.eclipse.dspace.dcp.vc.id alias")
+        void shouldQueryCredentialsByIdAlias() {
+            // Given: Scope using vc.id alias (per DCP spec Section 5.4.1.2.2)
+            String credentialId = "urn:uuid:8247b87d-8d72-47e1-8128-9ce47e3d829d";
+            JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                    .claim("scope", List.of("org.eclipse.dspace.dcp.vc.id:" + credentialId))
+                    .build();
+
+            PresentationQueryMessage query = PresentationQueryMessage.Builder.newInstance()
+                    .scope(List.of("org.eclipse.dspace.dcp.vc.id:" + credentialId))
+                    .build();
+
+            VerifiableCredential vc = VerifiableCredential.Builder.newInstance()
+                    .id(credentialId)
+                    .credentialType("MembershipCredential")
+                    .holderDid("did:web:localhost:8080")
+                    .profileId(ProfileId.VC20_BSSL_JWT)
+                    .build();
+
+            when(credentialRepository.findByIdIn(anyList())).thenReturn(List.of(vc));
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+                    .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
+
+            // When
+            PresentationResponseMessage response = presentationService.createPresentation(query, claims);
+
+            // Then: Should query by ID, not by type
+            ArgumentCaptor<List<String>> idCaptor = ArgumentCaptor.forClass(List.class);
+            verify(credentialRepository).findByIdIn(idCaptor.capture());
+            verify(credentialRepository, never()).findByCredentialTypeIn(anyList());
+
+            List<String> queriedIds = idCaptor.getValue();
+            assertThat(queriedIds).containsExactly(credentialId);
+
+            assertNotNull(response);
+            assertThat(response.getPresentation()).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("Should handle multiple credentials queried by ID")
+        void shouldHandleMultipleCredentialsByIdAlias() {
+            // Given: Multiple credentials requested by ID
+            String id1 = "urn:uuid:credential-001";
+            String id2 = "urn:uuid:credential-002";
+            String id3 = "urn:uuid:credential-003";
+
+            JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                    .claim("scope", List.of(
+                            "org.eclipse.dspace.dcp.vc.id:" + id1,
+                            "org.eclipse.dspace.dcp.vc.id:" + id2,
+                            "org.eclipse.dspace.dcp.vc.id:" + id3
+                    ))
+                    .build();
+
+            PresentationQueryMessage query = PresentationQueryMessage.Builder.newInstance()
+                    .scope(List.of(
+                            "org.eclipse.dspace.dcp.vc.id:" + id1,
+                            "org.eclipse.dspace.dcp.vc.id:" + id2,
+                            "org.eclipse.dspace.dcp.vc.id:" + id3
+                    ))
+                    .build();
+
+            VerifiableCredential vc1 = VerifiableCredential.Builder.newInstance()
+                    .id(id1)
+                    .credentialType("MembershipCredential")
+                    .holderDid("did:web:localhost:8080")
+                    .profileId(ProfileId.VC20_BSSL_JWT)
+                    .build();
+
+            VerifiableCredential vc2 = VerifiableCredential.Builder.newInstance()
+                    .id(id2)
+                    .credentialType("EmployeeCredential")
+                    .holderDid("did:web:localhost:8080")
+                    .profileId(ProfileId.VC20_BSSL_JWT)
+                    .build();
+
+            VerifiableCredential vc3 = VerifiableCredential.Builder.newInstance()
+                    .id(id3)
+                    .credentialType("BankCredential")
+                    .holderDid("did:web:localhost:8080")
+                    .profileId(ProfileId.VC20_BSSL_JWT)
+                    .build();
+
+            when(credentialRepository.findByIdIn(anyList())).thenReturn(List.of(vc1, vc2, vc3));
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+                    .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
+
+            // When
+            PresentationResponseMessage response = presentationService.createPresentation(query, claims);
+
+            // Then: Should query all three by ID
+            ArgumentCaptor<List<String>> idCaptor = ArgumentCaptor.forClass(List.class);
+            verify(credentialRepository).findByIdIn(idCaptor.capture());
+
+            List<String> queriedIds = idCaptor.getValue();
+            assertThat(queriedIds).containsExactlyInAnyOrder(id1, id2, id3);
+
+            assertNotNull(response);
+            assertThat(response.getPresentation()).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("Should handle mixed vc.type and vc.id scopes in same query")
+        void shouldHandleMixedTypeAndIdScopes() {
+            // Given: Mix of type-based and id-based scopes
+            String credentialId = "urn:uuid:specific-credential";
+            JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                    .claim("scope", List.of(
+                            "org.eclipse.dspace.dcp.vc.type:MembershipCredential",
+                            "org.eclipse.dspace.dcp.vc.id:" + credentialId,
+                            "org.eclipse.dspace.dcp.vc.type:EmployeeCredential"
+                    ))
+                    .build();
+
+            PresentationQueryMessage query = PresentationQueryMessage.Builder.newInstance()
+                    .scope(List.of(
+                            "org.eclipse.dspace.dcp.vc.type:MembershipCredential",
+                            "org.eclipse.dspace.dcp.vc.id:" + credentialId,
+                            "org.eclipse.dspace.dcp.vc.type:EmployeeCredential"
+                    ))
+                    .build();
+
+            // Credentials queried by type
+            VerifiableCredential vcType1 = VerifiableCredential.Builder.newInstance()
+                    .id("urn:uuid:type-based-1")
+                    .credentialType("MembershipCredential")
+                    .holderDid("did:web:localhost:8080")
+                    .profileId(ProfileId.VC20_BSSL_JWT)
+                    .build();
+
+            VerifiableCredential vcType2 = VerifiableCredential.Builder.newInstance()
+                    .id("urn:uuid:type-based-2")
+                    .credentialType("EmployeeCredential")
+                    .holderDid("did:web:localhost:8080")
+                    .profileId(ProfileId.VC20_BSSL_JWT)
+                    .build();
+
+            // Credential queried by ID
+            VerifiableCredential vcId = VerifiableCredential.Builder.newInstance()
+                    .id(credentialId)
+                    .credentialType("SpecialCredential")
+                    .holderDid("did:web:localhost:8080")
+                    .profileId(ProfileId.VC20_BSSL_JWT)
+                    .build();
+
+            when(credentialRepository.findByCredentialTypeIn(anyList())).thenReturn(List.of(vcType1, vcType2));
+            when(credentialRepository.findByIdIn(anyList())).thenReturn(List.of(vcId));
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+                    .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
+
+            // When
+            PresentationResponseMessage response = presentationService.createPresentation(query, claims);
+
+            // Then: Should query both by type and by ID
+            ArgumentCaptor<List<String>> typeCaptor = ArgumentCaptor.forClass(List.class);
+            verify(credentialRepository).findByCredentialTypeIn(typeCaptor.capture());
+
+            ArgumentCaptor<List<String>> idCaptor = ArgumentCaptor.forClass(List.class);
+            verify(credentialRepository).findByIdIn(idCaptor.capture());
+
+            List<String> queriedTypes = typeCaptor.getValue();
+            assertThat(queriedTypes).containsExactlyInAnyOrder("MembershipCredential", "EmployeeCredential");
+
+            List<String> queriedIds = idCaptor.getValue();
+            assertThat(queriedIds).containsExactly(credentialId);
+
+            assertNotNull(response);
+            assertThat(response.getPresentation()).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("Should handle vc.id with action suffix (stripped for query)")
+        void shouldHandleVcIdWithActionSuffix() {
+            // Given: vc.id scope with action suffix
+            // Action suffixes are stripped for querying but can be used for downstream policy evaluation
+            String credentialId = "urn:uuid:credential-with-action";
+            JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                    .claim("scope", List.of("org.eclipse.dspace.dcp.vc.id:" + credentialId + ":read"))
+                    .build();
+
+            PresentationQueryMessage query = PresentationQueryMessage.Builder.newInstance()
+                    .scope(List.of("org.eclipse.dspace.dcp.vc.id:" + credentialId + ":read"))
+                    .build();
+
+            VerifiableCredential vc = VerifiableCredential.Builder.newInstance()
+                    .id(credentialId)  // Stored without action suffix
+                    .credentialType("SomeCredential")
+                    .holderDid("did:web:localhost:8080")
+                    .profileId(ProfileId.VC20_BSSL_JWT)
+                    .build();
+
+            when(credentialRepository.findByIdIn(anyList())).thenReturn(List.of(vc));
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+                    .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
+
+            // When
+            PresentationResponseMessage response = presentationService.createPresentation(query, claims);
+
+            // Then: Should query with :read stripped (base ID only)
+            ArgumentCaptor<List<String>> idCaptor = ArgumentCaptor.forClass(List.class);
+            verify(credentialRepository).findByIdIn(idCaptor.capture());
+
+            List<String> queriedIds = idCaptor.getValue();
+            assertThat(queriedIds).containsExactly(credentialId);  // Action suffix stripped
 
             assertNotNull(response);
         }

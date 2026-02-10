@@ -106,22 +106,6 @@ public class HolderService {
     }
 
     /**
-     * Create a presentation response for a query without scope enforcement.
-     *
-     * @param query The presentation query message
-     * @param holderDid The holder's DID for logging
-     * @return PresentationResponseMessage
-     * @deprecated Use {@link #createPresentation(PresentationQueryMessage, String, JWTClaimsSet)} for scope enforcement
-     */
-    @Deprecated
-    public PresentationResponseMessage createPresentation(PresentationQueryMessage query, String holderDid) {
-        log.warn("Creating presentation WITHOUT scope enforcement for holder: {} - consider updating caller", holderDid);
-        PresentationResponseMessage response = presentationService.createPresentation(query);
-        log.info("Successfully created presentation response for holder: {}", holderDid);
-        return response;
-    }
-
-    /**
      * Authorize and validate an issuer's credential delivery request.
      *
      * @param bearerToken The bearer token from Authorization header (without "Bearer " prefix)

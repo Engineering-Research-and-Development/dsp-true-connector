@@ -106,9 +106,12 @@ public class CredentialDeliveryService {
             if (response != null) {
                 log.info("Successfully delivered credentials to holder {}.", holderDid);
 
+                // Update the existing request by preserving its id
                 request = CredentialRequest.Builder.newInstance()
+                        .id(request.getId())
                         .issuerPid(request.getIssuerPid())
                         .holderPid(request.getHolderPid())
+                        .holderDid(request.getHolderDid())
                         .credentialIds(request.getCredentialIds())
                         .status(CredentialStatus.ISSUED)
                         .createdAt(request.getCreatedAt())

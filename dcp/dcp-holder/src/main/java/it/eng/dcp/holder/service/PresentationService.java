@@ -1,6 +1,7 @@
 package it.eng.dcp.holder.service;
 
 import com.nimbusds.jwt.JWTClaimsSet;
+import it.eng.dcp.common.model.DCPConstants;
 import it.eng.dcp.common.model.PresentationQueryMessage;
 import it.eng.dcp.common.model.PresentationResponseMessage;
 import it.eng.dcp.common.model.ProfileId;
@@ -70,14 +71,9 @@ public class PresentationService {
         log.info("Scope enforcement - requested: {}, authorized: {}, effective: {}",
                 requestedScopes, authorizedScopes, effectiveScopes);
 
-        // Parse scopes to extract credential types/IDs for repository query
-        List<String> credentialTypesOrIds = parseScopesToCredentialTypes(effectiveScopes);
-
-        log.debug("Parsed credential types/IDs from scopes: {}", credentialTypesOrIds);
-
-        // Fetch credentials based on effective scopes
+        // Fetch credentials based on effective scopes - now handling both type and id aliases
         List<VerifiableCredential> fetched;
-        if (credentialTypesOrIds == null || credentialTypesOrIds.isEmpty()) {
+        if (effectiveScopes == null || effectiveScopes.isEmpty()) {
             // No scope restrictions - fetch all (only if no authorized scopes were specified)
             if (authorizedScopes == null || authorizedScopes.isEmpty()) {
                 log.debug("No scope restrictions - fetching all credentials");
@@ -88,33 +84,11 @@ public class PresentationService {
                 fetched = List.of();
             }
         } else {
-            log.debug("Fetching credentials for types/IDs: {}", credentialTypesOrIds);
-            fetched = credentialRepository.findByCredentialTypeIn(credentialTypesOrIds);
+            log.debug("Fetching credentials for scopes: {}", effectiveScopes);
+            fetched = fetchCredentialsByScopes(effectiveScopes);
         }
 
         // Rest of presentation creation logic (grouping and signing)
-        return buildPresentationResponse(fetched);
-    }
-
-    /**
-     * Create a PresentationResponseMessage without scope enforcement (backward compatibility).
-     *
-     * @param query the presentation query message containing scope and definition
-     * @return the presentation response message containing signed presentations
-     * @deprecated Use {@link #createPresentation(PresentationQueryMessage, JWTClaimsSet)} for scope enforcement
-     */
-    @Deprecated
-    public PresentationResponseMessage createPresentation(PresentationQueryMessage query) {
-        log.warn("Creating presentation WITHOUT scope enforcement - consider updating caller");
-        List<String> requiredTypes = query.getScope();
-        List<VerifiableCredential> fetched;
-        if (requiredTypes == null || requiredTypes.isEmpty()) {
-            // fetch all credentials
-            fetched = credentialRepository.findAll();
-        } else {
-            fetched = credentialRepository.findByCredentialTypeIn(requiredTypes);
-        }
-
         return buildPresentationResponse(fetched);
     }
 
@@ -166,6 +140,14 @@ public class PresentationService {
      *   <li>If both exist → intersection (only scopes that are both requested AND authorized)</li>
      * </ol>
      *
+     * <p>Scope matching is done by normalizing scopes to their discriminators:
+     * <ul>
+     *   <li>org.eclipse.dspace.dcp.vc.type:MembershipCredential → MembershipCredential</li>
+     *   <li>org.eclipse.dspace.dcp.vc.id:uuid-123 → uuid-123</li>
+     *   <li>MembershipCredential → MembershipCredential</li>
+     * </ul>
+     * This ensures that scopes with different formats but same discriminator are matched.
+     *
      * @param requested The scopes requested by the verifier in the query
      * @param authorized The scopes authorized in the access token
      * @return The effective scopes to use for credential fetching
@@ -181,17 +163,83 @@ public class PresentationService {
             return authorized;
         }
 
-        // Intersection - only scopes that are both requested AND authorized
+        // Normalize authorized scopes to discriminators for comparison
+        // Create a map: normalized discriminator → original scope
+        Map<String, String> authorizedNormalized = authorized.stream()
+                .collect(Collectors.toMap(
+                        scope -> parseScope(scope).getDiscriminator(),  // key: discriminator
+                        scope -> scope,                                  // value: original scope
+                        (existing, duplicate) -> existing                // keep first if duplicates
+                ));
+
+        // Find intersection by normalizing requested scopes and checking if discriminator is in authorized
         List<String> intersection = requested.stream()
-                .filter(authorized::contains)
+                .filter(requestedScope -> {
+                    String normalizedRequested = parseScope(requestedScope).getDiscriminator();
+                    return authorizedNormalized.containsKey(normalizedRequested);
+                })
                 .collect(Collectors.toList());
 
         if (intersection.isEmpty()) {
             log.warn("Scope mismatch: verifier requested {} but only {} authorized. Returning empty result.",
                     requested, authorized);
+        } else {
+            log.debug("Effective scopes after intersection: {} (from requested: {}, authorized: {})",
+                    intersection, requested, authorized);
         }
 
         return intersection;
+    }
+
+    /**
+     * Fetch credentials based on scopes, handling both type and id aliases.
+     *
+     * <p>Per DCP Protocol v1.0 Section 5.4.1.2, two standard aliases MUST be supported:
+     * <ul>
+     *   <li>{@link DCPConstants#SCOPE_ALIAS_VC_TYPE} - query by credential type</li>
+     *   <li>{@link DCPConstants#SCOPE_ALIAS_VC_ID} - query by credential ID</li>
+     * </ul>
+     *
+     * <p>This method separates scopes into type-based and id-based queries,
+     * executes both queries if needed, and combines the results.
+     *
+     * @param scopes The effective scopes to query
+     * @return Combined list of credentials matching the scopes
+     */
+    private List<VerifiableCredential> fetchCredentialsByScopes(List<String> scopes) {
+        if (scopes == null || scopes.isEmpty()) {
+            return List.of();
+        }
+
+        List<String> credentialTypes = new ArrayList<>();
+        List<String> credentialIds = new ArrayList<>();
+
+        // Separate scopes by alias type
+        for (String scope : scopes) {
+            ParsedScope parsed = parseScope(scope);
+            if (parsed.isIdAlias()) {
+                credentialIds.add(parsed.getDiscriminator());
+            } else {
+                // Default to type-based query (includes simple format and vc.type alias)
+                credentialTypes.add(parsed.getDiscriminator());
+            }
+        }
+
+        List<VerifiableCredential> results = new ArrayList<>();
+
+        // Query by types if present
+        if (!credentialTypes.isEmpty()) {
+            log.debug("Querying credentials by types: {}", credentialTypes);
+            results.addAll(credentialRepository.findByCredentialTypeIn(credentialTypes));
+        }
+
+        // Query by IDs if present
+        if (!credentialIds.isEmpty()) {
+            log.debug("Querying credentials by IDs: {}", credentialIds);
+            results.addAll(credentialRepository.findByIdIn(credentialIds));
+        }
+
+        return results;
     }
 
     /**
@@ -207,23 +255,22 @@ public class PresentationService {
      * <p>This implementation uses <b>generic parsing</b> to support:
      * <ul>
      *   <li><b>Any alias format:</b> prefix:discriminator → extracts discriminator</li>
-     *   <li><b>Action suffixes:</b> prefix:discriminator:action → extracts discriminator</li>
      *   <li><b>Simple format:</b> credential → returns as-is (backward compatibility)</li>
      * </ul>
      *
      * <p>Examples:
      * <ul>
      *   <li>org.eclipse.dspace.dcp.vc.type:MembershipCredential → MembershipCredential</li>
-     *   <li>org.eclipse.dspace.dcp.vc.type:MembershipCredential:read → MembershipCredential</li>
      *   <li>org.eclipse.dspace.dcp.vc.id:uuid-123 → uuid-123</li>
-     *   <li>custom.org.prefix:CustomType:write → CustomType</li>
-     *   <li>mycompany.credentials:EmployeeCredential → EmployeeCredential</li>
+     *   <li>custom.org.prefix:CustomType → CustomType</li>
      *   <li>MembershipCredential → MembershipCredential (simple)</li>
      * </ul>
      *
      * @param scopes The scopes to parse (may be null)
      * @return List of credential types or IDs, or null if input is null
+     * @deprecated Use {@link #fetchCredentialsByScopes(List)} which properly handles type vs id aliases
      */
+    @Deprecated
     private List<String> parseScopesToCredentialTypes(List<String> scopes) {
         if (scopes == null) {
             return null;
@@ -237,94 +284,154 @@ public class PresentationService {
     }
 
     /**
-     * Parse a single scope string to extract the credential type or ID.
+     * Parse a single scope string to extract alias and discriminator.
      *
      * <p>Per DCP spec Section 5.4.1.2, scope format is [alias]:[discriminator].
-     * The spec states (line 907): "The [alias] value MAY be implementation-specific."
-     *
-     * <p>This method uses generic parsing to handle:
+     * Two standard aliases MUST be supported:
      * <ul>
-     *   <li><b>Standard DCP aliases (MUST be supported per spec):</b></li>
-     *   <ul>
-     *     <li>org.eclipse.dspace.dcp.vc.type:MembershipCredential → MembershipCredential</li>
-     *     <li>org.eclipse.dspace.dcp.vc.id:uuid-1234 → uuid-1234</li>
-     *   </ul>
-     *   <li><b>Custom aliases (implementation-specific):</b></li>
-     *   <ul>
-     *     <li>custom.prefix:SomeCredential → SomeCredential</li>
-     *     <li>myorg.credentials:Type → Type</li>
-     *   </ul>
-     *   <li><b>With action/permission suffix (non-standard but common):</b></li>
-     *   <ul>
-     *     <li>prefix:credential:read → credential</li>
-     *     <li>prefix:credential:write → credential</li>
-     *   </ul>
-     *   <li><b>Simple format (no alias):</b></li>
-     *   <ul>
-     *     <li>MembershipCredential → MembershipCredential</li>
-     *   </ul>
+     *   <li>{@link DCPConstants#SCOPE_ALIAS_VC_TYPE} - search by credential type</li>
+     *   <li>{@link DCPConstants#SCOPE_ALIAS_VC_ID} - search by credential ID</li>
      * </ul>
      *
-     * <p>Parsing strategy:
-     * <ol>
-     *   <li>If contains colon: treat as [alias]:[discriminator] or [alias]:[discriminator]:[action]</li>
-     *   <li>Extract discriminator (second segment)</li>
-     *   <li>Strip known permission suffixes from discriminator</li>
-     *   <li>If no colon: treat as simple format, strip permission suffixes</li>
-     * </ol>
+     * <p><b>Action Suffix Handling:</b>
+     * Action suffixes (e.g., :read, :write) are NOT part of the DCP spec but are
+     * supported for downstream policy evaluation (e.g., Permission/Action constraints).
+     * <ul>
+     *   <li>For <b>querying</b>: action suffixes are stripped (query by base type/id)</li>
+     *   <li>For <b>authorization</b>: action suffixes should be preserved for policy evaluation</li>
+     *   <li>If <b>no action</b> specified: all actions are implicitly allowed</li>
+     * </ul>
+     *
+     * <p>Examples:
+     * <ul>
+     *   <li>org.eclipse.dspace.dcp.vc.type:MembershipCredential → query "MembershipCredential"</li>
+     *   <li>org.eclipse.dspace.dcp.vc.type:MembershipCredential:read → query "MembershipCredential" (strip :read for query)</li>
+     *   <li>org.eclipse.dspace.dcp.vc.id:uuid-1234 → query "uuid-1234"</li>
+     *   <li>org.eclipse.dspace.dcp.vc.id:uuid-1234:write → query "uuid-1234" (strip :write for query)</li>
+     * </ul>
      *
      * @param scope The scope string to parse
-     * @return The extracted credential type/ID, or the original scope if not parseable
+     * @return ParsedScope object containing alias type, base discriminator, and optional action
      */
-    private String parseSingleScope(String scope) {
+    private ParsedScope parseScope(String scope) {
         if (scope == null || scope.isBlank()) {
-            return null;
+            return new ParsedScope(false, "", null);
         }
 
         // Check if scope contains colon (aliased format)
         int firstColon = scope.indexOf(':');
         if (firstColon == -1) {
-            // Simple format (no alias) - return as-is, but strip permission suffixes
-            return stripPermissionSuffix(scope);
+            // Simple format (no alias) - treat as type query
+            return new ParsedScope(false, scope, null);
         }
 
-        // Aliased format: [alias]:[discriminator] or [alias]:[discriminator]:[action]
-        // Extract the discriminator (everything after first colon)
-        String afterFirstColon = scope.substring(firstColon + 1);
+        // Extract alias and discriminator
+        String alias = scope.substring(0, firstColon);
+        String discriminator = scope.substring(firstColon + 1);
 
-        // Strip any action/permission suffix from discriminator
-        return stripPermissionSuffix(afterFirstColon);
+        // Check if this is an ID alias
+        boolean isIdAlias = DCPConstants.SCOPE_ALIAS_VC_ID.equals(alias);
+
+        // Extract action suffix if present
+        String action = extractActionSuffix(discriminator);
+        String baseDiscriminator = action != null ? stripActionSuffix(discriminator) : discriminator;
+
+        return new ParsedScope(isIdAlias, baseDiscriminator, action);
     }
 
     /**
-     * Strip permission suffixes like :read, :write, :delete from a scope.
-     * These are not part of the DCP spec but may be present in some implementations.
+     * Extract action suffix from a discriminator if present.
      *
-     * <p>Examples:
-     * <ul>
-     *   <li>MembershipCredential:read → MembershipCredential</li>
-     *   <li>MembershipCredential:write → MembershipCredential</li>
-     *   <li>MembershipCredential → MembershipCredential (no change)</li>
-     * </ul>
-     *
-     * @param value The value that may have a permission suffix
-     * @return The value with permission suffix removed
+     * @param discriminator The discriminator that may have an action suffix
+     * @return The action suffix (e.g., "read", "write") or null if not present
      */
-    private String stripPermissionSuffix(String value) {
-        if (value == null || value.isBlank()) {
-            return value;
+    private String extractActionSuffix(String discriminator) {
+        if (discriminator == null || discriminator.isBlank()) {
+            return null;
         }
 
-        // Common permission suffixes to strip
-        String[] permissionSuffixes = {":read", ":write", ":delete", ":admin", ":execute"};
+        // Common action suffixes (for downstream policy evaluation)
+        String[] actionSuffixes = {":read", ":write", ":delete", ":admin", ":execute"};
 
-        for (String suffix : permissionSuffixes) {
-            if (value.endsWith(suffix)) {
-                return value.substring(0, value.length() - suffix.length());
+        for (String suffix : actionSuffixes) {
+            if (discriminator.endsWith(suffix)) {
+                return suffix.substring(1); // Remove leading colon
             }
         }
 
-        return value;
+        return null;
+    }
+
+    /**
+     * Strip action suffix from a discriminator.
+     * Used to get the base type/id for repository queries.
+     *
+     * @param discriminator The discriminator with action suffix
+     * @return The discriminator without action suffix
+     */
+    private String stripActionSuffix(String discriminator) {
+        if (discriminator == null || discriminator.isBlank()) {
+            return discriminator;
+        }
+
+        // Common action suffixes
+        String[] actionSuffixes = {":read", ":write", ":delete", ":admin", ":execute"};
+
+        for (String suffix : actionSuffixes) {
+            if (discriminator.endsWith(suffix)) {
+                return discriminator.substring(0, discriminator.length() - suffix.length());
+            }
+        }
+
+        return discriminator;
+    }
+
+    /**
+     * Legacy method for backward compatibility.
+     * Parses a single scope to extract discriminator, stripping action suffixes.
+     *
+     * @param scope The scope string to parse
+     * @return The extracted discriminator without action suffix
+     * @deprecated Use {@link #parseScope(String)} which properly distinguishes between type and id aliases
+     */
+    @Deprecated
+    private String parseSingleScope(String scope) {
+        ParsedScope parsed = parseScope(scope);
+        return parsed.getDiscriminator();
+    }
+
+    /**
+     * Parsed scope representation.
+     * Contains information about whether this is an ID-based or type-based query,
+     * the base discriminator (without action suffix) for querying, and the optional
+     * action for downstream policy evaluation.
+     */
+    private static class ParsedScope {
+        private final boolean isIdAlias;
+        private final String discriminator; // Base discriminator without action suffix
+        private final String action;        // Optional action suffix (e.g., "read", "write")
+
+        public ParsedScope(boolean isIdAlias, String discriminator, String action) {
+            this.isIdAlias = isIdAlias;
+            this.discriminator = discriminator;
+            this.action = action;
+        }
+
+        public boolean isIdAlias() {
+            return isIdAlias;
+        }
+
+        public String getDiscriminator() {
+            return discriminator;
+        }
+
+        public String getAction() {
+            return action;
+        }
+
+        public boolean hasAction() {
+            return action != null && !action.isBlank();
+        }
     }
 
     /**

@@ -629,7 +629,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         String credentialType = credentialMetadataConfig.getSupported().get(0).getId();
         CredentialRequestMessage requestMessage = CredentialRequestMessage.Builder
                 .newInstance()
-                .holderPid(HOLDER_DID)
+                .holderPid("holder-pid-" + UUID.randomUUID().toString().substring(0, 8))
                 .credentials(List.of(
                         CredentialReference.Builder.newInstance().id(credentialType).build()
                 ))

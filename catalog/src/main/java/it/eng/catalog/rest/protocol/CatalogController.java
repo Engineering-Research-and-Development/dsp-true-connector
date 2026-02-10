@@ -60,9 +60,10 @@ public class CatalogController {
         log.info("Handling tck protocol request {}", jsonBody);
         log.info("Authorization: {}", authorization);
 
-        verifierService.validateAndQueryHolderPresentations(extractBearerToken(authorization));
+        VerifierService.PresentationFlowResult presentationResult =
+                verifierService.validateAndQueryHolderPresentations(extractBearerToken(authorization));
 
-        CatalogSerializer.deserializeProtocol(jsonBody, CatalogRequestMessage.class);
+//        CatalogSerializer.deserializeProtocol(jsonBody, CatalogRequestMessage.class);
         Catalog catalog = catalogService.getCatalog();
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)

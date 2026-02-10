@@ -936,5 +936,555 @@ class DidUrlConverterTest {
 
             assertTrue(result);
         }
+
+        @Test
+        @DisplayName("DIDs with fragments should be equal to base DID")
+        void didsWithFragmentsAreEqualToBaseDid() {
+            String didWithFragment = "did:web:example.com:8080#key-1";
+            String baseDid = "did:web:example.com:8080";
+
+            boolean result = DidUrlConverter.compareDids(didWithFragment, baseDid);
+
+            assertTrue(result, "DID with fragment should match base DID");
+        }
+
+        @Test
+        @DisplayName("DIDs with different fragments should be equal")
+        void didsWithDifferentFragmentsAreEqual() {
+            String did1 = "did:web:example.com:8080#key-1";
+            String did2 = "did:web:example.com:8080#key-2";
+
+            boolean result = DidUrlConverter.compareDids(did1, did2);
+
+            assertTrue(result, "DIDs with different fragments but same base should be equal");
+        }
+
+        @Test
+        @DisplayName("DIDs with fragments and URL encoding should be equal")
+        void didsWithFragmentsAndEncodingAreEqual() {
+            String encodedWithFragment = "did:web:localhost%3A8080:holder#key-1";
+            String decodedWithoutFragment = "did:web:localhost:8080:holder";
+
+            boolean result = DidUrlConverter.compareDids(encodedWithFragment, decodedWithoutFragment);
+
+            assertTrue(result, "DIDs with fragments and different encodings should be equal");
+        }
+
+        @Test
+        @DisplayName("Both DIDs with fragments and URL encoding should be equal")
+        void bothDidsWithFragmentsAndEncodingAreEqual() {
+            String encodedDid1 = "did:web:localhost%3A8080:issuer#key-1";
+            String encodedDid2 = "did:web:localhost%3A8080:issuer#key-2";
+
+            boolean result = DidUrlConverter.compareDids(encodedDid1, encodedDid2);
+
+            assertTrue(result, "Both DIDs with fragments and encoding should be equal");
+        }
+
+        @Test
+        @DisplayName("Different base DIDs with fragments should not be equal")
+        void differentBaseDidsWithFragmentsNotEqual() {
+            String did1 = "did:web:example.com:8080#key-1";
+            String did2 = "did:web:other.com:8080#key-1";
+
+            boolean result = DidUrlConverter.compareDids(did1, did2);
+
+            assertFalse(result, "Different base DIDs should not be equal even with same fragment");
+        }
+
+        @Test
+        @DisplayName("DID with encoded fragment %23 should equal base DID")
+        void didWithEncodedFragmentEqualsBaseDid() {
+            // This is the specific scenario from the issue
+            String didWithEncodedFragment = "did:web:localhost%3A8080%23holder";
+            String baseDid = "did:web:localhost:8080";
+
+            boolean result = DidUrlConverter.compareDids(didWithEncodedFragment, baseDid);
+
+            assertTrue(result, "DID with encoded fragment %23 should match base DID");
+        }
+
+        @Test
+        @DisplayName("DID with both encoded port %3A and encoded fragment %23")
+        void didWithFullyEncodedPortAndFragment() {
+            String fullyEncoded = "did:web:localhost%3A8080%23holder";
+            String decoded = "did:web:localhost:8080#holder";
+
+            boolean result = DidUrlConverter.compareDids(fullyEncoded, decoded);
+
+            assertTrue(result, "Fully encoded DID should match decoded DID");
+        }
+
+        @Test
+        @DisplayName("DID with encoded fragment %23 should equal DID with literal fragment #")
+        void encodedFragmentEqualsLiteralFragment() {
+            String encodedFragment = "did:web:example.com%23key-1";
+            String literalFragment = "did:web:example.com#key-1";
+
+            boolean result = DidUrlConverter.compareDids(encodedFragment, literalFragment);
+
+            assertTrue(result, "Encoded fragment %23 should match literal fragment #");
+        }
+
+        @Test
+        @DisplayName("Complex case: encoded port, encoded fragment vs decoded")
+        void complexEncodingScenario() {
+            String encoded = "did:web:localhost%3A8080:holder%23key-1";
+            String decoded = "did:web:localhost:8080:holder";
+
+            boolean result = DidUrlConverter.compareDids(encoded, decoded);
+
+            assertTrue(result, "Complex encoding should be handled correctly");
+        }
+
+        @Test
+        @DisplayName("Compares DIDs with multiple path segments as equal")
+        void comparesDidsWithMultiplePathSegmentsAsEqual() {
+            String did1 = "did:web:example.com:path:to:issuer";
+            String did2 = "did:web:example.com:path:to:issuer";
+
+            boolean result = DidUrlConverter.compareDids(did1, did2);
+
+            assertTrue(result, "DIDs with multiple path segments should be equal");
+        }
+
+        @Test
+        @DisplayName("Compares DIDs with encoded port and multiple path segments")
+        void comparesDidsWithEncodedPortAndMultiplePathSegments() {
+            String encodedDid = "did:web:localhost%3A8083:api:v1:issuer";
+            String decodedDid = "did:web:localhost:8083:api:v1:issuer";
+
+            boolean result = DidUrlConverter.compareDids(encodedDid, decodedDid);
+
+            assertTrue(result, "DIDs with encoded port and multiple path segments should be equal");
+        }
+
+        @Test
+        @DisplayName("Compares DIDs with different path segments as not equal")
+        void comparesDidsWithDifferentPathSegmentsAsNotEqual() {
+            String did1 = "did:web:example.com:path:to:issuer";
+            String did2 = "did:web:example.com:path:to:holder";
+
+            boolean result = DidUrlConverter.compareDids(did1, did2);
+
+            assertFalse(result, "DIDs with different path segments should not be equal");
+        }
+
+        @Test
+        @DisplayName("Compares DIDs with different number of path segments as not equal")
+        void comparesDidsWithDifferentPathLengthAsNotEqual() {
+            String did1 = "did:web:example.com:issuer";
+            String did2 = "did:web:example.com:path:to:issuer";
+
+            boolean result = DidUrlConverter.compareDids(did1, did2);
+
+            assertFalse(result, "DIDs with different path lengths should not be equal");
+        }
+
+        @Test
+        @DisplayName("Compares user's example DIDs - encoded vs decoded with path")
+        void comparesUserExampleDidsEncodedVsDecoded() {
+            String encodedDid = "did:web:localhost%3A8083:issuer";
+            String decodedDid = "did:web:localhost:8083:issuer";
+
+            boolean result = DidUrlConverter.compareDids(encodedDid, decodedDid);
+
+            assertTrue(result, "User's example DIDs should be equal after normalization");
+        }
+
+        @Test
+        @DisplayName("Compares DIDs with encoded port, no path vs with path - should not be equal")
+        void comparesDidsEncodedPortNoPathVsWithPath() {
+            String didNoPath = "did:web:localhost%3A8083";
+            String didWithPath = "did:web:localhost:8083:issuer";
+
+            boolean result = DidUrlConverter.compareDids(didNoPath, didWithPath);
+
+            assertFalse(result, "DID without path should not equal DID with path");
+        }
+
+        @Test
+        @DisplayName("Compares DIDs with mixed case encoding in port")
+        void comparesDidsWithMixedCaseEncodingInPort() {
+            String uppercaseDid = "did:web:localhost%3A8083:issuer";
+            String lowercaseDid = "did:web:localhost%3a8083:issuer";
+
+            boolean result = DidUrlConverter.compareDids(uppercaseDid, lowercaseDid);
+
+            assertTrue(result, "DIDs with mixed case port encoding should be equal");
+        }
+    }
+
+    @Nested
+    @DisplayName("convertDidToDidDocumentUrl() tests - W3C Specification compliance")
+    class ConvertDidToDidDocumentUrlTests {
+
+        @Nested
+        @DisplayName("Without path segments")
+        class WithoutPathSegments {
+
+            @Test
+            @DisplayName("Converts simple DID to DID document URL (HTTPS)")
+            void convertsSimpleDidToDidDocumentUrl() {
+                String did = "did:web:example.com";
+                String expected = "https://example.com/.well-known/did.json";
+
+                String result = DidUrlConverter.convertDidToDidDocumentUrl(did);
+
+                assertEquals(expected, result);
+            }
+
+            @Test
+            @DisplayName("Converts DID with encoded port to DID document URL")
+            void convertsDidWithEncodedPortToDidDocumentUrl() {
+                String did = "did:web:localhost%3A8083";
+                String expected = "https://localhost:8083/.well-known/did.json";
+
+                String result = DidUrlConverter.convertDidToDidDocumentUrl(did);
+
+                assertEquals(expected, result);
+            }
+
+            @Test
+            @DisplayName("Converts DID with decoded port to DID document URL")
+            void convertsDidWithDecodedPortToDidDocumentUrl() {
+                String did = "did:web:localhost:8083";
+                String expected = "https://localhost:8083/.well-known/did.json";
+
+                String result = DidUrlConverter.convertDidToDidDocumentUrl(did);
+
+                assertEquals(expected, result);
+            }
+
+            @Test
+            @DisplayName("Converts DID to HTTP DID document URL when SSL disabled")
+            void convertsDidToHttpDidDocumentUrl() {
+                String did = "did:web:example.com";
+                String expected = "http://example.com/.well-known/did.json";
+
+                String result = DidUrlConverter.convertDidToDidDocumentUrl(did, false);
+
+                assertEquals(expected, result);
+            }
+
+            @Test
+            @DisplayName("Converts DID with port to HTTP DID document URL when SSL disabled")
+            void convertsDidWithPortToHttpDidDocumentUrl() {
+                String did = "did:web:localhost%3A8083";
+                String expected = "http://localhost:8083/.well-known/did.json";
+
+                String result = DidUrlConverter.convertDidToDidDocumentUrl(did, false);
+
+                assertEquals(expected, result);
+            }
+
+            @Test
+            @DisplayName("Converts DID with IP address to DID document URL")
+            void convertsDidWithIpAddressToDidDocumentUrl() {
+                String did = "did:web:192.168.1.100%3A8080";
+                String expected = "https://192.168.1.100:8080/.well-known/did.json";
+
+                String result = DidUrlConverter.convertDidToDidDocumentUrl(did);
+
+                assertEquals(expected, result);
+            }
+        }
+
+        @Nested
+        @DisplayName("With path segments")
+        class WithPathSegments {
+
+            @Test
+            @DisplayName("Converts DID with single path segment to DID document URL (user provided example)")
+            void convertsDidWithSinglePathSegmentToDidDocumentUrl() {
+                String did = "did:web:localhost%3A8083:issuer";
+                String expected = "https://localhost:8083/issuer/.well-known/did.json";
+
+                String result = DidUrlConverter.convertDidToDidDocumentUrl(did);
+
+                assertEquals(expected, result);
+            }
+
+            @Test
+            @DisplayName("Converts DID with single path segment (no port) to DID document URL")
+            void convertsDidWithSinglePathNoPortToDidDocumentUrl() {
+                String did = "did:web:example.com:issuer";
+                String expected = "https://example.com/issuer/.well-known/did.json";
+
+                String result = DidUrlConverter.convertDidToDidDocumentUrl(did);
+
+                assertEquals(expected, result);
+            }
+
+            @Test
+            @DisplayName("Converts DID with multiple path segments to DID document URL")
+            void convertsDidWithMultiplePathSegmentsToDidDocumentUrl() {
+                String did = "did:web:example.com:path:to:did";
+                String expected = "https://example.com/path/to/did/.well-known/did.json";
+
+                String result = DidUrlConverter.convertDidToDidDocumentUrl(did);
+
+                assertEquals(expected, result);
+            }
+
+            @Test
+            @DisplayName("Converts DID with port and multiple path segments to DID document URL")
+            void convertsDidWithPortAndMultiplePathSegmentsToDidDocumentUrl() {
+                String did = "did:web:localhost%3A8083:api:v1:issuer";
+                String expected = "https://localhost:8083/api/v1/issuer/.well-known/did.json";
+
+                String result = DidUrlConverter.convertDidToDidDocumentUrl(did);
+
+                assertEquals(expected, result);
+            }
+
+            @Test
+            @DisplayName("Converts DID with decoded port and path segment to DID document URL")
+            void convertsDidWithDecodedPortAndPathToDidDocumentUrl() {
+                String did = "did:web:localhost:8083:holder";
+                String expected = "https://localhost:8083/holder/.well-known/did.json";
+
+                String result = DidUrlConverter.convertDidToDidDocumentUrl(did);
+
+                assertEquals(expected, result);
+            }
+
+            @Test
+            @DisplayName("Converts DID with path to HTTP DID document URL when SSL disabled")
+            void convertsDidWithPathToHttpDidDocumentUrl() {
+                String did = "did:web:localhost%3A8083:issuer";
+                String expected = "http://localhost:8083/issuer/.well-known/did.json";
+
+                String result = DidUrlConverter.convertDidToDidDocumentUrl(did, false);
+
+                assertEquals(expected, result);
+            }
+
+            @Test
+            @DisplayName("Converts DID with deep path structure to DID document URL")
+            void convertsDidWithDeepPathStructureToDidDocumentUrl() {
+                String did = "did:web:example.com:department:security:identity:issuer";
+                String expected = "https://example.com/department/security/identity/issuer/.well-known/did.json";
+
+                String result = DidUrlConverter.convertDidToDidDocumentUrl(did);
+
+                assertEquals(expected, result);
+            }
+        }
+
+        @Nested
+        @DisplayName("Edge cases and error handling")
+        class EdgeCasesAndErrorHandling {
+
+            @Test
+            @DisplayName("Throws exception for null DID")
+            void throwsExceptionForNullDid() {
+                IllegalArgumentException exception = assertThrows(
+                    IllegalArgumentException.class,
+                    () -> DidUrlConverter.convertDidToDidDocumentUrl(null)
+                );
+
+                assertTrue(exception.getMessage().contains("Invalid DID:web format"));
+            }
+
+            @Test
+            @DisplayName("Throws exception for non-DID:web format")
+            void throwsExceptionForNonDidWebFormat() {
+                String did = "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK";
+
+                IllegalArgumentException exception = assertThrows(
+                    IllegalArgumentException.class,
+                    () -> DidUrlConverter.convertDidToDidDocumentUrl(did)
+                );
+
+                assertTrue(exception.getMessage().contains("Invalid DID:web format"));
+            }
+
+            @Test
+            @DisplayName("Throws exception for plain URL")
+            void throwsExceptionForPlainUrl() {
+                String url = "https://example.com";
+
+                IllegalArgumentException exception = assertThrows(
+                    IllegalArgumentException.class,
+                    () -> DidUrlConverter.convertDidToDidDocumentUrl(url)
+                );
+
+                assertTrue(exception.getMessage().contains("Invalid DID:web format"));
+            }
+
+            @Test
+            @DisplayName("Throws exception for empty DID:web")
+            void throwsExceptionForEmptyDidWeb() {
+                String did = "did:web:";
+
+                IllegalArgumentException exception = assertThrows(
+                    IllegalArgumentException.class,
+                    () -> DidUrlConverter.convertDidToDidDocumentUrl(did)
+                );
+
+                assertTrue(exception.getMessage().contains("Invalid DID:web format"));
+            }
+        }
+
+        @Nested
+        @DisplayName("Real-world scenarios")
+        class RealWorldScenarios {
+
+            @Test
+            @DisplayName("Production issuer DID resolution")
+            void productionIssuerDidResolution() {
+                String did = "did:web:issuer.dataspace.org";
+                String expected = "https://issuer.dataspace.org/.well-known/did.json";
+
+                String result = DidUrlConverter.convertDidToDidDocumentUrl(did);
+
+                assertEquals(expected, result);
+            }
+
+            @Test
+            @DisplayName("Development issuer DID resolution with port")
+            void developmentIssuerDidResolution() {
+                String did = "did:web:localhost%3A8083:issuer";
+                String expected = "https://localhost:8083/issuer/.well-known/did.json";
+
+                String result = DidUrlConverter.convertDidToDidDocumentUrl(did);
+
+                assertEquals(expected, result);
+            }
+
+            @Test
+            @DisplayName("Holder DID resolution in test environment")
+            void holderDidResolutionInTestEnvironment() {
+                String did = "did:web:localhost%3A8081:holder";
+                String expected = "https://localhost:8081/holder/.well-known/did.json";
+
+                String result = DidUrlConverter.convertDidToDidDocumentUrl(did);
+
+                assertEquals(expected, result);
+            }
+
+            @Test
+            @DisplayName("Verifier DID resolution with subdomain")
+            void verifierDidResolutionWithSubdomain() {
+                String did = "did:web:verifier.connector.dataspace.org";
+                String expected = "https://verifier.connector.dataspace.org/.well-known/did.json";
+
+                String result = DidUrlConverter.convertDidToDidDocumentUrl(did);
+
+                assertEquals(expected, result);
+            }
+
+            @Test
+            @DisplayName("Multi-tenant issuer DID resolution with path")
+            void multiTenantIssuerDidResolution() {
+                String did = "did:web:issuer.example.com:tenants:tenant123";
+                String expected = "https://issuer.example.com/tenants/tenant123/.well-known/did.json";
+
+                String result = DidUrlConverter.convertDidToDidDocumentUrl(did);
+
+                assertEquals(expected, result);
+            }
+
+            @Test
+            @DisplayName("Docker compose localhost scenario with HTTP")
+            void dockerComposeLocalhostScenario() {
+                String did = "did:web:localhost:8083:issuer";
+                String expected = "http://localhost:8083/issuer/.well-known/did.json";
+
+                String result = DidUrlConverter.convertDidToDidDocumentUrl(did, false);
+
+                assertEquals(expected, result);
+            }
+        }
+
+        @Nested
+        @DisplayName("W3C Specification examples")
+        class W3cSpecificationExamples {
+
+            @Test
+            @DisplayName("W3C example: domain only")
+            void w3cExampleDomainOnly() {
+                String did = "did:web:w3c-ccg.github.io";
+                String expected = "https://w3c-ccg.github.io/.well-known/did.json";
+
+                String result = DidUrlConverter.convertDidToDidDocumentUrl(did);
+
+                assertEquals(expected, result);
+            }
+
+            @Test
+            @DisplayName("W3C example: domain with path")
+            void w3cExampleDomainWithPath() {
+                String did = "did:web:w3c-ccg.github.io:user:alice";
+                String expected = "https://w3c-ccg.github.io/user/alice/.well-known/did.json";
+
+                String result = DidUrlConverter.convertDidToDidDocumentUrl(did);
+
+                assertEquals(expected, result);
+            }
+
+            @Test
+            @DisplayName("W3C example: domain with port")
+            void w3cExampleDomainWithPort() {
+                String did = "did:web:example.com%3A3000";
+                String expected = "https://example.com:3000/.well-known/did.json";
+
+                String result = DidUrlConverter.convertDidToDidDocumentUrl(did);
+
+                assertEquals(expected, result);
+            }
+
+            @Test
+            @DisplayName("W3C example: domain with port and path")
+            void w3cExampleDomainWithPortAndPath() {
+                String did = "did:web:example.com%3A3000:user:alice";
+                String expected = "https://example.com:3000/user/alice/.well-known/did.json";
+
+                String result = DidUrlConverter.convertDidToDidDocumentUrl(did);
+
+                assertEquals(expected, result);
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("convertDidToUrl() behavior tests - base URL extraction")
+    class ConvertDidToUrlBehaviorTests {
+
+        @Test
+        @DisplayName("convertDidToUrl returns base URL without .well-known path")
+        void convertDidToUrlReturnsBaseUrl() {
+            String did = "did:web:localhost%3A8083:issuer";
+            String expected = "http://localhost:8083/issuer";
+
+            String result = DidUrlConverter.convertDidToUrl(did);
+
+            assertEquals(expected, result);
+        }
+
+        @Test
+        @DisplayName("convertDidToUrl with SSL returns HTTPS base URL")
+        void convertDidToUrlWithSslReturnsHttpsBaseUrl() {
+            String did = "did:web:localhost%3A8083:issuer";
+            String expected = "https://localhost:8083/issuer";
+
+            String result = DidUrlConverter.convertDidToUrl(did, true);
+
+            assertEquals(expected, result);
+        }
+
+        @Test
+        @DisplayName("Difference between convertDidToUrl and convertDidToDidDocumentUrl")
+        void differenceBetwenConvertDidToUrlAndConvertDidToDidDocumentUrl() {
+            String did = "did:web:localhost%3A8083:issuer";
+
+            String baseUrl = DidUrlConverter.convertDidToUrl(did, true);
+            String didDocumentUrl = DidUrlConverter.convertDidToDidDocumentUrl(did, true);
+
+            assertEquals("https://localhost:8083/issuer", baseUrl);
+            assertEquals("https://localhost:8083/issuer/.well-known/did.json", didDocumentUrl);
+            assertNotEquals(baseUrl, didDocumentUrl);
+        }
     }
 }

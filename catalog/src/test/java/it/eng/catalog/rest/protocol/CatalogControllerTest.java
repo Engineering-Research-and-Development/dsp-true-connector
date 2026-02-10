@@ -45,7 +45,7 @@ public class CatalogControllerTest {
         when(catalogService.getCatalog()).thenReturn(CatalogMockObjectUtil.CATALOG);
         JsonNode jsonNode = CatalogSerializer.serializeProtocolJsonNode(catalogRequestMessage);
 
-        ResponseEntity<JsonNode> response = catalogController.getCatalog(null, jsonNode);
+        ResponseEntity<JsonNode> response = catalogController.getCatalog("Bearer abc.xyz.signature", jsonNode);
 
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());

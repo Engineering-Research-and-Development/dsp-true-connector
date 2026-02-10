@@ -74,9 +74,9 @@ public class GenericCredentialGenerator implements CredentialGenerator {
         var generator = jwtGeneratorFactory.createGenerator(profile);
         if ((generator instanceof VC20JwtGenerator vc20) ||
             (generator instanceof VC11JwtGenerator vc11)) {
-            signedJwt = generator.generateJwt(context.getRequest().getHolderPid(), credentialType, claims, statusListId, statusListIndex);
+            signedJwt = generator.generateJwt(context.getRequest().getHolderDid(), credentialType, claims, statusListId, statusListIndex);
         } else {
-            signedJwt = generator.generateJwt(context.getRequest().getHolderPid(), credentialType, claims);
+            signedJwt = generator.generateJwt(context.getRequest().getHolderDid(), credentialType, claims);
         }
         return CredentialMessage.CredentialContainer.Builder.newInstance()
                 .credentialType(credentialType)

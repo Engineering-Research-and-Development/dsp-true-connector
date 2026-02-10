@@ -92,6 +92,7 @@ class MembershipCredentialGeneratorTest {
 
         SignedJWT jwt = SignedJWT.parse((String) container.getPayload());
 
+        // VC 2.0 (default) has credentialSubject at root level
         @SuppressWarnings("unchecked")
         Map<String, Object> credentialSubject = (Map<String, Object>) jwt.getJWTClaimsSet().getClaim("credentialSubject");
 
@@ -151,13 +152,19 @@ class MembershipCredentialGeneratorTest {
 
         assertNotNull(jwt.getSignature());
         assertEquals(ISSUER_DID, jwt.getJWTClaimsSet().getIssuer());
-        assertEquals(HOLDER_DID, jwt.getJWTClaimsSet().getSubject());
+
+        // VC 2.0 doesn't use JWT sub claim - check credentialSubject.id instead
+        @SuppressWarnings("unchecked")
+        Map<String, Object> credentialSubject = (Map<String, Object>) jwt.getJWTClaimsSet().getClaim("credentialSubject");
+        assertNotNull(credentialSubject);
+        assertEquals(HOLDER_DID, credentialSubject.get("id"));
     }
 
     private CredentialGenerationContext createTestContext() {
         CredentialRequest request = CredentialRequest.Builder.newInstance()
                 .issuerPid("test-issuer-pid")
-                .holderPid(HOLDER_DID)
+                .holderPid("test-holder-pid")
+                .holderDid(HOLDER_DID)
                 .credentialIds(List.of("MembershipCredential"))
                 .status(CredentialStatus.PENDING)
                 .createdAt(Instant.now())
@@ -169,7 +176,8 @@ class MembershipCredentialGeneratorTest {
     private CredentialGenerationContext createTestContextWithProfile(ProfileId profile) {
         CredentialRequest request = CredentialRequest.Builder.newInstance()
                 .issuerPid("test-issuer-pid")
-                .holderPid(HOLDER_DID)
+                .holderPid("test-holder-pid")
+                .holderDid(HOLDER_DID)
                 .credentialIds(List.of("MembershipCredential"))
                 .status(CredentialStatus.PENDING)
                 .createdAt(Instant.now())

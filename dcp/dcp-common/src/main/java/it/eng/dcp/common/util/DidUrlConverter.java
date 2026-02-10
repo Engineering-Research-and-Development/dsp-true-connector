@@ -264,17 +264,115 @@ public class DidUrlConverter {
     }
 
     /**
-     * Compares two DID:web identifiers for equality, handling both encoded and decoded formats.
+     * Converts a DID:web to the URL where its DID document can be resolved.
+     *
+     * <p>According to the W3C DID:web method specification, DID documents are served at
+     * {@code /.well-known/did.json} relative to the base URL. Path segments in the DID
+     * are converted to URL path segments before appending the well-known location.
+     *
+     * <p>Examples:
+     * <pre>
+     * convertDidToDidDocumentUrl("did:web:example.com")
+     *   → "https://example.com/.well-known/did.json"
+     *
+     * convertDidToDidDocumentUrl("did:web:localhost%3A8083:issuer")
+     *   → "https://localhost:8083/issuer/.well-known/did.json"
+     *
+     * convertDidToDidDocumentUrl("did:web:example.com:path:to:did")
+     *   → "https://example.com/path/to/did/.well-known/did.json"
+     * </pre>
+     *
+     * @param did The DID:web identifier
+     * @return The full URL to the DID document (HTTPS)
+     * @throws IllegalArgumentException if the DID is null or not a valid did:web format
+     */
+    public static String convertDidToDidDocumentUrl(String did) {
+        return convertDidToDidDocumentUrl(did, true);
+    }
+
+    /**
+     * Converts a DID:web to the URL where its DID document can be resolved.
+     *
+     * <p>According to the W3C DID:web method specification, DID documents are served at
+     * {@code /.well-known/did.json} relative to the base URL. Path segments in the DID
+     * are converted to URL path segments before appending the well-known location.
+     *
+     * <p>Examples:
+     * <pre>
+     * convertDidToDidDocumentUrl("did:web:example.com", true)
+     *   → "https://example.com/.well-known/did.json"
+     *
+     * convertDidToDidDocumentUrl("did:web:localhost%3A8083:issuer", false)
+     *   → "http://localhost:8083/issuer/.well-known/did.json"
+     *
+     * convertDidToDidDocumentUrl("did:web:example.com:path:to:did", true)
+     *   → "https://example.com/path/to/did/.well-known/did.json"
+     * </pre>
+     *
+     * @param did The DID:web identifier
+     * @param sslEnabled If true, use https; if false, use http
+     * @return The full URL to the DID document
+     * @throws IllegalArgumentException if the DID is null or not a valid did:web format
+     */
+    public static String convertDidToDidDocumentUrl(String did, boolean sslEnabled) {
+        if (did == null || !did.startsWith("did:web:")) {
+            throw new IllegalArgumentException("Invalid DID:web format: " + did);
+        }
+
+        // Remove "did:web:" prefix
+        String identifier = did.substring(8);
+        if (identifier.isBlank()) {
+            throw new IllegalArgumentException("Invalid DID:web format: " + did);
+        }
+
+        String[] segments = identifier.split(":");
+        if (segments.length == 0 || segments[0].isBlank()) {
+            throw new IllegalArgumentException("Invalid DID:web format: " + did);
+        }
+
+        // The first segment is the host (possibly with %3A for port or unencoded colon)
+        String hostAndPort = segments[0].replace("%3A", ":");
+        int pathStartIdx = 1;
+
+        // If the hostAndPort does not contain a colon, but the next segment is a number, treat as unencoded port
+        if (!hostAndPort.contains(":") && segments.length > 1 && segments[1].matches("\\d+")) {
+            hostAndPort = hostAndPort + ":" + segments[1];
+            pathStartIdx = 2;
+        }
+
+        String protocol = sslEnabled ? "https://" : "http://";
+        StringBuilder url = new StringBuilder(protocol).append(hostAndPort);
+
+        // Add path segments
+        if (segments.length > pathStartIdx) {
+            for (int i = pathStartIdx; i < segments.length; i++) {
+                url.append("/").append(segments[i]);
+            }
+        }
+
+        // Append the well-known DID document location
+        url.append("/.well-known/did.json");
+
+        String result = url.toString();
+        log.debug("Converted DID '{}' to DID document URL '{}'", did, result);
+        return result;
+    }
+
+    /**
+     * Compares two DID:web identifiers for equality, handling encoded formats and fragments.
      *
      * <p>This method normalizes both DIDs before comparison to ensure that
      * "did:web:localhost%3A8080:issuer" and "did:web:localhost:8080:issuer" are
-     * considered equal.
+     * considered equal. Additionally, fragments (e.g., "#key-1") are stripped before
+     * comparison to support interoperability with external systems that may include
+     * key references in DIDs.
      *
      * <p>Use cases:
      * <ul>
      *   <li>Token validation where issuer/audience DIDs may be URL-encoded</li>
      *   <li>DID resolution where DIDs from different sources may have different encodings</li>
      *   <li>Configuration comparison where DIDs may be stored in various formats</li>
+     *   <li>JWT audience validation where fragments may reference specific keys</li>
      * </ul>
      *
      * <p>Examples:
@@ -282,7 +380,7 @@ public class DidUrlConverter {
      * compareDids("did:web:localhost%3A8080:issuer", "did:web:localhost:8080:issuer")
      *   → true
      *
-     * compareDids("did:web:localhost:8080:holder", "did:web:localhost:8080:holder")
+     * compareDids("did:web:localhost:8080:holder#key-1", "did:web:localhost:8080:holder")
      *   → true
      *
      * compareDids("did:web:example.com", "did:web:other.com")
@@ -294,7 +392,7 @@ public class DidUrlConverter {
      *
      * @param did1 The first DID to compare
      * @param did2 The second DID to compare
-     * @return true if the DIDs are equal after normalization, false otherwise
+     * @return true if the DIDs are equal after normalization and fragment removal, false otherwise
      */
     public static boolean compareDids(String did1, String did2) {
         // Handle null cases
@@ -313,28 +411,40 @@ public class DidUrlConverter {
             return false;
         }
 
+        // Strip fragments (stripFragment handles URL decoding internally)
+        // This ensures both encoded (%23) and literal (#) fragments are properly removed
+        String withoutFragment1 = DidUtils.stripFragment(did1);
+        String withoutFragment2 = DidUtils.stripFragment(did2);
+
         // Check if both are valid did:web format
-        if (!did1.startsWith("did:web:") || !did2.startsWith("did:web:")) {
+        if (!withoutFragment1.startsWith("did:web:") || !withoutFragment2.startsWith("did:web:")) {
             // If not both did:web, fall back to simple string comparison
-            return did1.equals(did2);
+            return withoutFragment1.equals(withoutFragment2);
         }
 
         // Normalize and compare
         try {
-            String normalized1 = normalizeDid(did1);
-            String normalized2 = normalizeDid(did2);
+            String normalized1 = normalizeDid(withoutFragment1);
+            String normalized2 = normalizeDid(withoutFragment2);
             boolean result = normalized1.equals(normalized2);
 
             if (log.isDebugEnabled() && !did1.equals(did2)) {
-                log.debug("Comparing DIDs: '{}' vs '{}' → {} (normalized: '{}' vs '{}')",
-                    did1, did2, result, normalized1, normalized2);
+                boolean hasFragment1 = DidUtils.hasFragment(did1);
+                boolean hasFragment2 = DidUtils.hasFragment(did2);
+                if (hasFragment1 || hasFragment2) {
+                    log.debug("Comparing DIDs (fragments stripped): '{}' vs '{}' → {} (normalized: '{}' vs '{}')",
+                        did1, did2, result, normalized1, normalized2);
+                } else {
+                    log.debug("Comparing DIDs: '{}' vs '{}' → {} (normalized: '{}' vs '{}')",
+                        did1, did2, result, normalized1, normalized2);
+                }
             }
 
             return result;
         } catch (IllegalArgumentException e) {
             // If normalization fails, fall back to simple comparison
             log.warn("Failed to normalize DIDs for comparison, using simple equals: {}", e.getMessage());
-            return did1.equals(did2);
+            return withoutFragment1.equals(withoutFragment2);
         }
     }
 }

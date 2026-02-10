@@ -1,5 +1,6 @@
 package it.eng.dcp.holder.model;
 
+import it.eng.dcp.common.util.DidUrlConverter;
 import lombok.Builder;
 import lombok.Data;
 
@@ -109,7 +110,7 @@ public class PresentationAccessToken {
      * @return true if the token is for this verifier
      */
     public boolean isForVerifier(String verifierDid) {
-        return this.verifierDid != null && this.verifierDid.equals(verifierDid);
+        return DidUrlConverter.compareDids(this.verifierDid, verifierDid);
     }
 }
 
