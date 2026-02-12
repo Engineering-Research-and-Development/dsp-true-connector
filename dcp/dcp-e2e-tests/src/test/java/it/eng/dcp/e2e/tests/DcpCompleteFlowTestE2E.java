@@ -1,7 +1,7 @@
-package it.eng.dcp.docker;
+package it.eng.dcp.e2e.tests;
 
 import it.eng.dcp.common.model.DidDocument;
-import it.eng.dcp.e2e.docker.BaseDcpE2ETest;
+import it.eng.dcp.e2e.environment.DcpTestEnvironment;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * End-to-end test for complete DCP flow - verifies application containers start successfully.
  */
 @Slf4j
-class DcpCompleteFlowTestE2E extends BaseDcpE2ETest {
+class DcpCompleteFlowTestE2E extends DcpTestEnvironment {
 
     /**
      * Test that verifies all Docker containers start successfully and can serve DID documents.
@@ -25,31 +25,22 @@ class DcpCompleteFlowTestE2E extends BaseDcpE2ETest {
         log.info("SMOKE TEST: Verifying Application Containers");
         log.info("═══════════════════════════════════════════════");
 
-        // Verify Issuer container
-        assertNotNull(issuerContainer, "Issuer container should be initialized");
-        assertTrue(issuerContainer.isRunning(), "Issuer container should be running");
-        assertTrue(issuerContainer.getMappedPort(8084) > 0, "Issuer port should be mapped");
-
-        log.info("✓ Issuer container is running on port: {}", issuerContainer.getMappedPort(8084));
-
-        // Verify combined Holder+Verifier container
-        assertNotNull(holderVerifierContainer, "Holder+Verifier container should be initialized");
-        assertTrue(holderVerifierContainer.isRunning(), "Holder+Verifier container should be running");
-        assertTrue(holderVerifierContainer.getMappedPort(8087) > 0, "Holder+Verifier port should be mapped");
-
-        log.info("✓ Holder+Verifier container is running on port: {}", holderVerifierContainer.getMappedPort(8087));
+        log.info("\n--- Verifying Test Environment: {} ---", getEnvironmentName());
 
         // Verify REST clients are initialized
-        assertNotNull(issuerClient, "Issuer REST client should be initialized");
-        assertNotNull(holderClient, "Holder REST client should be initialized");
-        assertNotNull(verifierClient, "Verifier REST client should be initialized");
+        assertNotNull(getIssuerClient(), "Issuer REST client should be initialized");
+        assertNotNull(getHolderClient(), "Holder REST client should be initialized");
+        assertNotNull(getVerifierClient(), "Verifier REST client should be initialized");
 
         log.info("✓ REST clients are initialized");
+        log.info("  - Issuer URL: {}", getIssuerBaseUrl());
+        log.info("  - Holder URL: {}", getHolderBaseUrl());
+        log.info("  - Verifier URL: {}", getVerifierBaseUrl());
 
         log.info("\n--- Fetching DID Documents from Applications ---");
 
         // Fetch and verify Issuer DID document
-        ResponseEntity<DidDocument> issuerDidResponse = issuerClient.getForEntity("/.well-known/did.json", DidDocument.class);
+        ResponseEntity<DidDocument> issuerDidResponse = getIssuerClient().getForEntity("/.well-known/did.json", DidDocument.class);
         assertEquals(HttpStatus.OK, issuerDidResponse.getStatusCode(), "Issuer DID endpoint should return 200 OK");
         assertNotNull(issuerDidResponse.getBody(), "Issuer DID document should not be null");
 
@@ -65,7 +56,7 @@ class DcpCompleteFlowTestE2E extends BaseDcpE2ETest {
         log.info("  - Services:            {}", issuerDidDocument.getServices().size());
 
         // Fetch and verify Holder DID document
-        ResponseEntity<DidDocument> holderDidResponse = holderClient.getForEntity("/holder/did.json", DidDocument.class);
+        ResponseEntity<DidDocument> holderDidResponse = getHolderClient().getForEntity("/holder/did.json", DidDocument.class);
         assertEquals(HttpStatus.OK, holderDidResponse.getStatusCode(), "Holder DID endpoint should return 200 OK");
         assertNotNull(holderDidResponse.getBody(), "Holder DID document should not be null");
 
@@ -81,7 +72,7 @@ class DcpCompleteFlowTestE2E extends BaseDcpE2ETest {
         log.info("  - Services:            {}", holderDidDocument.getServices().size());
 
         // Fetch and verify Verifier DID document
-        ResponseEntity<DidDocument> verifierDidResponse = verifierClient.getForEntity("/verifier/did.json", DidDocument.class);
+        ResponseEntity<DidDocument> verifierDidResponse = getVerifierClient().getForEntity("/verifier/did.json", DidDocument.class);
         assertEquals(HttpStatus.OK, verifierDidResponse.getStatusCode(), "Verifier DID endpoint should return 200 OK");
         assertNotNull(verifierDidResponse.getBody(), "Verifier DID document should not be null");
 
