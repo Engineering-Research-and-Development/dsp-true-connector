@@ -1,10 +1,10 @@
 package it.eng.dcp.issuer.service;
 
+import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.model.*;
 import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.issuer.config.CredentialMetadataConfig;
 import it.eng.dcp.issuer.config.CredentialMetadataConfigLoader;
-import it.eng.dcp.issuer.config.IssuerDidDocumentConfiguration;
 import it.eng.dcp.issuer.config.IssuerProperties;
 import it.eng.dcp.issuer.service.credential.CredentialGeneratorFactory;
 import it.eng.dcp.issuer.service.credential.ProfileExtractor;
@@ -33,7 +33,7 @@ public class CredentialIssuanceService {
 
     @Autowired
     public CredentialIssuanceService(IssuerProperties issuerProperties, KeyService keyService,
-                                     IssuerDidDocumentConfiguration didDocumentConfig,
+                                     BaseDidDocumentConfiguration didDocumentConfig,
                                      StatusListService statusListService,
                                      CredentialMetadataConfigLoader credentialMetadataConfigLoader) {
         this.issuerProperties = issuerProperties;

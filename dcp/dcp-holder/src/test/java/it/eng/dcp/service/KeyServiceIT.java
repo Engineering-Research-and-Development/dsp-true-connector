@@ -1,7 +1,7 @@
 package it.eng.dcp.service;
 
 import com.nimbusds.jose.jwk.JWKSet;
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
+import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.common.service.did.InMemoryDidResolverService;
 import it.eng.dcp.common.service.sts.InMemoryJtiReplayCache;
@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 class KeyServiceIT {
 
     private Path tempKeystore;
-    private BaseDidDocumentConfiguration config;
+    private DidDocumentConfig config;
 
     @AfterEach
     void cleanup() throws Exception {
@@ -49,7 +49,7 @@ class KeyServiceIT {
         keyService.rotateAndPersistKeyPair(keystorePath, password, alias);
 
         // after rotation, keyPair should be available and getSigningJwk should succeed
-        var signingJwk = keyService.getSigningJwk(config.getDidDocumentConfig());
+        var signingJwk = keyService.getSigningJwk(config);
         assertNotNull(signingJwk);
         assertNotNull(signingJwk.getKeyID());
 
@@ -65,7 +65,7 @@ class KeyServiceIT {
         didResolver.put(connectorDid, new JWKSet(signingJwk.toPublicJWK()));
 
         // create and validate token using the real signing key
-        String token = svc.createAndSignToken("did:example:aud", null, config.getDidDocumentConfig());
+        String token = svc.createAndSignToken("did:example:aud", null, config);
         assertNotNull(token);
 
         var claims = svc.validateToken(token);

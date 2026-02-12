@@ -1,7 +1,9 @@
 package it.eng.dcp.issuer;
 
+import it.eng.dcp.common.config.DcpProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -21,6 +23,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
     "it.eng.dcp.common.repository"
 })
 @EnableScheduling
+@EnableConfigurationProperties(DcpProperties.class)
 public class IssuerApplication {
 
     /**

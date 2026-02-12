@@ -1,6 +1,5 @@
 package it.eng.dcp.common.service.did;
 
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.model.ServiceEntry;
@@ -38,15 +37,14 @@ public class DidDocumentService {
      * @param config Configuration for the DID document
      * @return DidDocument containing service endpoints and verification methods
      */
-    public DidDocument provideDidDocument(BaseDidDocumentConfiguration config) {
-        DidDocumentConfig didConfig = config.getDidDocumentConfig();
+    public DidDocument provideDidDocument(DidDocumentConfig config) {
         // Load key pair with active alias ONCE (handles metadata and caching)
-        KeyPair keyPair = keyService.loadKeyPairWithActiveAlias(didConfig);
+        KeyPair keyPair = keyService.loadKeyPairWithActiveAlias(config);
 
-        String baseUrl = didConfig.getEffectiveBaseUrl();
+        String baseUrl = config.getEffectiveBaseUrl();
 
         // Build service entries
-        List<ServiceEntry> services = didConfig.getServiceEntries().stream()
+        List<ServiceEntry> services = config.getServiceEntries().stream()
                 .map(serviceConfig -> new ServiceEntry(
                         serviceConfig.getId(),
                         serviceConfig.getType(),
@@ -55,21 +53,21 @@ public class DidDocumentService {
                 .collect(Collectors.toList());
 
         // Compute kid and JWK using the loaded keyPair (no reloading!)
-        String kid = keyService.getKidFromPublicKey(didConfig, keyPair);
-        java.util.Map<String, Object> jwk = keyService.convertPublicKeyToJWK(didConfig, keyPair);
+        String kid = keyService.getKidFromPublicKey(config, keyPair);
+        java.util.Map<String, Object> jwk = keyService.convertPublicKeyToJWK(config, keyPair);
 
         // Build verification methods
         List<VerificationMethod> verificationMethods = List.of(
                 VerificationMethod.Builder.newInstance()
-                        .id(didConfig.getDid() + "#" + kid)
+                        .id(config.getDid() + "#" + kid)
                         .type("JsonWebKey2020")
-                        .controller(didConfig.getEffectiveController())
+                        .controller(config.getEffectiveController())
                         .publicKeyJwk(jwk)
                         .build()
         );
 
         return DidDocument.Builder.newInstance()
-                .id(didConfig.getDid())
+                .id(config.getDid())
                 .service(services)
                 .verificationMethod(verificationMethods)
 //                .capabilityInvocation(List.of(verificationMethodId))
@@ -84,7 +82,7 @@ public class DidDocumentService {
      * @param config Configuration for the DID document
      * @return JSON string representation of the DID document
      */
-    public String getDidDocument(BaseDidDocumentConfiguration config) {
+    public String getDidDocument(DidDocumentConfig config) {
         DidDocument didDocument = provideDidDocument(config);
         try {
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();

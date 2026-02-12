@@ -1,6 +1,5 @@
 package it.eng.dcp.common.service.did;
 
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.model.ServiceEntry;
@@ -76,7 +75,7 @@ class DidDocumentServiceTest {
                 .build();
 
         // Act
-        DidDocument doc = didDocumentService.provideDidDocument(new TestDidDocumentConfig(config));
+        DidDocument doc = didDocumentService.provideDidDocument(config);
 
         // Assert
         assertEquals("did:web:example.com:holder", doc.getId());
@@ -123,7 +122,7 @@ class DidDocumentServiceTest {
                 .build();
 
         // Act
-        DidDocument doc = didDocumentService.provideDidDocument(new TestDidDocumentConfig(config));
+        DidDocument doc = didDocumentService.provideDidDocument(config);
 
         // Assert
         assertEquals("did:web:localhost%3A8090:holder", doc.getId());
@@ -163,7 +162,7 @@ class DidDocumentServiceTest {
                 .build();
 
         // Act
-        didDocumentService.provideDidDocument(new TestDidDocumentConfig(config));
+        didDocumentService.provideDidDocument(config);
 
         // Assert
         verify(keyService).loadKeyPairWithActiveAlias(config);
@@ -193,7 +192,7 @@ class DidDocumentServiceTest {
                 .build();
 
         // Act
-        DidDocument doc = didDocumentService.provideDidDocument(new TestDidDocumentConfig(config));
+        DidDocument doc = didDocumentService.provideDidDocument(config);
 
         // Assert
         ServiceEntry service = doc.getServices().get(0);
@@ -226,7 +225,7 @@ class DidDocumentServiceTest {
                 .build();
 
         // Act
-        DidDocument doc = didDocumentService.provideDidDocument(new TestDidDocumentConfig(config));
+        DidDocument doc = didDocumentService.provideDidDocument(config);
 
         // Assert
         ServiceEntry service = doc.getServices().get(0);
@@ -256,7 +255,7 @@ class DidDocumentServiceTest {
                 .build();
 
         // Act
-        String jsonDidDocument = didDocumentService.getDidDocument(new TestDidDocumentConfig(config));
+        String jsonDidDocument = didDocumentService.getDidDocument(config);
 
         // Assert
         assertNotNull(jsonDidDocument);
@@ -264,13 +263,4 @@ class DidDocumentServiceTest {
         assertTrue(jsonDidDocument.contains("CredentialService"));
     }
 
-    /**
-     * Simple test implementation to wrap DidDocumentConfig as BaseDidDocumentConfiguration
-     */
-    private static class TestDidDocumentConfig implements BaseDidDocumentConfiguration {
-        private final DidDocumentConfig config;
-        public TestDidDocumentConfig(DidDocumentConfig config) { this.config = config; }
-        @Override
-        public DidDocumentConfig getDidDocumentConfig() { return config; }
-    }
 }

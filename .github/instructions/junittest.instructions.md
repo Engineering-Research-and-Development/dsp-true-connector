@@ -1,5 +1,7 @@
 --
 applyTo: "**/*Test.java"
+applyTo: "**/*IT.java"
+applyTo: "**/*TestE2E.java"
 ---
 
 # Instructions for Creating New JUnit 5 Tests
@@ -59,6 +61,8 @@ maintainability, and high code quality.
 
 - Use JaCoCo or a similar tool to verify code and branch coverage.
 - Review coverage reports to ensure all branches and lines are tested.
+- Junit test classes (**/*Test.java) are covered by maven surefire plugin, which generates reports in `target/surefire-reports` directory.
+- For integration tests (**/*IT.java and **/*TestE2E.java), use the maven failsafe plugin, which generates reports in `target/failsafe-reports` directory.
 
 ## 10. Execution
 

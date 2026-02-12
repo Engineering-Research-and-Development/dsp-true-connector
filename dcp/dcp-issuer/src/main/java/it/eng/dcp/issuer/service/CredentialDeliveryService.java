@@ -3,7 +3,7 @@ package it.eng.dcp.issuer.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
+import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.CredentialStatus;
@@ -34,13 +34,14 @@ public class CredentialDeliveryService {
     private final SelfIssuedIdTokenService tokenService;
     private final ObjectMapper mapper = new ObjectMapper();
     private final SimpleOkHttpRestClient httpClient;
-    private final BaseDidDocumentConfiguration config;
+    private final DidDocumentConfig config;
     private final DidResolverService didResolverService;
 
     @Autowired
     public CredentialDeliveryService(CredentialRequestRepository requestRepository,
                                      @Qualifier("selfIssuedIdTokenService") SelfIssuedIdTokenService tokenService,
-                                     SimpleOkHttpRestClient httpClient, BaseDidDocumentConfiguration config,
+                                     SimpleOkHttpRestClient httpClient,
+                                     DidDocumentConfig config,
                                      DidResolverService didResolverService) {
         this.requestRepository = requestRepository;
         this.tokenService = tokenService;
@@ -98,7 +99,7 @@ public class CredentialDeliveryService {
                     .credentials(credentials)
                     .build();
 
-            String token = tokenService.createAndSignToken(holderDid, null, config.getDidDocumentConfig());
+            String token = tokenService.createAndSignToken(holderDid, null, config);
             String messageJson = mapper.writeValueAsString(message);
 
             String response = sendPostRequest(credentialServiceUrl, messageJson, "Bearer " + token);
@@ -174,7 +175,7 @@ public class CredentialDeliveryService {
                     .credentials(List.of(CredentialMessage.CredentialContainer.Builder.newInstance().credentialType("No type").format("JWT").build()))
                     .build();
 
-            String token = tokenService.createAndSignToken(holderDid, null, config.getDidDocumentConfig());
+            String token = tokenService.createAndSignToken(holderDid, null, config);
             String messageJson = mapper.writeValueAsString(message);
 
             String response = sendPostRequest(credentialServiceUrl, messageJson, "Bearer " + token);

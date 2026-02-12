@@ -8,7 +8,6 @@ import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.model.DidDocument;
@@ -69,10 +68,7 @@ public class VerifierService {
     private final HttpDidResolverService didResolverService;
     private final SimpleOkHttpRestClient httpClient;
     private final ObjectMapper objectMapper;
-    private final BaseDidDocumentConfiguration verifierConfig;
-
-    @Getter
-    private final DidDocumentConfig verifierDidConfig;
+    private final DidDocumentConfig didConfig;
 
     /**
      * Constructor with explicit verifier configuration injection.
@@ -81,7 +77,7 @@ public class VerifierService {
      * @param didResolverService Service for resolving DIDs to DID documents
      * @param httpClient HTTP client for making REST calls
      * @param objectMapper JSON mapper for request/response serialization
-     * @param verifierConfig The verifier configuration (explicitly qualified)
+     * @param didConfig The verifier configuration (explicitly qualified)
      */
     @Autowired
     public VerifierService(
@@ -89,15 +85,14 @@ public class VerifierService {
             HttpDidResolverService didResolverService,
             SimpleOkHttpRestClient httpClient,
             ObjectMapper objectMapper,
-            @Qualifier("verifier") BaseDidDocumentConfiguration verifierConfig) {
+            DidDocumentConfig didConfig) {
         this.tokenService = tokenService;
         this.didResolverService = didResolverService;
         this.httpClient = httpClient;
         this.objectMapper = objectMapper;
-        this.verifierConfig = verifierConfig;
-        this.verifierDidConfig = verifierConfig.getDidDocumentConfig();
+        this.didConfig = didConfig;
 
-        log.info("VerifierService initialized with verifier DID: {}", verifierDidConfig.getDid());
+        log.info("VerifierService initialized with verifier DID: {}", didConfig.getDid());
     }
 
 
@@ -119,7 +114,7 @@ public class VerifierService {
             throw new SecurityException("Bearer token is required");
         }
 
-        log.debug("STEP 3: Validating self-issued ID token for verifier DID: {}", verifierDidConfig.getDid());
+        log.debug("STEP 3: Validating self-issued ID token for verifier DID: {}", didConfig.getDid());
 
         // Validate the self-issued ID token
         // This checks: iss==sub, aud==verifier DID, signature, expiry
@@ -599,7 +594,7 @@ public class VerifierService {
 
         log.info("═══════════════════════════════════════════════════════════");
         log.info("MAIN FLOW: Starting complete DCP presentation authentication");
-        log.info("Verifier DID: {}", verifierDidConfig.getDid());
+        log.info("Verifier DID: {}", didConfig.getDid());
         log.info("═══════════════════════════════════════════════════════════");
 
         // ═════════════════════════════════════════════════════════════

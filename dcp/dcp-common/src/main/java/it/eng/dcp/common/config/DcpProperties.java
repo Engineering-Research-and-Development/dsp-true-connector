@@ -28,6 +28,21 @@ public class DcpProperties {
      * If not set, falls back to connectorDid. */
     private String connectorDidVerifier;
 
+    /**
+     * Enable automatic path-based endpoint registration.
+     * If true, controller will register endpoints based on DID path segments.
+     * If false, only /.well-known/did.json will be registered.
+     * Default: true
+     */
+    private boolean autoRegisterPathEndpoints = true;
+
+    /**
+     * Enable legacy convenience endpoints (e.g., /issuer/did.json).
+     * If false, only W3C-compliant endpoints will be registered.
+     * Default: true (for backward compatibility)
+     */
+    private boolean enableLegacyEndpoints = true;
+
     /** Base URL used by the connector when constructing endpoints. */
     private String baseUrl;
 

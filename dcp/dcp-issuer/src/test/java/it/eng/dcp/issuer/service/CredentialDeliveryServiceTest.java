@@ -1,7 +1,7 @@
 package it.eng.dcp.issuer.service;
 
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
+import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.*;
 import it.eng.dcp.common.repository.CredentialRequestRepository;
 import it.eng.dcp.common.service.did.DidResolverService;
@@ -37,7 +37,7 @@ class CredentialDeliveryServiceTest {
     private SimpleOkHttpRestClient httpClient;
 
     @Mock
-    private BaseDidDocumentConfiguration config;
+    private DidDocumentConfig config;
 
     @Mock
     private DidResolverService didResolverService;

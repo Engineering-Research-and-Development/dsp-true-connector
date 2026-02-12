@@ -11,7 +11,6 @@ import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.model.DidDocument;
@@ -64,7 +63,7 @@ class VerifierServiceTest {
     private SimpleOkHttpRestClient httpClient;
 
     @Mock
-    private BaseDidDocumentConfiguration verifierConfig;
+    private DidDocumentConfig verifierConfig;
 
     private VerifierService verifierService;
     private ObjectMapper objectMapper;
@@ -97,9 +96,9 @@ class VerifierServiceTest {
                 .generate();
 
         // Setup verifier config mock
-        DidDocumentConfig didDocumentConfig = mock(DidDocumentConfig.class);
-        when(didDocumentConfig.getDid()).thenReturn(VERIFIER_DID);
-        when(verifierConfig.getDidDocumentConfig()).thenReturn(didDocumentConfig);
+//        DidDocumentConfig didDocumentConfig = mock(DidDocumentConfig.class);
+//        when(didDocumentConfig.getDid()).thenReturn(VERIFIER_DID);
+//        when(verifierConfig.getDidDocumentConfig()).thenReturn(didDocumentConfig);
 
         // Create service instance
         verifierService = new VerifierService(

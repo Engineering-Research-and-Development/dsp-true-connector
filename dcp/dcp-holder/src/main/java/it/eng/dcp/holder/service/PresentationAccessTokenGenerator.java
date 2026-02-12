@@ -10,7 +10,6 @@ import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.service.KeyService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -45,7 +44,7 @@ public class PresentationAccessTokenGenerator {
 
     @Autowired
     public PresentationAccessTokenGenerator(DcpProperties props, KeyService keyService,
-                                           @Qualifier("holderDidDocumentConfig") DidDocumentConfig config) {
+                                            DidDocumentConfig config) {
         this.props = props;
         this.keyService = keyService;
         this.config = config;

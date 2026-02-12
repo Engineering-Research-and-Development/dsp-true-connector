@@ -13,4 +13,14 @@ public class DCPConstants {
     // DCP Scope Aliases (per DCP spec Section 5.4.1.2)
     public static final String SCOPE_ALIAS_VC_TYPE = "org.eclipse.dspace.dcp.vc.type";
     public static final String SCOPE_ALIAS_VC_ID = "org.eclipse.dspace.dcp.vc.id";
+
+    // DID Resolution Constants
+    /** The did:web method prefix. */
+    public static final String DID_WEB_PREFIX = "did:web:";
+
+    /** The W3C standard well-known DID document path. */
+    public static final String WELL_KNOWN_DID_PATH = "/.well-known/did.json";
+
+    /** The legacy DID document filename. */
+    public static final String LEGACY_DID_FILENAME = "/did.json";
 }

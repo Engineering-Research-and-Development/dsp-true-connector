@@ -1,6 +1,6 @@
 package it.eng.dcp.holder.rest.api;
 
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
+import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,12 +21,12 @@ import java.util.Map;
 public class TokenGeneratorAPIController {
 
     private final SelfIssuedIdTokenService tokenService;
-    private final BaseDidDocumentConfiguration config;
+    private final DidDocumentConfig config;
 
     @Autowired
     public TokenGeneratorAPIController(
             @Qualifier("selfIssuedIdTokenService") SelfIssuedIdTokenService tokenService,
-            @Qualifier("holder") BaseDidDocumentConfiguration config) {
+            DidDocumentConfig config) {
         this.tokenService = tokenService;
         this.config = config;
     }
@@ -48,7 +48,7 @@ public class TokenGeneratorAPIController {
         }
 
         try {
-            String token = tokenService.createAndSignToken(audienceDid, accessToken, config.getDidDocumentConfig());
+            String token = tokenService.createAndSignToken(audienceDid, accessToken, config);
             return ResponseEntity.ok(Map.of(
                 "token", token,
                 "authorization", "Bearer " + token,
@@ -86,7 +86,7 @@ public class TokenGeneratorAPIController {
         try {
 //            audience = "did:web:localhost:8080:holder";  // Hardcoded for dummy testing
             // Generate STS-compatible token with nested token claim for dummy testing
-            String token = tokenService.createStsCompatibleToken(audience, config.getDidDocumentConfig(), bearerAccessScope);
+            String token = tokenService.createStsCompatibleToken(audience, config, bearerAccessScope);
             return ResponseEntity.ok(Map.of(
                 "access_token", token,
                 "token_type", "Bearer",

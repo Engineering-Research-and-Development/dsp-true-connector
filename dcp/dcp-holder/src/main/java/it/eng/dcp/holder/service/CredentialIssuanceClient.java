@@ -2,7 +2,7 @@ package it.eng.dcp.holder.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
+import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.CredentialRequestMessage;
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.model.IssuerMetadata;
@@ -42,12 +42,12 @@ public class CredentialIssuanceClient {
     private final SimpleOkHttpRestClient rest;
     private final SelfIssuedIdTokenService tokenService;
     private final ObjectMapper mapper = new ObjectMapper();
-    private final BaseDidDocumentConfiguration config;
+    private final DidDocumentConfig config;
 
     @Autowired
     public CredentialIssuanceClient(SimpleOkHttpRestClient rest,
                                     @Qualifier("selfIssuedIdTokenService") SelfIssuedIdTokenService tokenService,
-                                    @Qualifier("holder") BaseDidDocumentConfiguration config) {
+                                    DidDocumentConfig config) {
         this.rest = rest;
         this.tokenService = tokenService;
         this.config = config;
@@ -135,7 +135,7 @@ public class CredentialIssuanceClient {
         String audience = issuerMetadata.getIssuer();
         String token = null;
         try {
-            token = tokenService.createAndSignToken(audience, null, config.getDidDocumentConfig());
+            token = tokenService.createAndSignToken(audience, null, config);
         } catch (Exception e) {
             LOG.debug("No token could be created for issuer audience {}: {}", audience, e.getMessage());
         }
@@ -211,7 +211,7 @@ public class CredentialIssuanceClient {
     public ResponseEntity<String> getRequestStatus(String statusUrl, String audience) {
         if (statusUrl == null) throw new IllegalArgumentException("statusUrl required");
 
-        String token = tokenService.createAndSignToken(audience, null, config.getDidDocumentConfig());
+        String token = tokenService.createAndSignToken(audience, null, config);
 
         Request.Builder rb = new Request.Builder().url(statusUrl).get();
         if (token != null && !token.isBlank()) {

@@ -14,7 +14,6 @@ import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.holder.model.VerifiablePresentation;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
@@ -28,7 +27,7 @@ public class BasicVerifiablePresentationSigner implements VerifiablePresentation
 
     @Autowired
     public BasicVerifiablePresentationSigner(KeyService keyService,
-                                             @Qualifier("holderDidDocumentConfig") DidDocumentConfig config) {
+                                             DidDocumentConfig config) {
         this.keyService = keyService;
         this.config = config;
     }
