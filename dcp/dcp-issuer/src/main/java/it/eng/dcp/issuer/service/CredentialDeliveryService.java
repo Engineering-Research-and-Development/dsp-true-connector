@@ -92,9 +92,9 @@ public class CredentialDeliveryService {
 
             CredentialMessage message = CredentialMessage.Builder.newInstance()
                     .issuerPid(issuerPid)
-                    .holderPid(holderDid)
+                    .holderPid(request.getHolderPid())
                     .requestId(issuerPid)
-                    .status("ISSUED")
+                    .status(CredentialStatus.ISSUED.toString())
                     .credentials(credentials)
                     .build();
 
@@ -182,9 +182,12 @@ public class CredentialDeliveryService {
             if (response != null) {
                 log.info("Successfully sent rejection notification to holder {}.", holderDid);
 
+                // Update the existing request by preserving its MongoDB id
                 request = CredentialRequest.Builder.newInstance()
+                        .id(request.getId())  // Preserve MongoDB document id to update, not insert
                         .issuerPid(request.getIssuerPid())
                         .holderPid(request.getHolderPid())
+                        .holderDid(request.getHolderDid())  // Preserve holderDid
                         .credentialIds(request.getCredentialIds())
                         .status(CredentialStatus.REJECTED)
                         .rejectionReason(rejectionReason)

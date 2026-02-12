@@ -1,5 +1,7 @@
 --
 applyTo: "**/*Test.java"
+applyTo: "**/*IT.java"
+applyTo: "**/*TestE2E.java"
 ---
 
 # Instructions for Creating New JUnit 5 Tests

@@ -3,7 +3,6 @@ package it.eng.dcp.holder.rest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialOfferMessage;
 import it.eng.dcp.common.model.PresentationQueryMessage;
@@ -30,15 +29,8 @@ public class DcpController {
     private final HolderService holderService;
 
     @Autowired
-    public DcpController(HolderService holderService, ObjectMapper objectMapper) {
+    public DcpController(HolderService holderService) {
         this.holderService = holderService;
-    }
-
-    private String extractBearerToken(String authorizationHeader) {
-        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
-            throw new SecurityException("Missing or invalid Authorization header");
-        }
-        return authorizationHeader.substring("Bearer ".length());
     }
 
     /**
@@ -50,25 +42,35 @@ public class DcpController {
      * @return PresentationResponseMessage or error response
      */
     @PostMapping(path = "/presentations/query")
-    public ResponseEntity<?> queryPresentations(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+    public ResponseEntity<?> queryPresentations(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
                                                 @RequestBody PresentationQueryMessage query) {
         log.info("Received presentation query request");
         log.debug("Query details: scope={}, presentationDefinition present={}",
                 query != null ? query.getScope() : null,
                 query != null && query.getPresentationDefinition() != null);
 
-        String token = extractBearerToken(authorization);
+        // Check for Authorization header
+        if (authorization == null || authorization.trim().isEmpty()) {
+            log.error("Missing Authorization header");
+            return ResponseEntity.status(401).build();
+        }
+
+        // Extract bearer token
+        if (!authorization.startsWith("Bearer ")) {
+            log.error("Invalid Authorization header format");
+            return ResponseEntity.status(401).build();
+        }
+        String token = authorization.substring("Bearer ".length());
 
         try {
-            // Authorize request
-            SignedJWT jwt = SignedJWT.parse(token);
-            JWTClaimsSet claims = jwt.getJWTClaimsSet();
-//            var claims = holderService.authorizePresentationQuery(token);
+            // Validate token (includes signature, expiry, audience, etc.)
+            JWTClaimsSet claims = holderService.authorizePresentationQuery(token);
             String holderDid = claims.getSubject();
             log.info("Presentation query from holder: {}", holderDid);
 
             // Rate limiting per holder DID
             if (!holderService.checkRateLimit(holderDid)) {
+                log.warn("Presentation query rate limit exceeded for holder: {}", holderDid);
                 return ResponseEntity.status(429).build();
             }
 
@@ -93,14 +95,25 @@ public class DcpController {
      * @return Success response with saved/skipped counts or error response
      */
     @PostMapping(path = "/credentials")
-    public ResponseEntity<?> receiveCredentials(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+    public ResponseEntity<?> receiveCredentials(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
                                                 @RequestBody CredentialMessage msg) {
         log.info("Received credential message - status: {}, issuerPid: {}, holderPid: {}",
                 msg != null ? msg.getStatus() : "null",
                 msg != null ? msg.getIssuerPid() : "null",
                 msg != null ? msg.getHolderPid() : "null");
 
-        String token = extractBearerToken(authorization);
+        // Check for Authorization header
+        if (authorization == null || authorization.trim().isEmpty()) {
+            log.error("Missing Authorization header");
+            return ResponseEntity.status(401).body("Missing Authorization header");
+        }
+
+        // Extract bearer token
+        if (!authorization.startsWith("Bearer ")) {
+            log.error("Invalid Authorization header format");
+            return ResponseEntity.status(401).body("Invalid Authorization header format");
+        }
+        String token = authorization.substring("Bearer ".length());
 
         try {
             // Authorize issuer
@@ -148,7 +161,7 @@ public class DcpController {
 
             } else {
                 log.error("Unknown credential message status received: {}", status);
-                return ResponseEntity.badRequest().body("Unknown status: " + status);
+                return ResponseEntity.badRequest().body("Unknown status");
             }
 
         } catch (SecurityException se) {
