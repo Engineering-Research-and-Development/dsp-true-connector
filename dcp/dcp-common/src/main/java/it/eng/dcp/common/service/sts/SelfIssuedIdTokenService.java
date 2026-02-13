@@ -6,7 +6,6 @@ import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.service.KeyService;
@@ -43,7 +42,7 @@ public class SelfIssuedIdTokenService {
     private final DidResolverService didResolver;
     private final JtiReplayCache jtiCache;
     private final KeyService keyService;
-    private final BaseDidDocumentConfiguration config;
+    private final DidDocumentConfig config;
 
     // Test hook to override the signing key with a specific EC JWK (used in unit tests)
     private ECKey overrideSigningKey;
@@ -54,7 +53,7 @@ public class SelfIssuedIdTokenService {
             DidResolverService didResolver,
             JtiReplayCache jtiCache,
             KeyService keyService,
-            BaseDidDocumentConfiguration config) {
+            DidDocumentConfig config) {
 //        this.connectorDid = connectorDid;
         this.didResolver = didResolver;
         this.jtiCache = jtiCache;
@@ -172,7 +171,7 @@ public class SelfIssuedIdTokenService {
                 throw new SecurityException("iss and sub must be present and equal");
             }
 
-            String connectorDid = config.getDidDocumentConfig().getDid();
+            String connectorDid = config.getDid();
             // 2. aud must match verifierDid (using robust DID comparison)
             if (aud == null || connectorDid == null || !DidUrlConverter.compareDids(aud, connectorDid)) {
                 throw new SecurityException("aud claim must match verifier DID");
