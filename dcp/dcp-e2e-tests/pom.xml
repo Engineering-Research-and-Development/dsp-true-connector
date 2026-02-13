@@ -198,39 +198,13 @@
 
     <!-- Maven Profiles for different test groups -->
     <profiles>
-        <!-- Profile for Spring-based integration tests -->
-        <profile>
-            <id>spring-tests</id>
-            <activation>
-                <property>
-                    <name>testGroup</name>
-                    <value>spring</value>
-                </property>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-failsafe-plugin</artifactId>
-                        <configuration>
-                            <skipITs>false</skipITs>
-                            <includes>
-                                <!-- Include tests from spring package -->
-                                <include>**/spring/**/*TestE2E.java</include>
-                            </includes>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
-        <!-- Profile for Docker-based integration tests -->
+        <!-- Profile for e2e tests -->
         <profile>
             <id>docker-tests</id>
             <activation>
                 <property>
                     <name>testGroup</name>
-                    <value>docker</value>
+                    <value>e2e</value>
                 </property>
             </activation>
             <build>
@@ -242,7 +216,7 @@
                             <skipITs>false</skipITs>
                             <includes>
                                 <!-- Include tests from docker package -->
-                                <include>**/docker/**/*TestE2E.java</include>
+                                <include>**/*TestE2E.java</include>
                             </includes>
                         </configuration>
                     </plugin>

@@ -56,6 +56,7 @@ maintainability, and high code quality.
 - Keep tests independent and repeatable.
 - Use descriptive method names and display names.
 - Clean up resources if needed (use `@AfterEach` or `@AfterAll`).
+- Always use Java model classes where possible instead of raw strings or maps for test data.
 
 ## 9. Tools
 

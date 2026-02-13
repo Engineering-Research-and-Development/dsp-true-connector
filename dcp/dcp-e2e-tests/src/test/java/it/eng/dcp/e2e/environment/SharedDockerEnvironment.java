@@ -238,13 +238,13 @@ public class SharedDockerEnvironment {
                 .from("eclipse-temurin:17-jre-alpine")
                 .workDir("/app")
                 .copy(jarRelativePath, "/app/app.jar")
-                .copy("src/main/resources/eckey.p12", "/app/eckey.p12")
+                .copy("src/test/resources/eckey.p12", "/app/eckey.p12")
                 .expose(8087)
                 .env("JAVA_OPTS", "-Xmx512m -Xms256m")
                 .entryPoint("sh", "-c", "java $JAVA_OPTS -jar /app/app.jar")
                 .build())
             .withFileFromPath(jarRelativePath, holderVerifierJar)
-            .withFileFromPath("src/main/resources/eckey.p12", holderVerifierPath.resolve("src/main/resources/eckey.p12"));
+            .withFileFromPath("src/test/resources/eckey.p12", holderVerifierPath.resolve("src/test/resources/eckey.p12"));
         imagesToCleanup.add("dcp-holder-verifier-test-e2e");
 
         holderVerifierContainer = new GenericContainer<>(holderVerifierImage)
@@ -283,17 +283,17 @@ public class SharedDockerEnvironment {
                 .from("eclipse-temurin:17-jre-alpine")
                 .workDir("/app")
                 .copy(jarRelativePath, "/app/dcp-issuer.jar")
-                .copy("src/main/resources/eckey-issuer.p12", "/app/eckey-issuer.p12")
-                .copy("src/main/resources/credential-metadata-configuration.properties", "/config/credential-metadata-configuration.properties")
-                .copy("src/main/resources/application.properties", "/config/application.properties")
+                .copy("src/test/resources/eckey-issuer.p12", "/app/eckey-issuer.p12")
+                .copy("src/test/resources/credential-metadata-configuration.properties", "/config/credential-metadata-configuration.properties")
+                .copy("src/test/resources/application-holderverifier.properties", "/config/application-holderverifier.properties")
                 .expose(8084)
                 .env("JAVA_OPTS", "-Xmx512m -Xms256m")
                 .entryPoint("sh", "-c", "java $JAVA_OPTS -jar /app/dcp-issuer.jar")
                 .build())
             .withFileFromPath(jarRelativePath, issuerJar)
-            .withFileFromPath("src/main/resources/eckey-issuer.p12", issuerPath.resolve("src/main/resources/eckey-issuer.p12"))
-            .withFileFromPath("src/main/resources/credential-metadata-configuration.properties", issuerPath.resolve("src/main/resources/credential-metadata-configuration.properties"))
-            .withFileFromPath("src/main/resources/application.properties", issuerPath.resolve("src/main/resources/application.properties"));
+            .withFileFromPath("src/test/resources/eckey-issuer.p12", issuerPath.resolve("src/test/resources/eckey-issuer.p12"))
+            .withFileFromPath("src/test/resources/credential-metadata-configuration.properties", issuerPath.resolve("src/test/resources/credential-metadata-configuration.properties"))
+            .withFileFromPath("src/test/resources/application-holderverifier.properties", issuerPath.resolve("src/test/resources/application-holderverifier.properties"));
         imagesToCleanup.add("dcp-issuer-e2e-test");
 
         issuerContainer = new GenericContainer<>(issuerImage)
