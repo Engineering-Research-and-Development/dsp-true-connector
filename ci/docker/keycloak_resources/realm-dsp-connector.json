@@ -1,0 +1,195 @@
+{
+  "realm": "dsp-connector",
+  "enabled": true,
+  "displayName": "DSP Connector",
+  "roles": {
+    "realm": [
+      { "name": "admin" },
+      { "name": "user" },
+      { "name": "connector" },
+      { "name": "provider-connector" },
+      { "name": "consumer-connector" }
+    ]
+  },
+  "clientScopes": [
+    {
+      "name": "roles",
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "user.attribute": "",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "dsp-connector-provider-backend",
+      "name": "DSP Connector Provider Backend",
+      "description": "Provider connector backend service account",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "dsp-connector-provider-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "redirectUris": [],
+      "webOrigins": [],
+      "defaultClientScopes": [
+        "profile",
+        "email",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access"
+      ],
+      "attributes": {
+        "connector.type": "provider",
+        "connector.port": "8090"
+      }
+    },
+    {
+      "clientId": "dsp-connector-consumer-backend",
+      "name": "DSP Connector Consumer Backend",
+      "description": "Consumer connector backend service account",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "dsp-connector-consumer-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "redirectUris": [],
+      "webOrigins": [],
+      "defaultClientScopes": [
+        "profile",
+        "email",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access"
+      ],
+      "attributes": {
+        "connector.type": "consumer",
+        "connector.port": "8080"
+      }
+    },
+    {
+      "clientId": "dsp-connector-ui",
+      "name": "DSP Connector UI",
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": [
+        "http://localhost:4200/*"
+      ],
+      "webOrigins": [
+        "http://localhost:4200"
+      ],
+      "defaultClientScopes": [
+        "profile",
+        "email",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin@test.com",
+      "enabled": true,
+      "email": "admin@test.com",
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin"
+      ]
+    },
+    {
+      "username": "user@test.com",
+      "enabled": true,
+      "email": "user@test.com",
+      "emailVerified": true,
+      "firstName": "Normal",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "user123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "user"
+      ]
+    },
+    {
+      "username": "connector@test.com",
+      "enabled": true,
+      "email": "connector@test.com",
+      "emailVerified": true,
+      "firstName": "Connector",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "connector123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "connector"
+      ]
+    },
+    {
+      "username": "service-account-dsp-connector-provider-backend",
+      "enabled": true,
+      "serviceAccountClientId": "dsp-connector-provider-backend",
+      "realmRoles": [
+        "admin",
+        "connector",
+        "provider-connector"
+      ]
+    },
+    {
+      "username": "service-account-dsp-connector-consumer-backend",
+      "enabled": true,
+      "serviceAccountClientId": "dsp-connector-consumer-backend",
+      "realmRoles": [
+        "admin",
+        "connector",
+        "consumer-connector"
+      ]
+    }
+  ]
+}

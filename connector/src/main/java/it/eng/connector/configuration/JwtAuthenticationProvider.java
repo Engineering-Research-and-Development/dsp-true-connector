@@ -1,22 +1,23 @@
 package it.eng.connector.configuration;
 
-import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Component;
 
-import it.eng.tools.daps.DapsService;
+import it.eng.tools.auth.AuthProvider;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
-public class JwtAuthenticationProvider implements AuthenticationProvider {
-	
-	private DapsService dapsService;
-	
-	public JwtAuthenticationProvider(DapsService dapsService) {
-		this.dapsService = dapsService;
+@ConditionalOnProperty(value = "application.keycloak.enable", havingValue = "false", matchIfMissing = true)
+public class JwtAuthenticationProvider implements org.springframework.security.authentication.AuthenticationProvider {
+
+	private final AuthProvider authProvider;
+
+	public JwtAuthenticationProvider(AuthProvider authProvider) {
+		this.authProvider = authProvider;
 	}
 
 	@Override
@@ -24,7 +25,7 @@ public class JwtAuthenticationProvider implements AuthenticationProvider {
 		log.debug("JWT Authenticated token");
 		JwtAuthenticationToken bearer = (JwtAuthenticationToken) authentication;
 
-		if(!dapsService.validateToken(bearer.getPrincipal())) {
+		if (!authProvider.validateToken(bearer.getPrincipal())) {
 			throw new BadCredentialsException("Jwt did not verified!");
 		}
 		// TODO consider to decode token and get connector information into authentication object

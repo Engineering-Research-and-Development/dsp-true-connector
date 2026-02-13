@@ -1,4 +1,4 @@
-package it.eng.tools.daps;
+package it.eng.tools.auth.daps;
 
 import java.io.IOException;
 import java.security.KeyStoreException;
@@ -7,6 +7,7 @@ import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.util.Date;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import com.auth0.jwt.JWT;
@@ -17,27 +18,34 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.auth.AuthProvider;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.FormBody;
 import okhttp3.FormBody.Builder;
+import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
+/**
+ * DAPS (Dynamic Attribute Provisioning Service) authentication implementation using Omejdn.
+ * Provides JWT tokens for IDS connector authentication.
+ */
 @Service
 @Slf4j
-public class DapsServiceOmejdn implements DapsService {
+@ConditionalOnProperty(value = "application.keycloak.enable", havingValue = "false", matchIfMissing = true)
+public class DapsAuthenticationService implements AuthProvider {
 
-	private final DapsProperties dapsProperties;
-	private final DapsCertificateProviderOmejdn dapsCertificateProvider;
-	private final OkHttpRestClient client;
+	private final DapsAuthenticationProperties dapsProperties;
+	private final DapsCertificateProvider dapsCertificateProvider;
+	private final OkHttpClient okHttpClient;
 
-	public DapsServiceOmejdn(DapsProperties dapsProperties, DapsCertificateProviderOmejdn dapsCertificateProvider,
-			OkHttpRestClient client) {
+	public DapsAuthenticationService(DapsAuthenticationProperties dapsProperties,
+	                                  DapsCertificateProvider dapsCertificateProvider,
+	                                  OkHttpClient okHttpClient) {
 		this.dapsProperties = dapsProperties;
 		this.dapsCertificateProvider = dapsCertificateProvider;
-		this.client = client;
+		this.okHttpClient = okHttpClient;
 	}
 
 	@Override
@@ -56,14 +64,14 @@ public class DapsServiceOmejdn implements DapsService {
 					.add("client_assertion", jws)
 					.add("scope", "idsc:IDS_CONNECTOR_ATTRIBUTES_ALL");
 
-//			if(extendedTokenValidation) { 
+//			if(extendedTokenValidation) {
 //				String certsShaClaim = createCertsShaClaim();
 //				formBodyBuilder.add("claims", certsShaClaim);
 //			}
 
 			RequestBody formBody = formBodyBuilder.build();
 			Request request = new Request.Builder().url(dapsProperties.getDapsUrl()).post(formBody).build();
-			jwtResponse = client.executeCall(request);
+			jwtResponse = okHttpClient.newCall(request).execute();
 			if (!jwtResponse.isSuccessful()) {
 				throw new IOException("Unexpected code " + jwtResponse);
 			}
@@ -119,5 +127,6 @@ public class DapsServiceOmejdn implements DapsService {
 		}
 		return valid;
 	}
-
 }
+
+

@@ -6,6 +6,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -20,8 +21,14 @@ import it.eng.tools.exception.ResourceNotFoundException;
 import it.eng.tools.serializer.ToolsSerializer;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Service for managing MongoDB-based users.
+ * This service is only active when Keycloak is disabled.
+ * When Keycloak is enabled, user management happens in Keycloak Admin Console.
+ */
 @Service
 @Slf4j
+@ConditionalOnProperty(value = "application.keycloak.enable", havingValue = "false", matchIfMissing = true)
 public class UserService {
 
 	private final UserRepository userRepository;

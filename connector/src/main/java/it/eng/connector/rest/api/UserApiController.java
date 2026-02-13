@@ -3,6 +3,7 @@ package it.eng.connector.rest.api;
 import java.security.Principal;
 import java.util.Collection;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,10 +22,16 @@ import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * REST controller for managing MongoDB-based users.
+ * This controller is only active when Keycloak is disabled.
+ * When Keycloak is enabled, user management happens in Keycloak Admin Console.
+ */
 @RestController
 @RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, 
 path = ApiEndpoints.USERS_V1)
 @Slf4j
+@ConditionalOnProperty(value = "application.keycloak.enable", havingValue = "false", matchIfMissing = true)
 public class UserApiController {
 	
 	private final UserService userService;

@@ -11,7 +11,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.BadCredentialsException;
 
-import it.eng.tools.daps.DapsService;
+import it.eng.tools.auth.AuthProvider;
 
 @ExtendWith(MockitoExtension.class)
 public class JwtAuthenticationProviderTest {
@@ -22,14 +22,14 @@ public class JwtAuthenticationProviderTest {
 	private JwtAuthenticationProvider jwtAuthenticationProvider;
 	
 	@Mock
-	private DapsService dapsService;
+	private AuthProvider authProvider;
 	@Mock
 	private JwtAuthenticationToken authentication;
 	
 	@Test
 	public void authenticateSuccess() {
 		when(authentication.getPrincipal()).thenReturn(PRINCIPAL);
-		when(dapsService.validateToken(PRINCIPAL)).thenReturn(true);
+		when(authProvider.validateToken(PRINCIPAL)).thenReturn(true);
 		JwtAuthenticationToken jwtAuthentication = (JwtAuthenticationToken) jwtAuthenticationProvider.authenticate(authentication);
 		
 		assertTrue(jwtAuthentication.isAuthenticated());
@@ -38,8 +38,8 @@ public class JwtAuthenticationProviderTest {
 	@Test
 	public void authenticateFailed() {
 		when(authentication.getPrincipal()).thenReturn(PRINCIPAL);
-		when(dapsService.validateToken(PRINCIPAL)).thenReturn(false);
-		
+		when(authProvider.validateToken(PRINCIPAL)).thenReturn(false);
+
 		assertThrows(BadCredentialsException.class, () -> {
 			jwtAuthenticationProvider.authenticate(authentication);
 		});

@@ -1,4 +1,4 @@
-package it.eng.tools.daps;
+package it.eng.tools.auth.daps;
 
 import java.security.Key;
 import java.security.KeyStore;
@@ -19,6 +19,7 @@ import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.x509.AuthorityKeyIdentifier;
 import org.bouncycastle.asn1.x509.Extension;
 import org.bouncycastle.asn1.x509.SubjectKeyIdentifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.ssl.NoSuchSslBundleException;
 import org.springframework.boot.ssl.SslBundles;
 import org.springframework.stereotype.Component;
@@ -30,18 +31,23 @@ import com.auth0.jwt.exceptions.JWTCreationException;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Certificate provider for DAPS authentication using Omejdn.
+ * Manages keystore loading and JWT assertion creation for IDS connector authentication.
+ */
 @Component
 @Slf4j
-public class DapsCertificateProviderOmejdn {
+@ConditionalOnProperty(value = "application.keycloak.enable", havingValue = "false", matchIfMissing = true)
+public class DapsCertificateProvider {
 
 	private static final String TARGET_AUDIENCE = "idsc:IDS_CONNECTORS_ALL";
 
-	private final DapsProperties dapsProperties;
+	private final DapsAuthenticationProperties dapsProperties;
 	private final SslBundles sslBundles;
 
 	private KeyStore dapsKeystore;
 
-	public DapsCertificateProviderOmejdn(DapsProperties dapsProperties, SslBundles sslBundles) {
+	public DapsCertificateProvider(DapsAuthenticationProperties dapsProperties, SslBundles sslBundles) {
 		this.dapsProperties = dapsProperties;
 		this.sslBundles = sslBundles;
 	}
@@ -53,7 +59,7 @@ public class DapsCertificateProviderOmejdn {
 			try {
 				dapsKeystore = sslBundles.getBundle("daps").getStores().getKeyStore();
 				aliases = sslBundles.getBundle("daps").getStores().getKeyStore().aliases();
-				while(aliases.hasMoreElements()) {
+				while (aliases.hasMoreElements()) {
 					String alias = aliases.nextElement();
 					checkCertificateExired(dapsKeystore.getCertificate(alias));
 				}
@@ -67,6 +73,11 @@ public class DapsCertificateProviderOmejdn {
 		}
 	}
 
+	/**
+	 * Generates a DAPS v2 JWT assertion (JWS) for authentication.
+	 *
+	 * @return the signed JWT assertion
+	 */
 	public String getDapsV2Jws() {
 		log.debug("V2");
 
@@ -127,9 +138,9 @@ public class DapsCertificateProviderOmejdn {
 
 	/**
 	 * Encode a byte array to an hex string.
-	 * 
-	 * @param byteArray
-	 * @return encode hex string
+	 *
+	 * @param byteArray the byte array to encode
+	 * @return encoded hex string
 	 */
 	private String encodeHexString(byte[] byteArray) {
 		StringBuffer hexStringBuffer = new StringBuffer();
@@ -141,9 +152,9 @@ public class DapsCertificateProviderOmejdn {
 
 	/**
 	 * Convert byte array to hex without any dependencies to libraries.
-	 * 
-	 * @param num
-	 * @return Hexa string representation of bytes
+	 *
+	 * @param num the byte to convert
+	 * @return hexa string representation of byte
 	 */
 	private String byteToHex(byte num) {
 		char[] hexDigits = new char[2];
@@ -152,12 +163,12 @@ public class DapsCertificateProviderOmejdn {
 		return new String(hexDigits);
 	}
 
-	/***
-	 * Beautyfies Hex strings and will generate a result later used to create the.
-	 * client id (XX:YY:ZZ)
-	 * 
-	 * @param hexString HexString to be beautified
-	 * @return beautifiedHex result
+	/**
+	 * Beautifies Hex strings and will generate a result later used to create the
+	 * client id (XX:YY:ZZ).
+	 *
+	 * @param hexString hex string to be beautified
+	 * @return beautified hex result
 	 */
 	private String beautifyHex(String hexString) {
 		String[] splitString = split(hexString, 2);
@@ -169,16 +180,18 @@ public class DapsCertificateProviderOmejdn {
 		return sb.toString();
 	}
 
-	/***
-	 * Split string ever len chars and return string array.
-	 * @param src
-	 * @param len
-	 * @return array of strings splitted
+	/**
+	 * Split string every len chars and return string array.
+	 *
+	 * @param src the source string
+	 * @param len the length to split at
+	 * @return array of strings split
 	 */
 	private String[] split(String src, int len) {
 		String[] result = new String[(int)Math.ceil((double)src.length()/(double)len)];
-		for (int i=0; i<result.length; i++)
-			result[i] = src.substring(i*len, Math.min(src.length(), (i+1)*len));
+		for (int i = 0; i < result.length; i++) {
+			result[i] = src.substring(i * len, Math.min(src.length(), (i + 1) * len));
+		}
 		return result;
 	}
 
@@ -194,3 +207,4 @@ public class DapsCertificateProviderOmejdn {
 		log.info("DAPS certificate still valid");
 	}
 }
+
