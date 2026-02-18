@@ -1,9 +1,9 @@
 package it.eng.dcp.config;
 
+import it.eng.dcp.common.config.DcpProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -14,21 +14,23 @@ class DcpPropertiesTest {
     @Test
     @DisplayName("basic getters and setters")
     void basicGettersSetters() {
-        it.eng.dcp.common.config.DcpProperties p = new it.eng.dcp.common.config.DcpProperties();
+        DcpProperties p = new DcpProperties();
         assertEquals(120, p.getClockSkewSeconds());
-        assertTrue(p.getSupportedProfiles().isEmpty());
 
         p.setConnectorDid("did:web:example:connector");
         p.setBaseUrl("https://example.com");
         p.setClockSkewSeconds(60);
-        p.setSupportedProfiles(List.of("VC11_SL2021_JWT"));
-        p.setTrustedIssuers(Map.of("CredTypeA", List.of("did:example:issuer1")));
+
+        // Set trusted issuers using the TrustedIssuers inner class
+        DcpProperties.TrustedIssuers trustedIssuers = new DcpProperties.TrustedIssuers();
+        trustedIssuers.setIssuers(Map.of("CredTypeA", "did:example:issuer1,did:example:issuer2"));
+        p.setTrustedIssuers(trustedIssuers);
 
         assertEquals("did:web:example:connector", p.getConnectorDid());
         assertEquals("https://example.com", p.getBaseUrl());
         assertEquals(60, p.getClockSkewSeconds());
-        assertEquals(1, p.getSupportedProfiles().size());
-        assertTrue(p.getTrustedIssuers().containsKey("CredTypeA"));
+        assertTrue(p.getTrustedIssuers().getIssuers().containsKey("CredTypeA"));
+        assertEquals("did:example:issuer1,did:example:issuer2", p.getTrustedIssuers().getIssuers().get("CredTypeA"));
     }
 }
 

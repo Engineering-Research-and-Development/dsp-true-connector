@@ -193,16 +193,29 @@ class DcpVerifierAuthenticationFilterTest {
     }
 
     @Test
-    @DisplayName("Should filter /negotiation/** endpoints")
+    @DisplayName("Should filter /negotiations/** endpoints")
     void shouldFilterNegotiationEndpoints() throws Exception {
-        // Given: Request to /negotiation endpoint
-        when(request.getRequestURI()).thenReturn("/negotiation/contracts");
+        // Given: Request to /negotiations endpoint
+        when(request.getRequestURI()).thenReturn("/negotiations/contracts");
 
         // When: Check shouldNotFilter
         boolean result = filter.shouldNotFilter(request);
 
         // Then: Should filter
-        assertFalse(result, "Should filter /negotiation/** endpoints");
+        assertFalse(result, "Should filter /negotiations/** endpoints");
+    }
+
+    @Test
+    @DisplayName("Should filter /consumer/negotiations/** endpoints")
+    void shouldFilterNegotiationCallbackEndpoints() throws Exception {
+        // Given: Request to /consumer/negotiations endpoint
+        when(request.getRequestURI()).thenReturn("/consumer/negotiations/agreements");
+
+        // When: Check shouldNotFilter
+        boolean result = filter.shouldNotFilter(request);
+
+        // Then: Should filter
+        assertFalse(result, "Should filter /consumer/negotiations/** endpoints");
     }
 
     @Test
@@ -216,6 +229,19 @@ class DcpVerifierAuthenticationFilterTest {
 
         // Then: Should filter
         assertFalse(result, "Should filter /transfers/** endpoints");
+    }
+
+    @Test
+    @DisplayName("Should filter /consumer/transfers/** endpoints")
+    void shouldFilterTransfersCallbackEndpoints() throws Exception {
+        // Given: Request to /transfers endpoint
+        when(request.getRequestURI()).thenReturn("/consumer/transfers/data");
+
+        // When: Check shouldNotFilter
+        boolean result = filter.shouldNotFilter(request);
+
+        // Then: Should filter
+        assertFalse(result, "Should filter /consumer/transfers/** endpoints");
     }
 
     @Test

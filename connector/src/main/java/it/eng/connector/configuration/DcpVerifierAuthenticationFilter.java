@@ -30,8 +30,20 @@ import java.io.IOException;
  *   <li>Set SecurityContext if authentication succeeds</li>
  * </ul>
  *
- * <p>Only applied to /catalog/**, /negotiation/**, and /transfers/** endpoints.
- * Can be enabled/disabled via the dcp.vp.enabled property (checked by provider).
+ * <p>Applied to the following endpoints:
+ * <ul>
+ *   <li>/catalog** - Catalog endpoints</li>
+ *   <li>/negotiations/** - Negotiation endpoints</li>
+ *   <li>/consumer/negotiations/** - Consumer negotiation endpoints</li>
+ *   <li>/transfers/** - Transfer endpoints</li>
+ * </ul>
+ *
+ * <p>Excluded endpoints:
+ * <ul>
+ *   <li>/api/v1/negotiations** - API management endpoints (no DCP authentication)</li>
+ * </ul>
+ *
+ * <p>Can be enabled/disabled via the dcp.vp.enabled property (checked by provider).
  */
 @Slf4j
 public class DcpVerifierAuthenticationFilter extends OncePerRequestFilter {
@@ -101,9 +113,22 @@ public class DcpVerifierAuthenticationFilter extends OncePerRequestFilter {
             return true;
         }
 
+        // Exclude /api/v1 (API management endpoints)
+        if (requestPath.startsWith("/api/v1/")) {
+            return true;
+        }
+
+        // Apply filter to:
+        // - /catalog** (catalog endpoints)
+        // - /negotiations/** (negotiation endpoints)
+        // - /consumer/negotiations/** (consumer callback negotiation endpoints)
+        // - /transfers/** (transfer endpoints)
+        // - /consumer/transfers/** (consumer callback transfer endpoints)
         boolean shouldFilter = requestPath.startsWith("/catalog")
-                || requestPath.startsWith("/negotiation")
-                || requestPath.startsWith("/transfers");
+                || requestPath.startsWith("/negotiations/")
+                || requestPath.startsWith("/consumer/negotiations/")
+                || requestPath.startsWith("/transfers/")
+                || requestPath.startsWith("/consumer/transfers/");
 
         return !shouldFilter;
     }

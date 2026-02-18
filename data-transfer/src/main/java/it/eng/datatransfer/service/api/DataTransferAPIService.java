@@ -37,12 +37,10 @@ import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -159,7 +157,7 @@ public class DataTransferAPIService {
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
                 DataTransferCallback.getConsumerDataTransferRequest(transferProcessInitialized.getCallbackAddress()),
                 TransferSerializer.serializeProtocolJsonNode(transferRequestMessage),
-                credentialUtils.getConnectorCredentials());
+                credentialUtils.getConnectorCredentials(transferProcessInitialized.getCallbackAddress()));
         log.info("Response received {}", response);
 
         TransferProcess transferProcessForDB;
@@ -299,7 +297,7 @@ public class DataTransferAPIService {
         GenericApiResponse<String> response = okHttpRestClient
                 .sendRequestProtocol(address,
                         TransferSerializer.serializeProtocolJsonNode(transferStartMessage),
-                        credentialUtils.getConnectorCredentials());
+                        credentialUtils.getConnectorCredentials(transferProcess.getCallbackAddress()));
         log.info("Response received {}", response);
         if (response.isSuccess()) {
             TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
@@ -372,7 +370,7 @@ public class DataTransferAPIService {
         GenericApiResponse<String> response = okHttpRestClient
                 .sendRequestProtocol(address,
                         TransferSerializer.serializeProtocolJsonNode(transferCompletionMessage),
-                        credentialUtils.getConnectorCredentials());
+                        credentialUtils.getConnectorCredentials(transferProcess.getCallbackAddress()));
         log.info("Response received {}", response);
         if (response.isSuccess()) {
             TransferProcess transferProcessCompleted = transferProcess.copyWithNewTransferState(TransferState.COMPLETED);
@@ -430,7 +428,7 @@ public class DataTransferAPIService {
         GenericApiResponse<String> response = okHttpRestClient
                 .sendRequestProtocol(address,
                         TransferSerializer.serializeProtocolJsonNode(transferSuspensionMessage),
-                        credentialUtils.getConnectorCredentials());
+                        credentialUtils.getConnectorCredentials(transferProcess.getCallbackAddress()));
         log.info("Response received {}", response);
         if (response.isSuccess()) {
             TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED);
@@ -488,7 +486,7 @@ public class DataTransferAPIService {
         GenericApiResponse<String> response = okHttpRestClient
                 .sendRequestProtocol(address,
                         TransferSerializer.serializeProtocolJsonNode(transferTerminationMessage),
-                        credentialUtils.getConnectorCredentials());
+                        credentialUtils.getConnectorCredentials(transferProcess.getCallbackAddress()));
         log.info("Response received {}", response);
         if (response.isSuccess()) {
             TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);

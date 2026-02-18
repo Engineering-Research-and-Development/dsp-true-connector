@@ -173,7 +173,9 @@ public class WebSecurityConfig {
                             .requestMatchers(
                                     new AntPathRequestMatcher("/catalog/**"),
                                     new AntPathRequestMatcher("/negotiations/**"),
-                                    new AntPathRequestMatcher("/transfers/**"))
+                                    new AntPathRequestMatcher("/consumer/negotiations/**"),
+                                    new AntPathRequestMatcher("/transfers/**"),
+                                    new AntPathRequestMatcher("/consumer/transfers/**"))
                             .hasRole("CONNECTOR")
                             // Development/Testing token generator (disable in production)
                             .requestMatchers(new AntPathRequestMatcher("/api/dev/token/**")).permitAll()

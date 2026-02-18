@@ -7,7 +7,6 @@ import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -53,14 +52,11 @@ public class DcpProperties {
     @Min(0)
     private int clockSkewSeconds = 120;
 
-    /** Supported profiles, e.g. ["VC11_SL2021_JWT","VC11_SL2021_JSONLD"] */
-    private List<String> supportedProfiles = Collections.emptyList();
-
-    /** Trusted issuers mapping per credential type. */
-    private Map<String, List<String>> trustedIssuers = Collections.emptyMap();
-
     /** Keystore configuration. */
     private Keystore keystore = new Keystore();
+
+    /** Trusted issuers configuration. */
+    private TrustedIssuers trustedIssuers = new TrustedIssuers();
 
     /** Issuer configuration. */
     private Issuer issuer = new Issuer();
@@ -71,55 +67,31 @@ public class DcpProperties {
     /**
      * Keystore configuration.
      */
+    @Setter
+    @Getter
     public static class Keystore {
         private String path = "eckey.p12";
         private String password = "password";
         private String alias = "dsptrueconnector";
 
-        public String getPath() {
-            return path;
-        }
-
-        public void setPath(String path) {
-            this.path = path;
-        }
-
-        public String getPassword() {
-            return password;
-        }
-
-        public void setPassword(String password) {
-            this.password = password;
-        }
-
-        public String getAlias() {
-            return alias;
-        }
-
-        public void setAlias(String alias) {
-            this.alias = alias;
-        }
     }
 
     /**
      * Issuer configuration.
      */
+    @Setter
+    @Getter
     public static class Issuer {
         /** Issuer location URL. */
         private String location;
 
-        public String getLocation() {
-            return location;
-        }
-
-        public void setLocation(String location) {
-            this.location = location;
-        }
     }
 
     /**
      * Configuration for Verifiable Presentation JWT authentication.
      */
+    @Setter
+    @Getter
     public static class Vp {
         /** Enable VP JWT for connector authentication. */
         private boolean enabled = false;
@@ -127,20 +99,20 @@ public class DcpProperties {
         /** Credential types to include in VP (comma-separated). Empty means all credentials. */
         private String scope = "";
 
-        public boolean isEnabled() {
-            return enabled;
-        }
+    }
 
-        public void setEnabled(boolean enabled) {
-            this.enabled = enabled;
-        }
+    /**
+     * Configuration for trusted issuers per credential type.
+     * Maps credential types to comma-separated lists of trusted issuer DIDs.
+     */
+    @Setter
+    @Getter
+    public static class TrustedIssuers {
+        /**
+         * Map of credential types to comma-separated list of trusted issuer DIDs.
+         * Example: MembershipCredential=did:web:localhost:8080,did:web:localhost:8090
+         */
+        private Map<String, String> issuers = Collections.emptyMap();
 
-        public String getScope() {
-            return scope;
-        }
-
-        public void setScope(String scope) {
-            this.scope = scope;
-        }
     }
 }

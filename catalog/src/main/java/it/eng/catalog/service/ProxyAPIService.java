@@ -42,7 +42,7 @@ public class ProxyAPIService {
         GenericApiResponse<String> catalogResponse = okHttpClient.sendRequestProtocol(forwardTo + "/catalog/request",
                 CatalogSerializer.serializeProtocolJsonNode(catalogRequestMessage),
                 //TODO add credentials management for VC - pass forwardTo - add check if vc enabled
-                credentialUtils.getConnectorCredentials());
+                credentialUtils.getConnectorCredentials(forwardTo));
         if (catalogResponse.isSuccess()) {
             return CatalogSerializer.deserializeProtocol(catalogResponse.getData(), Catalog.class);
         } else {

@@ -453,5 +453,31 @@
       },
       "n": 0
     }
+  ],
+  "verifiable_credentials": [
+    {
+      "_id": "urn:uuid:2e3991e8-090c-45b9-8bfb-708523fc62bc",
+      "_class": "it.eng.dcp.holder.model.VerifiableCredential",
+      "credential": {
+        "type": "MembershipCredential",
+        "format": "jwt",
+        "jwt": "eyJraWQiOiI2Q2E0OFpBQUdZYU1TX1Z5T0JvOV9tWGlNZG5XdWszb05CbWFVX0VNQUJvIiwiYWxnIjoiRVMyNTYifQ.eyJzdWIiOiJkaWQ6d2ViOmxvY2FsaG9zdDo4MDkwOnByb3ZpZGVyIiwiaXNzIjoiZGlkOndlYjpsb2NhbGhvc3QlM0E4MDg0Omlzc3VlciIsImV4cCI6MTgwMjUzMDE2NCwiaWF0IjoxNzcwOTk0MTY0LCJ2YyI6eyJpc3N1YW5jZURhdGUiOiIyMDI2LTAyLTEzVDE0OjQ5OjI0LjI5NzY5ODQwMFoiLCJjcmVkZW50aWFsU3ViamVjdCI6eyJtZW1iZXJzaGlwVHlwZSI6IlByZW1pdW0iLCJtZW1iZXJzaGlwSWQiOiJNRU1CRVItYzIxYTUzZWIiLCJpZCI6ImRpZDp3ZWI6bG9jYWxob3N0OjgwOTA6cHJvdmlkZXIiLCJzdGF0dXMiOiJBY3RpdmUifSwiaWQiOiJ1cm46dXVpZDoyZTM5OTFlOC0wOTBjLTQ1YjktOGJmYi03MDg1MjNmYzYyYmMiLCJwcm9vZiI6eyJjcmVhdGVkIjoiMjAyNi0wMi0xM1QxNDo0OToyNC4yOTc2OTg0MDBaIiwicHJvb2ZQdXJwb3NlIjoiYXNzZXJ0aW9uTWV0aG9kIiwidHlwZSI6Ikpzb25XZWJTaWduYXR1cmUyMDIwIiwidmVyaWZpY2F0aW9uTWV0aG9kIjoiZGlkOndlYjpsb2NhbGhvc3QlM0E4MDg0Omlzc3VlciM2Q2E0OFpBQUdZYU1TX1Z5T0JvOV9tWGlNZG5XdWszb05CbWFVX0VNQUJvIn0sInR5cGUiOlsiVmVyaWZpYWJsZUNyZWRlbnRpYWwiLCJNZW1iZXJzaGlwQ3JlZGVudGlhbCJdLCJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSIsImh0dHBzOi8vZXhhbXBsZS5vcmcvY3JlZGVudGlhbHMvdjEiXSwiaXNzdWVyIjoiZGlkOndlYjpsb2NhbGhvc3QlM0E4MDg0Omlzc3VlciIsImV4cGlyYXRpb25EYXRlIjoiMjAyNy0wMi0xM1QxNDo0OToyNC4yOTc2OTg0MDBaIiwiY3JlZGVudGlhbFN0YXR1cyI6eyJzdGF0dXNQdXJwb3NlIjoicmV2b2NhdGlvbiIsInN0YXR1c0xpc3RJbmRleCI6IjEiLCJpZCI6ImRpZDp3ZWI6bG9jYWxob3N0JTNBODA4NDppc3N1ZXIvc3RhdHVzLzEjMSIsInR5cGUiOiJTdGF0dXNMaXN0MjAyMUVudHJ5Iiwic3RhdHVzTGlzdENyZWRlbnRpYWwiOiJkaWQ6d2ViOmxvY2FsaG9zdCUzQTgwODQ6aXNzdWVyL3N0YXR1cy8xIn19LCJqdGkiOiJ1cm46dXVpZDplNjk2YzBlZi0zMGM4LTRhZTEtOWU1Zi05MDVhNzRlY2Q2YzEifQ.Yf9bEr21F4dvc_UpVqsjvqAJRQihimZMClMuYrzes-d3GDLky2slUuX978_ALXYQ9v2-1JP2L8ibNyB4aUPdDg"
+      },
+      "credentialIds": [],
+      "credentialStatus": {
+        "statusPurpose": "revocation",
+        "statusListIndex": "1",
+        "id": "did:web:localhost%3A8084:issuer/status/1#1",
+        "type": "StatusList2021Entry",
+        "statusListCredential": "did:web:localhost%3A8084:issuer/status/1"
+      },
+      "credentialType": "MembershipCredential",
+      "expirationDate": {"$date": "2027-02-13T14:49:24.297Z"},
+      "holderDid": "did:web:localhost:8090:provider",
+      "issuanceDate": {"$date": "2026-02-13T14:49:24.297Z"},
+      "issuerDid": "did:web:localhost%3A8084:issuer",
+      "jwtRepresentation": "eyJraWQiOiI2Q2E0OFpBQUdZYU1TX1Z5T0JvOV9tWGlNZG5XdWszb05CbWFVX0VNQUJvIiwiYWxnIjoiRVMyNTYifQ.eyJzdWIiOiJkaWQ6d2ViOmxvY2FsaG9zdDo4MDkwOnByb3ZpZGVyIiwiaXNzIjoiZGlkOndlYjpsb2NhbGhvc3QlM0E4MDg0Omlzc3VlciIsImV4cCI6MTgwMjUzMDE2NCwiaWF0IjoxNzcwOTk0MTY0LCJ2YyI6eyJpc3N1YW5jZURhdGUiOiIyMDI2LTAyLTEzVDE0OjQ5OjI0LjI5NzY5ODQwMFoiLCJjcmVkZW50aWFsU3ViamVjdCI6eyJtZW1iZXJzaGlwVHlwZSI6IlByZW1pdW0iLCJtZW1iZXJzaGlwSWQiOiJNRU1CRVItYzIxYTUzZWIiLCJpZCI6ImRpZDp3ZWI6bG9jYWxob3N0OjgwOTA6cHJvdmlkZXIiLCJzdGF0dXMiOiJBY3RpdmUifSwiaWQiOiJ1cm46dXVpZDoyZTM5OTFlOC0wOTBjLTQ1YjktOGJmYi03MDg1MjNmYzYyYmMiLCJwcm9vZiI6eyJjcmVhdGVkIjoiMjAyNi0wMi0xM1QxNDo0OToyNC4yOTc2OTg0MDBaIiwicHJvb2ZQdXJwb3NlIjoiYXNzZXJ0aW9uTWV0aG9kIiwidHlwZSI6Ikpzb25XZWJTaWduYXR1cmUyMDIwIiwidmVyaWZpY2F0aW9uTWV0aG9kIjoiZGlkOndlYjpsb2NhbGhvc3QlM0E4MDg0Omlzc3VlciM2Q2E0OFpBQUdZYU1TX1Z5T0JvOV9tWGlNZG5XdWszb05CbWFVX0VNQUJvIn0sInR5cGUiOlsiVmVyaWZpYWJsZUNyZWRlbnRpYWwiLCJNZW1iZXJzaGlwQ3JlZGVudGlhbCJdLCJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSIsImh0dHBzOi8vZXhhbXBsZS5vcmcvY3JlZGVudGlhbHMvdjEiXSwiaXNzdWVyIjoiZGlkOndlYjpsb2NhbGhvc3QlM0E4MDg0Omlzc3VlciIsImV4cGlyYXRpb25EYXRlIjoiMjAyNy0wMi0xM1QxNDo0OToyNC4yOTc2OTg0MDBaIiwiY3JlZGVudGlhbFN0YXR1cyI6eyJzdGF0dXNQdXJwb3NlIjoicmV2b2NhdGlvbiIsInN0YXR1c0xpc3RJbmRleCI6IjEiLCJpZCI6ImRpZDp3ZWI6bG9jYWxob3N0JTNBODA4NDppc3N1ZXIvc3RhdHVzLzEjMSIsInR5cGUiOiJTdGF0dXNMaXN0MjAyMUVudHJ5Iiwic3RhdHVzTGlzdENyZWRlbnRpYWwiOiJkaWQ6d2ViOmxvY2FsaG9zdCUzQTgwODQ6aXNzdWVyL3N0YXR1cy8xIn19LCJqdGkiOiJ1cm46dXVpZDplNjk2YzBlZi0zMGM4LTRhZTEtOWU1Zi05MDVhNzRlY2Q2YzEifQ.Yf9bEr21F4dvc_UpVqsjvqAJRQihimZMClMuYrzes-d3GDLky2slUuX978_ALXYQ9v2-1JP2L8ibNyB4aUPdDg",
+      "profileId": "VC11_SL2021_JWT"
+    }
   ]
 }
