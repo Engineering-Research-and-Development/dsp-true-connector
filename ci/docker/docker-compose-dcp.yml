@@ -39,7 +39,46 @@ services:
       exit 0;
       "
 
-  ### intstance a
+  ### DCP Issuer Service
+  dcp-issuer:
+    image: dcp-issuer:test
+    container_name: dcp-issuer
+    networks:
+      - network-a
+      - network-b
+    ports:
+      - "8084:8084"
+    environment:
+      - JAVA_OPTS=-Xmx512m -Xms256m
+      - SPRING_APPLICATION_NAME=dcp-issuer
+      - SERVER_PORT=8084
+      - ISSUER_DID=did:web:dcp-issuer%3A8084:issuer
+      - ISSUER_BASE_URL=http://dcp-issuer:8084
+      - SPRING_DATA_MONGODB_HOST=mongodb
+      - SPRING_DATA_MONGODB_PORT=27017
+      - SPRING_DATA_MONGODB_DATABASE=issuer_db
+      - ISSUER_KEYSTORE_PATH=/cert/eckey-issuer.p12
+      - ISSUER_KEYSTORE_PASSWORD=password
+      - ISSUER_KEYSTORE_ALIAS=issuer
+      # Spring Boot will automatically look for application.properties in /config/ due to classpath
+      - SPRING_CONFIG_LOCATION=optional:classpath:/,optional:file:/config/
+    volumes:
+      # Mount external config directory for application.properties and other config files
+      - ./issuer/config:/config
+      # Mount external cert directory for .p12 keystores and certificates
+      - ./issuer/cert:/cert
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  ### connector instance a
   connector-a:
     image: ghcr.io/engineering-research-and-development/dsp-true-connector:test
     deploy:
@@ -58,8 +97,9 @@ services:
       - "0.0.0.0:8888:2222" #FTP
       - "8080:8080"
     depends_on:
-      - mongodb-a
+      - mongodb
       - minio
+      - dcp-issuer
     environment:
       - "JDK_JAVA_OPTIONS=-Xmx1024m"
       - CALLBACK_ADDRESS=${CONNECTOR_A_CALLBACK_ADDRESS}
@@ -72,26 +112,32 @@ services:
       - DAPS_KEYSTORE_ALIAS=${DAPS_KEYSTORE_ALIAS}
       - TRUSTSTORE_NAME=${TRUSTSTORE_NAME}
       - TRUSTSTORE_PASSWORD=${TRUSTSTORE_PASSWORD}
-      - CONNECTOR_A_DCP_ENABLED=${CONNECTOR_A_DCP_ENABLED}
+      - CONNECTOR_A_DCP_ENABLED=true
     volumes:
       - ./connector_a_resources:/config
       - ./tc_cert:/cert
       - ./:/home/nobody/ftp
       - tc_a_log:/var/log/tc
 
-
-  mongodb-a:
-    container_name: mongodb-a
+  mongodb:
+    container_name: mongodb
     image: mongo:7.0.12
     networks:
       - network-a
+      - network-b
     ports:
       - "27017:27017"
     volumes:
-      - mongodb-data_a:/data/db
-      - mongodb-configdb_a:/data/configdb
-  ### instance b
+      - mongodb-data:/data/db
+      - mongodb-configdb:/data/configdb
+    healthcheck:
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
+  ### connector instance b
   connector-b:
     image: ghcr.io/engineering-research-and-development/dsp-true-connector:test
     deploy:
@@ -110,8 +156,9 @@ services:
       - "0.0.0.0:8889:2222" #FTP
       - "8090:8080"
     depends_on:
-      - mongodb-b
+      - mongodb
       - minio
+      - dcp-issuer
     environment:
       - "JDK_JAVA_OPTIONS=-Xmx1024m"
       - CALLBACK_ADDRESS=${CONNECTOR_B_CALLBACK_ADDRESS}
@@ -124,23 +171,12 @@ services:
       - DAPS_KEYSTORE_ALIAS=${DAPS_KEYSTORE_ALIAS}
       - TRUSTSTORE_NAME=${TRUSTSTORE_NAME}
       - TRUSTSTORE_PASSWORD=${TRUSTSTORE_PASSWORD}
-      - CONNECTOR_B_DCP_ENABLED=${CONNECTOR_B_DCP_ENABLED}
+      - CONNECTOR_B_DCP_ENABLED=true
     volumes:
       - ./connector_b_resources:/config
       - ./tc_cert:/cert
       - ./:/home/nobody/ftp
       - tc_b_log:/var/log/tc
-
-  mongodb-b:
-    container_name: mongodb-b
-    image: mongo:7.0.12
-    networks:
-      - network-b
-    ports:
-      - "27018:27017"
-    volumes:
-      - mongodb-data_b:/data/db
-      - mongodb-configdb_b:/data/configdb
 
 networks:
   network-a: { }
@@ -149,8 +185,7 @@ networks:
 volumes:
   minio_data: { }
   tc_a_log: { }
-  mongodb-data_a: { }
-  mongodb-configdb_a: { }
+  mongodb-data: { }
+  mongodb-configdb: { }
   tc_b_log: { }
-  mongodb-data_b: { }
-  mongodb-configdb_b: { }
+

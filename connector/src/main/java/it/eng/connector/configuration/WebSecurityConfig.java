@@ -167,6 +167,9 @@ public class WebSecurityConfig {
                 .anonymous(anonymus -> anonymus.disable())
                 .authorizeHttpRequests((authorize) -> {
                     authorize
+                            // Allow public access to health endpoint for Docker healthchecks
+                            .requestMatchers(new AntPathRequestMatcher("/actuator/health")).permitAll()
+                            // Other actuator endpoints require ADMIN role
                             .requestMatchers(new AntPathRequestMatcher("/env"), new AntPathRequestMatcher("/actuator/**")).hasRole("ADMIN")
                             // DSP protocol endpoints require CONNECTOR role
                             // These are authenticated via DCP VP (if enabled) or Basic auth (fallback)

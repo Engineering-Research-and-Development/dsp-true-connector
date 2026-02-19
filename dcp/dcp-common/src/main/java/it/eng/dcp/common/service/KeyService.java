@@ -107,27 +107,41 @@ public class KeyService {
     }
 
     private KeyPair loadKeyPairFromP12(String resourcePath, String password, String alias) {
-        // Normalize resource path: strip 'classpath:' and leading '/'
-        String normalizedPath = resourcePath;
-        if (normalizedPath.startsWith("classpath:")) {
-            normalizedPath = normalizedPath.substring("classpath:".length());
-        }
-        if (normalizedPath.startsWith("/")) {
-            normalizedPath = normalizedPath.substring(1);
-        }
         InputStream is = null;
         try {
-            // First, try loading from filesystem
-            File file = new File(normalizedPath);
-            if (file.exists()) {
-                is = new FileInputStream(file);
-            } else {
-                // Fallback to classpath
+            // Check if this is a classpath resource
+            boolean isClasspathResource = resourcePath.startsWith("classpath:");
+            String normalizedPath = resourcePath;
+
+            if (isClasspathResource) {
+                // Strip 'classpath:' prefix
+                normalizedPath = normalizedPath.substring("classpath:".length());
+                // Strip leading '/' for classpath resources (ClassLoader expects no leading slash)
+                if (normalizedPath.startsWith("/")) {
+                    normalizedPath = normalizedPath.substring(1);
+                }
+                // Load from classpath only
                 is = getClassLoader().getResourceAsStream(normalizedPath);
+                if (is == null) {
+                    throw new RuntimeException("Classpath resource not found: " + normalizedPath);
+                }
+            } else {
+                // Filesystem path (absolute or relative) - do NOT strip leading slash
+                File file = new File(normalizedPath);
+                if (file.exists()) {
+                    is = new FileInputStream(file);
+                } else {
+                    // Fallback: try as classpath resource (strip leading slash if present)
+                    String classpathPath = normalizedPath.startsWith("/")
+                        ? normalizedPath.substring(1)
+                        : normalizedPath;
+                    is = getClassLoader().getResourceAsStream(classpathPath);
+                    if (is == null) {
+                        throw new RuntimeException("Resource not found in filesystem or classpath: " + normalizedPath);
+                    }
+                }
             }
-            if (is == null) {
-                throw new RuntimeException("Resource not found in filesystem or classpath: " + normalizedPath);
-            }
+
             KeyStore keystore = KeyStore.getInstance("PKCS12");
             keystore.load(is, password.toCharArray());
             PrivateKey privateKey = (PrivateKey) keystore.getKey(alias, password.toCharArray());
