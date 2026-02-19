@@ -1,9 +1,13 @@
 name: DCP Integration Tests
 
-# for now do not run this GHA
-#on:
-#  push:
-#    branches: [ "feature/*", "hotfix/*", "fix/*", "develop", "main" ]
+on:
+  # Trigger on pushes to branches that will never exist (effectively disabled)
+  # This keeps the workflow visible in all branches without auto-triggering
+  push:
+    branches:
+      - '__disabled__'  # Branch pattern that will never match
+  # Allow manual triggering from any branch via GitHub Actions UI
+  workflow_dispatch:
 
 permissions:
   contents: read
