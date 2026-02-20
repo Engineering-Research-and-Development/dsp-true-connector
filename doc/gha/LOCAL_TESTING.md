@@ -138,14 +138,19 @@ docker compose -f docker-compose.yml --env-file .env down -v
 
 ```bash
 # From repository root
-cd dcp/dcp-issuer
+cd dcp
 
-# Build with Maven
+# Build entire DCP module (includes dcp-common, dcp-issuer, dcp-holder, dcp-verifier)
 mvn clean package -DskipTests
+
+# Navigate to dcp-issuer for Docker build
+cd dcp-issuer
 
 # Build Docker image
 docker build -t dcp-issuer:test .
 ```
+
+**Note**: We build the entire `dcp` parent module to ensure all inter-module dependencies (like `dcp-common`) are available.
 
 ### Step 2: Build Connector Image (if needed)
 
@@ -248,9 +253,10 @@ docker ps
 
 ### 3. Build Images
 ```powershell
-# Builds DCP Issuer (skip with -SkipBuild)
-cd dcp/dcp-issuer
+# Builds DCP module (skip with -SkipBuild)
+cd dcp
 mvn clean package -DskipTests
+cd dcp-issuer
 docker build -t dcp-issuer:test .
 ```
 

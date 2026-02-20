@@ -52,30 +52,35 @@ try {
 
 # Step 3: Build DCP Issuer
 if (-not $SkipBuild) {
-    Write-Host "`n[3/6] Building DCP Issuer..." -ForegroundColor Yellow
-    $dcpIssuerPath = Join-Path $RepoRoot "dcp\dcp-issuer"
-    Push-Location $dcpIssuerPath
+    Write-Host "`n[3/6] Building DCP module..." -ForegroundColor Yellow
+    $dcpPath = Join-Path $RepoRoot "dcp"
+    Push-Location $dcpPath
     try {
-        Write-Host "  Building with Maven..." -ForegroundColor Gray
+        Write-Host "  Building entire DCP module with Maven (includes dcp-common, dcp-issuer, etc.)..." -ForegroundColor Gray
         mvn clean package -DskipTests -q
 
-        $jarPath = "target\dcp-issuer-exec.jar"
-        if (-not (Test-Path $jarPath)) {
-            throw "JAR file not created at $jarPath"
-        }
         Write-Host "  [OK] Maven build successful" -ForegroundColor Green
 
-        Write-Host "  Building Docker image..." -ForegroundColor Gray
+        # Verify DCP Issuer JAR was created
+        $dcpIssuerPath = Join-Path $dcpPath "dcp-issuer"
+        $jarPath = Join-Path $dcpIssuerPath "target\dcp-issuer-exec.jar"
+        if (-not (Test-Path $jarPath)) {
+            throw "DCP Issuer JAR file not created at $jarPath"
+        }
+
+        Write-Host "  Building DCP Issuer Docker image..." -ForegroundColor Gray
+        Push-Location $dcpIssuerPath
         docker build -t dcp-issuer:test . --quiet
+        Pop-Location
         Write-Host "  [OK] Docker image built: dcp-issuer:test" -ForegroundColor Green
     } catch {
-        Write-Host "  [X] DCP Issuer build failed: $_" -ForegroundColor Red
+        Write-Host "  [X] DCP build failed: $_" -ForegroundColor Red
         Pop-Location
         exit 1
     }
     Pop-Location
 } else {
-    Write-Host "`n[3/6] Skipping DCP Issuer build (-SkipBuild flag)" -ForegroundColor DarkYellow
+    Write-Host "`n[3/6] Skipping DCP build (-SkipBuild flag)" -ForegroundColor DarkYellow
     # Verify image exists
     $imageExists = docker images -q dcp-issuer:test
     if (-not $imageExists) {

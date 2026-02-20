@@ -77,8 +77,8 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Build DCP Issuer module with Maven
-        run: mvn -B clean package -DskipTests --file dcp/dcp-issuer/pom.xml
+      - name: Build entire DCP module with Maven
+        run: mvn -B clean package -DskipTests --file dcp/pom.xml
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
