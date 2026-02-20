@@ -1,0 +1,354 @@
+{
+  "info": {
+    "_postman_id": "7b03df88-cc79-4568-b524-9ca78a5e478c",
+    "name": "dcp-gha-tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "36278855"
+  },
+  "item": [
+    {
+      "name": "connector-a generate access token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Parse the JSON response\r",
+              "var jsonData = pm.response.json();\r",
+              "\r",
+              "// Extract the token field and save it to environment variable\r",
+              "pm.environment.set(\"authToken\", jsonData.token);\r",
+              "\r",
+              "// Extract the authorization field and save it to environment variable\r",
+              "pm.environment.set(\"authorizationHeader\", jsonData.authorization);"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"audienceDid\": \"did:web:dcp-issuer%3A8084:issuer\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/dev/token/generate",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "dev",
+            "token",
+            "generate"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "connector-a request credential",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Get the Location header from the response",
+              "const locationHeader = pm.response.headers.get(\"Location\");",
+              "",
+              "// Store the full Location header in an environment variable",
+              "pm.environment.set(\"location\", locationHeader);",
+              "",
+              "// Log the captured full Location header",
+              "console.log(\"Location header captured:\", locationHeader);",
+              "",
+              "// Extract the last segment after the final \"/\"",
+              "if (locationHeader) {",
+              "    const segments = locationHeader.split(\"/\");",
+              "    const requestId = segments[segments.length - 1];",
+              "    ",
+              "    // Store the extracted request-id in an environment variable",
+              "    pm.environment.set(\"request-id\", requestId);",
+              "    ",
+              "    // Log the extracted request-id",
+              "    console.log(\"Extracted request-id:\", requestId);",
+              "} else {",
+              "    console.log(\"Location header not found in response\");",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{authToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"@context\": [\r\n        \"https://w3id.org/dspace/2024/1/context.json\"\r\n    ],\r\n    \"type\": \"CredentialRequestMessage\",\r\n    \"holderPid\": \"holder-{{$randomUUID}}\",\r\n    \"requestId\": \"req-{{$randomUUID}}\",\r\n    \"credentials\": [\r\n        {\r\n            \"id\": \"550e8400-e29b-41d4-a716-446655440000\"\r\n        }\r\n    ]\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8084/issuer/credentials",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8084",
+          "path": [
+            "issuer",
+            "credentials"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "connector-a issuer approve",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{authToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8084/api/issuer/requests/{{request-id}}/approve",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8084",
+          "path": [
+            "api",
+            "issuer",
+            "requests",
+            "{{request-id}}",
+            "approve"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "connector-b generate access token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Parse the JSON response\r",
+              "var jsonData = pm.response.json();\r",
+              "\r",
+              "// Extract the token field and save it to environment variable\r",
+              "pm.environment.set(\"authToken-b\", jsonData.token);\r",
+              "\r",
+              "// Extract the authorization field and save it to environment variable\r",
+              "pm.environment.set(\"authorizationHeader-b\", jsonData.authorization);"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"audienceDid\": \"did:web:dcp-issuer%3A8084:issuer\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8090/api/dev/token/generate",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8090",
+          "path": [
+            "api",
+            "dev",
+            "token",
+            "generate"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "connector-b request credential",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Get the Location header from the response",
+              "const locationHeader = pm.response.headers.get(\"Location\");",
+              "",
+              "// Store the full Location header in an environment variable",
+              "pm.environment.set(\"location\", locationHeader);",
+              "",
+              "// Log the captured full Location header",
+              "console.log(\"Location header captured:\", locationHeader);",
+              "",
+              "// Extract the last segment after the final \"/\"",
+              "if (locationHeader) {",
+              "    const segments = locationHeader.split(\"/\");",
+              "    const requestId = segments[segments.length - 1];",
+              "    ",
+              "    // Store the extracted request-id in an environment variable",
+              "    pm.environment.set(\"request-id\", requestId);",
+              "    ",
+              "    // Log the extracted request-id",
+              "    console.log(\"Extracted request-id:\", requestId);",
+              "} else {",
+              "    console.log(\"Location header not found in response\");",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{authToken-b}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"@context\": [\r\n        \"https://w3id.org/dspace/2024/1/context.json\"\r\n    ],\r\n    \"type\": \"CredentialRequestMessage\",\r\n    \"holderPid\": \"holder-{{$randomUUID}}\",\r\n    \"requestId\": \"req-{{$randomUUID}}\",\r\n    \"credentials\": [\r\n        {\r\n            \"id\": \"550e8400-e29b-41d4-a716-446655440000\"\r\n        }\r\n    ]\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8084/issuer/credentials",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8084",
+          "path": [
+            "issuer",
+            "credentials"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "connector-b issuer approve",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{authToken-b}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8084/api/issuer/requests/{{request-id}}/approve",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8084",
+          "path": [
+            "api",
+            "issuer",
+            "requests",
+            "{{request-id}}",
+            "approve"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}
