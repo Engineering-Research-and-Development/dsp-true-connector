@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.text.ParseException;
 import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;
@@ -152,8 +153,7 @@ public class SelfIssuedIdTokenService {
      * 
      * @param token The JWT token string to validate
      * @return The validated JWT claims
-     * @throws SecurityException if validation fails
-     * @throws RuntimeException if parsing or verification fails
+     * @throws SecurityException if validation or parsing fails
      */
     public JWTClaimsSet validateToken(String token) {
         try {
@@ -235,9 +235,9 @@ public class SelfIssuedIdTokenService {
         } catch (DidResolutionException e) {
             log.warn("Token validation failed - DID resolution error: {}", e.getMessage());
             throw new SecurityException("Failed to resolve DID: " + e.getMessage(), e);
-        } catch (java.text.ParseException  e) {
+        } catch (ParseException e) {
             log.error("Token validation failed - parse/crypto error: {}", e.getMessage());
-            throw new RuntimeException("Failed to validate token", e);
+            throw new SecurityException("Invalid token format", e);
         }
     }
 

@@ -88,8 +88,8 @@ public abstract class DcpTestEnvironment {
      */
     @BeforeAll
     public static void setupTestEnvironment() {
-//            setupDockerEnvironment();
-            setupSpringEnvironment();
+            setupDockerEnvironment();
+//            setupSpringEnvironment();
     }
 
     /**
@@ -165,16 +165,10 @@ public abstract class DcpTestEnvironment {
         holderContainer = sharedEnv.getHolderVerifierContainer();
         verifierContainer = sharedEnv.getHolderVerifierContainer(); // Holder and Verifier are in same container
 
-        // Configure URLs for Docker containers
-        issuerBaseUrl = String.format("http://%s:%d",
-                issuerContainer.getHost(),
-                issuerContainer.getMappedPort(8084));
-        holderBaseUrl = String.format("http://%s:%d",
-                holderContainer.getHost(),
-                holderContainer.getMappedPort(8087));
-        verifierBaseUrl = String.format("http://%s:%d",
-                verifierContainer.getHost(),
-                verifierContainer.getMappedPort(8087));
+        // Configure URLs for Docker containers (using fixed ports matching Spring test configuration)
+        issuerBaseUrl = "http://localhost:8082";
+        holderBaseUrl = "http://localhost:8081";
+        verifierBaseUrl = "http://localhost:8081";
 
         // Initialize REST clients
         initializeRestClients();
@@ -329,38 +323,38 @@ public abstract class DcpTestEnvironment {
 
     /**
      * Gets the Issuer's DID identifier.
-     * Format: did:web:{host}:{port}:issuer
+     * Format: did:web:{host}:%3A{port}:issuer
      *
-     * @return Issuer DID (e.g., "did:web:localhost:8082:issuer")
+     * @return Issuer DID (e.g., "did:web:localhost%3A8082:issuer")
      */
     public String getIssuerDid() {
         String host = extractHost(issuerBaseUrl);
         int port = extractPort(issuerBaseUrl);
-        return String.format("did:web:%s:%d:issuer", host, port);
+        return String.format("did:web:%s%%3A%d:issuer", host, port);
     }
 
     /**
      * Gets the Holder's DID identifier.
-     * Format: did:web:{host}:{port}:holder
+     * Format: did:web:{host}:%3A{port}:holder
      *
-     * @return Holder DID (e.g., "did:web:localhost:8081:holder")
+     * @return Holder DID (e.g., "did:web:localhost%3A8081:holder")
      */
     public String getHolderDid() {
         String host = extractHost(holderBaseUrl);
         int port = extractPort(holderBaseUrl);
-        return String.format("did:web:%s:%d:holder", host, port);
+        return String.format("did:web:%s%%3A%d:holder", host, port);
     }
 
     /**
      * Gets the Verifier's DID identifier.
-     * Format: did:web:{host}:{port}:verifier
+     * Format: did:web:{host}:%3A{port}:verifier
      *
-     * @return Verifier DID (e.g., "did:web:localhost:8081:verifier")
+     * @return Verifier DID (e.g., "did:web:localhost%3A8081:verifier")
      */
     public String getVerifierDid() {
         String host = extractHost(verifierBaseUrl);
         int port = extractPort(verifierBaseUrl);
-        return String.format("did:web:%s:%d:verifier", host, port);
+        return String.format("did:web:%s%%3A%d:verifier", host, port);
     }
 
     /**
