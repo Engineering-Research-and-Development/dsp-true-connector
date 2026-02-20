@@ -1,9 +1,12 @@
 @echo off
-REM Quick test launcher for DCP workflow
+REM Quick test launcher for Integration Tests workflow
 REM Double-click this file or run from command prompt
 
+REM Set UTF-8 encoding to properly display Newman output
+chcp 65001 >nul 2>&1
+
 echo =====================================
-echo DCP Workflow Local Testing
+echo Integration Tests Local Testing
 echo =====================================
 echo.
 
@@ -36,13 +39,13 @@ set /p choice="Enter choice (1-4): "
 if "%choice%"=="1" (
     echo.
     echo Running full automated test...
-    powershell -ExecutionPolicy Bypass -File .\test-dcp-workflow-locally.ps1
+    powershell -ExecutionPolicy Bypass -File .\test-workflow-locally.ps1
 ) else if "%choice%"=="2" (
     echo.
     echo Building and starting services...
     echo Services will remain running for manual testing in Postman.
     echo.
-    powershell -ExecutionPolicy Bypass -File .\test-dcp-workflow-locally.ps1 -SkipTests -KeepRunning
+    powershell -ExecutionPolicy Bypass -File .\test-workflow-locally.ps1 -SkipTests -KeepRunning
     echo.
     echo =====================================
     echo Services are running!
@@ -62,13 +65,13 @@ if "%choice%"=="1" (
 ) else if "%choice%"=="3" (
     echo.
     echo Starting services with existing build...
-    powershell -ExecutionPolicy Bypass -File .\test-dcp-workflow-locally.ps1 -SkipBuild -SkipTests -KeepRunning
+    powershell -ExecutionPolicy Bypass -File .\test-workflow-locally.ps1 -SkipBuild -KeepRunning
 ) else if "%choice%"=="4" (
     echo.
-    echo Stopping and cleaning up services...
-    cd ci\docker
+    echo Cleaning up services...
+    cd ..\..\ci\docker
     docker compose -f docker-compose-dcp.yml down -v
-    cd ..\..
+    cd ..\..\doc\gha
     echo.
     echo Cleanup complete!
 ) else (

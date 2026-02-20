@@ -1,5 +1,6 @@
-# DCP Workflow Local Testing Script
-# Usage: .\test-dcp-workflow-locally.ps1 [-SkipBuild] [-SkipTests] [-KeepRunning]
+# Integration Tests Workflow - Local Testing Script (Hardcoded Version)
+# This is a simplified version with hardcoded test steps (more reliable than parsing YAML)
+# Usage: .\test-workflow-locally-hardcoded.ps1 [-SkipBuild] [-SkipTests] [-KeepRunning]
 
 [CmdletBinding()]
 param(
@@ -9,16 +10,25 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$RepoRoot = "C:\Users\igobalog\work\code\engineering\dsp-true-connector"
 
-Write-Host "=== DCP Workflow Local Testing Script ===" -ForegroundColor Cyan
+# Set output encoding to UTF-8 for proper Newman output display
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+
+# Detect repository root (go up from doc/gha)
+$scriptPath = $PSScriptRoot
+$RepoRoot = (Get-Item $scriptPath).Parent.Parent.FullName
+
+Write-Host "=== Integration Tests Local Testing Script (Hardcoded Version) ===" -ForegroundColor Cyan
 Write-Host "Repository: $RepoRoot`n" -ForegroundColor Gray
+Write-Host "Note: This version uses hardcoded test steps for reliability" -ForegroundColor DarkGray
+Write-Host ""
 
 # Step 1: Validate YAML syntax
 Write-Host "[1/6] Validating YAML syntax..." -ForegroundColor Yellow
 try {
     if (Get-Command actionlint -ErrorAction SilentlyContinue) {
-        $yamlPath = Join-Path $RepoRoot ".github\workflows\dcp-tests.yml"
+        $yamlPath = Join-Path $RepoRoot ".github\workflows\integration-tests.yml"
         actionlint $yamlPath
         Write-Host "  [OK] YAML validation passed" -ForegroundColor Green
     } else {
@@ -92,7 +102,6 @@ try {
     Write-Host "  Starting services..." -ForegroundColor Gray
 
     # Capture output - store as array to preserve all lines
-    $composeOutput = @()
     $composeProcess = Start-Process -FilePath "docker" `
         -ArgumentList "compose -f docker-compose-dcp.yml --env-file .env up -d" `
         -NoNewWindow -Wait -PassThru `
@@ -211,180 +220,90 @@ foreach ($check in $healthChecks) {
     }
 }
 
-# Step 6: Run tests
+# Step 6: Run tests (HARDCODED VERSION)
 if (-not $SkipTests -and $allHealthy) {
     Write-Host "`n[6/6] Running tests..." -ForegroundColor Yellow
+    Write-Host "  Using hardcoded test configuration for reliability" -ForegroundColor Gray
 
     if (Get-Command newman -ErrorAction SilentlyContinue) {
-        # Parse dcp-tests.yml to extract Newman test collections dynamically
-        Write-Host "  Reading test configuration from dcp-tests.yml..." -ForegroundColor Gray
-        $workflowPath = Join-Path $RepoRoot ".github\workflows\dcp-tests.yml"
+        $testsPassed = $true
 
         try {
-            $workflowContent = Get-Content $workflowPath -Raw
-
-            # Extract all Newman action calls using regex
-            # Pattern: uses: matt-ball/newman-action followed by collection: path
-            $newmanPattern = '(?s)- name:\s*(.+?)\s+uses:\s*matt-ball/newman-action.+?collection:\s*(.+?)(?=\s+(?:continue-on-error|id|\n\s+-\s*name))'
-            $matches = [regex]::Matches($workflowContent, $newmanPattern)
-
-            if ($matches.Count -eq 0) {
-                Write-Host "  [!] No Newman tests found in workflow, using fallback configuration" -ForegroundColor DarkYellow
-                # Fallback to hardcoded tests if parsing fails
-                $testCollections = @(
-                    @{ Name = "Step 1 - Obtain Verifiable Credentials"; Path = "test-cases\dcp-obtain-vc\dcp-gha-tests.postman_collection.json"; IsMandatory = $true },
-                    @{ Name = "Step 2 - Run Negotiation Tests"; Path = "test-cases\negotiation-api-without-counteroffer-tests\negotiation-api-without-counteroffer-tests.json"; IsMandatory = $false },
-                    @{ Name = "Step 3 - Run Data Transfer HTTP Pull Tests"; Path = "test-cases\datatransfer-api-http-pull-tests\datatransfer-api-http-pull-tests.json"; IsMandatory = $false }
-                )
-            } else {
-                Write-Host "  [OK] Found $($matches.Count) test collection(s) in workflow" -ForegroundColor Green
-
-                $testCollections = @()
-                $stepNumber = 1
-                foreach ($match in $matches) {
-                    $stepName = $match.Groups[1].Value.Trim()
-                    $collectionPath = $match.Groups[2].Value.Trim()
-
-                    # Convert from Linux path to Windows path
-                    $collectionPath = $collectionPath -replace '^\./', '' -replace '/', '\'
-
-                    # Remove ci\docker prefix if present (we're already in that directory)
-                    $collectionPath = $collectionPath -replace '^ci\\docker\\', ''
-
-                    # First step is mandatory (contains "Obtain" in name or is first)
-                    $isMandatory = ($stepNumber -eq 1) -or ($stepName -match 'obtain|vc|credential')
-
-                    $testCollections += @{
-                        Name = "$stepName"
-                        Path = $collectionPath
-                        IsMandatory = $isMandatory
-                        StepNumber = $stepNumber
-                    }
-
-                    $stepNumber++
-                }
-            }
-
-            Write-Host "  Test execution plan:" -ForegroundColor Gray
-            foreach ($test in $testCollections) {
-                $mandatoryText = if ($test.IsMandatory) { " (MANDATORY)" } else { "" }
-                Write-Host "    - $($test.Name)$mandatoryText" -ForegroundColor DarkGray
-            }
-
+            # Step 1: Obtain Verifiable Credentials (MANDATORY)
+            Write-Host "`n  Step 1: Obtaining Verifiable Credentials..." -ForegroundColor Cyan
+            Write-Host "  (This step is mandatory - workflow stops if it fails)" -ForegroundColor Gray
+            newman run "test-cases\dcp-obtain-vc\dcp-gha-tests.postman_collection.json" --bail --disable-unicode
+            Write-Host "  [OK] Step 1 completed - VCs obtained" -ForegroundColor Green
         } catch {
-            Write-Host "  [!] Failed to parse workflow file: $_" -ForegroundColor DarkYellow
-            Write-Host "  Using fallback test configuration" -ForegroundColor DarkYellow
-
-            # Fallback configuration
-            $testCollections = @(
-                @{ Name = "Step 1 - Obtain Verifiable Credentials"; Path = "test-cases\dcp-obtain-vc\dcp-gha-tests.postman_collection.json"; IsMandatory = $true; StepNumber = 1 },
-                @{ Name = "Step 2 - Run Negotiation Tests"; Path = "test-cases\negotiation-api-without-counteroffer-tests\negotiation-api-without-counteroffer-tests.json"; IsMandatory = $false; StepNumber = 2 },
-                @{ Name = "Step 3 - Run Data Transfer HTTP Pull Tests"; Path = "test-cases\datatransfer-api-http-pull-tests\datatransfer-api-http-pull-tests.json"; IsMandatory = $false; StepNumber = 3 }
-            )
+            Write-Host "  [X] Step 1 FAILED: Could not obtain Verifiable Credentials" -ForegroundColor Red
+            Write-Host "  Cannot proceed with negotiation and data transfer tests without VCs" -ForegroundColor Red
+            $testsPassed = $false
+            $allHealthy = $false
+            # Stop here - don't run Steps 2, 3 & 4
+            throw "Step 1 (VC obtainment) failed - stopping test execution"
         }
 
-        # Execute tests
-        $testsPassed = $true
-        $testResults = @()
-
-        foreach ($test in $testCollections) {
-            Write-Host "`n  $($test.Name)..." -ForegroundColor Cyan
-
-            if ($test.IsMandatory) {
-                Write-Host "  (This step is mandatory - workflow stops if it fails)" -ForegroundColor Gray
-            }
-
-            $collectionFullPath = Join-Path $dockerPath $test.Path
-
-            if (-not (Test-Path $collectionFullPath)) {
-                Write-Host "  [X] Collection not found: $collectionFullPath" -ForegroundColor Red
-                $testResults += @{ Name = $test.Name; Status = "NOT_FOUND" }
-
-                if ($test.IsMandatory) {
-                    $testsPassed = $false
-                    $allHealthy = $false
-                    Write-Host "  [X] Mandatory step failed - stopping test execution" -ForegroundColor Red
-                    break
-                } else {
-                    $testsPassed = $false
-                    continue
-                }
+        # Only proceed if Step 1 succeeded
+        if ($testsPassed) {
+            try {
+                # Step 2: Run Negotiation Tests (DCP mode)
+                Write-Host "`n  Step 2: Running Negotiation Tests (DCP)..." -ForegroundColor Cyan
+                newman run "test-cases\negotiation-api-without-counteroffer-tests\negotiation-api-without-counteroffer-tests.json" --bail --disable-unicode
+                Write-Host "  [OK] Step 2 completed - Negotiation tests passed" -ForegroundColor Green
+            } catch {
+                Write-Host "  [X] Step 2 FAILED: Negotiation tests failed" -ForegroundColor Red
+                $testsPassed = $false
+                $allHealthy = $false
             }
 
             try {
-                newman run $collectionFullPath --bail | Out-Host
-                Write-Host "  [OK] Completed successfully" -ForegroundColor Green
-                $testResults += @{ Name = $test.Name; Status = "SUCCESS" }
+                # Step 3: Run Data Transfer HTTP Pull Tests (DCP mode)
+                Write-Host "`n  Step 3: Running Data Transfer HTTP Pull Tests (DCP)..." -ForegroundColor Cyan
+                newman run "test-cases\datatransfer-api-http-pull-tests\datatransfer-api-http-pull-tests.json" --bail --disable-unicode
+                Write-Host "  [OK] Step 3 completed - Data Transfer Pull tests passed" -ForegroundColor Green
             } catch {
-                Write-Host "  [X] FAILED: $($_.Exception.Message)" -ForegroundColor Red
-                $testResults += @{ Name = $test.Name; Status = "FAILURE" }
+                Write-Host "  [X] Step 3 FAILED: Data Transfer Pull tests failed" -ForegroundColor Red
                 $testsPassed = $false
+                $allHealthy = $false
+            }
 
-                if ($test.IsMandatory) {
-                    $allHealthy = $false
-                    Write-Host "  [X] Mandatory step failed - stopping test execution" -ForegroundColor Red
-                    break
-                } else {
-                    $allHealthy = $false
-                }
+            try {
+                # Step 4: Run Data Transfer HTTP Push Tests (DCP mode)
+                Write-Host "`n  Step 4: Running Data Transfer HTTP Push Tests (DCP)..." -ForegroundColor Cyan
+                newman run "test-cases\datatransfer-api-http-push-tests\datatransfer-api-http-push-tests.json" --bail --disable-unicode
+                Write-Host "  [OK] Step 4 completed - Data Transfer Push tests passed" -ForegroundColor Green
+            } catch {
+                Write-Host "  [X] Step 4 FAILED: Data Transfer Push tests failed" -ForegroundColor Red
+                $testsPassed = $false
+                $allHealthy = $false
             }
         }
 
         # Summary
         Write-Host "`n  === Test Results Summary ===" -ForegroundColor Cyan
-        foreach ($result in $testResults) {
-            $statusColor = switch ($result.Status) {
-                "SUCCESS" { "Green" }
-                "FAILURE" { "Red" }
-                "NOT_FOUND" { "Yellow" }
-                default { "Gray" }
-            }
-            Write-Host "  $($result.Name): $($result.Status)" -ForegroundColor $statusColor
-        }
-
         if ($testsPassed) {
+            Write-Host "  Step 1 - Obtain VCs: SUCCESS" -ForegroundColor Green
+            Write-Host "  Step 2 - Negotiation Tests (DCP): SUCCESS" -ForegroundColor Green
+            Write-Host "  Step 3 - Data Transfer Pull Tests (DCP): SUCCESS" -ForegroundColor Green
+            Write-Host "  Step 4 - Data Transfer Push Tests (DCP): SUCCESS" -ForegroundColor Green
             Write-Host "`n  [OK] All test stages passed!" -ForegroundColor Green
         } else {
-            Write-Host "`n  [X] One or more test stages failed" -ForegroundColor Red
+            Write-Host "  [X] One or more test stages failed" -ForegroundColor Red
             Write-Host "  Check the output above for details" -ForegroundColor Red
         }
-
     } else {
         Write-Host "  [!] Newman not installed. Manual testing required:" -ForegroundColor Yellow
         Write-Host ""
         Write-Host "  To install Newman:" -ForegroundColor White
         Write-Host "    npm install -g newman" -ForegroundColor Gray
         Write-Host ""
-
-        # Try to read tests from workflow for manual testing instructions
-        try {
-            $workflowPath = Join-Path $RepoRoot ".github\workflows\dcp-tests.yml"
-            $workflowContent = Get-Content $workflowPath -Raw
-            $newmanPattern = '(?s)collection:\s*(.+?)(?=\s+(?:continue-on-error|id|\n\s+-\s*name))'
-            $collectionMatches = [regex]::Matches($workflowContent, $newmanPattern)
-
-            if ($collectionMatches.Count -gt 0) {
-                Write-Host "  Test manually in Postman (run in this order):" -ForegroundColor White
-                $stepNum = 1
-                foreach ($match in $collectionMatches) {
-                    $path = $match.Groups[1].Value.Trim() -replace '^\./', '' -replace '/', '\'
-                    Write-Host "    $stepNum. Import: $path" -ForegroundColor Gray
-                    if ($stepNum -eq 1) {
-                        Write-Host "       (MUST run first - obtains VCs for connectors)" -ForegroundColor DarkGray
-                    }
-                    $stepNum++
-                }
-                Write-Host "    $stepNum. Run collections in order" -ForegroundColor Gray
-            }
-        } catch {
-            # Fallback instructions
-            Write-Host "  Or test manually in Postman (run in this order):" -ForegroundColor White
-            Write-Host "    1. Import: test-cases\dcp-obtain-vc\dcp-gha-tests.postman_collection.json" -ForegroundColor Gray
-            Write-Host "       (MUST run first - obtains VCs for connectors)" -ForegroundColor DarkGray
-            Write-Host "    2. Import: test-cases\negotiation-api-without-counteroffer-tests\negotiation-api-without-counteroffer-tests.json" -ForegroundColor Gray
-            Write-Host "    3. Import: test-cases\datatransfer-api-http-pull-tests\datatransfer-api-http-pull-tests.json" -ForegroundColor Gray
-            Write-Host "    4. Run collections in order" -ForegroundColor Gray
-        }
+        Write-Host "  Or test manually in Postman (run in this order):" -ForegroundColor White
+        Write-Host "    1. Import: test-cases\dcp-obtain-vc\dcp-gha-tests.postman_collection.json" -ForegroundColor Gray
+        Write-Host "       (MUST run first - obtains VCs for connectors)" -ForegroundColor DarkGray
+        Write-Host "    2. Import: test-cases\negotiation-api-without-counteroffer-tests\negotiation-api-without-counteroffer-tests.json" -ForegroundColor Gray
+        Write-Host "    3. Import: test-cases\datatransfer-api-http-pull-tests\datatransfer-api-http-pull-tests.json" -ForegroundColor Gray
+        Write-Host "    4. Import: test-cases\datatransfer-api-http-push-tests\datatransfer-api-http-push-tests.json" -ForegroundColor Gray
+        Write-Host "    5. Run collections in order" -ForegroundColor Gray
         Write-Host ""
     }
 } elseif ($SkipTests) {
@@ -432,7 +351,7 @@ if ($allHealthy) {
     Write-Host ""
     Write-Host "Next steps:" -ForegroundColor White
     Write-Host "  1. git add ." -ForegroundColor Gray
-    Write-Host "  2. git commit -m 'Add DCP integration tests'" -ForegroundColor Gray
+    Write-Host "  2. git commit -m 'Update integration tests'" -ForegroundColor Gray
     Write-Host "  3. git push" -ForegroundColor Gray
     Write-Host "  4. Monitor in GitHub Actions" -ForegroundColor Gray
     exit 0
@@ -445,11 +364,3 @@ if ($allHealthy) {
     Write-Host "  docker logs connector-b" -ForegroundColor Gray
     exit 1
 }
-
-
-
-
-
-
-
-

@@ -1,11 +1,11 @@
-name: DCP Integration Tests
+name: DCP Integration Tests (DEPRECATED - use integration-tests.yml)
 
 on:
-  # Trigger on pushes to branches that will never exist (effectively disabled)
-  # This keeps the workflow visible in all branches without auto-triggering
+  # This workflow is deprecated and replaced by integration-tests.yml
+  # The new workflow uses a matrix strategy to run tests with both standard and DCP configurations
   push:
     branches:
-      - '__disabled__'  # Branch pattern that will never match
+      - '__deprecated__'  # This workflow is no longer triggered automatically
   # Allow manual triggering from any branch via GitHub Actions UI
   workflow_dispatch:
 

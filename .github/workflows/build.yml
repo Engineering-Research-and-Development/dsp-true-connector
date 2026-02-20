@@ -1,8 +1,8 @@
-name: Feature or hotfix build
+name: Feature or hotfix build (DEPRECATED - use integration-tests.yml)
 
 on:
   push:
-    branches: [ "feature/*", "hotfix/*", "fix/*" ]
+    branches: [ "__deprecated__" ]  # This workflow is deprecated, use integration-tests.yml instead
 
 jobs:
   build-and-push-image:
