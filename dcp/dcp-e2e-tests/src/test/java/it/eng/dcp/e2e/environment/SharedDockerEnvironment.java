@@ -239,7 +239,7 @@ public class SharedDockerEnvironment {
                 .workDir("/app")
                 .copy(jarRelativePath, "/app/app.jar")
                 .copy("src/test/resources/eckey.p12", "/app/eckey.p12")
-                .expose(8087)
+                .expose(8081)
                 .env("JAVA_OPTS", "-Xmx512m -Xms256m")
                 .entryPoint("sh", "-c", "java $JAVA_OPTS -jar /app/app.jar")
                 .build())
@@ -250,16 +250,17 @@ public class SharedDockerEnvironment {
         holderVerifierContainer = new GenericContainer<>(holderVerifierImage)
             .withNetwork(network)
             .withNetworkAliases("holder-verifier")
-            .withExposedPorts(8087)
+            .withExposedPorts(8081)
+            .withExtraHost("localhost", "host-gateway")  // Enable access to host machine's localhost
             .withEnv("SPRING_DATA_MONGODB_HOST", "mongodb")
             .withEnv("SPRING_DATA_MONGODB_PORT", "27017")
             .withEnv("SPRING_DATA_MONGODB_DATABASE", "holder-verifier-e2e-test")
-            .withEnv("SERVER_PORT", "8087")
+            .withEnv("SERVER_PORT", "8081")
             .withEnv("SPRING_APPLICATION_NAME", "dcp-holder-verifier-test")
-            .withEnv("DCP_CONNECTOR_DID", "did:web:localhost%3A8087:holder")
-            .withEnv("DCP_CONNECTOR_DID_VERIFIER", "did:web:localhost%3A8087:verifier")
+            .withEnv("DCP_CONNECTOR_DID", "did:web:localhost%3A8081:holder")
+            .withEnv("DCP_CONNECTOR_DID_VERIFIER", "did:web:localhost%3A8081:verifier")
             .withEnv("DCP_HOST", "localhost")
-            .withEnv("DCP_BASE_URL", "http://localhost:8087")
+            .withEnv("DCP_BASE_URL", "http://localhost:8081")
             .withEnv("DCP_KEYSTORE_PATH", "file:/app/eckey.p12")
             .withEnv("DCP_KEYSTORE_PASSWORD", "password")
             .withEnv("DCP_KEYSTORE_ALIAS", "dsptrueconnector")
@@ -267,8 +268,11 @@ public class SharedDockerEnvironment {
             .waitingFor(Wait.forLogMessage(".*Started.*Application.*", 1)
                 .withStartupTimeout(Duration.ofMinutes(3)))
             .withReuse(false);
+
+        // Bind host port 8081 to container port 8081
+        holderVerifierContainer.setPortBindings(List.of("8081:8081"));
         holderVerifierContainer.start();
-        log.info("✓ Holder+Verifier started on port: {}", holderVerifierContainer.getMappedPort(8087));
+        log.info("✓ Holder+Verifier started on port: 8081");
     }
 
     private void createAndStartIssuerContainer(Path dcpRoot) {
@@ -283,39 +287,42 @@ public class SharedDockerEnvironment {
                 .from("eclipse-temurin:17-jre-alpine")
                 .workDir("/app")
                 .copy(jarRelativePath, "/app/dcp-issuer.jar")
-                .copy("src/test/resources/eckey-issuer.p12", "/app/eckey-issuer.p12")
+                .copy("src/main/resources/eckey-issuer.p12", "/app/eckey-issuer.p12")
                 .copy("src/test/resources/credential-metadata-configuration.properties", "/config/credential-metadata-configuration.properties")
-                .copy("src/test/resources/application-holderverifier.properties", "/config/application-holderverifier.properties")
-                .expose(8084)
+                .expose(8082)
                 .env("JAVA_OPTS", "-Xmx512m -Xms256m")
                 .entryPoint("sh", "-c", "java $JAVA_OPTS -jar /app/dcp-issuer.jar")
                 .build())
             .withFileFromPath(jarRelativePath, issuerJar)
-            .withFileFromPath("src/test/resources/eckey-issuer.p12", issuerPath.resolve("src/test/resources/eckey-issuer.p12"))
-            .withFileFromPath("src/test/resources/credential-metadata-configuration.properties", issuerPath.resolve("src/test/resources/credential-metadata-configuration.properties"))
-            .withFileFromPath("src/test/resources/application-holderverifier.properties", issuerPath.resolve("src/test/resources/application-holderverifier.properties"));
+            .withFileFromPath("src/main/resources/eckey-issuer.p12", issuerPath.resolve("src/main/resources/eckey-issuer.p12"))
+            .withFileFromPath("src/test/resources/credential-metadata-configuration.properties", issuerPath.resolve("src/test/resources/credential-metadata-configuration.properties"));
         imagesToCleanup.add("dcp-issuer-e2e-test");
 
         issuerContainer = new GenericContainer<>(issuerImage)
             .withNetwork(network)
             .withNetworkAliases("issuer")
-            .withExposedPorts(8084)
+            .withExposedPorts(8082)
+            .withExtraHost("localhost", "host-gateway")  // Enable access to host machine's localhost
             .withEnv("SPRING_DATA_MONGODB_HOST", "mongodb")
             .withEnv("SPRING_DATA_MONGODB_PORT", "27017")
             .withEnv("SPRING_DATA_MONGODB_DATABASE", "issuer-e2e-test")
-            .withEnv("SERVER_PORT", "8084")
+            .withEnv("SERVER_PORT", "8082")
             .withEnv("SPRING_APPLICATION_NAME", "dcp-issuer")
-            .withEnv("ISSUER_DID", "did:web:localhost%3A8084:issuer")
-            .withEnv("ISSUER_BASE_URL", "http://localhost:8084")
+            .withEnv("DCP_CONNECTOR_DID", "did:web:localhost%3A8082:issuer")
+            .withEnv("DCP_BASE_URL", "http://localhost:8082")
+            .withEnv("DCP_HOST", "localhost")
             .withEnv("DCP_KEYSTORE_PATH", "file:/app/eckey-issuer.p12")
             .withEnv("DCP_KEYSTORE_PASSWORD", "password")
-            .withEnv("DCP_KEYSTORE_ALIAS", "issuer")
+            .withEnv("DCP_KEYSTORE_ALIAS", "dcp-issuer")
             .withEnv("SPRING_CONFIG_LOCATION", "optional:classpath:/,optional:file:/config/")
             .waitingFor(Wait.forLogMessage(".*Started IssuerApplication.*", 1)
                 .withStartupTimeout(Duration.ofMinutes(3)))
             .withReuse(false);
+
+        // Bind host port 8082 to container port 8082
+        issuerContainer.setPortBindings(List.of("8082:8082"));
         issuerContainer.start();
-        log.info("✓ Issuer started on port: {}", issuerContainer.getMappedPort(8084));
+        log.info("✓ Issuer started on port: 8082");
     }
 
     private Path findJarFile(Path targetPath, String jarPattern) {

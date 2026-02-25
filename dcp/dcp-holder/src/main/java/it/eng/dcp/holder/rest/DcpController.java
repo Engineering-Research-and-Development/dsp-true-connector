@@ -68,6 +68,13 @@ public class DcpController {
             String holderDid = claims.getSubject();
             log.info("Presentation query from holder: {}", holderDid);
 
+            // Validate presentation query message structure
+            String validationError = validatePresentationQuery(query);
+            if (validationError != null) {
+                log.error("Presentation query validation failed: {}", validationError);
+                return ResponseEntity.status(400).body(validationError);
+            }
+
             // Rate limiting per holder DID
             if (!holderService.checkRateLimit(holderDid)) {
                 log.warn("Presentation query rate limit exceeded for holder: {}", holderDid);
@@ -84,6 +91,42 @@ public class DcpController {
             log.error("Error processing presentation query: {}", e.getMessage(), e);
             return ResponseEntity.status(500).body(e.getMessage());
         }
+    }
+
+    /**
+     * Validates the presentation query message structure according to DCP spec.
+     *
+     * @param query The presentation query message to validate
+     * @return Error message if validation fails, null if valid
+     */
+    private String validatePresentationQuery(PresentationQueryMessage query) {
+        if (query == null) {
+            return "Presentation query message is required";
+        }
+
+        // Validate @context is present (required per DCP spec)
+        if (query.getContext() == null || query.getContext().isEmpty()) {
+            return "Missing required @context field";
+        }
+
+        // Validate type is present (required per DCP spec)
+        if (query.getType() == null || query.getType().isBlank()) {
+            return "Missing required type field";
+        }
+
+        // Validate that either scope OR presentationDefinition is provided, but not both
+        boolean hasScope = query.getScope() != null && !query.getScope().isEmpty();
+        boolean hasPresentationDefinition = query.getPresentationDefinition() != null;
+
+        if (hasScope && hasPresentationDefinition) {
+            return "Cannot specify both scope and presentationDefinition";
+        }
+
+        if (!hasScope && !hasPresentationDefinition) {
+            return "Must specify either scope or presentationDefinition";
+        }
+
+        return null; // Valid
     }
 
     /**
