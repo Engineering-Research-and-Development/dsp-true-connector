@@ -6,7 +6,9 @@ import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -64,6 +66,9 @@ public class DcpProperties {
     /** Enable Verifiable Presentation JWT for connector authentication. Defaults to false. */
     private Vp vp = new Vp();
 
+    /** Service entries to include in the DID document. */
+    private List<ServiceEntry> serviceEntries = new ArrayList<>();
+
     /**
      * Keystore configuration.
      */
@@ -113,6 +118,35 @@ public class DcpProperties {
          * Example: MembershipCredential=did:web:localhost:8080,did:web:localhost:8090
          */
         private Map<String, String> issuers = Collections.emptyMap();
+
+    }
+
+    /**
+     * Configuration for a service entry in the DID document.
+     */
+    @Setter
+    @Getter
+    public static class ServiceEntry {
+        /**
+         * Service ID (e.g., "TRUEConnector-Credential-Service").
+         */
+        private String id;
+
+        /**
+         * Service type (e.g., "CredentialService", "IssuerService", "VerifierService").
+         */
+        private String type;
+
+        /**
+         * Service endpoint path (will be appended to base URL).
+         * Leave empty to use issuerLocation instead.
+         */
+        private String endpointPath = "";
+
+        /**
+         * Issuer location URL (optional, used instead of endpoint path for issuer services).
+         */
+        private String issuerLocation = "";
 
     }
 }

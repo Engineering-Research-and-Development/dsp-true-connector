@@ -12,6 +12,8 @@ import java.util.List;
 /**
  * Configuration properties for the DCP Issuer module.
  * Binds properties under the `dcp` prefix for unified configuration.
+ * This class is only loaded in the issuer module context, so it does not conflict
+ * with DcpProperties which is used in connector modules.
  */
 @Component
 @ConfigurationProperties(prefix = "dcp")

@@ -35,9 +35,11 @@ public class BaseDidDocumentConfiguration {
      * Create the DID document configuration bean.
      *
      * <p>This single configuration is used by all DCP modules (holder, issuer, verifier).
-     * Service entries are added based on which modules are active in the deployment.
+     * Service entries MUST be explicitly configured in application.properties as they
+     * differ between connector and issuer deployments.
      *
      * @return DidDocumentConfig configured with connector's DID
+     * @throws IllegalStateException if no service entries are configured
      */
     @Bean
     public DidDocumentConfig didDocumentConfig() {
@@ -45,38 +47,29 @@ public class BaseDidDocumentConfiguration {
 
         List<DidDocumentConfig.ServiceEntryConfig> serviceEntries = new ArrayList<>();
 
-        // Add holder/verifier service entry (credential service)
-        serviceEntries.add(
-                DidDocumentConfig.ServiceEntryConfig.builder()
-                        .id("TRUEConnector-Credential-Service")
-                        .type("CredentialService")
-                        .endpointPath("/dcp")
-                        .build()
-        );
+        // Validate that service entries are configured
+        if (dcpProperties.getServiceEntries() == null || dcpProperties.getServiceEntries().isEmpty()) {
+            throw new IllegalStateException(
+                    "No service entries configured for DID document. " +
+                    "Please configure dcp.service-entries in application.properties. " +
+                    "Connector and issuer require different service entries - see documentation."
+            );
+        }
 
-        // Add issuer service entry if issuer location is configured
-        if (dcpProperties.getIssuer() != null &&
-            dcpProperties.getIssuer().getLocation() != null &&
-            !dcpProperties.getIssuer().getLocation().isBlank()) {
+        log.info("Using {} configured service entries", dcpProperties.getServiceEntries().size());
+        for (DcpProperties.ServiceEntry entry : dcpProperties.getServiceEntries()) {
             serviceEntries.add(
                     DidDocumentConfig.ServiceEntryConfig.builder()
-                            .id("TRUEConnector-Issuer-Service")
-                            .type("IssuerService")
-                            .issuerLocation(dcpProperties.getIssuer().getLocation())
+                            .id(entry.getId())
+                            .type(entry.getType())
+                            .endpointPath(entry.getEndpointPath() != null ? entry.getEndpointPath() : "")
+                            .issuerLocation(entry.getIssuerLocation() != null ? entry.getIssuerLocation() : "")
                             .build()
             );
         }
 
-        // Add verifier service entry
-        serviceEntries.add(
-                DidDocumentConfig.ServiceEntryConfig.builder()
-                        .id("TRUEConnector-Verifier-Service")
-                        .type("VerifierService")
-                        .endpointPath("/dcp/verifier")
-                        .build()
-        );
-
-        log.info("Creating DID document configuration for: {}", dcpProperties.getConnectorDid());
+        log.info("Creating DID document configuration for: {} with {} service entries",
+                dcpProperties.getConnectorDid(), serviceEntries.size());
 
         return DidDocumentConfig.builder()
                 .did(dcpProperties.getConnectorDid())
