@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SpotBugs / Find Security Bugs — exclusion filter
+  =====================================================
+  Add entries here to suppress false-positives or intentional dev-only patterns.
+
+  Format reference:
+    https://spotbugs.readthedocs.io/en/latest/filter.html
+
+  Each <Match> element can combine:
+    <Bug pattern="RULE_CODE"/>              — specific rule
+    <Class name="com.example.Foo"/>         — exact class
+    <Class ~=".*Test"/>                     — regex on class name
+    <Method name="myMethod"/>
+    <Field name="myField"/>
+
+  ─── Entries below ───────────────────────────────────────────────────────────
+-->
+<FindBugsFilter>
+
+    <!-- ── Exclude all test classes ─────────────────────────────────────────── -->
+    <Match>
+        <Class ~=".*Test$"/>
+    </Match>
+    <Match>
+        <Class ~=".*IT$"/>
+    </Match>
+    <Match>
+        <!-- Test utility / base classes -->
+        <Class ~=".*TestBase$"/>
+    </Match>
+
+    <!-- ── Exclude generated sources ────────────────────────────────────────── -->
+    <Match>
+        <Class ~=".*\.generated\..*"/>
+    </Match>
+
+    <!--
+    ═══════════════════════════════════════════════════════════════════════════
+    INTENTIONAL / DEV-ONLY SUPPRESSIONS
+    Add an explanatory comment for every entry so the reviewer understands why.
+    ═══════════════════════════════════════════════════════════════════════════
+
+    Example — trust-all TLS used only in dev/test profiles:
+    <Match>
+        <Bug pattern="UNTRUSTWORTHY_SSL_SERVER_SOCKET_FACTORY"/>
+        <Class ~=".*DevTlsConfig"/>
+    </Match>
+    -->
+
+</FindBugsFilter>
+

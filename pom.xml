@@ -277,6 +277,286 @@
     </build>
 
     <profiles>
+        <!-- =====================================================================
+             SonarQube / SAST profile
+             Run locally:  mvn verify sonar:sonar -Psonar -Dsonar.token=<token>
+             CI:           triggered automatically in the security-scan workflow
+             ===================================================================== -->
+        <profile>
+            <id>sonar</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <!-- SonarQube host — override with -Dsonar.host.url=... or env var SONAR_HOST_URL -->
+                <sonar.host.url>http://localhost:9000</sonar.host.url>
+                <!-- Token is expected via -Dsonar.token=<value> or env var SONAR_TOKEN -->
+
+                <!-- Project identity — must match the Project Key you created in the SonarQube UI.
+                     Change sonar.projectKey here if you used a different key when creating
+                     the project; the workflow and dashboard URL derive from this value. -->
+                <sonar.projectKey>dsp-true-connector</sonar.projectKey>
+                <sonar.projectName>DSP True Connector</sonar.projectName>
+
+                <!-- Source / binary -->
+                <sonar.java.source>${java.version}</sonar.java.source>
+                <sonar.sources>src/main/java</sonar.sources>
+                <sonar.tests>src/test/java</sonar.tests>
+
+                <!-- Aggregate JaCoCo XML reports from all sub-modules -->
+                <sonar.coverage.jacoco.xmlReportPaths>
+                    ${project.basedir}/target/site/jacoco/jacoco.xml,
+                    ${project.basedir}/../target/site/jacoco-aggregate/jacoco.xml
+                </sonar.coverage.jacoco.xmlReportPaths>
+
+                <!-- Exclude generated code and test utilities from analysis -->
+                <sonar.exclusions>
+                    **/target/generated-sources/**,
+                    **/target/generated-test-sources/**,
+                    **/*IT.java,
+                    **/*Test.java,
+                    **/test/**
+                </sonar.exclusions>
+
+                <!-- Issue exclusions — mark dev-only config issues at the file level
+                     so they appear as "Won't Fix" rather than noise -->
+                <sonar.issue.ignore.multicriteria>e1,e2</sonar.issue.ignore.multicriteria>
+                <!-- Ignore "disable this" rules on property files that are explicitly dev defaults -->
+                <sonar.issue.ignore.multicriteria.e1.ruleKey>java:S6437</sonar.issue.ignore.multicriteria.e1.ruleKey>
+                <sonar.issue.ignore.multicriteria.e1.resourceKey>**/application-*.properties</sonar.issue.ignore.multicriteria.e1.resourceKey>
+                <sonar.issue.ignore.multicriteria.e2.ruleKey>java:S2068</sonar.issue.ignore.multicriteria.e2.ruleKey>
+                <sonar.issue.ignore.multicriteria.e2.resourceKey>**/application-*.properties</sonar.issue.ignore.multicriteria.e2.resourceKey>
+
+                <!-- Security-focused quality gate: report all OWASP Top 10 and SANS Top 25 -->
+                <sonar.security.hotspots.inheritFromParent>true</sonar.security.hotspots.inheritFromParent>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.sonarsource.scanner.maven</groupId>
+                        <artifactId>sonar-maven-plugin</artifactId>
+                        <version>5.0.0.4389</version>
+                    </plugin>
+                    <!-- Re-run JaCoCo XML generation so Sonar can read coverage -->
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <version>${jacoco.version}</version>
+                        <executions>
+                            <execution>
+                                <id>report-xml</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>report</goal>
+                                </goals>
+                                <configuration>
+                                    <formats>
+                                        <format>XML</format>
+                                    </formats>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- =====================================================================
+             SpotBugs + Find Security Bugs — bytecode-level SAST
+
+             Default (report-only — scans ALL modules, never halts the reactor):
+               mvn verify -Pspotbugs
+             Reports: <module>/target/spotbugs/spotbugs.html  (one per module)
+
+             Gate mode (fail the build if findings exceed the threshold):
+               mvn verify -Pspotbugs -Dspotbugs.skipCheck=false
+
+             Override effort / threshold on the CLI:
+               mvn verify -Pspotbugs -Dspotbugs.effort=default -Dspotbugs.threshold=high
+             ===================================================================== -->
+        <profile>
+            <id>spotbugs</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <!-- effort:      min | default | max  (max = deepest analysis, slowest) -->
+                <spotbugs.effort>max</spotbugs.effort>
+                <!-- threshold:   low | medium | high  (medium = good signal/noise ratio) -->
+                <spotbugs.threshold>medium</spotbugs.threshold>
+                <!-- skipCheck:   true  = report-only, reactor always completes (DEFAULT)
+                                  false = halt the build when findings exceed threshold
+                     Override on CLI: -Dspotbugs.skipCheck=false                         -->
+                <spotbugs.skipCheck>true</spotbugs.skipCheck>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.github.spotbugs</groupId>
+                        <artifactId>spotbugs-maven-plugin</artifactId>
+                        <version>4.9.8.2</version>
+                        <configuration>
+                            <effort>${spotbugs.effort}</effort>
+                            <threshold>${spotbugs.threshold}</threshold>
+                            <!-- HTML + XML reports generated for every module -->
+                            <xmlOutput>true</xmlOutput>
+                            <htmlOutput>true</htmlOutput>
+                            <outputDirectory>${project.build.directory}/spotbugs</outputDirectory>
+                            <!-- Find Security Bugs plugin — ~150 extra security detectors -->
+                            <plugins>
+                                <plugin>
+                                    <groupId>com.h3xstream.findsecbugs</groupId>
+                                    <artifactId>findsecbugs-plugin</artifactId>
+                                    <version>1.13.0</version>
+                                </plugin>
+                            </plugins>
+                            <!-- False-positive suppressions — add entries after triage -->
+                            <excludeFilterFile>${maven.multiModuleProjectDirectory}/scripts/ci/spotbugs-exclude.xml</excludeFilterFile>
+                        </configuration>
+                        <executions>
+                            <!-- Execution 1 — always runs: generates HTML + XML reports for
+                                 every module; never fails the build regardless of findings. -->
+                            <execution>
+                                <id>spotbugs-report</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>spotbugs</goal>
+                                </goals>
+                            </execution>
+                            <!-- Execution 2 — gate: checks the report and optionally fails.
+                                 Skipped by default (skipCheck=true).
+                                 Activate with -Dspotbugs.skipCheck=false.
+                                 Because this runs AFTER spotbugs-report in the same phase,
+                                 all module reports are fully written before any failure. -->
+                            <execution>
+                                <id>spotbugs-gate</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>${spotbugs.skipCheck}</skip>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- =====================================================================
+             OWASP Dependency-Check — CVE scan of all (transitive) dependencies
+
+             Default (report-only — scans ALL modules, never halts the reactor):
+               mvn verify -Powasp
+             Single combined report: target/dependency-check/dependency-check-report.html
+
+             Gate mode (fail the build when any CVE meets the CVSS threshold):
+               mvn verify -Powasp -Dowasp.skipCheck=false
+
+             Override CVSS threshold on the CLI:
+               mvn verify -Powasp -Dowasp.skipCheck=false -Dowasp.failBuildOnCVSS=4
+
+             First run downloads NVD data (~10-40 min depending on API key).
+             Subsequent runs use the cache at target/dependency-check-data/ (fast).
+
+             NVD API key (optional but strongly recommended to avoid rate-limiting):
+               -Dnvd.api.key=<your-key>  or  env var NVD_API_KEY
+             Get a free key at: https://nvd.nist.gov/developers/request-an-api-key
+             ===================================================================== -->
+        <profile>
+            <id>owasp</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <!-- CVSS score at or above this threshold fails the build (gate mode only).
+                     7 = HIGH and above.  4 = MEDIUM and above.  11 = never fails. -->
+                <owasp.failBuildOnCVSS>7</owasp.failBuildOnCVSS>
+                <!-- Shared NVD cache — one directory for the whole reactor build -->
+                <owasp.dataDirectory>${maven.multiModuleProjectDirectory}/target/dependency-check-data</owasp.dataDirectory>
+                <!-- skipCheck: true  = report-only, reactor always completes (DEFAULT)
+                                false = fail the build when CVSS threshold is exceeded
+                     Override on CLI: -Dowasp.skipCheck=false                         -->
+                <owasp.skipCheck>true</owasp.skipCheck>
+                <!-- NVD API key — empty default; supply at runtime via -Dnvd.api.key=<key>
+                     or the NVD_API_KEY environment variable.
+                     Get a free key at: https://nvd.nist.gov/developers/request-an-api-key -->
+                <nvd.api.key/>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.owasp</groupId>
+                        <artifactId>dependency-check-maven</artifactId>
+                        <version>12.1.0</version>
+                        <configuration>
+                            <!-- Shared NVD cache reused across all sub-modules -->
+                            <dataDirectory>${owasp.dataDirectory}</dataDirectory>
+                            <!-- NVD API key — pass via -Dnvd.api.key=... or env NVD_API_KEY -->
+                            <nvdApiKey>${nvd.api.key}</nvdApiKey>
+                            <!-- HTML (human-readable), XML and JSON (CI tooling) -->
+                            <formats>
+                                <format>HTML</format>
+                                <format>XML</format>
+                                <format>JSON</format>
+                            </formats>
+                            <!-- Suppress known false-positives — add entries after triage -->
+                            <suppressionFiles>
+                                <suppressionFile>${maven.multiModuleProjectDirectory}/scripts/ci/owasp-suppressions.xml</suppressionFile>
+                            </suppressionFiles>
+                            <!-- Include test-scoped deps — they are packaged into the image -->
+                            <skipTestScope>false</skipTestScope>
+                            <!-- Retry on NVD API rate-limit; increase if network is slow -->
+                            <nvdMaxRetryCount>5</nvdMaxRetryCount>
+                            <!-- ── Analyzer toggles ────────────────────────────────────────
+                                 OSS Index requires a Sonatype account (HTTP 401 without one).
+                                 NVD covers all CVE data we need — disable OSS Index entirely.
+                                 RetireJS fetches its own repo from GitHub on every run;
+                                 disable it too since we have no JavaScript in this project. -->
+                            <ossindexAnalyzerEnabled>false</ossindexAnalyzerEnabled>
+                            <retireJsAnalyzerEnabled>false</retireJsAnalyzerEnabled>
+                        </configuration>
+                        <executions>
+                            <!-- Execution 1 — always runs: aggregates ALL modules into one
+                                 combined report at target/dependency-check/.
+                                 'aggregate' never fails the build regardless of findings.
+                                 inherited=false means it runs only on the root module,
+                                 pulling in all sub-module classpaths automatically. -->
+                            <execution>
+                                <id>owasp-aggregate-report</id>
+                                <inherited>false</inherited>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>aggregate</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.directory}/dependency-check</outputDirectory>
+                                </configuration>
+                            </execution>
+                            <!-- Execution 2 — gate: re-reads the aggregate report and fails
+                                 the build if owasp.skipCheck=false AND CVSS >= threshold.
+                                 Skipped by default. Activate with -Dowasp.skipCheck=false.
+                                 inherited=false keeps it on the root module only. -->
+                            <execution>
+                                <id>owasp-gate</id>
+                                <inherited>false</inherited>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>${owasp.skipCheck}</skip>
+                                    <failBuildOnCVSS>${owasp.failBuildOnCVSS}</failBuildOnCVSS>
+                                    <outputDirectory>${project.build.directory}/dependency-check</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
         <profile>
             <id>tck</id>
             <activation>

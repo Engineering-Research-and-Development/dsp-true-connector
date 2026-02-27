@@ -7,6 +7,12 @@ services:
     volumes:
       - mongodb-data:/data/db
       - mongodb-configdb:/data/configdb
+    healthcheck:
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   minio:
     image: minio/minio:RELEASE.2025-04-22T22-12-26Z
@@ -17,7 +23,7 @@ services:
     volumes:
       - minio_data:/data
       # Enable below line to use custom SSL certificates
-      #- ./src/main/resources/certs/minio_certs:/root/.minio/certs:ro
+#      - ./src/main/resources/certs/minio_certs:/root/.minio/certs:ro
     environment:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin
