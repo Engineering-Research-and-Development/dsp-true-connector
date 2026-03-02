@@ -1,0 +1,340 @@
+name: Security Scan (SpotBugs + OWASP)
+run-name: "Security Scan — ${{ github.event_name == 'workflow_dispatch' && 'manual trigger' || github.ref_name }}"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Trigger options:
+#   1. Manual trigger (workflow_dispatch) — run at any time from the Actions UI
+#   2. On release tag — automatically when a version tag (e.g. 1.5.0) is pushed.
+#      Tags are created by the release.yml workflow using plain semver (no v/ prefix).
+#   3. Scheduled weekly scan — every Monday at 06:00 UTC on default branch
+#
+# Scan jobs:
+#   spotbugs-sast  — SpotBugs + Find Security Bugs (bytecode-level SAST)  ✅ enabled
+#   owasp-dc       — OWASP Dependency-Check (CVE scan of all dependencies) ⛔ disabled
+#
+# ── Re-enabling OWASP ────────────────────────────────────────────────────────
+# The OWASP job is disabled because the first run downloads the full NVD
+# vulnerability database (~200 MB) which takes 30–60 minutes without an API key.
+#
+# Before enabling, obtain a free NVD API key (reduces first-run to ~5 min):
+#   https://nvd.nist.gov/developers/request-an-api-key
+#
+# Then:
+#   1. Add the key as a repository secret named NVD_API_KEY
+#      (Settings → Secrets and variables → Actions → New repository secret)
+#   2. Remove the `if: false` line from the owasp-dc job below
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+    inputs:
+      fail_on_spotbugs:
+        description: 'Fail the workflow if SpotBugs finds security issues?'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      fail_on_cvss:
+        description: 'CVSS threshold for OWASP Dependency-Check (7=HIGH+, 11=report-only)'
+        required: false
+        default: '7'
+
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'      # release gate — semver tag pushed by release.yml (e.g. 1.5.0)
+      - '[0-9]+.[0-9]+.[0-9]+-*'    # pre-release tags (e.g. 1.5.0-RC1, 1.5.0-SNAPSHOT)
+
+  schedule:
+    - cron: '0 6 * * 1'  # weekly, Monday 06:00 UTC on default branch
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-scan-${{ github.ref }}
+  cancel-in-progress: false   # never cancel a running security scan mid-flight
+
+env:
+  JAVA_VERSION: '17'
+
+jobs:
+  spotbugs-sast:
+    name: SpotBugs + Find Security Bugs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      # Build + run SpotBugs with Find Security Bugs
+      # Always scans all modules and generates per-module HTML reports.
+      # Gate (fail on findings) is activated only when fail_on_spotbugs=true.
+      - name: Run SpotBugs analysis
+        run: |
+          SKIP_CHECK=true
+          if [ "${{ github.event.inputs.fail_on_spotbugs || 'true' }}" = "true" ]; then
+            SKIP_CHECK=false
+          fi
+          mvn -B clean verify -Pspotbugs \
+            -Dspotbugs.skipCheck="${SKIP_CHECK}"
+
+      # Collect all per-module HTML reports into a single directory for upload
+      - name: Collect SpotBugs HTML reports
+        if: always()
+        run: |
+          mkdir -p spotbugs-reports
+          find . -path "*/target/spotbugs/spotbugs.html" -exec \
+            sh -c 'MODULE=$(echo "$1" | sed "s|./||;s|/target.*||"); \
+                   cp "$1" "spotbugs-reports/${MODULE//\//_}_spotbugs.html"' _ {} \;
+          # Also collect XML for potential future tooling
+          find . -path "*/target/spotbugs/spotbugsXml.xml" -exec \
+            sh -c 'MODULE=$(echo "$1" | sed "s|./||;s|/target.*||"); \
+                   cp "$1" "spotbugs-reports/${MODULE//\//_}_spotbugs.xml"' _ {} \;
+
+      - name: Upload SpotBugs reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spotbugs-reports-${{ github.run_number }}
+          path: spotbugs-reports/
+          retention-days: 30
+
+      - name: Write job summary
+        if: always()
+        run: |
+          echo "## 🐛 SpotBugs + Find Security Bugs" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Count totals across all module XML reports
+          TOTAL=0
+          HIGH=0
+          MEDIUM=0
+
+          while IFS= read -r xml_file; do
+            module=$(echo "$xml_file" | sed 's|./||;s|/target.*||')
+            count=$(grep -c '<BugInstance' "$xml_file" 2>/dev/null || echo 0)
+            h=$(grep -c 'priority="1"' "$xml_file" 2>/dev/null || echo 0)
+            m=$(grep -c 'priority="2"' "$xml_file" 2>/dev/null || echo 0)
+            TOTAL=$((TOTAL + count))
+            HIGH=$((HIGH + h))
+            MEDIUM=$((MEDIUM + m))
+          done < <(find . -path "*/target/spotbugs/spotbugsXml.xml" 2>/dev/null)
+
+          if [ "$TOTAL" -eq 0 ]; then
+            echo "✅ **No findings** — all modules clean." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+            echo "| 🔴 High | $HIGH |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🟡 Medium | $MEDIUM |" >> $GITHUB_STEP_SUMMARY
+            echo "| **Total** | **$TOTAL** |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # Per-module breakdown table
+            echo "### Findings per module" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Module | High | Medium | Total |" >> $GITHUB_STEP_SUMMARY
+            echo "|---|---|---|---|" >> $GITHUB_STEP_SUMMARY
+            while IFS= read -r xml_file; do
+              module=$(echo "$xml_file" | sed 's|./||;s|/target.*||')
+              count=$(grep -c '<BugInstance' "$xml_file" 2>/dev/null || echo 0)
+              h=$(grep -c 'priority="1"' "$xml_file" 2>/dev/null || echo 0)
+              m=$(grep -c 'priority="2"' "$xml_file" 2>/dev/null || echo 0)
+              if [ "$count" -gt 0 ]; then
+                echo "| \`$module\` | $h | $m | $count |" >> $GITHUB_STEP_SUMMARY
+              fi
+            done < <(find . -path "*/target/spotbugs/spotbugsXml.xml" 2>/dev/null)
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # Top findings detail table (first 20)
+            echo "### Top findings (up to 20)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Severity | Rule | Class | Line |" >> $GITHUB_STEP_SUMMARY
+            echo "|---|---|---|---|" >> $GITHUB_STEP_SUMMARY
+            find . -path "*/target/spotbugs/spotbugsXml.xml" | head -20 | while read -r xml_file; do
+              python3 - "$xml_file" <<'PYEOF'
+          import sys, xml.etree.ElementTree as ET
+          tree = ET.parse(sys.argv[1])
+          count = 0
+          for bug in tree.findall('.//BugInstance'):
+              if count >= 20:
+                  break
+              prio = bug.get('priority','?')
+              sev = '🔴 High' if prio == '1' else '🟡 Medium' if prio == '2' else '🔵 Low'
+              rule = bug.get('type','?')
+              sc = bug.find('SourceLine')
+              cls = sc.get('classname','?').split('.')[-1] if sc is not None else '?'
+              line = sc.get('start','?') if sc is not None else '?'
+              print(f'| {sev} | `{rule}` | `{cls}` | {line} |')
+              count += 1
+          PYEOF
+            done >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📦 Full HTML reports: artifact **\`spotbugs-reports-${{ github.run_number }}\`** (download below)" >> $GITHUB_STEP_SUMMARY
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Job 2 — OWASP Dependency-Check (CVE scan)
+  # ⛔ DISABLED — requires NVD_API_KEY secret to run in reasonable time.
+  #    See header comment at the top of this file for re-enablement steps.
+  # ═══════════════════════════════════════════════════════════════════════════
+  owasp-dc:
+    name: OWASP Dependency-Check
+    if: false   # ⛔ remove this line once NVD_API_KEY secret is configured
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      # Cache the NVD data directory so repeat runs don't re-download ~200 MB
+      - name: Cache OWASP NVD data
+        uses: actions/cache@v4
+        with:
+          path: target/dependency-check-data
+          key: owasp-nvd-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            owasp-nvd-${{ runner.os }}-
+
+      - name: Run OWASP Dependency-Check
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: |
+          CVSS_THRESHOLD=${{ github.event.inputs.fail_on_cvss || '7' }}
+          SKIP_CHECK=true
+          if [ "${{ github.event.inputs.fail_on_cvss || '7' }}" != "11" ]; then
+            SKIP_CHECK=false
+          fi
+          mvn -B clean verify -Powasp \
+            -Dowasp.skipCheck="${SKIP_CHECK}" \
+            -Dowasp.failBuildOnCVSS="${CVSS_THRESHOLD}" \
+            -Dnvd.api.key="${NVD_API_KEY}"
+
+      # Single combined report is generated at the root target/dependency-check/
+      - name: Collect OWASP aggregate report
+        if: always()
+        run: |
+          mkdir -p owasp-reports
+          if [ -f "target/dependency-check/dependency-check-report.html" ]; then
+            cp target/dependency-check/dependency-check-report.html owasp-reports/
+          fi
+
+      - name: Upload OWASP reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-dependency-check-${{ github.run_number }}
+          path: owasp-reports/
+          retention-days: 30
+
+      - name: Write job summary
+        if: always()
+        run: |
+          echo "## 🔒 OWASP Dependency-Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Setting | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **CVSS fail threshold** | ${{ github.event.inputs.fail_on_cvss || '7' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          XML_REPORT="target/dependency-check/dependency-check-report.xml"
+          if [ ! -f "$XML_REPORT" ]; then
+            echo "⚠️ Report not found — the scan may have failed before completing." >> $GITHUB_STEP_SUMMARY
+          else
+            python3 - "$XML_REPORT" "${{ github.event.inputs.fail_on_cvss || '7' }}" <<'PYEOF' >> $GITHUB_STEP_SUMMARY
+          import sys, xml.etree.ElementTree as ET
+
+          report_file = sys.argv[1]
+          threshold   = float(sys.argv[2]) if len(sys.argv) > 2 else 7.0
+          ns = {'dc': 'https://jeremylong.github.io/DependencyCheck/dependency/2.9'}
+
+          tree = ET.parse(report_file)
+          root = tree.getroot()
+
+          vulns = []
+          for dep in root.findall('.//dc:dependency', ns):
+              dep_name = dep.findtext('dc:fileName', '?', ns)
+              for vuln in dep.findall('dc:vulnerabilities/dc:vulnerability', ns):
+                  name   = vuln.findtext('dc:name',        '?',   ns)
+                  cvss3  = vuln.findtext('dc:cvssV3/dc:baseScore', None, ns)
+                  cvss2  = vuln.findtext('dc:cvssV2/dc:score',     None, ns)
+                  score  = float(cvss3 or cvss2 or 0)
+                  sev    = vuln.findtext('dc:severity', '?', ns).upper()
+                  desc   = (vuln.findtext('dc:description', '', ns) or '')[:120].replace('|','/')
+                  vulns.append((score, name, sev, dep_name, desc))
+
+          vulns.sort(key=lambda x: x[0], reverse=True)
+
+          above = [v for v in vulns if v[0] >= threshold]
+          below = [v for v in vulns if v[0] < threshold]
+
+          def sev_icon(sev):
+              return {'CRITICAL':'🔴','HIGH':'🟠','MEDIUM':'🟡','LOW':'🔵'}.get(sev, '⚪')
+
+          print(f'### Summary')
+          print(f'')
+          print(f'| | Count |')
+          print(f'|---|---|')
+          print(f'| Total vulnerabilities found | {len(vulns)} |')
+          print(f'| At or above CVSS threshold ({threshold}) | **{len(above)}** |')
+          print(f'| Below threshold | {len(below)} |')
+          print(f'')
+
+          if not vulns:
+              print('✅ **No CVEs found.**')
+          else:
+              print(f'### Vulnerabilities at or above threshold (CVSS ≥ {threshold})')
+              print(f'')
+              if above:
+                  print('| Severity | CVE | CVSS | Dependency | Description |')
+                  print('|---|---|---|---|---|')
+                  for score, name, sev, dep, desc in above[:30]:
+                      icon = sev_icon(sev)
+                      print(f'| {icon} {sev} | `{name}` | {score} | `{dep}` | {desc}… |')
+                  if len(above) > 30:
+                      print(f'')
+                      print(f'_…and {len(above)-30} more. Download the full HTML report for details._')
+              else:
+                  print(f'✅ No vulnerabilities at or above CVSS threshold.')
+              print(f'')
+              if below:
+                  print(f'<details><summary>Below threshold ({len(below)} findings — click to expand)</summary>')
+                  print(f'')
+                  print('| Severity | CVE | CVSS | Dependency |')
+                  print('|---|---|---|---|')
+                  for score, name, sev, dep, _ in below[:50]:
+                      icon = sev_icon(sev)
+                      print(f'| {icon} {sev} | `{name}` | {score} | `{dep}` |')
+                  if len(below) > 50:
+                      print(f'_…and {len(below)-50} more in the full report._')
+                  print(f'')
+                  print('</details>')
+          PYEOF
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📦 Full HTML report: artifact **\`owasp-dependency-check-${{ github.run_number }}\`** (download below)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> To suppress a false-positive, add an entry to \`scripts/ci/owasp-suppressions.xml\`." >> $GITHUB_STEP_SUMMARY
+

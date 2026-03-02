@@ -14,11 +14,11 @@ Two new Maven profiles were added to complement the existing SonarQube SAST scan
 | `-Pspotbugs` | SpotBugs + Find Security Bugs | Bytecode-level security bugs SonarQube misses | `mvn verify -Pspotbugs` |
 | `-Powasp` | OWASP Dependency-Check | CVEs in all (transitive) dependencies | `mvn verify -Powasp` |
 
-They can be combined with each other and with `-Psonar`:
+They can be combined with each other:
 
 ```powershell
-# All three scanners in one build
-mvn verify sonar:sonar -Psonar,spotbugs,owasp -Dsonar.token=<token>
+# Both scanners in one build
+mvn verify -Pspotbugs,owasp
 ```
 
 ---
@@ -182,29 +182,40 @@ The `aggregate` goal is key: it runs once on the root, pulls in every sub-module
 classpath automatically, and produces a **single HTML/XML/JSON report** for the entire
 project. No per-module fragmentation, no reactor halt mid-way.
 
-### NVD API Key (optional but strongly recommended)
+### NVD API Key — prerequisite for CI
 
-Without an API key, the NVD rate-limits requests to 5 per 30 seconds.
-The first run may take **30–60 minutes** without a key, or **5–10 minutes** with one.
+> ⛔ **The OWASP CI job is disabled until this key is in place.**
+> Without it the first NVD database download takes 30–60 minutes, making the job
+> impractical for regular CI runs.
 
-Get a free key at: https://nvd.nist.gov/developers/request-an-api-key
-(Personal emails are accepted — no .gov or .edu required.)
+The NVD rate-limits unauthenticated requests to 5 per 30 seconds.
+With a free API key the limit rises to 50 per 30 seconds — the first run drops to ~5 minutes.
 
-Pass the key at runtime:
+**Getting the key (free, ~2 minutes):**
+
+1. Go to https://nvd.nist.gov/developers/request-an-api-key
+2. Fill in your name and email (personal email accepted — no .gov/.edu required)
+3. Check your inbox — the key arrives within a few minutes
+
+**Adding the key to GitHub:**
+
+1. Go to **Settings → Secrets and variables → Actions → New repository secret**
+2. Name: `NVD_API_KEY` — Value: paste the key
+
+**Re-enabling the CI job:**
+
+Open `.github/workflows/security-scan.yml` and remove the `if: false` line from the
+`owasp-dc` job (it is marked with a comment `⛔ remove this line once NVD_API_KEY secret is configured`).
+
+**Using the key locally:**
 
 ```powershell
 mvn verify -Powasp -Dnvd.api.key=<your-key>
-```
 
-Or set the environment variable before running Maven:
-
-```powershell
+# Or set once per session:
 $env:NVD_API_KEY = "<your-key>"
 mvn verify -Powasp
 ```
-
-The NVD data is cached in `target/dependency-check-data/` at the root.
-Subsequent runs reuse the cache and only download incremental updates (much faster).
 
 ### Running Locally — Step by Step
 
@@ -293,44 +304,111 @@ The workflow `.github/workflows/security-scan.yml` runs all three scanners in pa
 
 ### Jobs
 
-| Job | Profile | Artifact uploaded |
-|---|---|---|
-| `sonarqube-sast` | `-Psonar` | SonarQube dashboard (external link) |
-| `spotbugs-sast` | `-Pspotbugs` | `spotbugs-reports-<run#>` (HTML per module) |
-| `owasp-dc` | `-Powasp` | `owasp-dependency-check-<run#>` (HTML per module) |
+| Job | Profile | Status | What it produces |
+|---|---|---|---|
+| `spotbugs-sast` | `-Pspotbugs` | ✅ Enabled | Job summary table + `spotbugs-reports-<run#>` artifact (HTML per module) |
+| `owasp-dc` | `-Powasp` | ⛔ Disabled | Job summary table + `owasp-dependency-check-<run#>` artifact (combined HTML) |
+
+> **Why is the OWASP job disabled?**
+> The first run must download the full NVD vulnerability database (~200 MB).
+> Without an API key this takes **30–60 minutes** due to NVD rate-limiting (5 requests / 30 s).
+> The job is disabled until an `NVD_API_KEY` secret is added to the repository.
+> With the key the first run completes in ~5 minutes and subsequent runs are faster still
+> (incremental cache updates only).
 
 ### Trigger Matrix
 
 | Trigger | Condition |
 |---|---|
 | **Manual** (`workflow_dispatch`) | Run at any time from the GitHub Actions UI |
-| **Pre-release gate** | Every push to a `release/**` branch |
+| **Release tag** | Automatically when a semver tag is pushed (e.g. `1.5.0`, `1.5.0-RC1`). The `release.yml` workflow creates these tags — the security scan runs automatically as part of every release. |
 | **Scheduled weekly** | Every Monday at 06:00 UTC |
+
+> **Why tags instead of branches?**
+> The project does not use `release/**` branches. The `release.yml` workflow builds the
+> project, commits the version bump, and then pushes a plain semver tag (e.g. `1.5.0`).
+> The security scan therefore triggers on `push: tags` matching the patterns
+> `[0-9]+.[0-9]+.[0-9]+` (stable releases) and `[0-9]+.[0-9]+.[0-9]+-*`
+> (pre-releases such as `1.5.0-RC1` or `1.5.0-SNAPSHOT`).
 
 ### Manual Trigger Inputs
 
-When triggering manually from the Actions UI, three extra inputs are available:
+When triggering manually from the Actions UI, two inputs are available:
 
 | Input | Default | Description |
 |---|---|---|
-| `fail_on_quality_gate` | `true` | Whether to fail if the SonarQube Quality Gate fails |
 | `fail_on_spotbugs` | `true` | `true` → activates gate (`-Dspotbugs.skipCheck=false`); `false` → report-only |
 | `fail_on_cvss` | `7` | CVSS threshold for OWASP. Set to `11` for report-only mode |
 
 ### Required Repository Secrets
 
-| Secret | Required for | Value |
-|---|---|---|
-| `SONAR_TOKEN` | SonarQube job | Project Analysis token from SonarQube UI |
-| `SONAR_HOST_URL` | SonarQube job | Full URL of your SonarQube server |
-| `NVD_API_KEY` | OWASP job | Free NVD API key (optional but recommended) |
+| Secret | Required for | Status | Value |
+|---|---|---|---|
+| `NVD_API_KEY` | OWASP job | ⚠️ Required to enable the job | Free NVD API key — see section above |
 
-### Downloading Reports from CI
+### Viewing Results in GitHub
 
-1. Open the GitHub Actions run from the **Actions** tab.
-2. Scroll to the bottom of the run page — **Artifacts** section.
-3. Download `spotbugs-reports-<N>` or `owasp-dependency-check-<N>`.
-4. Unzip and open any `*_spotbugs.html` or `*_dc-report.html` in a browser.
+There are two ways to see results directly in GitHub — no download required for the summary view.
+
+#### Option 1 — Job Summary (instant, no download)
+
+After each workflow run the findings are rendered as **markdown tables directly in the
+GitHub Actions UI**. No download or local tool needed.
+
+**How to navigate there:**
+
+```
+Repository → Actions tab
+  → click the "Security Scan" workflow run
+    → click the job name (e.g. "SpotBugs + Find Security Bugs")
+      → scroll down past the step logs to "Summary"
+```
+
+Or use the shortcut: click **"Summary"** in the left sidebar of any workflow run.
+
+What you see per job:
+
+| Job | Summary content |
+|---|---|
+| `SpotBugs + Find Security Bugs` | Total count table, per-module breakdown, top-20 findings with severity / rule / class / line |
+| `OWASP Dependency-Check` | Total CVE count, full table of CVEs at or above threshold (sorted by CVSS score), collapsible section for below-threshold findings |
+
+Example of what the OWASP summary looks like in GitHub:
+
+```
+## 🔒 OWASP Dependency-Check
+
+| Setting        | Value |
+|---|---|
+| CVSS threshold | 7     |
+
+### Summary
+| | Count |
+|---|---|
+| Total vulnerabilities found       | 12 |
+| At or above CVSS threshold (7.0)  | **3** |
+| Below threshold                   | 9  |
+
+### Vulnerabilities at or above threshold (CVSS ≥ 7.0)
+| Severity   | CVE            | CVSS | Dependency          | Description |
+|---|---|---|---|---|
+| 🟠 HIGH    | CVE-2024-XXXXX | 8.1  | `nimbus-jose-jwt`   | … |
+| 🟡 MEDIUM  | CVE-2024-YYYYY | 7.5  | `spring-security`   | … |
+
+<details><summary>Below threshold (9 findings)</summary>
+...
+</details>
+```
+
+#### Option 2 — Download HTML artifact (full interactive report)
+
+For the complete interactive HTML report (sortable table, CVE links, dependency tree):
+
+1. Go to **Repository → Actions → Security Scan** run
+2. Scroll to the bottom of the run page → **Artifacts** section
+3. Click to download:
+   - `spotbugs-reports-<N>` → unzip → open `*_spotbugs.html` in a browser
+   - `owasp-dependency-check-<N>` → unzip → open `dependency-check-report.html` in a browser
 
 Artifacts are retained for **30 days**.
 
