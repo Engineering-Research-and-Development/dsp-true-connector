@@ -254,20 +254,11 @@ public class SharedDockerEnvironment {
             .withNetworkAliases("holder-verifier")
             .withExposedPorts(8081)
             .withExtraHost("localhost", "host-gateway")  // Enable access to host machine's localhost
+            // MongoDB connection details are dynamic and not known at build time
             .withEnv("SPRING_DATA_MONGODB_HOST", "mongodb")
             .withEnv("SPRING_DATA_MONGODB_PORT", "27017")
-            .withEnv("SPRING_DATA_MONGODB_DATABASE", "holder-verifier-e2e-test")
-            .withEnv("SERVER_PORT", "8081")
-            .withEnv("SPRING_APPLICATION_NAME", "dcp-holder-verifier-test")
-            .withEnv("DCP_CONNECTOR_DID", "did:web:localhost%3A8081:holder")
-            .withEnv("DCP_CONNECTOR_DID_VERIFIER", "did:web:localhost%3A8081:verifier")
-            .withEnv("DCP_HOST", "localhost")
-            .withEnv("DCP_BASE_URL", "http://localhost:8081")
-            .withEnv("DCP_KEYSTORE_PATH", "/app/eckey.p12")
-            .withEnv("DCP_KEYSTORE_PASSWORD", "password")
-            .withEnv("DCP_KEYSTORE_ALIAS", "dsptrueconnector")
+            // Load static configuration from the application-holderverifier.properties file
             .withEnv("SPRING_CONFIG_ADDITIONAL_LOCATION", "optional:file:/config/")
-            .withEnv("SPRING_APPLICATION_JSON", "{\"dcp\":{\"service-entries\":[{\"id\":\"TRUEConnector-Credential-Service\",\"type\":\"CredentialService\",\"endpoint-path\":\"/dcp\"}]}}")
             .withEnv("SPRING_PROFILES_ACTIVE", "holderverifier")
             .waitingFor(Wait.forLogMessage(".*Started.*Application.*", 1)
                 .withStartupTimeout(Duration.ofMinutes(3)))
@@ -282,6 +273,7 @@ public class SharedDockerEnvironment {
     private void createAndStartIssuerContainer(Path dcpRoot) {
         log.info("Building Issuer Docker image...");
         Path issuerPath = dcpRoot.resolve("dcp-issuer");
+        Path e2eTestsPath = dcpRoot.resolve("dcp-e2e-tests");
 
         Path issuerJar = findJarFile(issuerPath.resolve("target"), "dcp-issuer-exec.jar");
         String jarRelativePath = "target/" + issuerJar.getFileName().toString();
@@ -292,13 +284,15 @@ public class SharedDockerEnvironment {
                 .workDir("/app")
                 .copy(jarRelativePath, "/app/dcp-issuer.jar")
                 .copy("src/test/resources/eckey-issuer.p12", "/app/eckey-issuer.p12")
+                .copy("src/test/resources/application-issuer.properties", "/config/application-issuer.properties")
                 .copy("src/test/resources/credential-metadata-configuration.properties", "/config/credential-metadata-configuration.properties")
                 .expose(8082)
                 .env("JAVA_OPTS", "-Xmx512m -Xms256m")
                 .entryPoint("sh", "-c", "java $JAVA_OPTS -jar /app/dcp-issuer.jar")
                 .build())
             .withFileFromPath(jarRelativePath, issuerJar)
-            .withFileFromPath("src/test/resources/eckey-issuer.p12", dcpRoot.resolve("dcp-e2e-tests/src/test/resources/eckey-issuer.p12"))
+            .withFileFromPath("src/test/resources/eckey-issuer.p12", e2eTestsPath.resolve("src/test/resources/eckey-issuer.p12"))
+            .withFileFromPath("src/test/resources/application-issuer.properties", e2eTestsPath.resolve("src/test/resources/application-issuer.properties"))
             .withFileFromPath("src/test/resources/credential-metadata-configuration.properties", issuerPath.resolve("src/test/resources/credential-metadata-configuration.properties"));
         imagesToCleanup.add("dcp-issuer-e2e-test");
 
@@ -307,18 +301,12 @@ public class SharedDockerEnvironment {
             .withNetworkAliases("issuer")
             .withExposedPorts(8082)
             .withExtraHost("localhost", "host-gateway")  // Enable access to host machine's localhost
+            // MongoDB connection details are dynamic and not known at build time
             .withEnv("SPRING_DATA_MONGODB_HOST", "mongodb")
             .withEnv("SPRING_DATA_MONGODB_PORT", "27017")
-            .withEnv("SPRING_DATA_MONGODB_DATABASE", "issuer-e2e-test")
-            .withEnv("SERVER_PORT", "8082")
-            .withEnv("SPRING_APPLICATION_NAME", "dcp-issuer")
-            .withEnv("DCP_CONNECTOR_DID", "did:web:localhost%3A8082:issuer")
-            .withEnv("DCP_BASE_URL", "http://localhost:8082")
-            .withEnv("DCP_HOST", "localhost")
-            .withEnv("DCP_KEYSTORE_PATH", "/app/eckey-issuer.p12")
-            .withEnv("DCP_KEYSTORE_PASSWORD", "password")
-            .withEnv("DCP_KEYSTORE_ALIAS", "dcp-issuer")
-            .withEnv("SPRING_APPLICATION_JSON", "{\"dcp\":{\"service-entries\":[{\"id\":\"TRUEConnector-Issuer-Service\",\"type\":\"IssuerService\",\"issuer-location\":\"http://issuer:8082/issuer/\"}]}}")
+            // Load static configuration from the application-issuer.properties file
+            .withEnv("SPRING_CONFIG_ADDITIONAL_LOCATION", "optional:file:/config/")
+            .withEnv("SPRING_PROFILES_ACTIVE", "issuer")
             .waitingFor(Wait.forLogMessage(".*Started IssuerApplication.*", 1)
                 .withStartupTimeout(Duration.ofMinutes(3)))
             .withReuse(false);
