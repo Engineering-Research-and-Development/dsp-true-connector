@@ -14,6 +14,10 @@ maintainability, and high code quality.
 - Name the test class `<ClassUnderTest>Test.java` and place it in the corresponding test package.
 - Use JUnit 5 (`org.junit.jupiter`), not JUnit 4.
 - Don't use fully qualified names in code; use imports instead.
+- The order of class members should be: static fields, instance fields, constructors, public methods, protected methods,
+    package-private methods, private methods. This promotes readability and consistency across the codebase.
+- Use Java model classes where possible instead of raw strings or maps for data structures to improve readability and maintainability; use the concrete types instead of var.
+
 
 ## 2. Annotations and Setup
 

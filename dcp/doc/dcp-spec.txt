@@ -1,0 +1,2228 @@
+Eclipse Decentralized Claims Protocol - v1.0
+
+
+23 October 2025
+
+
+Jim Marino, Metaform Systems
+
+
+
+
+Note: this EPUB edition does not represent the authoritative text of the specification; please consult the original document on the W3C Web Site.
+
+Copyright © 2025 World Wide Web Consortium. W3C® liability, trademark, and permissive document use rules apply.
+
+
+
+
+
+Table of Contents
+
+
+Abstract
+
+
+
+Status of This Document
+
+
+
+1. Terminology
+
+
+
+2. Dataspace Ecosystem Overview
+
+2.1 Interrelation to the Dataspace Protocol
+
+
+
+2.2 Systems
+
+2.2.1 Dataspace Governance Authority Systems
+
+
+
+2.2.2 Participant Agent Systems
+
+
+
+2.2.3 Credential Issuer Systems
+
+
+
+
+
+3. Trust Model and Information Flow Architecture
+
+3.1 Consent
+
+
+
+3.2 Trust Relationships
+
+
+
+3.3 Transport Security
+
+
+
+
+
+4. Base Concepts
+
+4.1 Decentralization
+
+
+
+4.2 Identities
+
+
+
+4.3 Self-Issued ID Tokens
+
+4.3.1 Verifiable Presentation Access Token
+
+
+
+4.3.2 Obtaining Self-Issued ID Tokens
+
+
+
+4.3.3 Validating Self-Issued ID Tokens
+
+
+
+
+
+4.4 Schemas, Contexts, and Message Processing
+
+4.4.1 The Decentralized Claims Protocol Context
+
+
+
+
+
+4.5 The Base URL
+
+
+
+
+
+5. Verifiable Presentation Protocol
+
+5.1 Presentation Flow
+
+
+
+5.2 Credential Service Endpoint Discovery
+
+
+
+5.3 Credential Service Security
+
+5.3.1 Submitting an Access Token
+
+
+
+
+
+5.4 Resolution API
+
+5.4.1 Presentation Query Message
+
+
+
+5.4.2 Presentation Response Message
+
+
+
+5.4.3 Presentation Validation
+
+
+
+
+
+6. Credential Issuance Protocol
+
+6.1 Issuance Flow
+
+
+
+6.2 Issuer Service Endpoint Discovery
+
+
+
+6.3 Issuer Service Base URL
+
+
+
+6.4 Credential Request API
+
+6.4.1 Credential Request Message
+
+
+
+
+
+6.5 Storage API
+
+6.5.1 Credential Message
+
+
+
+6.5.2 Credential Container
+
+
+
+
+
+6.6 Credential Offer API
+
+6.6.1 Credential Offer Message
+
+
+
+6.6.2 CredentialObject
+
+
+
+
+
+6.7 Issuer Metadata API
+
+6.7.1 IssuerMetadata
+
+
+
+
+
+6.8 Credential Request Status API
+
+6.8.1 CredentialStatus
+
+
+
+
+
+6.9 Key Rotation and Revocation
+
+6.9.1 Key rotation
+
+
+
+6.9.2 Key revocation
+
+
+
+
+
+6.10 Verifiable Credential Revocation
+
+
+
+
+
+7. Conformance
+
+
+
+A. Profiles of the Decentralized Claims Protocol
+
+A.1 DCP Profile Definitions
+
+A.1.1 Homogeneity requirement
+
+
+
+
+
+A.2 Profile Authoring Recommendations
+
+
+
+
+
+B. Notes
+
+B.1 List of Figures
+
+
+
+
+
+C. References
+
+C.1 Normative references
+
+
+
+C.2 Informative references
+
+
+
+
+
+Eclipse Decentralized Claims Protocol
+
+v1.0
+
+
+23 October 2025
+
+More details about this document Latest published version:
+
+https://eclipse-dataspace-dcp.github.io/decentralized-claims-protocol/releases/tag/v1.0
+
+Latest editor's draft:
+
+https://eclipse-dataspace-dcp.github.io/decentralized-claims-protocol/
+
+History:
+
+Commit history
+
+Editor:
+
+Jim Marino (Metaform Systems)
+
+Authors:
+
+Andrea Bertagnolli (Think-IT)
+
+Peter Koen (Microsoft)
+
+Maarten Kollenstart (TNO)
+
+Paul Latzelsperger (Metaform Systems)
+
+Jim Marino (Metaform Systems)
+
+Julia Pampus (Fraunhofer ISST)
+
+Rajiv Rajani (iSHARE Foundation)
+
+Enrico Risa (Metaform Systems)
+
+Marcel Ruland (Cofinity-X)
+
+Benjamin Scholtes (Amadeus)
+
+Niklas Schulte (Fraunhofer ISST)
+
+Markus Spiekermann (Huawei)
+
+Sebastian Steinbuss (IDSA)
+
+Arno Weiß (SAP)
+
+Hakan Yildiz (Accenture)
+
+Feedback:
+
+GitHub eclipse-dataspace-dcp/decentralized-claims-protocol (pull requests, new issue, open issues)
+
+
+
+
+
+This document is licensed under The Apache License, Version 2.0.
+
+
+
+* * *
+
+
+
+
+
+Abstract
+
+
+Dataspaces require the ability to communicate participant identities and credentials to secure data access. This specification defines a set of protocols for asserting participant identities, issuing verifiable credentials, and presenting verifiable credentials using a decentralized architecture for verification and trust.
+
+
+
+Status of This Document
+
+
+This version (v1.0) of the Dataspace Protocol specification is a release of the specification and considered to be stable. Further changes shall not affect conformity. All changes made to the specification can be reviewed in the GitHub repository. This specification is affiliated with the Eclipse Dataspace Working Group.
+
+
+
+1. Terminology
+
+
+
+
+The following terms are used to describe concepts in this specification.
+
+Claim - An assertion made about a Subject.
+
+DID - A decentralized identifier as defined by Decentralized Identifiers (DIDs) v1.0.
+
+Holder - An entity that possesses a set of identity resources as defined by the VC DataModel version of the selected profile. The holder will typically be the subject of a Verifiable Credential.
+
+Issuer - An entity that asserts claims about one or more subjects by issuing a Verifiable Credential to a Holder.
+
+Resource - A resource is an entity managed by the Credential Service such as a Verifiable Credential or Verifiable Presentation.
+
+Subject - The target of a set of claims contained in a Verifiable Credential as defined by the VC DataModel version of the selected profile. In a dataspace, a subject will be a participant.
+
+Verifiable Credential A tamper-evident credential whose authorship can be cryptographically verified as defined by the VC DataModel version of the selected profile.
+
+Verifiable Presentation A tamper-evident presentation of information whose authorship can be cryptographically verified as defined by VC DataModel version of the selected profile.
+
+Verifiable Data Registry - Maintains identifiers such as DIDs and Verifiable Credential schemas in a dataspace.
+
+Verifier - An entity that receives a Verifiable Credential, optionally presented inside a Verifiable Presentation as defined by the VC DataModel version of the selected profile.
+
+
+
+
+
+2. Dataspace Ecosystem Overview
+
+
+
+
+This section describes the core actors and systems in a dataspace ecosystem that are pertinent to this specification. It adheres to the model defined by the Dataspace Protocol [dsp-base]:
+
+A Dataspace is a policy-based data sharing context between two or more entities.
+
+The Dataspace Governance Authority is responsible for operational management of a dataspace, including participant registration and designation of trust credential issuers.
+
+A Participant is a member of the dataspace. Members may take on different roles, which are attested to by verifiable credentials.
+
+A Participant Agent performs tasks such as publishing a catalog or engaging in data transfer. Note that a participant agent is a logical construct and does not necessarily correspond to a single runtime process.
+
+An Identity Provider is a service that generates identity tokens used to verify the identity of a Participant Agent. Each participant will use their own identity provider to generate a self-signed identity token.
+
+A Credential Issuer issues Verifiable Credentials used by participant agents to allow access to assets and verify usage control.
+
+
+
+
+
+2.1 Interrelation to the Dataspace Protocol
+
+
+
+
+The Dataspace Protocol (DSP) [dsp-base] is designed as a layered protocol, which is independent of the identity and trust system used. The Decentralized Claims Protocol fills this gap by providing such an orthogonal overlay for identity and trust in a decentralized manner.
+
+
+
+
+2.2 Systems
+
+
+
+
+
+2.2.1 Dataspace Governance Authority Systems
+
+
+
+
+Registration System
+
+The registration system is responsible for participant registration, onboarding, and management in a dataspace. The registration system is run by the Dataspace Governance Authority and is outside the scope of this specification.
+
+
+
+
+2.2.2 Participant Agent Systems
+
+
+
+
+Participants will run one or more agent systems that interact in the dataspace. These systems may offer data catalogs, perform data transfers, or provide application functionality. A participant may run the following identity-related agents. Note that this is a logical description and may not represent an actual deployment topology.
+
+Security Token Service (STS).
+
+The STS creates self-issued authorization tokens that contain identity claims used by participant agents under the control of the same participant.
+
+Credential Service (CS)
+
+The CS manages Verifiable Credentials. This includes read and write endpoints for Verifiable Presentations and Verifiable Credentials.
+
+DID Service (DIDS).
+
+The DIDS creates, signs, and publishes DID documents.
+
+
+
+
+2.2.3 Credential Issuer Systems
+
+
+
+
+Issuer Service (IS)
+
+The Issuer Service is run by a trust anchor and manages the lifecycle of Verifiable Credentials in a dataspace. A dataspace may contain multiple Issuer Services run by different trust anchors. The Issuer Service:
+
+Issues Verifiable Credentials for dataspace participants.
+
+Manages revocation lists for Verifiable Credentials types it issues based on Verifiable Credentials Status List v2021.
+
+Provides cryptographic material used to verify Verifiable Presentations and Verifiable Credentials.
+
+
+
+
+
+3. Trust Model and Information Flow Architecture
+
+
+
+
+This specification is based on the Issuer-Holder-Verifier model as described in the VC DataModel version of the selected profile:
+
+
+
+
+
+Figure 1 The Issuer-Holder-Verifier Model
+
+In this model, the Issuer creates a Verifiable Credential and provides it to the Holder, which can then present the Verifiable Credential to the Verifier.
+
+The Verifier decides which Verifiable Credentials it will accept and the Holder decides which Verifiable Credentials it will present. All parties rely on a Verifiable Data Registry to obtain identifier information and metadata about Verifiable Credentials, such as schemas. Furthermore, parties communicate with each other using the protocols defined in the Dataspace Protocol specification [dsp-base] and this specification.
+
+The Issuer-Holder-Verifier model is mapped to the following architecture in this specification:
+
+
+
+
+
+Figure 2 Information Flow Architecture
+
+Identity and claims information is exchanged between a Holder and a Verifier in the context of Dataspace Protocol message interactions [dsp-base]. These messages will contain metadata such as Offers and Agreements that determine the Verifiable Credentials a Holder must present to a Verifier.
+
+The Issuer Service issues credentials to a Holder's Credential Service using the protocol defined in Section 6. Credential Issuance Protocol. As part of this process, the Issuer Service will verify the Holder's identifier using the Verifiable Data Registry. Since DIDs are mandatory in this specification, the registry will be used to resolve the Holder's DID document and cryptographic material.
+
+The Holder runs three logical services: a Participant Agent, an STS, and a Credential Service. The Participant Agent engages in dataspace communications with the Verifier agent [dsp-base]. As part of these interactions, the Participant Agent will include a Self-Issued ID Token as defined in Section 4.3 Self-Issued ID Tokens. This token will be obtained from the STS controlled by the Holder. Note that the STS is an internal system and therefore out of scope for the current specification. It may be a standalone service or part of the Participant Agent or Credential Service. The Self-Issued ID Token will contain an access token bound to the Verifier that will be used to request a Verifiable Presentation. The Holder's Credential Service will verify the access token with the STS.
+
+The Verifier runs a Participant Agent that engages in dataspace message exchanges with the Holder agent [dsp-base]. When it receives a request, it will resolve the Holder's DID document from the Verifiable Data Registry. The Participant Agent will resolve the Credential Service endpoint from the DID document. The Participant Agent will send a request for a Verifiable Presentation to the Credential Service using the protocol defined in Section 5. Verifiable Presentation Protocol. This request will include the access token as a claim in the Self-Issued ID Token received from the Holder's agent. The Participant Agent will then match the credentials returned in the Verifiable Presentation against the policy constraints associated with the original dataspace request.
+
+
+
+
+
+3.1 Consent
+
+
+
+
+Consent is the process where the Holder approves the release of a Verifiable Presentation and the Verifier agrees to allow access to a protected resource. Since the Dataspace Protocol is built on machine-to-machine message exchange patterns, presentation protocols that rely on end-user (i.e., human) consent are not applicable. The protocols defined in this specification establish consent in the following way:
+
+
+
+
+
+Figure 3 Consent in the Decentralized Claims Protocol
+
+Consent is handled by first mapping Dataspace Protocol Offer and Agreement policies [dsp-base] to a set of required Verifiable Credentials. The exact mappings are dataspace-specific as policies and Verifiable Credentials are typically defined for a particular domain. The expectation is that these mappings are made available by the Dataspace Governance Authority to Participant Agents via the Verifiable Data Registry. Verifiable Credential mapping is done by both the Holder and Verifier Participant Agent when a Dataspace Protocol message is sent and received.
+
+When sending a Dataspace Protocol message, the Holder's Participant Agent will determine the required Verifiable Credentials and issue a Self-Issued ID Token request to the STS, including the list of credentials to allow the Verifier to access via the Credential Service. The returned Self-Issued ID token will contain an access token bound to the Verifier as described above. This access token serves as a verifiable mechanism the Credential Service uses to determine consent and release credentials to the Verifier.
+
+The Verifier establishes consent by performing the same mapping from metadata to a set of Verifiable Credentials during the initial Dataspace Protocol request. At that point, the Verifier Participant Agent can query the Credential Service for a Verifiable Presentation. If it matches the required credentials, the Verifier can consent and grant access to the associated protected resources.
+
+
+
+
+3.2 Trust Relationships
+
+
+
+
+Trust in the Issuer-Holder-Verifier model is established in different ways between each entity. This section identifies key aspects of those trust relationships.
+
+All Entities
+
+All entities expect:
+
+The Verifiable Data Registry to be tamper-evident and correctly reflect data controlled by all entities. This may be done through the use of cryptographic resources.
+
+All Verifiable Credentials and Verifiable Presentations to be tamper-proof and support revocation.
+
+Dataspace Protocol interactions and those defined in this specification to be secure and use Transport Level Security.
+
+
+
+Issuer
+
+The Issuer expects:
+
+Credential Service integrity, i.e. that Verifiable Credentials are securely stored and the service does not reveal data to unauthorized parties.
+
+
+
+Holder
+
+The Holder expects:
+
+The Dataspace Governance Authority to provide a secure list of trusted Issuer DIDs. How this list is provided is out of scope of the current specification but may be part of the Verifiable Data Registry.
+
+The Dataspace Governance Authority to provide a secure list of participant DIDs. How this list is provided is out of scope of the current specification but may be part of the Verifiable Data Registry.
+
+The Credential Service to maintain integrity and not release data to unauthorized parties.
+
+The Issuer to issue credentials correctly, including binding them to the holder in a tamper-proof way, and maintaining credential integrity.
+
+The Verifier not to leak information to third-parties.
+
+
+
+Verifier
+
+The Verifier expects:
+
+The Dataspace Governance Authority to provide a secure list of trusted Issuer DIDs. How this list is provided is out of scope of the current specification but may be part of the Verifiable Data Registry. Verifiers can recognize several Dataspace Governance Authorities.
+
+
+
+The Issuer to issue credentials correctly, including binding them to the holder in a tamper-proof way, and maintaining credential integrity.
+
+
+
+
+
+3.3 Transport Security
+
+
+
+
+All participants MUST communicate via HTTPS [rfc9110].
+
+
+
+
+4. Base Concepts
+
+
+
+
+This section defines the core identity concepts used by the current specification.
+
+
+
+
+
+4.1 Decentralization
+
+
+
+
+Decentralization is achieved in the following ways:
+
+Self-Issued ID Tokens - Each participant is responsible for creating and cryptographically signing its own identity tokens. A central identity provider is therefore not required, eliminating a potential source of network failure.
+
+Participant Verifiable Credential and Cryptographic Material Management - Each participant is responsible for storing Verifiable Credentials and presenting them as Verifiable Presentations. Participant are also responsible for storing and making their cryptographic material available to Verifiers. This specification defines how Verifiable Credentials are presented and verified without the need for a third-party verification service.
+
+Multiple Trust Anchors - Participant Verifiable Credentials are signed by a third-party issuer acting as a trust anchor using a cryptographic proof. This specification allows for multiple trust anchors in a dataspace.
+
+
+
+
+
+4.2 Identities
+
+
+
+
+The Dataspace Protocol specification mandates that all participants have a stable identifier (Participant ID). This specification prescribes the Participant ID MUST be a DID.
+
+
+
+
+4.3 Self-Issued ID Tokens
+
+
+
+
+Participants use a Self-Issued ID Token to authenticate themselves and present self-attested claims to a Verifier. A Self-Issued ID Token is represented as a JSON Web Token [rfc7519] signed with a private key under the participant's control.
+
+The following claims MUST be included in the Self-Issued ID Token:
+
+The iss and sub claims MUST be equal and set to the bearer's (participant's) DID.
+
+The aud MUST be set to the Verifier DID.
+
+The jti claim MUST be used to mitigate against replay attacks.
+
+The exp claim MUST be used to express the expiration time on or after which the ID Token MUST NOT be accepted by the verifier. Implementers MAY provide for some leeway to account for clock skew. Its value is a JSON [rfc8259] number representing the number of seconds from 1970-01-01T00:00:00Z as measured in UTC until the date/time.
+
+The iat claim MUST be used to specify the time the JWT was issued. Its value is a JSON number representing the number of seconds from 1970-01-01T00:00:00Z as measured in UTC.
+
+
+
+
+
+4.3.1 Verifiable Presentation Access Token
+
+
+
+
+A Self-Issued ID Token MAY contain an access token as a token claim that can be used by the Verifier to obtain Verifiable Presentations from the participant's Credential Service. The format of the token is implementation-specific and therefore should be treated as an opaque string by the Verifier.
+
+
+
+
+4.3.2 Obtaining Self-Issued ID Tokens
+
+
+
+
+This section is non-normative.
+
+How a Self-Issued ID token is obtained from a Secure Token Service is implementation-specific. An STS may support a variety of APIs, including OAuth 2.
+
+
+
+
+
+4.3.2.1 Using the OAuth 2 Client Credential Grant
+
+
+
+
+A Self-Issued ID Token may be obtained by executing a Client Credential Grant as defined in The OAuth 2.0 Authorization Framework against a Secure Token Service endpoint. How the participant agent obtains the STS endpoint address is implementation-specific and beyond the scope of this specification.
+
+If an token is required to be included in the Self Issued ID token, the participant agent will need to request scopes for the access token. This is dependent on the API used to obtain the Self-Issued ID Token. An STS implementation may use endpoint parameters as defined in the The OAuth 2.0 Authorization Framework to convey metadata necessary for the creation of the token claim. In this case, the Self-Issued ID Token request may contain a bearer_access_scope authorization request parameter set to a list of space-delimited scopes the token claim will be enabled for. If no bearer_access_scope parameter is present, the token claim should not be included.
+
+Note
+
+A non-normative OpenAPI spec of an STS implementing client credentials flow is provided here
+
+
+
+
+
+4.3.3 Validating Self-Issued ID Tokens
+
+
+
+
+The Verifier MUST validate the Self-Issued ID Token using the following steps:
+
+The Verifier MUST assert that the iss and sub claims have the same DID value.
+
+The Verifier MUST assert that the aud claim is set to the Verifier DID.
+
+The Verifier MUST validate the signature of the Self-Issued ID token by using a key obtained from the resolved sub DID Document. DID resolution is performed according to the DID Method specified by the sub claim. The resolved DID document is processed to retrieve the value of the verificationMethod property. The signing key MUST have capabilityInvocation verification relationship with the DID.
+
+If no kid token header is specified and the verificationMethod property contains one entry and the entry has the capabilityInvocation verification relationship, the verification method is used.
+
+If no kid token header is specified and the verificationMethod property contains more than one entry, the token is rejected.
+
+If a kid token header is specified, the verification material from the entry corresponding the kid token header is used. Furthermore, this verification material MUST have capabilityInvocation verification relationship.
+
+If no matching entry is found, the token is rejected.
+
+
+
+
+
+The Verifier MUST assert that the sub claim value equals the id property in the DID Document.
+
+The Verifier MUST assert the nbf claim if present. The Verifier MAY allow for some leeway to account for clock skew.
+
+The Verifier MUST assert that the current time is before the time represented by the exp claim. The Verifier MAY allow for some leeway to account for clock skew. The iat claim MAY be used to reject a token that was issued much earlier than the current time, thereby limiting the amount of time a jti value needs to be stored.
+
+The Verifier MUST assert that the jti claim value has not been used previously.
+
+
+
+
+
+4.4 Schemas, Contexts, and Message Processing
+
+
+
+
+All protocol messages are normatively defined by a [json-schema]. This specification also uses JSON-LD 1.1 and provides a Json-Ld context to serialize data structures and message types as it facilitates extensibility. The Json-Ld context is designed to produce message serializations using compaction that validate against the Json Schema for the given message type. This allows implementations to choose whether to process messages as plain Json or as Json-Ld and maintain interoperability between those approaches. Extensions that use Json-Ld are encouraged to provide similar contexts that facilitate this approach to interoperability.
+
+
+
+
+
+4.4.1 The Decentralized Claims Protocol Context
+
+
+
+
+The JSON-LD 1.1 context URI for the specification is: https://w3id.org/dspace-dcp/v1.0/dcp.jsonld. Future specification releases shall reuse the versioning schema according to the Semantic Versioning definitions, concatenated to a vMAJOR.MINOR number. The current specifications use 1.0 version.
+
+
+
+
+
+4.5 The Base URL
+
+
+
+
+All endpoint URLs in this specification are relative. The base URL MUST use the HTTPS scheme. The base URL is implementation-specific and may include additional context information such as a sub-path that disambiguates a holder.
+
+
+
+
+
+5. Verifiable Presentation Protocol
+
+
+
+
+This section defines a protocol for storing and presenting Verifiable Credentials and other identity-related resources. The Verifiable Presentation Protocol covers the following aspects:
+
+Endpoints and message types for storing identity resources belonging to a Holder in a Credential Service
+
+Endpoints and message types for resolving an identity Resource
+
+Secure token exchange for restricting access to Credential Service endpoints
+
+
+
+Note
+
+The Verifiable Presentation Protocol is designed to address the problem of resolving Verifiable Presentations and other claims when they cannot be passed as part of a client request. For example, they often cannot be included as part of an HTTP message header due to size restrictions. The protocol provides a secure mechanism for a Verifier to resolve credential-related resources. The protocol also provides a mechanism for storing issued Verifiable Credentials.
+
+
+
+
+
+5.1 Presentation Flow
+
+
+
+
+The following sequence diagram depicts a non-normative flow where a client interacts with a Verifier to present a Verifiable Credential:
+
+
+
+
+
+Figure 4 Presentation Flow
+
+The client sends a request to its Secure Token Service for a token including an access token. This could be a Self-Issued ID Token. The API used to make this request is implementation specific. The client may include a set of scopes that define the Verifiable Credentials the client wants the Verifier to have access to. This set of scopes is determined out of band and may be derived from metadata the verifier has previously made available to the client.
+
+The Secure Token Service responds with an access token, which may be included in the token claim of the Self-Issued ID Token. The access token can be used by the verifier to request Verifiable Credentials from the client's Credential Service.
+
+The client makes a request to the Verifier for a protected resource and includes a Self-Issued ID Token containing the access token.
+
+The Verifier resolves the client DID based on the value of the Self-Issued ID Token sub claim.
+
+The DID Service returns the DID Document. The Verifier validates the Self-Issued ID Token following Section 4.3.3 Validating Self-Issued ID Tokens.
+
+The Verifier obtains the client's Credential Service endpoint address using the DID document as described in Section 5.2 Credential Service Endpoint Discovery. The Verifier then issues a request with the access token to the Credential Service for a set of Verifiable Credentials.
+
+The Credential Service validates the access token and returns a Verifiable Presentation containing the requested credentials.
+
+
+
+
+
+5.2 Credential Service Endpoint Discovery
+
+
+
+
+The client DID Service MUST make the Credential Service available as a service entry (Decentralized Identifiers (DIDs) v1.0, sect. 5.4) in the DID document that is resolved by its DID. The type attribute of the service entry MUST be CredentialService. The serviceEndpoint property MUST be interpreted by the Verifier as the base URL of the Credential Service. The following is a non-normative example of a Credential Service entry:
+
+Example 1: Credential Service Entry in DID document
+
+{ "@context": [ "https://www.w3.org/ns/did/v1", "https://w3id.org/dspace-dcp/v1.0/dcp.jsonld" ], "service": [ { "id": "did:example:123#identity-hub", "type": "CredentialService", "serviceEndpoint": "https://cs.example.com" } ] }
+
+
+
+
+
+5.3 Credential Service Security
+
+
+
+
+As described in the previous presentation flow, a Credential Service may require an access token when processing a request from a Verifier. The format of the access token is not defined. How access control is defined in a Credential Service is implementation-specific. For example, implementations may provide the ability to selectively restrict access to resources.
+
+
+
+
+
+5.3.1 Submitting an Access Token
+
+
+
+
+Implementations that support access control require an access token. To provide the opportunity for Credential Service implementations to enforce proof-of-possession, the access token MUST be contained in the token claim of a Self-Issued ID Token as defined in Section 4.3 Self-Issued ID Tokens. The Self-Issued ID Token MUST be submitted in the HTTP Authorization header prefixed with Bearer of the request.
+
+
+
+
+
+5.4 Resolution API
+
+
+
+
+The Resolution API defines the Credential Service endpoint for querying credentials and returning a set of Verifiable Presentations.
+
+If a client is not authorized for an endpoint request, the Credential Service SHOULD return 4xx Client Error. The exact error code is implementation-specific.
+
+
+
+Sent by Verifier
+
+HTTP Method POST
+
+URL Path /presentations/query
+
+Request PresentationQueryMessage
+
+Response PresentationResponseMessage HTTP 2xx OR HTTP 4xx
+
+
+
+
+
+5.4.1 Presentation Query Message
+
+
+
+
+
+Schema JSON Schema
+
+Required - @context: Specifies a valid Json-Ld context ([json-ld11], sect. 3.1)
+
+- type: A string specifying the PresentationQueryMessage type.
+
+Optional - scope: A non-empty array of scopes corresponding to Section 5.4.1.2 Scopes.
+
+- presentationDefinition: A non-empty, valid Presentation Definition according to [presentation-ex].
+
+A PresentationQueryMessage MUST contain either a presentationDefinition or a scope parameter. If both parameters are present it is an error and the client MUST return an HTTP 400 BAD REQUEST response.
+
+The following are non-normative examples of the JSON body:
+
+Example 2: PresentationQueryMessage with scope
+
+{ "@context": [ "https://w3id.org/dspace-dcp/v1.0/dcp.jsonld" ], "type": "PresentationQueryMessage", "scope": [ "presentation1", "presentation2" ] }
+
+
+
+Example 3: PresentationQueryMessage with presentationDefinition
+
+{ "@context": [ "https://w3id.org/dspace-dcp/v1.0/dcp.jsonld" ], "type": "PresentationQueryMessage", "presentationDefinition": { "id": "presentation1", "input_descriptors": [ { "id": "organization credential", "format": { "ldp_vc": { "proof_type": [ "Ed25519Signature2018" ] } }, "constraints": { "fields": [ { "path": [ "$.type" ], "filter": { "type": "string", "pattern": "OrganizationCredential" } } ] } } ] } }
+
+
+
+
+
+5.4.1.1 Presentation Definitions
+
+
+
+
+An implementation MAY support the presentationDefinition parameter. If it does not, it MUST return 501 Not Implemented. The presentationDefinition parameter contains a valid Presentation Definition according to the Presentation Exchange Specification. The Credential Service will use the presentation definition to return a set of matching VPs in the format specified by the definition.
+
+
+
+
+
+5.4.1.2 Scopes
+
+
+
+
+Implementations MAY support requesting presentation of Verifiable Credentials using a set of scope values. A scope is an alias for a well-defined Presentation Definition. The specific scope value and the mapping between it and the respective Presentation Definition are out of the scope of this specification. The array must contain at least one value. If the array is empty, the Credential Service MUST return HTTP 4xx.
+
+A scope is a string value in the form:
+
+[alias]:[descriminator]
+
+The [alias] value MAY be implementation-specific.
+
+
+
+
+
+The org.eclipse.dspace.dcp.vc.type Alias
+
+
+
+
+The vc.type alias value MUST be supported and is used to specify access to a verifiable credential by type. For example:
+
+org.eclipse.dspace.dcp.vc.type:Member
+
+denotes read-only access to the VC type Member and may be used to request a VC or VP.
+
+
+
+
+
+The org.eclipse.dspace.dcp.vc.id Alias
+
+
+
+
+The org.eclipse.dspace.dcp.vc.id alias value MUST be supported and is used to specify access to a verifiable credential by id. For example:
+
+org.eclipse.dspace.dcp.vc.id:8247b87d-8d72-47e1-8128-9ce47e3d829d
+
+denotes read-only access to the VC identified by 8247b87d-8d72-47e1-8128-9ce47e3d829d and may be used to request a Verifiable Credential.
+
+
+
+
+5.4.2 Presentation Response Message
+
+
+
+
+
+Schema JSON Schema
+
+Required - @context: Specifies a valid Json-Ld context ([json-ld11], sect. 3.1).
+
+- type: A string specifying the PresentationResponseMessage type.
+
+- presentation: An array of Verifiable Presentations. The Verifiable Presentations may be strings, JSON objects, or a combination of both depending on the format.
+
+
+
+Optional - presentationSubmission: A valid Presentation Submission according to [presentation-ex].
+
+A PresentationResponseMessage SHOULD only include valid (non-expired, non-revoked, non-suspended) credentials. The following are non-normative examples of the JSON response body:
+
+Example 4: Presentation Response Message
+
+{ "@context": [ "https://w3id.org/dspace-dcp/v1.0/dcp.jsonld" ], "type": "PresentationResponseMessage", "presentation": [ "presentation1", "presentation2" ] }
+
+
+
+Example 5: Presentation Response Message with Presentation Submission
+
+{ "@context": [ "https://w3id.org/dspace-dcp/v1.0/dcp.jsonld" ], "type": "PresentationResponseMessage", "presentation": [ "jwtPresentation" ], "presentationSubmission": { "id": "Presentation example 2", "definition_id": "Example with multiple VPs", "descriptor_map": [ { "id": "id_credential", "format": "jwt_vp", "path": "$.presentation[0]", "path_nested": { "id": "id_nested_credential", "format": "jwt_vc", "path": "$.vp.verifiableCredential[0]" } } ] } }
+
+
+
+
+
+5.4.2.1 Presentation Submissions
+
+
+
+
+Implementations that support the presentationDefinition parameter MUST include the presentationSubmission parameter in the 5.4.2 Presentation Response Message with a valid Presentation Submission when a presentationDefinition is provided in the 5.4.1 Presentation Query Message.
+
+
+
+
+5.4.3 Presentation Validation
+
+
+
+
+Verifier SHOULD validate the Verifiable Presentation in the following manner:
+
+The Verifier MUST assert that the Verifiable Presentation is created either according to the scope or presentationDefinition
+
+The Verifier MUST validate the signature of the Verifiable Presentation by using the key obtained from the resolved VerificationMethod of the Verifiable Presentation. DID resolution is performed according to the DID Method specified in the DID part of the VerificationMethod of the Verifiable Presentation.
+
+The Verifier MUST validate that the VerificationMethod of the Verifiable Presentation has the Authentication Verification Relationship
+
+The Verifier MUST assert that the DID in the VerificationMethod of the Verifiable Credential has the same value as the issuer of the Verifiable Credential.
+
+The Verifier MUST validate the signature of the Verifiable Credential by using the key obtained from the resolved VerificationMethod of the Verifiable Credential. DID resolution is performed according to the DID Method specified in the DID part of the VerificationMethod of the Verifiable Presentation.
+
+If the Verifiable Credential contains a revocation mechanism, such as StatusList2021, the Verifier MUST validate the status of the Verifiable Credential according to the revocation mechanism.
+
+If the Verifiable Presentation contains any claims regarding its expiryDate or validity, the Verifier MUST validate those claims.
+
+If any of the steps fail, the Verifier MUST consider the Verifiable Presentation invalid.
+
+
+
+Additionally, if the specific semantics of a data space and credentials require cryptographic holder binding, the Verifier MUST assert that the credentialSubject.id in the Verifiable Credential and the DID part of the VerificationMethod of the Verifiable Presentation have the same value.
+
+
+
+
+
+6. Credential Issuance Protocol
+
+
+
+
+The Credential Issuance Protocol defines the endpoints and message types for requesting Verifiable Credentials from a Credential Issuer. The protocol is designed to handle use cases where credentials can automatically be issued and where a manual workflow is required.
+
+
+
+
+
+6.1 Issuance Flow
+
+
+
+
+The following sequence diagram depicts a non-normative flow where a client interacts with a Credential Issuer to issue a Verifiable Credential:
+
+
+
+
+
+Figure 5 Issuance Flow
+
+The client sends a request to its Secure Token Service for a token including an access token. This could be a Self-Issued ID Token. The API used to make this request is implementation specific. The client may include a set of scopes that define the Verifiable Credentials the client wants the Issuer Service to provide. This set of scopes is determined out of band and may be derived from metadata the Credential Issuer has previously made available to the client.
+
+The Secure Token Service responds with an access token, which may be included in the token claim of the Self-Issued ID Token. The access token can be used by the Issuer Service to write requested Verifiable Credentials to the client's Credential Service.
+
+The client makes a request to the Issuer Service for one or more Verifiable Credentials and includes a Self-Issued ID Token containing the access token.
+
+The Issuer Service resolves the client DID based on the value of the Self-Issued ID Token sub claim.
+
+The DID Service returns the DID Document. The Issuer Service validates the Self-Issued ID Token following Section 4.3.3 Validating Self-Issued ID Tokens.
+
+The Issuer Service rejects the request or acknowledges receipt.
+
+At a later point in time, if the Verifiable Credential request is approved, the Issuer Service uses the resolved DID Document to obtain the client's Credential Service endpoint as described in Section 5.2 Credential Service Endpoint Discovery and sends the Verifiable Credentials to the Credential Service. The send operation is performed asynchronously from the client request.
+
+The Credential Service validates the access token and stores the Verifiable Credentials.
+
+
+
+
+
+6.2 Issuer Service Endpoint Discovery
+
+
+
+
+The client DID Service MUST make the Issuer Service available as a service entry (Decentralized Identifiers (DIDs) v1.0, sect. 5.4) in the DID document that is resolved by its DID. The type attribute of the service entry MUST be IssuerService.
+
+The serviceEndpoint property MUST be interpreted by the client as the base URL of the Issuer Service. The following is a non-normative example of a Issuer Service entry:
+
+Example 6: Credential Service Entry in DID document
+
+{ "@context": [ "https://www.w3.org/ns/did/v1", "https://w3id.org/dspace-dcp/v1.0/dcp.jsonld" ], "service": [ { "id":"did:example:123#issuer-service", "type": "IssuerService", "serviceEndpoint": "https://issuer.example.com" } ] }
+
+
+
+
+
+6.3 Issuer Service Base URL
+
+
+
+
+All endpoint addresses are defined relative to the base URL of the Issuer Service. The Credential Issuer will use the base URL for the issuer field in all Verifiable Credentials it issues as defined by the issuer property of the VC DataModel version of the selected profile.
+
+No assumptions are made about the base URL, for example, if it is a domain, subdomain, or contains a path.
+
+
+
+
+6.4 Credential Request API
+
+
+
+
+The Credential Request API defines the REQUIRED Issuer Service endpoint for requesting Verifiable Credentials.
+
+The request MUST include an ID Token in the HTTP Authorization header prefixed with Bearer as defined in the 4.3.1 Verifiable Presentation Access Token. The issuer claim can be used by the Credential Service to resolve the client's DID to obtain cryptographic material for validation and credential binding.
+
+The ID Token MAY contain a token claim that is a bearer token granting write privileges for the requested Verifiable Credentials into the client's Credential Service as defined by 5. Verifiable Presentation Protocol. If the token claim is present, it MUST be used by the Issuer Service.
+
+The bearer token MAY also be used by the Issuer Service to resolve Verifiable Presentations the client is required to hold for issuance of the requested Verifiable Credentials.
+
+If the issuer supports a pre-authorization code flow, the client MUST use the pre-authorized_code claim in the Self-Issued ID Token to provide the pre-authorization code to the issuer.
+
+
+
+Sent by Client that is a potential Holder
+
+HTTP Method POST
+
+URL Path /credentials
+
+Request CredentialRequestMessage
+
+Response HTTP 201 OR HTTP 4xx Client Error
+
+
+
+
+
+6.4.1 Credential Request Message
+
+
+
+
+
+Schema JSON Schema
+
+Required - @context: Specifies a valid Json-Ld context ([json-ld11], sect. 3.1).
+
+- type: A string specifying the CredentialRequestMessage type.
+
+- holderPid: A string corresponding to the request id on the Holder side.
+
+- credentials: an array of objects with an id property, each referencing a 6.6.2 CredentialObject.
+
+The following is a non-normative example of a CredentialRequestMessage:
+
+Example 7: CredentialRequestMessage
+
+{ "@context": [ "https://w3id.org/dspace-dcp/v1.0/dcp.jsonld" ], "type": "CredentialRequestMessage", "holderPid": "holderPid", "credentials": [ { "id": "d5c77b0e-7f4e-4fd5-8c5f-28b5fc3f96d1" }, { "id": "c0f81e68-6d35-4f9d-bc04-51e511b2e46c" } ] }
+
+
+
+Each IDs in the credentials array MUST be one of the id values of an object in the credentialsSupported returned from the 6.7 Issuer Metadata API. When processing, the Issuer Service MUST resolve this string value to the respective object.
+
+On successful receipt of the request, the Issuer Service MUST respond with a 201 CREATED and the Location header set to the location of the request status (6.8 Credential Request Status API)
+
+The Issuer Service MAY respond with 401 Not Authorized if the request is unauthorized or other HTTP status codes to indicate an exception.
+
+If the request is approved, the issuer endpoint will send an acknowledgement to the client. When the Verifiable Credentials are ready, the Issuer Service will respond asynchronously with a write-request to the client's Credential Service using the Storage API defined in Section 6.5 Storage API.
+
+
+
+
+
+6.5 Storage API
+
+
+
+
+The Storage API defines the REQUIRED Credential Service endpoint for writing issued credentials, typically invoked by an Issuer Service.
+
+If a client is not authorized for an endpoint request, the Credential Service SHOULD return 4xx Client Error. The exact error code is implementation-specific.
+
+
+
+Sent by Issuer Service
+
+HTTP Method POST
+
+URL Path /credentials
+
+Request Credential Message
+
+Response HTTP 2xx OR HTTP 4xx Client Error
+
+
+
+
+
+6.5.1 Credential Message
+
+
+
+
+
+Schema JSON Schema
+
+Required - @context: Specifies a valid Json-Ld context ([json-ld11], sect. 3.1).
+
+- type: A string specifying the CredentialMessage type.
+
+- issuerPid: A string corresponding to the issuance id on the Issuer side.
+
+- status: A string stating whether the request was successful (ISSUED) or rejected (REJECTED).
+
+Optional - credentials: An array of Credential Container Json objects as defined bellow.
+
+- holderPid: A string corresponding to the issuance id on the Holder side.
+
+- rejectionReason: a String containing additional information why a request was rejected. Can be null.
+
+The following is a non-normative example of a Credential Message JSON body:
+
+Example 8: Credential Message (issued)
+
+{ "@context": [ "https://w3id.org/dspace-dcp/v1.0/dcp.jsonld" ], "type": "CredentialMessage", "credentials": [ { "credentialType": "MembershipCredential", "payload": "", "format": "jwt" }, { "credentialType": "OrganizationCredential", "payload": "", "format": "json-ld" } ], "issuerPid": "issuerPid", "holderPid": "holderPid", "status": "ISSUED" }
+
+
+
+The following example shows a rejected credential request JSON body:
+
+Example 9: Credential Message (rejected)
+
+{ "@context": [ "https://w3id.org/dspace-dcp/v1.0/dcp.jsonld" ], "type": "CredentialMessage", "issuerPid": "issuerPid", "holderPid": "holderPid", "status": "REJECTED", "rejectionReason": "final approval not granted" }
+
+
+
+Note that the status applies to the entire request, i.e., a request is considered rejected if at least one credential could not be issued. Allowed values for the status are "ISSUED" and "REJECTED". The rejectionReason field is optional and should not disclose any confidential information.
+
+
+
+
+6.5.2 Credential Container
+
+
+
+
+The Credential Message's credentials property contains an array of CredentialContainer objects. The Credential Container object contains the following properties:
+
+
+
+Schema JSON Schema
+
+Required - credentialType: A single string specifying type of credential. See VC DataModel 1.1 or VC DataModel 2.0, respectively.
+
+- payload: A Json Literal ([json-ld11], sect. 4.2.2) containing a Verifiable Credential defined by VC DataModel version of the selected profile.
+
+- format: a JSON string that describes the format of the credential to be issued.
+
+
+
+
+
+6.6 Credential Offer API
+
+
+
+
+Some scenarios involve the Credential Issuer making an initial offer. For example, an out-of-band process may result in a credential offer. Or, a Credential Issuer may start a key rotation process which requires a Verifiable Credential to be reissued. In this case, the Credential Issuer can proactively prompt a Holder to request a new Verifiable Credential during the key rotation period.
+
+The Credential Offer API defines the REQUIRED Credential Service endpoint for notifying a Holder of a Verifiable Credential offer.
+
+
+
+Sent by Credential Issuer
+
+HTTP Method POST
+
+URL Path /offers
+
+Request CredentialOfferMessage
+
+Response HTTP 200 OR HTTP 4xx Client Error
+
+
+
+
+
+6.6.1 Credential Offer Message
+
+
+
+
+
+Schema JSON Schema
+
+Required - @context: Specifies a valid Json-Ld context ([json-ld11], sect. 3.1).
+
+- type: A string specifying the CredentialOfferMessage type.
+
+- issuer: The Credential Issuer DID.
+
+- credentials: A non-empty JSON array, where every entry is a JSON object of type 6.6.2 CredentialObject.
+
+If the entries in the credentials property are sparse, i.e., only contain an id, the values of all other properties of the 6.6.2 CredentialObject must be taken from the credentialsSupported list returned from the 6.7 Issuer Metadata API. When processing, the Credential Service MUST resolve this string value to the respective object.
+
+The following is a non-normative example of a credential offer request:
+
+Example 10: CredentialOfferMessage
+
+{ "@context": [ "https://w3id.org/dspace-dcp/v1.0/dcp.jsonld" ], "type": "CredentialOfferMessage", "issuer": "issuer", "credentials": [ { "id": "d5c77b0e-7f4e-4fd5-8c5f-28b5fc3f96d1", "type": "CredentialObject", "credentialType": "CompanyCredential", "offerReason": "reissue", "bindingMethods": [ "did:web" ], "profile": "vc10-sl2021/jwt", "issuancePolicy": { "id": "Scalable trust example", "input_descriptors": [ { "id": "pd-id", "constraints": { "fields": [ { "path": [ "$.vc.type" ], "filter": { "type": "string", "pattern": "^AttestationCredential$" } } ] } } ] } } ] }
+
+
+
+
+
+6.6.2 CredentialObject
+
+
+
+
+
+Schema JSON Schema
+
+Required - type: A string specifying the CredentialObject type.
+
+- id: a string defining a unique, stable identifier for this CredentialObject
+
+Optional - @context: Specifies a valid Json-Ld context ([json-ld11], sect. 3.1). As the credentialObject is usually embedded, its context is provided by the enveloping object.
+
+- credentialType: A single string specifying type of credential being offered.
+
+- bindingMethods: An array of strings defining the key material that an issued credential is bound to.
+
+- credentialSchema: A URL pointing to the credential schema of the object in a VC's credentialSubject property.
+
+- profile: An string containing the alias of the profiles, e.g. "vc20-bssl/jwt".
+
+- issuancePolicy: A presentation definition [presentation-ex] signifying the required Verifiable Presentation for issuance.
+
+- offerReason: A reason for the offer as a string. Valid values may include reissue and proof-key-revocation.
+
+The following is a non-normative example of a CredentialObject:
+
+Example 11: CredentialObject
+
+{ "@context": [ "https://w3id.org/dspace-dcp/v1.0/dcp.jsonld" ], "id": "d5c77b0e-7f4e-4fd5-8c5f-28b5fc3f96d1", "type": "CredentialObject", "credentialType": "CompanyCredential", "credentialSchema": "https://example.com/credentials/credentialSchema", "offerReason": "reissue", "bindingMethods": [ "did:web" ], "profile": "vc20-bssl/jwt", "issuancePolicy": { "id": "Scalable trust example", "input_descriptors": [ { "id": "pd-id", "constraints": { "fields": [ { "path": [ "$.vc.type" ], "filter": { "type": "string", "pattern": "^AttestationCredential$" } } ] } } ] } }
+
+
+
+
+
+6.7 Issuer Metadata API
+
+
+
+
+The Issuer Metadata API defines the REQUIRED Issuer Service endpoint for conveying verifiable credential types supported by the Credential Issuer.
+
+
+
+Sent by A client
+
+HTTP Method GET
+
+URL Path /metadata
+
+Response 6.7.1 IssuerMetadata HTTP 200
+
+
+
+
+
+6.7.1 IssuerMetadata
+
+
+
+
+
+Schema JSON Schema
+
+Required - @context: Specifies a valid Json-Ld context ([json-ld11], sect. 3.1).
+
+- type: A string specifying the IssuerMetadata type.
+
+- issuer: A string containing the Credential Issuer DID.
+
+Optional - credentialsSupported: A JSON array of 6.6.2 CredentialObject elements.
+
+The following is a non-normative example of a IssuerMetadata response object:
+
+Example 12: IssuerMetadata
+
+{ "@context": [ "https://w3id.org/dspace-dcp/v1.0/dcp.jsonld" ], "type": "IssuerMetadata", "issuer": "did:web:issuer-url", "credentialsSupported": [ { "id": "d5c77b0e-7f4e-4fd5-8c5f-28b5fc3f96d1", "type": "CredentialObject", "credentialType": "CompanyCredential", "offerReason": "reissue", "credentialSchema": "https://example.com/company-credential-schema.json", "bindingMethods": [ "did:web" ], "profile": "vc10-sl2021/jwt", "issuancePolicy": { "id": "Scalable trust example", "input_descriptors": [ { "id": "pd-id", "constraints": { "fields": [ { "path": [ "$.vc.type" ], "filter": { "type": "string", "pattern": "^AttestationCredential$" } } ] } } ] } } ] }
+
+
+
+Every CredentialObject in the credentialsSupported array MUST contain all optional properties defined in 6.6.2 CredentialObject.
+
+
+
+
+
+6.8 Credential Request Status API
+
+
+
+
+The Credential Request Status API defines the REQUIRED Issuer Service endpoint for conveying the status of a Verifiable Credential request.
+
+
+
+Sent by A client
+
+HTTP Method GET
+
+URL Path /requests/<request id> where the request id corresponds to the ID identified by the location header returned for a 6.4.1 Credential Request Message
+
+Response 6.8.1 CredentialStatus HTTP 200
+
+The Issuer Service MUST implement access control such that only the client that made the request may access a particular request status. A Self-Issued ID Token MUST be submitted in the HTTP Authorization header prefixed with Bearer of the request.
+
+
+
+
+
+6.8.1 CredentialStatus
+
+
+
+
+
+Schema JSON Schema
+
+Required - @context: Specifies a valid Json-Ld context ([json-ld11], sect. 3.1).
+
+- type: A string specifying the CredentialStatus type.
+
+- issuerPid: A string corresponding to the issuance id on the Issuer side.
+
+- holderPid: A string corresponding to the issuance id on the Holder side.
+
+- status: A string with a value of RECEIVED, REJECTED, or ISSUED.
+
+The following is a non-normative example of a CredentialStatus response object:
+
+Example 13: CredentialStatus
+
+{ "@context": [ "https://w3id.org/dspace-dcp/v1.0/dcp.jsonld" ], "type": "CredentialStatus", "issuerPid": "issuerPid", "holderPid": "holderPid", "status": "RECEIVED" }
+
+
+
+
+
+6.9 Key Rotation and Revocation
+
+
+
+
+Issuer Service implementations SHOULD support rotation and revocation of keys used to create Verifiable Credential proofs.
+
+
+
+
+
+6.9.1 Key rotation
+
+
+
+
+Key rotation may be supported in the following way:
+
+After a defined cryptoperiod, a rotation is initiated, a new key pair is generated and the public key is added to a verificationMethod in the Credential Issuer DID document. The new private key is used to sign newly issued Verifiable Credential proofs.
+
+The old private key is decommissioned (archived or destroyed). However, the verificationMethod in the Credential Issuer DID document are retained so existing issued Verifiable Credentials may be verified.
+
+At some point before existing Verifiable Credentials are set to expire, an Credential Issuer may make credential offers for new Verifiable Credentials to Holders with the offerReason = reissue property.
+
+After a defined period, the rotated key's verificationMethod will be removed from the Credential Issuer DID document. This period must at least extend to the expiration date of the last issued credential. At this point, any existing Verifiable Credentials with proofs signed by the old (now rotated) key will become invalid.
+
+
+
+Implementors following this sequence SHOULD set the expirationDate/validUntil property of issued Verifiable Credentials to less than the rotation period of the keys used to sign their proofs. Rotated keys SHOULD not be decommissioned until all credentials, that were signed with it, have expired.
+
+
+
+
+6.9.2 Key revocation
+
+
+
+
+Key revocation may be supported in the following way:
+
+After revocation is initiated, a new key pair is generated and the public key is added to a verificationMethod in the Credential Issuer DID document. The new private key is used to sign newly issued Verifiable Credential proofs.
+
+The old private key is decommissioned (archived or destroyed) and the verificationMethod in the Credential Issuer DID document is removed.
+
+The Credential Issuer may make credential offers for new Verifiable Credentials to Holders with the offerReason = proof-key-revocation property.
+
+
+
+Upon revocation of a key pair, all credentials that were issued and proofed with that key immediately become invalid.
+
+
+
+
+
+6.10 Verifiable Credential Revocation
+
+
+
+
+Verifiable Credential revocation MUST be supported using the Verifiable Credentials Status List v2021 specification. Note that implementations MAY support multiple lists.
+
+
+
+
+7. Conformance
+
+
+
+
+As well as sections marked as non-normative, all authoring guidelines, diagrams, examples, and notes in this specification are non-normative. Everything else in this specification is normative.
+
+The key words MAY, MUST, MUST NOT, REQUIRED, and SHOULD in this document are to be interpreted as described in BCP 14 [RFC2119] [RFC8174] when, and only when, they appear in all capitals, as shown here.
+
+
+
+A. Profiles of the Decentralized Claims Protocol
+
+
+
+
+Different variations of the Verifiable Credentials Data Model, the revocation system, and proof stack complicate interoperability. Profiles of the DCP specification help narrow down those possibilities.
+
+This specification defines two profiles, which are referenced by an alias.
+
+
+
+
+
+A.1 DCP Profile Definitions
+
+
+
+
+alias VC Data Model Revocation System Proof Stack Remarks
+
+vc20-bssl/jwt VC Data Model 2.0 BitStringStatusList Enveloped proofs using JWT/JOSE Ignore ttl, use validUntil (*). No JWE supported. The concrete signature algorithm is not specified, as implementors are expected to handle all reasonably well-known crypto algorithms like RSA, EC and EdDSA
+
+vc11-sl2021/jwt VC Data Model 1.1 StatusList2021 External proofs using JWT No JWE supported. The concrete signature algorithm is not specified, as implementors are expected to handle all reasonably well-known crypto algorithms like RSA, EC and EdDSA
+
+(*) In its current form, the BitStringStatusList credential data model conflicts with the VC DataModel 2.0, specifically regarding the validity period (ttl vs validUntil).
+
+
+
+
+
+A.1.1 Homogeneity requirement
+
+
+
+
+Verifiable Credentials MUST be homogenous. This means the same data model version and proof mechanism MUST be used for both credentials and presentations. For example, a verifiable credential secured with an enveloped proof using JOSE (VC Data Model 2.0) is enclosed in a verifiable presentation that is also secured with JWT/JOSE.
+
+Heterogeneous sets of credentials MUST be enclosed in multiple presentations such that each presentation only contains credentials of the same data model and proof mechanism.
+
+
+
+
+
+A.2 Profile Authoring Recommendations
+
+
+
+
+This non-normative section is intended to provide guidance to authors who want to define their own profile definition.
+
+At a minimum, the following profile aspects must be defined:
+
+Verifiable Credential Data Model.
+
+Revocation System. Specifies how the validity and expiration of Verifiable Credentials is checked.
+
+Proof stack. Specifies how data integrity of the VC is to be provided.
+
+
+
+In addition, the profile may be further constrained, for example, by limiting the number of acceptable cryptographic algorithms.
+
+If possible, a single credential format should be used when defining a profile.
+
+
+
+
+B. Notes
+
+
+
+
+
+B.1 List of Figures
+
+
+
+
+Figure 1 The Issuer-Holder-Verifier Model
+
+Figure 2 Information Flow Architecture
+
+Figure 3 Consent in the Decentralized Claims Protocol
+
+Figure 4 Presentation Flow
+
+Figure 5 Issuance Flow
+
+
+
+
+
+C. References
+
+
+
+
+
+C.1 Normative references
+
+
+
+
+[did-core]
+
+Decentralized Identifiers (DIDs) v1.0. Manu Sporny; Amy Guy; Markus Sabadello; Drummond Reed. W3C. 19 July 2022. W3C Recommendation. URL: https://www.w3.org/TR/did-core/
+
+[dsp-base]
+
+Dataspace Protocol 2024-1. Eclipse Dataspace Working Group. unofficial. URL: https://eclipse-dataspace-protocol-base.github.io/DataspaceProtocol/
+
+[json-ld11]
+
+JSON-LD 1.1. Gregg Kellogg; Pierre-Antoine Champin; Dave Longley. W3C. 16 July 2020. W3C Recommendation. URL: https://www.w3.org/TR/json-ld11/
+
+[json-schema]
+
+JSON Schema: A Media Type for Describing JSON Documents. Austin Wright; Henry Andrews; Ben Hutton; Greg Dennis. Internet Engineering Task Force (IETF). 10 June 2022. Internet-Draft. URL: https://datatracker.ietf.org/doc/html/draft-bhutton-json-schema
+
+[presentation-ex]
+
+Presentation Exchange 2.1.1. Decentralized Identity Foundation. unofficial. URL: https://identity.foundation/presentation-exchange/spec/v2.1.1/
+
+[RFC2119]
+
+Key words for use in RFCs to Indicate Requirement Levels. S. Bradner. IETF. March 1997. Best Current Practice. URL: https://www.rfc-editor.org/rfc/rfc2119
+
+[rfc7519]
+
+JSON Web Token (JWT). M. Jones; J. Bradley; N. Sakimura. IETF. May 2015. Proposed Standard. URL: https://www.rfc-editor.org/rfc/rfc7519
+
+[RFC8174]
+
+Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words. B. Leiba. IETF. May 2017. Best Current Practice. URL: https://www.rfc-editor.org/rfc/rfc8174
+
+[rfc9110]
+
+HTTP Semantics. R. Fielding, Ed.; M. Nottingham, Ed.; J. Reschke, Ed. IETF. June 2022. Internet Standard. URL: https://httpwg.org/specs/rfc9110.html
+
+[vc-bitstring-status-list-20230427]
+
+Verifiable Credentials Status List v2021. Manu Sporny; Dave Longley; Orie Steele; Mahmoud Alkhraishi; Michael Prorock. W3C. 27 April 2023. FPWD. URL: https://www.w3.org/TR/2023/WD-vc-status-list-20230427/
+
+
+
+
+
+C.2 Informative references
+
+
+
+
+[rfc6749]
+
+The OAuth 2.0 Authorization Framework. D. Hardt, Ed. IETF. October 2012. Proposed Standard. URL: https://www.rfc-editor.org/rfc/rfc6749
+
+
+
+
+
+Permalink
+
+Referenced in:
+
+
+
+§ 1. Terminology
+
+
+
+
+
+Permalink
+
+Referenced in:
+
+
+
+§ 3. Trust Model and Information Flow Architecture
+
+§ 3.2 Trust Relationships (2)
+
+§ 4.2 Identities
+
+§ 4.3 Self-Issued ID Tokens (2)
+
+§ 4.3.3 Validating Self-Issued ID Tokens (2) (3)
+
+§ 5.1 Presentation Flow
+
+§ 5.2 Credential Service Endpoint Discovery
+
+§ 5.4.3 Presentation Validation (2) (3) (4) (5) (6) (7) (8)
+
+§ 6.1 Issuance Flow
+
+§ 6.4 Credential Request API
+
+
+
+
+
+Permalink
+
+Referenced in:
+
+
+
+§ 1. Terminology
+
+§ 3. Trust Model and Information Flow Architecture (2) (3) (4) (5) (6) (7) (8) (9) (10) (11) (12) (13)
+
+§ 3.1 Consent (2) (3)
+
+§ 3.2 Trust Relationships
+
+§ 5. Verifiable Presentation Protocol
+
+§ 6.4 Credential Request API
+
+§ 6.6 Credential Offer API (2)
+
+§ 6.9.1 Key rotation
+
+§ 6.9.2 Key revocation
+
+
+
+
+
+Permalink
+
+Referenced in:
+
+
+
+§ 3. Trust Model and Information Flow Architecture
+
+§ 3.2 Trust Relationships (2) (3) (4) (5)
+
+§ 4.1 Decentralization
+
+
+
+
+
+Permalink
+
+Referenced in:
+
+
+
+§ 5. Verifiable Presentation Protocol
+
+
+
+
+
+Permalink
+
+Referenced in:
+
+
+
+§ 1. Terminology
+
+
+
+
+
+Permalink
+
+Referenced in:
+
+
+
+§ 1. Terminology (2) (3) (4) (5) (6)
+
+§ 2. Dataspace Ecosystem Overview
+
+§ 2.2.2 Participant Agent Systems (2)
+
+§ 2.2.3 Credential Issuer Systems (2) (3) (4)
+
+§ 3. Trust Model and Information Flow Architecture (2) (3) (4) (5) (6)
+
+§ 3.1 Consent (2) (3) (4) (5)
+
+§ 3.2 Trust Relationships (2)
+
+§ 4.1 Decentralization (2) (3)
+
+§ 5. Verifiable Presentation Protocol (2)
+
+§ 5.1 Presentation Flow (2) (3) (4)
+
+§ 5.4.1.2 Scopes
+
+§ The org.eclipse.dspace.dcp.vc.id Alias
+
+§ 5.4.3 Presentation Validation (2) (3) (4) (5) (6) (7)
+
+§ 6. Credential Issuance Protocol
+
+§ 6.1 Issuance Flow (2) (3) (4) (5) (6) (7)
+
+§ 6.3 Issuer Service Base URL
+
+§ 6.4 Credential Request API (2) (3)
+
+§ 6.4.1 Credential Request Message
+
+§ 6.5.2 Credential Container
+
+§ 6.6 Credential Offer API (2) (3)
+
+§ 6.8 Credential Request Status API
+
+§ 6.9 Key Rotation and Revocation
+
+§ 6.9.1 Key rotation (2) (3) (4) (5) (6)
+
+§ 6.9.2 Key revocation (2)
+
+§ 6.10 Verifiable Credential Revocation
+
+
+
+
+
+Permalink
+
+Referenced in:
+
+
+
+§ 1. Terminology (2)
+
+§ 2.2.2 Participant Agent Systems
+
+§ 2.2.3 Credential Issuer Systems
+
+§ 3. Trust Model and Information Flow Architecture (2) (3)
+
+§ 3.1 Consent (2)
+
+§ 3.2 Trust Relationships
+
+§ 4.1 Decentralization
+
+§ 4.3.1 Verifiable Presentation Access Token
+
+§ 5. Verifiable Presentation Protocol
+
+§ 5.1 Presentation Flow
+
+§ 5.4 Resolution API
+
+§ 5.4.2 Presentation Response Message (2)
+
+§ 5.4.3 Presentation Validation (2) (3) (4) (5) (6) (7) (8) (9) (10)
+
+§ 6.4 Credential Request API
+
+§ 6.6.2 CredentialObject
+
+
+
+
+
+Permalink
+
+Referenced in:
+
+
+
+§ 3. Trust Model and Information Flow Architecture (2) (3)
+
+§ 3.1 Consent
+
+§ 3.2 Trust Relationships (2) (3) (4)
+
+
+
+
+
+Permalink
+
+Referenced in:
+
+
+
+§ 3. Trust Model and Information Flow Architecture (2) (3) (4) (5) (6) (7)
+
+§ 3.1 Consent (2) (3) (4) (5) (6) (7) (8)
+
+§ 3.2 Trust Relationships (2) (3)
+
+§ 4.1 Decentralization
+
+§ 4.3 Self-Issued ID Tokens (2) (3)
+
+§ 4.3.1 Verifiable Presentation Access Token (2)
+
+§ 4.3.3 Validating Self-Issued ID Tokens (2) (3) (4) (5) (6) (7) (8) (9) (10) (11)
+
+§ 5. Verifiable Presentation Protocol
+
+§ 5.1 Presentation Flow (2) (3) (4) (5) (6) (7) (8)
+
+§ 5.3 Credential Service Security
+
+§ 5.4 Resolution API
+
+§ 5.4.3 Presentation Validation (2) (3) (4) (5) (6) (7) (8) (9) (10)
+
+
+
+
+
+Permalink
+
+Referenced in:
+
+
+
+§ 2. Dataspace Ecosystem Overview (2)
+
+
+
+
+
+Permalink
+
+Referenced in:
+
+
+
+§ 2.2.1 Dataspace Governance Authority Systems
+
+§ 3.1 Consent
+
+§ 3.2 Trust Relationships (2) (3) (4)
+
+
+
+
+
+Permalink
+
+Referenced in:
+
+
+
+§ 2. Dataspace Ecosystem Overview (2)
+
+§ 2.2.1 Dataspace Governance Authority Systems
+
+§ 2.2.2 Participant Agent Systems (2) (3)
+
+§ 2.2.3 Credential Issuer Systems
+
+§ 4.1 Decentralization (2) (3) (4)
+
+§ 4.3 Self-Issued ID Tokens
+
+
+
+
+
+Permalink
+
+Referenced in:
+
+
+
+§ 2. Dataspace Ecosystem Overview (2)
+
+§ 2.2.2 Participant Agent Systems
+
+§ 3. Trust Model and Information Flow Architecture (2) (3) (4) (5) (6) (7) (8)
+
+§ 3.1 Consent (2) (3) (4)
+
+§ 4.3.2.1 Using the OAuth 2 Client Credential Grant (2)
+
+
+
+
+
+Permalink
+
+Referenced in:
+
+
+
+Not referenced in this document.
+
+
+
+
+
+Permalink
+
+Referenced in:
+
+
+
+§ 6. Credential Issuance Protocol
+
+§ 6.1 Issuance Flow (2)
+
+§ 6.3 Issuer Service Base URL
+
+§ 6.6 Credential Offer API (2) (3) (4)
+
+§ 6.6.1 Credential Offer Message
+
+§ 6.7 Issuer Metadata API
+
+§ 6.7.1 IssuerMetadata
+
+§ 6.9.1 Key rotation (2) (3) (4)
+
+§ 6.9.2 Key revocation (2) (3)
+
+
+
+
+
+Permalink
+
+Referenced in:
+
+
+
+Not referenced in this document.
+
+
+
+
+
+Permalink
+
+Referenced in:
+
+
+
+§ 3. Trust Model and Information Flow Architecture (2) (3) (4)
+
+§ 3.1 Consent
+
+§ 4.3.2 Obtaining Self-Issued ID Tokens (2)
+
+§ 4.3.2.1 Using the OAuth 2 Client Credential Grant (2) (3) (4)
+
+§ 5.1 Presentation Flow (2)
+
+§ 6.1 Issuance Flow (2)
+
+
+
+
+
+Permalink
+
+Referenced in:
+
+
+
+§ 3. Trust Model and Information Flow Architecture (2) (3) (4) (5) (6)
+
+§ 3.1 Consent (2) (3)
+
+§ 3.2 Trust Relationships (2)
+
+§ 4.3.1 Verifiable Presentation Access Token
+
+§ 5. Verifiable Presentation Protocol (2)
+
+§ 5.1 Presentation Flow (2) (3) (4)
+
+§ 5.2 Credential Service Endpoint Discovery (2)
+
+§ 5.3 Credential Service Security (2)
+
+§ 5.3.1 Submitting an Access Token
+
+§ 5.4 Resolution API (2)
+
+§ 5.4.1.1 Presentation Definitions
+
+§ 5.4.1.2 Scopes
+
+§ 6.1 Issuance Flow (2) (3) (4)
+
+§ 6.4 Credential Request API
+
+§ 6.5 Storage API (2)
+
+§ 6.6 Credential Offer API
+
+§ 6.6.1 Credential Offer Message
+
+
+
+
+
+Permalink
+
+Referenced in:
+
+
+
+§ 1. Terminology
+
+§ 3.2 Trust Relationships
+
+§ 5.1 Presentation Flow
+
+§ 5.2 Credential Service Endpoint Discovery
+
+§ 6.1 Issuance Flow
+
+§ 6.2 Issuer Service Endpoint Discovery
+
+
+
+
+
+Permalink
+
+Referenced in:
+
+
+
+§ 3. Trust Model and Information Flow Architecture (2)
+
+§ 6.1 Issuance Flow (2) (3) (4) (5) (6) (7)
+
+§ 6.2 Issuer Service Endpoint Discovery (2)
+
+§ 6.3 Issuer Service Base URL
+
+§ 6.4 Credential Request API (2) (3)
+
+§ 6.4.1 Credential Request Message (2) (3) (4)
+
+§ 6.5 Storage API (2)
+
+§ 6.7 Issuer Metadata API
+
+§ 6.8 Credential Request Status API (2)
+
+§ 6.9 Key Rotation and Revocation
+
+
+
+
+
+Permalink
+
+Referenced in:
+
+
+
+§ 5.1 Presentation Flow (2) (3) (4) (5)
+
+§ 5.3.1 Submitting an Access Token
+
+§ 6.1 Issuance Flow (2) (3) (4) (5)
+
+§ 6.8 Credential Request Status API
+
+
+
+
+

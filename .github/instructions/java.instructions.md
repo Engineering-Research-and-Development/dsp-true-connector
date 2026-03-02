@@ -25,6 +25,9 @@ applyTo: '**/*.java'
   references (e.g., `stream.map(Foo::toBar)`).
 - **Null Handling**: Avoid returning or accepting `null`. Use `Optional<T>` for possibly-absent values and `Objects`
   utility methods like `equals()` and `requireNonNull()`.
+- The order of class members should be: static fields, instance fields, constructors, public methods, protected methods,
+package-private methods, private methods. This promotes readability and consistency across the codebase.
+- Use Java model classes where possible instead of raw strings or maps for data structures to improve readability and maintainability; use the concrete types instead of var.
 
 ### Naming Conventions
 

@@ -23,4 +23,7 @@ public class DCPConstants {
 
     /** The legacy DID document filename. */
     public static final String LEGACY_DID_FILENAME = "/did.json";
+
+    public static final String ISSUER_METADATA_PATH = "/metadata";
+    public static final String ISSUER_CREDENTIALS_PATH = "/credentials";
 }

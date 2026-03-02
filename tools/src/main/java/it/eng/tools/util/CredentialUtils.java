@@ -3,6 +3,7 @@ package it.eng.tools.util;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
+import okhttp3.Credentials;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -200,7 +201,7 @@ public class CredentialUtils {
 	 */
 	private String getFallbackCredentials() {
 		logger.debug("Using basic authentication for connector credentials");
-		return okhttp3.Credentials.basic("connector@mail.com", "password");
+		return Credentials.basic("connector@mail.com", "password");
 	}
 
 	/**

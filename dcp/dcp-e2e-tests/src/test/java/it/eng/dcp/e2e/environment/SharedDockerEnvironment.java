@@ -239,12 +239,14 @@ public class SharedDockerEnvironment {
                 .workDir("/app")
                 .copy(jarRelativePath, "/app/app.jar")
                 .copy("src/test/resources/eckey.p12", "/app/eckey.p12")
+                .copy("src/test/resources/application-holderverifier.properties", "/config/application-holderverifier.properties")
                 .expose(8081)
                 .env("JAVA_OPTS", "-Xmx512m -Xms256m")
                 .entryPoint("sh", "-c", "java $JAVA_OPTS -jar /app/app.jar")
                 .build())
             .withFileFromPath(jarRelativePath, holderVerifierJar)
-            .withFileFromPath("src/test/resources/eckey.p12", holderVerifierPath.resolve("src/test/resources/eckey.p12"));
+            .withFileFromPath("src/test/resources/eckey.p12", holderVerifierPath.resolve("src/test/resources/eckey.p12"))
+            .withFileFromPath("src/test/resources/application-holderverifier.properties", holderVerifierPath.resolve("src/test/resources/application-holderverifier.properties"));
         imagesToCleanup.add("dcp-holder-verifier-test-e2e");
 
         holderVerifierContainer = new GenericContainer<>(holderVerifierImage)
@@ -261,9 +263,11 @@ public class SharedDockerEnvironment {
             .withEnv("DCP_CONNECTOR_DID_VERIFIER", "did:web:localhost%3A8081:verifier")
             .withEnv("DCP_HOST", "localhost")
             .withEnv("DCP_BASE_URL", "http://localhost:8081")
-            .withEnv("DCP_KEYSTORE_PATH", "file:/app/eckey.p12")
+            .withEnv("DCP_KEYSTORE_PATH", "/app/eckey.p12")
             .withEnv("DCP_KEYSTORE_PASSWORD", "password")
             .withEnv("DCP_KEYSTORE_ALIAS", "dsptrueconnector")
+            .withEnv("SPRING_CONFIG_ADDITIONAL_LOCATION", "optional:file:/config/")
+            .withEnv("SPRING_APPLICATION_JSON", "{\"dcp\":{\"service-entries\":[{\"id\":\"TRUEConnector-Credential-Service\",\"type\":\"CredentialService\",\"endpoint-path\":\"/dcp\"}]}}")
             .withEnv("SPRING_PROFILES_ACTIVE", "holderverifier")
             .waitingFor(Wait.forLogMessage(".*Started.*Application.*", 1)
                 .withStartupTimeout(Duration.ofMinutes(3)))
@@ -287,14 +291,14 @@ public class SharedDockerEnvironment {
                 .from("eclipse-temurin:17-jre-alpine")
                 .workDir("/app")
                 .copy(jarRelativePath, "/app/dcp-issuer.jar")
-                .copy("src/main/resources/eckey-issuer.p12", "/app/eckey-issuer.p12")
+                .copy("src/test/resources/eckey-issuer.p12", "/app/eckey-issuer.p12")
                 .copy("src/test/resources/credential-metadata-configuration.properties", "/config/credential-metadata-configuration.properties")
                 .expose(8082)
                 .env("JAVA_OPTS", "-Xmx512m -Xms256m")
                 .entryPoint("sh", "-c", "java $JAVA_OPTS -jar /app/dcp-issuer.jar")
                 .build())
             .withFileFromPath(jarRelativePath, issuerJar)
-            .withFileFromPath("src/main/resources/eckey-issuer.p12", issuerPath.resolve("src/main/resources/eckey-issuer.p12"))
+            .withFileFromPath("src/test/resources/eckey-issuer.p12", dcpRoot.resolve("dcp-e2e-tests/src/test/resources/eckey-issuer.p12"))
             .withFileFromPath("src/test/resources/credential-metadata-configuration.properties", issuerPath.resolve("src/test/resources/credential-metadata-configuration.properties"));
         imagesToCleanup.add("dcp-issuer-e2e-test");
 
@@ -311,10 +315,10 @@ public class SharedDockerEnvironment {
             .withEnv("DCP_CONNECTOR_DID", "did:web:localhost%3A8082:issuer")
             .withEnv("DCP_BASE_URL", "http://localhost:8082")
             .withEnv("DCP_HOST", "localhost")
-            .withEnv("DCP_KEYSTORE_PATH", "file:/app/eckey-issuer.p12")
+            .withEnv("DCP_KEYSTORE_PATH", "/app/eckey-issuer.p12")
             .withEnv("DCP_KEYSTORE_PASSWORD", "password")
             .withEnv("DCP_KEYSTORE_ALIAS", "dcp-issuer")
-            .withEnv("SPRING_CONFIG_LOCATION", "optional:classpath:/,optional:file:/config/")
+            .withEnv("SPRING_APPLICATION_JSON", "{\"dcp\":{\"service-entries\":[{\"id\":\"TRUEConnector-Issuer-Service\",\"type\":\"IssuerService\",\"issuer-location\":\"http://issuer:8082/issuer/\"}]}}")
             .waitingFor(Wait.forLogMessage(".*Started IssuerApplication.*", 1)
                 .withStartupTimeout(Duration.ofMinutes(3)))
             .withReuse(false);
