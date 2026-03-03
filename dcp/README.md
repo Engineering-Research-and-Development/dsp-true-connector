@@ -44,22 +44,31 @@ Enables credential issuance capabilities:
 
 ### Configuration control
 
-- The auto-configuration is conditional on the property `dcp.enabled`.
-  - To disable the whole module auto-configuration, set:
+- The holder auto-configuration is conditional on `dcp.holder.enabled` (default: `true`).
+- The verifier auto-configuration is conditional on `dcp.verifier.enabled` (default: `true`).
+  - To disable the holder module:
 
     ```properties
-    dcp.enabled=false
+    dcp.holder.enabled=false
     ```
 
-  - By default the auto-configuration is enabled.
+  - To disable the verifier module:
+
+    ```properties
+    dcp.verifier.enabled=false
+    ```
+
+  - By default both modules are enabled.
 
 ### Example usage
 
-- To enable the module (default): nothing to do if the `dcp` JAR is on the classpath.
-- To disable the module, add to `application.properties` (main app):
+- To enable the modules (default): nothing to do if the `dcp-holder` / `dcp-verifier` JAR is on the classpath.
+- To disable a module, add to `application.properties` (main app):
 
     ```properties
-    dcp.enabled=false
+    dcp.holder.enabled=false
+    # or
+    dcp.verifier.enabled=false
     ```
 
 ### Testing and verification

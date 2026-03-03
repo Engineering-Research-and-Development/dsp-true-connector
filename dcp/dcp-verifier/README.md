@@ -104,11 +104,10 @@ dcp.verifier.enabled=true
 # Connector DID (required for token validation)
 dcp.connector-did=did:web:example.com:connector
 
-# DID document configuration
-dcp.did-document.did=did:web:example.com:connector
-dcp.did-document.keystore-path=/path/to/keystore.p12
-dcp.did-document.keystore-password=password
-dcp.did-document.key-alias=key1
+# Keystore (EC key used for signing / DID verification method)
+dcp.keystore.path=eckey.p12
+dcp.keystore.password=password
+dcp.keystore.alias=dsptrueconnector
 ```
 
 ## Architecture

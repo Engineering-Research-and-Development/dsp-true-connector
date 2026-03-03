@@ -31,7 +31,6 @@ Add the following to your `application.properties` or `application.yml`:
 **Minimum Required Configuration:**
 ```properties
 # DCP Configuration
-dcp.enabled=true
 dcp.connector-did=did:web:your-domain.com:connector
 dcp.base-url=https://your-domain.com
 dcp.host=your-domain.com
@@ -41,8 +40,15 @@ dcp.keystore.path=eckey.p12
 dcp.keystore.password=password
 dcp.keystore.alias=dsptrueconnector
 
+# DID Document Service Entries (required - at least one entry)
+dcp.service-entries[0].id=TRUEConnector-Credential-Service
+dcp.service-entries[0].type=CredentialService
+dcp.service-entries[0].endpoint-path=/dcp
+
 # MongoDB (required)
-spring.data.mongodb.uri=mongodb://localhost:27017/dcp
+spring.data.mongodb.host=localhost
+spring.data.mongodb.port=27017
+spring.data.mongodb.database=dcp
 ```
 
 ### 3. Inject DCP Beans in Your Services
@@ -76,16 +82,16 @@ public class YourCatalogService {
 
 ### 4. Enable/Disable DCP Per Environment
 
-**Development (DCP enabled):**
+**Development (DCP enabled — default):**
 ```properties
 # application-dev.properties
-dcp.enabled=true
+dcp.holder.enabled=true
 ```
 
 **Testing (DCP disabled):**
 ```properties
 # application-test.properties
-dcp.enabled=false
+dcp.holder.enabled=false
 ```
 
 ## Available DCP Beans
@@ -139,7 +145,7 @@ logging.level.org.springframework.boot.autoconfigure=DEBUG
 Look for this in startup logs:
 ```
 DcpHolderAutoConfiguration matched:
-   - @ConditionalOnProperty (dcp.enabled=true) matched
+   - @ConditionalOnProperty (dcp.holder.enabled=true) matched
 ```
 
 ### List DCP Beans
@@ -187,7 +193,7 @@ class CatalogServiceTest {
 ### Disable DCP for Specific Tests
 
 ```java
-@SpringBootTest(properties = {"dcp.enabled=false"})
+@SpringBootTest(properties = {"dcp.holder.enabled=false"})
 class CatalogServiceWithoutDcpTest {
     // DCP beans won't be loaded
 }
@@ -197,7 +203,7 @@ class CatalogServiceWithoutDcpTest {
 
 ### Issue: DCP beans not found
 **Solution:** 
-- Check `dcp.enabled` is not set to `false`
+- Check `dcp.holder.enabled` is not set to `false`
 - Verify required properties are set (especially `dcp.connector-did`)
 - Run `mvn clean install` to rebuild
 
@@ -227,7 +233,6 @@ class CatalogServiceWithoutDcpTest {
 ### application.properties (Production)
 ```properties
 # DCP Configuration
-dcp.enabled=true
 dcp.connector-did=did:web:production.example.com:connector
 dcp.base-url=https://production.example.com
 dcp.host=production.example.com
@@ -238,21 +243,28 @@ dcp.keystore.path=file:/etc/connector/eckey.p12
 dcp.keystore.password=${DCP_KEYSTORE_PASSWORD}
 dcp.keystore.alias=dsptrueconnector
 
+# DID Document Service Entries
+dcp.service-entries[0].id=TRUEConnector-Credential-Service
+dcp.service-entries[0].type=CredentialService
+dcp.service-entries[0].endpoint-path=/dcp
+
 # Issuer
 dcp.issuer.location=https://issuer.example.com
 
-# Trusted Issuers (example)
+# Trusted Issuers
 dcp.trusted-issuers.MembershipCredential=did:web:issuer1.com,did:web:issuer2.com
 dcp.trusted-issuers.DataProcessingCredential=did:web:trusted-issuer.com
 
 # MongoDB
-spring.data.mongodb.uri=mongodb://mongo:27017/dcp
+spring.data.mongodb.host=mongo
+spring.data.mongodb.port=27017
+spring.data.mongodb.database=dcp
+spring.data.mongodb.authentication-database=admin
 ```
 
 ### application-dev.yml (Development)
 ```yaml
 dcp:
-  enabled: true
   connector-did: did:web:localhost:connector
   base-url: http://localhost:8080
   host: localhost
@@ -261,16 +273,21 @@ dcp:
     path: eckey.p12
     password: password
     alias: dsptrueconnector
+  service-entries:
+    - id: TRUEConnector-Credential-Service
+      type: CredentialService
+      endpoint-path: /dcp
   issuer:
     location: http://localhost:8081
   trusted-issuers:
-    MembershipCredential:
-      - did:web:localhost:issuer
+    MembershipCredential: did:web:localhost:issuer
       
 spring:
   data:
     mongodb:
-      uri: mongodb://localhost:27017/dcp-dev
+      host: localhost
+      port: 27017
+      database: dcp-dev
 ```
 
 ## Additional Resources

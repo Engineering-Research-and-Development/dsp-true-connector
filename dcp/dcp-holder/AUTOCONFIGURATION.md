@@ -19,9 +19,9 @@ Both files register the `it.eng.dcp.holder.autoconfigure.DcpHolderAutoConfigurat
 
 The existing `DcpHolderAutoConfiguration` class provides:
 
-- **Conditional Loading**: `@ConditionalOnProperty(prefix = "dcp", name = "enabled", havingValue = "true", matchIfMissing = true)`
+- **Conditional Loading**: `@ConditionalOnProperty(prefix = "dcp.holder", name = "enabled", havingValue = "true", matchIfMissing = true)`
   - The module is enabled by default
-  - Can be disabled by setting `dcp.enabled=false` in application properties
+  - Can be disabled by setting `dcp.holder.enabled=false` in application properties
 - **Component Scanning**: Scans `it.eng.dcp` and `it.eng.dcp.common` packages
 - **Configuration Properties**: Enables `DcpProperties` binding
 - **MongoDB Configuration**: Imports `DCPMongoConfig`
@@ -44,7 +44,7 @@ Added `spring-boot-autoconfigure-processor` to dcp-holder/pom.xml as an optional
 1. When any module (catalog, negotiation, data-transfer) starts up, Spring Boot's autoconfiguration mechanism scans the classpath
 2. It discovers the `AutoConfiguration.imports` file in the dcp-holder JAR
 3. Spring loads `DcpHolderAutoConfiguration` which:
-   - Checks if `dcp.enabled` property is true (default)
+   - Checks if `dcp.holder.enabled` property is true (default)
    - Scans for `@Service`, `@Component`, `@Repository` classes in `it.eng.dcp` packages
    - Registers all DCP beans in the Spring context
 4. All DCP services become available for dependency injection in the consuming modules
@@ -111,13 +111,13 @@ connector
 
 ## Configuration
 
-### Enabling/Disabling DCP Module
+### Enabling/Disabling DCP Holder Module
 
-The DCP module is enabled by default. To disable it:
+The DCP holder module is enabled by default. To disable it:
 
 ```properties
 # application.properties
-dcp.enabled=false
+dcp.holder.enabled=false
 ```
 
 ### Per-Environment Configuration
@@ -127,12 +127,14 @@ You can use Spring profiles to control DCP behavior:
 ```yaml
 # application-dev.yml
 dcp:
-  enabled: true
+  holder:
+    enabled: true
   connector-did: did:web:localhost:connector
   
 # application-prod.yml
 dcp:
-  enabled: true
+  holder:
+    enabled: true
   connector-did: did:web:production.example.com:connector
 ```
 
@@ -177,7 +179,7 @@ class CatalogServiceTest {
 If you want to test without DCP:
 
 ```java
-@SpringBootTest(properties = {"dcp.enabled=false"})
+@SpringBootTest(properties = {"dcp.holder.enabled=false"})
 class CatalogServiceWithoutDcpTest {
     // DCP beans won't be loaded
 }
@@ -218,7 +220,7 @@ To verify the setup is working:
 ### Issue: DCP beans not found
 
 **Solution**: Ensure:
-- `dcp.enabled` is not explicitly set to `false`
+- `dcp.holder.enabled` is not explicitly set to `false`
 - Required configuration properties are set (e.g., `dcp.connector-did`)
 - Check for classpath issues: `mvn dependency:tree`
 

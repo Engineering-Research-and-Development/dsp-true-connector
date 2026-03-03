@@ -17,9 +17,10 @@ Add to your `application.properties`:
 
 ```properties
 # Minimum required configuration
-dcp.enabled=true
 dcp.connector-did=did:web:your-domain.com:connector
-spring.data.mongodb.uri=mongodb://localhost:27017/dcp
+spring.data.mongodb.host=localhost
+spring.data.mongodb.port=27017
+spring.data.mongodb.database=dcp
 ```
 
 ### 3. Use DCP Beans
@@ -56,7 +57,7 @@ public class YourService {
 ## How It Works
 
 1. **Spring Boot discovers** the autoconfiguration via `META-INF/spring/*.AutoConfiguration.imports`
-2. **DcpHolderAutoConfiguration loads** and checks if `dcp.enabled=true`
+2. **DcpHolderAutoConfiguration loads** and checks if `dcp.holder.enabled=true`
 3. **Component scanning** finds all `@Service`, `@Component`, `@Repository` classes
 4. **Beans are registered** in the Spring ApplicationContext
 5. **All modules share** the same DCP bean instances (no duplication!)
@@ -64,7 +65,7 @@ public class YourService {
 ## Key Features
 
 ✅ **Automatic Discovery** - No manual `@Import` or `@ComponentScan` needed  
-✅ **Conditional Loading** - Enabled by default, can be disabled via `dcp.enabled=false`  
+✅ **Conditional Loading** - Enabled by default, can be disabled via `dcp.holder.enabled=false`  
 ✅ **Single Instance** - All modules share the same DCP bean instances  
 ✅ **Property-Driven** - Configure via `application.properties`  
 ✅ **Independent Testing** - Each module can test with DCP functionality  
@@ -94,7 +95,6 @@ All properties use the `dcp.*` prefix:
 
 ```properties
 # Core configuration
-dcp.enabled=true
 dcp.connector-did=did:web:example.com:connector
 dcp.base-url=https://example.com
 dcp.host=example.com
@@ -118,7 +118,7 @@ dcp.trusted-issuers.MembershipCredential=did:web:issuer1.com,did:web:issuer2.com
 **A:** No! Spring Boot ensures beans are created only once per application context. See [ARCHITECTURE_RECOMMENDATIONS.md](./ARCHITECTURE_RECOMMENDATIONS.md) for detailed explanation.
 
 ### Q: How do I disable DCP?
-**A:** Set `dcp.enabled=false` in your properties file.
+**A:** Set `dcp.holder.enabled=false` in your properties file.
 
 ### Q: Can I test modules independently?
 **A:** Yes! Each module (catalog, negotiation, data-transfer) can be tested with full DCP functionality.
@@ -129,7 +129,7 @@ dcp.trusted-issuers.MembershipCredential=did:web:issuer1.com,did:web:issuer2.com
 ## Troubleshooting
 
 **DCP beans not found:**
-- Check `dcp.enabled` is not set to `false`
+- Check `dcp.holder.enabled` is not set to `false`
 - Verify required properties are set
 - Run `mvn clean install`
 
