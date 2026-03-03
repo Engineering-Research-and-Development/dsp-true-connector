@@ -38,12 +38,13 @@
 
     <build>
         <resources>
-            <!-- Exclude all resources except META-INF (needed for Spring Boot auto-configuration) -->
+            <!-- Exclude application properties and keystores - consuming applications must provide their own -->
             <resource>
                 <directory>src/main/resources</directory>
-                <includes>
-                    <include>META-INF/**</include>
-                </includes>
+                <excludes>
+                    <exclude>**/*.properties</exclude>
+                    <exclude>**/*.p12</exclude>
+                </excludes>
             </resource>
         </resources>
     </build>

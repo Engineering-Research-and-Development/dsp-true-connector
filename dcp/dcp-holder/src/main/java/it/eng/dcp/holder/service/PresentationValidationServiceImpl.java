@@ -3,6 +3,7 @@ package it.eng.dcp.holder.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.dcp.common.model.PresentationResponseMessage;
 import it.eng.dcp.common.model.ProfileId;
+import it.eng.dcp.common.service.IssuerTrustService;
 import it.eng.dcp.holder.model.ValidationError;
 import it.eng.dcp.holder.model.ValidationReport;
 import it.eng.dcp.holder.model.VerifiableCredential;

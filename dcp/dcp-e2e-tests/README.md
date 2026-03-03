@@ -1,271 +1,232 @@
-# BaseDcpE2ETest Refactoring - Testcontainers Implementation
+# DCP E2E Tests
 
-## Summary
+End-to-end integration tests for the DCP protocol. Tests run against two services:
+- **Issuer** — issues Verifiable Credentials
+- **HolderVerifier** — acts as both Holder and Verifier
 
-The `BaseDcpE2ETest` class has been successfully refactored to use **Testcontainers** with Docker for E2E testing. Each DCP application (Issuer, Holder, Verifier) now runs in its own isolated Docker container, providing a more realistic and reproducible test environment.
+---
 
-## Quick Start
+## Table of Contents
 
-### Prerequisites
-- Docker Desktop running on your machine
-- Maven installed
-- Java 17
+- [Prerequisites](#prerequisites)
+- [Test Environments](#test-environments)
+- [Running Tests](#running-tests)
+- [Property File Structure](#property-file-structure)
+- [Architecture](#architecture)
+- [Modules](#modules)
+- [Troubleshooting](#troubleshooting)
 
-### Build and Test
+---
+
+## Prerequisites
+
+| Requirement | Version |
+|---|---|
+| Java | 17+ |
+| Maven | 3.8+ |
+| Docker Desktop | Any recent version (Docker environment only) |
+
+---
+
+## Test Environments
+
+Two environments are supported. The environment is selected via the `-DtestGroup` Maven property.
+
+### Spring Environment (default — local development)
+
+Services start as embedded Spring Boot applications inside the same JVM as the test.
+MongoDB runs in a Testcontainer. **Docker is only needed for MongoDB**, not for the services themselves.
+
+```
+┌──────────────────────────────────────────────────────┐
+│                      Test JVM                        │
+│                                                      │
+│  ┌──────────────────┐     ┌────────────────────────┐ │
+│  │  IssuerApplication│     │ HolderVerifierTest     │ │
+│  │  :8082           │     │ Application :8081       │ │
+│  └──────────────────┘     └────────────────────────┘ │
+│                                                      │
+│            ┌─────────────────────┐                   │
+│            │  MongoDB Container  │                   │
+│            │  (Testcontainers)   │                   │
+│            └─────────────────────┘                   │
+└──────────────────────────────────────────────────────┘
+```
+
+**Hostnames:** `localhost`
+
+### Docker Environment (CI / integration)
+
+All services run in isolated Docker containers on a shared network.
+Requires pre-built JARs (from `mvn install`).
+
+```
+┌──────────────────────────────────────────────────────┐
+│                   Docker Network                     │
+│                                                      │
+│  ┌──────────┐  ┌───────────────────┐  ┌───────────┐ │
+│  │  issuer  │  │  holderverifier   │  │  mongodb  │ │
+│  │  :8082   │  │  :8081            │  │  :27017   │ │
+│  └──────────┘  └───────────────────┘  └───────────┘ │
+└──────────────────────────────────────────────────────┘
+```
+
+**Hostnames:** `issuer`, `holderverifier`, `mongodb`
+
+---
+
+## Running Tests
+
+### Maven (command line)
 
 ```bash
-# 1. Build all DCP modules (creates executable JARs)
-cd C:\Users\davjovanov\Documents\work\dsp-true-connector\dcp
-mvn clean install
+# Spring environment — embedded apps, localhost (no Docker needed for services)
+mvn verify -DtestGroup=spring -pl dcp/dcp-e2e-tests
 
-# 2. Run E2E tests
-cd dcp-e2e-tests
-mvn test
+# Docker environment — requires Docker Desktop and pre-built JARs
+mvn clean install -DskipTests          # build JARs first
+mvn verify -DtestGroup=e2e -pl dcp/dcp-e2e-tests
 ```
 
-## What Changed
+### IntelliJ IDEA
 
-### New Capabilities
-1. **Isolated Containers** - Each service runs in its own Docker container
-2. **Automatic Image Management** - Docker images are built and cleaned up automatically
-3. **Network Isolation** - Services communicate over a Docker network
-4. **Separate Verifier** - Verifier now runs in its own container (was combined with Holder before)
+1. Open **Run → Edit Configurations**
+2. Click **+** → **Maven**
+3. Set the following:
 
-### Architecture
+| Field | Value |
+|---|---|
+| **Working directory** | `$MODULE_DIR$` (the `dcp-e2e-tests` directory) |
+| **Command line** | `verify -DtestGroup=spring` |
+| **Name** | `E2E Tests - Spring` |
 
-**Before:**
+4. Click **OK** and run the configuration.
+
+Alternatively, to run a single test class directly:
+1. Open the test class (e.g. `DcpCredentialFlowTestE2E`)
+2. Before running, add the VM option `-Dtest.environment=spring` in the run configuration:
+   **Run → Edit Configurations → VM options:** `-Dtest.environment=spring`
+3. Run the test normally with the green ▶ button.
+
+### Eclipse
+
+1. Open **Run → Run Configurations**
+2. Create a new **Maven Build** configuration
+3. Set the following:
+
+| Field | Value |
+|---|---|
+| **Base directory** | `${project_loc:dcp-e2e-tests}` |
+| **Goals** | `verify` |
+| **Parameters → Name** | `testGroup` |
+| **Parameters → Value** | `spring` |
+
+4. Click **Run**.
+
+To run a single test class directly:
+1. Right-click the test class → **Run As → JUnit Test**
+2. Open **Run → Run Configurations → JUnit → (your test)**
+3. In the **Arguments** tab, add to **VM arguments:** `-Dtest.environment=spring`
+4. Click **Run**.
+
+---
+
+## Property File Structure
+
+Properties are split into a **base file** (shared) and **environment-specific override files**.
+Spring Boot loads the base profile first, then overlays the environment sub-profile.
+
+### HolderVerifier
+
+| File | Loaded by | Contains |
+|---|---|---|
+| `application-holderverifier.properties` | Both | Port, keystore, endpoints, service entries, logging |
+| `application-holderverifier-spring.properties` | Spring mode | `localhost` DIDs, base URL, issuer location, trusted issuers |
+| `application-holderverifier-docker.properties` | Docker mode | `holderverifier`/`issuer` container DIDs, base URL, trusted issuers |
+
+### Issuer
+
+| File | Loaded by | Contains |
+|---|---|---|
+| `application-issuer.properties` | Both | Port, keystore, MongoDB db, Jackson, logging |
+| `application-issuer-spring.properties` | Spring mode | `localhost` DID, base URL, issuer-location |
+| `application-issuer-docker.properties` | Docker mode | `issuer` container DID, base URL, issuer-location |
+
+Spring Boot profile activation per environment:
+
 ```
-┌──────────────────────────────────────┐
-│        Same JVM Process              │
-│  ┌──────────┐    ┌────────────────┐ │
-│  │  Issuer  │    │ Holder+Verifier│ │
-│  │ Context  │    │    Context     │ │
-│  └──────────┘    └────────────────┘ │
-└──────────────────────────────────────┘
-```
-
-**After:**
-```
-┌─────────────────────────────────────────┐
-│           Docker Environment             │
-│  ┌─────┐  ┌──────┐  ┌─────────┐        │
-│  │Issue│  │Holder│  │Verifier │        │
-│  │  r  │  │      │  │         │        │
-│  └──┬──┘  └───┬──┘  └────┬────┘        │
-│     └─────────┴──────────┘             │
-│              │                          │
-│        ┌─────┴─────┐                   │
-│        │  MongoDB  │                   │
-│        └───────────┘                   │
-└─────────────────────────────────────────┘
-```
-
-## Files Created
-
-### Application Entry Points
-- **`dcp-holder/src/main/java/it/eng/dcp/holder/HolderApplication.java`**
-  - Main class for Holder service
-  - Enables standalone execution
-
-- **`dcp-verifier/src/main/java/it/eng/dcp/verifier/VerifierApplication.java`**
-  - Main class for Verifier service
-  - Enables standalone execution
-
-### Docker Configuration
-- **`dcp-holder/Dockerfile`**
-  - Docker image for Holder service
-  - Port 8085
-
-- **`dcp-verifier/Dockerfile`**
-  - Docker image for Verifier service
-  - Port 8086
-
-### Application Configuration
-- **`dcp-holder/src/main/resources/application.properties`**
-- **`dcp-verifier/src/main/resources/application.properties`**
-
-### Documentation
-- **`dcp-e2e-tests/REFACTORING_SUMMARY.md`** - This file
-- **`dcp-e2e-tests/doc/E2E_TESTCONTAINERS_REFACTORING.md`** - Detailed technical documentation
-
-## Files Modified
-
-### Test Infrastructure
-- **`BaseDcpE2ETest.java`** - Completely rewritten to use Testcontainers
-- **`DcpCompleteFlowE2ETest.java`** - Updated to verify containers instead of contexts
-
-### Build Configuration
-- **`dcp-holder/pom.xml`** - Added Spring Boot plugin
-- **`dcp-verifier/pom.xml`** - Added Spring Boot plugin
-
-## Key Features
-
-### ✅ Automatic Docker Image Building
-```java
-ImageFromDockerfile issuerImage = new ImageFromDockerfile("dcp-issuer-e2e-test", false)
-    .withFileFromPath(".", issuerPath)
-    .withDockerfile(issuerPath.resolve("Dockerfile"));
-
-issuerContainer = new GenericContainer<>(issuerImage)
-    .withNetwork(network)
-    .withExposedPorts(8084)
-    .waitingFor(Wait.forLogMessage(".*Started IssuerApplication.*", 1))
-    .withReuse(false);
+Spring: --spring.profiles.active=holderverifier,holderverifier-spring
+Docker: --spring.profiles.active=holderverifier,holderverifier-docker
 ```
 
-### ✅ Automatic Cleanup
-```java
-@AfterAll
-static void stopContainersAndCleanup() {
-    // Stop containers
-    verifierContainer.stop();
-    holderContainer.stop();
-    issuerContainer.stop();
-    mongoDBContainer.stop();
-    
-    // Remove Docker images
-    for (String imageName : imagesToCleanup) {
-        removeImageCmd(imageName).withForce(true).exec();
-    }
-    
-    // Close network
-    network.close();
-}
-```
+---
 
-### ✅ Dynamic Port Mapping
-```java
-@BeforeEach
-void setupClients() {
-    int issuerPort = issuerContainer.getMappedPort(8084);
-    int holderPort = holderContainer.getMappedPort(8085);
-    int verifierPort = verifierContainer.getMappedPort(8086);
-    
-    issuerClient = new RestTemplateBuilder()
-        .rootUri("http://localhost:" + issuerPort)
-        .build();
-    // ... same for holder and verifier
-}
-```
+## Architecture
 
-## Testing
+### Key Classes
 
-### Run All Tests
-```bash
-mvn test
-```
+| Class | Location | Purpose |
+|---|---|---|
+| `DcpTestEnvironment` | `src/test/java/.../environment/` | Base class for all E2E tests. Starts services, exposes REST clients and base URLs. |
+| `SharedDockerEnvironment` | `src/test/java/.../environment/` | Manages Docker containers via Testcontainers (Docker mode only). |
+| `HolderVerifierTestApplication` | `src/main/java/.../` | Spring Boot entry point combining Holder + Verifier for in-process testing. |
 
-### Run Specific Tests
+### Environment Selection
 
-#### Smoke Test (Container Startup + DID Documents)
-```bash
-mvn test -Dtest=DcpCompleteFlowE2ETest
-```
+`DcpTestEnvironment` reads the `test.environment` system property:
 
-This test verifies:
-- ✅ All containers start successfully
-- ✅ REST clients are initialized
-- ✅ DID documents are accessible and valid
-- ✅ DID structure matches expected format
-- ✅ All DIDs are unique
+| `test.environment` value | Environment started | Default? |
+|---|---|---|
+| `spring` | Embedded Spring Boot + MongoDB container | ✅ Yes |
+| `docker` | Full Docker containers via Testcontainers | No |
 
-#### Credential Flow Tests
-```bash
-mvn test -Dtest=DcpCredentialFlowE2ETest
-```
+The value is passed automatically by Maven via `<systemPropertyVariables>` in the Failsafe plugin configuration inside each Maven profile (`spring-tests`, `docker-tests`).
 
-This test suite includes:
-- **DID Discovery Flow** - Tests complete DID document discovery from all parties
-- **Issuer Metadata Discovery** - Tests issuer metadata endpoint and credential offerings
-- **Verification Methods Validation** - Validates all verification methods in DID documents
+### REST Clients
 
-### Expected Output
-```
-═══════════════════════════════════════════════
-Starting DCP E2E Test Environment...
-═══════════════════════════════════════════════
-✓ Created Docker network
-✓ MongoDB started on port: 55001
-✓ Issuer started on port: 55002
-✓ Holder started on port: 55003
-✓ Verifier started on port: 55004
-═══════════════════════════════════════════════
-✓ All containers started successfully
-═══════════════════════════════════════════════
-...
-✓✓✓ SMOKE TEST PASSED - E2E Infrastructure OK
-═══════════════════════════════════════════════
-...
-Stopping containers and cleaning up...
-✓ Verifier container stopped
-✓ Holder container stopped
-✓ Issuer container stopped
-✓ MongoDB container stopped
-✓ Network closed
-✓ Removed Docker image: dcp-issuer-e2e-test
-✓ Removed Docker image: dcp-holder-e2e-test
-✓ Removed Docker image: dcp-verifier-e2e-test
-═══════════════════════════════════════════════
-✓ Cleanup complete
-═══════════════════════════════════════════════
-```
+All test classes that extend `DcpTestEnvironment` get:
 
-## Benefits
+| Field | Points to |
+|---|---|
+| `issuerClient` | Issuer service base URL |
+| `holderClient` | HolderVerifier service (holder endpoints) |
+| `verifierClient` | HolderVerifier service (verifier endpoints) |
+| `issuerBaseUrl` | `http://localhost:8082` or `http://issuer:8082` |
+| `holderBaseUrl` | `http://localhost:8081` or `http://holderverifier:8081` |
+| `verifierBaseUrl` | Same as `holderBaseUrl` |
 
-| Aspect | Before | After |
-|--------|--------|-------|
-| **Isolation** | Same JVM process | Separate Docker containers |
-| **Network** | In-memory | Docker network |
-| **Cleanup** | Manual context close | Automatic image removal |
-| **Realism** | Test environment | Production-like environment |
-| **Debugging** | Limited | Can inspect containers |
-| **CI/CD** | JVM-based | Docker-based (portable) |
+---
+
+## Modules
+
+This module (`dcp-e2e-tests`) depends on:
+
+- `dcp-holder` — Holder service logic and auto-configuration
+- `dcp-verifier` — Verifier service logic and auto-configuration
+- `dcp-issuer` — Issuer service logic
+- `dcp-common` — Shared DCP models and services
+
+> **Note:** `dcp-holder`, `dcp-verifier`, and `dcp-common` are **library JARs**.
+> They do not contain `application.properties` or keystores in their JARs — those must be provided
+> by the consuming application (this module). This prevents classpath pollution when the library
+> is used as a dependency.
+
+---
 
 ## Troubleshooting
 
-### Problem: Tests fail with "Cannot connect to Docker"
-**Solution:** Ensure Docker Desktop is running
+### `Could not resolve placeholder 'dcp.issuer.location'`
+The wrong profile was activated, or the environment sub-profile file is missing from `src/test/resources`.
+Check that `application-holderverifier-spring.properties` (or `-docker`) exists.
 
-### Problem: JARs not found during Docker build
-**Solution:**
-```bash
-# Build from dcp directory
-cd C:\Users\davjovanov\Documents\work\dsp-true-connector\dcp
-mvn clean install -DskipTests
-```
+### `Cannot connect to Docker`
+Ensure Docker Desktop is running before executing Docker-mode tests.
 
-### Problem: Containers timeout during startup
-**Solution:** Check Docker resources (memory, CPU) and application logs
+### `Port already in use`
+Another process is using port 8081 or 8082. Stop it or change the port in the property files.
 
-### Problem: Images not cleaned up
-**Solution:**
-```bash
-# Manually remove test images
-docker rmi dcp-issuer-e2e-test dcp-holder-e2e-test dcp-verifier-e2e-test -f
-```
+### JARs not found during Docker image build
+Run `mvn clean install -DskipTests` from the `dcp/` directory first to build all module JARs.
 
-## Migration Guide for Existing Tests
-
-**Good news:** Existing tests work without changes! 
-
-The refactoring maintains API compatibility:
-- ✅ Same REST clients: `issuerClient`, `holderClient`, `verifierClient`
-- ✅ Same helper methods: `getIssuerDid()`, `getHolderDid()`, `getVerifierDid()`
-- ✅ Same base URLs: `getIssuerBaseUrl()`, `getHolderBaseUrl()`, `getVerifierBaseUrl()`
-
-## For More Information
-
-- **Detailed Documentation:** `doc/E2E_TESTCONTAINERS_REFACTORING.md`
-- **Testcontainers:** https://www.testcontainers.org/
-- **Spring Boot Docker:** https://spring.io/guides/gs/spring-boot-docker/
-
-## Summary of Changes
-
-✅ **Created:** 7 new files (applications, Dockerfiles, config)  
-✅ **Modified:** 4 files (test classes, pom.xml files)  
-✅ **Documented:** 2 comprehensive documentation files  
-✅ **Tested:** Smoke test verifies all containers start successfully  
-✅ **Automated:** Full image lifecycle management  
-
-The refactoring is complete and ready for use! 🎉
-
+### Tests time out during container startup
+Increase Docker Desktop resource limits (Memory ≥ 4 GB recommended).

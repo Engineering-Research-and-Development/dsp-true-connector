@@ -21,16 +21,14 @@ class DcpPropertiesTest {
         p.setBaseUrl("https://example.com");
         p.setClockSkewSeconds(60);
 
-        // Set trusted issuers using the TrustedIssuers inner class
-        DcpProperties.TrustedIssuers trustedIssuers = new DcpProperties.TrustedIssuers();
-        trustedIssuers.setIssuers(Map.of("CredTypeA", "did:example:issuer1,did:example:issuer2"));
-        p.setTrustedIssuers(trustedIssuers);
+        // Set trusted issuers directly as a map
+        p.setTrustedIssuers(Map.of("CredTypeA", "did:example:issuer1,did:example:issuer2"));
 
         assertEquals("did:web:example:connector", p.getConnectorDid());
         assertEquals("https://example.com", p.getBaseUrl());
         assertEquals(60, p.getClockSkewSeconds());
-        assertTrue(p.getTrustedIssuers().getIssuers().containsKey("CredTypeA"));
-        assertEquals("did:example:issuer1,did:example:issuer2", p.getTrustedIssuers().getIssuers().get("CredTypeA"));
+        assertTrue(p.getTrustedIssuers().containsKey("CredTypeA"));
+        assertEquals("did:example:issuer1,did:example:issuer2", p.getTrustedIssuers().get("CredTypeA"));
     }
 }
 

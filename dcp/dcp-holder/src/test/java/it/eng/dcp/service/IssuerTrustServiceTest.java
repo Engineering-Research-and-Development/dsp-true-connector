@@ -1,7 +1,7 @@
 package it.eng.dcp.service;
 
-import it.eng.dcp.holder.service.InMemoryIssuerTrustService;
-import it.eng.dcp.holder.service.IssuerTrustService;
+import it.eng.dcp.common.service.InMemoryIssuerTrustService;
+import it.eng.dcp.common.service.IssuerTrustService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

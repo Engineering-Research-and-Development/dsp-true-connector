@@ -41,7 +41,7 @@ public class CredentialIssuanceClient {
     private final DidDocumentConfig config;
     private final DidResolverService didResolverService;
 
-    @Value("${dcp.issuer.location}")
+    @Value("${dcp.issuer.location:}")
     private String issuerDid;
 
     @Autowired

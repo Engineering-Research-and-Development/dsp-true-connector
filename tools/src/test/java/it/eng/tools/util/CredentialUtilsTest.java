@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
 import java.net.URI;
+import java.net.URL;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -49,18 +50,9 @@ class CredentialUtilsTest {
 
         // Test with URI
         URI uri = URI.create(urlString);
-        System.out.println("=== URI.create() ===");
-        System.out.println("URI Host: " + uri.getHost());
-        System.out.println("URI Port: " + uri.getPort());
-        System.out.println("URI Scheme: " + uri.getScheme());
 
         // Test with URL
-        java.net.URL url = new java.net.URL(urlString);
-        System.out.println("\n=== new URL() ===");
-        System.out.println("URL Host: " + url.getHost());
-        System.out.println("URL Port: " + url.getPort());
-        System.out.println("URL Protocol: " + url.getProtocol());
-        System.out.println("URL Path: " + url.getPath());
+        URL url = new URL(urlString);
 
         // Assertions to verify both work correctly
         assertNotNull(uri.getHost(), "URI.getHost() should not be null for localhost");

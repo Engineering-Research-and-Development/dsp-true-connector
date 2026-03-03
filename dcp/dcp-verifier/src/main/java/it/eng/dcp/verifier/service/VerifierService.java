@@ -14,6 +14,7 @@ import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.model.PresentationQueryMessage;
 import it.eng.dcp.common.model.PresentationResponseMessage;
 import it.eng.dcp.common.model.ServiceEntry;
+import it.eng.dcp.common.service.IssuerTrustService;
 import it.eng.dcp.common.service.did.HttpDidResolverService;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.common.util.DidUrlConverter;
@@ -69,6 +70,7 @@ public class VerifierService {
     private final SimpleOkHttpRestClient httpClient;
     private final ObjectMapper objectMapper;
     private final DidDocumentConfig didConfig;
+    private final IssuerTrustService issuerTrustService;
 
     /**
      * Constructor with explicit verifier configuration injection.
@@ -78,6 +80,7 @@ public class VerifierService {
      * @param httpClient HTTP client for making REST calls
      * @param objectMapper JSON mapper for request/response serialization
      * @param didConfig The verifier configuration (explicitly qualified)
+     * @param issuerTrustService Service for checking whether a credential issuer is trusted
      */
     @Autowired
     public VerifierService(
@@ -85,12 +88,14 @@ public class VerifierService {
             HttpDidResolverService didResolverService,
             SimpleOkHttpRestClient httpClient,
             ObjectMapper objectMapper,
-            DidDocumentConfig didConfig) {
+            DidDocumentConfig didConfig,
+            IssuerTrustService issuerTrustService) {
         this.tokenService = tokenService;
         this.didResolverService = didResolverService;
         this.httpClient = httpClient;
         this.objectMapper = objectMapper;
         this.didConfig = didConfig;
+        this.issuerTrustService = issuerTrustService;
 
         log.info("VerifierService initialized with verifier DID: {}", didConfig.getDid());
     }
@@ -365,12 +370,13 @@ public class VerifierService {
      *   <li>Subject matches holder DID</li>
      *   <li>Expiration date (exp claim)</li>
      *   <li>Issuance date (iat claim)</li>
+     *   <li>Issuer is trusted for the credential type (via {@link IssuerTrustService})</li>
      * </ul>
      *
-     * @param credentialJwt The credential JWT string
-     * @param expectedHolderDid The expected holder DID (subject of credential)
+     * @param credentialJwt the credential JWT string
+     * @param expectedHolderDid the expected holder DID (subject of credential)
      * @return ValidatedCredential containing credential claims and metadata
-     * @throws SecurityException if validation fails
+     * @throws SecurityException if any validation step fails, including an untrusted issuer
      */
     private ValidatedCredential validateCredential(String credentialJwt, String expectedHolderDid)
             throws SecurityException {
@@ -433,6 +439,14 @@ public class VerifierService {
 
             // Extract credential type
             String credentialType = extractCredentialType(credentialClaims);
+
+            // Verify the issuer is trusted for this credential type
+            if (!issuerTrustService.isTrusted(credentialType, issuerDid)) {
+                throw new SecurityException(String.format(
+                    "Credential issuer not trusted: issuer=%s, credentialType=%s. " +
+                    "Configure dcp.trusted-issuers.%s=<issuerDid> to trust this issuer.",
+                    issuerDid, credentialType, credentialType));
+            }
 
             log.debug("✓ Credential validated: type={}, issuer={}", credentialType, issuerDid);
 

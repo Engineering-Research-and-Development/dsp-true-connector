@@ -1,7 +1,7 @@
 package it.eng.dcp.holder.config;
 
 import it.eng.dcp.common.config.DcpProperties;
-import it.eng.dcp.holder.service.IssuerTrustService;
+import it.eng.dcp.common.service.IssuerTrustService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -30,7 +30,7 @@ public class TrustedIssuersConfig {
     public void configureTrustedIssuers() {
         log.info("Configuring trusted issuers from properties...");
 
-        Map<String, String> trustedIssuersMap = dcpProperties.getTrustedIssuers().getIssuers();
+        Map<String, String> trustedIssuersMap = dcpProperties.getTrustedIssuers();
 
         if (trustedIssuersMap == null || trustedIssuersMap.isEmpty()) {
             log.warn("No trusted issuers configured in properties (dcp.trusted-issuers.*). " +

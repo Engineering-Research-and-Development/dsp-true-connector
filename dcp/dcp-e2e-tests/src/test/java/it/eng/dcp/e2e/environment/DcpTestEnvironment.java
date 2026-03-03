@@ -83,13 +83,19 @@ public abstract class DcpTestEnvironment {
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
-     * Sets up the test environment based on the test.environment system property.
-     * Initializes either Docker containers or Spring Boot context.
+     * Sets up the test environment based on the {@code test.environment} system property.
+     * <ul>
+     *   <li>{@code -Dtest.environment=docker} — starts Docker containers via Testcontainers</li>
+     *   <li>{@code -Dtest.environment=spring} (default) — starts embedded Spring Boot applications</li>
+     * </ul>
      */
     @BeforeAll
     public static void setupTestEnvironment() {
+        if (isDockerEnvironment()) {
             setupDockerEnvironment();
-//            setupSpringEnvironment();
+        } else {
+            setupSpringEnvironment();
+        }
     }
 
     /**
@@ -164,8 +170,11 @@ public abstract class DcpTestEnvironment {
         issuerContainer = sharedEnv.getIssuerContainer();
         holderContainer = sharedEnv.getHolderVerifierContainer();
         verifierContainer = sharedEnv.getHolderVerifierContainer(); // Holder and Verifier are in same container
-
-        // Configure URLs for Docker containers (using fixed ports matching Spring test configuration)
+        // Configure URLs for Docker containers using container hostnames
+//        issuerBaseUrl = "http://issuer:8082";
+//        holderBaseUrl = "http://holderverifier:8081";
+//        verifierBaseUrl = "http://holderverifier:8081";
+        // need to use following URLs becuase setting up of restCLients
         issuerBaseUrl = "http://localhost:8082";
         holderBaseUrl = "http://localhost:8081";
         verifierBaseUrl = "http://localhost:8081";
@@ -207,7 +216,7 @@ public abstract class DcpTestEnvironment {
             holderVerifierContext = new SpringApplicationBuilder(HolderVerifierTestApplication.class)
                     .run(
                             "--server.port=8081",
-                            "--spring.profiles.active=holderverifier",
+                            "--spring.profiles.active=holderverifier,holderverifier-spring",
                             "--spring.data.mongodb.host=" + mongoHost,
                             "--spring.data.mongodb.port=" + mongoPort,
                             "--spring.data.mongodb.authentication-database=admin",
@@ -221,7 +230,7 @@ public abstract class DcpTestEnvironment {
             issuerContext = new SpringApplicationBuilder(IssuerApplication.class)
                     .run(
                             "--server.port=8082",
-                            "--spring.profiles.active=issuer",
+                            "--spring.profiles.active=issuer,issuer-spring",
                             "--spring.main.allow-bean-definition-overriding=true",
                             "--spring.data.mongodb.host=" + mongoHost,
                             "--spring.data.mongodb.port=" + mongoPort,
@@ -323,36 +332,56 @@ public abstract class DcpTestEnvironment {
 
     /**
      * Gets the Issuer's DID identifier.
-     * Format: did:web:{host}:%3A{port}:issuer
+     * The host is derived from {@code issuerBaseUrl}, so it reflects the active environment:
+     * {@code localhost} in Spring mode, {@code issuer} in Docker mode.
      *
-     * @return Issuer DID (e.g., "did:web:localhost%3A8082:issuer")
+     * @return Issuer DID (e.g., "did:web:localhost%3A8082:issuer" or "did:web:issuer%3A8082:issuer")
      */
     public String getIssuerDid() {
-        String host = extractHost(issuerBaseUrl);
+        String host;
+        if(isDockerEnvironment()) {
+            host = "issuer";
+        } else {
+            host = extractHost(issuerBaseUrl);
+        }
         int port = extractPort(issuerBaseUrl);
         return String.format("did:web:%s%%3A%d:issuer", host, port);
     }
 
     /**
      * Gets the Holder's DID identifier.
-     * Format: did:web:{host}:%3A{port}:holder
+     * The host is derived from {@code holderBaseUrl}, so it reflects the active environment:
+     * {@code localhost} in Spring mode, {@code holderverifier} in Docker mode.
      *
-     * @return Holder DID (e.g., "did:web:localhost%3A8081:holder")
+     * @return Holder DID (e.g., "did:web:localhost%3A8081:holder" or "did:web:holderverifier%3A8081:holder")
      */
     public String getHolderDid() {
-        String host = extractHost(holderBaseUrl);
+//        String host = extractHost(holderBaseUrl);
+        String host;
+        if(isDockerEnvironment()) {
+            host = "holderverifier";
+        } else {
+            host = extractHost(issuerBaseUrl);
+        }
         int port = extractPort(holderBaseUrl);
         return String.format("did:web:%s%%3A%d:holder", host, port);
     }
 
     /**
      * Gets the Verifier's DID identifier.
-     * Format: did:web:{host}:%3A{port}:verifier
+     * The host is derived from {@code verifierBaseUrl}, so it reflects the active environment:
+     * {@code localhost} in Spring mode, {@code holderverifier} in Docker mode.
      *
-     * @return Verifier DID (e.g., "did:web:localhost%3A8081:verifier")
+     * @return Verifier DID (e.g., "did:web:localhost%3A8081:verifier" or "did:web:holderverifier%3A8081:verifier")
      */
     public String getVerifierDid() {
-        String host = extractHost(verifierBaseUrl);
+//        String host = extractHost(verifierBaseUrl);
+        String host;
+        if(isDockerEnvironment()) {
+            host = "holderverifier";
+        } else {
+            host = extractHost(issuerBaseUrl);
+        }
         int port = extractPort(verifierBaseUrl);
         return String.format("did:web:%s%%3A%d:verifier", host, port);
     }
@@ -367,14 +396,14 @@ public abstract class DcpTestEnvironment {
     }
 
     /**
-     * Determines the test environment based on system property.
-     * Defaults to Docker mode if property is not set.
+     * Determines the test environment based on the {@code test.environment} system property.
+     * Defaults to Spring mode if the property is not set.
      *
-     * @return true if Docker environment, false for Spring
+     * @return {@code true} if Docker environment, {@code false} for Spring
      */
     public static boolean isDockerEnvironment() {
-        String environment = System.getProperty("test.environment", "docker");
-        return !"spring".equalsIgnoreCase(environment);
+        String environment = System.getProperty("test.environment", "spring");
+        return "docker".equalsIgnoreCase(environment);
     }
 
     /**

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import it.eng.dcp.common.model.*;
+import it.eng.dcp.common.service.IssuerTrustService;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.common.util.DidUrlConverter;
 import it.eng.dcp.holder.model.CredentialStatusRecord;
@@ -37,6 +38,7 @@ public class HolderService {
     private final CredentialStatusRepository credentialStatusRepository;
     private final ObjectMapper mapper;
     private final CredentialIssuanceClient issuanceClient;
+    private final IssuerTrustService issuerTrustService;
 
     @Autowired
     public HolderService(@Qualifier("selfIssuedIdTokenService") SelfIssuedIdTokenService tokenService,
@@ -45,7 +47,8 @@ public class HolderService {
                          VerifiableCredentialRepository credentialRepository,
                          CredentialStatusRepository credentialStatusRepository,
                          ObjectMapper mapper,
-                         CredentialIssuanceClient issuanceClient) {
+                         CredentialIssuanceClient issuanceClient,
+                         IssuerTrustService issuerTrustService) {
         this.tokenService = tokenService;
         this.presentationService = presentationService;
         this.rateLimiter = rateLimiter;
@@ -53,6 +56,7 @@ public class HolderService {
         this.credentialStatusRepository = credentialStatusRepository;
         this.mapper = mapper;
         this.issuanceClient = issuanceClient;
+        this.issuerTrustService = issuerTrustService;
     }
 
     /**
@@ -152,6 +156,13 @@ public class HolderService {
                 log.debug("Processing credential: type={}, format={}", c.getCredentialType(), c.getFormat());
                 VerifiableCredential vc = processCredentialContainer(c, issuerDid);
                 if (vc != null) {
+                    if (!issuerTrustService.isTrusted(vc.getCredentialType(), vc.getIssuerDid())) {
+                        log.warn("Rejecting credential of type '{}' — issuer '{}' is not trusted. " +
+                                        "Configure dcp.trusted-issuers.{}=<issuerDid> to trust this issuer.",
+                                vc.getCredentialType(), vc.getIssuerDid(), vc.getCredentialType());
+                        skipped++;
+                        continue;
+                    }
                     saved.add(credentialRepository.save(vc));
                     log.debug("Successfully saved credential: id={}, type={}, holderDid={}",
                             vc.getId(), vc.getCredentialType(), vc.getHolderDid());

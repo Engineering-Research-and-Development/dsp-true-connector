@@ -240,26 +240,29 @@ public class SharedDockerEnvironment {
                 .copy(jarRelativePath, "/app/app.jar")
                 .copy("src/test/resources/eckey.p12", "/app/eckey.p12")
                 .copy("src/test/resources/application-holderverifier.properties", "/config/application-holderverifier.properties")
+                .copy("src/test/resources/application-holderverifier-docker.properties", "/config/application-holderverifier-docker.properties")
                 .expose(8081)
                 .env("JAVA_OPTS", "-Xmx512m -Xms256m")
                 .entryPoint("sh", "-c", "java $JAVA_OPTS -jar /app/app.jar")
                 .build())
             .withFileFromPath(jarRelativePath, holderVerifierJar)
             .withFileFromPath("src/test/resources/eckey.p12", holderVerifierPath.resolve("src/test/resources/eckey.p12"))
-            .withFileFromPath("src/test/resources/application-holderverifier.properties", holderVerifierPath.resolve("src/test/resources/application-holderverifier.properties"));
+            .withFileFromPath("src/test/resources/application-holderverifier.properties", holderVerifierPath.resolve("src/test/resources/application-holderverifier.properties"))
+            .withFileFromPath("src/test/resources/application-holderverifier-docker.properties", holderVerifierPath.resolve("src/test/resources/application-holderverifier-docker.properties"));
         imagesToCleanup.add("dcp-holder-verifier-test-e2e");
 
         holderVerifierContainer = new GenericContainer<>(holderVerifierImage)
             .withNetwork(network)
             .withNetworkAliases("holder-verifier")
+            .withCreateContainerCmdModifier(cmd -> cmd.withHostName("holderverifier"))
             .withExposedPorts(8081)
             .withExtraHost("localhost", "host-gateway")  // Enable access to host machine's localhost
             // MongoDB connection details are dynamic and not known at build time
-            .withEnv("SPRING_DATA_MONGODB_HOST", "mongodb")
-            .withEnv("SPRING_DATA_MONGODB_PORT", "27017")
+//            .withEnv("SPRING_DATA_MONGODB_HOST", "mongodb")
+//            .withEnv("SPRING_DATA_MONGODB_PORT", "27017")
             // Load static configuration from the application-holderverifier.properties file
             .withEnv("SPRING_CONFIG_ADDITIONAL_LOCATION", "optional:file:/config/")
-            .withEnv("SPRING_PROFILES_ACTIVE", "holderverifier")
+            .withEnv("SPRING_PROFILES_ACTIVE", "holderverifier,holderverifier-docker")
             .waitingFor(Wait.forLogMessage(".*Started.*Application.*", 1)
                 .withStartupTimeout(Duration.ofMinutes(3)))
             .withReuse(false);
@@ -285,6 +288,7 @@ public class SharedDockerEnvironment {
                 .copy(jarRelativePath, "/app/dcp-issuer.jar")
                 .copy("src/test/resources/eckey-issuer.p12", "/app/eckey-issuer.p12")
                 .copy("src/test/resources/application-issuer.properties", "/config/application-issuer.properties")
+                .copy("src/test/resources/application-issuer-docker.properties", "/config/application-issuer-docker.properties")
                 .copy("src/test/resources/credential-metadata-configuration.properties", "/config/credential-metadata-configuration.properties")
                 .expose(8082)
                 .env("JAVA_OPTS", "-Xmx512m -Xms256m")
@@ -293,20 +297,22 @@ public class SharedDockerEnvironment {
             .withFileFromPath(jarRelativePath, issuerJar)
             .withFileFromPath("src/test/resources/eckey-issuer.p12", e2eTestsPath.resolve("src/test/resources/eckey-issuer.p12"))
             .withFileFromPath("src/test/resources/application-issuer.properties", e2eTestsPath.resolve("src/test/resources/application-issuer.properties"))
+            .withFileFromPath("src/test/resources/application-issuer-docker.properties", e2eTestsPath.resolve("src/test/resources/application-issuer-docker.properties"))
             .withFileFromPath("src/test/resources/credential-metadata-configuration.properties", issuerPath.resolve("src/test/resources/credential-metadata-configuration.properties"));
         imagesToCleanup.add("dcp-issuer-e2e-test");
 
         issuerContainer = new GenericContainer<>(issuerImage)
             .withNetwork(network)
             .withNetworkAliases("issuer")
+            .withCreateContainerCmdModifier(cmd -> cmd.withHostName("issuer"))
             .withExposedPorts(8082)
             .withExtraHost("localhost", "host-gateway")  // Enable access to host machine's localhost
             // MongoDB connection details are dynamic and not known at build time
-            .withEnv("SPRING_DATA_MONGODB_HOST", "mongodb")
-            .withEnv("SPRING_DATA_MONGODB_PORT", "27017")
+//            .withEnv("SPRING_DATA_MONGODB_HOST", "mongodb")
+//            .withEnv("SPRING_DATA_MONGODB_PORT", "27017")
             // Load static configuration from the application-issuer.properties file
             .withEnv("SPRING_CONFIG_ADDITIONAL_LOCATION", "optional:file:/config/")
-            .withEnv("SPRING_PROFILES_ACTIVE", "issuer")
+            .withEnv("SPRING_PROFILES_ACTIVE", "issuer,issuer-docker")
             .waitingFor(Wait.forLogMessage(".*Started IssuerApplication.*", 1)
                 .withStartupTimeout(Duration.ofMinutes(3)))
             .withReuse(false);

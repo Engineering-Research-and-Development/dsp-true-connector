@@ -1,8 +1,15 @@
 package it.eng.dcp.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.crypto.ECDSASigner;
+import com.nimbusds.jose.jwk.Curve;
+import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import it.eng.dcp.common.model.*;
+import it.eng.dcp.common.service.IssuerTrustService;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.holder.model.CredentialStatusRecord;
 import it.eng.dcp.holder.repository.CredentialStatusRepository;
@@ -46,6 +53,9 @@ class HolderServiceTest {
     @Mock
     private CredentialIssuanceClient issuanceClient;
 
+    @Mock
+    private IssuerTrustService issuerTrustService;
+
     private ObjectMapper mapper;
 
     private HolderService holderService;
@@ -61,7 +71,8 @@ class HolderServiceTest {
                 credentialRepository,
                 credentialStatusRepository,
                 mapper,
-                issuanceClient
+                issuanceClient,
+                issuerTrustService
         );
     }
 
@@ -236,6 +247,54 @@ class HolderServiceTest {
                 () -> holderService.processIssuedCredentials(msg, "did:example:issuer"));
 
         assertEquals("ISSUED status requires non-empty credentials array", exception.getMessage());
+    }
+
+    @Test
+    void processIssuedCredentials_untrustedIssuer_credentialSkipped() {
+        // Arrange - a minimal valid JWT so processCredentialContainer returns non-null
+        // We use a mock CredentialMessage that bypasses builder validation
+        CredentialMessage msg = mock(CredentialMessage.class);
+        CredentialMessage.CredentialContainer container = mock(CredentialMessage.CredentialContainer.class);
+        when(msg.getCredentials()).thenReturn(List.of(container));
+        when(container.getCredentialType()).thenReturn("MembershipCredential");
+        when(container.getFormat()).thenReturn(null); // null format → processCredentialContainer returns null → skipped
+
+        // issuerTrustService should never be consulted when vc is null (format missing)
+        HolderService.CredentialReceptionResult result = holderService.processIssuedCredentials(msg, "did:example:issuer");
+
+        assertEquals(0, result.getSavedCount());
+        assertEquals(1, result.getSkippedCount());
+        verify(issuerTrustService, never()).isTrusted(anyString(), anyString());
+        verify(credentialRepository, never()).save(any());
+    }
+
+    @Test
+    void processIssuedCredentials_untrustedIssuer_credentialRejectedBeforeSave() {
+        // Arrange - issuer is explicitly not trusted
+        when(issuerTrustService.isTrusted(anyString(), anyString())).thenReturn(false);
+
+        // Build a minimal VC 1.1 JWT so processCredentialContainer returns a non-null VC
+        // and the trust check is actually reached
+        String vcJwt = buildMinimalVcJwt("did:example:issuer", "did:example:holder", "MembershipCredential");
+
+        CredentialMessage msg = CredentialMessage.Builder.newInstance()
+                .status("ISSUED")
+                .issuerPid("issuer-123")
+                .holderPid("did:example:holder")
+                .credentials(List.of(CredentialMessage.CredentialContainer.Builder.newInstance()
+                        .credentialType("MembershipCredential")
+                        .format("jwt")
+                        .payload(vcJwt)
+                        .build()))
+                .build();
+
+        HolderService.CredentialReceptionResult result =
+                holderService.processIssuedCredentials(msg, "did:example:issuer");
+
+        assertEquals(0, result.getSavedCount());
+        assertEquals(1, result.getSkippedCount());
+        verify(issuerTrustService).isTrusted(eq("MembershipCredential"), eq("did:example:issuer"));
+        verify(credentialRepository, never()).save(any());
     }
 
     @Test
@@ -477,5 +536,34 @@ class HolderServiceTest {
         // Assert
         assertTrue(result);
         verify(issuanceClient).getIssuerMetadata("http://issuer.example.com/metadata");
+    }
+
+    // ─── helpers ──────────────────────────────────────────────────────────────
+
+    /**
+     * Produces a minimal signed VC 1.1 JWT (nested {@code vc} claim) so that
+     * {@code processCredentialContainer} can parse it and return a non-null
+     * {@link it.eng.dcp.holder.model.VerifiableCredential}, allowing the trust check to be reached.
+     */
+    private String buildMinimalVcJwt(String issuerDid, String holderDid, String credentialType) {
+        try {
+            var key = new ECKeyGenerator(Curve.P_256).keyID("test-key").generate();
+            var claims = new JWTClaimsSet.Builder()
+                    .issuer(issuerDid)
+                    .subject(holderDid)
+                    .claim("vc", java.util.Map.of(
+                            "id", "urn:uuid:test-vc",
+                            "type", java.util.List.of("VerifiableCredential", credentialType),
+                            "credentialSubject", java.util.Map.of("id", holderDid),
+                            "issuanceDate", "2024-01-01T00:00:00Z"
+                    ))
+                    .build();
+            var header = new JWSHeader.Builder(JWSAlgorithm.ES256).keyID("test-key").build();
+            var jwt = new SignedJWT(header, claims);
+            jwt.sign(new ECDSASigner(key));
+            return jwt.serialize();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to build test JWT", e);
+        }
     }
 }

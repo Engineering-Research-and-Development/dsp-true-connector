@@ -7,7 +7,7 @@ import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -57,8 +57,11 @@ public class DcpProperties {
     /** Keystore configuration. */
     private Keystore keystore = new Keystore();
 
-    /** Trusted issuers configuration. */
-    private TrustedIssuers trustedIssuers = new TrustedIssuers();
+    /**
+     * Map of credential types to comma-separated list of trusted issuer DIDs.
+     * Example: dcp.trusted-issuers.MembershipCredential=did:web:localhost:8080,did:web:localhost:8090
+     */
+    private Map<String, String> trustedIssuers = new HashMap<>();
 
     /** Issuer configuration. */
     private Issuer issuer = new Issuer();
@@ -106,20 +109,6 @@ public class DcpProperties {
 
     }
 
-    /**
-     * Configuration for trusted issuers per credential type.
-     * Maps credential types to comma-separated lists of trusted issuer DIDs.
-     */
-    @Setter
-    @Getter
-    public static class TrustedIssuers {
-        /**
-         * Map of credential types to comma-separated list of trusted issuer DIDs.
-         * Example: MembershipCredential=did:web:localhost:8080,did:web:localhost:8090
-         */
-        private Map<String, String> issuers = Collections.emptyMap();
-
-    }
 
     /**
      * Configuration for a service entry in the DID document.

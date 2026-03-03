@@ -14,7 +14,6 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.MinIOContainer;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
@@ -33,15 +32,9 @@ public class BaseIssuerIntegrationTest {
     protected static final MongoDBContainer mongoDBContainer =
             new MongoDBContainer(DockerImageName.parse("mongo:7.0.12"))
                     .withReuse(false);
-    protected static final MinIOContainer minIOContainer =
-            new MinIOContainer(DockerImageName.parse("minio/minio"))
-                    .withReuse(false);
 
     static {
         mongoDBContainer.start();
-        // used for checking S3 storage during test debugging; will be exposed on random localhost port which can be checked with `docker ps`or some docker GUI
-        minIOContainer.addExposedPort(9001);
-        minIOContainer.start();
     }
 
     @Autowired
@@ -57,8 +50,6 @@ public class BaseIssuerIntegrationTest {
     static void containersProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.data.mongodb.host", mongoDBContainer::getHost);
         registry.add("spring.data.mongodb.port", mongoDBContainer::getFirstMappedPort);
-        registry.add("s3.endpoint", minIOContainer::getS3URL);
-        registry.add("s3.externalPresignedEndpoint", minIOContainer::getS3URL);
     }
 
     @BeforeEach

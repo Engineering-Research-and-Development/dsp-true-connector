@@ -16,6 +16,7 @@ import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.model.PresentationResponseMessage;
 import it.eng.dcp.common.model.ServiceEntry;
+import it.eng.dcp.common.service.IssuerTrustService;
 import it.eng.dcp.common.service.did.HttpDidResolverService;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import okhttp3.RequestBody;
@@ -65,6 +66,9 @@ class VerifierServiceTest {
     @Mock
     private DidDocumentConfig verifierConfig;
 
+    @Mock
+    private IssuerTrustService issuerTrustService;
+
     private VerifierService verifierService;
     private ObjectMapper objectMapper;
 
@@ -95,18 +99,14 @@ class VerifierServiceTest {
                 .keyID("verifier-key-1")
                 .generate();
 
-        // Setup verifier config mock
-//        DidDocumentConfig didDocumentConfig = mock(DidDocumentConfig.class);
-//        when(didDocumentConfig.getDid()).thenReturn(VERIFIER_DID);
-//        when(verifierConfig.getDidDocumentConfig()).thenReturn(didDocumentConfig);
-
         // Create service instance
         verifierService = new VerifierService(
                 tokenService,
                 didResolverService,
                 httpClient,
                 objectMapper,
-                verifierConfig
+                verifierConfig,
+                issuerTrustService
         );
     }
 
@@ -972,6 +972,37 @@ class VerifierServiceTest {
             assertTrue(exception.getMessage().contains("Step 5 failed"));
             assertTrue(exception.getMessage().toLowerCase().contains("future"));
         }
+
+        @Test
+        @DisplayName("Should fail when credential issuer is not in trusted issuers list")
+        void shouldFailWhenCredentialIssuerNotTrusted() throws Exception {
+            // Given
+            String accessToken = createValidAccessToken();
+            String selfIssuedToken = createValidSelfIssuedToken(accessToken);
+
+            when(tokenService.validateToken(selfIssuedToken))
+                    .thenReturn(parseClaims(selfIssuedToken));
+
+            setupSuccessfulHolderResolution();
+
+            String credentialJwt = createValidCredentialJWT();
+            String presentationJwt = createValidPresentationJWT(List.of(credentialJwt));
+
+            setupSuccessfulPresentationQuery(List.of(presentationJwt));
+            setupSuccessfulKeyResolution(HOLDER_DID, holderKey);
+            setupSuccessfulKeyResolution(ISSUER_DID, issuerKey);
+            // Intentionally do NOT call setupTrustedIssuer — issuer is untrusted
+            when(issuerTrustService.isTrusted(anyString(), eq(ISSUER_DID))).thenReturn(false);
+
+            // When/Then
+            SecurityException exception = assertThrows(
+                    SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+            );
+
+            assertTrue(exception.getMessage().contains("Step 5 failed"));
+            assertTrue(exception.getMessage().toLowerCase().contains("not trusted"));
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════════════
@@ -1000,6 +1031,7 @@ class VerifierServiceTest {
             setupSuccessfulPresentationQuery(List.of(presentationJwt));
             setupSuccessfulKeyResolution(HOLDER_DID, holderKey);
             setupSuccessfulKeyResolution(ISSUER_DID, issuerKey);
+            setupTrustedIssuer(ISSUER_DID);
 
             // When
             VerifierService.PresentationFlowResult result =
@@ -1040,6 +1072,7 @@ class VerifierServiceTest {
             setupSuccessfulPresentationQuery(List.of(presentationJwt));
             setupSuccessfulKeyResolution(HOLDER_DID, holderKey);
             setupSuccessfulKeyResolution(ISSUER_DID, issuerKey);
+            setupTrustedIssuer(ISSUER_DID);
 
             // When
             VerifierService.PresentationFlowResult result =
@@ -1081,6 +1114,7 @@ class VerifierServiceTest {
             setupSuccessfulPresentationQuery(List.of(presentation1, presentation2));
             setupSuccessfulKeyResolution(HOLDER_DID, holderKey);
             setupSuccessfulKeyResolution(ISSUER_DID, issuerKey);
+            setupTrustedIssuer(ISSUER_DID);
 
             // When
             VerifierService.PresentationFlowResult result =
@@ -1128,6 +1162,7 @@ class VerifierServiceTest {
             setupSuccessfulPresentationQuery(List.of(presentationJwt));
             setupSuccessfulKeyResolution(HOLDER_DID, holderKey);
             setupSuccessfulKeyResolution(ISSUER_DID, issuerKey);
+            setupTrustedIssuer(ISSUER_DID);
 
             // When
             VerifierService.PresentationFlowResult result =
@@ -1263,5 +1298,14 @@ class VerifierServiceTest {
                 .thenReturn(key.toPublicJWK());
 //        when(didResolverService.resolvePublicKey(eq(did), anyString(), eq("capabilityInvocation")))
 //                .thenReturn(key.toPublicJWK());
+    }
+
+    /**
+     * Stubs the trust service to accept any credential type issued by the given DID.
+     *
+     * @param issuerDid the issuer DID to mark as trusted for any credential type
+     */
+    private void setupTrustedIssuer(String issuerDid) {
+        when(issuerTrustService.isTrusted(anyString(), eq(issuerDid))).thenReturn(true);
     }
 }

@@ -198,7 +198,35 @@
 
     <!-- Maven Profiles for different test groups -->
     <profiles>
-        <!-- Profile for e2e tests -->
+        <!-- Profile to run E2E tests with embedded Spring Boot (default local dev mode) -->
+        <profile>
+            <id>spring-tests</id>
+            <activation>
+                <property>
+                    <name>testGroup</name>
+                    <value>spring</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <skipITs>false</skipITs>
+                            <includes>
+                                <include>**/*TestE2E.java</include>
+                            </includes>
+                            <systemPropertyVariables>
+                                <test.environment>spring</test.environment>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Profile for e2e tests with Docker containers -->
         <profile>
             <id>docker-tests</id>
             <activation>
@@ -215,9 +243,11 @@
                         <configuration>
                             <skipITs>false</skipITs>
                             <includes>
-                                <!-- Include tests from docker package -->
                                 <include>**/*TestE2E.java</include>
                             </includes>
+                            <systemPropertyVariables>
+                                <test.environment>docker</test.environment>
+                            </systemPropertyVariables>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -243,6 +273,9 @@
                             <includes>
                                 <include>**/*TestE2E.java</include>
                             </includes>
+                            <systemPropertyVariables>
+                                <test.environment>docker</test.environment>
+                            </systemPropertyVariables>
                         </configuration>
                     </plugin>
                 </plugins>

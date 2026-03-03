@@ -1,116 +1,78 @@
-# E2E Test Quick Reference
+# DCP E2E Tests — Quick Start
 
-## 🚀 Quick Start
-
-### Run the E2E Test
-```bash
-# From project root
-mvn test -pl dcp/dcp-e2e-tests -Dtest=HolderVerifierE2ETest
-
-# From module directory
-cd dcp/dcp-e2e-tests
-mvn test -Dtest=HolderVerifierE2ETest
-```
-
-### What Gets Tested ✅
-
-1. **MongoDB 7.0.12 Container**
-   - Container starts successfully
-   - Correct version verification
-   - Port mapping works
-   - Connection established
-
-2. **HolderVerifierTestApplication**
-   - Spring Boot app starts on random port
-   - MongoDB connection successful
-   - All beans loaded correctly
-
-3. **DID Document Endpoints**
-   - ✅ `GET http://localhost:{port}/holder/did.json` → 200 OK + Valid JSON
-   - ✅ `GET http://localhost:{port}/verifier/did.json` → 200 OK + Valid JSON
-
-## 📊 Test Results
-
-```
-Tests run: 6, Failures: 0, Errors: 0, Skipped: 0 ✅
-BUILD SUCCESS ✅
-```
-
-## 🗂️ Files Created
-
-| File | Description |
-|------|-------------|
-| `HolderVerifierE2ETest.java` | Main E2E test class |
-| `application-test.properties` | Test configuration |
-| `logback-test.xml` | Test logging config |
-| `eckey.p12` | Keystore (copied) |
-| `E2E_TEST_DOCUMENTATION.md` | Full documentation |
-| `E2E_TEST_IMPLEMENTATION_SUMMARY.md` | Implementation details |
-
-## 🔧 Prerequisites
-
-- ✅ Docker running (Desktop or Engine)
-- ✅ Java 17+
-- ✅ Maven 3.6+
-
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────┐
-│   HolderVerifierE2ETest (JUnit 5)  │
-└─────────────────┬───────────────────┘
-                  │
-        ┌─────────┴─────────┐
-        │                   │
-┌───────▼──────┐   ┌────────▼────────┐
-│ MongoDB 7.0.12│   │ Spring Boot App │
-│ (Testcontainer)   │ (Random Port)   │
-└───────────────┘   └─────────────────┘
-        │                   │
-        └────── Connected ──┘
-```
-
-## 📝 Test Methods
-
-| Test | Purpose |
-|------|---------|
-| `testMongoDBContainerIsRunning()` | Verify container startup |
-| `testApplicationStartup()` | Verify app starts |
-| `testBothServicesAreRunning()` | Verify integration |
-| `testHolderDidDocumentEndpoint()` | Test holder DID endpoint |
-| `testVerifierDidDocumentEndpoint()` | Test verifier DID endpoint |
-| `testMongoDBConnection()` | Verify DB connectivity |
-
-## 🐛 Troubleshooting
-
-### Docker not running?
-```bash
-# Start Docker Desktop
-# Then retry test
-```
-
-### Port conflicts?
-No worries! Tests use random ports automatically.
-
-### Want more logging?
-Edit `src/test/resources/logback-test.xml`:
-```xml
-<logger name="it.eng.dcp" level="DEBUG"/>
-```
-
-## 📖 Full Documentation
-
-See `E2E_TEST_DOCUMENTATION.md` for complete details.
-
-## 🎯 Next Steps
-
-Ready to expand? Add:
-- Credential issuance flows
-- Presentation verification tests
-- Error scenario testing
-- Performance benchmarks
-- Multi-service interactions
+> Full documentation: [README.md](README.md)
 
 ---
 
-**✨ All tests passing! Ready for production use.**
+## Run via Maven
+
+```bash
+# Spring (embedded apps, localhost) — default for local development
+mvn verify -DtestGroup=spring -pl dcp-e2e-tests
+
+# Docker (containers, requires Docker Desktop + pre-built JARs)
+mvn clean install -DskipTests
+mvn verify -DtestGroup=e2e -pl dcp-e2e-tests
+```
+
+---
+
+## Run from IntelliJ IDEA
+
+### Option A — Maven run configuration (recommended)
+
+1. **Run → Edit Configurations → + → Maven**
+2. Fill in:
+
+| Field | Spring env | Docker env |
+|---|---|---|
+| Working directory | `dcp/dcp-e2e-tests` | `dcp/dcp-e2e-tests` |
+| Command line | `verify -DtestGroup=spring` | `verify -DtestGroup=e2e` |
+
+3. Click **Run**.
+
+### Option B — Run a single test class directly
+
+1. Open e.g. `DcpCredentialFlowTestE2E`
+2. **Run → Edit Configurations → (select the test) → VM options:**
+   ```
+   -Dtest.environment=spring
+   ```
+3. Click the green ▶ button.
+
+---
+
+## Run from Eclipse
+
+### Option A — Maven run configuration (recommended)
+
+1. **Run → Run Configurations → Maven Build → New**
+2. Fill in:
+
+| Field | Value |
+|---|---|
+| Base directory | `${project_loc:dcp-e2e-tests}` |
+| Goals | `verify` |
+| Parameter name | `testGroup` |
+| Parameter value | `spring` (or `e2e` for Docker) |
+
+3. Click **Run**.
+
+### Option B — Run a single test class directly
+
+1. Right-click the test class → **Run As → JUnit Test**
+2. **Run → Run Configurations → JUnit → (your test) → Arguments tab**
+3. Add to **VM arguments:**
+   ```
+   -Dtest.environment=spring
+   ```
+4. Click **Run**.
+
+---
+
+## Which environment should I use?
+
+| Situation | Use |
+|---|---|
+| Local development / debugging | `spring` — faster, no Docker build needed |
+| CI pipeline / full integration | `e2e` (Docker) — production-like, isolated containers |
