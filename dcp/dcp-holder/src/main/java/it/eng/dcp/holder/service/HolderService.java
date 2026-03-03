@@ -157,7 +157,7 @@ public class HolderService {
                 VerifiableCredential vc = processCredentialContainer(c, issuerDid);
                 if (vc != null) {
                     if (!issuerTrustService.isTrusted(vc.getCredentialType(), vc.getIssuerDid())) {
-                        log.warn("Rejecting credential of type '{}' — issuer '{}' is not trusted. " +
+                        log.warn("============ Rejecting credential of type '{}' — issuer '{}' is not trusted. " +
                                         "Configure dcp.trusted-issuers.{}=<issuerDid> to trust this issuer.",
                                 vc.getCredentialType(), vc.getIssuerDid(), vc.getCredentialType());
                         skipped++;
