@@ -28,7 +28,7 @@ public class ContractNegotiationProviderController {
     // GET
     // Provider must return an HTTP 200 (OK) response and a body containing the Contract Negotiation
     @GetMapping(path = "/{providerPid}")
-    public ResponseEntity<JsonNode> getNegotiationByProviderPid(@PathVariable String providerPid) {
+    public ResponseEntity<JsonNode> getNegotiationByProviderPid(@PathVariable("providerPid") String providerPid) {
         log.info("Get negotiation by provider pid");
 
         ContractNegotiation contractNegotiation = providerService.getNegotiationByProviderPid(providerPid);
@@ -60,7 +60,7 @@ public class ContractNegotiationProviderController {
     // POST
     // Provider must return an HTTP 200 (OK) response. The response body is not specified and clients are not required to process it.
     @PostMapping(path = "/{providerPid}/request")
-    public ResponseEntity<JsonNode> handleContractRequestMessageAsCounteroffer(@PathVariable String providerPid,
+    public ResponseEntity<JsonNode> handleContractRequestMessageAsCounteroffer(@PathVariable("providerPid") String providerPid,
                                                                                @RequestBody JsonNode contractRequestMessageJsonNode) {
         log.info("Processing consumer counter-offer");
         ContractRequestMessage crm = NegotiationSerializer.deserializeProtocol(contractRequestMessageJsonNode, ContractRequestMessage.class);
@@ -76,7 +76,7 @@ public class ContractNegotiationProviderController {
     // POST
     // provider must return an HTTP code 200 (OK). The response body is not specified and clients are not required to process it.
     @PostMapping(path = "/{providerPid}/events")
-    public ResponseEntity<JsonNode> handleContractNegotiationEventMessageAccepted(@PathVariable String providerPid,
+    public ResponseEntity<JsonNode> handleContractNegotiationEventMessageAccepted(@PathVariable("providerPid") String providerPid,
                                                                                   @RequestBody JsonNode contractNegotiationEventMessageJsonNode) {
         ContractNegotiationEventMessage contractNegotiationEventMessage = NegotiationSerializer.deserializeProtocol(contractNegotiationEventMessageJsonNode, ContractNegotiationEventMessage.class);
         log.info(contractNegotiationEventMessage.toString());
@@ -93,7 +93,7 @@ public class ContractNegotiationProviderController {
     // POST
     // Provider must return an HTTP code 200 (OK). The response body is not specified and clients are not required to process it.
     @PostMapping(path = "/{providerPid}/agreement/verification")
-    public ResponseEntity<Void> handleContractAgreementVerificationMessage(@PathVariable String providerPid,
+    public ResponseEntity<Void> handleContractAgreementVerificationMessage(@PathVariable("providerPid") String providerPid,
                                                                            @RequestBody JsonNode contractAgreementVerificationMessageJsonNode) {
         ContractAgreementVerificationMessage cavm =
                 NegotiationSerializer.deserializeProtocol(contractAgreementVerificationMessageJsonNode, ContractAgreementVerificationMessage.class);
@@ -111,7 +111,7 @@ public class ContractNegotiationProviderController {
     // POST
     // Provider must return HTTP code 200 (OK). The response body is not specified and clients are not required to process it.
     @PostMapping(path = "/{providerPid}/termination")
-    public ResponseEntity<Void> handleContractNegotiationTerminationMessage(@PathVariable String providerPid,
+    public ResponseEntity<Void> handleContractNegotiationTerminationMessage(@PathVariable("providerPid") String providerPid,
                                                                             @RequestBody JsonNode contractNegotiationTerminationMessageJsonNode) {
         ContractNegotiationTerminationMessage contractNegotiationTerminationMessage =
                 NegotiationSerializer.deserializeProtocol(contractNegotiationTerminationMessageJsonNode, ContractNegotiationTerminationMessage.class);

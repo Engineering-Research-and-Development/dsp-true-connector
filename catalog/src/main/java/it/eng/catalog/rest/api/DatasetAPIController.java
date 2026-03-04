@@ -31,7 +31,7 @@ public class DatasetAPIController {
     }
 
     @GetMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<JsonNode>> getDatasetById(@PathVariable String id) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> getDatasetById(@PathVariable("id") String id) {
         log.info("Fetching dataset with id: '" + id + "'");
         Dataset dataset = datasetService.getDatasetByIdForApi(id);
 
@@ -56,7 +56,7 @@ public class DatasetAPIController {
      * @return List of formats
      */
     @GetMapping(path = "/{id}/formats")
-    public ResponseEntity<GenericApiResponse<List<String>>> getFormatsFromDataset(@PathVariable String id) {
+    public ResponseEntity<GenericApiResponse<List<String>>> getFormatsFromDataset(@PathVariable("id") String id) {
         log.info("Fetching formats from dataset with id: '" + id + "'");
         List<String> formats = datasetService.getFormatsFromDataset(id);
 
@@ -71,7 +71,7 @@ public class DatasetAPIController {
      * @return Artifact
      */
     @GetMapping(path = "/{id}/artifact")
-    public ResponseEntity<GenericApiResponse<JsonNode>> getArtifactFromDataset(@PathVariable String id) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> getArtifactFromDataset(@PathVariable("id") String id) {
         log.info("Fetching artifact from dataset with id: '" + id + "'");
         Artifact artifact = datasetService.getArtifactFromDataset(id);
 
@@ -97,7 +97,7 @@ public class DatasetAPIController {
     
     @PutMapping(path = "/{id}")
 	public ResponseEntity<GenericApiResponse<JsonNode>> updateDataset(
-			@PathVariable String id,
+			@PathVariable("id") String id,
 			@RequestPart(value = "file", required = false) MultipartFile file,
 			@RequestPart(value = "url", required = false) String externalURL,
 			@RequestPart(value = "authorization", required = false) String authorization,
@@ -118,7 +118,7 @@ public class DatasetAPIController {
 	}
 
 	@DeleteMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<Void>> deleteDataset(@PathVariable String id) {
+    public ResponseEntity<GenericApiResponse<Void>> deleteDataset(@PathVariable("id") String id) {
         log.info("Deleting dataset with id: " + id);
 
         datasetService.deleteDataset(id);

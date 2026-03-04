@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.5-SNAPSHOT] - 04.03.2026.
+
+### Security
+
+- Upgraded Spring Boot from `3.1.2` to `3.4.13`, resolving multiple CVEs in Spring Framework and Spring Security:
+  - CVE-2023-34053, CVE-2024-38816, CVE-2024-38819, CVE-2025-41242 (Spring WebMVC path traversal / DoS)
+  - CVE-2024-22243, CVE-2024-22259, CVE-2024-22262, CVE-2024-38809, CVE-2024-38820 (Spring Web SSRF / open redirect / DoS)
+  - CVE-2024-22234, CVE-2024-22257, CVE-2024-38827 (Spring Security broken access control)
+  - CVE-2024-38821 (Spring Security static resource authorization bypass)
+- Upgraded `tomcat-embed-core` from `10.1.34` to `10.1.50` (BOM override), resolving 13 CVEs including:
+  - CVE-2025-24813 (CRITICAL – partial PUT RCE / information disclosure)
+  - CVE-2025-48988, CVE-2025-48989 (HIGH – DoS in multipart upload / made-you-reset)
+  - CVE-2025-31650, CVE-2025-49125, CVE-2025-66614 and others (MEDIUM/LOW)
+- Upgraded `jackson-core`, `jackson-databind`, `jackson-annotations`, `jackson-datatype-jsr310` from `2.17.1` to `2.18.6` (BOM override):
+  - GHSA-72hv-8253-57qq (HIGH – async parser number length constraint bypass leading to DoS)
+- Upgraded `netty-codec-http`, `netty-codec-http2` and full Netty suite from `4.1.119.Final` to `4.2.8.Final` (BOM override):
+  - CVE-2025-58056 (LOW – request smuggling via chunk extension LF parsing)
+  - CVE-2025-55163 (HIGH – HTTP/2 MadeYouReset DDoS)
+- Upgraded `commons-lang3` from `3.17.0` to `3.18.0` (BOM override):
+  - CVE-2025-48924 (MEDIUM – uncontrolled recursion / StackOverflowError DoS)
+- Upgraded `org.eclipse.parsson:parsson` from `1.1.1` to `1.1.3`:
+  - CVE-2023-7272 (CRITICAL – stack overflow on deeply nested JSON input)
+- Upgraded `org.json:json` from `20230618` to `20231013`:
+  - CVE-2023-5072 (HIGH – exponential memory allocation DoS)
+- Upgraded `org.apache.mina:mina-core` from `2.2.3` to `2.2.4`:
+  - CVE-2024-52046 (CRITICAL – deserialization RCE via ObjectSerializationDecoder)
+- Upgraded `commons-io:commons-io` from `2.11.0` to `2.14.0`:
+  - CVE-2024-47554 (HIGH – XmlStreamReader CPU exhaustion DoS)
+
+### Changed
+
+- Extracted all hardcoded dependency versions into properties in the parent `pom.xml`
+- Moved all third-party dependency version definitions into `<dependencyManagement>` section in parent `pom.xml`
+- Added `okhttp.version` property (`4.12.0`) and explicit `dependencyManagement` entry for `com.squareup.okhttp3:okhttp`
+- Split testcontainers versioning into two properties:
+  - `testcontainers.version=2.0.2` – core artifact (required for Docker Desktop compatibility)
+  - `testcontainers.modules.version=1.20.5` – module artifacts (`minio`, `mongodb`, `junit-jupiter`) not yet compatible with 2.x
+- Added `spring.boot.version`, `tomcat.version`, `jackson.version`, `netty.version`, `commons-lang3.version` properties for BOM override transparency
+- Added explicit `value` attribute to all `@PathVariable` annotations across all controllers — required by Spring Framework 6.x which no longer infers parameter names from bytecode without the `-parameters` compiler flag
+
 ## [0.6.4-SNAPSHOT] - 24.12.2025.
 
 ### Changed

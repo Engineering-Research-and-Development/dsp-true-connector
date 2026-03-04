@@ -39,7 +39,7 @@ public class CatalogController {
 
     @GetMapping(path = "/datasets/{id}")
     public ResponseEntity<JsonNode> getDataset(@RequestHeader(required = false) String authorization,
-                                               @PathVariable String id) {
+                                               @PathVariable("id") String id) {
 
         log.info("Handling dataset request {}", id);
         Dataset dataSet = datasetService.getDatasetById(id);
