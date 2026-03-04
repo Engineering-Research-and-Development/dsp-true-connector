@@ -30,6 +30,17 @@ All notable changes to this project will be documented in this file.
   - CVE-2024-52046 (CRITICAL – deserialization RCE via ObjectSerializationDecoder)
 - Upgraded `commons-io:commons-io` from `2.11.0` to `2.14.0`:
   - CVE-2024-47554 (HIGH – XmlStreamReader CPU exhaustion DoS)
+- Upgraded `org.apache.httpcomponents.client5:httpclient5` from `5.4.1` to `5.4.3` (BOM override):
+  - CVE-2025-27820 (HIGH – PSL validation bug disables domain checks for cookies and host name verification)
+- Upgraded `net.minidev:json-smart` from `2.5.1` to `2.5.2` (BOM override):
+  - CVE-2024-57699 (HIGH – uncontrolled recursion / stack exhaustion DoS on deeply nested JSON)
+- Upgraded `com.nimbusds:nimbus-jose-jwt` from `9.47` to `10.0.2` (BOM override):
+  - CVE-2025-53864 (MEDIUM – uncontrolled recursion DoS via deeply nested JSON in JWT claim set)
+- Upgraded `io.minio:minio-admin` (and all MinIO artifacts) from `8.5.7` to `8.6.0`:
+  - CVE-2025-59952 (HIGH – XML tag value substitution exposes system properties and environment variables)
+- Upgraded `org.apache.sshd` suite from `2.11.0` to `2.14.0` (latest stable, resolves vulnerability warnings reported by IntelliJ IDEA)
+- Upgraded `org.assertj:assertj-core` from `3.26.3` to `3.27.7` (BOM override):
+  - CVE-2026-24400 (HIGH – XXE vulnerability in `isXmlEqualTo`/`XmlStringPrettyFormatter` allows arbitrary file read, SSRF and DoS via untrusted XML input)
 
 ### Changed
 
@@ -41,6 +52,8 @@ All notable changes to this project will be documented in this file.
   - `testcontainers.modules.version=1.20.5` – module artifacts (`minio`, `mongodb`, `junit-jupiter`) not yet compatible with 2.x
 - Added `spring.boot.version`, `tomcat.version`, `jackson.version`, `netty.version`, `commons-lang3.version` properties for BOM override transparency
 - Added explicit `value` attribute to all `@PathVariable` annotations across all controllers — required by Spring Framework 6.x which no longer infers parameter names from bytecode without the `-parameters` compiler flag
+- Removed unused `org.json:json`, `org.eclipse.parsson:parsson` and `jakarta.json-api` dependencies — no source code imports any of them; the entire codebase uses only Jackson (`com.fasterxml.jackson`) for JSON handling; removing `org.json` also eliminates the duplicate class warning at startup
+- 
 
 ## [0.6.4-SNAPSHOT] - 24.12.2025.
 
