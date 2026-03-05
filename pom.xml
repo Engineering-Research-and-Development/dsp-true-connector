@@ -54,10 +54,8 @@
         <okhttp.version>4.12.0</okhttp.version>
         <!-- WireMock -->
         <wiremock-spring-boot.version>3.2.0</wiremock-spring-boot.version>
-        <!-- Testcontainers - core must stay at 2.0.2 for Docker Desktop compatibility -->
-        <testcontainers.version>2.0.2</testcontainers.version>
-        <!-- Testcontainers modules (minio, mongodb, junit-jupiter) are not yet compatible with 2.x -->
-        <testcontainers.modules.version>1.20.5</testcontainers.modules.version>
+        <!-- Testcontainers - core must stay at 2.0.3 for Docker Desktop compatibility -->
+        <testcontainers.version>2.0.3</testcontainers.version>
         <!-- DSP TCK -->
         <dsp.tck.version>1.0.0-RC5</dsp.tck.version>
         <!-- Apache SSHD - upgrade to 2.14.0 (latest stable, resolves IDEA vulnerability warnings) -->
@@ -331,23 +329,22 @@
                 <version>${testcontainers.version}</version>
                 <scope>test</scope>
             </dependency>
-            <!-- Testcontainers modules - not yet compatible with 2.x -->
             <dependency>
                 <groupId>org.testcontainers</groupId>
-                <artifactId>minio</artifactId>
-                <version>${testcontainers.modules.version}</version>
+                <artifactId>testcontainers-minio</artifactId>
+                <version>${testcontainers.version}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>org.testcontainers</groupId>
-                <artifactId>mongodb</artifactId>
-                <version>${testcontainers.modules.version}</version>
+                <artifactId>testcontainers-mongodb</artifactId>
+                <version>${testcontainers.version}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>org.testcontainers</groupId>
-                <artifactId>junit-jupiter</artifactId>
-                <version>${testcontainers.modules.version}</version>
+                <artifactId>testcontainers-junit-jupiter</artifactId>
+                <version>${testcontainers.version}</version>
                 <scope>test</scope>
             </dependency>
 

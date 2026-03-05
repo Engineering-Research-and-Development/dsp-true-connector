@@ -45,8 +45,7 @@ All notable changes to this project will be documented in this file.
 - Moved all third-party dependency version definitions into `<dependencyManagement>` section in parent `pom.xml`
 - Added `okhttp.version` property (`4.12.0`) and explicit `dependencyManagement` entry for `com.squareup.okhttp3:okhttp`
 - Split testcontainers versioning into two properties:
-  - `testcontainers.version=2.0.2` – core artifact (required for Docker Desktop compatibility)
-  - `testcontainers.modules.version=1.20.5` – module artifacts (`minio`, `mongodb`, `junit-jupiter`) not yet compatible with 2.x
+  - `testcontainers.version=2.0.3` – core artifact (required for Docker Desktop compatibility)
 - Added `spring.boot.version`, `tomcat.version`, `jackson.version`, `netty.version`, `commons-lang3.version` properties for BOM override transparency
 - Added explicit `value` attribute to all `@PathVariable` annotations across all controllers — required by Spring Framework 6.x which no longer infers parameter names from bytecode without the `-parameters` compiler flag
 - Removed unused `org.json:json`, `org.eclipse.parsson:parsson` and `jakarta.json-api` dependencies — no source code imports any of them; the entire codebase uses only Jackson (`com.fasterxml.jackson`) for JSON handling; removing `org.json` also eliminates the duplicate class warning at startup
@@ -72,7 +71,7 @@ or ApplicationProperty in Mongo
 
 - Conditional GlobalSSLConfiguration creation based on ssl.enabled property (FTP impact)
 - Improved logic for async S3 Multipart upload - now using CompletableFuture.supplyAsync for each part upload
-- testcontainers version bumped to 2.0.2 (docker 4.53.0 compliance)
+- testcontainers version bumped to 2.0.3 (docker 4.53.0 compliance)
 
 ## [0.6.0-SNAPSHOT] - 28.11.2025.
 
