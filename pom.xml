@@ -596,9 +596,6 @@
                     <release>${java.version}</release>
                     <encoding>${project.build.sourceEncoding}</encoding>
                     <parameters>true</parameters>
-                    <compilerArgs>
-                        <arg>-parameters</arg>
-                    </compilerArgs>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>
@@ -706,6 +703,188 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+
+        <!-- =====================================================================
+             SpotBugs + Find Security Bugs - bytecode-level SAST
+
+             Scan whole project, never fail-fast (default):
+               mvn verify -Pspotbugs
+             Reports per module: module/target/spotbugsXml.xml
+
+             Gate mode - scan ALL modules first, then fail if findings found:
+               Step 1 (scan):  mvn verify -Pspotbugs
+               Step 2 (check): mvn spotbugs:check -Pspotbugs -Dspotbugs.skipCheck=false -fae
+             Or use the helper script:
+               spotbugs-scan.cmd  (Windows, pass argument: gate)
+               spotbugs-scan.sh   (Linux/macOS, pass argument: gate)
+
+             NOTE: -fae (fail-at-end) is essential in gate mode so Maven continues
+             checking every module before reporting failures.
+
+             Override effort / threshold:
+               mvn verify -Pspotbugs -Dspotbugs.effort=default -Dspotbugs.threshold=high
+             ===================================================================== -->
+        <profile>
+            <id>spotbugs</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <!-- effort:     min | default | max -->
+                <spotbugs.effort>max</spotbugs.effort>
+                <!-- threshold:  low | medium | high -->
+                <spotbugs.threshold>medium</spotbugs.threshold>
+                <!-- skipCheck:  true  = scan-only, reactor always completes (DEFAULT)
+                                 false = fail after all modules are scanned
+                     Override:   -Dspotbugs.skipCheck=false                          -->
+                <spotbugs.skipCheck>true</spotbugs.skipCheck>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.github.spotbugs</groupId>
+                        <artifactId>spotbugs-maven-plugin</artifactId>
+                        <version>4.9.8.2</version>
+                        <configuration>
+                            <effort>${spotbugs.effort}</effort>
+                            <threshold>${spotbugs.threshold}</threshold>
+                            <xmlOutput>true</xmlOutput>
+                            <!-- Do NOT abort analysis when referenced classes are missing
+                                 (lambda helpers, JDK internals, etc.) -->
+                            <failOnError>false</failOnError>
+                            <!-- Find Security Bugs plugin — ~150 extra security detectors -->
+                            <plugins>
+                                <plugin>
+                                    <groupId>com.h3xstream.findsecbugs</groupId>
+                                    <artifactId>findsecbugs-plugin</artifactId>
+                                    <version>1.13.0</version>
+                                </plugin>
+                            </plugins>
+                            <!-- False-positive suppressions — add entries after triage -->
+                            <excludeFilterFile>${maven.multiModuleProjectDirectory}/scripts/ci/spotbugs-exclude.xml</excludeFilterFile>
+                        </configuration>
+                        <executions>
+                            <!--
+                                Execution 1 - SCAN
+                                Runs during verify for every module.
+                                Writes target/spotbugsXml.xml.
+                                Never fails the build (failOnError=false above, and the
+                                spotbugs goal never throws on findings - only check does).
+                            -->
+                            <execution>
+                                <id>spotbugs-scan</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>spotbugs</goal>
+                                </goals>
+                            </execution>
+                            <!--
+                                Execution 2 - GATE (optional)
+                                Reads target/spotbugsXml.xml written by Execution 1 and
+                                fails if findings exceed the threshold.
+                                Skipped by default so the full reactor always completes.
+                                Enable with: -Dspotbugs.skipCheck=false
+                                Because this is bound to the same phase (verify) and
+                                declared AFTER the scan execution, Maven runs it after
+                                the scan for each module - but since skipCheck=true by
+                                default the reactor is never aborted mid-way.
+                                For a true "fail only after ALL modules" workflow use
+                                the spotbugs-scan.cmd or spotbugs-scan.sh helper scripts.
+                            -->
+                            <execution>
+                                <id>spotbugs-gate</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>${spotbugs.skipCheck}</skip>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!--
+                        Aggregate all per-module spotbugsXml.xml reports into a single
+                        file at the root level after all modules have been scanned.
+                        inherited=false means this runs ONLY in the root aggregator,
+                        never in child modules.
+                        Output:
+                          target/spotbugs-aggregate.xml  (merged XML)
+                          target/spotbugs-aggregate.html (human-readable HTML)
+                    -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <inherited>false</inherited>
+                        <executions>
+                            <execution>
+                                <id>spotbugs-aggregate</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                                <configuration>
+                                    <target>
+                                        <mkdir dir="${project.build.directory}"/>
+                                        <echo message="Aggregating SpotBugs reports from all modules..."/>
+
+                                        <!-- Merge all module spotbugsXml.xml into one XML.
+                                             Strips the XML declaration and BugCollection wrapper
+                                             from each individual file, then wraps everything in a
+                                             single BugCollection root. -->
+                                        <concat destfile="${project.build.directory}/spotbugs-aggregate.xml"
+                                                fixlastline="yes">
+                                            <header filtering="no" trimleading="yes">&lt;?xml version="1.0" encoding="UTF-8"?&gt;&#10;&lt;BugCollection version="aggregate" sequence="0" timestamp="0" analysisTimestamp="0" release=""&gt;&#10;</header>
+                                            <union>
+                                                <fileset dir="${project.basedir}"
+                                                         includes="*/target/spotbugsXml.xml"/>
+                                            </union>
+                                            <filterchain>
+                                                <linecontainsregexp negate="true">
+                                                    <regexp pattern="^\s*&lt;\?xml|^\s*&lt;BugCollection|^\s*&lt;/BugCollection"/>
+                                                </linecontainsregexp>
+                                            </filterchain>
+                                            <footer filtering="no">&#10;&lt;/BugCollection&gt;&#10;</footer>
+                                        </concat>
+
+                                        <echo message=""/>
+                                        <echo message="========================================================"/>
+                                        <echo message=" SpotBugs aggregate report:"/>
+                                        <echo message="   ${project.build.directory}/spotbugs-aggregate.xml"/>
+                                        <echo message="========================================================"/>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+            <reporting>
+                <plugins>
+                    <!-- HTML report per module: target/site/spotbugs.html
+                         Generate with: mvn site -Pspotbugs -->
+                    <plugin>
+                        <groupId>com.github.spotbugs</groupId>
+                        <artifactId>spotbugs-maven-plugin</artifactId>
+                        <version>4.9.8.2</version>
+                        <configuration>
+                            <effort>${spotbugs.effort}</effort>
+                            <threshold>${spotbugs.threshold}</threshold>
+                            <plugins>
+                                <plugin>
+                                    <groupId>com.h3xstream.findsecbugs</groupId>
+                                    <artifactId>findsecbugs-plugin</artifactId>
+                                    <version>1.13.0</version>
+                                </plugin>
+                            </plugins>
+                            <excludeFilterFile>${maven.multiModuleProjectDirectory}/scripts/ci/spotbugs-exclude.xml</excludeFilterFile>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </reporting>
         </profile>
     </profiles>
 </project>

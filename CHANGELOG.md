@@ -22,10 +22,6 @@ All notable changes to this project will be documented in this file.
   - CVE-2025-55163 (HIGH – HTTP/2 MadeYouReset DDoS)
 - Upgraded `commons-lang3` from `3.17.0` to `3.18.0` (BOM override):
   - CVE-2025-48924 (MEDIUM – uncontrolled recursion / StackOverflowError DoS)
-- Upgraded `org.eclipse.parsson:parsson` from `1.1.1` to `1.1.3`:
-  - CVE-2023-7272 (CRITICAL – stack overflow on deeply nested JSON input)
-- Upgraded `org.json:json` from `20230618` to `20231013`:
-  - CVE-2023-5072 (HIGH – exponential memory allocation DoS)
 - Upgraded `org.apache.mina:mina-core` from `2.2.3` to `2.2.4`:
   - CVE-2024-52046 (CRITICAL – deserialization RCE via ObjectSerializationDecoder)
 - Upgraded `commons-io:commons-io` from `2.11.0` to `2.14.0`:
@@ -41,7 +37,8 @@ All notable changes to this project will be documented in this file.
 - Upgraded `org.apache.sshd` suite from `2.11.0` to `2.14.0` (latest stable, resolves vulnerability warnings reported by IntelliJ IDEA)
 - Upgraded `org.assertj:assertj-core` from `3.26.3` to `3.27.7` (BOM override):
   - CVE-2026-24400 (HIGH – XXE vulnerability in `isXmlEqualTo`/`XmlStringPrettyFormatter` allows arbitrary file read, SSRF and DoS via untrusted XML input)
-
+- Added spotbugs plugin configuration to parent `pom.xml` with default parameters and suppression file
+  
 ### Changed
 
 - Extracted all hardcoded dependency versions into properties in the parent `pom.xml`
@@ -53,7 +50,6 @@ All notable changes to this project will be documented in this file.
 - Added `spring.boot.version`, `tomcat.version`, `jackson.version`, `netty.version`, `commons-lang3.version` properties for BOM override transparency
 - Added explicit `value` attribute to all `@PathVariable` annotations across all controllers — required by Spring Framework 6.x which no longer infers parameter names from bytecode without the `-parameters` compiler flag
 - Removed unused `org.json:json`, `org.eclipse.parsson:parsson` and `jakarta.json-api` dependencies — no source code imports any of them; the entire codebase uses only Jackson (`com.fasterxml.jackson`) for JSON handling; removing `org.json` also eliminates the duplicate class warning at startup
-- 
 
 ## [0.6.4-SNAPSHOT] - 24.12.2025.
 

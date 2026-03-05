@@ -63,7 +63,9 @@ public class AuditEventListener {
         Map<String, Object> sanitized = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : event.getDetails().entrySet()) {
             Object value = entry.getValue();
-            if (value instanceof String) {
+            if (value == null) {
+                sanitized.put(entry.getKey(), null);
+            } else if (value instanceof String) {
                 sanitized.put(entry.getKey(), value);
             } else {
                 try {
