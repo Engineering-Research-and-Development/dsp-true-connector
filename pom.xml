@@ -19,7 +19,7 @@
         <timestamp>${maven.build.timestamp}</timestamp>
         <maven.build.timestamp.format>dd-MM-yyyy</maven.build.timestamp.format>
         <!-- Spring Boot -->
-        <spring.boot.version>3.4.13</spring.boot.version>
+        <spring.boot.version>3.5.11</spring.boot.version>
         <!-- Tomcat - override Boot BOM (CVE-2025-24813 and others) -->
         <tomcat.version>10.1.50</tomcat.version>
         <!-- Jackson - override Boot BOM (GHSA-72hv-8253-57qq DoS in async parser) -->

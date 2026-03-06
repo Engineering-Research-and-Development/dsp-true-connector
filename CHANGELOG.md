@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Security
 
-- Upgraded Spring Boot from `3.1.2` to `3.4.13`, resolving multiple CVEs in Spring Framework and Spring Security:
+- Upgraded Spring Boot from `3.1.2` to `3.5.11`, resolving multiple CVEs in Spring Framework and Spring Security:
   - CVE-2023-34053, CVE-2024-38816, CVE-2024-38819, CVE-2025-41242 (Spring WebMVC path traversal / DoS)
   - CVE-2024-22243, CVE-2024-22259, CVE-2024-22262, CVE-2024-38809, CVE-2024-38820 (Spring Web SSRF / open redirect / DoS)
   - CVE-2024-22234, CVE-2024-22257, CVE-2024-38827 (Spring Security broken access control)
