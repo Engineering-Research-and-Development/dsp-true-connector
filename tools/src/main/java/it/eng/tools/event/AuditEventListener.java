@@ -1,12 +1,11 @@
 package it.eng.tools.event;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import it.eng.tools.repository.AuditEventRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -38,8 +37,7 @@ public class AuditEventListener {
      * @param event the audit event to persist
      */
     @Async
-    @EventListener
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void handleAuditEvent(AuditEvent event) {
         try {
             AuditEvent sanitized = sanitizeDetails(event);
@@ -69,8 +67,12 @@ public class AuditEventListener {
                 sanitized.put(entry.getKey(), value);
             } else {
                 try {
-                    sanitized.put(entry.getKey(), objectMapper.writeValueAsString(value));
-                } catch (JsonProcessingException e) {
+                    JsonNode node = objectMapper.valueToTree(value);
+                    // Use asText() for textual scalars (e.g. ZonedDateTime → "2026-03-05T...")
+                    // so the value is stored unquoted, consistent with plain String values.
+                    // For objects, arrays, numbers, and booleans use toString() to preserve structure.
+                    sanitized.put(entry.getKey(), node.isTextual() ? node.asText() : node.toString());
+                } catch (IllegalArgumentException e) {
                     log.warn("Could not serialize audit detail '{}', storing toString(): {}", entry.getKey(), e.getMessage());
                     sanitized.put(entry.getKey(), String.valueOf(value));
                 }

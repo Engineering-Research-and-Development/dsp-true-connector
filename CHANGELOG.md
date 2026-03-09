@@ -49,6 +49,7 @@ All notable changes to this project will be documented in this file.
 - Added `spring.boot.version`, `tomcat.version`, `jackson.version`, `netty.version`, `commons-lang3.version` properties for BOM override transparency
 - Added explicit `value` attribute to all `@PathVariable` annotations across all controllers — required by Spring Framework 6.x which no longer infers parameter names from bytecode without the `-parameters` compiler flag
 - Removed unused `org.json:json`, `org.eclipse.parsson:parsson` and `jakarta.json-api` dependencies — no source code imports any of them; the entire codebase uses only Jackson (`com.fasterxml.jackson`) for JSON handling; removing `org.json` also eliminates the duplicate class warning at startup
+- Updated release procedure
 
 ## [0.6.4-SNAPSHOT] - 24.12.2025.
 

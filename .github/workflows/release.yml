@@ -35,15 +35,15 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Set release version in pom.xml
-        shell: bash -l {0}
-        run: |
-          mvn versions:set-property -Dproperty=revision -DnewVersion=${{ github.event.inputs.releaseVersion }}
-
       - name: Setup Git credentials
         run: |
           git config user.name "GitHub Actions"
           git config user.email noreply@github.com
+
+      - name: Set release version in pom.xml
+        shell: bash -l {0}
+        run: |
+          mvn versions:set-property -Dproperty=revision -DnewVersion=${{ github.event.inputs.releaseVersion }}
 
       - name: Build DSP TRUEConnector and upload release to GitHub
         shell: bash -l {0}
@@ -98,14 +98,28 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ env.TOKEN }}
 
-      - name: Create A Pull Request
-        uses: thomaseizinger/create-pull-request@1.4.0
-        with:
-          github_token: ${{ env.TOKEN }}
-          head: main
-          base: develop
-          title: Released master into develop
-          body: |
-            Hi!
-            This PR was created to merge changes from main into develop branch.
-            Please review the changes and merge if appropriate.
+      - name: Bump develop to next snapshot version
+        shell: bash -l {0}
+        run: |
+          # Calculate next version (increment patch version)
+          CURRENT_VERSION="${{ github.event.inputs.releaseVersion }}"
+          NEXT_VERSION=$(echo "$CURRENT_VERSION" | awk -F. -v OFS=. '{$NF++;print}')
+          NEXT_SNAPSHOT="${NEXT_VERSION}-SNAPSHOT"
+          
+          echo "Current release version: $CURRENT_VERSION"
+          echo "Next snapshot version: $NEXT_SNAPSHOT"
+          
+          # Switch to develop branch
+          git fetch origin develop
+          git checkout develop
+          git pull origin develop
+          
+          # Set next snapshot version
+          mvn versions:set-property -Dproperty=revision -DnewVersion=$NEXT_SNAPSHOT
+          
+          # Commit and push to develop
+          git add pom.xml
+          git commit -m "Bump version to $NEXT_SNAPSHOT after release $CURRENT_VERSION"
+          git push origin develop
+          
+          echo "✅ Develop branch updated to $NEXT_SNAPSHOT"

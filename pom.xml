@@ -797,9 +797,9 @@
                         file at the root level after all modules have been scanned.
                         inherited=false means this runs ONLY in the root aggregator,
                         never in child modules.
-                        Output:
-                          target/spotbugs-aggregate.xml  (merged XML)
-                          target/spotbugs-aggregate.html (human-readable HTML)
+                                        Output:
+                                          target/spotbugs-aggregate.xml  (merged XML)
+                                          target/spotbugs-aggregate.html (human-readable HTML, via XSLT)
                     -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
@@ -837,10 +837,26 @@
                                             <footer filtering="no">&#10;&lt;/BugCollection&gt;&#10;</footer>
                                         </concat>
 
+                                        <!-- Transform the merged XML into a human-readable HTML report.
+                                             Extract SpotBugs' built-in fancy-hist.xsl from the plugin jar,
+                                             then run the XSLT transform. -->
+                                        <unjar dest="${project.build.directory}/spotbugs-xsl">
+                                            <patternset includes="fancy-hist.xsl"/>
+                                            <path>
+                                                <fileset dir="${settings.localRepository}/com/github/spotbugs/spotbugs"
+                                                         includes="*.jar"
+                                                         excludes="*-sources.jar,*-javadoc.jar"/>
+                                            </path>
+                                        </unjar>
+                                        <xslt in="${project.build.directory}/spotbugs-aggregate.xml"
+                                              out="${project.build.directory}/spotbugs-aggregate.html"
+                                              style="${project.build.directory}/spotbugs-xsl/fancy-hist.xsl"/>
+
                                         <echo message=""/>
                                         <echo message="========================================================"/>
-                                        <echo message=" SpotBugs aggregate report:"/>
-                                        <echo message="   ${project.build.directory}/spotbugs-aggregate.xml"/>
+                                        <echo message=" SpotBugs aggregate reports:"/>
+                                        <echo message="   XML:  ${project.build.directory}/spotbugs-aggregate.xml"/>
+                                        <echo message="   HTML: ${project.build.directory}/spotbugs-aggregate.html"/>
                                         <echo message="========================================================"/>
                                     </target>
                                 </configuration>
