@@ -91,7 +91,9 @@ public class AuditEvent {
             Set<ConstraintViolation<AuditEvent>> violations =
                     Validation.buildDefaultValidatorFactory().getValidator().validate(event);
             if (violations.isEmpty()) {
-                event.timestamp = LocalDateTime.now();
+                if (event.timestamp == null) {
+                    event.timestamp = LocalDateTime.now();
+                }
                 return event;
             }
             throw new ValidationException("AuditEvent - " +

@@ -16,9 +16,54 @@
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jacoco.version>0.8.10</jacoco.version>
-        <aws.sdk.version>2.31.16</aws.sdk.version>
         <timestamp>${maven.build.timestamp}</timestamp>
         <maven.build.timestamp.format>dd-MM-yyyy</maven.build.timestamp.format>
+        <!-- Spring Boot -->
+        <spring.boot.version>3.5.11</spring.boot.version>
+        <!-- Tomcat - override Boot BOM (CVE-2025-24813 and others) -->
+        <tomcat.version>10.1.50</tomcat.version>
+        <!-- Jackson - override Boot BOM (GHSA-72hv-8253-57qq DoS in async parser) -->
+        <jackson.version>2.18.6</jackson.version>
+        <!-- Netty - override Boot BOM (CVE-2025-58056, CVE-2025-55163) -->
+        <netty.version>4.2.8.Final</netty.version>
+        <!-- Commons Lang3 - override Boot BOM (CVE-2025-48924) -->
+        <commons-lang3.version>3.18.0</commons-lang3.version>
+        <!-- AssertJ - override Boot BOM (CVE-2026-24400 XXE in isXmlEqualTo) -->
+        <assertj.version>3.27.7</assertj.version>
+        <!-- HttpClient5 - override Boot BOM (CVE-2025-27820 domain check bypass) -->
+        <httpclient5.version>5.4.3</httpclient5.version>
+        <!-- json-smart - override Boot BOM (CVE-2024-57699 uncontrolled recursion DoS) -->
+        <json-smart.version>2.5.2</json-smart.version>
+        <!-- Nimbus JOSE+JWT - override Boot BOM (CVE-2025-53864 deeply nested JSON DoS) -->
+        <nimbus-jose-jwt.version>10.0.2</nimbus-jose-jwt.version>
+        <!-- AWS SDK -->
+        <aws.sdk.version>2.31.16</aws.sdk.version>
+        <aws.crt.version>0.36.3</aws.crt.version>
+        <!-- Auth0 / JWT -->
+        <auth0.java-jwt.version>4.4.0</auth0.java-jwt.version>
+        <auth0.jwks-rsa.version>0.22.1</auth0.jwks-rsa.version>
+        <!-- BouncyCastle -->
+        <bouncycastle.version>1.80</bouncycastle.version>
+        <!-- MinIO - upgrade to 8.6.0 (CVE-2025-59952 XML tag value substitution) -->
+        <minio.version>8.6.0</minio.version>
+        <!-- Failsafe -->
+        <failsafe.version>3.3.2</failsafe.version>
+        <!-- Passay (password policy) -->
+        <passay.version>1.6.6</passay.version>
+        <!-- OkHttp -->
+        <okhttp.version>4.12.0</okhttp.version>
+        <!-- WireMock -->
+        <wiremock-spring-boot.version>3.2.0</wiremock-spring-boot.version>
+        <!-- Testcontainers - core must stay at 2.0.3 for Docker Desktop compatibility -->
+        <testcontainers.version>2.0.3</testcontainers.version>
+        <!-- DSP TCK -->
+        <dsp.tck.version>1.0.0-RC5</dsp.tck.version>
+        <!-- Apache SSHD - upgrade to 2.14.0 (latest stable, resolves IDEA vulnerability warnings) -->
+        <sshd.version>2.14.0</sshd.version>
+        <!-- Apache MINA -->
+        <mina.version>2.2.4</mina.version>
+        <!-- Commons IO -->
+        <commons-io.version>2.14.0</commons-io.version>
     </properties>
 
     <modules>
@@ -34,14 +79,14 @@
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-starter-parent</artifactId>
-                <version>3.1.2</version>
+                <version>${spring.boot.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-starter-test</artifactId>
-                <version>3.1.2</version>
+                <version>${spring.boot.version}</version>
                 <scope>test</scope>
                 <exclusions>
                     <exclusion>
@@ -55,6 +100,333 @@
                 <artifactId>tools</artifactId>
                 <version>${revision}</version>
             </dependency>
+
+            <!-- Auth0 / JWT -->
+            <dependency>
+                <groupId>com.auth0</groupId>
+                <artifactId>java-jwt</artifactId>
+                <version>${auth0.java-jwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.auth0</groupId>
+                <artifactId>jwks-rsa</artifactId>
+                <version>${auth0.jwks-rsa.version}</version>
+            </dependency>
+
+            <!-- BouncyCastle -->
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcprov-jdk18on</artifactId>
+                <version>${bouncycastle.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcpkix-jdk18on</artifactId>
+                <version>${bouncycastle.version}</version>
+            </dependency>
+
+            <!-- AWS SDK -->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>s3</artifactId>
+                <version>${aws.sdk.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>iam</artifactId>
+                <version>${aws.sdk.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>apache-client</artifactId>
+                <version>${aws.sdk.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>netty-nio-client</artifactId>
+                <version>${aws.sdk.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>sts</artifactId>
+                <version>${aws.sdk.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>transfer</artifactId>
+                <version>${aws.sdk.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>s3-transfer-manager</artifactId>
+                <version>${aws.sdk.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk.crt</groupId>
+                <artifactId>aws-crt</artifactId>
+                <version>${aws.crt.version}</version>
+            </dependency>
+
+            <!-- MinIO -->
+            <dependency>
+                <groupId>io.minio</groupId>
+                <artifactId>minio-admin</artifactId>
+                <version>${minio.version}</version>
+            </dependency>
+
+            <!-- Failsafe -->
+            <dependency>
+                <groupId>dev.failsafe</groupId>
+                <artifactId>failsafe</artifactId>
+                <version>${failsafe.version}</version>
+            </dependency>
+
+            <!-- Jackson JSR310 -->
+            <dependency>
+                <groupId>com.fasterxml.jackson.datatype</groupId>
+                <artifactId>jackson-datatype-jsr310</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+
+            <!-- Jackson core suite - override Boot BOM (GHSA-72hv-8253-57qq) -->
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+
+            <!-- Tomcat - override Boot BOM (CVE-2025-24813 and others) -->
+            <dependency>
+                <groupId>org.apache.tomcat.embed</groupId>
+                <artifactId>tomcat-embed-core</artifactId>
+                <version>${tomcat.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.tomcat.embed</groupId>
+                <artifactId>tomcat-embed-el</artifactId>
+                <version>${tomcat.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.tomcat.embed</groupId>
+                <artifactId>tomcat-embed-websocket</artifactId>
+                <version>${tomcat.version}</version>
+            </dependency>
+
+            <!-- Netty - override Boot BOM (CVE-2025-58056, CVE-2025-55163) -->
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-codec-http</artifactId>
+                <version>${netty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-codec-http2</artifactId>
+                <version>${netty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-handler</artifactId>
+                <version>${netty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-transport</artifactId>
+                <version>${netty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-buffer</artifactId>
+                <version>${netty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-common</artifactId>
+                <version>${netty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-codec</artifactId>
+                <version>${netty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-resolver</artifactId>
+                <version>${netty.version}</version>
+            </dependency>
+
+            <!-- Commons Lang3 - override Boot BOM (CVE-2025-48924) -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>${commons-lang3.version}</version>
+            </dependency>
+
+            <!-- AssertJ - override Boot BOM (CVE-2026-24400 XXE in isXmlEqualTo) -->
+            <dependency>
+                <groupId>org.assertj</groupId>
+                <artifactId>assertj-core</artifactId>
+                <version>${assertj.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <!-- HttpClient5 - override Boot BOM (CVE-2025-27820 domain check bypass) -->
+            <dependency>
+                <groupId>org.apache.httpcomponents.client5</groupId>
+                <artifactId>httpclient5</artifactId>
+                <version>${httpclient5.version}</version>
+            </dependency>
+
+            <!-- json-smart - override Boot BOM (CVE-2024-57699 uncontrolled recursion DoS) -->
+            <dependency>
+                <groupId>net.minidev</groupId>
+                <artifactId>json-smart</artifactId>
+                <version>${json-smart.version}</version>
+            </dependency>
+
+            <!-- Nimbus JOSE+JWT - override Boot BOM (CVE-2025-53864 deeply nested JSON DoS) -->
+            <dependency>
+                <groupId>com.nimbusds</groupId>
+                <artifactId>nimbus-jose-jwt</artifactId>
+                <version>${nimbus-jose-jwt.version}</version>
+            </dependency>
+
+            <!-- Passay -->
+            <dependency>
+                <groupId>org.passay</groupId>
+                <artifactId>passay</artifactId>
+                <version>${passay.version}</version>
+            </dependency>
+
+            <!-- OkHttp -->
+            <dependency>
+                <groupId>com.squareup.okhttp3</groupId>
+                <artifactId>okhttp</artifactId>
+                <version>${okhttp.version}</version>
+            </dependency>
+
+            <!-- WireMock -->
+            <dependency>
+                <groupId>org.wiremock.integrations</groupId>
+                <artifactId>wiremock-spring-boot</artifactId>
+                <version>${wiremock-spring-boot.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <!-- Testcontainers - core -->
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers</artifactId>
+                <version>${testcontainers.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-minio</artifactId>
+                <version>${testcontainers.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-mongodb</artifactId>
+                <version>${testcontainers.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-junit-jupiter</artifactId>
+                <version>${testcontainers.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <!-- DSP TCK -->
+            <dependency>
+                <groupId>org.eclipse.dataspacetck.dsp</groupId>
+                <artifactId>tck-runtime</artifactId>
+                <version>${dsp.tck.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.dataspacetck.dsp</groupId>
+                <artifactId>core</artifactId>
+                <version>${dsp.tck.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.dataspacetck.dsp</groupId>
+                <artifactId>dsp-system</artifactId>
+                <version>${dsp.tck.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.dataspacetck.dsp</groupId>
+                <artifactId>dsp-metadata</artifactId>
+                <version>${dsp.tck.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.dataspacetck.dsp</groupId>
+                <artifactId>dsp-catalog</artifactId>
+                <version>${dsp.tck.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.dataspacetck.dsp</groupId>
+                <artifactId>dsp-transfer-process</artifactId>
+                <version>${dsp.tck.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.dataspacetck.dsp</groupId>
+                <artifactId>dsp-contract-negotiation</artifactId>
+                <version>${dsp.tck.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <!-- Apache SSHD -->
+            <dependency>
+                <groupId>org.apache.sshd</groupId>
+                <artifactId>sshd-core</artifactId>
+                <version>${sshd.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.sshd</groupId>
+                <artifactId>sshd-sftp</artifactId>
+                <version>${sshd.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.sshd</groupId>
+                <artifactId>sshd-scp</artifactId>
+                <version>${sshd.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.sshd</groupId>
+                <artifactId>sshd-cli</artifactId>
+                <version>${sshd.version}</version>
+            </dependency>
+
+            <!-- Apache MINA -->
+            <dependency>
+                <groupId>org.apache.mina</groupId>
+                <artifactId>mina-core</artifactId>
+                <version>${mina.version}</version>
+            </dependency>
+
+            <!-- Commons IO -->
+            <dependency>
+                <groupId>commons-io</groupId>
+                <artifactId>commons-io</artifactId>
+                <version>${commons-io.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -66,9 +438,16 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.11.0</version>
                     <configuration>
-                        <source>${java.version}</source>
-                        <target>${java.version}</target>
-                        <encoding>${build.sourceEncoding}</encoding>
+                        <release>${java.version}</release>
+                        <encoding>${project.build.sourceEncoding}</encoding>
+                        <parameters>true</parameters>
+                        <annotationProcessorPaths>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                                <version>1.18.36</version>
+                            </path>
+                        </annotationProcessorPaths>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -107,7 +486,7 @@
                 <plugin>
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-maven-plugin</artifactId>
-                    <version>3.1.2</version>
+                    <version>${spring.boot.version}</version>
                 </plugin>
                 <plugin>
                     <groupId>org.eclipse.m2e</groupId>
@@ -215,22 +594,6 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <annotationProcessorPaths>
-                        <path>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                            <version>1.18.36</version>
-                        </path>
-                    </annotationProcessorPaths>
-                    <source>${maven.compiler.release}</source>
-                    <target>${maven.compiler.release}</target>
-                    <encoding>${project.build.sourceEncoding}</encoding>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
             </plugin>
             <plugin>
@@ -327,6 +690,204 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+
+        <!-- =====================================================================
+             SpotBugs + Find Security Bugs - bytecode-level SAST
+
+             Scan whole project, never fail-fast (default):
+               mvn verify -Pspotbugs
+             Reports per module: module/target/spotbugsXml.xml
+
+             Gate mode - scan ALL modules first, then fail if findings found:
+               Step 1 (scan):  mvn verify -Pspotbugs
+               Step 2 (check): mvn spotbugs:check -Pspotbugs -Dspotbugs.skipCheck=false -fae
+             Or use the helper script:
+               spotbugs-scan.cmd  (Windows, pass argument: gate)
+               spotbugs-scan.sh   (Linux/macOS, pass argument: gate)
+
+             NOTE: -fae (fail-at-end) is essential in gate mode so Maven continues
+             checking every module before reporting failures.
+
+             Override effort / threshold:
+               mvn verify -Pspotbugs -Dspotbugs.effort=default -Dspotbugs.threshold=high
+             ===================================================================== -->
+        <profile>
+            <id>spotbugs</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <!-- effort:     min | default | max -->
+                <spotbugs.effort>max</spotbugs.effort>
+                <!-- threshold:  low | medium | high -->
+                <spotbugs.threshold>medium</spotbugs.threshold>
+                <!-- skipCheck:  true  = scan-only, reactor always completes (DEFAULT)
+                                 false = fail after all modules are scanned
+                     Override:   -Dspotbugs.skipCheck=false                          -->
+                <spotbugs.skipCheck>true</spotbugs.skipCheck>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.github.spotbugs</groupId>
+                        <artifactId>spotbugs-maven-plugin</artifactId>
+                        <version>4.9.8.2</version>
+                        <configuration>
+                            <effort>${spotbugs.effort}</effort>
+                            <threshold>${spotbugs.threshold}</threshold>
+                            <xmlOutput>true</xmlOutput>
+                            <!-- Do NOT abort analysis when referenced classes are missing
+                                 (lambda helpers, JDK internals, etc.) -->
+                            <failOnError>false</failOnError>
+                            <!-- Find Security Bugs plugin — ~150 extra security detectors -->
+                            <plugins>
+                                <plugin>
+                                    <groupId>com.h3xstream.findsecbugs</groupId>
+                                    <artifactId>findsecbugs-plugin</artifactId>
+                                    <version>1.13.0</version>
+                                </plugin>
+                            </plugins>
+                            <!-- False-positive suppressions — add entries after triage -->
+                            <excludeFilterFile>${maven.multiModuleProjectDirectory}/scripts/ci/spotbugs-exclude.xml</excludeFilterFile>
+                        </configuration>
+                        <executions>
+                            <!--
+                                Execution 1 - SCAN
+                                Runs during verify for every module.
+                                Writes target/spotbugsXml.xml.
+                                Never fails the build (failOnError=false above, and the
+                                spotbugs goal never throws on findings - only check does).
+                            -->
+                            <execution>
+                                <id>spotbugs-scan</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>spotbugs</goal>
+                                </goals>
+                            </execution>
+                            <!--
+                                Execution 2 - GATE (optional)
+                                Reads target/spotbugsXml.xml written by Execution 1 and
+                                fails if findings exceed the threshold.
+                                Skipped by default so the full reactor always completes.
+                                Enable with: -Dspotbugs.skipCheck=false
+                                Because this is bound to the same phase (verify) and
+                                declared AFTER the scan execution, Maven runs it after
+                                the scan for each module - but since skipCheck=true by
+                                default the reactor is never aborted mid-way.
+                                For a true "fail only after ALL modules" workflow use
+                                the spotbugs-scan.cmd or spotbugs-scan.sh helper scripts.
+                            -->
+                            <execution>
+                                <id>spotbugs-gate</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>${spotbugs.skipCheck}</skip>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!--
+                        Aggregate all per-module spotbugsXml.xml reports into a single
+                        file at the root level after all modules have been scanned.
+                        inherited=false means this runs ONLY in the root aggregator,
+                        never in child modules.
+                                        Output:
+                                          target/spotbugs-aggregate.xml  (merged XML)
+                                          target/spotbugs-aggregate.html (human-readable HTML, via XSLT)
+                    -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <inherited>false</inherited>
+                        <executions>
+                            <execution>
+                                <id>spotbugs-aggregate</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                                <configuration>
+                                    <target>
+                                        <mkdir dir="${project.build.directory}"/>
+                                        <echo message="Aggregating SpotBugs reports from all modules..."/>
+
+                                        <!-- Merge all module spotbugsXml.xml into one XML.
+                                             Strips the XML declaration and BugCollection wrapper
+                                             from each individual file, then wraps everything in a
+                                             single BugCollection root. -->
+                                        <concat destfile="${project.build.directory}/spotbugs-aggregate.xml"
+                                                fixlastline="yes">
+                                            <header filtering="no" trimleading="yes">&lt;?xml version="1.0" encoding="UTF-8"?&gt;&#10;&lt;BugCollection version="aggregate" sequence="0" timestamp="0" analysisTimestamp="0" release=""&gt;&#10;</header>
+                                            <union>
+                                                <fileset dir="${project.basedir}"
+                                                         includes="*/target/spotbugsXml.xml"/>
+                                            </union>
+                                            <filterchain>
+                                                <linecontainsregexp negate="true">
+                                                    <regexp pattern="^\s*&lt;\?xml|^\s*&lt;BugCollection|^\s*&lt;/BugCollection"/>
+                                                </linecontainsregexp>
+                                            </filterchain>
+                                            <footer filtering="no">&#10;&lt;/BugCollection&gt;&#10;</footer>
+                                        </concat>
+
+                                        <!-- Transform the merged XML into a human-readable HTML report.
+                                             Extract SpotBugs' built-in fancy-hist.xsl from the plugin jar,
+                                             then run the XSLT transform. -->
+                                        <unjar dest="${project.build.directory}/spotbugs-xsl">
+                                            <patternset includes="fancy-hist.xsl"/>
+                                            <path>
+                                                <fileset dir="${settings.localRepository}/com/github/spotbugs/spotbugs"
+                                                         includes="*.jar"
+                                                         excludes="*-sources.jar,*-javadoc.jar"/>
+                                            </path>
+                                        </unjar>
+                                        <xslt in="${project.build.directory}/spotbugs-aggregate.xml"
+                                              out="${project.build.directory}/spotbugs-aggregate.html"
+                                              style="${project.build.directory}/spotbugs-xsl/fancy-hist.xsl"/>
+
+                                        <echo message=""/>
+                                        <echo message="========================================================"/>
+                                        <echo message=" SpotBugs aggregate reports:"/>
+                                        <echo message="   XML:  ${project.build.directory}/spotbugs-aggregate.xml"/>
+                                        <echo message="   HTML: ${project.build.directory}/spotbugs-aggregate.html"/>
+                                        <echo message="========================================================"/>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+            <reporting>
+                <plugins>
+                    <!-- HTML report per module: target/site/spotbugs.html
+                         Generate with: mvn site -Pspotbugs -->
+                    <plugin>
+                        <groupId>com.github.spotbugs</groupId>
+                        <artifactId>spotbugs-maven-plugin</artifactId>
+                        <version>4.9.8.2</version>
+                        <configuration>
+                            <effort>${spotbugs.effort}</effort>
+                            <threshold>${spotbugs.threshold}</threshold>
+                            <plugins>
+                                <plugin>
+                                    <groupId>com.h3xstream.findsecbugs</groupId>
+                                    <artifactId>findsecbugs-plugin</artifactId>
+                                    <version>1.13.0</version>
+                                </plugin>
+                            </plugins>
+                            <excludeFilterFile>${maven.multiModuleProjectDirectory}/scripts/ci/spotbugs-exclude.xml</excludeFilterFile>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </reporting>
         </profile>
     </profiles>
 </project>

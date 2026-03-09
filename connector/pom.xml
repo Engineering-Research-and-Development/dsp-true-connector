@@ -11,10 +11,6 @@
     <artifactId>connector</artifactId>
     <name>Connector module</name>
     <description>Wrapper module - assemble and run connector</description>
-    <properties>
-        <dsp.tck.version>1.0.0-RC5</dsp.tck.version>
-        <testcontainer.version>2.0.2</testcontainer.version>
-    </properties>
 
     <dependencies>
         <dependency>
@@ -65,32 +61,16 @@
             <optional>true</optional>
         </dependency>
         <dependency>
-            <groupId>jakarta.json</groupId>
-            <artifactId>jakarta.json-api</artifactId>
-        </dependency>
-        <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
-            <version>2.17.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.parsson</groupId>
-            <artifactId>parsson</artifactId>
-            <version>1.1.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.json</groupId>
-            <artifactId>json</artifactId>
-            <version>20230618</version>
         </dependency>
         <dependency>
             <groupId>org.passay</groupId>
             <artifactId>passay</artifactId>
-            <version>1.6.6</version>
         </dependency>
         <!-- TEST -->
         <dependency>
@@ -107,33 +87,27 @@
         <dependency>
             <groupId>org.wiremock.integrations</groupId>
             <artifactId>wiremock-spring-boot</artifactId>
-            <version>3.2.0</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
-            <version>${testcontainer.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>minio</artifactId>
-            <version>1.20.5</version>
+            <artifactId>testcontainers-minio</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>mongodb</artifactId>
-            <version>1.20.5</version>
+            <artifactId>testcontainers-mongodb</artifactId>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <version>1.20.5</version>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -168,63 +142,39 @@
         <dependency>
             <groupId>org.eclipse.dataspacetck.dsp</groupId>
             <artifactId>tck-runtime</artifactId>
-            <version>${dsp.tck.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.eclipse.dataspacetck.dsp</groupId>
             <artifactId>core</artifactId>
-            <version>${dsp.tck.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.eclipse.dataspacetck.dsp</groupId>
             <artifactId>dsp-system</artifactId>
-            <version>${dsp.tck.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.eclipse.dataspacetck.dsp</groupId>
             <artifactId>dsp-metadata</artifactId>
-            <version>${dsp.tck.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.eclipse.dataspacetck.dsp</groupId>
             <artifactId>dsp-catalog</artifactId>
-            <version>${dsp.tck.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.eclipse.dataspacetck.dsp</groupId>
             <artifactId>dsp-transfer-process</artifactId>
-            <version>${dsp.tck.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.eclipse.dataspacetck.dsp</groupId>
             <artifactId>dsp-contract-negotiation</artifactId>
-            <version>${dsp.tck.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-    <!-- <build> -->
-    <!-- <plugins> -->
-    <!-- <plugin> -->
-    <!-- <groupId>org.springframework.boot</groupId> -->
-    <!-- <artifactId>spring-boot-maven-plugin</artifactId> -->
-    <!-- <configuration> -->
-    <!-- <excludes> -->
-    <!-- <exclude> -->
-    <!-- <groupId>org.projectlombok</groupId> -->
-    <!-- <artifactId>lombok</artifactId> -->
-    <!-- </exclude> -->
-    <!-- </excludes> -->
-    <!-- </configuration> -->
-    <!-- </plugin> -->
-    <!-- </plugins> -->
-    <!-- </build> -->
 
     <build>
         <finalName>${project.artifactId}</finalName>
@@ -241,6 +191,7 @@
                         </goals>
                         <configuration>
                             <outputDirectory>${project.build.directory}/dependency-jars/</outputDirectory>
+                            <includeScope>runtime</includeScope>
                         </configuration>
                     </execution>
                 </executions>
@@ -269,13 +220,6 @@
                     </archive>
                 </configuration>
             </plugin>
-
-            <!-- <plugin> <groupId>org.springframework.boot</groupId> <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration> <mainClass>it.eng.connector.ApplicationConnector</mainClass>
-                <layout>JAR</layout> <finalName>connector</finalName> </configuration> <executions>
-                <execution> <goals> <goal>repackage</goal> </goals> </execution> </executions>
-                </plugin> -->
         </plugins>
-
     </build>
 </project>

@@ -2,6 +2,55 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.5-SNAPSHOT] - 04.03.2026.
+
+### Security
+
+- Upgraded Spring Boot from `3.1.2` to `3.5.11`, resolving multiple CVEs in Spring Framework and Spring Security:
+  - CVE-2023-34053, CVE-2024-38816, CVE-2024-38819, CVE-2025-41242 (Spring WebMVC path traversal / DoS)
+  - CVE-2024-22243, CVE-2024-22259, CVE-2024-22262, CVE-2024-38809, CVE-2024-38820 (Spring Web SSRF / open redirect / DoS)
+  - CVE-2024-22234, CVE-2024-22257, CVE-2024-38827 (Spring Security broken access control)
+  - CVE-2024-38821 (Spring Security static resource authorization bypass)
+- Upgraded `tomcat-embed-core` from `10.1.34` to `10.1.50` (BOM override), resolving 13 CVEs including:
+  - CVE-2025-24813 (CRITICAL – partial PUT RCE / information disclosure)
+  - CVE-2025-48988, CVE-2025-48989 (HIGH – DoS in multipart upload / made-you-reset)
+  - CVE-2025-31650, CVE-2025-49125, CVE-2025-66614 and others (MEDIUM/LOW)
+- Upgraded `jackson-core`, `jackson-databind`, `jackson-annotations`, `jackson-datatype-jsr310` from `2.17.1` to `2.18.6` (BOM override):
+  - GHSA-72hv-8253-57qq (HIGH – async parser number length constraint bypass leading to DoS)
+- Upgraded `netty-codec-http`, `netty-codec-http2` and full Netty suite from `4.1.119.Final` to `4.2.8.Final` (BOM override):
+  - CVE-2025-58056 (LOW – request smuggling via chunk extension LF parsing)
+  - CVE-2025-55163 (HIGH – HTTP/2 MadeYouReset DDoS)
+- Upgraded `commons-lang3` from `3.17.0` to `3.18.0` (BOM override):
+  - CVE-2025-48924 (MEDIUM – uncontrolled recursion / StackOverflowError DoS)
+- Upgraded `org.apache.mina:mina-core` from `2.2.3` to `2.2.4`:
+  - CVE-2024-52046 (CRITICAL – deserialization RCE via ObjectSerializationDecoder)
+- Upgraded `commons-io:commons-io` from `2.11.0` to `2.14.0`:
+  - CVE-2024-47554 (HIGH – XmlStreamReader CPU exhaustion DoS)
+- Upgraded `org.apache.httpcomponents.client5:httpclient5` from `5.4.1` to `5.4.3` (BOM override):
+  - CVE-2025-27820 (HIGH – PSL validation bug disables domain checks for cookies and host name verification)
+- Upgraded `net.minidev:json-smart` from `2.5.1` to `2.5.2` (BOM override):
+  - CVE-2024-57699 (HIGH – uncontrolled recursion / stack exhaustion DoS on deeply nested JSON)
+- Upgraded `com.nimbusds:nimbus-jose-jwt` from `9.47` to `10.0.2` (BOM override):
+  - CVE-2025-53864 (MEDIUM – uncontrolled recursion DoS via deeply nested JSON in JWT claim set)
+- Upgraded `io.minio:minio-admin` (and all MinIO artifacts) from `8.5.7` to `8.6.0`:
+  - CVE-2025-59952 (HIGH – XML tag value substitution exposes system properties and environment variables)
+- Upgraded `org.apache.sshd` suite from `2.11.0` to `2.14.0` (latest stable, resolves vulnerability warnings reported by IntelliJ IDEA)
+- Upgraded `org.assertj:assertj-core` from `3.26.3` to `3.27.7` (BOM override):
+  - CVE-2026-24400 (HIGH – XXE vulnerability in `isXmlEqualTo`/`XmlStringPrettyFormatter` allows arbitrary file read, SSRF and DoS via untrusted XML input)
+- Added spotbugs plugin configuration to parent `pom.xml` with default parameters and suppression file
+  
+### Changed
+
+- Extracted all hardcoded dependency versions into properties in the parent `pom.xml`
+- Moved all third-party dependency version definitions into `<dependencyManagement>` section in parent `pom.xml`
+- Added `okhttp.version` property (`4.12.0`) and explicit `dependencyManagement` entry for `com.squareup.okhttp3:okhttp`
+- Split testcontainers versioning into two properties:
+  - `testcontainers.version=2.0.3` – core artifact (required for Docker Desktop compatibility)
+- Added `spring.boot.version`, `tomcat.version`, `jackson.version`, `netty.version`, `commons-lang3.version` properties for BOM override transparency
+- Added explicit `value` attribute to all `@PathVariable` annotations across all controllers — required by Spring Framework 6.x which no longer infers parameter names from bytecode without the `-parameters` compiler flag
+- Removed unused `org.json:json`, `org.eclipse.parsson:parsson` and `jakarta.json-api` dependencies — no source code imports any of them; the entire codebase uses only Jackson (`com.fasterxml.jackson`) for JSON handling; removing `org.json` also eliminates the duplicate class warning at startup
+- Updated release procedure
+
 ## [0.6.4-SNAPSHOT] - 24.12.2025.
 
 ### Changed
@@ -23,7 +72,7 @@ or ApplicationProperty in Mongo
 
 - Conditional GlobalSSLConfiguration creation based on ssl.enabled property (FTP impact)
 - Improved logic for async S3 Multipart upload - now using CompletableFuture.supplyAsync for each part upload
-- testcontainers version bumped to 2.0.2 (docker 4.53.0 compliance)
+- testcontainers version bumped to 2.0.3 (docker 4.53.0 compliance)
 
 ## [0.6.0-SNAPSHOT] - 28.11.2025.
 

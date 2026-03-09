@@ -31,7 +31,7 @@ public class ContractNegotiationConsumerCallbackController {
     // GET
     // Provider must return an HTTP 200 (OK) response and a body containing the Contract Negotiation
     @GetMapping(path = "/consumer/negotiations/{consumerPid}")
-    public ResponseEntity<JsonNode> getNegotiationByConsumerPid(@PathVariable String consumerPid) {
+    public ResponseEntity<JsonNode> getNegotiationByConsumerPid(@PathVariable("consumerPid") String consumerPid) {
         log.info("Get negotiation by consumer pid");
 
         ContractNegotiation contractNegotiation = contractNegotiationConsumerService.getNegotiationByConsumerPid(consumerPid);
@@ -59,7 +59,7 @@ public class ContractNegotiationConsumerCallbackController {
     // process message - if OK return 200; The response body is not specified and clients are not required to process it.
 
     @PostMapping("/consumer/negotiations/{consumerPid}/offers")
-    public ResponseEntity<JsonNode> handleContractOfferMessageAsCounteroffer(@PathVariable String consumerPid,
+    public ResponseEntity<JsonNode> handleContractOfferMessageAsCounteroffer(@PathVariable("consumerPid") String consumerPid,
                                                                @RequestBody JsonNode contractOfferMessageJsonNode) {
         ContractOfferMessage contractOfferMessage =
                 NegotiationSerializer.deserializeProtocol(contractOfferMessageJsonNode, ContractOfferMessage.class);
@@ -77,7 +77,7 @@ public class ContractNegotiationConsumerCallbackController {
     // after successful processing - 200 ok; body not specified
 
     @PostMapping("/consumer/negotiations/{consumerPid}/agreement")
-    public ResponseEntity<Void> handleContractAgreementMessage(@PathVariable String consumerPid,
+    public ResponseEntity<Void> handleContractAgreementMessage(@PathVariable("consumerPid") String consumerPid,
                                                                @RequestBody JsonNode contractAgreementMessageJsonNode) {
 
         log.info("Received agreement from provider, consumerPid - {}", consumerPid);
@@ -94,7 +94,7 @@ public class ContractNegotiationConsumerCallbackController {
     // No callbackAddress
 
     @PostMapping("/consumer/negotiations/{consumerPid}/events")
-    public ResponseEntity<Void> handleContractNegotiationEventMessageFinalize(@PathVariable String consumerPid,
+    public ResponseEntity<Void> handleContractNegotiationEventMessageFinalize(@PathVariable("consumerPid") String consumerPid,
                                                                               @RequestBody JsonNode contractNegotiationEventMessageJsonNode) {
 
         ContractNegotiationEventMessage contractNegotiationEventMessage =
@@ -109,7 +109,7 @@ public class ContractNegotiationConsumerCallbackController {
     }
 
     @PostMapping("/consumer/negotiations/{consumerPid}/termination")
-    public ResponseEntity<JsonNode> handleContractNegotiationTerminationMessage(@PathVariable String consumerPid,
+    public ResponseEntity<JsonNode> handleContractNegotiationTerminationMessage(@PathVariable("consumerPid") String consumerPid,
                                                                                 @RequestBody JsonNode contractNegotiationTerminationMessageJsonNode) {
 
         log.info("Received terminate contract negotiation for consumerPid {}", consumerPid);
