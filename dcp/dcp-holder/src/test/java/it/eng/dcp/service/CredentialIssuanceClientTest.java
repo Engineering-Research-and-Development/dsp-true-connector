@@ -1,10 +1,12 @@
 package it.eng.dcp.service;
 
+import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.common.model.ServiceEntry;
+import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.DidResolverService;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.holder.exception.IssuerServiceNotFoundException;
@@ -50,6 +52,9 @@ class CredentialIssuanceClientTest {
 
     @Mock
     private DidResolverService didResolverService;
+
+    @Mock
+    private DcpAuditEventPublisher auditPublisher;
 
     @InjectMocks
     private CredentialIssuanceClient client;
@@ -243,6 +248,10 @@ class CredentialIssuanceClientTest {
         verify(restClient).executeAndDeserialize(
                 eq("https://issuer.example.com/metadata"), eq("GET"),
                 any(Map.class), isNull(), eq(IssuerMetadata.class));
+
+        var typeCaptor = org.mockito.ArgumentCaptor.forClass(DcpAuditEventType.class);
+        verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+        assertEquals(DcpAuditEventType.ISSUER_METADATA_FETCHED, typeCaptor.getValue());
     }
 
     @DisplayName("getPersonalIssuerMetadata handles service URL with trailing slash")
@@ -304,6 +313,10 @@ class CredentialIssuanceClientTest {
 
         assertEquals("https://issuer.example.com/requests/req123",
                 client.requestCredential(List.of("cred1")));
+
+        var typeCaptor = org.mockito.ArgumentCaptor.forClass(DcpAuditEventType.class);
+        verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+        assertEquals(DcpAuditEventType.CREDENTIAL_REQUESTED, typeCaptor.getValue());
     }
 
     @DisplayName("requestCredential throws RuntimeException on 400 response")
@@ -317,6 +330,10 @@ class CredentialIssuanceClientTest {
                         HttpStatus.BAD_REQUEST.value(), "Bad request", "Bad request"));
 
         assertThrows(RuntimeException.class, () -> client.requestCredential(List.of("cred1")));
+
+        var typeCaptor = org.mockito.ArgumentCaptor.forClass(DcpAuditEventType.class);
+        verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+        assertEquals(DcpAuditEventType.CREDENTIAL_REQUEST_FAILED, typeCaptor.getValue());
     }
 
     // ── getRequestStatus ──────────────────────────────────────────────────────

@@ -1,9 +1,11 @@
 package it.eng.dcp.issuer.service;
 
+import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.*;
 import it.eng.dcp.common.repository.CredentialRequestRepository;
+import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.DidResolverService;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import okhttp3.*;
@@ -22,25 +24,14 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-/**
- * Unit tests for CredentialDeliveryService.
- */
 class CredentialDeliveryServiceTest {
 
-    @Mock
-    private CredentialRequestRepository requestRepository;
-
-    @Mock
-    private SelfIssuedIdTokenService tokenService;
-
-    @Mock
-    private SimpleOkHttpRestClient httpClient;
-
-    @Mock
-    private DidDocumentConfig config;
-
-    @Mock
-    private DidResolverService didResolverService;
+    @Mock private CredentialRequestRepository requestRepository;
+    @Mock private SelfIssuedIdTokenService tokenService;
+    @Mock private SimpleOkHttpRestClient httpClient;
+    @Mock private DidDocumentConfig config;
+    @Mock private DidResolverService didResolverService;
+    @Mock private DcpAuditEventPublisher auditPublisher;
 
     private CredentialDeliveryService deliveryService;
 
@@ -53,13 +44,8 @@ class CredentialDeliveryServiceTest {
     void setUp() {
         closeable = MockitoAnnotations.openMocks(this);
 
-        // Manually instantiate the service with mocked dependencies
         deliveryService = new CredentialDeliveryService(
-                requestRepository,
-                tokenService,
-                httpClient,
-                config,
-                didResolverService
+                requestRepository, tokenService, httpClient, config, didResolverService, auditPublisher
         );
 
         testRequest = CredentialRequest.Builder.newInstance()
@@ -82,9 +68,7 @@ class CredentialDeliveryServiceTest {
 
     @AfterEach
     void tearDown() throws Exception {
-        if (closeable != null) {
-            closeable.close();
-        }
+        if (closeable != null) closeable.close();
     }
 
     @Test
@@ -93,95 +77,17 @@ class CredentialDeliveryServiceTest {
         when(tokenService.createAndSignToken(anyString(), any(), any())).thenReturn("mock-token");
         when(didResolverService.fetchDidDocumentCached("did:web:example.com:holder"))
                 .thenReturn(createMockDidDocument("did:web:example.com:holder", "http://example.com/credentials"));
-
-        Response mockResponse = createMockResponse(200, "OK");
-        when(httpClient.executeCall(any(Request.class))).thenReturn(mockResponse);
+        when(httpClient.executeCall(any(Request.class))).thenReturn(createMockResponse(200, "OK"));
 
         boolean result = deliveryService.deliverCredentials("issuer-pid-123", testCredentials);
 
         assertTrue(result);
         verify(requestRepository).save(argThat(req ->
-                req.getStatus() == CredentialStatus.ISSUED &&
-                        req.getIssuerPid().equals("issuer-pid-123")
-        ));
-        verify(httpClient).executeCall(any(Request.class));
-    }
+                req.getStatus() == CredentialStatus.ISSUED && req.getIssuerPid().equals("issuer-pid-123")));
 
-    @Test
-    void deliverCredentials_nullIssuerPid_returnsFalse() {
-        boolean result = deliveryService.deliverCredentials(null, testCredentials);
-        assertFalse(result);
-        verify(requestRepository, never()).findByIssuerPid(any());
-    }
-
-    @Test
-    void deliverCredentials_blankIssuerPid_returnsFalse() {
-        boolean result = deliveryService.deliverCredentials("", testCredentials);
-        assertFalse(result);
-        verify(requestRepository, never()).findByIssuerPid(any());
-    }
-
-    @Test
-    void deliverCredentials_requestNotFound_throwsException() {
-        when(requestRepository.findByIssuerPid("unknown-pid")).thenReturn(Optional.empty());
-
-        assertThrows(IllegalArgumentException.class, () ->
-                deliveryService.deliverCredentials("unknown-pid", testCredentials)
-        );
-    }
-
-    @Test
-    void deliverCredentials_alreadyIssued_returnsFalse() {
-        CredentialRequest issuedRequest = CredentialRequest.Builder.newInstance()
-                .issuerPid("issuer-pid-123")
-                .holderPid("did:web:example.com:holder")
-                .credentialIds(List.of("MembershipCredential"))
-                .status(CredentialStatus.ISSUED)
-                .createdAt(Instant.now())
-                .build();
-
-        when(requestRepository.findByIssuerPid("issuer-pid-123")).thenReturn(Optional.of(issuedRequest));
-
-        boolean result = deliveryService.deliverCredentials("issuer-pid-123", testCredentials);
-
-        assertFalse(result);
-        verify(httpClient, never()).executeCall(any());
-    }
-
-    @Test
-    void deliverCredentials_alreadyRejected_returnsFalse() {
-        CredentialRequest rejectedRequest = CredentialRequest.Builder.newInstance()
-                .issuerPid("issuer-pid-123")
-                .holderPid("did:web:example.com:holder")
-                .credentialIds(List.of("MembershipCredential"))
-                .status(CredentialStatus.REJECTED)
-                .createdAt(Instant.now())
-                .build();
-
-        when(requestRepository.findByIssuerPid("issuer-pid-123")).thenReturn(Optional.of(rejectedRequest));
-
-        boolean result = deliveryService.deliverCredentials("issuer-pid-123", testCredentials);
-
-        assertFalse(result);
-        verify(httpClient, never()).executeCall(any());
-    }
-
-    @Test
-    void deliverCredentials_invalidHolderPid_returnsFalse() {
-        CredentialRequest invalidRequest = CredentialRequest.Builder.newInstance()
-                .issuerPid("issuer-pid-123")
-                .holderPid("invalid-pid")
-                .credentialIds(List.of("MembershipCredential"))
-                .status(CredentialStatus.PENDING)
-                .createdAt(Instant.now())
-                .build();
-
-        when(requestRepository.findByIssuerPid("issuer-pid-123")).thenReturn(Optional.of(invalidRequest));
-
-        boolean result = deliveryService.deliverCredentials("issuer-pid-123", testCredentials);
-
-        assertFalse(result);
-        verify(httpClient, never()).executeCall(any());
+        ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+        verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+        assertEquals(DcpAuditEventType.CREDENTIAL_DELIVERED, typeCaptor.getValue());
     }
 
     @Test
@@ -190,14 +96,16 @@ class CredentialDeliveryServiceTest {
         when(tokenService.createAndSignToken(anyString(), any(), any())).thenReturn("mock-token");
         when(didResolverService.fetchDidDocumentCached("did:web:example.com:holder"))
                 .thenReturn(createMockDidDocument("did:web:example.com:holder", "http://example.com/credentials"));
-
-        Response mockResponse = createMockResponse(500, "Internal Server Error");
-        when(httpClient.executeCall(any(Request.class))).thenReturn(mockResponse);
+        when(httpClient.executeCall(any(Request.class))).thenReturn(createMockResponse(500, "Internal Server Error"));
 
         boolean result = deliveryService.deliverCredentials("issuer-pid-123", testCredentials);
 
         assertFalse(result);
         verify(requestRepository, never()).save(any());
+
+        ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+        verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+        assertEquals(DcpAuditEventType.CREDENTIAL_DELIVERY_FAILED, typeCaptor.getValue());
     }
 
     @Test
@@ -206,75 +114,107 @@ class CredentialDeliveryServiceTest {
         when(tokenService.createAndSignToken(anyString(), any(), any())).thenReturn("mock-token");
         when(didResolverService.fetchDidDocumentCached("did:web:example.com:holder"))
                 .thenReturn(createMockDidDocument("did:web:example.com:holder", "http://example.com/credentials"));
-
-        Response mockResponse = createMockResponse(200, "OK");
-        when(httpClient.executeCall(any(Request.class))).thenReturn(mockResponse);
+        when(httpClient.executeCall(any(Request.class))).thenReturn(createMockResponse(200, "OK"));
 
         boolean result = deliveryService.rejectCredentialRequest("issuer-pid-123", "Invalid credentials");
 
         assertTrue(result);
         verify(requestRepository).save(argThat(req ->
-                req.getStatus() == CredentialStatus.REJECTED &&
-                        req.getRejectionReason().equals("Invalid credentials")
-        ));
+                req.getStatus() == CredentialStatus.REJECTED && req.getRejectionReason().equals("Invalid credentials")));
+
+        ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+        verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+        assertEquals(DcpAuditEventType.CREDENTIAL_DENIED, typeCaptor.getValue());
+    }
+
+    @Test
+    void deliverCredentials_nullIssuerPid_returnsFalse() {
+        assertFalse(deliveryService.deliverCredentials(null, testCredentials));
+        verify(requestRepository, never()).findByIssuerPid(any());
+    }
+
+    @Test
+    void deliverCredentials_blankIssuerPid_returnsFalse() {
+        assertFalse(deliveryService.deliverCredentials("", testCredentials));
+        verify(requestRepository, never()).findByIssuerPid(any());
+    }
+
+    @Test
+    void deliverCredentials_requestNotFound_throwsException() {
+        when(requestRepository.findByIssuerPid("unknown-pid")).thenReturn(Optional.empty());
+        assertThrows(IllegalArgumentException.class, () -> deliveryService.deliverCredentials("unknown-pid", testCredentials));
+    }
+
+    @Test
+    void deliverCredentials_alreadyIssued_returnsFalse() {
+        CredentialRequest issuedRequest = CredentialRequest.Builder.newInstance()
+                .issuerPid("issuer-pid-123").holderPid("did:web:example.com:holder")
+                .credentialIds(List.of("MembershipCredential")).status(CredentialStatus.ISSUED)
+                .createdAt(Instant.now()).build();
+        when(requestRepository.findByIssuerPid("issuer-pid-123")).thenReturn(Optional.of(issuedRequest));
+        assertFalse(deliveryService.deliverCredentials("issuer-pid-123", testCredentials));
+        verify(httpClient, never()).executeCall(any());
+    }
+
+    @Test
+    void deliverCredentials_alreadyRejected_returnsFalse() {
+        CredentialRequest rejectedRequest = CredentialRequest.Builder.newInstance()
+                .issuerPid("issuer-pid-123").holderPid("did:web:example.com:holder")
+                .credentialIds(List.of("MembershipCredential")).status(CredentialStatus.REJECTED)
+                .createdAt(Instant.now()).build();
+        when(requestRepository.findByIssuerPid("issuer-pid-123")).thenReturn(Optional.of(rejectedRequest));
+        assertFalse(deliveryService.deliverCredentials("issuer-pid-123", testCredentials));
+        verify(httpClient, never()).executeCall(any());
+    }
+
+    @Test
+    void deliverCredentials_invalidHolderPid_returnsFalse() {
+        CredentialRequest invalidRequest = CredentialRequest.Builder.newInstance()
+                .issuerPid("issuer-pid-123").holderPid("invalid-pid")
+                .credentialIds(List.of("MembershipCredential")).status(CredentialStatus.PENDING)
+                .createdAt(Instant.now()).build();
+        when(requestRepository.findByIssuerPid("issuer-pid-123")).thenReturn(Optional.of(invalidRequest));
+        assertFalse(deliveryService.deliverCredentials("issuer-pid-123", testCredentials));
+        verify(httpClient, never()).executeCall(any());
     }
 
     @Test
     void rejectCredentialRequest_nullIssuerPid_returnsFalse() {
-        boolean result = deliveryService.rejectCredentialRequest(null, "reason");
-        assertFalse(result);
+        assertFalse(deliveryService.rejectCredentialRequest(null, "reason"));
         verify(requestRepository, never()).findByIssuerPid(any());
     }
 
     @Test
     void rejectCredentialRequest_blankIssuerPid_returnsFalse() {
-        boolean result = deliveryService.rejectCredentialRequest("", "reason");
-        assertFalse(result);
+        assertFalse(deliveryService.rejectCredentialRequest("", "reason"));
         verify(requestRepository, never()).findByIssuerPid(any());
     }
 
     @Test
     void rejectCredentialRequest_requestNotFound_throwsException() {
         when(requestRepository.findByIssuerPid("unknown-pid")).thenReturn(Optional.empty());
-
-        assertThrows(IllegalArgumentException.class, () ->
-                deliveryService.rejectCredentialRequest("unknown-pid", "reason")
-        );
+        assertThrows(IllegalArgumentException.class, () -> deliveryService.rejectCredentialRequest("unknown-pid", "reason"));
     }
 
     @Test
     void rejectCredentialRequest_alreadyIssued_returnsFalse() {
         CredentialRequest issuedRequest = CredentialRequest.Builder.newInstance()
-                .issuerPid("issuer-pid-123")
-                .holderPid("did:web:example.com:holder")
-                .credentialIds(List.of("MembershipCredential"))
-                .status(CredentialStatus.ISSUED)
-                .createdAt(Instant.now())
-                .build();
-
+                .issuerPid("issuer-pid-123").holderPid("did:web:example.com:holder")
+                .credentialIds(List.of("MembershipCredential")).status(CredentialStatus.ISSUED)
+                .createdAt(Instant.now()).build();
         when(requestRepository.findByIssuerPid("issuer-pid-123")).thenReturn(Optional.of(issuedRequest));
-
-        boolean result = deliveryService.rejectCredentialRequest("issuer-pid-123", "reason");
-
-        assertFalse(result);
+        assertFalse(deliveryService.rejectCredentialRequest("issuer-pid-123", "reason"));
         verify(httpClient, never()).executeCall(any());
     }
 
     @Test
     void rejectCredentialRequest_invalidHolderPid_returnsFalse() {
         CredentialRequest invalidRequest = CredentialRequest.Builder.newInstance()
-                .issuerPid("issuer-pid-123")
-                .holderPid("invalid-pid")
-                .credentialIds(List.of("MembershipCredential"))
-                .status(CredentialStatus.PENDING)
-                .createdAt(Instant.now())
-                .build();
-
+                .issuerPid("issuer-pid-123").holderPid("invalid-pid")
+                .credentialIds(List.of("MembershipCredential")).status(CredentialStatus.PENDING)
+                .createdAt(Instant.now()).build();
         when(requestRepository.findByIssuerPid("issuer-pid-123")).thenReturn(Optional.of(invalidRequest));
-
-        boolean result = deliveryService.rejectCredentialRequest("issuer-pid-123", "reason");
-
-        assertFalse(result);
+        assertFalse(deliveryService.rejectCredentialRequest("issuer-pid-123", "reason"));
         verify(httpClient, never()).executeCall(any());
     }
 
@@ -284,13 +224,8 @@ class CredentialDeliveryServiceTest {
         when(tokenService.createAndSignToken(anyString(), any(), any())).thenReturn("mock-token");
         when(didResolverService.fetchDidDocumentCached("did:web:example.com:holder"))
                 .thenReturn(createMockDidDocument("did:web:example.com:holder", "http://example.com/credentials"));
-
-        Response mockResponse = createMockResponse(500, "Internal Server Error");
-        when(httpClient.executeCall(any(Request.class))).thenReturn(mockResponse);
-
-        boolean result = deliveryService.rejectCredentialRequest("issuer-pid-123", "reason");
-
-        assertFalse(result);
+        when(httpClient.executeCall(any(Request.class))).thenReturn(createMockResponse(500, "Internal Server Error"));
+        assertFalse(deliveryService.rejectCredentialRequest("issuer-pid-123", "reason"));
         verify(requestRepository, never()).save(any());
     }
 
@@ -300,54 +235,27 @@ class CredentialDeliveryServiceTest {
         when(tokenService.createAndSignToken(anyString(), any(), any())).thenReturn("mock-token");
         when(didResolverService.fetchDidDocumentCached("did:web:example.com:holder"))
                 .thenReturn(createMockDidDocument("did:web:example.com:holder", "http://example.com/"));
-
-        Response mockResponse = createMockResponse(200, "OK");
-        when(httpClient.executeCall(any(Request.class))).thenReturn(mockResponse);
+        when(httpClient.executeCall(any(Request.class))).thenReturn(createMockResponse(200, "OK"));
 
         deliveryService.deliverCredentials("issuer-pid-123", testCredentials);
 
         ArgumentCaptor<Request> requestCaptor = ArgumentCaptor.forClass(Request.class);
         verify(httpClient).executeCall(requestCaptor.capture());
-
-        String url = requestCaptor.getValue().url().toString();
-        assertTrue(url.endsWith("/credentials"), "URL should end with /credentials, but was: " + url);
+        assertTrue(requestCaptor.getValue().url().toString().endsWith("/credentials"));
     }
 
-    /**
-     * Create a mock HTTP response for testing.
-     *
-     * @param code HTTP status code
-     * @param message Response message
-     * @return Mock Response object
-     */
     private Response createMockResponse(int code, String message) {
-        ResponseBody body = ResponseBody.create("{}", MediaType.parse("application/json"));
         return new Response.Builder()
                 .request(new Request.Builder().url("http://example.com").build())
-                .protocol(Protocol.HTTP_1_1)
-                .code(code)
-                .message(message)
-                .body(body)
+                .protocol(Protocol.HTTP_1_1).code(code).message(message)
+                .body(ResponseBody.create("{}", MediaType.parse("application/json")))
                 .build();
     }
 
-    /**
-     * Create a mock DidDocument with a CredentialService for testing.
-     *
-     * @param holderDid The DID of the holder
-     * @param credentialServiceUrl The URL of the credential service endpoint
-     * @return Mock DidDocument object
-     */
     private DidDocument createMockDidDocument(String holderDid, String credentialServiceUrl) {
-        ServiceEntry credentialService = new ServiceEntry(
-                "credential-service-1",
-                "CredentialService",
-                credentialServiceUrl
-        );
-
         return DidDocument.Builder.newInstance()
                 .id(holderDid)
-                .service(List.of(credentialService))
+                .service(List.of(new ServiceEntry("credential-service-1", "CredentialService", credentialServiceUrl)))
                 .verificationMethod(List.of())
                 .build();
     }

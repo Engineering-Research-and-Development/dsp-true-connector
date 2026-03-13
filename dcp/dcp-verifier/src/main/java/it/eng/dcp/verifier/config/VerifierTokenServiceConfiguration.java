@@ -2,6 +2,7 @@ package it.eng.dcp.verifier.config;
 
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.DidResolverService;
 import it.eng.dcp.common.service.sts.JtiReplayCache;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
@@ -31,6 +32,7 @@ public class VerifierTokenServiceConfiguration {
      * @param jtiCache JTI replay cache
      * @param keyService Key service for cryptographic operations
      * @param config The DidDocumentConfig bean
+     * @param auditEventPublisher DCP audit event publisher
      * @return SelfIssuedIdTokenService configured with connector's DID
      */
     @Bean(name = "verifierTokenService")
@@ -39,8 +41,9 @@ public class VerifierTokenServiceConfiguration {
             DidResolverService didResolver,
             JtiReplayCache jtiCache,
             KeyService keyService,
-            DidDocumentConfig config) {
-        return new SelfIssuedIdTokenService(didResolver, jtiCache, keyService, config);
+            DidDocumentConfig config,
+            DcpAuditEventPublisher auditEventPublisher) {
+        return new SelfIssuedIdTokenService(didResolver, jtiCache, keyService, config, auditEventPublisher);
     }
 }
 

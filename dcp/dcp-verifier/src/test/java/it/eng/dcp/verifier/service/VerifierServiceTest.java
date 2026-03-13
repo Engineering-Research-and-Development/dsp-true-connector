@@ -10,6 +10,7 @@ import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.exception.DidResolutionException;
@@ -17,6 +18,7 @@ import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.model.PresentationResponseMessage;
 import it.eng.dcp.common.model.ServiceEntry;
 import it.eng.dcp.common.service.IssuerTrustService;
+import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.HttpDidResolverService;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import okhttp3.RequestBody;
@@ -25,6 +27,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -69,6 +72,9 @@ class VerifierServiceTest {
     @Mock
     private IssuerTrustService issuerTrustService;
 
+    @Mock
+    private DcpAuditEventPublisher auditPublisher;
+
     private VerifierService verifierService;
     private ObjectMapper objectMapper;
 
@@ -106,7 +112,8 @@ class VerifierServiceTest {
                 httpClient,
                 objectMapper,
                 verifierConfig,
-                issuerTrustService
+                issuerTrustService,
+                auditPublisher
         );
     }
 
@@ -129,6 +136,10 @@ class VerifierServiceTest {
 
             assertTrue(exception.getMessage().contains("Bearer token is required"));
             verify(tokenService, never()).validateToken(any());
+
+            ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+            verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+            assertEquals(DcpAuditEventType.TOKEN_VALIDATION_FAILED, typeCaptor.getValue());
         }
 
         @Test
@@ -142,6 +153,10 @@ class VerifierServiceTest {
 
             assertTrue(exception.getMessage().contains("Bearer token is required"));
             verify(tokenService, never()).validateToken(any());
+
+            ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+            verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+            assertEquals(DcpAuditEventType.TOKEN_VALIDATION_FAILED, typeCaptor.getValue());
         }
 
         @Test
@@ -187,6 +202,10 @@ class VerifierServiceTest {
 
             assertTrue(exception.getMessage().contains("Step 3a failed"));
             assertTrue(exception.getMessage().toLowerCase().contains("token"));
+
+            ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+            verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+            assertEquals(DcpAuditEventType.TOKEN_VALIDATION_FAILED, typeCaptor.getValue());
         }
     }
 
@@ -427,6 +446,11 @@ class VerifierServiceTest {
             assertTrue(exception.getMessage().contains("Step 4 failed"));
             assertTrue(exception.getMessage().toLowerCase().contains("rejected") ||
                        exception.getMessage().toLowerCase().contains("invalid response"));
+
+            // PRESENTATION_QUERY_SENT should have been published before the failure
+            ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+            verify(auditPublisher, atLeast(1)).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+            assertTrue(typeCaptor.getAllValues().contains(DcpAuditEventType.PRESENTATION_QUERY_SENT));
         }
 
         @Test
@@ -1002,6 +1026,10 @@ class VerifierServiceTest {
 
             assertTrue(exception.getMessage().contains("Step 5 failed"));
             assertTrue(exception.getMessage().toLowerCase().contains("not trusted"));
+
+            ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+            verify(auditPublisher, atLeast(1)).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+            assertTrue(typeCaptor.getAllValues().contains(DcpAuditEventType.PRESENTATION_INVALID));
         }
     }
 
@@ -1051,6 +1079,14 @@ class VerifierServiceTest {
             VerifierService.ValidatedCredential vc = vp.getCredentials().get(0);
             assertEquals(ISSUER_DID, vc.getIssuerDid());
             assertEquals("MembershipCredential", vc.getCredentialType());
+
+            // Verify audit events: SELF_ISSUED_TOKEN_VALIDATED, PRESENTATION_QUERY_SENT, PRESENTATION_VERIFIED
+            ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+            verify(auditPublisher, atLeast(3)).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+            List<DcpAuditEventType> capturedTypes = typeCaptor.getAllValues();
+            assertTrue(capturedTypes.contains(DcpAuditEventType.SELF_ISSUED_TOKEN_VALIDATED));
+            assertTrue(capturedTypes.contains(DcpAuditEventType.PRESENTATION_QUERY_SENT));
+            assertTrue(capturedTypes.contains(DcpAuditEventType.PRESENTATION_VERIFIED));
         }
 
         @Test

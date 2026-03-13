@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.security.KeyPair;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -54,7 +55,7 @@ public class DidDocumentService {
 
         // Compute kid and JWK using the loaded keyPair (no reloading!)
         String kid = keyService.getKidFromPublicKey(config, keyPair);
-        java.util.Map<String, Object> jwk = keyService.convertPublicKeyToJWK(config, keyPair);
+        Map<String, Object> jwk = keyService.convertPublicKeyToJWK(config, keyPair);
 
         // Build verification methods
         List<VerificationMethod> verificationMethods = List.of(

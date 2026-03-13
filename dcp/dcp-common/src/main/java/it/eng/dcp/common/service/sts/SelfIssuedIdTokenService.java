@@ -6,9 +6,11 @@ import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.DidResolverService;
 import it.eng.dcp.common.util.DidUrlConverter;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +19,9 @@ import org.springframework.stereotype.Service;
 
 import java.text.ParseException;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -44,6 +48,7 @@ public class SelfIssuedIdTokenService {
     private final JtiReplayCache jtiCache;
     private final KeyService keyService;
     private final DidDocumentConfig config;
+    private final DcpAuditEventPublisher auditPublisher;
 
     // Test hook to override the signing key with a specific EC JWK (used in unit tests)
     private ECKey overrideSigningKey;
@@ -54,12 +59,14 @@ public class SelfIssuedIdTokenService {
             DidResolverService didResolver,
             JtiReplayCache jtiCache,
             KeyService keyService,
-            DidDocumentConfig config) {
+            DidDocumentConfig config,
+            DcpAuditEventPublisher auditPublisher) {
 //        this.connectorDid = connectorDid;
         this.didResolver = didResolver;
         this.jtiCache = jtiCache;
         this.keyService = keyService;
         this.config = config;
+        this.auditPublisher = auditPublisher;
     }
 
     /**
@@ -130,8 +137,21 @@ public class SelfIssuedIdTokenService {
             JWSSigner signer = new ECDSASigner(signingJwk.toECPrivateKey());
             jwt.sign(signer);
 
-            return jwt.serialize();
+            String serialized = jwt.serialize();
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.TOKEN_ISSUED,
+                    "Self-issued ID token issued for audience: " + audienceDid,
+                    "common",
+                    null, null, null, null,
+                    Map.of("audience", audienceDid));
+            return serialized;
         } catch (JOSEException e) {
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                    "Failed to create and sign token for audience: " + audienceDid + ": " + e.getMessage(),
+                    "common",
+                    null, null, null, null,
+                    Map.of("audience", audienceDid, "error", e.getMessage()));
             throw new RuntimeException("Failed to create and sign token", e);
         }
     }
@@ -228,15 +248,39 @@ public class SelfIssuedIdTokenService {
             }
 
             log.debug("Token validation successful for subject: {}", subject);
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.SELF_ISSUED_TOKEN_VALIDATED,
+                    "Self-issued ID token validated for subject: " + subject,
+                    "common",
+                    null, null, null, null,
+                    Map.of("subject", subject, "audience", aud != null ? aud : ""));
             return claims;
         } catch (SecurityException e) {
             log.warn("Token validation failed: {}", e.getMessage());
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                    "Token validation failed: " + e.getMessage(),
+                    "common",
+                    null, null, null, null,
+                    Map.of("reason", e.getMessage()));
             throw e;
         } catch (DidResolutionException e) {
             log.warn("Token validation failed - DID resolution error: {}", e.getMessage());
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                    "Token validation failed - DID resolution error: " + e.getMessage(),
+                    "common",
+                    null, null, null, null,
+                    Map.of("reason", e.getMessage()));
             throw new SecurityException("Failed to resolve DID: " + e.getMessage(), e);
         } catch (ParseException e) {
             log.error("Token validation failed - parse/crypto error: {}", e.getMessage());
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                    "Token validation failed - invalid token format: " + e.getMessage(),
+                    "common",
+                    null, null, null, null,
+                    Map.of("reason", e.getMessage()));
             throw new SecurityException("Invalid token format", e);
         }
     }
@@ -312,7 +356,14 @@ public class SelfIssuedIdTokenService {
             JWSSigner signer = new ECDSASigner(signingJwk.toECPrivateKey());
             jwt.sign(signer);
 
-            return jwt.serialize();
+            String serialized = jwt.serialize();
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.TOKEN_ISSUED,
+                    "Self-issued ID token issued for audience: " + audienceDid,
+                    "common",
+                    null, null, null, null,
+                    Map.of("audience", audienceDid));
+            return serialized;
         } catch (JOSEException e) {
             throw new RuntimeException("Failed to create and sign STS-compatible token", e);
         }
@@ -354,8 +405,8 @@ public class SelfIssuedIdTokenService {
 
         // Add scopes if provided (CRITICAL for security)
         if (scopes != null && scopes.length > 0) {
-            claimsBuilder.claim("scope", java.util.Arrays.asList(scopes));
-            log.debug("Access token scopes: {}", java.util.Arrays.toString(scopes));
+            claimsBuilder.claim("scope", Arrays.asList(scopes));
+            log.debug("Access token scopes: {}", Arrays.toString(scopes));
         } else {
             // No scopes means access to all presentations (use with caution)
             log.warn("Generating access token with NO scope restrictions for verifier: {}. " +
@@ -377,11 +428,29 @@ public class SelfIssuedIdTokenService {
                 .type(JOSEObjectType.JWT)
                 .build();
 
-        SignedJWT jwt = new SignedJWT(header, claims);
-        JWSSigner signer = new ECDSASigner(signingJwk.toECPrivateKey());
-        jwt.sign(signer);
-
-        return jwt.serialize();
+        try {
+            SignedJWT jwt = new SignedJWT(header, claims);
+            JWSSigner signer = new ECDSASigner(signingJwk.toECPrivateKey());
+            jwt.sign(signer);
+            String serialized = jwt.serialize();
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.TOKEN_ISSUED,
+                    "Access token issued for verifier: " + verifierDid,
+                    "common",
+                    null, null,
+                    scopes != null ? Arrays.asList(scopes) : null,
+                    null,
+                    Map.of("verifier", verifierDid));
+            return serialized;
+        } catch (JOSEException e) {
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                    "Failed to sign access token for verifier: " + verifierDid + ": " + e.getMessage(),
+                    "common",
+                    null, null, null, null,
+                    Map.of("verifier", verifierDid, "error", e.getMessage()));
+            throw e;
+        }
     }
 
     /**

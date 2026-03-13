@@ -1,13 +1,16 @@
 package it.eng.dcp.issuer.service;
 
 import com.nimbusds.jwt.JWTClaimsSet;
+import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.CredentialRequestMessage;
 import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.common.repository.CredentialRequestRepository;
+import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -17,8 +20,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class IssuerServiceTest {
@@ -30,6 +32,8 @@ class IssuerServiceTest {
     private CredentialRequestRepository requestRepository;
     @Mock
     private CredentialMetadataService credentialMetadataService;
+    @Mock
+    private DcpAuditEventPublisher auditPublisher;
 
     @InjectMocks
     private IssuerService issuerService;
@@ -47,6 +51,10 @@ class IssuerServiceTest {
     void authorizeRequest_nullToken_throws() {
         SecurityException ex = assertThrows(SecurityException.class, () -> issuerService.authorizeRequest(null, null));
         assertTrue(ex.getMessage().contains("Bearer token is required"));
+
+        ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+        verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+        assertEquals(DcpAuditEventType.TOKEN_VALIDATION_FAILED, typeCaptor.getValue());
     }
 
     // --- createCredentialRequest ---
@@ -64,9 +72,15 @@ class IssuerServiceTest {
             ))
             .build();
         CredentialRequest req = mock(CredentialRequest.class);
+        when(req.getIssuerPid()).thenReturn("req-123");
         when(requestRepository.save(any())).thenReturn(req);
-        CredentialRequest result = issuerService.createCredentialRequest(msg, jwtClaimsSet.getSubject());
+
+        CredentialRequest result = issuerService.createCredentialRequest(msg, "did:web:holder.example.com");
+
         assertSame(req, result);
+        ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+        verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+        assertEquals(DcpAuditEventType.CREDENTIAL_REQUEST_RECEIVED, typeCaptor.getValue());
     }
 
     @Test

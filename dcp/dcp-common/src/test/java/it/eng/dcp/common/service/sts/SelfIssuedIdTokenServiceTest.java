@@ -9,13 +9,16 @@ import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.DidResolverService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -25,9 +28,11 @@ import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.time.Instant;
 import java.util.Date;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,12 +50,14 @@ class SelfIssuedIdTokenServiceTest {
     private KeyService keyService;
     @Mock
     private DidDocumentConfig config;
+    @Mock
+    private DcpAuditEventPublisher auditPublisher;
     private SelfIssuedIdTokenService service;
     private ECKey ecJwk;
 
     @BeforeEach
     void setUp() throws Exception {
-        service = new SelfIssuedIdTokenService(didResolver, jtiCache, keyService, config);
+        service = new SelfIssuedIdTokenService(didResolver, jtiCache, keyService, config, auditPublisher);
 
         // Generate EC key for signing and verification
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
@@ -88,15 +95,35 @@ class SelfIssuedIdTokenServiceTest {
         String jwt = createJwt(claims, ecJwk);
         when(didResolver.resolvePublicKey(SUBJECT_DID, KID, "capabilityInvocation")).thenReturn(ecJwk);
         doNothing().when(jtiCache).checkAndPut(anyString(), any());
+
         assertEquals(claims.getJWTID(), service.validateToken(jwt).getJWTID());
+
+        ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+        verify(auditPublisher).publishEvent(
+                typeCaptor.capture(),
+                any(String.class),
+                eq("common"),
+                isNull(), isNull(), isNull(), isNull(),
+                any(Map.class));
+        assertEquals(DcpAuditEventType.SELF_ISSUED_TOKEN_VALIDATED, typeCaptor.getValue());
     }
 
     @Test
     void validateToken_issNotEqualSub() throws Exception {
         JWTClaimsSet claims = baseClaims().issuer("other:issuer").build();
         String jwt = createJwt(claims, ecJwk);
-        Exception ex = assertThrows(SecurityException.class, () -> service.validateToken(jwt));
-        assertTrue(ex.getMessage().contains("iss and sub"));
+        assertThrows(SecurityException.class, () -> service.validateToken(jwt));
+
+        ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+        ArgumentCaptor<Map<String, Object>> detailsCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(auditPublisher).publishEvent(
+                typeCaptor.capture(),
+                any(String.class),
+                eq("common"),
+                isNull(), isNull(), isNull(), isNull(),
+                detailsCaptor.capture());
+        assertEquals(DcpAuditEventType.TOKEN_VALIDATION_FAILED, typeCaptor.getValue());
+        assertTrue(detailsCaptor.getValue().get("reason").toString().contains("iss and sub"));
     }
 
     @Test
@@ -250,7 +277,7 @@ class SelfIssuedIdTokenServiceTest {
     @Test
     void createAndSignToken_connectorDidBlank_throws() throws Exception {
         // Arrange: create service with blank connectorDid
-        SelfIssuedIdTokenService blankService = new SelfIssuedIdTokenService(didResolver, jtiCache, keyService, config);
+        SelfIssuedIdTokenService blankService = new SelfIssuedIdTokenService(didResolver, jtiCache, keyService, config, auditPublisher);
         DidDocumentConfig didConfig = mock(DidDocumentConfig.class);
         // Act & Assert
         assertThrows(IllegalStateException.class, () -> blankService.createAndSignToken("did:web:test:audience", "token", didConfig));
@@ -300,8 +327,8 @@ class SelfIssuedIdTokenServiceTest {
 
         // Create service with encoded connector DID
         SelfIssuedIdTokenService encodedService = new SelfIssuedIdTokenService(
-            didResolver, jtiCache, keyService, config);
-        
+            didResolver, jtiCache, keyService, config, auditPublisher);
+
         Instant now = Instant.now();
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
                 .issuer(SUBJECT_DID)
@@ -331,8 +358,8 @@ class SelfIssuedIdTokenServiceTest {
 
         // Create service with decoded connector DID
         SelfIssuedIdTokenService decodedService = new SelfIssuedIdTokenService(
-            didResolver, jtiCache, keyService, config);
-        
+            didResolver, jtiCache, keyService, config, auditPublisher);
+
         Instant now = Instant.now();
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
                 .issuer(SUBJECT_DID)
@@ -363,8 +390,8 @@ class SelfIssuedIdTokenServiceTest {
 
         // Create service with encoded holder DID (from config)
         SelfIssuedIdTokenService holderService = new SelfIssuedIdTokenService(
-            didResolver, jtiCache, keyService, config);
-        
+            didResolver, jtiCache, keyService, config, auditPublisher);
+
         Instant now = Instant.now();
         // JWT has encoded issuer/subject but decoded audience
         JWTClaimsSet claims = new JWTClaimsSet.Builder()

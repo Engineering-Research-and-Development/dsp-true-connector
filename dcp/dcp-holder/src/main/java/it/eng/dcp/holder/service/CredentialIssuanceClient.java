@@ -1,9 +1,11 @@
 package it.eng.dcp.holder.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.*;
+import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.DidResolverService;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.holder.exception.IssuerServiceNotFoundException;
@@ -34,12 +36,15 @@ import java.util.UUID;
 @Slf4j
 public class CredentialIssuanceClient {
 
+    private static final String HOLDER_SOURCE = "holder";
+
     // replaced RestTemplate with OkHttpRestClient
     private final SimpleOkHttpRestClient rest;
     private final SelfIssuedIdTokenService tokenService;
     private final ObjectMapper mapper = new ObjectMapper();
     private final DidDocumentConfig config;
     private final DidResolverService didResolverService;
+    private final DcpAuditEventPublisher auditPublisher;
 
     @Value("${dcp.issuer.location:}")
     private String issuerDid;
@@ -48,11 +53,13 @@ public class CredentialIssuanceClient {
     public CredentialIssuanceClient(SimpleOkHttpRestClient rest,
                                     @Qualifier("selfIssuedIdTokenService") SelfIssuedIdTokenService tokenService,
                                     DidDocumentConfig config,
-                                    DidResolverService didResolverService) {
+                                    DidResolverService didResolverService,
+                                    DcpAuditEventPublisher auditPublisher) {
         this.rest = rest;
         this.tokenService = tokenService;
         this.config = config;
         this.didResolverService = didResolverService;
+        this.auditPublisher = auditPublisher;
     }
 
     /**
@@ -92,7 +99,14 @@ public class CredentialIssuanceClient {
         // Discover issuer service URL from DID document
         String issuerBase = discoverIssuerService();
         String metadataUrl = issuerBase.endsWith("/") ? issuerBase + DCPConstants.ISSUER_METADATA_PATH.substring(1) : issuerBase + DCPConstants.ISSUER_METADATA_PATH;
-        return getIssuerMetadata(metadataUrl);
+        IssuerMetadata metadata = getIssuerMetadata(metadataUrl);
+        auditPublisher.publishEvent(
+                DcpAuditEventType.ISSUER_METADATA_FETCHED,
+                "Issuer metadata fetched from: " + metadataUrl,
+                HOLDER_SOURCE,
+                null, issuerDid, null, null,
+                Map.of("issuerDid", issuerDid, "metadataUrl", metadataUrl));
+        return metadata;
     }
 
     /**
@@ -193,8 +207,16 @@ public class CredentialIssuanceClient {
                 int code = response.code();
                 if ((code == HttpStatus.CREATED.value()) || (code == HttpStatus.ACCEPTED.value()) || (code >= 200 && code < 300)) {
                     String location = response.header(HttpHeaders.LOCATION);
-                    if (location != null && !location.isBlank()) return location;
-                    return url;
+                    String statusUrl = (location != null && !location.isBlank()) ? location : url;
+                    auditPublisher.publishEvent(
+                            DcpAuditEventType.CREDENTIAL_REQUESTED,
+                            "Credential request submitted for " + credentialObjectIds.size() + " credential(s) to issuer: " + issuerDid,
+                            HOLDER_SOURCE,
+                            null, issuerDid,
+                            credentialObjectIds,
+                            requestId,
+                            Map.of("credentialIds", credentialObjectIds, "statusUrl", statusUrl, "requestId", requestId));
+                    return statusUrl;
                 }
                 String respBody = null;
                 try {
@@ -204,13 +226,27 @@ public class CredentialIssuanceClient {
                 } catch (Exception ex) {
                     log.debug("Failed to read response body: {}", ex.getMessage());
                 }
+                auditPublisher.publishEvent(
+                        DcpAuditEventType.CREDENTIAL_REQUEST_FAILED,
+                        "Credential request failed for issuer: " + issuerDid + ", HTTP " + code,
+                        HOLDER_SOURCE,
+                        null, issuerDid,
+                        credentialObjectIds,
+                        requestId,
+                        Map.of("credentialIds", credentialObjectIds, "requestId", requestId,
+                               "httpStatus", code, "reason", respBody != null ? respBody : ""));
                 throw new RuntimeException("Unexpected response from issuer: " + code + " - " + respBody);
             }
-        } catch (RuntimeException e) {
-            log.error("Issuer returned error while requesting credential: {}", e.getMessage());
-            throw e;
-        } catch (Exception e) {
+        } catch (IOException e) {
             log.error("Error while requesting credential: {}", e.getMessage());
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.CREDENTIAL_REQUEST_FAILED,
+                    "Credential request failed with exception for issuer: " + issuerDid,
+                    HOLDER_SOURCE,
+                    null, issuerDid,
+                    credentialObjectIds,
+                    requestId,
+                    Map.of("credentialIds", credentialObjectIds, "requestId", requestId, "reason", e.getMessage()));
             throw new RuntimeException(e);
         }
     }

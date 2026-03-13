@@ -1,15 +1,18 @@
 package it.eng.dcp.issuer.service.api;
 
+import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.common.repository.CredentialRequestRepository;
+import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.issuer.service.CredentialDeliveryService;
 import it.eng.dcp.issuer.service.CredentialIssuanceService;
 import it.eng.dcp.issuer.service.CredentialMetadataService;
 import it.eng.dcp.issuer.service.IssuerService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -18,12 +21,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class IssuerAPIServiceTest {
@@ -31,16 +32,12 @@ public class IssuerAPIServiceTest {
     @InjectMocks
     private IssuerAPIService issuerAPIService;
 
-    @Mock
-    private CredentialRequestRepository requestRepository;
-    @Mock
-    private CredentialDeliveryService deliveryService;
-    @Mock
-    private CredentialIssuanceService issuanceService;
-    @Mock
-    private CredentialMetadataService credentialMetadataService;
+    @Mock private CredentialRequestRepository requestRepository;
+    @Mock private CredentialDeliveryService deliveryService;
+    @Mock private CredentialIssuanceService issuanceService;
+    @Mock private CredentialMetadataService credentialMetadataService;
+    @Mock private DcpAuditEventPublisher auditPublisher;
 
-    // --- approveAndDeliverCredentials ---
     @Test
     void approveAndDeliverCredentials_success_autoGenerate1() {
         String requestId = "id1";
@@ -49,11 +46,19 @@ public class IssuerAPIServiceTest {
         IssuerMetadata metadata = mock(IssuerMetadata.class);
         when(credentialMetadataService.buildIssuerMetadata()).thenReturn(metadata);
         when(req.getCredentialIds()).thenReturn(List.of("cred1"));
-        when(issuanceService.generateCredentials(eq(req), any(), any())).thenReturn(List.of(mock(CredentialMessage.CredentialContainer.class)));
+        CredentialMessage.CredentialContainer container = mock(CredentialMessage.CredentialContainer.class);
+        when(container.getCredentialType()).thenReturn("MembershipCredential");
+        when(issuanceService.generateCredentials(eq(req), any(), any())).thenReturn(List.of(container));
         when(deliveryService.deliverCredentials(eq(requestId), any())).thenReturn(true);
+
         IssuerService.ApprovalResult result = issuerAPIService.approveAndDeliverCredentials(requestId, Map.of(), List.of(), null);
+
         assertTrue(result.isSuccess());
         assertTrue(result.getCredentialsCount() > 0);
+
+        ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+        verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+        assertEquals(DcpAuditEventType.CREDENTIAL_APPROVED, typeCaptor.getValue());
     }
 
     @Test

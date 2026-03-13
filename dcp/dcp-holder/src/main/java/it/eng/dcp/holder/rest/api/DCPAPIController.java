@@ -30,36 +30,6 @@ public class DCPAPIController {
         this.credentialIssuanceClient = credentialIssuanceClient;
     }
 
-    /**
-     * Fetches issuer metadata.
-     *
-     * @return ResponseEntity containing the issuer metadata or an error message
-     */
-    @GetMapping("/issuer-metadata")
-    public ResponseEntity<?> getIssuerMetadata() {
-        try {
-            IssuerMetadata issuerMetadata = credentialIssuanceClient.getPersonalIssuerMetadata();
-
-            log.info("Successfully retrieved issuer metadata");
-
-            return ResponseEntity.ok(issuerMetadata);
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid request: {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                .body(Map.of("error", e.getMessage()));
-        } catch (Exception e) {
-            log.error("Failed to fetch issuer metadata: {}", e.getMessage(), e);
-            return ResponseEntity.status(500)
-                .body(Map.of("error", "Failed to fetch issuer metadata: " + e.getMessage()));
-        }
-    }
-
-    /**
-     * Requests credentials from the issuer using the provided credential IDs.
-     *
-     * @param credentialIds List of credential IDs to request
-     * @return ResponseEntity with the status URL location or error message
-     */
     @PostMapping(value = "/credentials/request")
     public ResponseEntity<?> requestCredentials(@RequestBody List<String> credentialIds) {
         log.info("Received request to request credentials from issuer");
@@ -70,11 +40,9 @@ public class DCPAPIController {
         }
 
         try {
-            // Request all credentials in a single request
             log.debug("Requesting {} credentials", credentialIds.size());
             String statusUrl = credentialIssuanceClient.requestCredential(credentialIds);
             log.info("Credential request successful for {} credentials, status URL: {}", credentialIds.size(), statusUrl);
-
             return ResponseEntity.status(201)
                 .header(HttpHeaders.LOCATION, statusUrl)
                 .body(Map.of(
@@ -93,6 +61,21 @@ public class DCPAPIController {
         }
     }
 
-
+    @GetMapping("/issuer-metadata")
+    public ResponseEntity<?> getIssuerMetadata() {
+        try {
+            IssuerMetadata issuerMetadata = credentialIssuanceClient.getPersonalIssuerMetadata();
+            log.info("Successfully retrieved issuer metadata");
+            return ResponseEntity.ok(issuerMetadata);
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid request: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Failed to fetch issuer metadata: {}", e.getMessage(), e);
+            return ResponseEntity.status(500)
+                .body(Map.of("error", "Failed to fetch issuer metadata: " + e.getMessage()));
+        }
+    }
 }
 

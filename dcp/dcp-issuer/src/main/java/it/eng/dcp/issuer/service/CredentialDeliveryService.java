@@ -1,7 +1,7 @@
 package it.eng.dcp.issuer.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.CredentialMessage;
@@ -9,6 +9,7 @@ import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.CredentialStatus;
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.repository.CredentialRequestRepository;
+import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.DidResolverService;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Service responsible for processing approved credential requests and delivering
@@ -30,24 +32,29 @@ import java.util.List;
 @Slf4j
 public class CredentialDeliveryService {
 
+    private static final String ISSUER_SOURCE = "issuer";
+
     private final CredentialRequestRepository requestRepository;
     private final SelfIssuedIdTokenService tokenService;
     private final ObjectMapper mapper = new ObjectMapper();
     private final SimpleOkHttpRestClient httpClient;
     private final DidDocumentConfig config;
     private final DidResolverService didResolverService;
+    private final DcpAuditEventPublisher auditPublisher;
 
     @Autowired
     public CredentialDeliveryService(CredentialRequestRepository requestRepository,
                                      @Qualifier("selfIssuedIdTokenService") SelfIssuedIdTokenService tokenService,
                                      SimpleOkHttpRestClient httpClient,
                                      DidDocumentConfig config,
-                                     DidResolverService didResolverService) {
+                                     DidResolverService didResolverService,
+                                     DcpAuditEventPublisher auditPublisher) {
         this.requestRepository = requestRepository;
         this.tokenService = tokenService;
         this.httpClient = httpClient;
         this.config = config;
         this.didResolverService = didResolverService;
+        this.auditPublisher = auditPublisher;
     }
 
     /**
@@ -102,10 +109,17 @@ public class CredentialDeliveryService {
             String token = tokenService.createAndSignToken(holderDid, null, config);
             String messageJson = mapper.writeValueAsString(message);
 
-            String response = sendPostRequest(credentialServiceUrl, messageJson, "Bearer " + token);
+            Request httpRequest = new Request.Builder()
+                    .url(credentialServiceUrl)
+                    .addHeader("Authorization", "Bearer " + token)
+                    .post(RequestBody.create(messageJson, MediaType.parse("application/json")))
+                    .build();
 
-            if (response != null) {
-                log.info("Successfully delivered credentials to holder {}.", holderDid);
+            try (Response httpResponse = httpClient.executeCall(httpRequest)) {
+                boolean delivered = httpResponse != null && httpResponse.isSuccessful();
+
+                if (delivered) {
+                    log.info("Successfully delivered credentials to holder {}.", holderDid);
 
                 // Update the existing request by preserving its id
                 request = CredentialRequest.Builder.newInstance()
@@ -119,14 +133,41 @@ public class CredentialDeliveryService {
                         .build();
                 requestRepository.save(request);
 
-                return true;
-            } else {
-                log.error("Failed to deliver credentials to holder {}.", holderDid);
-                return false;
+                    List<String> credentialTypes = credentials.stream()
+                            .map(CredentialMessage.CredentialContainer::getCredentialType)
+                            .toList();
+                    auditPublisher.publishEvent(
+                            DcpAuditEventType.CREDENTIAL_DELIVERED,
+                            "Credentials delivered to holder: " + holderDid,
+                            ISSUER_SOURCE,
+                            holderDid, null,
+                            credentialTypes,
+                            issuerPid,
+                            Map.of("issuerPid", issuerPid, "holderDid", holderDid,
+                                   "credentialsCount", credentials.size(), "credentialTypes", credentialTypes));
+                    return true;
+                } else {
+                    log.error("Failed to deliver credentials to holder {}.", holderDid);
+                    auditPublisher.publishEvent(
+                            DcpAuditEventType.CREDENTIAL_DELIVERY_FAILED,
+                            "Credential delivery failed for holder: " + holderDid,
+                            ISSUER_SOURCE,
+                            holderDid, null, null,
+                            issuerPid,
+                            Map.of("issuerPid", issuerPid, "holderDid", holderDid, "reason", "No response from holder"));
+                    return false;
+                }
             }
 
         } catch (Exception e) {
             log.error("Failed to deliver credentials to holder {}: {}", holderDid, e.getMessage(), e);
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.CREDENTIAL_DELIVERY_FAILED,
+                    "Credential delivery failed with exception for holder: " + holderDid,
+                    ISSUER_SOURCE,
+                    holderDid, null, null,
+                    issuerPid,
+                    Map.of("issuerPid", issuerPid, "holderDid", holderDid, "reason", e.getMessage()));
             return false;
         }
     }
@@ -178,28 +219,43 @@ public class CredentialDeliveryService {
             String token = tokenService.createAndSignToken(holderDid, null, config);
             String messageJson = mapper.writeValueAsString(message);
 
-            String response = sendPostRequest(credentialServiceUrl, messageJson, "Bearer " + token);
+            Request httpRequest = new Request.Builder()
+                    .url(credentialServiceUrl)
+                    .addHeader("Authorization", "Bearer " + token)
+                    .post(RequestBody.create(messageJson, MediaType.parse("application/json")))
+                    .build();
 
-            if (response != null) {
-                log.info("Successfully sent rejection notification to holder {}.", holderDid);
+            try (Response httpResponse = httpClient.executeCall(httpRequest)) {
+                boolean sent = httpResponse != null && httpResponse.isSuccessful();
 
-                // Update the existing request by preserving its MongoDB id
-                request = CredentialRequest.Builder.newInstance()
-                        .id(request.getId())  // Preserve MongoDB document id to update, not insert
-                        .issuerPid(request.getIssuerPid())
-                        .holderPid(request.getHolderPid())
-                        .holderDid(request.getHolderDid())  // Preserve holderDid
-                        .credentialIds(request.getCredentialIds())
-                        .status(CredentialStatus.REJECTED)
-                        .rejectionReason(rejectionReason)
-                        .createdAt(request.getCreatedAt())
-                        .build();
-                requestRepository.save(request);
+                if (sent) {
+                    log.info("Successfully sent rejection notification to holder {}.", holderDid);
 
-                return true;
-            } else {
-                log.error("Failed to send rejection notification to holder {}", holderDid);
-                return false;
+                    // Update the existing request by preserving its MongoDB id
+                    request = CredentialRequest.Builder.newInstance()
+                            .id(request.getId())
+                            .issuerPid(request.getIssuerPid())
+                            .holderPid(request.getHolderPid())
+                            .holderDid(request.getHolderDid())
+                            .credentialIds(request.getCredentialIds())
+                            .status(CredentialStatus.REJECTED)
+                            .rejectionReason(rejectionReason)
+                            .createdAt(request.getCreatedAt())
+                            .build();
+                    requestRepository.save(request);
+
+                    auditPublisher.publishEvent(
+                            DcpAuditEventType.CREDENTIAL_DENIED,
+                            "Credential request rejected, notification sent to holder: " + holderDid,
+                            ISSUER_SOURCE,
+                            holderDid, null, null,
+                            issuerPid,
+                            Map.of("issuerPid", issuerPid, "holderDid", holderDid, "rejectionReason", rejectionReason));
+                    return true;
+                } else {
+                    log.error("Failed to send rejection notification to holder {}", holderDid);
+                    return false;
+                }
             }
 
         } catch (Exception e) {
@@ -225,36 +281,5 @@ public class CredentialDeliveryService {
             log.error("Failed to resolve DID {}: {}", holderDid, e.getMessage(), e);
             return null;
         }
-    }
-
-    private String sendPostRequest(String url, String jsonPayload, String authorization) {
-        try {
-            JsonNode jsonNode = mapper.readTree(jsonPayload);
-            Request.Builder requestBuilder = new Request.Builder().url(url);
-            RequestBody body;
-            if (jsonNode != null) {
-                body = RequestBody.create(jsonNode.toPrettyString(), MediaType.parse("application/json"));
-            } else {
-                body = RequestBody.create("", MediaType.parse("application/json"));
-            }
-            requestBuilder.post(body);
-
-            if (authorization != null && !authorization.isBlank()) {
-                requestBuilder.addHeader("Authorization", authorization);
-            }
-
-            Request request = requestBuilder.build();
-            try (Response response = httpClient.executeCall(request)) {
-                int code = response.code();
-                log.info("Status {}", code);
-                if (response.isSuccessful()) { // code in 200..299
-                    return response.body().string();
-                }
-            }
-        } catch (Exception e) {
-            log.error("Failed to send POST request to {}: {}", url, e.getMessage(), e);
-            throw new RuntimeException(e);
-        }
-        return null;
     }
 }

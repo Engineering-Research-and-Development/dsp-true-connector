@@ -8,8 +8,10 @@ import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.model.*;
 import it.eng.dcp.common.service.IssuerTrustService;
+import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.holder.model.CredentialStatusRecord;
 import it.eng.dcp.holder.repository.CredentialStatusRepository;
@@ -56,6 +58,9 @@ class HolderServiceTest {
     @Mock
     private IssuerTrustService issuerTrustService;
 
+    @Mock
+    private DcpAuditEventPublisher auditPublisher;
+
     private ObjectMapper mapper;
 
     private HolderService holderService;
@@ -72,7 +77,8 @@ class HolderServiceTest {
                 credentialStatusRepository,
                 mapper,
                 issuanceClient,
-                issuerTrustService
+                issuerTrustService,
+                auditPublisher
         );
     }
 
@@ -95,6 +101,10 @@ class HolderServiceTest {
         assertNotNull(result);
         assertEquals(holderDid, result.getSubject());
         verify(tokenService).validateToken(bearerToken);
+
+        ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+        verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+        assertEquals(DcpAuditEventType.PRESENTATION_QUERY_RECEIVED, typeCaptor.getValue());
     }
 
     @Test
@@ -105,6 +115,10 @@ class HolderServiceTest {
 
         assertEquals("Bearer token is required", exception.getMessage());
         verify(tokenService, never()).validateToken(anyString());
+
+        ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+        verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+        assertEquals(DcpAuditEventType.TOKEN_VALIDATION_FAILED, typeCaptor.getValue());
     }
 
     @Test
@@ -115,6 +129,10 @@ class HolderServiceTest {
 
         assertEquals("Bearer token is required", exception.getMessage());
         verify(tokenService, never()).validateToken(anyString());
+
+        ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+        verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+        assertEquals(DcpAuditEventType.TOKEN_VALIDATION_FAILED, typeCaptor.getValue());
     }
 
     @Test
@@ -157,6 +175,7 @@ class HolderServiceTest {
                 .build();
 
         when(presentationService.createPresentation(query, claims)).thenReturn(expectedResponse);
+        when(query.getScope()).thenReturn(List.of("MembershipCredential"));
 
         // Act
         PresentationResponseMessage result = holderService.createPresentation(query, holderDid, claims);
@@ -165,6 +184,10 @@ class HolderServiceTest {
         assertNotNull(result);
         assertEquals(expectedResponse, result);
         verify(presentationService).createPresentation(query, claims);
+
+        ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+        verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+        assertEquals(DcpAuditEventType.PRESENTATION_CREATED, typeCaptor.getValue());
     }
 
     @Test
@@ -185,6 +208,10 @@ class HolderServiceTest {
         // Assert
         assertEquals(issuerDid, result);
         verify(tokenService).validateToken(bearerToken);
+
+        ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+        verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+        assertEquals(DcpAuditEventType.CREDENTIAL_MESSAGE_RECEIVED, typeCaptor.getValue());
     }
 
     @Test
@@ -195,6 +222,10 @@ class HolderServiceTest {
 
         assertEquals("Bearer token is required", exception.getMessage());
         verify(tokenService, never()).validateToken(anyString());
+
+        ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+        verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+        assertEquals(DcpAuditEventType.TOKEN_VALIDATION_FAILED, typeCaptor.getValue());
     }
 
     @Test
@@ -210,6 +241,10 @@ class HolderServiceTest {
                 () -> holderService.authorizeIssuer(bearerToken));
 
         assertEquals("Invalid token: missing issuer claim", exception.getMessage());
+
+        ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+        verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+        assertEquals(DcpAuditEventType.TOKEN_VALIDATION_FAILED, typeCaptor.getValue());
     }
 
     @Test
@@ -295,6 +330,45 @@ class HolderServiceTest {
         assertEquals(1, result.getSkippedCount());
         verify(issuerTrustService).isTrusted(eq("MembershipCredential"), eq("did:example:issuer"));
         verify(credentialRepository, never()).save(any());
+
+        ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+        verify(auditPublisher, atLeast(1)).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+        List<DcpAuditEventType> published = typeCaptor.getAllValues();
+        assertTrue(published.contains(DcpAuditEventType.CREDENTIAL_UNTRUSTED_ISSUER));
+        assertTrue(published.contains(DcpAuditEventType.CREDENTIALS_PROCESSED));
+    }
+
+    @Test
+    void processIssuedCredentials_trustedIssuer_credentialSavedAndBatchEventPublished() {
+        // Arrange
+        when(issuerTrustService.isTrusted(anyString(), anyString())).thenReturn(true);
+
+        String vcJwt = buildMinimalVcJwt("did:example:issuer", "did:example:holder", "MembershipCredential");
+        CredentialMessage msg = CredentialMessage.Builder.newInstance()
+                .status("ISSUED")
+                .issuerPid("issuer-123")
+                .holderPid("did:example:holder")
+                .credentials(List.of(CredentialMessage.CredentialContainer.Builder.newInstance()
+                        .credentialType("MembershipCredential")
+                        .format("jwt")
+                        .payload(vcJwt)
+                        .build()))
+                .build();
+
+        // Act
+        HolderService.CredentialReceptionResult result =
+                holderService.processIssuedCredentials(msg, "did:example:issuer");
+
+        // Assert
+        assertEquals(1, result.getSavedCount());
+        assertEquals(0, result.getSkippedCount());
+        verify(credentialRepository).save(any());
+
+        ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+        verify(auditPublisher, atLeast(2)).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+        List<DcpAuditEventType> published = typeCaptor.getAllValues();
+        assertTrue(published.contains(DcpAuditEventType.CREDENTIAL_SAVED));
+        assertTrue(published.contains(DcpAuditEventType.CREDENTIALS_PROCESSED));
     }
 
     @Test
@@ -329,6 +403,10 @@ class HolderServiceTest {
         CredentialStatusRecord saved = captor.getValue();
         assertEquals(CredentialStatus.REJECTED, saved.getStatus());
         assertEquals("Test rejection", saved.getRejectionReason());
+
+        ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+        verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+        assertEquals(DcpAuditEventType.CREDENTIAL_REJECTED_BY_ISSUER, typeCaptor.getValue());
     }
 
     @Test
@@ -349,6 +427,10 @@ class HolderServiceTest {
 
         // Assert
         assertTrue(result);
+
+        ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+        verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+        assertEquals(DcpAuditEventType.CREDENTIAL_OFFER_RECEIVED, typeCaptor.getValue());
     }
 
     @Test

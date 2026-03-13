@@ -5,7 +5,9 @@ import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.KeyUse;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
+import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.config.DidDocumentConfig;
+import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.util.SelfSignedCertGenerator;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.slf4j.Logger;
@@ -21,6 +23,7 @@ import java.io.InputStream;
 import java.math.BigInteger;
 import java.security.*;
 import java.security.cert.Certificate;
+import java.security.cert.X509Certificate;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECGenParameterSpec;
@@ -28,6 +31,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
+import java.util.Enumeration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -42,10 +46,12 @@ public class KeyService {
     private static final Logger log = LoggerFactory.getLogger(KeyService.class);
 
     private final KeyMetadataService keyMetadataService;
+    private final DcpAuditEventPublisher auditPublisher;
 
     @Autowired
-    public KeyService(KeyMetadataService keyMetadataService) {
+    public KeyService(KeyMetadataService keyMetadataService, DcpAuditEventPublisher auditPublisher) {
         this.keyMetadataService = keyMetadataService;
+        this.auditPublisher = auditPublisher;
     }
 
     private KeyPair keyPair;
@@ -315,14 +321,14 @@ public class KeyService {
                 log.debug("Loaded keystore from {}", keystorePath);
                 // Try to get the active alias from metadata or fallback to first alias
                 String activeAlias = null;
-                java.util.Enumeration<String> aliases = ks.aliases();
+                Enumeration<String> aliases = ks.aliases();
                 if (aliases.hasMoreElements()) {
                     activeAlias = aliases.nextElement();
                 }
                 if (activeAlias != null) {
                     Certificate existingCert = ks.getCertificate(activeAlias);
-                    if (existingCert instanceof java.security.cert.X509Certificate) {
-                        subjectDn = ((java.security.cert.X509Certificate) existingCert).getSubjectX500Principal().getName();
+                    if (existingCert instanceof X509Certificate x509) {
+                        subjectDn = x509.getSubjectX500Principal().getName();
                         log.debug("Preserved subject DN from existing certificate: {}", subjectDn);
                     }
                 }
@@ -342,6 +348,13 @@ public class KeyService {
             }
         } catch (Exception e) {
             log.error("Failed to rotate and persist KeyPair: {}", e.getMessage(), e);
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.KEY_ROTATED,
+                    "Key rotation failed for alias prefix '" + aliasPrefix + "': " + e.getMessage(),
+                    "common",
+                    null, null, null,
+                    aliasPrefix, Map.of("error", e.getMessage(),
+                            "success", false));
             throw new RuntimeException("Failed to rotate and persist KeyPair", e);
         }
     }
@@ -399,6 +412,13 @@ public class KeyService {
 
         // Invalidate cache to ensure fresh keys are loaded
         invalidateAllCache();
+
+        auditPublisher.publishEvent(
+                DcpAuditEventType.KEY_ROTATED,
+                "Signing key rotated, new alias: " + alias,
+                "common",
+                null, null, null,
+                alias, null);
 
         return alias;
     }

@@ -1,5 +1,6 @@
 package it.eng.dcp.holder.autoconfigure;
 
+import it.eng.dcp.common.audit.DcpAuditProperties;
 import it.eng.dcp.common.config.DcpProperties;
 import it.eng.dcp.holder.config.DCPMongoConfig;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -7,6 +8,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.scheduling.annotation.EnableAsync;
 
 /**
  * Auto-configuration for the DCP Holder module.
@@ -20,7 +22,8 @@ import org.springframework.context.annotation.Import;
  */
 @Configuration
 @ConditionalOnProperty(prefix = "dcp.holder", name = "enabled", havingValue = "true", matchIfMissing = true)
-@EnableConfigurationProperties(DcpProperties.class)
+@EnableConfigurationProperties({DcpProperties.class, DcpAuditProperties.class})
+@EnableAsync
 @Import({DCPMongoConfig.class})
 @ComponentScan({
     "it.eng.dcp.holder",

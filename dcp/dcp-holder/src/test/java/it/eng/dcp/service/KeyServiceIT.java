@@ -3,6 +3,7 @@ package it.eng.dcp.service;
 import com.nimbusds.jose.jwk.JWKSet;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.InMemoryDidResolverService;
 import it.eng.dcp.common.service.sts.InMemoryJtiReplayCache;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
@@ -23,6 +24,7 @@ class KeyServiceIT {
 
     private Path tempKeystore;
     private DidDocumentConfig config;
+    private DcpAuditEventPublisher auditEventPublisher;
 
     @AfterEach
     void cleanup() throws Exception {
@@ -43,7 +45,7 @@ class KeyServiceIT {
         String alias = "testalias";
 
         // instantiate KeyService (KeyMetadataService not required for rotateAndPersistKeyPair)
-        KeyService keyService = new KeyService(null);
+        KeyService keyService = new KeyService(null, auditEventPublisher);
 
         // rotate and persist a new key pair into the temporary keystore
         keyService.rotateAndPersistKeyPair(keystorePath, password, alias);
@@ -59,7 +61,7 @@ class KeyServiceIT {
         InMemoryDidResolverService didResolver = new InMemoryDidResolverService();
         InMemoryJtiReplayCache jtiCache = new InMemoryJtiReplayCache();
 
-        SelfIssuedIdTokenService svc = new SelfIssuedIdTokenService(didResolver, jtiCache, keyService, config);
+        SelfIssuedIdTokenService svc = new SelfIssuedIdTokenService(didResolver, jtiCache, keyService, config, auditEventPublisher);
 
         // register public JWK in resolver so validation can fetch it
         didResolver.put(connectorDid, new JWKSet(signingJwk.toPublicJWK()));

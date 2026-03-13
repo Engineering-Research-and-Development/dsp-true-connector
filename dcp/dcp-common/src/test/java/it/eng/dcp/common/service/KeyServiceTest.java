@@ -1,7 +1,9 @@
 package it.eng.dcp.common.service;
 
 import com.nimbusds.jose.jwk.Curve;
+import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.config.DidDocumentConfig;
+import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
@@ -11,6 +13,7 @@ import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -25,6 +28,7 @@ import java.security.cert.X509Certificate;
 import java.util.Date;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,6 +36,9 @@ class KeyServiceTest {
 
     @Mock
     private KeyMetadataService keyMetadataService;
+
+    @Mock
+    private DcpAuditEventPublisher auditPublisher;
 
     @InjectMocks
     private KeyService keyService;
@@ -70,7 +77,7 @@ class KeyServiceTest {
         // Mock getResourceAsStream to return our in-memory keystore
         ClassLoader cl = mock(ClassLoader.class);
         when(cl.getResourceAsStream(anyString())).thenReturn(bais);
-        KeyService keyServiceSpy = spy(new KeyService(keyMetadataService));
+        KeyService keyServiceSpy = spy(new KeyService(keyMetadataService, auditPublisher));
         doReturn(cl).when(keyServiceSpy).getClassLoader();
 
         // Prepare config
@@ -102,7 +109,7 @@ class KeyServiceTest {
         try (FileOutputStream fos = new FileOutputStream(tempKeystore)) {
             ks.store(fos, password.toCharArray());
         }
-        KeyService keyServiceSpy = spy(new KeyService(keyMetadataService));
+        KeyService keyServiceSpy = spy(new KeyService(keyMetadataService, auditPublisher));
         doNothing().when(keyServiceSpy).invalidateAllCache();
         doCallRealMethod().when(keyServiceSpy).rotateAndPersistKeyPair(anyString(), anyString(), anyString());
 
@@ -113,6 +120,19 @@ class KeyServiceTest {
         assertTrue(alias.startsWith("dsptrueconnector-"));
         verify(keyMetadataService).saveNewKeyMetadata(alias);
         verify(keyServiceSpy).invalidateAllCache();
+
+        // Verify KEY_ROTATED audit event is published via the convenience overload
+        ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+        ArgumentCaptor<String> requestIdCaptor = ArgumentCaptor.forClass(String.class);
+        verify(auditPublisher).publishEvent(
+                typeCaptor.capture(),
+                any(String.class),
+                eq("common"),
+                isNull(), isNull(), isNull(),
+                requestIdCaptor.capture(),
+                isNull());
+        assertEquals(DcpAuditEventType.KEY_ROTATED, typeCaptor.getValue());
+        assertEquals(alias, requestIdCaptor.getValue());
 
         // --- NEW: Verify rotated key can be read ---
         KeyStore ks2 = KeyStore.getInstance("PKCS12");
@@ -131,7 +151,7 @@ class KeyServiceTest {
     @Test
     @DisplayName("rotateKeyAndUpdateMetadata throws exception if rotation fails")
     void rotateKeyAndUpdateMetadata_failure() {
-        KeyService keyServiceSpy = spy(new KeyService(keyMetadataService));
+        KeyService keyServiceSpy = spy(new KeyService(keyMetadataService, auditPublisher));
         // Force rotateAndPersistKeyPair to throw
         doThrow(new RuntimeException("Rotation failed")).when(keyServiceSpy)
                 .rotateAndPersistKeyPair(anyString(), anyString(), anyString());

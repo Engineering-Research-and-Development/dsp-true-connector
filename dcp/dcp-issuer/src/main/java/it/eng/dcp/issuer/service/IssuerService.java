@@ -1,11 +1,13 @@
 package it.eng.dcp.issuer.service;
 
 import com.nimbusds.jwt.JWTClaimsSet;
+import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.CredentialRequestMessage;
 import it.eng.dcp.common.model.CredentialStatus;
 import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.common.repository.CredentialRequestRepository;
+import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -25,17 +28,22 @@ import java.util.UUID;
 @Slf4j
 public class IssuerService {
 
+    private static final String ISSUER_SOURCE = "issuer";
+
     private final SelfIssuedIdTokenService tokenService;
     private final CredentialRequestRepository requestRepository;
     private final CredentialMetadataService credentialMetadataService;
+    private final DcpAuditEventPublisher auditPublisher;
 
     @Autowired
     public IssuerService(@Qualifier("selfIssuedIdTokenService") SelfIssuedIdTokenService tokenService,
                         CredentialRequestRepository requestRepository,
-                        CredentialMetadataService credentialMetadataService) {
+                        CredentialMetadataService credentialMetadataService,
+                        DcpAuditEventPublisher auditPublisher) {
         this.tokenService = tokenService;
         this.requestRepository = requestRepository;
         this.credentialMetadataService = credentialMetadataService;
+        this.auditPublisher = auditPublisher;
     }
 
     /**
@@ -48,6 +56,12 @@ public class IssuerService {
      */
     public JWTClaimsSet authorizeRequest(String bearerToken, String holderPid) throws SecurityException {
         if (bearerToken == null || bearerToken.isBlank()) {
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                    "Credential request authorization failed: bearer token is missing",
+                    ISSUER_SOURCE,
+                    null, null, null, null,
+                    Map.of("reason", "Bearer token is required"));
             throw new SecurityException("Bearer token is required");
         }
 
@@ -87,7 +101,20 @@ public class IssuerService {
                 .status(CredentialStatus.RECEIVED)
                 .createdAt(Instant.now())
                 .build();
-        return requestRepository.save(req);
+        CredentialRequest saved = requestRepository.save(req);
+
+        List<String> credentialIds = msg.getCredentials().stream()
+                .map(CredentialRequestMessage.CredentialReference::getId)
+                .toList();
+        auditPublisher.publishEvent(
+                DcpAuditEventType.CREDENTIAL_REQUEST_RECEIVED,
+                "Credential request received from holder: " + holderDid,
+                ISSUER_SOURCE,
+                holderDid, null,
+                credentialIds,
+                saved.getIssuerPid(),
+                Map.of("holderDid", holderDid, "credentialIds", credentialIds, "issuerPid", saved.getIssuerPid()));
+        return saved;
     }
 
     /**

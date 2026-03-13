@@ -7,6 +7,7 @@ import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.exception.DidResolutionException;
@@ -15,6 +16,7 @@ import it.eng.dcp.common.model.PresentationQueryMessage;
 import it.eng.dcp.common.model.PresentationResponseMessage;
 import it.eng.dcp.common.model.ServiceEntry;
 import it.eng.dcp.common.service.IssuerTrustService;
+import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.HttpDidResolverService;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.common.util.DidUrlConverter;
@@ -65,12 +67,15 @@ public class VerifierService {
     private static final String PRESENTATIONS_QUERY_PATH = "/presentations/query";
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
+    private static final String VERIFIER_SOURCE = "verifier";
+
     private final SelfIssuedIdTokenService tokenService;
     private final HttpDidResolverService didResolverService;
     private final SimpleOkHttpRestClient httpClient;
     private final ObjectMapper objectMapper;
     private final DidDocumentConfig didConfig;
     private final IssuerTrustService issuerTrustService;
+    private final DcpAuditEventPublisher auditPublisher;
 
     /**
      * Constructor with explicit verifier configuration injection.
@@ -81,6 +86,7 @@ public class VerifierService {
      * @param objectMapper JSON mapper for request/response serialization
      * @param didConfig The verifier configuration (explicitly qualified)
      * @param issuerTrustService Service for checking whether a credential issuer is trusted
+     * @param auditPublisher Publisher for DCP audit events
      */
     @Autowired
     public VerifierService(
@@ -89,13 +95,15 @@ public class VerifierService {
             SimpleOkHttpRestClient httpClient,
             ObjectMapper objectMapper,
             DidDocumentConfig didConfig,
-            IssuerTrustService issuerTrustService) {
+            IssuerTrustService issuerTrustService,
+            DcpAuditEventPublisher auditPublisher) {
         this.tokenService = tokenService;
         this.didResolverService = didResolverService;
         this.httpClient = httpClient;
         this.objectMapper = objectMapper;
         this.didConfig = didConfig;
         this.issuerTrustService = issuerTrustService;
+        this.auditPublisher = auditPublisher;
 
         log.info("VerifierService initialized with verifier DID: {}", didConfig.getDid());
     }
@@ -116,6 +124,12 @@ public class VerifierService {
      */
     private String validateAndExtractAccessToken(String bearerToken) throws SecurityException {
         if (bearerToken == null || bearerToken.isBlank()) {
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                    "Self-issued ID token validation failed: bearer token is missing",
+                    VERIFIER_SOURCE,
+                    null, null, null, null,
+                    Map.of("reason", "Bearer token is required"));
             throw new SecurityException("Bearer token is required");
         }
 
@@ -131,15 +145,33 @@ public class VerifierService {
             accessToken = claims.getStringClaim("token");
         } catch (java.text.ParseException e) {
             log.error("Failed to parse 'token' claim from self-issued ID token", e);
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                    "Failed to parse 'token' claim from self-issued ID token",
+                    VERIFIER_SOURCE,
+                    null, null, null, null,
+                    Map.of("reason", e.getMessage()));
             throw new SecurityException("Invalid 'token' claim in self-issued ID token");
         }
 
         if (accessToken == null || accessToken.isBlank()) {
             log.error("Self-issued ID token missing 'token' claim");
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                    "Self-issued ID token missing 'token' claim",
+                    VERIFIER_SOURCE,
+                    null, null, null, null,
+                    Map.of("reason", "Self-issued ID token must contain 'token' claim with access token"));
             throw new SecurityException("Self-issued ID token must contain 'token' claim with access token");
         }
 
         log.debug("Successfully extracted access token from self-issued ID token");
+        auditPublisher.publishEvent(
+                DcpAuditEventType.SELF_ISSUED_TOKEN_VALIDATED,
+                "Self-issued ID token validated, access token extracted",
+                VERIFIER_SOURCE,
+                null, null, null, null,
+                Map.of("holderDid", claims.getIssuer() != null ? claims.getIssuer() : ""));
         return accessToken;
     }
 
@@ -693,6 +725,14 @@ public class VerifierService {
             log.debug("Query URL: {}", credentialServiceUrl + PRESENTATIONS_QUERY_PATH);
             log.debug("Scopes requested: {}", scopes);
 
+            // Publish audit event: presentation query dispatched
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.PRESENTATION_QUERY_SENT,
+                    "Presentation query dispatched to holder credential service",
+                    VERIFIER_SOURCE,
+                    holderDid, null, scopes, null,
+                    Map.of("credentialServiceUrl", credentialServiceUrl, "scopes", scopes));
+
             // Query holder with access token
             PresentationResponseMessage presentationResponse = queryHolderPresentations(
                 credentialServiceUrl,
@@ -729,8 +769,26 @@ public class VerifierService {
                     }
                 }
 
+                List<String> credentialTypes = validatedPresentations.stream()
+                        .flatMap(vp -> vp.getCredentials().stream())
+                        .map(ValidatedCredential::getCredentialType)
+                        .distinct()
+                        .toList();
+                auditPublisher.publishEvent(
+                        DcpAuditEventType.PRESENTATION_VERIFIED,
+                        "Presentation validated: " + validatedPresentations.size() + " presentation(s) verified",
+                        VERIFIER_SOURCE,
+                        holderDid, null, credentialTypes, null,
+                        Map.of("presentationCount", validatedPresentations.size()));
+
             } catch (SecurityException e) {
                 log.error("STEP 5 FAILED: Presentation validation failed - {}", e.getMessage());
+                auditPublisher.publishEvent(
+                        DcpAuditEventType.PRESENTATION_INVALID,
+                        "Presentation validation failed: " + e.getMessage(),
+                        VERIFIER_SOURCE,
+                        holderDid, null, null, null,
+                        Map.of("reason", e.getMessage()));
                 throw new SecurityException("Step 5 failed - Presentation validation: " + e.getMessage());
             }
 

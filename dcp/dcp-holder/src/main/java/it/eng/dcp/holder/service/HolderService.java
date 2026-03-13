@@ -4,8 +4,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.model.*;
 import it.eng.dcp.common.service.IssuerTrustService;
+import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.common.util.DidUrlConverter;
 import it.eng.dcp.holder.model.CredentialStatusRecord;
@@ -31,6 +33,8 @@ import java.util.UUID;
 @Slf4j
 public class HolderService {
 
+    private static final String HOLDER_SOURCE = "holder";
+
     private final SelfIssuedIdTokenService tokenService;
     private final PresentationService presentationService;
     private final PresentationRateLimiter rateLimiter;
@@ -39,6 +43,7 @@ public class HolderService {
     private final ObjectMapper mapper;
     private final CredentialIssuanceClient issuanceClient;
     private final IssuerTrustService issuerTrustService;
+    private final DcpAuditEventPublisher auditPublisher;
 
     @Autowired
     public HolderService(@Qualifier("selfIssuedIdTokenService") SelfIssuedIdTokenService tokenService,
@@ -48,7 +53,8 @@ public class HolderService {
                          CredentialStatusRepository credentialStatusRepository,
                          ObjectMapper mapper,
                          CredentialIssuanceClient issuanceClient,
-                         IssuerTrustService issuerTrustService) {
+                         IssuerTrustService issuerTrustService,
+                         DcpAuditEventPublisher auditPublisher) {
         this.tokenService = tokenService;
         this.presentationService = presentationService;
         this.rateLimiter = rateLimiter;
@@ -57,6 +63,7 @@ public class HolderService {
         this.mapper = mapper;
         this.issuanceClient = issuanceClient;
         this.issuerTrustService = issuerTrustService;
+        this.auditPublisher = auditPublisher;
     }
 
     /**
@@ -68,11 +75,25 @@ public class HolderService {
      */
     public JWTClaimsSet authorizePresentationQuery(String bearerToken) throws SecurityException {
         if (bearerToken == null || bearerToken.isBlank()) {
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                    "Presentation query authorization failed: bearer token is missing",
+                    HOLDER_SOURCE,
+                    null, null, null, null,
+                    Map.of("reason", "Bearer token is required"));
             throw new SecurityException("Bearer token is required");
         }
 
         log.debug("Validating bearer token for presentation query");
-        return tokenService.validateToken(bearerToken);
+        JWTClaimsSet claims = tokenService.validateToken(bearerToken);
+        String holderDid = claims.getSubject();
+        auditPublisher.publishEvent(
+                DcpAuditEventType.PRESENTATION_QUERY_RECEIVED,
+                "Presentation query received from verifier for holder: " + holderDid,
+                HOLDER_SOURCE,
+                holderDid, null, null, null,
+                Map.of("holderDid", holderDid != null ? holderDid : ""));
+        return claims;
     }
 
     /**
@@ -106,6 +127,13 @@ public class HolderService {
         log.info("Creating presentation response with scope enforcement for holder: {}", holderDid);
         PresentationResponseMessage response = presentationService.createPresentation(query, accessTokenClaims);
         log.info("Successfully created presentation response for holder: {}", holderDid);
+        List<String> scopes = query.getScope() != null ? query.getScope() : List.of();
+        auditPublisher.publishEvent(
+                DcpAuditEventType.PRESENTATION_CREATED,
+                "Verifiable Presentation created for holder: " + holderDid,
+                HOLDER_SOURCE,
+                holderDid, null, scopes, null,
+                Map.of("scopes", scopes));
         return response;
     }
 
@@ -118,6 +146,12 @@ public class HolderService {
      */
     public String authorizeIssuer(String bearerToken) throws SecurityException {
         if (bearerToken == null || bearerToken.isBlank()) {
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                    "Credential delivery authorization failed: bearer token is missing",
+                    HOLDER_SOURCE,
+                    null, null, null, null,
+                    Map.of("reason", "Bearer token is required"));
             throw new SecurityException("Bearer token is required");
         }
 
@@ -127,10 +161,22 @@ public class HolderService {
         String issuerDid = claims.getIssuer();
         if (issuerDid == null || issuerDid.isBlank()) {
             log.error("Token validation failed: missing issuer claim");
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                    "Credential delivery authorization failed: missing issuer claim",
+                    HOLDER_SOURCE,
+                    null, null, null, null,
+                    Map.of("reason", "Missing issuer claim"));
             throw new SecurityException("Invalid token: missing issuer claim");
         }
 
         log.info("Authenticated issuer: {}", issuerDid);
+        auditPublisher.publishEvent(
+                DcpAuditEventType.CREDENTIAL_MESSAGE_RECEIVED,
+                "Credential delivery message received from authenticated issuer: " + issuerDid,
+                HOLDER_SOURCE,
+                null, issuerDid, null, null,
+                Map.of("issuerDid", issuerDid));
         return issuerDid;
     }
 
@@ -160,12 +206,31 @@ public class HolderService {
                         log.warn("============ Rejecting credential of type '{}' — issuer '{}' is not trusted. " +
                                         "Configure dcp.trusted-issuers.{}=<issuerDid> to trust this issuer.",
                                 vc.getCredentialType(), vc.getIssuerDid(), vc.getCredentialType());
+                        auditPublisher.publishEvent(
+                                DcpAuditEventType.CREDENTIAL_UNTRUSTED_ISSUER,
+                                "Credential from untrusted issuer skipped: type=" + vc.getCredentialType()
+                                        + ", issuer=" + vc.getIssuerDid(),
+                                HOLDER_SOURCE,
+                                vc.getHolderDid(), vc.getIssuerDid(),
+                                List.of(vc.getCredentialType()),
+                                msg.getIssuerPid(),
+                                Map.of("credentialType", vc.getCredentialType(),
+                                       "issuerDid", vc.getIssuerDid()));
                         skipped++;
                         continue;
                     }
                     saved.add(credentialRepository.save(vc));
                     log.debug("Successfully saved credential: id={}, type={}, holderDid={}",
                             vc.getId(), vc.getCredentialType(), vc.getHolderDid());
+                    auditPublisher.publishEvent(
+                            DcpAuditEventType.CREDENTIAL_SAVED,
+                            "Credential saved: type=" + vc.getCredentialType()
+                                    + ", holder=" + vc.getHolderDid(),
+                            HOLDER_SOURCE,
+                            vc.getHolderDid(), vc.getIssuerDid(),
+                            List.of(vc.getCredentialType()),
+                            msg.getIssuerPid(),
+                            Map.of("credentialType", vc.getCredentialType()));
                 } else {
                     skipped++;
                 }
@@ -180,6 +245,19 @@ public class HolderService {
 
         // Persist issuance status record
         persistCredentialStatus(msg, CredentialStatus.ISSUED, saved.size());
+
+        auditPublisher.publishEvent(
+                DcpAuditEventType.CREDENTIALS_PROCESSED,
+                "Credential batch processed: saved=" + saved.size() + ", skipped=" + skipped
+                        + ", issuer=" + issuerDid,
+                HOLDER_SOURCE,
+                null, issuerDid,
+                null,
+                msg.getIssuerPid(),
+                Map.of("savedCount", saved.size(),
+                       "skippedCount", skipped,
+                       "totalCount", saved.size() + skipped,
+                       "issuerDid", issuerDid));
 
         return new CredentialReceptionResult(saved.size(), skipped);
     }
@@ -197,6 +275,17 @@ public class HolderService {
         // Persist rejected status
         persistCredentialStatus(msg, CredentialStatus.REJECTED, 0);
         log.info("Rejected credential status recorded");
+
+        auditPublisher.publishEvent(
+                DcpAuditEventType.CREDENTIAL_REJECTED_BY_ISSUER,
+                "Credential rejected by issuer: issuerPid=" + msg.getIssuerPid()
+                        + ", reason=" + msg.getRejectionReason(),
+                HOLDER_SOURCE,
+                null, msg.getIssuerPid(),
+                null,
+                msg.getIssuerPid(),
+                Map.of("issuerPid", msg.getIssuerPid() != null ? msg.getIssuerPid() : "",
+                       "rejectionReason", msg.getRejectionReason() != null ? msg.getRejectionReason() : ""));
 
         return new CredentialReceptionResult(0, 0);
     }
@@ -230,10 +319,12 @@ public class HolderService {
         // Per DCP spec 6.6.1: If credential entries are sparse (only contain an id),
         // the Credential Service MUST resolve values from the credentialsSupported list
         // returned from the Issuer Metadata API (6.7)
+        boolean sparseResolved = false;
         if (hasSparseCredentials(offer.getCredentialObjects())) {
             log.info("Detected sparse credentials in offer - resolving from issuer metadata");
             try {
                 resolveInlineCredentials(offer);
+                sparseResolved = true;
             } catch (Exception e) {
                 log.error("Failed to resolve sparse credentials from issuer metadata: {}", e.getMessage());
                 throw new IllegalArgumentException("Failed to resolve sparse credentials: " + e.getMessage(), e);
@@ -241,6 +332,20 @@ public class HolderService {
         }
 
         log.info("Credential offer accepted");
+        List<String> offeredTypes = offer.getCredentialObjects().stream()
+                .map(CredentialOfferMessage.CredentialObject::getCredentialType)
+                .filter(t -> t != null && !t.isBlank())
+                .toList();
+        auditPublisher.publishEvent(
+                DcpAuditEventType.CREDENTIAL_OFFER_RECEIVED,
+                "Credential offer received from issuer: " + offer.getIssuer(),
+                HOLDER_SOURCE,
+                null, offer.getIssuer(),
+                offeredTypes,
+                null,
+                Map.of("issuerDid", offer.getIssuer(),
+                       "offeredCredentialCount", offer.getCredentialObjects().size(),
+                       "sparseCredentialsResolved", sparseResolved));
         return true;
     }
 

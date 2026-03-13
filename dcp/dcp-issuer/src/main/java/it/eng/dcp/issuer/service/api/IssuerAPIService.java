@@ -1,9 +1,11 @@
 package it.eng.dcp.issuer.service.api;
 
+import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.common.repository.CredentialRequestRepository;
+import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.issuer.service.CredentialDeliveryService;
 import it.eng.dcp.issuer.service.CredentialIssuanceService;
 import it.eng.dcp.issuer.service.CredentialMetadataService;
@@ -18,16 +20,24 @@ import java.util.Map;
 @Slf4j
 public class IssuerAPIService {
 
+    private static final String ISSUER_SOURCE = "issuer";
+
     private final CredentialRequestRepository requestRepository;
     private final CredentialMetadataService credentialMetadataService;
     private final CredentialIssuanceService issuanceService;
     private final CredentialDeliveryService deliveryService;
+    private final DcpAuditEventPublisher auditPublisher;
 
-    public IssuerAPIService(CredentialRequestRepository requestRepository, CredentialMetadataService credentialMetadataService, CredentialIssuanceService issuanceService, CredentialDeliveryService deliveryService) {
+    public IssuerAPIService(CredentialRequestRepository requestRepository,
+                            CredentialMetadataService credentialMetadataService,
+                            CredentialIssuanceService issuanceService,
+                            CredentialDeliveryService deliveryService,
+                            DcpAuditEventPublisher auditPublisher) {
         this.requestRepository = requestRepository;
         this.credentialMetadataService = credentialMetadataService;
         this.issuanceService = issuanceService;
         this.deliveryService = deliveryService;
+        this.auditPublisher = auditPublisher;
     }
 
     /**
@@ -99,12 +109,22 @@ public class IssuerAPIService {
             throw new IllegalStateException("Failed to deliver credentials to holder");
         }
 
+        List<String> credentialTypes = credentials.stream()
+                .map(CredentialMessage.CredentialContainer::getCredentialType)
+                .toList();
+        auditPublisher.publishEvent(
+                DcpAuditEventType.CREDENTIAL_APPROVED,
+                "Credential request approved and delivered: " + requestId,
+                ISSUER_SOURCE,
+                credentialRequest.getHolderDid(), null,
+                credentialTypes,
+                requestId,
+                Map.of("requestId", requestId, "credentialsCount", credentials.size(), "credentialTypes", credentialTypes));
+
         return new IssuerService.ApprovalResult(
                 true,
                 credentials.size(),
-                credentials.stream()
-                        .map(CredentialMessage.CredentialContainer::getCredentialType)
-                        .toList()
+                credentialTypes
         );
     }
 
