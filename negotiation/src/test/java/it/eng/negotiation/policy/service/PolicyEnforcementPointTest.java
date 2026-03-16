@@ -62,7 +62,7 @@ class PolicyEnforcementPointTest {
         verify(publisher, times(1)).publishEvent(auditEventCaptor.capture());
         AuditEvent auditEvent = auditEventCaptor.getValue();
         assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DISABLED, auditEvent.getEventType());
+        assertEquals(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DISABLED.toString(), auditEvent.getEventType());
     }
 
     @Test
@@ -92,7 +92,7 @@ class PolicyEnforcementPointTest {
         verify(publisher, times(1)).publishEvent(auditEventCaptor.capture());
         AuditEvent auditEvent = auditEventCaptor.getValue();
         assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_APPROVE, auditEvent.getEventType());
+        assertEquals(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_APPROVE.toString(), auditEvent.getEventType());
         assertEquals("Test case - allowed", auditEvent.getDescription());
     }
 
@@ -123,7 +123,7 @@ class PolicyEnforcementPointTest {
         verify(publisher, times(1)).publishEvent(auditEventCaptor.capture());
         AuditEvent auditEvent = auditEventCaptor.getValue();
         assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DENIED, auditEvent.getEventType());
+        assertEquals(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DENIED.toString(), auditEvent.getEventType());
     }
 
     @Test
@@ -162,7 +162,7 @@ class PolicyEnforcementPointTest {
         verify(publisher).publishEvent(auditEventCaptor.capture());
         AuditEvent auditEvent = auditEventCaptor.getValue();
         assertNotNull(auditEvent);
-        assertEquals(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DENIED, auditEvent.getEventType());
+        assertEquals(AuditEventType.PROTOCOL_NEGOTIATION_POLICY_EVALUATION_DENIED.toString(), auditEvent.getEventType());
         assertEquals("Contract negotiation with agreement Id " + agreement.getId() + " not FINALIZED.",
                 auditEvent.getDescription());
     }

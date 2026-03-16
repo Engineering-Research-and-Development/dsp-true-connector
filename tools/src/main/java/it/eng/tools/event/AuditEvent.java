@@ -28,7 +28,7 @@ public class AuditEvent {
     @Id
     private String id;
     @NotNull
-    private AuditEventType eventType;     // LOGIN, ACTION, MODIFICATION, etc.
+    private String eventType;     // stored as the label string; accepts both AuditEventType labels and DCP event type names
     private String username;      // who performed the action
     private LocalDateTime timestamp;
     private String description;
@@ -53,6 +53,11 @@ public class AuditEvent {
         }
 
         public Builder eventType(AuditEventType eventType) {
+            event.eventType = eventType.toString();
+            return this;
+        }
+
+        public Builder eventType(String eventType) {
             event.eventType = eventType;
             return this;
         }

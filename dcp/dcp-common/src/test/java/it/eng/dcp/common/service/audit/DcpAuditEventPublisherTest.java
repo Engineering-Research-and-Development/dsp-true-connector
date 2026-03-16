@@ -39,7 +39,8 @@ class DcpAuditEventPublisherTest {
 
     @BeforeEach
     void setUp() {
-        publisher = new DcpAuditEventPublisher(applicationEventPublisher);
+        var enabledProps = new DcpAuditProperties(); // enabled=true by default
+        publisher = new DcpAuditEventPublisher(applicationEventPublisher, enabledProps);
     }
 
     // =========================================================================
@@ -193,6 +194,49 @@ class DcpAuditEventPublisherTest {
                     .when(applicationEventPublisher).publishEvent(any());
 
             assertDoesNotThrow(() -> publisher.publishEvent(event));
+        }
+    }
+
+    // =========================================================================
+    // dcp.audit.enabled = false — publisher must be a no-op
+    // =========================================================================
+
+    @Nested
+    @DisplayName("When dcp.audit.enabled=false, publisher is a no-op")
+    class DisabledPublisher {
+
+        private DcpAuditEventPublisher disabledPublisher;
+
+        @BeforeEach
+        void setUp() {
+            DcpAuditProperties disabledProps = new DcpAuditProperties();
+            disabledProps.setEnabled(false);
+            disabledPublisher = new DcpAuditEventPublisher(applicationEventPublisher, disabledProps);
+        }
+
+        @Test
+        @DisplayName("convenience method does not invoke ApplicationEventPublisher")
+        void convenienceMethodSkipsPublish() {
+            disabledPublisher.publishEvent(
+                    DcpAuditEventType.CREDENTIAL_SAVED,
+                    "Credential saved",
+                    "holder",
+                    null, null, null, null, null);
+
+            verifyNoInteractions(applicationEventPublisher);
+        }
+
+        @Test
+        @DisplayName("direct overload does not invoke ApplicationEventPublisher")
+        void directOverloadSkipsPublish() {
+            DcpAuditEvent event = DcpAuditEvent.Builder.newInstance()
+                    .eventType(DcpAuditEventType.KEY_ROTATED)
+                    .source("issuer")
+                    .build();
+
+            disabledPublisher.publishEvent(event);
+
+            verifyNoInteractions(applicationEventPublisher);
         }
     }
 
