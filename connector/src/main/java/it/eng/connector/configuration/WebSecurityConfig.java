@@ -1,8 +1,9 @@
 package it.eng.connector.configuration;
 
-import java.io.IOException;
-import java.util.Arrays;
-
+import it.eng.connector.repository.UserRepository;
+import it.eng.tools.service.ApplicationPropertiesService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -27,15 +28,12 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import it.eng.connector.repository.UserRepository;
-import it.eng.tools.service.ApplicationPropertiesService;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
@@ -138,14 +136,11 @@ public class WebSecurityConfig {
                 .anonymous(anonymus -> anonymus.disable())
                 .authorizeHttpRequests((authorize) -> {
                     authorize
-                            .requestMatchers(new AntPathRequestMatcher("/env"), new AntPathRequestMatcher("/actuator/**")).hasRole("ADMIN")
+                            .requestMatchers("/env", "/actuator/**").hasRole("ADMIN")
                             // TODO consider wrapping up all protocol endpoints under single context (/protocol/ or /dsp/ or anything else)
-                            .requestMatchers(new AntPathRequestMatcher("/connector/**"),
-                                    new AntPathRequestMatcher("/negotiations/**"),
-                                    new AntPathRequestMatcher("/catalog/**"),
-                                    new AntPathRequestMatcher("/transfers/**"))
+                            .requestMatchers("/connector/**", "/negotiations/**", "/catalog/**", "/transfers/**")
                             .hasRole("CONNECTOR")
-                            .requestMatchers(new AntPathRequestMatcher("/api/**")).hasRole("ADMIN")
+                            .requestMatchers("/api/**").hasRole("ADMIN")
                             .anyRequest().permitAll();
                 })
                 .addFilterBefore(protocolEndpointsAuthenticationFilter(applicationPropertiesService), UsernamePasswordAuthenticationFilter.class)

@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.7-SNAPSHOT] - 16.03.2026.
+
+### Changed
+- Using multithread plugin configuration for maven-surefire-plugin and maven-failsafe-plugin to speed up test execution
+
 ## [0.6.5-SNAPSHOT] - 04.03.2026.
 
 ### Security
