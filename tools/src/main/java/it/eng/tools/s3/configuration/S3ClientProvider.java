@@ -115,8 +115,8 @@ public class S3ClientProvider {
      * @return a configured general privileges S3Client instance
      */
     public S3Client s3Client(S3ClientRequest s3ClientRequest) {
-        String bucketName = s3ClientRequest.bucketCredentials().getBucketName();
-        return s3ClientCache.computeIfAbsent(bucketName, bn -> createS3Client(s3ClientRequest));
+        String cacheKey = buildCacheKey(s3ClientRequest);
+        return s3ClientCache.computeIfAbsent(cacheKey, k -> createS3Client(s3ClientRequest));
     }
 
     /**
@@ -128,8 +128,24 @@ public class S3ClientProvider {
      * @return a configured general privileges S3AsyncClient instance
      */
     public S3AsyncClient s3AsyncClient(S3ClientRequest s3ClientRequest) {
-        String bucketName = s3ClientRequest.bucketCredentials().getBucketName();
-        return asyncS3ClientCache.computeIfAbsent(bucketName, bn -> createS3AsyncClient(s3ClientRequest));
+        String cacheKey = buildCacheKey(s3ClientRequest);
+        return asyncS3ClientCache.computeIfAbsent(cacheKey, k -> createS3AsyncClient(s3ClientRequest));
+    }
+
+    /**
+     * Builds a cache key that includes both bucket name and access key so that
+     * different credentials for the same bucket never share a cached client.
+     *
+     * @param s3ClientRequest the request containing the bucket credentials, region, and endpoint
+     * @return a composite key in the form {@code bucketName|accessKey}, or
+     *         {@code region|endpointOverride} when no credentials are present
+     */
+    private String buildCacheKey(S3ClientRequest s3ClientRequest) {
+        var creds = s3ClientRequest.bucketCredentials();
+        if (creds == null) {
+            return s3ClientRequest.region() + "|" + s3ClientRequest.endpointOverride();
+        }
+        return creds.getBucketName() + "|" + creds.getAccessKey();
     }
 
     private S3Client createS3Client(S3ClientRequest s3ClientRequest) {
@@ -154,8 +170,9 @@ public class S3ClientProvider {
      */
     public void clearBucketCache(String bucketName) {
         log.info("Clearing S3 client cache for bucket: {}", bucketName);
-        s3ClientCache.remove(bucketName);
-        asyncS3ClientCache.remove(bucketName);
+        String prefix = bucketName + "|";
+        s3ClientCache.keySet().removeIf(k -> k.startsWith(prefix));
+        asyncS3ClientCache.keySet().removeIf(k -> k.startsWith(prefix));
     }
 
     private S3Client createS3Client(AwsCredentialsProvider credentialsProvider, String region, String endpointOverride) {

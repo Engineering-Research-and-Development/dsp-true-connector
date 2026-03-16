@@ -8,13 +8,15 @@ import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.*;
 
-import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.Semaphore;
 
 /**
  * Asynchronous S3 upload strategy implementation.
@@ -24,6 +26,13 @@ import java.util.concurrent.CompletionException;
 @Component
 @Slf4j
 public class S3AsyncUploadStrategy implements S3UploadStrategy {
+
+    /**
+     * Maximum number of parts to upload in parallel.
+     * Each in-flight part holds one {@code CHUNK_SIZE} (50 MB) buffer.
+     * Capping at 4 limits the async strategy's peak RAM to ~200 MB per transfer.
+     */
+    private static final int MAX_PARALLEL_PARTS = 4;
 
     private final S3ClientProvider s3ClientProvider;
 
@@ -56,14 +65,12 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
 
                     return uploadParts(inputStream, s3AsyncClient, bucketName, objectKey, uploadId);
                 })
-                .thenComposeAsync(uploadResult -> {
-                    return completeMultipartUpload(
+                .thenComposeAsync(uploadResult -> completeMultipartUpload(
                             s3AsyncClient,
                             bucketName,
                             objectKey,
                             uploadResult.uploadId(),
-                            uploadResult.completedParts());
-                })
+                            uploadResult.completedParts()))
                 .exceptionally(throwable -> {
                     log.error("Failed to upload file (ASYNC) {}: {}", objectKey, throwable.getMessage());
                     throw new CompletionException("Failed to upload file", throwable);
@@ -96,68 +103,48 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
             try {
                 List<CompletableFuture<CompletedPart>> partFutures = new ArrayList<>();
                 int partNumber = 1;
+                // Single fixed-size buffer reused for every full part.
                 byte[] buffer = new byte[CHUNK_SIZE];
-                int bytesRead;
+                // Limits the number of parts being uploaded at the same time.
+                Semaphore parallelism = new Semaphore(MAX_PARALLEL_PARTS);
 
-                ByteArrayOutputStream accumulator = new ByteArrayOutputStream();
+                log.debug("Reading stream and initiating bounded-parallel uploads...");
 
-                log.debug("Reading stream and initiating parallel uploads...");
-                // Read stream and create upload futures for each part
-                while ((bytesRead = inputStream.read(buffer)) > 0) {
-                    accumulator.write(buffer, 0, bytesRead);
+                while (true) {
+                    int totalRead = readFully(inputStream, buffer);
+                    if (totalRead == 0) break;
 
-                    // Upload part when accumulator reaches buffer size
-                    if (accumulator.size() >= CHUNK_SIZE) {
-                        byte[] partData = accumulator.toByteArray();
-                        final int currentPartNumber = partNumber;
+                    // Copy only the final (smaller) part; reuse buffer for all full parts.
+                    byte[] partData = (totalRead == buffer.length)
+                            ? Arrays.copyOf(buffer, buffer.length)
+                            : Arrays.copyOf(buffer, totalRead);
 
-                        // Create async upload for this part (non-blocking)
-                        CompletableFuture<CompletedPart> partFuture = uploadPart(
-                                s3AsyncClient,
-                                bucketName,
-                                objectKey,
-                                uploadId,
-                                currentPartNumber,
-                                partData);
-
-                        partFutures.add(partFuture);
-                        partNumber++;
-                        accumulator.reset();
-                    }
-                }
-
-                // Upload any remaining data as the last part
-                if (accumulator.size() > 0) {
-                    byte[] partData = accumulator.toByteArray();
                     final int currentPartNumber = partNumber;
+                    parallelism.acquire();
 
                     CompletableFuture<CompletedPart> partFuture = uploadPart(
-                            s3AsyncClient,
-                            bucketName,
-                            objectKey,
-                            uploadId,
-                            currentPartNumber,
-                            partData);
+                            s3AsyncClient, bucketName, objectKey, uploadId, currentPartNumber, partData)
+                            .whenComplete((r, t) -> parallelism.release());
 
                     partFutures.add(partFuture);
+                    partNumber++;
                 }
 
-                // Wait for all parts to complete in parallel
-                CompletableFuture<Void> allParts = CompletableFuture.allOf(
-                        partFutures.toArray(new CompletableFuture[0]));
+                // Wait for all in-flight parts to complete.
+                CompletableFuture.allOf(partFutures.toArray(new CompletableFuture[0])).join();
 
-                return allParts.thenApply(v -> {
-                    // Collect all completed parts
-                    List<CompletedPart> completedParts = partFutures.stream()
-                            .map(CompletableFuture::join)
-                            .toList();
+                List<CompletedPart> completedParts = partFutures.stream()
+                        .map(CompletableFuture::join)
+                        .toList();
 
-                    log.info("All {} parts uploaded successfully for key: {}", completedParts.size(), objectKey);
-                    return new UploadResult(uploadId, completedParts);
-                }).join();
+                log.info("All {} parts uploaded successfully for key: {}", completedParts.size(), objectKey);
+                return new UploadResult(uploadId, completedParts);
 
             } catch (IOException e) {
                 throw new CompletionException("Failed to read input stream", e);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new CompletionException("Upload interrupted", e);
             }
         });
     }
@@ -188,7 +175,9 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
 
         log.debug("Uploading part {} for key: {} ({} bytes)", partNumber, objectKey, partData.length);
 
-        return s3AsyncClient.uploadPart(uploadPartRequest, AsyncRequestBody.fromBytes(partData))
+        return s3AsyncClient.uploadPart(uploadPartRequest,
+                        AsyncRequestBody.fromInputStream(new ByteArrayInputStream(partData),
+                                (long) partData.length, java.util.concurrent.Executors.newSingleThreadExecutor()))
                 .thenApply(response -> {
                     log.debug("Part {} uploaded successfully with ETag: {}", partNumber, response.eTag());
                     return CompletedPart.builder()
@@ -196,6 +185,22 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
                             .eTag(response.eTag())
                             .build();
                 });
+    }
+
+    /**
+     * Reads bytes from the stream until the buffer is full or the stream is exhausted.
+     *
+     * @param in  the input stream
+     * @param buf the buffer to fill
+     * @return the number of bytes actually read; 0 means the stream is exhausted
+     * @throws IOException if an I/O error occurs
+     */
+    private int readFully(InputStream in, byte[] buf) throws IOException {
+        int offset = 0, read;
+        while (offset < buf.length && (read = in.read(buf, offset, buf.length - offset)) != -1) {
+            offset += read;
+        }
+        return offset;
     }
 
     /**
