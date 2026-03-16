@@ -19,7 +19,7 @@ public class DataTransferAPIExceptionAdvice extends ResponseEntityExceptionHandl
 
     @ExceptionHandler(value = {TransferProcessInvalidStateException.class})
     protected ResponseEntity<Object> handleTransferProcessInvalidStateException(TransferProcessInvalidStateException ex, WebRequest request) {
-        return new ResponseEntity<>(GenericApiResponse.error(ex, ex.getLocalizedMessage()), HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(GenericApiResponse.error(ex.getLocalizedMessage()), HttpStatus.BAD_REQUEST);
     }
 
 }

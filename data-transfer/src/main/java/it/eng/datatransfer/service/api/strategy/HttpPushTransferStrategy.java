@@ -7,15 +7,19 @@ import it.eng.datatransfer.service.api.DataTransferStrategy;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 
+import javax.net.ssl.HttpsURLConnection;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,12 +28,48 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
 
     private final S3Properties s3Properties;
     private final S3ClientService s3ClientService;
-    private static final int DEFAULT_TIMEOUT = 10000; // 10 seconds
+    private final Executor transferExecutor;
+    private static final int DEFAULT_CONNECT_TIMEOUT = 10000; // 10 seconds
+    /**
+     * Fallback read timeout (30 minutes) used before Content-Length is known.
+     * Refined to a dynamic value once response headers are received.
+     */
+    private static final int FALLBACK_READ_TIMEOUT = 1_800_000; // 30 minutes
+    /** Assumed minimum transfer speed in bytes/sec used for dynamic timeout (1 MB/s). */
+    private static final long MIN_TRANSFER_SPEED_BYTES_PER_SEC = 1024L * 1024L;
+    /**
+     * Bounded thread pool to cap concurrent HTTP-PUSH transfers.
+     * Each transfer holds up to ~50 MB in heap; 8 concurrent transfers = ~400 MB.
+     * Tune max threads based on available RAM and CHUNK_SIZE.
+     */
+    private static final Executor DEFAULT_EXECUTOR = Executors.newFixedThreadPool(8);
 
+    /**
+     * Creates an instance using the default bounded thread pool.
+     *
+     * @param s3Properties S3 configuration properties
+     * @param s3ClientService service for downloading and uploading data to S3
+     */
+    @Autowired
     public HttpPushTransferStrategy(S3Properties s3Properties,
                                     S3ClientService s3ClientService) {
+        this(s3Properties, s3ClientService, DEFAULT_EXECUTOR);
+    }
+
+    /**
+     * Creates an instance with a custom executor.
+     * Package-private to allow injection of a synchronous executor in tests.
+     *
+     * @param s3Properties S3 configuration properties
+     * @param s3ClientService service for downloading and uploading data to S3
+     * @param transferExecutor executor used to run async transfer tasks
+     */
+    HttpPushTransferStrategy(S3Properties s3Properties,
+                             S3ClientService s3ClientService,
+                             Executor transferExecutor) {
         this.s3Properties = s3Properties;
         this.s3ClientService = s3ClientService;
+        this.transferExecutor = transferExecutor;
     }
 
     @Override
@@ -45,44 +85,73 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
     }
 
     private CompletableFuture<String> transfer(String presignedUrl, Map<String, String> destinationS3Properties) {
-        HttpURLConnection connection = null;
-        try {
-            URL url = new URL(presignedUrl);
-            connection = (HttpURLConnection) url.openConnection();
+        return CompletableFuture.supplyAsync(() -> {
+            HttpURLConnection connection = null;
+            try {
+                URL url = new URL(presignedUrl);
+                connection = (HttpURLConnection) url.openConnection();
 
-            // Configure connection
-            connection.setRequestMethod("GET");
-            connection.setConnectTimeout(DEFAULT_TIMEOUT);
-            connection.setReadTimeout(DEFAULT_TIMEOUT);
+                // Configure connection
+                connection.setRequestMethod("GET");
+                connection.setConnectTimeout(DEFAULT_CONNECT_TIMEOUT);
+                connection.setReadTimeout(FALLBACK_READ_TIMEOUT);
 
-            // Log connection type for debugging
-            if (connection instanceof javax.net.ssl.HttpsURLConnection) {
-                log.debug("Using HTTPS connection to: {}", presignedUrl);
-            } else {
-                log.debug("Using HTTP connection to: {}", presignedUrl);
+                // Log connection type for debugging
+                if (connection instanceof HttpsURLConnection) {
+                    log.debug("Using HTTPS connection to: {}", presignedUrl);
+                } else {
+                    log.debug("Using HTTP connection to: {}", presignedUrl);
+                }
+
+                // Check if the request was successful
+                int responseCode = connection.getResponseCode();
+                if (responseCode != HttpURLConnection.HTTP_OK) {
+                    throw new IOException("Failed to get stream. HTTP response code: " + responseCode);
+                }
+
+                log.info("Presigned URL: {}", presignedUrl);
+                log.info("HTTP response code: {}", responseCode);
+
+                // Refine read timeout now that response headers are available.
+                // NOTE: setFixedLengthStreamingMode is intentionally NOT used — it controls outgoing
+                // request body size (PUT/POST only) and throws IllegalStateException: Already connected
+                // when called after getResponseCode() on a GET request.
+                long contentLength = connection.getContentLengthLong();
+                if (contentLength > 0) {
+                    int dynamicTimeout = computeReadTimeout(contentLength);
+                    connection.setReadTimeout(dynamicTimeout);
+                    log.debug("Content-Length: {} bytes — dynamic read timeout set to {} ms", contentLength, dynamicTimeout);
+                }
+
+                // Use S3ClientService's uploadFile method
+                return s3ClientService.uploadFile(
+                        connection.getInputStream(),
+                        destinationS3Properties,
+                        connection.getContentType(),
+                        connection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION)).join();
+            } catch (IOException e) {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+                log.error("Failed to download stream from URL: {}", presignedUrl, e);
+                throw new DataTransferAPIException(e.getMessage());
             }
+        }, transferExecutor);
+    }
 
-            // Check if the request was successful
-            int responseCode = connection.getResponseCode();
-            if (responseCode != HttpURLConnection.HTTP_OK) {
-                throw new IOException("Failed to get stream. HTTP response code: " + responseCode);
-            }
-
-            log.info("Presigned URL: {}", presignedUrl);
-            log.info("HTTP response code: {}", responseCode);
-
-            // Use S3ClientService's uploadFile method
-            return s3ClientService.uploadFile(
-                    connection.getInputStream(),
-                    destinationS3Properties,
-                    connection.getContentType(),
-                    connection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION));
-        } catch (IOException e) {
-            if (connection != null) {
-                connection.disconnect();
-            }
-            log.error("Failed to download stream from URL: {}", presignedUrl, e);
-            throw new DataTransferAPIException(e.getMessage());
-        }
+    /**
+     * Computes a dynamic read timeout based on file size and a conservative minimum
+     * transfer speed of {@value MIN_TRANSFER_SPEED_BYTES_PER_SEC} bytes/sec (1 MB/s).
+     * A 10 % safety margin is added on top.
+     *
+     * <p>Example: 100 MB file → ceil(100 × 1.1 / 1) = 110 seconds timeout.
+     *
+     * @param contentLengthBytes the total file size in bytes
+     * @return the read timeout in milliseconds, capped at {@link Integer#MAX_VALUE}
+     */
+    private int computeReadTimeout(long contentLengthBytes) {
+        long seconds = (long) Math.ceil(contentLengthBytes * 1.1 / MIN_TRANSFER_SPEED_BYTES_PER_SEC);
+        long millis = seconds * 1000L;
+        return (int) Math.min(millis, Integer.MAX_VALUE);
     }
 }

@@ -18,10 +18,9 @@ import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
-import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.properties.S3Properties;
-import it.eng.tools.s3.service.BucketCredentialsService;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.serializer.ToolsSerializer;
 import it.eng.tools.service.AuditEventPublisher;
@@ -37,12 +36,10 @@ import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -59,7 +56,7 @@ public class DataTransferAPIService {
     private final S3Properties s3Properties;
     private final DataTransferStrategyFactory dataTransferStrategyFactory;
     private final ArtifactTransferService artifactTransferService;
-    private final BucketCredentialsService bucketCredentialsService;
+    private final TemporaryBucketUserService temporaryBucketUserService;
 
     public DataTransferAPIService(TransferProcessRepository transferProcessRepository,
                                   OkHttpRestClient okHttpRestClient,
@@ -71,7 +68,7 @@ public class DataTransferAPIService {
                                   S3Properties s3Properties,
                                   DataTransferStrategyFactory dataTransferStrategyFactory,
                                   ArtifactTransferService artifactTransferService,
-                                  BucketCredentialsService bucketCredentialsService) {
+                                  TemporaryBucketUserService temporaryBucketUserService) {
         super();
         this.transferProcessRepository = transferProcessRepository;
         this.okHttpRestClient = okHttpRestClient;
@@ -83,7 +80,7 @@ public class DataTransferAPIService {
         this.s3Properties = s3Properties;
         this.dataTransferStrategyFactory = dataTransferStrategyFactory;
         this.artifactTransferService = artifactTransferService;
-        this.bucketCredentialsService = bucketCredentialsService;
+        this.temporaryBucketUserService = temporaryBucketUserService;
     }
 
     /**
@@ -114,8 +111,12 @@ public class DataTransferAPIService {
         DataAddress dataAddressForMessage = null;
         if (DataTransferFormat.HTTP_PUSH.format().equals(dataTransferRequest.getFormat())) {
 
-            BucketCredentialsEntity bucketCredentials = bucketCredentialsService.getBucketCredentials(s3Properties.getBucketName());
             String endpointOverride = resolveExternalPresignedEndpoint();
+            String objectKey = transferProcessInitialized.getId();
+            var temporaryBucketUser = temporaryBucketUserService.createTemporaryUser(
+                    transferProcessInitialized.getId(),
+                    s3Properties.getBucketName(),
+                    objectKey);
 
             List<EndpointProperty> endpointProperties = List.of(
                     EndpointProperty.Builder.newInstance()
@@ -128,15 +129,15 @@ public class DataTransferAPIService {
                             .build(),
                     EndpointProperty.Builder.newInstance()
                             .name(S3Utils.OBJECT_KEY)
-                            .value(transferProcessInitialized.getId())
+                            .value(objectKey)
                             .build(),
                     EndpointProperty.Builder.newInstance()
                             .name(S3Utils.ACCESS_KEY)
-                            .value(bucketCredentials.getAccessKey())
+                            .value(temporaryBucketUser.getAccessKey())
                             .build(),
                     EndpointProperty.Builder.newInstance()
                             .name(S3Utils.SECRET_KEY)
-                            .value(bucketCredentials.getSecretKey())
+                            .value(temporaryBucketUser.getSecretKey())
                             .build(),
                     EndpointProperty.Builder.newInstance()
                             .name(S3Utils.ENDPOINT_OVERRIDE)
@@ -404,6 +405,12 @@ public class DataTransferAPIService {
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcessCompleted.getConsumerPid(),
                             "providerPid", transferProcessCompleted.getProviderPid()));
+            // Clean up temporary S3 user created for HTTP-PUSH (best-effort)
+            try {
+                temporaryBucketUserService.deleteTemporaryUser(transferProcessId);
+            } catch (Exception e) {
+                log.warn("Could not clean up temporary bucket user for transfer process {}: {}", transferProcessId, e.getMessage());
+            }
             return TransferSerializer.serializePlainJsonNode(transferProcessCompleted);
         } else {
             log.error("Error response received!");
