@@ -81,7 +81,7 @@ public class AutomaticNegotiationIT {
 
     // Basic auth credentials matching initial_data.json
     private static final String ADMIN_CREDENTIALS =
-            Base64.getEncoder().encodeToString("admin@mail.com:password".getBytes());
+            Base64.getEncoder().encodeToString("admin@mail.com:password".getBytes(StandardCharsets.UTF_8));
 
     private static final int POLL_TIMEOUT_SECONDS = 30;
     private static final int POLL_INTERVAL_MS     = 500;

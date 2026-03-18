@@ -13,7 +13,7 @@ public class ContractNegotiationProperties {
 	private boolean automaticNegotiation;
 
 	@Value("${application.automatic.negotiation.retry.max:3}")
-	private int maxRetryAttempts;
+	private int maxRetries;
 
 	@Value("${application.automatic.negotiation.retry.delay.ms:2000}")
 	private long retryDelayMs;
@@ -31,12 +31,15 @@ public class ContractNegotiationProperties {
 	}
 
 	/**
-	 * Returns the maximum number of retry attempts for automatic negotiation transitions.
+	 * Returns the maximum number of <em>retries</em> for automatic negotiation transitions.
+	 * The total number of attempts is {@code maxRetries + 1}: one initial attempt plus up to
+	 * {@code maxRetries} retries. Setting this to {@code 0} means no retries — a single
+	 * failure goes straight to {@code TERMINATED}.
 	 *
-	 * @return max retry attempts before transitioning to TERMINATED
+	 * @return maximum number of retries before transitioning to TERMINATED
 	 */
-	public int getMaxRetryAttempts() {
-		return maxRetryAttempts;
+	public int getMaxRetries() {
+		return maxRetries;
 	}
 
 	/**

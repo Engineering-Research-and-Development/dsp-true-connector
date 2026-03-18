@@ -482,22 +482,19 @@ public class DSPContractNegotiationConsumerServiceTest {
     }
 
     @Test
-    @DisplayName("Process contract offer as counteroffer - automatic negotiation ON - no AutoNegotiationAcceptedEvent fired")
-    public void handleContractOfferMessageAsCounteroffer_automaticON_noAutoEvent() {
-//        when(properties.isAutomaticNegotiation()).thenReturn(true);
+    @DisplayName("Process contract offer as counteroffer - no AutoNegotiationAcceptedEvent fired")
+    public void handleContractOfferMessageAsCounteroffer_noAutoEvent() {
         ContractNegotiation existingNegotiation = ContractNegotiation.Builder.newInstance()
                 .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
                 .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
                 .state(ContractNegotiationState.REQUESTED)
                 .offer(NegotiationMockObjectUtil.OFFER_WITH_ORIGINAL_ID)
-//                .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
                 .role(IConstants.ROLE_CONSUMER)
                 .build();
 
         ContractOfferMessage counterOfferMessage = ContractOfferMessage.Builder.newInstance()
                 .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
                 .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
-//                .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
                 .offer(Offer.Builder.newInstance()
                         .id(NegotiationMockObjectUtil.OFFER_WITH_ORIGINAL_ID.getOriginalId())
                         .target(NegotiationMockObjectUtil.TARGET)

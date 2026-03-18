@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - Automatic contract negotiation across the full happy-path state machine for both Provider and Consumer roles.
-- New `AutomaticNegotiationService` — encapsulates retry loop and `TERMINATED` fallback for all automatic transitions.
+- New `AutomaticNegotiationService` — encapsulates retry scheduling and `TERMINATED` fallback for all automatic transitions; retries are dispatched via `TaskScheduler` so no thread is blocked during the inter-retry delay.
 - New `AutomaticNegotiationListener` — dedicated async `@EventListener` component that delegates each auto-negotiation event to `AutomaticNegotiationService`.
 - New domain events (Java Records) in `it.eng.negotiation.event`:
   - `AutoNegotiationAgreedEvent` — fired by Provider after storing `REQUESTED` or `ACCEPTED`; triggers `ContractAgreementMessage`.
@@ -26,6 +26,7 @@ All notable changes to this project will be documented in this file.
 - Unit tests: `AutomaticNegotiationServiceTest` and `AutomaticNegotiationListenerTest`.
 
 ### Changed
+- `AsynchronousSpringEventsConfig` — replaced `SimpleAsyncTaskExecutor` (unbounded, one thread per task) with a bounded `ThreadPoolTaskExecutor` for the event multicaster; added a `ThreadPoolTaskScheduler` bean (`taskScheduler`) for non-blocking retry scheduling in `AutomaticNegotiationService`. Pool sizes are tunable via `application.events.executor.*` and `application.events.scheduler.pool-size` properties.
 - `ContractNegotiationProviderService.handleContractRequestMessage` — replaced deprecated `ContractNegotationOfferRequestEvent` with `AutoNegotiationAgreedEvent`; added auto-trigger after `ACCEPTED` and `VERIFIED` states.
 - `ContractNegotiationConsumerService.handleContractAgreementMessage` — replaced commented-out TODO block with `AutoNegotiationVerifyEvent`; added auto-trigger after `OFFERED` state.
 - `ContractNegotiationProperties` — added `maxRetryAttempts` and `retryDelayMs` fields bound via `@Value`.
