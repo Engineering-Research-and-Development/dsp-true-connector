@@ -1,18 +1,15 @@
 package it.eng.negotiation.service;
 
-import it.eng.negotiation.exception.ContractNegotiationAPIException;
-import it.eng.negotiation.exception.ContractNegotiationExistsException;
-import it.eng.negotiation.exception.ContractNegotiationInvalidEventTypeException;
-import it.eng.negotiation.exception.ContractNegotiationInvalidStateException;
-import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
-import it.eng.negotiation.exception.OfferNotFoundException;
+import it.eng.negotiation.event.AutoNegotiationAcceptedEvent;
+import it.eng.negotiation.event.AutoNegotiationVerifyEvent;
+import it.eng.negotiation.exception.*;
 import it.eng.negotiation.model.*;
 import it.eng.negotiation.policy.service.PolicyAdministrationPoint;
+import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.tools.event.AuditEvent;
-import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
 import it.eng.tools.event.datatransfer.InitializeTransferProcess;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.service.AuditEventPublisher;
@@ -43,6 +40,8 @@ public class DSPContractNegotiationConsumerServiceTest {
     @Mock
     private OfferRepository offerRepository;
     @Mock
+    private ContractNegotiationProperties properties;
+    @Mock
     private PolicyAdministrationPoint policyAdministrationPoint;
 
     @Captor
@@ -55,8 +54,10 @@ public class DSPContractNegotiationConsumerServiceTest {
     private DSPContractNegotiationConsumerService service;
 
     @Test
-    @DisplayName("Process contract offer success")
+    @DisplayName("Process contract offer success - automatic negotiation OFF")
     public void handleContractOfferMessage_success() {
+        when(properties.isAutomaticNegotiation()).thenReturn(false);
+
         ContractNegotiation result = service.handleContractOfferMessage(NegotiationMockObjectUtil.CONTRACT_OFFER_MESSAGE_INITIAL);
         verify(offerRepository).save(any(Offer.class));
         verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
@@ -73,7 +74,19 @@ public class DSPContractNegotiationConsumerServiceTest {
         assertEquals(IConstants.ROLE_CONSUMER, argCaptorContractNegotiation.getValue().getRole());
         assertEquals(NegotiationMockObjectUtil.CONTRACT_OFFER_MESSAGE_INITIAL.getOffer().getId(), argCaptorOffer.getValue().getOriginalId());
         assertNotNull(argCaptorContractNegotiation.getValue().getConsumerPid());
-        verify(publisher, times(0)).publishEvent(any(ContractNegotationOfferRequestEvent.class));
+        verify(publisher, never()).publishEvent(any(AutoNegotiationAcceptedEvent.class));
+    }
+
+    @Test
+    @DisplayName("Process contract offer success - automatic negotiation ON")
+    public void handleContractOfferMessage_automaticON() {
+        when(properties.isAutomaticNegotiation()).thenReturn(true);
+
+        ContractNegotiation result = service.handleContractOfferMessage(NegotiationMockObjectUtil.CONTRACT_OFFER_MESSAGE_INITIAL);
+
+        assertNotNull(result);
+        assertEquals(ContractNegotiationState.OFFERED, result.getState());
+        verify(publisher).publishEvent(any(AutoNegotiationAcceptedEvent.class));
     }
 
     @Test
@@ -254,8 +267,9 @@ public class DSPContractNegotiationConsumerServiceTest {
     }
 
     @Test
-    @DisplayName("Process agreement message - success")
+    @DisplayName("Process agreement message - success - automatic negotiation OFF")
     public void handleContractAgreement_Message_success() {
+        when(properties.isAutomaticNegotiation()).thenReturn(false);
         when(contractNegotiationRepository.findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID)).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
 
         service.handleContractAgreementMessage(NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE);
@@ -267,6 +281,20 @@ public class DSPContractNegotiationConsumerServiceTest {
         assertEquals(ContractNegotiationState.AGREED, argCaptorContractNegotiation.getValue().getState());
         assertEquals(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE.getAgreement().getId(), argCaptorContractNegotiation.getValue().getAgreement().getId());
         verify(publisher).publishEvent(any(AuditEvent.class));
+        verify(publisher, never()).publishEvent(any(AutoNegotiationVerifyEvent.class));
+    }
+
+    @Test
+    @DisplayName("Process agreement message - success - automatic negotiation ON")
+    public void handleContractAgreement_Message_automaticON() {
+        when(properties.isAutomaticNegotiation()).thenReturn(true);
+        when(contractNegotiationRepository.findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID)).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
+
+        service.handleContractAgreementMessage(NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE);
+
+        verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
+        assertEquals(ContractNegotiationState.AGREED, argCaptorContractNegotiation.getValue().getState());
+        verify(publisher).publishEvent(any(AutoNegotiationVerifyEvent.class));
     }
 
     @Test
@@ -451,5 +479,40 @@ public class DSPContractNegotiationConsumerServiceTest {
 
         verify(contractNegotiationRepository, times(0)).findByConsumerPid(any());
         verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
+    }
+
+    @Test
+    @DisplayName("Process contract offer as counteroffer - automatic negotiation ON - no AutoNegotiationAcceptedEvent fired")
+    public void handleContractOfferMessageAsCounteroffer_automaticON_noAutoEvent() {
+//        when(properties.isAutomaticNegotiation()).thenReturn(true);
+        ContractNegotiation existingNegotiation = ContractNegotiation.Builder.newInstance()
+                .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
+                .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
+                .state(ContractNegotiationState.REQUESTED)
+                .offer(NegotiationMockObjectUtil.OFFER_WITH_ORIGINAL_ID)
+//                .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_CONSUMER)
+                .build();
+
+        ContractOfferMessage counterOfferMessage = ContractOfferMessage.Builder.newInstance()
+                .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
+                .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
+//                .callbackAddress(NegotiationMockObjectUtil.CALLBACK_ADDRESS)
+                .offer(Offer.Builder.newInstance()
+                        .id(NegotiationMockObjectUtil.OFFER_WITH_ORIGINAL_ID.getOriginalId())
+                        .target(NegotiationMockObjectUtil.TARGET)
+                        .assignee(NegotiationMockObjectUtil.ASSIGNEE)
+                        .assigner(NegotiationMockObjectUtil.ASSIGNER)
+                        .permission(NegotiationMockObjectUtil.OFFER.getPermission())
+                        .build())
+                .build();
+
+        when(contractNegotiationRepository.findByProviderPidAndConsumerPid(NegotiationMockObjectUtil.PROVIDER_PID, NegotiationMockObjectUtil.CONSUMER_PID))
+                .thenReturn(Optional.of(existingNegotiation));
+        when(offerRepository.save(any(Offer.class))).thenReturn(NegotiationMockObjectUtil.OFFER_WITH_ORIGINAL_ID);
+
+        service.handleContractOfferMessageAsCounteroffer(NegotiationMockObjectUtil.CONSUMER_PID, counterOfferMessage);
+
+        verify(publisher, never()).publishEvent(any(AutoNegotiationAcceptedEvent.class));
     }
 }
