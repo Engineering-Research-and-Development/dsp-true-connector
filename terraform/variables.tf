@@ -13,13 +13,13 @@ variable "minio_image" {
 variable "connector_image" {
   description = "DSP True Connector image to use"
   type        = string
-  default     = "ghcr.io/engineering-research-and-development/dsp-true-connector:0.5.0"
+  default     = "ghcr.io/engineering-research-and-development/dsp-true-connector:0.6.4"
 }
 
 variable "connector_ui_image" {
   description = "DSP True Connector UI image to use"
   type        = string
-  default     = "ghcr.io/engineering-research-and-development/dsp-true-connector-ui:0.2.0"
+  default     = "ghcr.io/engineering-research-and-development/dsp-true-connector-ui:0.6.1"
 }
 
 variable "connector_a_callback_address" {

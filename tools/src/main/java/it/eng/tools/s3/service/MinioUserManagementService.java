@@ -5,9 +5,15 @@ import io.minio.admin.UserInfo;
 import it.eng.tools.exception.S3ServerException;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
+/**
+ * Minio-specific IAM user management.
+ * Only active when MinioAdminClient bean exists.
+ */
 @Component
+@ConditionalOnBean(MinioAdminClient.class)
 @Slf4j
 public class MinioUserManagementService implements IamUserManagementService {
 
@@ -15,6 +21,7 @@ public class MinioUserManagementService implements IamUserManagementService {
 
     public MinioUserManagementService(MinioAdminClient minioAdminClient) {
         this.minioAdminClient = minioAdminClient;
+        log.info("MinioUserManagementService initialized - Minio IAM enabled");
     }
 
     @Override

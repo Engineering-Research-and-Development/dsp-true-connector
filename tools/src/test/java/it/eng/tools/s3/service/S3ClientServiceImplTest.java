@@ -906,4 +906,50 @@ public class S3ClientServiceImplTest {
         assertEquals("Bucket name cannot be null or empty", exception.getMessage());
         verifyNoInteractions(s3Client);
     }
+
+    @Test
+    @DisplayName("generateGetPresignedUrl - should work with null externalPresignedEndpoint (AWS mode)")
+    void generateGetPresignedUrl_AwsMode_NullEndpoint() {
+        String objectKey = "test-key";
+        when(s3Properties.getExternalPresignedEndpoint()).thenReturn(null);
+        when(s3Properties.getRegion()).thenReturn("us-east-1");
+        when(s3Client.headObject(any(HeadObjectRequest.class)))
+                .thenReturn(HeadObjectResponse.builder()
+                        .contentType("text/plain")
+                        .contentDisposition("attachment; filename=test.txt")
+                        .build());
+
+        // Execution should not throw due to null endpoint (AWS mode)
+        assertDoesNotThrow(() -> s3ClientService.generateGetPresignedUrl(bucketName, objectKey, Duration.ofMinutes(5)));
+    }
+
+    @Test
+    @DisplayName("generateGetPresignedUrl - should work with blank externalPresignedEndpoint (AWS mode)")
+    void generateGetPresignedUrl_AwsMode_BlankEndpoint() {
+        String objectKey = "test-key";
+        when(s3Properties.getExternalPresignedEndpoint()).thenReturn("   ");
+        when(s3Properties.getRegion()).thenReturn("eu-west-1");
+        when(s3Client.headObject(any(HeadObjectRequest.class)))
+                .thenReturn(HeadObjectResponse.builder()
+                        .contentType("text/plain")
+                        .contentDisposition("attachment; filename=test.txt")
+                        .build());
+
+        assertDoesNotThrow(() -> s3ClientService.generateGetPresignedUrl(bucketName, objectKey, Duration.ofMinutes(5)));
+    }
+
+    @Test
+    @DisplayName("generateGetPresignedUrl - should use path-style for Minio endpoint")
+    void generateGetPresignedUrl_MinioMode() {
+        String objectKey = "test-key";
+        when(s3Properties.getExternalPresignedEndpoint()).thenReturn("http://minio:9000");
+        when(s3Properties.getRegion()).thenReturn("us-east-1");
+        when(s3Client.headObject(any(HeadObjectRequest.class)))
+                .thenReturn(HeadObjectResponse.builder()
+                        .contentType("text/plain")
+                        .contentDisposition("attachment; filename=test.txt")
+                        .build());
+
+        assertDoesNotThrow(() -> s3ClientService.generateGetPresignedUrl(bucketName, objectKey, Duration.ofMinutes(5)));
+    }
 }

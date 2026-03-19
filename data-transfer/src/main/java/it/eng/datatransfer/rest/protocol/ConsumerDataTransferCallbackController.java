@@ -33,13 +33,13 @@ public class ConsumerDataTransferCallbackController {
     }
 
     @GetMapping("/{consumerPid}")
-    public ResponseEntity<String> getTransferProcessByConsumerPid(@PathVariable String consumerPid) {
+    public ResponseEntity<String> getTransferProcessByConsumerPid(@PathVariable("consumerPid") String consumerPid) {
         TransferProcess transferProcess = dataTransferService.findTransferProcessByConsumerPid(consumerPid);
         return ResponseEntity.ok(TransferSerializer.serializeProtocol(transferProcess));
     }
 
     @PostMapping(path = "/{consumerPid}/start")
-    public ResponseEntity<Void> startDataTransfer(@PathVariable String consumerPid,
+    public ResponseEntity<Void> startDataTransfer(@PathVariable("consumerPid") String consumerPid,
                                                   @RequestBody JsonNode transferStartMessageJsonNode) {
         TransferStartMessage transferStartMessage = TransferSerializer.deserializeProtocol(transferStartMessageJsonNode, TransferStartMessage.class);
         log.info("Starting data transfer for consumerPid {} and providerPid {}", consumerPid, transferStartMessage.getProviderPid());
@@ -49,7 +49,7 @@ public class ConsumerDataTransferCallbackController {
     }
 
     @PostMapping(path = "/{consumerPid}/completion")
-    public ResponseEntity<Void> completeDataTransfer(@PathVariable String consumerPid,
+    public ResponseEntity<Void> completeDataTransfer(@PathVariable("consumerPid") String consumerPid,
                                                      @RequestBody JsonNode transferCompletionMessageJsonNode) {
         TransferCompletionMessage transferCompletionMessage = TransferSerializer.deserializeProtocol(transferCompletionMessageJsonNode, TransferCompletionMessage.class);
         log.info("Completing data transfer for consumerPid {} and providerPid {}", consumerPid, transferCompletionMessage.getProviderPid());
@@ -59,7 +59,7 @@ public class ConsumerDataTransferCallbackController {
     }
 
     @PostMapping(path = "/{consumerPid}/termination")
-    public ResponseEntity<Void> terminateDataTransfer(@PathVariable String consumerPid,
+    public ResponseEntity<Void> terminateDataTransfer(@PathVariable("consumerPid") String consumerPid,
                                                       @RequestBody JsonNode transferTerminationMessageJsonNode) {
         TransferTerminationMessage transferTerminationMessage = TransferSerializer.deserializeProtocol(transferTerminationMessageJsonNode, TransferTerminationMessage.class);
         log.info("Terminating data transfer for comsumerPid {} and providerPid {}", consumerPid, transferTerminationMessage.getProviderPid());
@@ -69,7 +69,7 @@ public class ConsumerDataTransferCallbackController {
     }
 
     @PostMapping(path = "/{consumerPid}/suspension")
-    public ResponseEntity<Void> suspenseDataTransfer(@PathVariable String consumerPid,
+    public ResponseEntity<Void> suspenseDataTransfer(@PathVariable("consumerPid") String consumerPid,
                                                      @RequestBody JsonNode transferSuspensionMessageJsonNode) {
         TransferSuspensionMessage transferSuspensionMessage = TransferSerializer.deserializeProtocol(transferSuspensionMessageJsonNode, TransferSuspensionMessage.class);
         log.info("Suspending data transfer for comsumerPid {} and providerPid {}", consumerPid, transferSuspensionMessage.getProviderPid());

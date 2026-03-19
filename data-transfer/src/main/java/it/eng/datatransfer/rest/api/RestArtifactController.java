@@ -27,7 +27,7 @@ public class RestArtifactController {
     @GetMapping(path = "/{transactionId}")
     public void getArtifact(HttpServletResponse response,
                             @RequestHeader(required = false) String authorization,
-                            @PathVariable String transactionId) {
+                            @PathVariable("transactionId") String transactionId) {
 
         log.info("Starting data download");
         restArtifactService.getArtifact(transactionId, response);

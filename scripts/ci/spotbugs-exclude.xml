@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SpotBugs / Find Security Bugs — exclusion filter
+  =====================================================
+  Add entries here to suppress false-positives or intentional dev-only patterns.
+
+  Format reference:
+    https://spotbugs.readthedocs.io/en/latest/filter.html
+
+  Regex matching: prefix the value with ~ e.g. name="~.*Test"
+  Exact matching: name="com.example.MyClass"
+
+  Each <Match> element can combine:
+    <Bug pattern="RULE_CODE"/>
+    <Class name="com.example.Foo"/>          — exact class name
+    <Class name="~.*Test"/>                  — regex on binary class name
+    <Method name="myMethod"/>
+    <Field name="myField"/>
+
+  NOTE: namePattern="..." is NOT a valid SpotBugs attribute and will cause
+        "Class element missing name attribute". Always use name="~<regex>".
+-->
+<FindBugsFilter>
+
+    <!-- ── Exclude all unit test classes ────────────────────────────────────── -->
+    <Match>
+        <Class name="~.*Test"/>
+    </Match>
+
+    <!-- ── Exclude all integration test classes ─────────────────────────────── -->
+    <Match>
+        <Class name="~.*IT"/>
+    </Match>
+
+    <!-- ── Exclude test utility / base classes ───────────────────────────────── -->
+    <Match>
+        <Class name="~.*TestBase"/>
+    </Match>
+    <Match>
+        <Class name="~.*MockObjectUtil"/>
+    </Match>
+
+    <!-- ── Exclude generated sources ────────────────────────────────────────── -->
+    <Match>
+        <Class name="~.*\.generated\..*"/>
+    </Match>
+
+    <!--
+    ═══════════════════════════════════════════════════════════════════════════
+    INTENTIONAL / DEV-ONLY SUPPRESSIONS
+    Add an explanatory comment for every entry so the reviewer understands why.
+    ═══════════════════════════════════════════════════════════════════════════
+
+    Example — trust-all TLS used only in dev/test profiles:
+    <Match>
+        <Bug pattern="UNTRUSTWORTHY_SSL_SERVER_SOCKET_FACTORY"/>
+        <Class name="it.eng.connector.configuration.DevTlsConfig"/>
+    </Match>
+    -->
+
+</FindBugsFilter>
+

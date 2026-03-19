@@ -43,7 +43,7 @@ public class AuditEventController {
     }
 
     @GetMapping(path = "/{auditEventId}")
-    public ResponseEntity<GenericApiResponse<AuditEvent>> getAuditEventById(@PathVariable String auditEventId) {
+    public ResponseEntity<GenericApiResponse<AuditEvent>> getAuditEventById(@PathVariable("auditEventId") String auditEventId) {
         log.info("Fetching audit event details for id {}", auditEventId);
         AuditEvent auditEvent = auditEventService.getAuditEventById(auditEventId);
 

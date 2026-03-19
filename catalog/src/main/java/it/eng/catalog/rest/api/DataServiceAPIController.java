@@ -1,24 +1,15 @@
 package it.eng.catalog.rest.api;
 
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.fasterxml.jackson.databind.JsonNode;
-
 import it.eng.catalog.model.DataService;
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.service.DataServiceService;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, 
@@ -34,7 +25,7 @@ public class DataServiceAPIController {
     }
 
     @GetMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<JsonNode>> getDataServiceById(@PathVariable String id) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> getDataServiceById(@PathVariable("id") String id) {
         log.info("Fetching data service with id: '" + id + "'");
         DataService dataService = dataServiceService.getDataServiceById(id);
 
@@ -64,7 +55,7 @@ public class DataServiceAPIController {
     }
 
     @DeleteMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<Void>> deleteDataService(@PathVariable String id) {
+    public ResponseEntity<GenericApiResponse<Void>> deleteDataService(@PathVariable("id") String id) {
         log.info("Deleting data service with id: " + id);
 
         dataServiceService.deleteDataService(id);
@@ -74,7 +65,7 @@ public class DataServiceAPIController {
     }
 
     @PutMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<JsonNode>> updateDataService(@PathVariable String id, @RequestBody String dataService) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> updateDataService(@PathVariable("id") String id, @RequestBody String dataService) {
         DataService ds = CatalogSerializer.deserializePlain(dataService, DataService.class);
 
         log.info("Updating data service with id: " + id);

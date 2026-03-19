@@ -80,36 +80,3 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:develop
           labels: ${{ steps.meta.outputs.labels }}
 
-  build-develop-after-release:
-    if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'main'
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Set SNAPSHOT version in pom.xml
-        run: |
-          current_version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
-          base_version=${current_version%-SNAPSHOT}
-          new_version=$(echo $base_version | awk -F. -v OFS=. '{$NF++;print}')
-          mvn versions:set-property -Dproperty=revision -DnewVersion=$new_version-SNAPSHOT
-
-      - name: Setup Git credentials
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email noreply@github.com
-
-      - name: Build
-        shell: bash -l {0}
-        run: |
-          mvn -B clean verify --file pom.xml
-          git add pom.xml
-          git commit -m "New development version $new_version"
-          git push
