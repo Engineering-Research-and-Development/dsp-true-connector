@@ -75,6 +75,10 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     @Field("version")
     private Long version;
 
+    @JsonIgnore
+    @Field("retryCount")
+    private int retryCount;
+
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Builder {
@@ -174,6 +178,11 @@ public class ContractNegotiation extends AbstractNegotiationObject {
             return this;
         }
 
+        public Builder retryCount(int retryCount) {
+            message.retryCount = retryCount;
+            return this;
+        }
+
         public ContractNegotiation build() {
             if (message.id == null) {
                 message.id = message.createNewPid();
@@ -223,7 +232,35 @@ public class ContractNegotiation extends AbstractNegotiationObject {
                 .lastModifiedBy(this.lastModifiedBy)
                 .modified(modified)
                 .version(this.version)
+                .retryCount(this.retryCount)
                 .state(newState)
+                .build();
+    }
+
+    /**
+     * Creates a new ContractNegotiation with the specified retryCount.
+     * All other fields remain unchanged.
+     *
+     * @param retryCount the retry count value to persist
+     * @return new ContractNegotiation instance with updated retryCount
+     */
+    public ContractNegotiation withRetryCount(int retryCount) {
+        return ContractNegotiation.Builder.newInstance()
+                .id(this.id)
+                .consumerPid(this.consumerPid)
+                .providerPid(this.providerPid)
+                .callbackAddress(this.callbackAddress)
+                .offer(this.offer)
+                .assigner(this.assigner)
+                .role(this.role)
+                .agreement(this.agreement)
+                .state(this.state)
+                .retryCount(retryCount)
+                .createdBy(this.createdBy)
+                .created(this.created)
+                .lastModifiedBy(this.lastModifiedBy)
+                .modified(this.modified)
+                .version(this.version)
                 .build();
     }
 }

@@ -1,6 +1,7 @@
 package it.eng.negotiation.service;
 
-import it.eng.negotiation.event.ContractNegotiationEvent;
+import it.eng.negotiation.event.AutoNegotiationAgreedEvent;
+import it.eng.negotiation.event.AutoNegotiationFinalizeEvent;
 import it.eng.negotiation.exception.ContractNegotiationExistsException;
 import it.eng.negotiation.exception.ContractNegotiationNotFoundException;
 import it.eng.negotiation.exception.OfferNotValidException;
@@ -14,7 +15,6 @@ import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
-import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
 import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.property.ConnectorProperties;
@@ -53,7 +53,6 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
      * @throws ContractNegotiationNotFoundException if no contract negotiation is found with the specified ID.
      */
     public ContractNegotiation getNegotiationById(String id) {
-        publisher.publishEvent(ContractNegotiationEvent.builder().action("Find by id").description("Searching with id").build());
         return findContractNegotiationById(id);
     }
 
@@ -143,11 +142,8 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
                 .build());
 
         if (properties.isAutomaticNegotiation()) {
-            log.debug("PROVIDER - Performing automatic negotiation");
-            publisher.publishEvent(new ContractNegotationOfferRequestEvent(
-                    contractNegotiation.getConsumerPid(),
-                    contractNegotiation.getProviderPid(),
-                    NegotiationSerializer.serializeProtocolJsonNode(contractRequestMessage.getOffer())));
+            log.debug("PROVIDER - Auto negotiation: firing AutoNegotiationAgreedEvent for CN {}", contractNegotiation.getId());
+            publisher.publishEvent(new AutoNegotiationAgreedEvent(contractNegotiation.getId()));
         } else {
             log.debug("PROVIDER - Offer evaluation will have to be done by human");
         }
@@ -241,7 +237,12 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
                         DSpaceConstants.PROVIDER_PID, contractNegotiationAccepted.getProviderPid(),
                         "role", IConstants.ROLE_PROVIDER))
                 .build());
-        return contractNegotiationRepository.save(contractNegotiationAccepted);
+        ContractNegotiation saved = contractNegotiationRepository.save(contractNegotiationAccepted);
+        if (properties.isAutomaticNegotiation()) {
+            log.debug("PROVIDER - Auto negotiation: firing AutoNegotiationAgreedEvent for CN {}", saved.getId());
+            publisher.publishEvent(new AutoNegotiationAgreedEvent(saved.getId()));
+        }
+        return saved;
     }
 
     public ContractNegotiation handleContractAgreementVerificationMessage(String providerPid, ContractAgreementVerificationMessage cavm) {
@@ -262,7 +263,10 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
                         DSpaceConstants.PROVIDER_PID, contractNegotiationUpdated.getProviderPid()))
                 .build());
         log.info("Contract negotiation with providerPid {} and consumerPid {} changed state to VERIFIED and saved", cavm.getProviderPid(), cavm.getConsumerPid());
-
+        if (properties.isAutomaticNegotiation()) {
+            log.debug("PROVIDER - Auto negotiation: firing AutoNegotiationFinalizeEvent for CN {}", contractNegotiationUpdated.getId());
+            publisher.publishEvent(new AutoNegotiationFinalizeEvent(contractNegotiationUpdated.getId()));
+        }
         return contractNegotiationUpdated;
     }
 
