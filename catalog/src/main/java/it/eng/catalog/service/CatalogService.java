@@ -5,10 +5,7 @@ import it.eng.catalog.exceptions.InternalServerErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.*;
 import it.eng.catalog.repository.CatalogRepository;
-import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.tools.event.AuditEventType;
-import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
-import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
 import it.eng.tools.model.ArtifactType;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.s3.properties.S3Properties;
@@ -155,15 +152,6 @@ public class CatalogService {
         }
     }
 
-    @Deprecated
-    public void validateOffer(ContractNegotationOfferRequestEvent offerRequest) {
-        log.info("Comparing if offer is valid or not");
-        Offer offer = CatalogSerializer.deserializeProtocol(offerRequest.getOffer(), Offer.class);
-        boolean valid = validateOffer(offer);
-        ContractNegotiationOfferResponseEvent contractNegotiationOfferResponse = new ContractNegotiationOfferResponseEvent(offerRequest.getConsumerPid(),
-                offerRequest.getProviderPid(), valid, CatalogSerializer.serializeProtocolJsonNode(offer));
-        publisher.publishEvent(contractNegotiationOfferResponse);
-    }
 
     /**
      * Updates the catalog with a newly saved dataset reference.

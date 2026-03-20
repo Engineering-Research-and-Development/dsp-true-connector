@@ -2,11 +2,46 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.6.7-SNAPSHOT] - 16.03.2026.
+## [0.6.8-SNAPSHOT] - 20.03.2026.
 
 ### Changed
 - Using multithread plugin configuration for maven-surefire-plugin and maven-failsafe-plugin to speed up test execution
 - Using temporary user for S3 upload in HTTP-PUSH transfer strategy, with policy scoped to single object key and cleanup after transfer completion
+
+## [0.6.7-SNAPSHOT] - 18.03.2026.
+
+### Added
+- Automatic contract negotiation across the full happy-path state machine for both Provider and Consumer roles.
+- New `AutomaticNegotiationService` — encapsulates retry scheduling and `TERMINATED` fallback for all automatic transitions; retries are dispatched via `TaskScheduler` so no thread is blocked during the inter-retry delay.
+- New `AutomaticNegotiationListener` — dedicated async `@EventListener` component that delegates each auto-negotiation event to `AutomaticNegotiationService`.
+- New domain events (Java Records) in `it.eng.negotiation.event`:
+  - `AutoNegotiationAgreedEvent` — fired by Provider after storing `REQUESTED` or `ACCEPTED`; triggers `ContractAgreementMessage`.
+  - `AutoNegotiationFinalizeEvent` — fired by Provider after storing `VERIFIED`; triggers `ContractNegotiationEventMessage:finalized`.
+  - `AutoNegotiationAcceptedEvent` — fired by Consumer after storing `OFFERED` (initial offer only); triggers `ContractNegotiationEventMessage:accepted`.
+  - `AutoNegotiationVerifyEvent` — fired by Consumer after storing `AGREED`; triggers `ContractAgreementVerificationMessage`.
+- `retryCount` field added to `ContractNegotiation` model — persisted to MongoDB, preserved across state transitions and app restarts.
+- `withRetryCount(int)` helper method on `ContractNegotiation` — creates a new instance with only the retry counter updated.
+- New configuration properties for automatic negotiation retry behaviour:
+  - `application.automatic.negotiation.retry.max=3` — maximum retry attempts before transitioning to `TERMINATED`.
+  - `application.automatic.negotiation.retry.delay.ms=2000` — delay in milliseconds between retry attempts.
+- Force-terminate fallback: if the graceful `ContractNegotiationTerminationMessage` also fails, the CN is force-set to `TERMINATED` locally and a `PROTOCOL_NEGOTIATION_TERMINATED` audit event is published.
+- Integration test `AutomaticNegotiationIT` — two-instance Spring Boot test using Testcontainers (MongoDB, MinIO) and WireMock:
+  - `automaticNegotiation_consumerInitiated_reachesFinalizedOnBothSides` — full happy-path, both sides reach `FINALIZED`.
+  - `automaticNegotiation_providerUnreachable_consumerReachesTerminated` — WireMock intercepts `ContractAgreementMessage` with 500, proxies termination; both sides reach `TERMINATED`.
+  - `automaticNegotiation_consumerUnreachable_providerReachesTerminated` — WireMock intercepts `ContractAgreementVerificationMessage` with 500, proxies termination; both sides reach `TERMINATED`.
+- Unit tests: `AutomaticNegotiationServiceTest` and `AutomaticNegotiationListenerTest`.
+
+### Changed
+- `AsynchronousSpringEventsConfig` — replaced `SimpleAsyncTaskExecutor` (unbounded, one thread per task) with a bounded `ThreadPoolTaskExecutor` for the event multicaster; added a `ThreadPoolTaskScheduler` bean (`taskScheduler`) for non-blocking retry scheduling in `AutomaticNegotiationService`. Pool sizes are tunable via `application.events.executor.*` and `application.events.scheduler.pool-size` properties.
+- `ContractNegotiationProviderService.handleContractRequestMessage` — replaced deprecated `ContractNegotationOfferRequestEvent` with `AutoNegotiationAgreedEvent`; added auto-trigger after `ACCEPTED` and `VERIFIED` states.
+- `ContractNegotiationConsumerService.handleContractAgreementMessage` — replaced commented-out TODO block with `AutoNegotiationVerifyEvent`; added auto-trigger after `OFFERED` state.
+- `ContractNegotiationProperties` — added `maxRetryAttempts` and `retryDelayMs` fields bound via `@Value`.
+
+### Removed
+- Deprecated `ContractNegotationOfferRequestEvent` publish call from `ContractNegotiationProviderService.handleContractRequestMessage`.
+- Deprecated `handleContractNegotiationOfferResponse` event listener from `ContractNegotiationListener`.
+- Deprecated `handleContractNegotiationOfferResponse` method from `ContractNegotiationEventHandlerService`.
+- Deprecated `validateOffer(ContractNegotationOfferRequestEvent)` method from `CatalogService`.
 
 ## [0.6.5-SNAPSHOT] - 04.03.2026.
 

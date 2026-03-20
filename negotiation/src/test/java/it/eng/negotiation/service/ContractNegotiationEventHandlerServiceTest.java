@@ -1,15 +1,17 @@
 package it.eng.negotiation.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.util.Optional;
-import java.util.UUID;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import it.eng.negotiation.exception.ContractNegotiationAPIException;
+import it.eng.negotiation.model.Agreement;
+import it.eng.negotiation.model.ContractNegotiation;
+import it.eng.negotiation.model.ContractNegotiationState;
+import it.eng.negotiation.model.NegotiationMockObjectUtil;
+import it.eng.negotiation.properties.ContractNegotiationProperties;
+import it.eng.negotiation.repository.AgreementRepository;
+import it.eng.negotiation.repository.ContractNegotiationRepository;
+import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.util.CredentialUtils;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,21 +22,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import java.util.Optional;
+import java.util.UUID;
 
-import it.eng.negotiation.exception.ContractNegotiationAPIException;
-import it.eng.negotiation.model.Agreement;
-import it.eng.negotiation.model.ContractNegotiation;
-import it.eng.negotiation.model.ContractNegotiationState;
-import it.eng.negotiation.model.NegotiationMockObjectUtil;
-import it.eng.negotiation.properties.ContractNegotiationProperties;
-import it.eng.negotiation.repository.AgreementRepository;
-import it.eng.negotiation.repository.ContractNegotiationRepository;
-import it.eng.negotiation.serializer.NegotiationSerializer;
-import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
-import it.eng.tools.response.GenericApiResponse;
-import it.eng.tools.util.CredentialUtils;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class ContractNegotiationEventHandlerServiceTest {
@@ -60,36 +54,6 @@ public class ContractNegotiationEventHandlerServiceTest {
 	@Captor
 	private ArgumentCaptor<Agreement> argCaptorAgreement;
 	
-	@Test
-	@DisplayName("Handle contract negotiation offer response success")
-	public void handleContractNegotiationOfferResponse_accepted_success() {
-		ContractNegotiationOfferResponseEvent offerResponse = new ContractNegotiationOfferResponseEvent(NegotiationMockObjectUtil.CONSUMER_PID, 
-				NegotiationMockObjectUtil.PROVIDER_PID, true, NegotiationSerializer.serializePlainJsonNode(NegotiationMockObjectUtil.OFFER));
-		when(properties.getAssignee()).thenReturn(NegotiationMockObjectUtil.ASSIGNEE);
-		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
-		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
-		when(apiResponse.isSuccess()).thenReturn(true);
-		// TODO temporary until figure out how to get assignee and assigner
-
-		handlerService.handleContractNegotiationOfferResponse(offerResponse);
-		
-		verify(repository).save(any(ContractNegotiation.class));
-	}
-	
-	@Test
-	@DisplayName("Handle contract negotiation offer declined")
-	public void handleContractNegotiationOfferResponse_declined() {
-		ContractNegotiationOfferResponseEvent offerResponse = new ContractNegotiationOfferResponseEvent(NegotiationMockObjectUtil.CONSUMER_PID, 
-				NegotiationMockObjectUtil.PROVIDER_PID, false, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
-		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class)))
-			.thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED));
-
-		handlerService.handleContractNegotiationOfferResponse(offerResponse);
-		
-		verify(repository, times(0)).save(any(ContractNegotiation.class));
-	}
-
 	@Test
 	@DisplayName("Handle agreement verification message success")
 	public void contractAgreementVerificationMessage_success() {
