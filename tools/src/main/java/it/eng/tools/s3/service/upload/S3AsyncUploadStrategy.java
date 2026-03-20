@@ -8,7 +8,6 @@ import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.*;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -114,10 +113,10 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
                     int totalRead = readFully(inputStream, buffer);
                     if (totalRead == 0) break;
 
-                    // Copy only the final (smaller) part; reuse buffer for all full parts.
-                    byte[] partData = (totalRead == buffer.length)
-                            ? Arrays.copyOf(buffer, buffer.length)
-                            : Arrays.copyOf(buffer, totalRead);
+                    // Copy the buffer for every part (full or partial) so each async upload
+                    // holds its own independent byte array and the shared buffer can be safely
+                    // refilled for the next read without corrupting in-flight uploads.
+                    byte[] partData = Arrays.copyOf(buffer, totalRead);
 
                     final int currentPartNumber = partNumber;
                     parallelism.acquire();
@@ -175,9 +174,7 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
 
         log.debug("Uploading part {} for key: {} ({} bytes)", partNumber, objectKey, partData.length);
 
-        return s3AsyncClient.uploadPart(uploadPartRequest,
-                        AsyncRequestBody.fromInputStream(new ByteArrayInputStream(partData),
-                                (long) partData.length, java.util.concurrent.Executors.newSingleThreadExecutor()))
+        return s3AsyncClient.uploadPart(uploadPartRequest, AsyncRequestBody.fromBytes(partData))
                 .thenApply(response -> {
                     log.debug("Part {} uploaded successfully with ETag: {}", partNumber, response.eTag());
                     return CompletedPart.builder()

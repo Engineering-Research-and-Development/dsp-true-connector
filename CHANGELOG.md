@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Using multithread plugin configuration for maven-surefire-plugin and maven-failsafe-plugin to speed up test execution
+- Using temporary user for S3 upload in HTTP-PUSH transfer strategy, with policy scoped to single object key and cleanup after transfer completion
 
 ## [0.6.5-SNAPSHOT] - 04.03.2026.
 

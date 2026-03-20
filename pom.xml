@@ -148,6 +148,11 @@
             </dependency>
             <dependency>
                 <groupId>software.amazon.awssdk</groupId>
+                <artifactId>aws-crt-client</artifactId>
+                <version>${aws.sdk.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
                 <artifactId>sts</artifactId>
                 <version>${aws.sdk.version}</version>
             </dependency>
@@ -474,6 +479,21 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-failsafe-plugin</artifactId>
                     <version>3.5.4</version>
+                    <configuration>
+                        <!--
+                            Run integration-test classes in parallel within a single reused JVM fork.
+                            More conservative than Surefire (threadCount=2 per core) because IT tests
+                            may load Spring contexts, connect to embedded servers, or share external
+                            resources (databases, WireMock, Testcontainers).
+                            Override parallel=none in modules that require strictly sequential execution.
+                        -->
+                        <forkCount>1</forkCount>
+                        <reuseForks>true</reuseForks>
+                        <parallel>classes</parallel>
+                        <useUnlimitedThreads>false</useUnlimitedThreads>
+                        <threadCount>4</threadCount>
+                        <perCoreThreadCount>true</perCoreThreadCount>
+                    </configuration>
                     <executions>
                         <execution>
                             <goals>

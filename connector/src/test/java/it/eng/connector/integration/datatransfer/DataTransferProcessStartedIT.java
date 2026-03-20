@@ -14,6 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -147,6 +148,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
         String response = transferProcessStartedAction.andReturn().getResponse().getContentAsString();
         TransferProcess transferProcessStarted = TransferSerializer.deserializeProtocol(response, TransferProcess.class);
         assertNotNull(transferProcessStarted);
+        assertEquals(TransferState.STARTED, transferProcessStarted.getState());
     }
 
     @Test

@@ -14,6 +14,9 @@ import java.util.UUID;
 @Slf4j
 public class TemporaryBucketUserService {
 
+    private static final String TEMP_USER_PREFIX = "TempUser-";
+    private static final String TEMP_POLICY_PREFIX = "temp-tp-policy-";
+
     private final IamUserManagementService iamUserManagementService;
     private final TemporaryBucketUserRepository temporaryBucketUserRepository;
     private final FieldEncryptionService fieldEncryptionService;
@@ -39,7 +42,7 @@ public class TemporaryBucketUserService {
      * @return the persisted {@link TemporaryBucketUser} with a plain secret key
      */
     public TemporaryBucketUser createTemporaryUser(String transferProcessId, String bucketName, String objectKey) {
-        String accessKey = "temp-user-" + UUID.randomUUID();
+        String accessKey = TEMP_USER_PREFIX + UUID.randomUUID().toString().substring(0, 8);
         String plainSecretKey = UUID.randomUUID().toString();
 
         log.info("Creating temporary bucket user {} for transfer process {}", accessKey, transferProcessId);
@@ -53,7 +56,7 @@ public class TemporaryBucketUserService {
         iamUserManagementService.createUser(adapter);
 
         // Attach a minimal PutObject-only policy scoped to the exact object key
-        String policyName = "temp-tp-policy-" + transferProcessId;
+        String policyName = TEMP_POLICY_PREFIX + transferProcessId;
         String policyJson = createTemporaryUserPolicy(bucketName, objectKey);
         log.debug("Attaching temporary policy {} to user {}", policyName, accessKey);
         iamUserManagementService.attachTemporaryPolicy(accessKey, policyName, policyJson);
@@ -109,7 +112,7 @@ public class TemporaryBucketUserService {
      */
     public void deleteTemporaryUser(String transferProcessId) {
         temporaryBucketUserRepository.findById(transferProcessId).ifPresent(entity -> {
-            String policyName = "tp-policy-" + transferProcessId;
+            String policyName = TEMP_POLICY_PREFIX + transferProcessId;
             try {
                 iamUserManagementService.deleteUser(entity.getAccessKey());
             } catch (Exception e) {

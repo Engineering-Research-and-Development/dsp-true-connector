@@ -94,7 +94,7 @@ public class S3SyncUploadStrategyTest {
                 inputStream, s3ClientRequest, BUCKET_NAME, OBJECT_KEY, CONTENT_TYPE, CONTENT_DISPOSITION);
 
         // Assert
-        Exception exception = assertThrows(CompletionException.class, () -> result.join());
+        Exception exception = assertThrows(CompletionException.class, result::join);
         assertTrue(exception.getMessage().contains("Failed to upload file"));
         verify(s3Client).createMultipartUpload(any(CreateMultipartUploadRequest.class));
         verify(s3Client, never()).completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
@@ -120,7 +120,7 @@ public class S3SyncUploadStrategyTest {
                 inputStream, s3ClientRequest, BUCKET_NAME, OBJECT_KEY, CONTENT_TYPE, CONTENT_DISPOSITION);
 
         // Assert
-        Exception exception = assertThrows(CompletionException.class, () -> result.join());
+        Exception exception = assertThrows(CompletionException.class, result::join);
         assertTrue(exception.getMessage().contains("Failed to upload file"));
         verify(s3Client).createMultipartUpload(any(CreateMultipartUploadRequest.class));
         verify(s3Client).completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
@@ -177,10 +177,11 @@ public class S3SyncUploadStrategyTest {
     }
 
     @Test
-    @DisplayName("Should use RequestBody.fromInputStream (not fromBytes) to avoid extra memory copy")
-    void uploadFile_UsesFromInputStream_NotFromBytes() {
-        // Arrange - small content to ensure exactly one part
-        InputStream inputStream = new ByteArrayInputStream("part-data".getBytes());
+    @DisplayName("Should pass the correct bytes to uploadPart for a single-part upload")
+    void uploadFile_CorrectBytesPassedToUploadPart() throws Exception {
+        // Arrange - small content that fits in one part
+        byte[] expectedBytes = "part-data".getBytes();
+        InputStream inputStream = new ByteArrayInputStream(expectedBytes);
 
         when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
                 .thenReturn(CreateMultipartUploadResponse.builder().uploadId(UPLOAD_ID).build());
@@ -198,13 +199,17 @@ public class S3SyncUploadStrategyTest {
 
         assertEquals(ETAG, result.join());
 
-        // Assert — exactly one part was captured and it is a stream-based body
+        // Assert — exactly one part was uploaded and its content matches the original input bytes.
+        // This is a behavioral check: it will catch any regression that corrupts or drops data,
+        // regardless of which RequestBody factory method (fromBytes, fromInputStream, etc.) is used.
         List<RequestBody> capturedBodies = requestBodyCaptor.getAllValues();
         assertEquals(1, capturedBodies.size(), "Expected exactly one uploadPart call for small content");
-        // RequestBody.fromInputStream produces an OptionalContentLength-backed body
-        // (contentLength will be present and > 0)
-        capturedBodies.forEach(rb -> assertTrue(rb.optionalContentLength().isPresent(),
-                "RequestBody should carry a known content length when created from byte[] via fromInputStream"));
+        byte[] actualBytes;
+        try (InputStream capturedStream = capturedBodies.get(0).contentStreamProvider().newStream()) {
+            actualBytes = capturedStream.readAllBytes();
+        }
+        assertArrayEquals(expectedBytes, actualBytes,
+                "The bytes delivered to uploadPart must exactly match the original input stream content");
     }
 
     @Test

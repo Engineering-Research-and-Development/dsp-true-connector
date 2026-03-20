@@ -15,6 +15,7 @@ import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -48,8 +49,10 @@ public class TCKDataTransferService extends AbstractDataTransferService {
                                   TransferRequestMessageRepository transferRequestMessageRepository,
                                   AuditEventPublisher auditEventPublisher,
                                   OkHttpRestClient okHttpRestClient,
-                                  DataTransferProperties dataTransferProperties, CredentialUtils credentialUtils) {
-        super(transferProcessRepository, auditEventPublisher, okHttpRestClient, transferRequestMessageRepository);
+                                  DataTransferProperties dataTransferProperties,
+                                  CredentialUtils credentialUtils,
+                                  TemporaryBucketUserService temporaryBucketUserService) {
+        super(transferProcessRepository, auditEventPublisher, okHttpRestClient, transferRequestMessageRepository, temporaryBucketUserService);
         this.dataTransferAPIService = dataTransferAPIService;
         this.auditEventPublisher = auditEventPublisher;
         this.okHttpRestClient = okHttpRestClient;

@@ -19,6 +19,9 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -279,8 +282,9 @@ public class S3AsyncUploadStrategyTest {
 
     @Test
     @DisplayName("Should respect semaphore — no more than MAX_PARALLEL_PARTS parts in flight simultaneously")
-    void uploadFile_BoundedParallelism_WithSemaphore() {
-        // Arrange — use a 60 MB stream to trigger at least 2 parts (CHUNK_SIZE = 50 MB)
+    void uploadFile_BoundedParallelism_WithSemaphore() throws InterruptedException {
+        // Arrange — 60 MB stream triggers 2 parts (part 1 = 50 MB, part 2 = 10 MB).
+        // Both fit within MAX_PARALLEL_PARTS=4, so the semaphore must not block either from starting.
         byte[] data = new byte[60 * 1024 * 1024];
         InputStream inputStream = new ByteArrayInputStream(data);
 
@@ -288,16 +292,31 @@ public class S3AsyncUploadStrategyTest {
                 .thenReturn(CompletableFuture.completedFuture(
                         CreateMultipartUploadResponse.builder().uploadId(UPLOAD_ID).build()));
 
-        // Track concurrent in-flight uploads via a shared counter
-        java.util.concurrent.atomic.AtomicInteger inFlight = new java.util.concurrent.atomic.AtomicInteger(0);
-        java.util.concurrent.atomic.AtomicInteger maxObservedInFlight = new java.util.concurrent.atomic.AtomicInteger(0);
+        AtomicInteger inFlight = new AtomicInteger(0);
+        AtomicInteger maxObservedInFlight = new AtomicInteger(0);
+        // Counts down each time a part upload is started; lets the test detect when both are in flight.
+        CountDownLatch allPartsStarted = new CountDownLatch(2);
+        // Gate that holds every part-upload future until the test deliberately releases them,
+        // ensuring both parts remain in-flight at the same time rather than completing immediately.
+        CountDownLatch releaseGate = new CountDownLatch(1);
 
         when(s3AsyncClient.uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class)))
                 .thenAnswer(inv -> {
                     int current = inFlight.incrementAndGet();
                     maxObservedInFlight.updateAndGet(prev -> Math.max(prev, current));
-                    inFlight.decrementAndGet();
-                    return CompletableFuture.completedFuture(UploadPartResponse.builder().eTag(ETAG).build());
+                    allPartsStarted.countDown();
+                    // Return a future that does NOT complete until the gate is opened,
+                    // so multiple parts can be simultaneously in-flight.
+                    return CompletableFuture.supplyAsync(() -> {
+                        try {
+                            releaseGate.await();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            throw new RuntimeException(e);
+                        }
+                        inFlight.decrementAndGet();
+                        return UploadPartResponse.builder().eTag(ETAG).build();
+                    });
                 });
 
         when(s3AsyncClient.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
@@ -308,13 +327,21 @@ public class S3AsyncUploadStrategyTest {
         CompletableFuture<String> result = asyncUploadStrategy.uploadFile(
                 inputStream, s3ClientRequest, BUCKET_NAME, OBJECT_KEY, CONTENT_TYPE, CONTENT_DISPOSITION);
 
-        assertEquals(ETAG, result.join());
+        // Both parts should start before either one completes (gate is still closed).
+        assertTrue(allPartsStarted.await(10, TimeUnit.SECONDS),
+                "Both part uploads should have started within the timeout");
 
-        // Assert — MAX_PARALLEL_PARTS is 4; at most that many should be in flight
+        // Assert — at peak, both parts are genuinely in flight at the same time.
+        assertEquals(2, maxObservedInFlight.get(),
+                "Both parts should be in flight simultaneously (semaphore allows up to MAX_PARALLEL_PARTS=4)");
         assertTrue(maxObservedInFlight.get() <= 4,
                 "Max in-flight parts (" + maxObservedInFlight.get() + ") exceeded MAX_PARALLEL_PARTS=4");
-        // At least 2 parts were uploaded for a 60 MB stream
-        verify(s3AsyncClient, atLeast(2)).uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class));
+
+        // Release the gate so all parts can finish and the upload can complete.
+        releaseGate.countDown();
+
+        assertEquals(ETAG, result.join());
+        verify(s3AsyncClient, times(2)).uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class));
     }
 }
 

@@ -1,7 +1,6 @@
---
-applyTo: "**/*Test.java"
-applyTo: "**/*IT.java"
-applyTo: "**/*TestE2E.java"
+---
+description: 'Guidelines for creating and configuring new JUnit 5 tests.'
+applyTo: '**/*Test.java, **/*IT.java, **/*TestE2E.java'
 ---
 
 # Instructions for Creating New JUnit 5 Tests
