@@ -28,6 +28,11 @@ resource "kubernetes_deployment" "this" {
               name = var.env_config_map
             }
           }
+          env_from {
+            secret_ref {
+              name = var.credentials_secret
+            }
+          }
           volume_mount {
             name       = "config"
             mount_path = "/config/application.properties"

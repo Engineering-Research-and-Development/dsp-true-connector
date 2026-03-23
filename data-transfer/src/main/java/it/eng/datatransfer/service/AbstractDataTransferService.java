@@ -32,7 +32,6 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
     private final AuditEventPublisher publisher;
     private final OkHttpRestClient okHttpRestClient;
 
-    // ...existing code...
     private final TransferRequestMessageRepository transferRequestMessageRepository;
     private final DataTransferProperties transferProperties;
 
@@ -158,6 +157,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .dataAddress(transferRequestMessage.getDataAddress())
                 .state(TransferState.REQUESTED)
                 .role(IConstants.ROLE_PROVIDER)
+                .retryCount(transferProcessInitialized.getRetryCount())
                 .datasetId(transferProcessInitialized.getDatasetId())
                 .created(transferProcessInitialized.getCreated())
                 .createdBy(transferProcessInitialized.getCreatedBy())
@@ -225,6 +225,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .state(TransferState.STARTED)
                 .role(transferProcessRequested.getRole())
                 .datasetId(transferProcessRequested.getDatasetId())
+                .retryCount(transferProcessRequested.getRetryCount())
                 .created(transferProcessRequested.getCreated())
                 .createdBy(transferProcessRequested.getCreatedBy())
                 .modified(transferProcessRequested.getModified())

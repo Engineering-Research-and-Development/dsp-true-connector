@@ -3,25 +3,22 @@ package it.eng.datatransfer.listener;
 import it.eng.datatransfer.event.AutoTransferDownloadEvent;
 import it.eng.datatransfer.event.AutoTransferStartEvent;
 import it.eng.datatransfer.service.AutomaticDataTransferService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.mockito.Mockito.verify;
 
+@ExtendWith(MockitoExtension.class)
 public class AutomaticDataTransferListenerTest {
+
     @Mock
     private AutomaticDataTransferService service;
 
     @InjectMocks
     private AutomaticDataTransferListener listener;
-
-    @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
-    }
 
     @Test
     void handleAutoTransferStart_delegatesToService() {
