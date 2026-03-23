@@ -1,12 +1,15 @@
 package it.eng.datatransfer.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import it.eng.datatransfer.event.AutoTransferDownloadEvent;
+import it.eng.datatransfer.event.AutoTransferStartEvent;
 import it.eng.datatransfer.event.TransferProcessChangeEvent;
 import it.eng.datatransfer.exceptions.TransferProcessInternalException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidFormatException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.exceptions.TransferProcessNotFoundException;
 import it.eng.datatransfer.model.*;
+import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
@@ -31,17 +34,19 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
     private final AuditEventPublisher publisher;
     private final OkHttpRestClient okHttpRestClient;
 
-    // Consider this for removal
     private final TransferRequestMessageRepository transferRequestMessageRepository;
+    private final DataTransferProperties transferProperties;
 
     protected AbstractDataTransferService(TransferProcessRepository transferProcessRepository,
                                           AuditEventPublisher publisher,
                                           OkHttpRestClient okHttpRestClient,
-                                          TransferRequestMessageRepository transferRequestMessageRepository) {
+                                          TransferRequestMessageRepository transferRequestMessageRepository,
+                                          DataTransferProperties transferProperties) {
         this.transferProcessRepository = transferProcessRepository;
         this.publisher = publisher;
         this.okHttpRestClient = okHttpRestClient;
         this.transferRequestMessageRepository = transferRequestMessageRepository;
+        this.transferProperties = transferProperties;
     }
 
     /**
@@ -154,6 +159,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .dataAddress(transferRequestMessage.getDataAddress())
                 .state(TransferState.REQUESTED)
                 .role(IConstants.ROLE_PROVIDER)
+                .retryCount(transferProcessInitialized.getRetryCount())
                 .datasetId(transferProcessInitialized.getDatasetId())
                 .created(transferProcessInitialized.getCreated())
                 .createdBy(transferProcessInitialized.getCreatedBy())
@@ -169,6 +175,11 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                         "consumerPid", transferProcessRequested.getConsumerPid(),
                         "providerPid", transferProcessRequested.getProviderPid()));
         log.info("Requested TransferProcess created");
+        // Automatic transfer trigger
+        if (transferProcessRequested.getRole().equals(IConstants.ROLE_PROVIDER)
+                && transferProperties.isAutomaticTransfer()) {
+            publisher.publishEvent(new AutoTransferStartEvent(transferProcessRequested.getId()));
+        }
         return transferProcessRequested;
     }
 
@@ -216,6 +227,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .state(TransferState.STARTED)
                 .role(transferProcessRequested.getRole())
                 .datasetId(transferProcessRequested.getDatasetId())
+                .retryCount(transferProcessRequested.getRetryCount())
                 .created(transferProcessRequested.getCreated())
                 .createdBy(transferProcessRequested.getCreatedBy())
                 .modified(transferProcessRequested.getModified())
@@ -235,7 +247,19 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                         "transferProcess", transferProcessStarted,
                         "consumerPid", transferProcessStarted.getConsumerPid(),
                         "providerPid", transferProcessStarted.getProviderPid()));
+        // Automatic download trigger
+        if (transferProcessStarted.getRole().equals(IConstants.ROLE_CONSUMER)
+                && transferProperties.isAutomaticTransfer()
+                && isHttpPullFormat(transferProcessStarted.getFormat())) {
+            publisher.publishEvent(new AutoTransferDownloadEvent(transferProcessStarted.getId()));
+        }
         return transferProcessStarted;
+    }
+
+
+    // Helper to check HTTP_PULL format
+    private boolean isHttpPullFormat(String format) {
+        return it.eng.datatransfer.model.DataTransferFormat.HTTP_PULL.format().equals(format);
     }
 
     /**

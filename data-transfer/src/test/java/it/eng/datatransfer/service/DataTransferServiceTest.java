@@ -7,6 +7,7 @@ import it.eng.datatransfer.exceptions.TransferProcessNotFoundException;
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
+import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
@@ -15,6 +16,7 @@ import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.AuditEventPublisher;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,6 +54,8 @@ public class DataTransferServiceTest {
     private GenericApiResponse<String> apiResponse;
     @Mock
     private OkHttpRestClient okHttpRestClient;
+    @Mock
+    private DataTransferProperties transferProperties;
 
     @InjectMocks
     private DataTransferService service;
@@ -64,6 +68,12 @@ public class DataTransferServiceTest {
     private ArgumentCaptor<String> descriptionCaptor;
     @Captor
     private ArgumentCaptor<Map<String, Object>> argCaptorAuditEventDetails;
+
+    @BeforeEach
+    public void setUp() {
+        // Removed unnecessary stubbing of transferProperties.isAutomaticTransfer()
+        // Add stubbing in individual tests if needed
+    }
 
     @Test
     @DisplayName("Data transfer exists and state is started")
