@@ -1,6 +1,8 @@
 package it.eng.datatransfer.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import it.eng.datatransfer.event.AutoTransferDownloadEvent;
+import it.eng.datatransfer.event.AutoTransferStartEvent;
 import it.eng.datatransfer.event.TransferProcessChangeEvent;
 import it.eng.datatransfer.exceptions.TransferProcessInternalException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidFormatException;
@@ -176,7 +178,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
         // Automatic transfer trigger
         if (transferProcessRequested.getRole().equals(IConstants.ROLE_PROVIDER)
                 && transferProperties.isAutomaticTransfer()) {
-            publisher.publishEvent(new it.eng.datatransfer.event.AutoTransferStartEvent(transferProcessRequested.getId()));
+            publisher.publishEvent(new AutoTransferStartEvent(transferProcessRequested.getId()));
         }
         return transferProcessRequested;
     }
@@ -249,7 +251,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
         if (transferProcessStarted.getRole().equals(IConstants.ROLE_CONSUMER)
                 && transferProperties.isAutomaticTransfer()
                 && isHttpPullFormat(transferProcessStarted.getFormat())) {
-            publisher.publishEvent(new it.eng.datatransfer.event.AutoTransferDownloadEvent(transferProcessStarted.getId()));
+            publisher.publishEvent(new AutoTransferDownloadEvent(transferProcessStarted.getId()));
         }
         return transferProcessStarted;
     }

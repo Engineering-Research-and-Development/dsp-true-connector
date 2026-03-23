@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.6.8-SNAPSHOT] - 20.03.2026.
+## [0.6.8-SNAPSHOT] - 23.03.2026.
 
 ### Added
 - Automatic data transfer across the full happy-path state machine for both Provider and Consumer roles, covering HTTP_PULL and HTTP_PUSH formats.
