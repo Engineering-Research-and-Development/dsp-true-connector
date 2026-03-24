@@ -2,6 +2,7 @@ package it.eng.tools.s3.service.upload;
 
 import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.S3ClientRequest;
+import it.eng.tools.s3.properties.S3Properties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
@@ -28,15 +29,17 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
 
     /**
      * Maximum number of parts to upload in parallel.
-     * Each in-flight part holds one {@code CHUNK_SIZE} (50 MB) buffer.
+     * Each in-flight part holds one {@code s3.chunkSize} (default 50 MB) buffer.
      * Capping at 4 limits the async strategy's peak RAM to ~200 MB per transfer.
      */
     private static final int MAX_PARALLEL_PARTS = 4;
 
     private final S3ClientProvider s3ClientProvider;
+    private final S3Properties s3Properties;
 
-    public S3AsyncUploadStrategy(S3ClientProvider s3ClientProvider) {
+    public S3AsyncUploadStrategy(S3ClientProvider s3ClientProvider, S3Properties s3Properties) {
         this.s3ClientProvider = s3ClientProvider;
+        this.s3Properties = s3Properties;
     }
 
     @Override
@@ -103,7 +106,7 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
                 List<CompletableFuture<CompletedPart>> partFutures = new ArrayList<>();
                 int partNumber = 1;
                 // Single fixed-size buffer reused for every full part.
-                byte[] buffer = new byte[CHUNK_SIZE];
+                byte[] buffer = new byte[s3Properties.getChunkSize()];
                 // Limits the number of parts being uploaded at the same time.
                 Semaphore parallelism = new Semaphore(MAX_PARALLEL_PARTS);
 

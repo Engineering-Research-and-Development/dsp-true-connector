@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ApplicationEventMulticaster;
 import org.springframework.context.event.SimpleApplicationEventMulticaster;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -51,6 +52,27 @@ public class AsynchronousSpringEventsConfig {
     private int schedulerPoolSize = 5;
 
     /**
+     * Default executor for {@code @Async} methods and async event dispatch.
+     *
+     * <p>Named {@code taskExecutor} following the Spring convention: when multiple
+     * {@link TaskExecutor} beans are present, {@code AnnotationAsyncExecutionInterceptor}
+     * looks for this name to avoid the "More than one TaskExecutor bean found" warning.
+     *
+     * @return configured {@link ThreadPoolTaskExecutor}
+     */
+    @Bean(name = "taskExecutor")
+    public TaskExecutor taskExecutor() {
+        var executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(corePoolSize);
+        executor.setMaxPoolSize(maxPoolSize);
+        executor.setQueueCapacity(queueCapacity);
+        executor.setThreadNamePrefix("event-async-");
+        executor.setRejectedExecutionHandler(new CallerRunsOrDiscardPolicy());
+        executor.initialize();
+        return executor;
+    }
+
+    /**
      * Creates the application-wide async event multicaster backed by a bounded thread pool.
      *
      * <p>A {@link CallerRunsOrDiscardPolicy} is installed as the rejection handler so that a
@@ -61,16 +83,8 @@ public class AsynchronousSpringEventsConfig {
      */
     @Bean(name = "applicationEventMulticaster")
     public ApplicationEventMulticaster simpleApplicationEventMulticaster() {
-        var executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(corePoolSize);
-        executor.setMaxPoolSize(maxPoolSize);
-        executor.setQueueCapacity(queueCapacity);
-        executor.setThreadNamePrefix("event-async-");
-        executor.setRejectedExecutionHandler(new CallerRunsOrDiscardPolicy());
-        executor.initialize();
-
         var eventMulticaster = new SimpleApplicationEventMulticaster();
-        eventMulticaster.setTaskExecutor(executor);
+        eventMulticaster.setTaskExecutor(taskExecutor());
         return eventMulticaster;
     }
 

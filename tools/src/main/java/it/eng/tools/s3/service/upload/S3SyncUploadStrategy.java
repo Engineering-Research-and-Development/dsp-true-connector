@@ -2,6 +2,7 @@ package it.eng.tools.s3.service.upload;
 
 import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.S3ClientRequest;
+import it.eng.tools.s3.properties.S3Properties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -26,9 +27,11 @@ import java.util.concurrent.CompletionException;
 public class S3SyncUploadStrategy implements S3UploadStrategy {
 
     private final S3ClientProvider s3ClientProvider;
+    private final S3Properties s3Properties;
 
-    public S3SyncUploadStrategy(S3ClientProvider s3ClientProvider) {
+    public S3SyncUploadStrategy(S3ClientProvider s3ClientProvider, S3Properties s3Properties) {
         this.s3ClientProvider = s3ClientProvider;
+        this.s3Properties = s3Properties;
     }
 
     @Override
@@ -58,7 +61,7 @@ public class S3SyncUploadStrategy implements S3UploadStrategy {
 
                 List<CompletedPart> completedParts = new ArrayList<>();
                 int partNumber = 1;
-                byte[] buffer = new byte[CHUNK_SIZE];
+                byte[] buffer = new byte[s3Properties.getChunkSize()];
 
                 while (true) {
                     int totalRead = readFully(inputStream, buffer);

@@ -2,6 +2,7 @@ package it.eng.tools.s3.service.upload;
 
 import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.S3ClientRequest;
+import it.eng.tools.s3.properties.S3Properties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,9 @@ public class S3SyncUploadStrategyTest {
     private S3ClientProvider s3ClientProvider;
 
     @Mock
+    private S3Properties s3Properties;
+
+    @Mock
     private S3Client s3Client;
 
     @Mock
@@ -51,6 +55,7 @@ public class S3SyncUploadStrategyTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(s3Properties.getChunkSize()).thenReturn(50 * 1024 * 1024);
         when(s3ClientProvider.s3Client(any(S3ClientRequest.class))).thenReturn(s3Client);
     }
 
