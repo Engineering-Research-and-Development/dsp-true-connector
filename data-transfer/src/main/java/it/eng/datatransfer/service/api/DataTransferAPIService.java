@@ -49,7 +49,7 @@ public class DataTransferAPIService {
     private final OkHttpRestClient okHttpRestClient;
     private final CredentialUtils credentialUtils;
     private final DataTransferProperties dataTransferProperties;
-    private final ObjectMapper mapper;
+    private final ObjectMapper mapper = new ObjectMapper();
     private final UsageControlProperties usageControlProperties;
     private final AuditEventPublisher publisher;
     private final S3ClientService s3ClientService;
@@ -68,8 +68,7 @@ public class DataTransferAPIService {
                                   S3Properties s3Properties,
                                   DataTransferStrategyFactory dataTransferStrategyFactory,
                                   ArtifactTransferService artifactTransferService,
-                                  TemporaryBucketUserService temporaryBucketUserService,
-                                  ObjectMapper mapper) {
+                                  TemporaryBucketUserService temporaryBucketUserService) {
         super();
         this.transferProcessRepository = transferProcessRepository;
         this.okHttpRestClient = okHttpRestClient;
@@ -82,7 +81,6 @@ public class DataTransferAPIService {
         this.dataTransferStrategyFactory = dataTransferStrategyFactory;
         this.artifactTransferService = artifactTransferService;
         this.temporaryBucketUserService = temporaryBucketUserService;
-        this.mapper = mapper;
     }
 
     /**
@@ -429,7 +427,7 @@ public class DataTransferAPIService {
 
     /**
      * Sends TransferSuspensionMessage.<br>
-     * Updates state for Transfer Process upon successful response to SUSPENDED.
+     * Updates state for Transfer Process upon successful response to COMPLETED
      *
      * @param transferProcessId transfer process id
      * @return JsonNode representation of DataTransfer
@@ -462,16 +460,16 @@ public class DataTransferAPIService {
                         credentialUtils.getConnectorCredentials());
         log.info("Response received {}", response);
         if (response.isSuccess()) {
-            TransferProcess transferProcessSuspended = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED);
-            transferProcessRepository.save(transferProcessSuspended);
-            log.info("Transfer process {} saved", transferProcessSuspended.getId());
+            TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED);
+            transferProcessRepository.save(transferProcessStarted);
+            log.info("Transfer process {} saved", transferProcessStarted.getId());
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED,
                     "Transfer process suspended successfully",
-                    Map.of("transferProcess", transferProcessSuspended,
+                    Map.of("transferProcess", transferProcess,
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid()));
-            return TransferSerializer.serializePlainJsonNode(transferProcessSuspended);
+            return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
         } else {
             log.error("Error response received!");
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED,
@@ -520,16 +518,16 @@ public class DataTransferAPIService {
                         credentialUtils.getConnectorCredentials());
         log.info("Response received {}", response);
         if (response.isSuccess()) {
-            TransferProcess transferProcessTerminated = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);
-            transferProcessRepository.save(transferProcessTerminated);
-            log.info("Transfer process {} saved", transferProcessTerminated.getId());
+            TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);
+            transferProcessRepository.save(transferProcessStarted);
+            log.info("Transfer process {} saved", transferProcessStarted.getId());
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED,
                     "Transfer process terminated successfully",
-                    Map.of("transferProcess", transferProcessTerminated,
+                    Map.of("transferProcess", transferProcess,
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid()));
-            return TransferSerializer.serializePlainJsonNode(transferProcessTerminated);
+            return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
         } else {
             log.error("Error response received!");
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED,
@@ -667,7 +665,7 @@ public class DataTransferAPIService {
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid(),
                             "errorMessage", e.getMessage() != null ? e.getMessage() : "Unknown error"));
-            throw new DataTransferAPIException("Error while accessing data: " + (e.getLocalizedMessage() != null ? e.getLocalizedMessage() : e.getClass().getSimpleName()));
+            throw new DataTransferAPIException("Error while accessing data" + e.getLocalizedMessage());
         }
     }
 

@@ -1,10 +1,12 @@
 package it.eng.datatransfer.service.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
-import it.eng.datatransfer.model.*;
+import it.eng.datatransfer.model.DataTransferFormat;
+import it.eng.datatransfer.model.DataTransferRequest;
+import it.eng.datatransfer.model.TransferProcess;
+import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
@@ -31,7 +33,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.*;
 import org.springframework.http.HttpMethod;
@@ -76,8 +77,6 @@ class DataTransferAPIServiceTest {
     private ArtifactTransferService artifactTransferService;
     @Mock
     private Pageable pageable;
-    @Spy
-    private ObjectMapper mapper = new ObjectMapper();
 
     @Captor
     private ArgumentCaptor<TransferProcess> argCaptorTransferProcess;
