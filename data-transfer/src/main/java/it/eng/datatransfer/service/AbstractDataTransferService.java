@@ -34,7 +34,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
 
     // Consider this for removal
     private final TransferRequestMessageRepository transferRequestMessageRepository;
-    private TemporaryBucketUserService temporaryBucketUserService;
+    private final TemporaryBucketUserService temporaryBucketUserService;
 
     protected AbstractDataTransferService(TransferProcessRepository transferProcessRepository,
                                           AuditEventPublisher publisher,
