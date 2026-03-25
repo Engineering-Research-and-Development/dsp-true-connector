@@ -1,6 +1,7 @@
 package it.eng.datatransfer.service.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.model.*;
@@ -30,6 +31,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.*;
 import org.springframework.http.HttpMethod;
@@ -74,6 +76,8 @@ class DataTransferAPIServiceTest {
     private ArtifactTransferService artifactTransferService;
     @Mock
     private Pageable pageable;
+    @Spy
+    private ObjectMapper mapper = new ObjectMapper();
 
     @Captor
     private ArgumentCaptor<TransferProcess> argCaptorTransferProcess;
@@ -706,11 +710,11 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("View data - fail - not downloaded")
     public void viewData_fail_notDownloaded() {
-        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
-                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED_NOT_DOWNLOADED.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED_NOT_DOWNLOADED));
 
         assertThrows(DataTransferAPIException.class,
-                () -> apiService.viewData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+                () -> apiService.viewData(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED_NOT_DOWNLOADED.getId()));
 
         verify(s3ClientService, times(0)).fileExists(anyString(), anyString());
         verify(s3ClientService, times(0)).generateGetPresignedUrl(anyString(), anyString(), any(Duration.class));

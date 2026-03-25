@@ -28,10 +28,14 @@ public class S3UploadStrategyFactory {
     /**
      * Gets the appropriate upload strategy based on the upload mode.
      *
-     * @param uploadMode the desired upload mode
+     * @param uploadMode the desired upload mode; must not be {@code null}
      * @return the corresponding S3UploadStrategy implementation
+     * @throws IllegalArgumentException if uploadMode is null
      */
     public S3UploadStrategy getStrategy(S3UploadMode uploadMode) {
+        if (uploadMode == null) {
+            throw new IllegalArgumentException("uploadMode must not be null");
+        }
         return uploadMode == S3UploadMode.ASYNC ? asyncUploadStrategy : syncUploadStrategy;
     }
 }

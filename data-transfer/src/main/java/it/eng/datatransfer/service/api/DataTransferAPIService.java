@@ -49,7 +49,7 @@ public class DataTransferAPIService {
     private final OkHttpRestClient okHttpRestClient;
     private final CredentialUtils credentialUtils;
     private final DataTransferProperties dataTransferProperties;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper;
     private final UsageControlProperties usageControlProperties;
     private final AuditEventPublisher publisher;
     private final S3ClientService s3ClientService;
@@ -68,7 +68,8 @@ public class DataTransferAPIService {
                                   S3Properties s3Properties,
                                   DataTransferStrategyFactory dataTransferStrategyFactory,
                                   ArtifactTransferService artifactTransferService,
-                                  TemporaryBucketUserService temporaryBucketUserService) {
+                                  TemporaryBucketUserService temporaryBucketUserService,
+                                  ObjectMapper mapper) {
         super();
         this.transferProcessRepository = transferProcessRepository;
         this.okHttpRestClient = okHttpRestClient;
@@ -81,6 +82,7 @@ public class DataTransferAPIService {
         this.dataTransferStrategyFactory = dataTransferStrategyFactory;
         this.artifactTransferService = artifactTransferService;
         this.temporaryBucketUserService = temporaryBucketUserService;
+        this.mapper = mapper;
     }
 
     /**
@@ -427,7 +429,7 @@ public class DataTransferAPIService {
 
     /**
      * Sends TransferSuspensionMessage.<br>
-     * Updates state for Transfer Process upon successful response to COMPLETED
+     * Updates state for Transfer Process upon successful response to SUSPENDED.
      *
      * @param transferProcessId transfer process id
      * @return JsonNode representation of DataTransfer
@@ -460,16 +462,16 @@ public class DataTransferAPIService {
                         credentialUtils.getConnectorCredentials());
         log.info("Response received {}", response);
         if (response.isSuccess()) {
-            TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED);
-            transferProcessRepository.save(transferProcessStarted);
-            log.info("Transfer process {} saved", transferProcessStarted.getId());
+            TransferProcess transferProcessSuspended = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED);
+            transferProcessRepository.save(transferProcessSuspended);
+            log.info("Transfer process {} saved", transferProcessSuspended.getId());
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED,
                     "Transfer process suspended successfully",
-                    Map.of("transferProcess", transferProcess,
+                    Map.of("transferProcess", transferProcessSuspended,
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid()));
-            return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
+            return TransferSerializer.serializePlainJsonNode(transferProcessSuspended);
         } else {
             log.error("Error response received!");
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED,
@@ -518,16 +520,16 @@ public class DataTransferAPIService {
                         credentialUtils.getConnectorCredentials());
         log.info("Response received {}", response);
         if (response.isSuccess()) {
-            TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);
-            transferProcessRepository.save(transferProcessStarted);
-            log.info("Transfer process {} saved", transferProcessStarted.getId());
+            TransferProcess transferProcessTerminated = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);
+            transferProcessRepository.save(transferProcessTerminated);
+            log.info("Transfer process {} saved", transferProcessTerminated.getId());
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED,
                     "Transfer process terminated successfully",
-                    Map.of("transferProcess", transferProcess,
+                    Map.of("transferProcess", transferProcessTerminated,
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid()));
-            return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
+            return TransferSerializer.serializePlainJsonNode(transferProcessTerminated);
         } else {
             log.error("Error response received!");
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED,
@@ -632,6 +634,11 @@ public class DataTransferAPIService {
             throw new DataTransferAPIException("Transfer process is not in COMPLETED state");
         }
 
+        if (!transferProcess.isDownloaded()) {
+            log.error("Transfer process data has not been downloaded yet");
+            throw new DataTransferAPIException("Transfer process data has not been downloaded yet");
+        }
+
         policyCheck(transferProcess);
 
         // Check if file exists in S3
@@ -660,7 +667,7 @@ public class DataTransferAPIService {
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid(),
                             "errorMessage", e.getMessage() != null ? e.getMessage() : "Unknown error"));
-            throw new DataTransferAPIException("Error while accessing data" + e.getLocalizedMessage());
+            throw new DataTransferAPIException("Error while accessing data: " + (e.getLocalizedMessage() != null ? e.getLocalizedMessage() : e.getClass().getSimpleName()));
         }
     }
 
