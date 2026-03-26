@@ -101,9 +101,13 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
                                                         String bucketName,
                                                         String objectKey,
                                                         String uploadId) {
-        return CompletableFuture.supplyAsync(() -> {
+        List<CompletableFuture<CompletedPart>> partFutures = new ArrayList<>();
+
+        // The stream-reading loop is blocking I/O and must run on an async thread.
+        // It submits all part uploads, then returns so thenCompose can wait for them
+        // without holding a thread (no .join() inside the supplyAsync).
+        return CompletableFuture.runAsync(() -> {
             try {
-                List<CompletableFuture<CompletedPart>> partFutures = new ArrayList<>();
                 int partNumber = 1;
                 // Single fixed-size buffer reused for every full part.
                 byte[] buffer = new byte[s3Properties.getChunkSize()];
@@ -131,24 +135,24 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
                     partFutures.add(partFuture);
                     partNumber++;
                 }
-
-                // Wait for all in-flight parts to complete.
-                CompletableFuture.allOf(partFutures.toArray(new CompletableFuture[0])).join();
-
-                List<CompletedPart> completedParts = partFutures.stream()
-                        .map(CompletableFuture::join)
-                        .toList();
-
-                log.info("All {} parts uploaded successfully for key: {}", completedParts.size(), objectKey);
-                return new UploadResult(uploadId, completedParts);
-
             } catch (IOException e) {
                 throw new CompletionException("Failed to read input stream", e);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new CompletionException("Upload interrupted", e);
             }
-        });
+        })
+        .thenCompose(v ->
+            // All part futures are now submitted. Wait for them non-blockingly.
+            CompletableFuture.allOf(partFutures.toArray(new CompletableFuture[0]))
+                .thenApply(ignored -> {
+                    List<CompletedPart> completedParts = partFutures.stream()
+                            .map(CompletableFuture::join)  // safe: all futures are already completed
+                            .toList();
+                    log.info("All {} parts uploaded successfully for key: {}", completedParts.size(), objectKey);
+                    return new UploadResult(uploadId, completedParts);
+                })
+        );
     }
 
     /**

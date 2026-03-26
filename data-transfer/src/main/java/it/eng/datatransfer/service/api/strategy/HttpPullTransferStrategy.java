@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 @Slf4j
@@ -87,41 +88,44 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
     private CompletableFuture<String> downloadAndUploadToS3(String presignedUrl,
                                                             String authorization,
                                                             String key) {
+        // AtomicReference allows the connection to be shared across two separate lambda stages
+        // (supplyAsync and whenComplete) without violating Java's effectively-final capture rule.
+        // The supplyAsync lambda opens the connection and stores it here; whenComplete reads it
+        // to guarantee disconnect() is called on all paths — success, failure, or cancellation.
+        AtomicReference<HttpURLConnection> connectionRef = new AtomicReference<>();
+
         return CompletableFuture.supplyAsync(() -> {
-            HttpURLConnection connection = null;
             try {
                 URL url = new URL(presignedUrl);
-                connection = (HttpURLConnection) url.openConnection();
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                // Store immediately so whenComplete can close it even if a later step throws
+                connectionRef.set(connection);
 
                 // Configure connection
                 connection.setRequestMethod("GET");
                 connection.setConnectTimeout(DEFAULT_CONNECT_TIMEOUT);
-                // Temporarily use fallback; will be refined after Content-Length is known
                 connection.setReadTimeout(FALLBACK_READ_TIMEOUT);
                 if (StringUtils.isNotBlank(authorization)) {
                     connection.setRequestProperty(HttpHeaders.AUTHORIZATION, authorization);
                 }
 
-                // Log connection type for debugging
                 if (connection instanceof javax.net.ssl.HttpsURLConnection) {
                     log.debug("Using HTTPS connection to: {}", presignedUrl);
                 } else {
                     log.debug("Using HTTP connection to: {}", presignedUrl);
                 }
 
-                // Check if the request was successful
                 int responseCode = connection.getResponseCode();
                 if (responseCode != HttpURLConnection.HTTP_OK) {
-                    throw new IOException("Failed to get stream. HTTP response code: " + responseCode);
+                    // Disconnect eagerly on error response and clear the ref so whenComplete skips it
+                    connection.disconnect();
+                    connectionRef.set(null);
+                    throw new DataTransferAPIException("Failed to get stream. HTTP response code: " + responseCode);
                 }
 
                 log.info("Presigned URL: {}", presignedUrl);
                 log.info("HTTP response code: {}", responseCode);
 
-                // Refine read timeout now that response headers are available.
-                // NOTE: setFixedLengthStreamingMode is intentionally NOT used — it controls outgoing
-                // request body size (PUT/POST only) and throws IllegalStateException: Already connected
-                // when called after getResponseCode() on a GET request.
                 long contentLength = connection.getContentLengthLong();
                 if (contentLength > 0) {
                     int dynamicTimeout = computeReadTimeout(contentLength);
@@ -131,7 +135,6 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
 
                 String contentType = connection.getContentType();
                 String contentDisposition = connection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION);
-
                 Map<String, String> destinationS3Properties = Map.of(
                         S3Utils.OBJECT_KEY, key,
                         S3Utils.BUCKET_NAME, s3Properties.getBucketName(),
@@ -140,21 +143,27 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
                         S3Utils.ACCESS_KEY, s3Properties.getAccessKey(),
                         S3Utils.SECRET_KEY, s3Properties.getSecretKey()
                 );
-                // Use S3ClientService's uploadFile method
-                return s3ClientService.uploadFile(
-                        connection.getInputStream(),
-                        destinationS3Properties,
-                        contentType,
-                        contentDisposition
-                ).join();
+                // uploadFile is non-blocking and returns a CompletableFuture<String>.
+                // Returning it here produces a CompletableFuture<CompletableFuture<String>>,
+                // which thenCompose below flattens into a single CompletableFuture<String>.
+                // The connection must remain open until the upload future completes.
+                return s3ClientService.uploadFile(connection.getInputStream(), destinationS3Properties, contentType, contentDisposition);
             } catch (IOException e) {
-                if (connection != null) {
-                    connection.disconnect();
-                }
+                // Disconnect on IOException before the upload started (connection may or may not be open)
+                HttpURLConnection c = connectionRef.get();
+                if (c != null) c.disconnect();
                 log.error("Failed to download stream from URL: {}", presignedUrl, e);
                 throw new DataTransferAPIException(e.getMessage());
             }
-        }, transferExecutor);
+        }, transferExecutor)
+        // Flatten the nested future and attach a cleanup handler that runs on all completion paths
+        .thenCompose(uploadFuture ->
+            uploadFuture.whenComplete((result, throwable) -> {
+                // Disconnect after the upload completes (success or failure) to release the socket
+                HttpURLConnection c = connectionRef.get();
+                if (c != null) c.disconnect();
+            })
+        );
     }
 
     /**

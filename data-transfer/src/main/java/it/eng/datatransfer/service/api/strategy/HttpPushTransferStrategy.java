@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 @Service
@@ -67,28 +68,36 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
     }
 
     private CompletableFuture<String> transfer(String presignedUrl, Map<String, String> destinationS3Properties) {
+        // AtomicReference allows the connection to be shared across two separate lambda stages
+        // (supplyAsync and whenComplete) without violating Java's effectively-final capture rule.
+        // The supplyAsync lambda opens the connection and stores it here; whenComplete reads it
+        // to guarantee disconnect() is called on all paths — success, failure, or cancellation.
+        AtomicReference<HttpURLConnection> connectionRef = new AtomicReference<>();
+
         return CompletableFuture.supplyAsync(() -> {
-            HttpURLConnection connection = null;
             try {
                 URL url = new URL(presignedUrl);
-                connection = (HttpURLConnection) url.openConnection();
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                // Store immediately so whenComplete can close it even if a later step throws
+                connectionRef.set(connection);
 
                 // Configure connection
                 connection.setRequestMethod("GET");
                 connection.setConnectTimeout(DEFAULT_CONNECT_TIMEOUT);
                 connection.setReadTimeout(FALLBACK_READ_TIMEOUT);
 
-                // Log connection type for debugging
                 if (connection instanceof HttpsURLConnection) {
                     log.debug("Using HTTPS connection to: {}", presignedUrl);
                 } else {
                     log.debug("Using HTTP connection to: {}", presignedUrl);
                 }
 
-                // Check if the request was successful
                 int responseCode = connection.getResponseCode();
                 if (responseCode != HttpURLConnection.HTTP_OK) {
-                    throw new IOException("Failed to get stream. HTTP response code: " + responseCode);
+                    // Disconnect eagerly on error response and clear the ref so whenComplete skips it
+                    connection.disconnect();
+                    connectionRef.set(null);
+                    throw new DataTransferAPIException("Failed to get stream. HTTP response code: " + responseCode);
                 }
 
                 log.info("Presigned URL: {}", presignedUrl);
@@ -105,20 +114,31 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
                     log.debug("Content-Length: {} bytes — dynamic read timeout set to {} ms", contentLength, dynamicTimeout);
                 }
 
-                // Use S3ClientService's uploadFile method
+                // uploadFile is non-blocking and returns a CompletableFuture<String>.
+                // Returning it here produces a CompletableFuture<CompletableFuture<String>>,
+                // which thenCompose below flattens into a single CompletableFuture<String>.
+                // The connection must remain open until the upload future completes.
                 return s3ClientService.uploadFile(
                         connection.getInputStream(),
                         destinationS3Properties,
                         connection.getContentType(),
-                        connection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION)).join();
+                        connection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION));
             } catch (IOException e) {
-                if (connection != null) {
-                    connection.disconnect();
-                }
+                // Disconnect on IOException before the upload started (connection may or may not be open)
+                HttpURLConnection c = connectionRef.get();
+                if (c != null) c.disconnect();
                 log.error("Failed to download stream from URL: {}", presignedUrl, e);
                 throw new DataTransferAPIException(e.getMessage());
             }
-        }, transferExecutor);
+        }, transferExecutor)
+        // Flatten the nested future and attach a cleanup handler that runs on all completion paths
+        .thenCompose(uploadFuture ->
+            uploadFuture.whenComplete((result, throwable) -> {
+                // Disconnect after the upload completes (success or failure) to release the socket
+                HttpURLConnection c = connectionRef.get();
+                if (c != null) c.disconnect();
+            })
+        );
     }
 
     /**

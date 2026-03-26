@@ -37,7 +37,6 @@ import org.springframework.mock.web.MockHttpServletRequest;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -358,11 +357,9 @@ class DataTransferAPIControllerTest {
         when(apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(CompletableFuture.failedFuture(exception));
 
-        CompletionException thrown = assertThrows(CompletionException.class,
-                () -> controller.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
-        assertNotNull(thrown.getCause());
-        assertTrue(thrown.getCause() instanceof DataTransferAPIException);
-        assertEquals("message", thrown.getCause().getMessage());
+        // Controller no longer calls .join() — failures are handled asynchronously via .exceptionally()
+        // so the endpoint always returns 202 Accepted without propagating the exception to the caller
+        assertDoesNotThrow(() -> controller.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
     }
 
     @Test

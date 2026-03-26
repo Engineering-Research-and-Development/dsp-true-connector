@@ -275,8 +275,6 @@ class DataTransferAPIServiceTest {
         when(apiResponse.isSuccess()).thenReturn(true);
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
-        when(artifactTransferService.findArtifact(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER))
-                .thenReturn(DataTransferMockObjectUtil.ARTIFACT_FILE);
 
         apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId());
 
@@ -303,8 +301,6 @@ class DataTransferAPIServiceTest {
 
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(input));
-        when(artifactTransferService.findArtifact(input))
-                .thenReturn(DataTransferMockObjectUtil.ARTIFACT_FILE);
 
         assertThrows(TransferProcessInvalidStateException.class, //DataTransferAPIException.class,
                 () -> apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
@@ -324,8 +320,6 @@ class DataTransferAPIServiceTest {
         when(apiResponse.getMessage()).thenReturn("error");
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
-        when(artifactTransferService.findArtifact(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER))
-                .thenReturn(DataTransferMockObjectUtil.ARTIFACT_FILE);
 
         assertThrows(DataTransferAPIException.class, () -> apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId()));
 
@@ -616,6 +610,45 @@ class DataTransferAPIServiceTest {
         assertTrue(future.isCompletedExceptionally());
         ExecutionException ex = assertThrows(ExecutionException.class, future::get);
         assertInstanceOf(DataTransferAPIException.class, ex.getCause());
+    }
+
+    @Test
+    @DisplayName("Download data - fail - already downloaded")
+    public void downloadData_fail_alreadyDownloaded() {
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED));
+
+        CompletableFuture<Void> future = apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId());
+
+        assertTrue(future.isCompletedExceptionally());
+        ExecutionException ex = assertThrows(ExecutionException.class, future::get);
+        assertInstanceOf(DataTransferAPIException.class, ex.getCause());
+        assertTrue(ex.getCause().getMessage().contains("has already been downloaded"));
+    }
+
+    @Test
+    @DisplayName("Download data - fail - concurrent download already in progress")
+    public void downloadData_fail_concurrentDownload() throws Exception {
+        CompletableFuture<Void> neverCompletes = new CompletableFuture<>();
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+        when(usageControlProperties.usageControlEnabled()).thenReturn(false);
+        when(transferStrategyFactory.getStrategy(any(String.class))).thenReturn(httpPullTransferStrategy);
+        when(httpPullTransferStrategy.transfer(isA(TransferProcess.class))).thenReturn(neverCompletes);
+
+        // First call — succeeds and is now in-flight
+        CompletableFuture<Void> firstCall = apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+        assertFalse(firstCall.isDone());
+
+        // Second call for the same ID — must be rejected immediately
+        CompletableFuture<Void> secondCall = apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+        assertTrue(secondCall.isCompletedExceptionally());
+        ExecutionException ex = assertThrows(ExecutionException.class, secondCall::get);
+        assertInstanceOf(DataTransferAPIException.class, ex.getCause());
+        assertTrue(ex.getCause().getMessage().contains("already in progress"));
+
+        // Clean up the in-flight future
+        neverCompletes.cancel(true);
     }
 
     @Test

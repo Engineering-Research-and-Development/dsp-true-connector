@@ -71,7 +71,11 @@ public class DataTransferAPIController {
     public ResponseEntity<GenericApiResponse<String>> downloadData(
             @PathVariable("transferProcessId") String transferProcessId) {
         log.info("Downloading transfer process id - {} data", transferProcessId);
-        apiService.downloadData(transferProcessId).join();
+        apiService.downloadData(transferProcessId)
+                .exceptionally(throwable -> {
+                    log.error("Download failed for transfer process {}: {}", transferProcessId, throwable.getMessage());
+                    return null;
+                });
 
         return ResponseEntity.accepted()
                 .contentType(MediaType.APPLICATION_JSON)
@@ -134,7 +138,7 @@ public class DataTransferAPIController {
 
         log.info("Fetching transfer processes with generic filtering");
 
-        Sort.Direction direction = sort[1].equalsIgnoreCase("desc") ?
+        Sort.Direction direction = (sort.length > 1 && sort[1].equalsIgnoreCase("desc")) ?
                 Sort.Direction.DESC : Sort.Direction.ASC;
         Sort sorting = Sort.by(direction, sort[0]);
         Pageable pageable = PageRequest.of(page, size, sorting);
