@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.9-SNAPSHOT] - 26.03.2026.
+
+### Changed
+- Refactored documentation structure and content.
+
 ## [0.6.8-SNAPSHOT] - 23.03.2026.
 
 ### Added

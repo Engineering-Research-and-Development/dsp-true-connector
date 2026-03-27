@@ -275,7 +275,7 @@ kubectl exec -it <pod-name> -- cat /etc/config/application.properties | grep "s3
 | Connector B Template | `terraform/app-resources/connector_b_resources/application.properties` |
 | Config Maps Resource | `terraform/configmaps.tf` |
 | Documentation | `terraform/PROPERTY_EXTRACTION_SUMMARY.md` |
-| Examples | `terraform/USAGE_EXAMPLES.md` |
+| Examples | `terraform/usage-examples.md` |
 
 ## Environment-Specific Setup
 

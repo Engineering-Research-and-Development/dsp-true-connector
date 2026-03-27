@@ -47,6 +47,35 @@ choco install terraform
 choco install kubernetes-cli  # kubectl
 ```
 
+### Prepare Certificate Files
+
+Before deploying, place your TLS certificates in the required directories:
+
+```
+terraform/
+├── app-resources/
+│   ├── cert/
+│   │   ├── connector-a/
+│   │   │   ├── connector-a.jks
+│   │   │   └── truststore.jks
+│   │   └── connector-b/
+│   │       ├── connector-b.jks
+│   │       └── truststore.jks
+│   ├── connector_a_resources/
+│   │   ├── application.properties (template)
+│   │   ├── initial_data.json
+│   │   └── nginx.conf (for UI)
+│   └── connector_b_resources/
+│       ├── application.properties (template)
+│       ├── initial_data.json
+│       ├── ENG-employee.json
+│       └── nginx.conf (for UI)
+```
+
+The `application.properties` files are **templates** with placeholders like `${KEYSTORE_PASSWORD}` and `${S3_SECRET_KEY}` that Terraform will populate from your `terraform.tfvars` configuration.
+
+For guidance on generating certificates and keystores, see [PKI Certificate Guide](../doc/certificate/pki-certificate-guide.md).
+
 ### How the current setup handles local ports
 
 Kind maps host ports to NodePorts inside the cluster:
@@ -120,6 +149,38 @@ Connector B UI:  https://localhost:4300
 MinIO API:       http://localhost:9000
 MinIO Console:   http://localhost:9001  (user: minioadmin / minioadmin)
 ```
+
+### Verify Deployment
+
+Use the following kubectl commands to verify your deployment:
+
+```bash
+# List all deployed resources
+kubectl get all
+
+# Check pod status
+kubectl get pods
+kubectl describe pod <pod-name>
+
+# View logs for troubleshooting
+kubectl logs deployment/connector-a
+kubectl logs deployment/connector-b
+
+# Check Kubernetes Secrets are created with correct keys (uppercase)
+kubectl get secrets
+kubectl describe secret dsp-connector-a-credentials
+kubectl get secret dsp-connector-a-credentials -o yaml
+
+# Verify environment variables in running pod
+kubectl exec -it <pod-name> -- env | grep -E "KEYSTORE_PASSWORD|S3_SECRET_KEY"
+```
+
+Verify the following were created:
+- ✅ Kubernetes Secrets for credentials
+- ✅ ConfigMaps for application properties and configuration
+- ✅ Deployments for connectors, UIs, MongoDB, and MinIO
+- ✅ Services for all components
+- ✅ Generated `application.properties` files with values substituted
 
 ### Destroy local cluster
 

@@ -2,17 +2,17 @@
 
 Table of content:
 
-  - [Download and customize to run locally](#download)
-  - [Creating participant context](#participant-context)
+  - [Download and customize to run locally](#download-and-customize-to-run-locally)
+  - [Creating participant context](#creating-participant-context)
   - [Get participants](#get-participants)
   - [DID Documents](#did-documents)
-  - [Verifiable credentials](#vc)
-  - [Dataspace-issuer did document](#issuer-did-document)
-  - [Further reading](#more)
+  - [Verifiable credentials](#verifiable-credentials)
+  - [Dataspace-issuer did document](#dataspace-issuer-did-document)
+  - [Further reading](#further-reading)
 
 Note: informations gathered so far:
 
-## Download and customize to run locally <a name="download"></a>
+## Download and customize to run locally
 
 - Download [identity hub](https://github.com/eclipse-edc/IdentityHub/tree/main); (use released versions v0.10.0 or v.0.11.0)
 - Apply following changes (to support super-admin user; removed because security, so far no information how to run and not get 403 on endpoints)
@@ -82,7 +82,7 @@ java -Dweb.http.presentation.port=10001 -Dweb.http.presentation.path="/api/prese
 Import postman collection from [MVDS project](https://github.com/eclipse-edc/MinimumViableDataspace/blob/main/deployment/postman/MVD.postman_collection.json) and corresponding [environment file.](https://github.com/eclipse-edc/MinimumViableDataspace/blob/main/deployment/postman/MVD%20Local%20Development.postman_environment.json)
 
 
-## Creating participant context <a name="participant-context"></a>
+## Creating participant context
 
 Following requests are "borrowed" from terraform scripts in MVDS to create consumer and provider participants.
 
@@ -134,7 +134,7 @@ Once participants are created, response will contain keys like following:
 For now, my guess is that apiKey should be used to access IdentityHub endpoints so that connector can interact with it, but this is not working, not sure why.
 
 
-## Get participants <a name="get-participants"></a>
+## Get participants
 
 ```
 curl --location 'http://localhost:8182/api/identity/v1alpha/participants' \
@@ -157,7 +157,7 @@ Response (extracted only consumer participant):
 ```
 
 
-## DID Documents <a name="did-documents"></a>
+## DID Documents
 
 ```
 curl --location 'http://localhost:8182/api/identity/v1alpha/dids/' \
@@ -225,7 +225,7 @@ curl --location 'http://localhost:8182/api/identity/v1alpha/dids/' \
 ]
 ```
 
-## Verifiable credentials <a name="vc"></a>
+## Verifiable credentials
 
 From MVDS:
 
@@ -326,7 +326,7 @@ curl --location 'http://localhost:8182/api/identity/v1alpha/credentials' \
 ```
 
 
-## Dataspace-issuer did document <a name="issuer-did-document"></a>
+## Dataspace-issuer did document
 
 Borrowed from MVDS setup - using NginX to static expose did.json for issuer
 
@@ -749,7 +749,7 @@ public class JwtIdentityHubTest {
 </details>
 
 
-## Further reading <a name="more"></a>
+## Further reading
 
 [Decentralized Claims Protocol](https://github.com/eclipse-dataspace-dcp/decentralized-claims-protocol/tree/main)
 

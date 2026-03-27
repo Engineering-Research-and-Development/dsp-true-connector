@@ -8,35 +8,55 @@
   <a href="https://eclipse-dataspace-protocol-base.github.io/DataspaceProtocol/2025-1/"><img alt="Dataspace protocol" src="https://img.shields.io/badge/Dataspace%20protocol-2025--1-blue" /></a>
 </p>
 
-## Development requirements
+## About TRUE Connector
 
- - IDE : Eclipse STS, IntelliJ, VS Code etc.
-  - Resources: 16 GB RAM, 5 GB of disk space, 4 Cores multithreaded processor
- - Languages/Frameworks: Java 17, Maven 3.9.4 (compatible with java 17), SpringBoot 3.1.2 (Spring framework 6)
- - Database: MongoDB 7.0.12
- - Libraries: lombok, fasterxml.jackson, okhttp3, com.auth0:java-jwt, org.apache.commons:commons-lang3, org.apache.sshd:sshd-core, org.apache.sshd:sshd-sftp
-  - Testing: Junit, Mockito; integration tests - MockMvc, Test Containers, Docker
-  - Debugging tools: IDE debug
-  - FE Technologies: Angular 19
-  - Other technologies/Protocols used: Dataspace Protocol, HTTPS, sftp, DCAT-AP
-    - Useful Tools: Postman, Robo 3T (or any other MongoDB visualization tool)
-  - [Repository source code and versioning](https://github.com/Engineering-Research-and-Development/dsp-true-connector)
-  - [Task Management and Monitoring](https://github.com/users/Engineering-Research-and-Development/projects/2)
-  - [CI/CD](https://github.com/Engineering-Research-and-Development/dsp-true-connector/actions)
-  - Deploy management: Not yet, planned to be dockerized and maybe some cloud solution
+TRUE Connector is a **Dataspace Protocol (DSP) compliant connector** for secure, trusted data exchange across distributed dataspace ecosystems. It enables participants to negotiate contracts, transfer data, and manage access policies in a decentralized environment.
 
-Please refer to the [development procedure](doc/development_procedure.md) for more details.
-	
-## Project structure
+## Quick Start
 
-Project is structured as multi-module maven project: 
+- **New to the connector?** Start with the [Getting Started Guide](doc/README.md#getting-started)
+- **Want to develop?** Read the [Development Guide](doc/development-procedure.md)
+- **Ready to deploy?** See [Deployment Options](doc/README.md#deployment--operations)
+- **Questions about security?** Check [Security & Certificates](doc/README.md#security--certificates)
 
-* catalog - module containing logic for processing catalog document
-* negotiation - module containing logic for performing contract negotiation
-* connector - wrapper module for starting application
-* data-transfer - module maintaining transfer of the data
-* tools - various tools and utilities needed across modules
+## Documentation
 
-## GUI tool for DSP TRUEConnector
+All detailed documentation is organized in the [**Documentation Index**](doc/README.md), including:
 
-* [GUI frontend](https://github.com/Engineering-Research-and-Development/dsp-true-connector-ui)
+- **Development**: Setup, testing, configurations, and development workflow
+- **Deployment**: Kubernetes, Terraform, and operations guides
+- **Security**: TLS/OCSP configuration, PKI management, and compliance
+- **API & Integration**: Data transfer, artifact upload, contract negotiation, authorization
+- **Architecture**: Domain models, policy enforcement, catalog structure
+- **Advanced Topics**: S3 configuration, async improvements, performance tuning
+
+## Project Structure
+
+This is a multi-module Maven project:
+
+- **catalog** - Catalog document processing and artifact management
+- **negotiation** - Contract negotiation and policy enforcement
+- **connector** - Main application wrapper and API endpoints
+- **data-transfer** - Data transfer operations and SFTP support
+- **tools** - Shared utilities and filtering
+
+## Key Technologies
+
+- **Runtime**: Java 17, Spring Boot 3.1.2, MongoDB 7.0.12
+- **Protocols**: Dataspace Protocol (DSP), HTTPS, SFTP, DCAT-AP
+- **Frontend**: Angular 19 UI ([separate repository](https://github.com/Engineering-Research-and-Development/dsp-true-connector-ui))
+
+## Development Requirements
+
+- **IDE**: Eclipse STS, IntelliJ, VS Code
+- **Resources**: 16 GB RAM, 5 GB disk, 4+ cores
+- **Dependencies**: Maven 3.9.4+, Docker (for integration tests)
+
+See [Development Guide](doc/development-procedure.md) for detailed setup instructions.
+
+## Links
+
+- [GitHub Repository](https://github.com/Engineering-Research-and-Development/dsp-true-connector)
+- [Project Dashboard](https://github.com/users/Engineering-Research-and-Development/projects/2)
+- [CI/CD Workflows](https://github.com/Engineering-Research-and-Development/dsp-true-connector/actions)
+- [Frontend UI](https://github.com/Engineering-Research-and-Development/dsp-true-connector-ui)

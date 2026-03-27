@@ -1,5 +1,7 @@
 # Development procedures
 
+> **See also:** [Test Containers Setup](test-containers-starting-guide.md) | [Spring Profiles](profiles.md) | [Property Configuration](update-properties.md)
+
 Development for new connector, based on Dataspace Protocol, will be based on Scrum like approach. To do this following
 guidelines are defined and will be required to follow it.
 

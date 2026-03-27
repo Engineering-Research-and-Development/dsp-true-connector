@@ -2,20 +2,20 @@
 
 ## Table of Contents
 
-- [Identity with centralized provider](#centralized)
-- [User/Organization as IdP](#user-idp)
-- [Verifiable credential](#verifiable-credential)
-- [DID *D*ecentralized *ID*entifier](#did)
+- [Identity with centralized provider](#identity-with-centralized-provider)
+- [User/Organization as IdP](#userorganization-as-idp)
+- [Verifiable Credential](#verifiable-credential)
+- [DID (Decentralized Identifier)](#did-decentralized-identifier)
 	- [DID method](#did-method)
 	- [DID Specific String](#did-specific-string)
-	- [Path](#did-path)
-	- [Query](#did-query)
-	- [Fragment](#did-fragment)
+	- [Path](#path)
+	- [Query](#query)
+	- [Fragment](#fragment)
 - [DID documents](#did-documents)
 - [DID methods](#did-methods)
 
 
-## Identity with centralized provider<a name="centralized"></a>
+## Identity with centralized provider
 
 IdentityProvider issues identity when required (Google, Facebook,...)
 Various apps can associate (federate) different accounts to the IdP's; app1 uses Facebook to sign in, app2 uses Google to sign in and so on. In this case, IdP is the owner of the account and when requested from it (Sign with Google/Facebook) they will rent the account to the app/site. We, who are represented by this account are not in control/ownership of the data (we can allow or decline borrowing the account when requested). Trust here is that IdP will not do anything else that presented that we agree to borrow account and only specific data of it.
@@ -29,13 +29,15 @@ Problems:
 - Privacy - IdP can track where our identity is used
 - Data sharing - IdP shares more than allowed?
 
-## User/Organization as IdP <a name="user-idp"></a>
+## User/Organization as IdP
 
 User/organization can issue some claims about self, and send those self attestations to the relying party (R) for verification. Problem here is that RP cannot be sure that those attestations are correct. There should be some issuer that both parties trust, that will issue some credentials (id card, driving license...)
 
 Issuer can create claims, give them to the user/organization/holder, and when needed user will send those claims (in control which claims are presented, all claims or just few) to the verifier (to whom are those claims presented). Verifier should somehow verify those claims **BY** contacting issuer directly.
 
-## [Verifiable credential](https://www.w3.org/TR/vc-overview/) <a name="verifiable-credential"></a>
+## Verifiable Credential
+
+> See the [W3C Verifiable Credentials overview](https://www.w3.org/TR/vc-overview/) for the official specification.
 
 Verifiable credentials (VCs) are digital credentials which follow the relevant World Wide Web Consortium open standards. They can represent information found in physical credentials, such as a passport or license, as well as new things that have no physical equivalent, such as ownership of a bank account. 
 
@@ -53,7 +55,9 @@ We can use *Cryptography* to solve this problem: private key to sign document (h
 
 One of the problems is how verifier can know which public key from issuer to use? In theory, issuer can have multiple public keys, they can also be rotated. To do this, we need to bind issuer with it's public key, need to have some identifier to solve this.
 
-## [DID *D*ecentralized *ID*entifier](https://www.w3.org/TR/did-1.0/) <a name="did"></a>
+## DID (Decentralized Identifier)
+
+> See the [W3C DID specification](https://www.w3.org/TR/did-1.0/) for the official definition.
 
 A decentralized identifier (DID) is a type of globally unique identifier that enables an entity to be identified in a manner that is verifiable, persistent (as long as the DID controller desires), and does not require the use of a centralized registry
 
@@ -68,35 +72,35 @@ DID consists of following parts:
 
 did:{did-method}:{did-specific-string}[ "?" query ] [ "#" fragment ]
 
-### DID method <a name="did-method"></a>
+### DID method
 
 A DID method is defined by a DID method specification, which specifies the precise operations by which DIDs and DID documents are created, resolved, updated, and deactivated.
 
 For simplicity we are assuming that did method is web.
 
-### DID Specific String <a name="did-specific-string"></a>
+### DID Specific String
 
 Part of DID that comes after method's colon (:), in our case it will be host name, where did document can be resolved (dataspace-issuer, connector-a, connector-b and so on).
 
-#### Path <a name="did-path"></a>
+#### Path
 
 did:web:host_name/path
 
-#### Query <a name="did-query"></a>
+#### Query
 
 did:web:host_name?versionId=1
 
-#### Fragment <a name="did-fragment"></a>
+#### Fragment
 
 did:web:host_name#key-1
 
 Fragment use case will be most likely used in DSP usecases, referring to public keys from did document which needs to be used in verification method, in this case key with id: key-1
  
-## [DID documents] <a name="did-documents"></a>
+## [DID documents]
 
 A decentralized identifier resolves (points) to a DID document, a set of data describing the DID subject, including mechanisms, such as cryptographic public keys, that the DID subject or a DID delegate can use to authenticate itself and prove its association with the DID. 
 
-## DID methods <a name="did-methods"></a>
+## DID methods
 
 Just as there are many different types of URIs, all of which conform to the URI standard, there are many different types of DID methods, all of which must conform to the DID standard. Each DID method specification must define:
 
@@ -140,7 +144,7 @@ like following:
 }
 ```
 
-## Possible usecase <a name="usecase"></a>
+## Possible usecase
 
  - Issuer creates did and publish did document (issuer public key) to data registry
  
