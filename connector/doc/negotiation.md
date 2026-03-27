@@ -1,5 +1,7 @@
 # Contract Negotiation
 
+> **See also:** [Data Transfer Operations](transfer.md) | [Policy Enforcement](../../negotiation/doc/policy-enforcement.md) | [Domain Models](../../negotiation/doc/model.md)
+
 ## Scheduling
 
 When Agreement is made, scheduler should be created, or any other time based mechanism, that will notify (send event) then agreement is over, or if agreement is canceled, either from consumer or from provider side. Information about schedulers should be persisted, or when connector is started, they need to be recreated, from still valid contract agreements.

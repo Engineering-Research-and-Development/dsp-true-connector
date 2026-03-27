@@ -2,6 +2,8 @@
 
 Endpoints, where consumer connector can pull data from, should be in form of:
 
+> **See also:** [Data Transfer Flow](../../data-transfer/doc/data-transfer.md) | [Contract Negotiation](negotiation.md) | [User Authorization](users.md)
+
  - *https://provider.connector/data/{consumer.connector.id}/{artifact.id}*
  - *https://provider.connector/data/{consumer.connector.id}/{agreement.id}/{artifact.id}*
 

@@ -1,5 +1,7 @@
 # Security
 
+> **See also:** [PKI Certificate Guide](certificate/pki-certificate-guide.md) | [OCSP Guide](ocsp/ocsp-guide.md)
+
 ## TLS configuration
 
 Connector can operate both in http or httpS mode.
@@ -26,11 +28,11 @@ server.ssl.key-store-password=password
 
 Make sure to update values with correct one, provided keystore files are self signed and should not be used in production.
 
-More information on how to generate keystore and truststore files can be found [here](./certificate/PKI_CERTIFICATE_GUIDE.md).
+More information on how to generate keystore and truststore files can be found [here](./certificate/pki-certificate-guide.md).
 
 ## OCSP
 
-For more information how to verify OCSP certificate and generate new ones, revoke and invalidate, please check following [link.](ocsp/OCSP_GUIDE.md)
+For more information how to verify OCSP certificate and generate new ones, revoke and invalidate, please check following [link.](ocsp/ocsp-guide.md)
 
 Following set of properties will configure OCSP validation for TLS certificate:
 
