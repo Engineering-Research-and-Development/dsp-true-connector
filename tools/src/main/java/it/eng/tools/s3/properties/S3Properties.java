@@ -50,7 +50,7 @@ public class S3Properties {
 
     /**
      * The chunk size in bytes for multipart uploads.
-     * Defaults to 52428800 (50 MB) if not specified.
+     * Defaults to 10485760 (10 MB) if not specified.
      */
-    private int chunkSize = 50 * 1024 * 1024;
+    private int chunkSize = 10 * 1024 * 1024;
 }

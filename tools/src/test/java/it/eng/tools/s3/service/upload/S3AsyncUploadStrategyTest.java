@@ -58,7 +58,7 @@ public class S3AsyncUploadStrategyTest {
 
     @BeforeEach
     void setUp() {
-        lenient().when(s3Properties.getChunkSize()).thenReturn(50 * 1024 * 1024);
+        lenient().when(s3Properties.getChunkSize()).thenReturn(10 * 1024 * 1024);
         when(s3ClientProvider.s3AsyncClient(any(S3ClientRequest.class))).thenReturn(s3AsyncClient);
     }
 
@@ -144,7 +144,7 @@ public class S3AsyncUploadStrategyTest {
     @Test
     @DisplayName("Should handle large file with multiple parts asynchronously")
     void uploadFile_LargeFileMultipleParts() {
-        // Arrange - create data larger than CHUNK_SIZE (50MB)
+        // Arrange - create data larger than CHUNK_SIZE (10MB)
         // For test purposes, we'll use smaller chunks
         byte[] largeData = new byte[100 * 1024]; // 100KB for testing
         InputStream inputStream = new ByteArrayInputStream(largeData);
@@ -288,9 +288,9 @@ public class S3AsyncUploadStrategyTest {
     @Test
     @DisplayName("Should respect semaphore — no more than MAX_PARALLEL_PARTS parts in flight simultaneously")
     void uploadFile_BoundedParallelism_WithSemaphore() throws InterruptedException {
-        // Arrange — 60 MB stream triggers 2 parts (part 1 = 50 MB, part 2 = 10 MB).
+        // Arrange — 15 MB stream triggers 2 parts (part 1 = 10 MB, part 2 = 5 MB).
         // Both fit within MAX_PARALLEL_PARTS=4, so the semaphore must not block either from starting.
-        byte[] data = new byte[60 * 1024 * 1024];
+        byte[] data = new byte[15 * 1024 * 1024];
         InputStream inputStream = new ByteArrayInputStream(data);
 
         when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))

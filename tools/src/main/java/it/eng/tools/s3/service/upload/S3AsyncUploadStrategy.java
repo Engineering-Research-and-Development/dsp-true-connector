@@ -29,7 +29,7 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
 
     /**
      * Maximum number of parts to upload in parallel.
-     * Each in-flight part holds one {@code s3.chunkSize} (default 50 MB) buffer.
+     * Each in-flight part holds one {@code s3.chunkSize} (default 10 MB) buffer.
      * Capping at 4 limits the async strategy's peak RAM to ~200 MB per transfer.
      */
     private static final int MAX_PARALLEL_PARTS = 4;

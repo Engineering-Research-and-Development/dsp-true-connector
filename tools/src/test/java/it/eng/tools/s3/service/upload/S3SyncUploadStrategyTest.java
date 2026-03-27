@@ -55,7 +55,7 @@ public class S3SyncUploadStrategyTest {
 
     @BeforeEach
     void setUp() {
-        lenient().when(s3Properties.getChunkSize()).thenReturn(50 * 1024 * 1024);
+        lenient().when(s3Properties.getChunkSize()).thenReturn(10 * 1024 * 1024);
         when(s3ClientProvider.s3Client(any(S3ClientRequest.class))).thenReturn(s3Client);
     }
 
@@ -134,7 +134,7 @@ public class S3SyncUploadStrategyTest {
     @Test
     @DisplayName("Should handle large file with multiple parts synchronously")
     void uploadFile_LargeFileMultipleParts() {
-        // Arrange - create data larger than CHUNK_SIZE (50MB)
+        // Arrange - create data larger than CHUNK_SIZE (10MB)
         // For test purposes, we'll use smaller chunks
         byte[] largeData = new byte[100 * 1024]; // 100KB for testing
         InputStream inputStream = new ByteArrayInputStream(largeData);
