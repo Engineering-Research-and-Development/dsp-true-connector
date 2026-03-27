@@ -7,9 +7,11 @@ import org.springframework.boot.ssl.SslBundles;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.http.SdkHttpClient;
+import software.amazon.awssdk.http.SdkHttpConfigurationOption;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
-import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
+import software.amazon.awssdk.http.crt.AwsCrtAsyncHttpClient;
+import software.amazon.awssdk.utils.AttributeMap;
 
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
@@ -79,7 +81,9 @@ public class S3HttpClientFactory {
     }
 
     /**
-     * Creates a Netty HTTP client bean for asynchronous S3 operations.
+     * Creates an AWS CRT HTTP client bean for asynchronous S3 operations.
+     * Replaces the previous Netty-based client which rejected percent-encoded characters
+     * (e.g. %3A for ':') in URI paths when Netty >= 4.2.x strict validation is active.
      * Returns a secure client if SSL is enabled, or an insecure client otherwise.
      *
      * @return SdkAsyncHttpClient configured based on SSL settings
@@ -87,7 +91,7 @@ public class S3HttpClientFactory {
     @Bean
     public SdkAsyncHttpClient sdkAsyncHttpClient() {
         if (sslEnabled) {
-            log.info("Creating secure Netty HTTP client for S3AsyncClient with SSL bundle: {}", SSL_BUNDLE_NAME);
+            log.info("Creating secure AWS CRT HTTP client for S3AsyncClient with SSL bundle: {}", SSL_BUNDLE_NAME);
             try {
                 var bundle = sslBundles.getBundle(SSL_BUNDLE_NAME);
                 var keyManagers = bundle.getManagers().getKeyManagerFactory().getKeyManagers();
@@ -99,17 +103,18 @@ public class S3HttpClientFactory {
                 // Log certificate details from truststore
                 logTrustManagerCertificates(trustManagers);
 
-                return NettyNioAsyncHttpClient.builder()
-                        .tlsKeyManagersProvider(() -> keyManagers)
-                        .tlsTrustManagersProvider(() -> trustManagers)
-                        .build();
+                return AwsCrtAsyncHttpClient.builder()
+                        .buildWithDefaults(AttributeMap.builder()
+                                .put(SdkHttpConfigurationOption.TLS_KEY_MANAGERS_PROVIDER, () -> keyManagers)
+                                .put(SdkHttpConfigurationOption.TLS_TRUST_MANAGERS_PROVIDER, () -> trustManagers)
+                                .build());
             } catch (Exception e) {
-                log.error("Failed to create secure Netty HTTP client", e);
+                log.error("Failed to create secure AWS CRT HTTP client", e);
                 throw e;
             }
         } else {
-            log.warn("Creating INSECURE Netty HTTP client for S3AsyncClient - SSL is disabled");
-            return createInsecureNettyHttpClient();
+            log.warn("Creating INSECURE AWS CRT HTTP client for S3AsyncClient - SSL is disabled");
+            return createInsecureCrtHttpClient();
         }
     }
 
@@ -164,18 +169,19 @@ public class S3HttpClientFactory {
     }
 
     /**
-     * Creates an insecure Netty HTTP client that accepts all certificates.
+     * Creates an insecure AWS CRT HTTP client that accepts all certificates.
      * Should only be used when SSL is disabled (development/testing).
      * @return Insecure SdkAsyncHttpClient
      */
-    private SdkAsyncHttpClient createInsecureNettyHttpClient() {
+    private SdkAsyncHttpClient createInsecureCrtHttpClient() {
         try {
-            return NettyNioAsyncHttpClient.builder()
-                    .tlsTrustManagersProvider(this::getTrustAllManagers)
-                    .build();
+            return AwsCrtAsyncHttpClient.builder()
+                    .buildWithDefaults(AttributeMap.builder()
+                            .put(SdkHttpConfigurationOption.TRUST_ALL_CERTIFICATES, Boolean.TRUE)
+                            .build());
         } catch (Exception e) {
-            log.error("Failed to create insecure Netty HTTP client", e);
-            throw new RuntimeException("Failed to create insecure Netty HTTP client", e);
+            log.error("Failed to create insecure AWS CRT HTTP client", e);
+            throw new RuntimeException("Failed to create insecure AWS CRT HTTP client", e);
         }
     }
 
@@ -202,4 +208,3 @@ public class S3HttpClientFactory {
         };
     }
 }
-

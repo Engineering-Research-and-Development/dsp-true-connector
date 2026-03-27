@@ -1,5 +1,6 @@
---
-applyTo: "**/*Test.java"
+---
+description: 'Guidelines for creating and configuring new JUnit 5 tests.'
+applyTo: '**/*Test.java, **/*IT.java, **/*TestE2E.java'
 ---
 
 # Instructions for Creating New JUnit 5 Tests
@@ -11,6 +12,11 @@ maintainability, and high code quality.
 
 - Name the test class `<ClassUnderTest>Test.java` and place it in the corresponding test package.
 - Use JUnit 5 (`org.junit.jupiter`), not JUnit 4.
+- Don't use fully qualified names in code; use imports instead.
+- The order of class members should be: static fields, instance fields, constructors, public methods, protected methods,
+    package-private methods, private methods. This promotes readability and consistency across the codebase.
+- Use Java model classes where possible instead of raw strings or maps for data structures to improve readability and maintainability; use the concrete types instead of var.
+
 
 ## 2. Annotations and Setup
 
@@ -53,11 +59,14 @@ maintainability, and high code quality.
 - Keep tests independent and repeatable.
 - Use descriptive method names and display names.
 - Clean up resources if needed (use `@AfterEach` or `@AfterAll`).
+- Always use Java model classes where possible instead of raw strings or maps for test data.
 
 ## 9. Tools
 
 - Use JaCoCo or a similar tool to verify code and branch coverage.
 - Review coverage reports to ensure all branches and lines are tested.
+- Junit test classes (**/*Test.java) are covered by maven surefire plugin, which generates reports in `target/surefire-reports` directory.
+- For integration tests (**/*IT.java and **/*TestE2E.java), use the maven failsafe plugin, which generates reports in `target/failsafe-reports` directory.
 
 ## 10. Execution
 

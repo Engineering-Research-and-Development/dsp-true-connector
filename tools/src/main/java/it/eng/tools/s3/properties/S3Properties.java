@@ -1,9 +1,8 @@
 package it.eng.tools.s3.properties;
 
+import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
-
-import lombok.Data;
 
 @Data
 @Component
@@ -48,4 +47,10 @@ public class S3Properties {
      * Defaults to SYNC if not specified.
      */
     private String uploadMode = "SYNC";
+
+    /**
+     * The chunk size in bytes for multipart uploads.
+     * Defaults to 10485760 (10 MB) if not specified.
+     */
+    private int chunkSize = 10 * 1024 * 1024;
 }

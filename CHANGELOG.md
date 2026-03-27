@@ -2,6 +2,42 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.9-SNAPSHOT] - 27.03.2026.
+
+### Added
+- Integration and unit tests for `TemporaryBucketUserService` covering bucket creation, user credential lifecycle, and policy attachment.
+- Unit tests (`InitialDataLoaderTest`) and integration tests (`InitialDataLoaderIT`) for `InitialDataLoader`, covering seed data loading, duplicate skipping, missing-file graceful skip, MongoDB/S3 failure resilience, and `seedDataLoaded` flag tracking.
+
+### Fixed
+- `downloadData()` endpoint now correctly returns HTTP 400 when the transfer process is not in `STARTED` state, was already downloaded, or a download is already in progress. Previously, the async refactor caused all validation failures to be silently swallowed and always return HTTP 202.
+- Resolved 11 bugs identified in a deep-scan audit of `DataTransferAPIService` and related classes:
+  - Temporary IAM user leak on `requestTransfer()` failure — `deleteTemporaryUser()` is now always called in a `finally` block.
+  - Blocking `.join()` removed from `DataTransferAPIController.downloadData()`; replaced with fire-and-forget `+` `.exceptionally()` logging; controller now always returns HTTP 202 Accepted for the async download path.
+  - `terminateTransfer()` — temporary IAM user was not cleaned up on the success path; `deleteTemporaryUser()` now called.
+  - Audit event calls used `Map.of()` which throws `NullPointerException` on null `consumerPid`/`providerPid`; replaced with a private `auditMap()` helper that silently skips null entries.
+  - `DataTransferAPIController.getTransferProcesses()` — array index out of bounds on `sort[1]` when only one sort field is provided; added length guard.
+  - `policyCheck()` — replaced bare `assert` on response with an explicit null check and meaningful `DataTransferAPIException`.
+  - State-transition methods (`startTransfer`, `completeTransfer`, `terminateTransfer`, `suspendTransfer`) — added null guard on callback address before sending protocol messages.
+  - `startTransfer()` — `findArtifact()` was called unconditionally at method start; moved inside the `ROLE_PROVIDER + HTTP_PULL` block where it is actually needed.
+  - `HttpPullTransferStrategy` and `HttpPushTransferStrategy` — blocking `.join()` and `HttpURLConnection` leak fixed using `AtomicReference` + `thenCompose` pattern; connection is now disconnected via `whenComplete` on all paths.
+  - `S3AsyncUploadStrategy.uploadParts()` — blocking `.join()` on executor thread replaced with `runAsync` + `thenCompose(allOf(...).thenApply(...))`.
+- Applied 7 additional code-quality fixes from the same deep-scan:
+  - Corrected `suspendTransfer` Javadoc (incorrectly stated `COMPLETED` instead of `SUSPENDED`).
+  - `suspendTransfer` and `terminateTransfer` audit events now publish the post-transition object instead of the stale pre-transition reference.
+  - `viewData()` — added `isDownloaded` pre-check; presigned URL is only generated when the process is both `COMPLETED` and downloaded.
+  - `viewData()` exception message: added missing separator and null guard on `getLocalizedMessage()`.
+  - `DataTransferAPIService` — `ObjectMapper` is now injected as a Spring-managed bean via constructor instead of being instantiated as a field.
+  - `S3UploadStrategyFactory.getStrategy()` — added null-check on `uploadMode` property.
+  - `S3TransferStrategy` — marked `@Deprecated` with explanatory Javadoc; removed unused `s3ClientService` field.
+- `InitialDataLoader` no longer aborts application startup when the seed data JSON file is missing from the classpath; the loader now logs an info message and returns cleanly. Any I/O or parse error during loading is also caught and logged without re-throwing.
+
+### Changed
+- Using multithread plugin configuration for maven-surefire-plugin and maven-failsafe-plugin to speed up test execution.
+- Using temporary user for S3 upload in HTTP-PUSH transfer strategy, with policy scoped to single object key and cleanup after transfer completion.
+- S3 multipart upload default chunk size reduced from 50 MB to 10 MB (10,485,760 bytes); updated in `S3Properties`, all `application*.properties` files (ci, connector, terraform), and upload strategy unit tests.
+- `InitialDataLoader.loadMockData()` now skips S3 upload entirely when no new MongoDB seed documents were inserted (missing file, all duplicates, or Mongo failure); `seedDataLoaded` flag tracks this across the `CommandLineRunner` → `ApplicationReadyEvent` lifecycle.
+- `AbstractDataTransferService` constructor extended with `DataTransferProperties`; cascaded to `DataTransferService` and `TCKDataTransferService`. Automatic transfer triggers wired in: Provider fires `AutoTransferStartEvent` after storing `REQUESTED`; Consumer fires `AutoTransferDownloadEvent` after storing `STARTED` (HTTP_PULL only). `retryCount` is now preserved across the `REQUESTED → STARTED` state transition.
+
 ## [0.6.8-SNAPSHOT] - 23.03.2026.
 
 ### Added

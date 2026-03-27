@@ -30,6 +30,7 @@ import java.util.Map;
 /**
  * InitialDataLoader is responsible for loading initial data into MongoDB and uploading mock data to S3.
  * It uses CommandLineRunner to load data when the application starts and ApplicationReadyEvent to upload data to S3.
+ * S3 mock data is only uploaded when at least one new document was actually inserted into MongoDB during seed loading.
  */
 @Slf4j
 @Configuration
@@ -41,6 +42,14 @@ public class InitialDataLoader {
     private final S3BucketProvisionService s3BucketProvisionService;
     private final S3Properties s3Properties;
     private final AuditEventPublisher publisher;
+
+    /**
+     * Tracks whether at least one new document was inserted into MongoDB during seed loading.
+     * Set to {@code true} only inside {@link #loadInitialData()} when {@code newDocuments > 0}
+     * for any collection; checked in {@link #loadMockData()} to skip the S3 upload when no
+     * fresh seed data was loaded.
+     */
+    private volatile boolean seedDataLoaded = false;
 
     public InitialDataLoader(MongoTemplate mongoTemplate, Environment environment, S3ClientService s3ClientService,
                              S3BucketProvisionService s3BucketProvisionService, S3Properties s3Properties,
@@ -56,14 +65,15 @@ public class InitialDataLoader {
     /**
      * Loads initial data into MongoDB when the application starts.
      * This method is triggered by the CommandLineRunner.
+     * If no data file is found on the classpath the loader skips silently so that
+     * the application can start without any seed data.
      *
      * @return a CommandLineRunner that loads initial data
      */
     @Bean
-    CommandLineRunner loadInitialData() {
+    public CommandLineRunner loadInitialData() {
         return args -> {
-            ObjectMapper mapper = new ObjectMapper();
-            String filename = null;
+            String filename;
             String[] activeProfiles = environment.getActiveProfiles();
             if (activeProfiles.length == 0) {
                 log.debug("No active profiles set, using initial_data.json for populating Mongo");
@@ -73,7 +83,15 @@ public class InitialDataLoader {
                 filename = "initial_data-" + activeProfile + ".json";
                 log.debug("Active profile set {}, using {} for populating Mongo", activeProfile, filename);
             }
-            try (InputStream inputStream = new ClassPathResource(filename).getInputStream()) {
+
+            ClassPathResource resource = new ClassPathResource(filename);
+            if (!resource.exists()) {
+                log.info("No initial data file '{}' found on classpath — skipping initial data load.", filename);
+                return;
+            }
+
+            ObjectMapper mapper = new ObjectMapper();
+            try (InputStream inputStream = resource.getInputStream()) {
                 JsonNode rootNode = mapper.readTree(inputStream);
 
                 rootNode.fields().forEachRemaining(entry -> {
@@ -104,13 +122,17 @@ public class InitialDataLoader {
                         }
                     }
 
+                    if (newDocuments > 0) {
+                        // At least one collection had new data — mark seed as loaded so S3 upload is triggered.
+                        seedDataLoaded = true;
+                    }
                     log.info("Collection '{}': {} new documents loaded, {} documents skipped (already exist).",
                             collectionName, newDocuments, skippedDocuments);
                 });
 
             } catch (Exception e) {
-                log.error("Error loading initial data: {}", e.getMessage());
-                throw new RuntimeException("Failed to load initial data", e);
+                // Do not re-throw — initial data loading failure must not prevent application startup.
+                log.error("Error loading initial data from '{}': {}", filename, e.getMessage());
             }
         };
     }
@@ -118,6 +140,8 @@ public class InitialDataLoader {
     /**
      * Loads mock data into S3 when the application is ready.
      * This method is triggered by the ApplicationReadyEvent.
+     * S3 upload is only performed when {@link #loadInitialData()} inserted at least one new document
+     * into MongoDB; if no seed data was loaded the upload is skipped entirely.
      */
     @EventListener(ApplicationReadyEvent.class)
     public void loadMockData() {
@@ -125,6 +149,13 @@ public class InitialDataLoader {
                 .description("Application started")
                 .eventType(AuditEventType.APPLICATION_START)
                 .build());
+
+        if (!seedDataLoaded) {
+            // No new MongoDB seed documents were inserted — S3 mock data was either already uploaded
+            // in a previous run or there is no seed file, so there is nothing to upload.
+            log.info("No seed data was loaded into MongoDB — skipping S3 mock data upload.");
+            return;
+        }
         log.info("Uploading mock data to S3...");
 
         try {
@@ -168,5 +199,15 @@ public class InitialDataLoader {
                 .description("Application stopped")
                 .eventType(AuditEventType.APPLICATION_STOP)
                 .build());
+    }
+
+    /**
+     * Returns {@code true} if at least one new document was inserted into MongoDB during seed loading.
+     * Visible for testing.
+     *
+     * @return whether seed data was successfully loaded
+     */
+    public boolean isSeedDataLoaded() {
+        return seedDataLoaded;
     }
 }

@@ -8,7 +8,9 @@ import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.event.ApplicationEventMulticaster;
 import org.springframework.context.event.SimpleApplicationEventMulticaster;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -50,6 +52,15 @@ class AsynchronousSpringEventsConfigTest {
 
         assertNotNull(scheduler);
         assertInstanceOf(ThreadPoolTaskScheduler.class, scheduler);
+    }
+
+    @Test
+    @DisplayName("Should create a TaskExecutor named taskExecutor to resolve @Async ambiguity")
+    void testTaskExecutor() {
+        TaskExecutor executor = config.taskExecutor();
+
+        assertNotNull(executor);
+        assertInstanceOf(ThreadPoolTaskExecutor.class, executor);
     }
 
     @Test

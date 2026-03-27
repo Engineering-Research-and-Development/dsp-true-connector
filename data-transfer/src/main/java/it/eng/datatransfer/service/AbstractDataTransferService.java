@@ -18,6 +18,7 @@ import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.service.AuditEventPublisher;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -34,19 +35,23 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
     private final AuditEventPublisher publisher;
     private final OkHttpRestClient okHttpRestClient;
 
+    // Consider this for removal
     private final TransferRequestMessageRepository transferRequestMessageRepository;
     private final DataTransferProperties transferProperties;
+    private final TemporaryBucketUserService temporaryBucketUserService;
 
     protected AbstractDataTransferService(TransferProcessRepository transferProcessRepository,
                                           AuditEventPublisher publisher,
                                           OkHttpRestClient okHttpRestClient,
                                           TransferRequestMessageRepository transferRequestMessageRepository,
-                                          DataTransferProperties transferProperties) {
+                                          DataTransferProperties transferProperties,
+                                          TemporaryBucketUserService temporaryBucketUserService) {
         this.transferProcessRepository = transferProcessRepository;
         this.publisher = publisher;
         this.okHttpRestClient = okHttpRestClient;
         this.transferRequestMessageRepository = transferRequestMessageRepository;
         this.transferProperties = transferProperties;
+        this.temporaryBucketUserService = temporaryBucketUserService;
     }
 
     /**
@@ -250,16 +255,10 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
         // Automatic download trigger
         if (transferProcessStarted.getRole().equals(IConstants.ROLE_CONSUMER)
                 && transferProperties.isAutomaticTransfer()
-                && isHttpPullFormat(transferProcessStarted.getFormat())) {
+                && DataTransferFormat.HTTP_PULL.format().equals(transferProcessStarted.getFormat())) {
             publisher.publishEvent(new AutoTransferDownloadEvent(transferProcessStarted.getId()));
         }
         return transferProcessStarted;
-    }
-
-
-    // Helper to check HTTP_PULL format
-    private boolean isHttpPullFormat(String format) {
-        return it.eng.datatransfer.model.DataTransferFormat.HTTP_PULL.format().equals(format);
     }
 
     /**
@@ -300,6 +299,12 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .build();
 
         saveTransferProcess(transferProcessCompleted);
+        // Clean up temporary S3 user created for HTTP-PUSH (best-effort)
+        try {
+            temporaryBucketUserService.deleteTemporaryUser(transferProcessStarted.getId());
+        } catch (Exception e) {
+            log.warn("Could not clean up temporary bucket user for transfer process {}: {}", transferProcessStarted.getId(), e.getMessage());
+        }
         publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()
                 .oldTransferProcess(transferProcessStarted)
                 .newTransferProcess(transferProcessCompleted)

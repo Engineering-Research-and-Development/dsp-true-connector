@@ -11,10 +11,6 @@ import java.util.concurrent.CompletableFuture;
  */
 public interface S3UploadStrategy {
 
-    /**
-     * Chunk size for multipart uploads (50MB).
-     */
-    int CHUNK_SIZE = 50 * 1024 * 1024; // 50MB chunks
 
     /**
      * Uploads a file to S3 using the specific strategy implementation.
