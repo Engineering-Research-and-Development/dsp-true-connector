@@ -56,14 +56,15 @@ public class InitialDataLoader {
     /**
      * Loads initial data into MongoDB when the application starts.
      * This method is triggered by the CommandLineRunner.
+     * If no data file is found on the classpath the loader skips silently so that
+     * the application can start without any seed data.
      *
      * @return a CommandLineRunner that loads initial data
      */
     @Bean
-    CommandLineRunner loadInitialData() {
+    public CommandLineRunner loadInitialData() {
         return args -> {
-            ObjectMapper mapper = new ObjectMapper();
-            String filename = null;
+            String filename;
             String[] activeProfiles = environment.getActiveProfiles();
             if (activeProfiles.length == 0) {
                 log.debug("No active profiles set, using initial_data.json for populating Mongo");
@@ -73,7 +74,15 @@ public class InitialDataLoader {
                 filename = "initial_data-" + activeProfile + ".json";
                 log.debug("Active profile set {}, using {} for populating Mongo", activeProfile, filename);
             }
-            try (InputStream inputStream = new ClassPathResource(filename).getInputStream()) {
+
+            ClassPathResource resource = new ClassPathResource(filename);
+            if (!resource.exists()) {
+                log.info("No initial data file '{}' found on classpath — skipping initial data load.", filename);
+                return;
+            }
+
+            ObjectMapper mapper = new ObjectMapper();
+            try (InputStream inputStream = resource.getInputStream()) {
                 JsonNode rootNode = mapper.readTree(inputStream);
 
                 rootNode.fields().forEachRemaining(entry -> {
@@ -109,8 +118,8 @@ public class InitialDataLoader {
                 });
 
             } catch (Exception e) {
-                log.error("Error loading initial data: {}", e.getMessage());
-                throw new RuntimeException("Failed to load initial data", e);
+                // Do not re-throw — initial data loading failure must not prevent application startup.
+                log.error("Error loading initial data from '{}': {}", filename, e.getMessage());
             }
         };
     }
