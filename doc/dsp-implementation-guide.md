@@ -558,7 +558,7 @@ When starting, the provider generates a presigned URL (for HTTP-PULL) and sends 
 For `HttpData-PUSH` transfers, the consumer's S3 credentials must be registered in the consumer connector's bucket credentials store. The management API uses these automatically when initiating the transfer. The DataAddress sent to the provider contains:
 
 ```json
-"dataAddress": {
+"dataAddress" : {
   "endpointProperties": [
     { "name": "bucketName", "value": "consumer-bucket" },
     { "name": "region",     "value": "us-east-1" },
