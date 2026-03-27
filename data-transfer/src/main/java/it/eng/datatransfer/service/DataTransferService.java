@@ -22,11 +22,9 @@ public class DataTransferService extends AbstractDataTransferService {
                                TransferRequestMessageRepository transferRequestMessageRepository,
                                AuditEventPublisher publisher,
                                OkHttpRestClient okHttpRestClient,
-                               DataTransferProperties transferProperties) {
-        super(transferProcessRepository, publisher, okHttpRestClient, transferRequestMessageRepository, transferProperties);
-                               OkHttpRestClient okHttpRestClient,
+                               DataTransferProperties transferProperties,
                                TemporaryBucketUserService temporaryBucketUserService) {
-        super(transferProcessRepository, publisher, okHttpRestClient, transferRequestMessageRepository, temporaryBucketUserService);
+        super(transferProcessRepository, publisher, okHttpRestClient, transferRequestMessageRepository, transferProperties, temporaryBucketUserService);
     }
 
     /**

@@ -44,8 +44,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                                           AuditEventPublisher publisher,
                                           OkHttpRestClient okHttpRestClient,
                                           TransferRequestMessageRepository transferRequestMessageRepository,
-                                          DataTransferProperties transferProperties) {
-                                          TransferRequestMessageRepository transferRequestMessageRepository,
+                                          DataTransferProperties transferProperties,
                                           TemporaryBucketUserService temporaryBucketUserService) {
         this.transferProcessRepository = transferProcessRepository;
         this.publisher = publisher;
@@ -165,6 +164,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .dataAddress(transferRequestMessage.getDataAddress())
                 .state(TransferState.REQUESTED)
                 .role(IConstants.ROLE_PROVIDER)
+                .retryCount(transferProcessInitialized.getRetryCount())
                 .datasetId(transferProcessInitialized.getDatasetId())
                 .created(transferProcessInitialized.getCreated())
                 .createdBy(transferProcessInitialized.getCreatedBy())
@@ -180,6 +180,11 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                         "consumerPid", transferProcessRequested.getConsumerPid(),
                         "providerPid", transferProcessRequested.getProviderPid()));
         log.info("Requested TransferProcess created");
+        // Automatic transfer trigger
+        if (transferProcessRequested.getRole().equals(IConstants.ROLE_PROVIDER)
+                && transferProperties.isAutomaticTransfer()) {
+            publisher.publishEvent(new AutoTransferStartEvent(transferProcessRequested.getId()));
+        }
         return transferProcessRequested;
     }
 
@@ -227,6 +232,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .state(TransferState.STARTED)
                 .role(transferProcessRequested.getRole())
                 .datasetId(transferProcessRequested.getDatasetId())
+                .retryCount(transferProcessRequested.getRetryCount())
                 .created(transferProcessRequested.getCreated())
                 .createdBy(transferProcessRequested.getCreatedBy())
                 .modified(transferProcessRequested.getModified())
@@ -246,6 +252,12 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                         "transferProcess", transferProcessStarted,
                         "consumerPid", transferProcessStarted.getConsumerPid(),
                         "providerPid", transferProcessStarted.getProviderPid()));
+        // Automatic download trigger
+        if (transferProcessStarted.getRole().equals(IConstants.ROLE_CONSUMER)
+                && transferProperties.isAutomaticTransfer()
+                && DataTransferFormat.HTTP_PULL.format().equals(transferProcessStarted.getFormat())) {
+            publisher.publishEvent(new AutoTransferDownloadEvent(transferProcessStarted.getId()));
+        }
         return transferProcessStarted;
     }
 
