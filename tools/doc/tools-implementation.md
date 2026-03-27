@@ -63,7 +63,7 @@ The response is the full list of all properties after the update. The change is 
 | Key | Values | Description |
 |---|---|---|
 | `application.automatic.negotiation` | `true` / `false` | Automatically accept incoming contract negotiation offers |
-| `application.automatic.datatransfer` | `true` / `false` | Automatically start data transfer after negotiation completes |
+| `application.automatic.transfer` | `true` / `false` | Automatically start data transfer after negotiation completes |
 | `application.protocol.authentication.enabled` | `true` / `false` | Enable authentication for DSP protocol endpoints |
 | `application.encryption.key` | string | Key used for encrypting sensitive fields (e.g. S3 secret keys) in MongoDB |
 | `application.ocsp.validation.enabled` | `true` / `false` | Enable OCSP certificate revocation checking |
@@ -367,7 +367,7 @@ curl --location --request PUT 'http://localhost:8080/api/v1/properties/' \
       "type": "ApplicationProperty"
     },
     {
-      "key": "application.automatic.datatransfer",
+      "key": "application.automatic.transfer",
       "value": "true",
       "mandatory": false,
       "type": "ApplicationProperty"

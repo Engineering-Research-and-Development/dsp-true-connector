@@ -173,7 +173,7 @@ curl -X PUT http://localhost:8080/api/v1/properties/ \
 | Property | Default | Description |
 |----------|---------|-------------|
 | `application.automatic.negotiation` | `false` | Auto-accept all incoming negotiation requests |
-| `application.automatic.datatransfer` | `false` | Auto-start data transfer after agreement finalized |
+| `application.automatic.transfer` | `false` | Auto-start data transfer after agreement finalized |
 | `application.protocol.authentication.enabled` | `true` | Enable JWT auth for DSP protocol endpoints |
 | `application.encryption.key` | — | Key for encrypting sensitive fields (e.g. S3 secret keys) in MongoDB |
 | `application.ocsp.validation.enabled` | `false` | Enable OCSP certificate revocation checking |
@@ -234,7 +234,7 @@ All connector actions are recorded as audit events in MongoDB. The audit event l
 **View recent audit events:**
 
 ```bash
-curl http://localhost:8080/api/v1/audit-events \
+curl http://localhost:8080/api/v1/audit \
   -u admin@mail.com:password
 ```
 

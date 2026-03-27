@@ -138,7 +138,7 @@ curl -X PUT http://localhost:8080/api/v1/properties/ \
 curl -X PUT http://localhost:8080/api/v1/properties/ \
   -H "Content-Type: application/json" \
   -u admin@mail.com:password \
-  -d '[{"key": "application.automatic.datatransfer", "value": "true", "mandatory": false, "type": "ApplicationProperty"}]'
+  -d '[{"key": "application.automatic.transfer", "value": "true", "mandatory": false, "type": "ApplicationProperty"}]'
 ```
 
 > **See also:** [Tools Implementation Guide](../tools/doc/tools-implementation.md) for all configurable properties.
@@ -148,7 +148,7 @@ curl -X PUT http://localhost:8080/api/v1/properties/ \
 | Property | Default | Effect |
 |----------|---------|--------|
 | `application.automatic.negotiation` | `false` | Auto-accept all incoming negotiation requests |
-| `application.automatic.datatransfer` | `false` | Auto-start data transfer after agreement is finalized |
+| `application.automatic.transfer` | `false` | Auto-start data transfer after agreement is finalized |
 | `application.protocol.authentication.enabled` | `true` | Require JWT token on DSP protocol endpoints |
 
 ---

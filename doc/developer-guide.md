@@ -28,7 +28,7 @@ All five modules are loaded via a single `@ComponentScan` in the `connector` mod
 
 | Technology | Role |
 |-----------|------|
-| Java 21 | Application language |
+| Java 17 | Application language |
 | Spring Boot | Application framework, dependency injection, web layer |
 | MongoDB | Persistence for all domain objects and audit events |
 | Spring Security | Authentication and authorization |
@@ -218,7 +218,7 @@ Key property keys relevant to development:
 | Key | Default | Description |
 |-----|---------|-------------|
 | `application.automatic.negotiation` | `false` | Auto-accept negotiations |
-| `application.automatic.datatransfer` | `false` | Auto-start transfers |
+| `application.automatic.transfer` | `false` | Auto-start transfers |
 | `application.protocol.authentication.enabled` | `true` | JWT auth on protocol endpoints |
 | `server.ssl.enabled` | `true` | Enable HTTPS (set `false` for local HTTP) |
 

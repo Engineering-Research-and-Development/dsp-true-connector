@@ -542,7 +542,7 @@ curl -X POST http://localhost:8080/api/v1/transfers \
 
 **Option A — Automatic transfer (enabled by property)**
 
-Set `application.automatic.datatransfer=true` and the provider automatically sends `TransferStartMessage` after receiving the request.
+Set `application.automatic.transfer=true` and the provider automatically sends `TransferStartMessage` after receiving the request.
 
 **Option B — Manual start**
 
@@ -624,7 +624,7 @@ curl -X PUT http://localhost:8090/api/v1/properties/ \
   -H "Content-Type: application/json" \
   -u admin@mail.com:password \
   -d '[{
-    "key": "application.automatic.datatransfer",
+    "key": "application.automatic.transfer",
     "value": "true",
     "mandatory": false,
     "type": "ApplicationProperty"
