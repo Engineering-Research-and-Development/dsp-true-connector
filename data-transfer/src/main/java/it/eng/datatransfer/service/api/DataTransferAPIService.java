@@ -591,21 +591,21 @@ public class DataTransferAPIService {
 
         if (!transferProcess.getState().equals(TransferState.STARTED)) {
             log.error("Download aborted, Transfer Process is not in STARTED state");
-            return CompletableFuture.failedFuture(
-                    new DataTransferAPIException("Download aborted, Transfer Process is not in STARTED state"));
+            // Throw synchronously so the exception propagates to the HTTP layer and returns 400.
+            throw new DataTransferAPIException("Download aborted, Transfer Process is not in STARTED state");
         }
 
         if (transferProcess.isDownloaded()) {
             log.error("Download aborted, data for Transfer Process {} has already been downloaded", transferProcessId);
-            return CompletableFuture.failedFuture(
-                    new DataTransferAPIException("Download aborted, data for Transfer Process " + transferProcessId + " has already been downloaded"));
+            // Throw synchronously so the exception propagates to the HTTP layer and returns 400.
+            throw new DataTransferAPIException("Download aborted, data for Transfer Process " + transferProcessId + " has already been downloaded");
         }
 
         CompletableFuture<Void> inFlight = new CompletableFuture<>();
         if (activeTransfers.putIfAbsent(transferProcessId, inFlight) != null) {
             log.error("Download aborted, Transfer Process {} is already in progress", transferProcessId);
-            return CompletableFuture.failedFuture(
-                    new DataTransferAPIException("Download aborted, Transfer Process " + transferProcessId + " is already in progress"));
+            // Throw synchronously so the exception propagates to the HTTP layer and returns 400.
+            throw new DataTransferAPIException("Download aborted, Transfer Process " + transferProcessId + " is already in progress");
         }
 
         try {

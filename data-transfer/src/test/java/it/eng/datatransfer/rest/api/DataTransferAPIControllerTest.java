@@ -354,12 +354,11 @@ class DataTransferAPIControllerTest {
     public void downloadData_fail() throws IllegalStateException {
         DataTransferAPIException exception = new DataTransferAPIException("message");
 
-        when(apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
-                .thenReturn(CompletableFuture.failedFuture(exception));
+        doThrow(exception).when(apiService).downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
 
-        // Controller no longer calls .join() — failures are handled asynchronously via .exceptionally()
-        // so the endpoint always returns 202 Accepted without propagating the exception to the caller
-        assertDoesNotThrow(() -> controller.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+        // Synchronous validation failures propagate directly to the HTTP layer → 400.
+        assertThrows(DataTransferAPIException.class,
+                () -> controller.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
     }
 
     @Test

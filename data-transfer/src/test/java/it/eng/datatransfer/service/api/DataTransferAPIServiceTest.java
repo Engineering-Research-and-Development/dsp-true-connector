@@ -605,11 +605,8 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.findById(input.getId()))
                 .thenReturn(Optional.of(input));
 
-        CompletableFuture<Void> future = apiService.downloadData(input.getId());
-
-        assertTrue(future.isCompletedExceptionally());
-        ExecutionException ex = assertThrows(ExecutionException.class, future::get);
-        assertInstanceOf(DataTransferAPIException.class, ex.getCause());
+        // Validation throws synchronously so the exception propagates directly to the caller.
+        assertThrows(DataTransferAPIException.class, () -> apiService.downloadData(input.getId()));
     }
 
     @Test
@@ -618,12 +615,10 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED));
 
-        CompletableFuture<Void> future = apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId());
-
-        assertTrue(future.isCompletedExceptionally());
-        ExecutionException ex = assertThrows(ExecutionException.class, future::get);
-        assertInstanceOf(DataTransferAPIException.class, ex.getCause());
-        assertTrue(ex.getCause().getMessage().contains("has already been downloaded"));
+        // Validation throws synchronously so the exception propagates directly to the caller.
+        DataTransferAPIException ex = assertThrows(DataTransferAPIException.class,
+                () -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId()));
+        assertTrue(ex.getMessage().contains("has already been downloaded"));
     }
 
     @Test
@@ -640,12 +635,10 @@ class DataTransferAPIServiceTest {
         CompletableFuture<Void> firstCall = apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
         assertFalse(firstCall.isDone());
 
-        // Second call for the same ID — must be rejected immediately
-        CompletableFuture<Void> secondCall = apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
-        assertTrue(secondCall.isCompletedExceptionally());
-        ExecutionException ex = assertThrows(ExecutionException.class, secondCall::get);
-        assertInstanceOf(DataTransferAPIException.class, ex.getCause());
-        assertTrue(ex.getCause().getMessage().contains("already in progress"));
+        // Second call for the same ID — throws synchronously since the guard check happens before the async work.
+        DataTransferAPIException ex = assertThrows(DataTransferAPIException.class,
+                () -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+        assertTrue(ex.getMessage().contains("already in progress"));
 
         // Clean up the in-flight future
         neverCompletes.cancel(true);
