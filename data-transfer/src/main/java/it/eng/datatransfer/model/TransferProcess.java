@@ -95,6 +95,10 @@ public class TransferProcess extends AbstractTransferMessage {
     @Field("version")
     private Long version;
 
+    @JsonIgnore
+    @Field("retryCount")
+    private int retryCount;
+
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Builder {
@@ -150,8 +154,14 @@ public class TransferProcess extends AbstractTransferMessage {
             return this;
         }
 
+
         public Builder format(String format) {
             message.format = format;
+            return this;
+        }
+
+        public Builder retryCount(int retryCount) {
+            message.retryCount = retryCount;
             return this;
         }
 
@@ -251,6 +261,38 @@ public class TransferProcess extends AbstractTransferMessage {
                 .state(newTransferState)
                 .role(this.role)
                 .datasetId(this.datasetId)
+                .retryCount(this.retryCount)
+                // auditable fields
+                .createdBy(this.createdBy)
+                .created(created)
+                .lastModifiedBy(this.lastModifiedBy)
+                .modified(modified)
+                .version(this.version)
+                .build();
+    }
+
+    /**
+     * Creates a new TransferProcess with the specified retryCount.
+     * All other fields remain unchanged.
+     *
+     * @param retryCount the retry count value to persist
+     * @return new TransferProcess instance with updated retryCount
+     */
+    public TransferProcess withRetryCount(int retryCount) {
+        return TransferProcess.Builder.newInstance()
+                .id(this.id)
+                .agreementId(this.agreementId)
+                .consumerPid(this.consumerPid)
+                .providerPid(this.providerPid)
+                .callbackAddress(this.callbackAddress)
+                .dataAddress(this.dataAddress)
+                .isDownloaded(this.isDownloaded)
+                .dataId(this.dataId)
+                .format(this.format)
+                .state(this.state)
+                .role(this.role)
+                .datasetId(this.datasetId)
+                .retryCount(retryCount)
                 // auditable fields
                 .createdBy(this.createdBy)
                 .created(created)

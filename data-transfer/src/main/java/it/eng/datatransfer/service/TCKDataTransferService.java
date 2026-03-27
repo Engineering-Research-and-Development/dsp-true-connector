@@ -50,6 +50,9 @@ public class TCKDataTransferService extends AbstractDataTransferService {
                                   AuditEventPublisher auditEventPublisher,
                                   OkHttpRestClient okHttpRestClient,
                                   DataTransferProperties dataTransferProperties,
+                                  CredentialUtils credentialUtils) {
+        super(transferProcessRepository, auditEventPublisher, okHttpRestClient, transferRequestMessageRepository, dataTransferProperties);
+                                  DataTransferProperties dataTransferProperties,
                                   CredentialUtils credentialUtils,
                                   TemporaryBucketUserService temporaryBucketUserService) {
         super(transferProcessRepository, auditEventPublisher, okHttpRestClient, transferRequestMessageRepository, temporaryBucketUserService);

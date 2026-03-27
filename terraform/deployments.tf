@@ -10,6 +10,7 @@ module "connector_a" {
   config_map               = kubernetes_config_map.connector_a_config.metadata[0].name
   initial_data_config_map  = kubernetes_config_map.connector_a_initial_data.metadata[0].name
   certs_config_map         = kubernetes_config_map.connector_a_certs.metadata[0].name
+  credentials_secret       = kubernetes_secret.connector_a_credentials.metadata[0].name
   employee_data_config_map = null
 }
 
@@ -38,6 +39,7 @@ module "connector_b" {
   config_map               = kubernetes_config_map.connector_b_config.metadata[0].name
   initial_data_config_map  = kubernetes_config_map.connector_b_initial_data.metadata[0].name
   certs_config_map         = kubernetes_config_map.connector_b_certs.metadata[0].name
+  credentials_secret       = kubernetes_secret.connector_b_credentials.metadata[0].name
   employee_data_config_map = kubernetes_config_map.employee_data.metadata[0].name
 }
 

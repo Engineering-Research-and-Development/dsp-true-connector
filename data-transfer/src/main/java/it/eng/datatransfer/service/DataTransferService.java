@@ -3,6 +3,7 @@ package it.eng.datatransfer.service;
 import it.eng.datatransfer.model.TCKRequest;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
+import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.tools.client.rest.OkHttpRestClient;
@@ -20,6 +21,9 @@ public class DataTransferService extends AbstractDataTransferService {
     public DataTransferService(TransferProcessRepository transferProcessRepository,
                                TransferRequestMessageRepository transferRequestMessageRepository,
                                AuditEventPublisher publisher,
+                               OkHttpRestClient okHttpRestClient,
+                               DataTransferProperties transferProperties) {
+        super(transferProcessRepository, publisher, okHttpRestClient, transferRequestMessageRepository, transferProperties);
                                OkHttpRestClient okHttpRestClient,
                                TemporaryBucketUserService temporaryBucketUserService) {
         super(transferProcessRepository, publisher, okHttpRestClient, transferRequestMessageRepository, temporaryBucketUserService);

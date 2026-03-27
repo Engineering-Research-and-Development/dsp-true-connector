@@ -1,12 +1,15 @@
 package it.eng.datatransfer.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import it.eng.datatransfer.event.AutoTransferDownloadEvent;
+import it.eng.datatransfer.event.AutoTransferStartEvent;
 import it.eng.datatransfer.event.TransferProcessChangeEvent;
 import it.eng.datatransfer.exceptions.TransferProcessInternalException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidFormatException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.exceptions.TransferProcessNotFoundException;
 import it.eng.datatransfer.model.*;
+import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
@@ -34,17 +37,21 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
 
     // Consider this for removal
     private final TransferRequestMessageRepository transferRequestMessageRepository;
+    private final DataTransferProperties transferProperties;
     private final TemporaryBucketUserService temporaryBucketUserService;
 
     protected AbstractDataTransferService(TransferProcessRepository transferProcessRepository,
                                           AuditEventPublisher publisher,
                                           OkHttpRestClient okHttpRestClient,
                                           TransferRequestMessageRepository transferRequestMessageRepository,
+                                          DataTransferProperties transferProperties) {
+                                          TransferRequestMessageRepository transferRequestMessageRepository,
                                           TemporaryBucketUserService temporaryBucketUserService) {
         this.transferProcessRepository = transferProcessRepository;
         this.publisher = publisher;
         this.okHttpRestClient = okHttpRestClient;
         this.transferRequestMessageRepository = transferRequestMessageRepository;
+        this.transferProperties = transferProperties;
         this.temporaryBucketUserService = temporaryBucketUserService;
     }
 

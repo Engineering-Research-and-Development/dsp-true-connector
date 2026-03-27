@@ -7,6 +7,7 @@ import it.eng.datatransfer.exceptions.TransferProcessNotFoundException;
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
+import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
@@ -16,6 +17,7 @@ import it.eng.tools.event.AuditEventType;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.service.AuditEventPublisher;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -51,6 +53,8 @@ public class DataTransferServiceTest {
     private AuditEventPublisher publisher;
     @Mock
     private OkHttpRestClient okHttpRestClient;
+    @Mock
+    private DataTransferProperties transferProperties;
     @Mock
     private TemporaryBucketUserService temporaryBucketUserService;
 

@@ -2,11 +2,41 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.6.8-SNAPSHOT] - 20.03.2026.
+## [0.6.9-SNAPSHOT] - 27.03.2026.
 
 ### Changed
 - Using multithread plugin configuration for maven-surefire-plugin and maven-failsafe-plugin to speed up test execution
 - Using temporary user for S3 upload in HTTP-PUSH transfer strategy, with policy scoped to single object key and cleanup after transfer completion
+
+## [0.6.8-SNAPSHOT] - 23.03.2026.
+
+### Added
+- Automatic data transfer across the full happy-path state machine for both Provider and Consumer roles, covering HTTP_PULL and HTTP_PUSH formats.
+- New `AutomaticDataTransferService` — encapsulates retry scheduling and `TERMINATED` fallback for all automatic transfer transitions; the retry loop uses `Thread.sleep` on the already-async listener thread so no HTTP thread is blocked during inter-retry delays.
+  - `processStart(id)` — retries `apiService.startTransfer(id)` (sends `TransferStartMessage`); for HTTP_PUSH on the Provider side, automatically chains `processDownload(id)` after a successful start so that the artifact is pushed to the Consumer's S3 endpoint without any additional trigger.
+  - `processDownload(id)` — retries `apiService.downloadData(id).join()`; `downloadData` already chains `completeTransfer` on success, so no separate COMPLETED trigger is needed.
+- New `AutomaticDataTransferListener` — dedicated async `@EventListener` component that delegates each auto-transfer event to `AutomaticDataTransferService`.
+- New domain events (Java Records) in `it.eng.datatransfer.event`:
+  - `AutoTransferStartEvent` — fired by the Provider after storing `REQUESTED` state; triggers `TransferStartMessage`.
+  - `AutoTransferDownloadEvent` — fired by the Consumer after storing `STARTED` state (HTTP_PULL only); triggers data download and auto-completion.
+- `retryCount` field added to `TransferProcess` model — persisted to MongoDB (`@JsonIgnore`, internal bookkeeping); preserved across state transitions and application restarts.
+- `withRetryCount(int)` helper method on `TransferProcess` — creates a new instance with only the retry counter updated, mirroring the same helper on `ContractNegotiation`.
+- New configuration properties for automatic transfer retry behaviour:
+  - `application.automatic.transfer=false` — master switch; mirrors `application.automatic.negotiation`.
+  - `application.automatic.transfer.retry.max=3` — maximum retry attempts before transitioning to `TERMINATED`.
+  - `application.automatic.transfer.retry.delay.ms=2000` — delay in milliseconds between retry attempts.
+- Force-terminate fallback: if the graceful `TransferTerminationMessage` also fails, the `TransferProcess` is force-set to `TERMINATED` locally and a `PROTOCOL_TRANSFER_TERMINATED` audit event is published.
+- Integration test `AutomaticDataTransferIT` — standalone two-instance Spring Boot test using Testcontainers (shared MongoDB, per-instance MinIO) and WireMock, mirroring the structure of `AutomaticNegotiationIT`:
+  - `automaticDataTransfer_httpPull_reachesCompletedOnBothSides` — full HTTP_PULL happy-path; both Consumer and Provider reach `COMPLETED`; artifact verified in Consumer MinIO.
+  - `automaticDataTransfer_httpPush_reachesCompletedOnBothSides` — full HTTP_PUSH happy-path; Provider auto-pushes artifact to Consumer MinIO after `TransferStartMessage` is acknowledged; both sides reach `COMPLETED`.
+  - `automaticDataTransfer_providerCannotSendStartMessage_bothReachTerminated` — WireMock intercepts `TransferStartMessage` with 500 on all attempts; retry budget exhausted; both Consumer and Provider reach `TERMINATED`.
+- Unit tests: `AutomaticDataTransferServiceTest` and `AutomaticDataTransferListenerTest`.
+
+### Changed
+- `AbstractDataTransferService` — added `DataTransferProperties` constructor parameter (cascades to `DataTransferService` and `TCKDataTransferService`); added auto-trigger after `initiateDataTransfer` stores `REQUESTED` (Provider — fires `AutoTransferStartEvent`); added auto-trigger after `startDataTransfer` stores `STARTED` (Consumer + HTTP_PULL only — fires `AutoTransferDownloadEvent`; format guard ensures SFTP and HTTP_PUSH are excluded).
+- `AutomaticDataTransferService.processStart` — after `startTransfer` succeeds, detects HTTP_PUSH + Provider role and chains `processDownload` automatically (no new events or listener changes required; the push phase shares the same retry budget as the start phase).
+- `DataTransferProperties` — added `automaticTransfer`, `maxRetryAttempts`, and `retryDelayMs` fields bound via `@Value`.
+- All `application*.properties` files — added `application.automatic.transfer`, `application.automatic.transfer.retry.max`, and `application.automatic.transfer.retry.delay.ms` keys across provider, consumer, TCK, test, CI Docker, and Terraform configurations.
 
 ## [0.6.7-SNAPSHOT] - 18.03.2026.
 
