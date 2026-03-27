@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - Integration and unit tests for `TemporaryBucketUserService` covering bucket creation, user credential lifecycle, and policy attachment.
-- Unit tests (`InitialDataLoaderTest`) and integration tests (`InitialDataLoaderIT`) for `InitialDataLoader`, covering seed data loading, duplicate skipping, missing-file graceful skip, and MongoDB/S3 failure resilience.
+- Unit tests (`InitialDataLoaderTest`) and integration tests (`InitialDataLoaderIT`) for `InitialDataLoader`, covering seed data loading, duplicate skipping, missing-file graceful skip, MongoDB/S3 failure resilience, and `seedDataLoaded` flag tracking.
 
 ### Fixed
 - `downloadData()` endpoint now correctly returns HTTP 400 when the transfer process is not in `STARTED` state, was already downloaded, or a download is already in progress. Previously, the async refactor caused all validation failures to be silently swallowed and always return HTTP 202.
@@ -35,6 +35,7 @@ All notable changes to this project will be documented in this file.
 - Using multithread plugin configuration for maven-surefire-plugin and maven-failsafe-plugin to speed up test execution.
 - Using temporary user for S3 upload in HTTP-PUSH transfer strategy, with policy scoped to single object key and cleanup after transfer completion.
 - S3 multipart upload default chunk size reduced from 50 MB to 10 MB (10,485,760 bytes); updated in `S3Properties`, all `application*.properties` files (ci, connector, terraform), and upload strategy unit tests.
+- `InitialDataLoader.loadMockData()` now skips S3 upload entirely when no new MongoDB seed documents were inserted (missing file, all duplicates, or Mongo failure); `seedDataLoaded` flag tracks this across the `CommandLineRunner` → `ApplicationReadyEvent` lifecycle.
 - `AbstractDataTransferService` constructor extended with `DataTransferProperties`; cascaded to `DataTransferService` and `TCKDataTransferService`. Automatic transfer triggers wired in: Provider fires `AutoTransferStartEvent` after storing `REQUESTED`; Consumer fires `AutoTransferDownloadEvent` after storing `STARTED` (HTTP_PULL only). `retryCount` is now preserved across the `REQUESTED → STARTED` state transition.
 
 ## [0.6.8-SNAPSHOT] - 23.03.2026.

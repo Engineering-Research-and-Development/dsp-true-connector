@@ -17,8 +17,12 @@ import org.springframework.core.env.Environment;
 import org.springframework.data.mongodb.core.MongoTemplate;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+
+import java.util.concurrent.CompletableFuture;
 
 @ExtendWith(MockitoExtension.class)
 class InitialDataLoaderTest {
@@ -110,8 +114,75 @@ class InitialDataLoaderTest {
     }
 
     @Test
+    @DisplayName("Missing data file — seedDataLoaded flag remains false")
+    void loadInitialData_missingFile_seedDataFlagIsFalse() throws Exception {
+        when(environment.getActiveProfiles()).thenReturn(new String[]{"nonexistent-profile"});
+
+        initialDataLoader.loadInitialData().run();
+
+        assertFalse(initialDataLoader.isSeedDataLoaded(),
+                "seedDataLoaded must remain false when no seed file is present");
+    }
+
+    @Test
+    @DisplayName("File exists with new documents — seedDataLoaded flag is set to true")
+    void loadInitialData_fileExists_seedDataFlagIsTrue() throws Exception {
+        when(environment.getActiveProfiles()).thenReturn(new String[]{"unittest"});
+        when(mongoTemplate.findById(any(), eq(Document.class), anyString())).thenReturn(null);
+
+        initialDataLoader.loadInitialData().run();
+
+        assertTrue(initialDataLoader.isSeedDataLoaded(),
+                "seedDataLoaded must be true when at least one new document was inserted");
+    }
+
+    @Test
+    @DisplayName("No seed data loaded — S3 upload is skipped and APPLICATION_START is still published")
+    void loadMockData_noSeedDataLoaded_skipsS3Upload() {
+        // seedDataLoaded defaults to false — do not call loadInitialData()
+        assertDoesNotThrow(() -> initialDataLoader.loadMockData());
+
+        verify(publisher).publishEvent(argThat(event ->
+                event.getEventType() == AuditEventType.APPLICATION_START));
+        // S3 must not be touched at all when no seed data was loaded
+        verifyNoInteractions(s3BucketProvisionService);
+        verifyNoInteractions(s3ClientService);
+        verifyNoInteractions(s3Properties);
+    }
+
+    @Test
+    @DisplayName("Seed data loaded into MongoDB — S3 upload is performed")
+    void loadMockData_withSeedDataLoaded_uploadsToS3() throws Exception {
+        // Run loadInitialData() with mocks that simulate a successful document insert
+        when(environment.getActiveProfiles()).thenReturn(new String[]{"unittest"});
+        when(mongoTemplate.findById(any(), eq(Document.class), anyString())).thenReturn(null);
+
+        initialDataLoader.loadInitialData().run();
+        assertTrue(initialDataLoader.isSeedDataLoaded(), "Pre-condition: seedDataLoaded must be true");
+
+        // Set up S3 mocks
+        when(s3Properties.getBucketName()).thenReturn("test-bucket");
+        when(s3Properties.getEndpoint()).thenReturn("http://localhost:9000");
+        when(s3Properties.getRegion()).thenReturn("us-east-1");
+        when(s3Properties.getAccessKey()).thenReturn("test-access");
+        when(s3Properties.getSecretKey()).thenReturn("test-secret");
+        when(s3ClientService.uploadFile(any(), any(), anyString(), anyString()))
+                .thenReturn(CompletableFuture.completedFuture("etag-123"));
+
+        assertDoesNotThrow(() -> initialDataLoader.loadMockData());
+
+        verify(s3BucketProvisionService).ensureBucketCredentials("test-bucket");
+        verify(s3ClientService).uploadFile(any(), any(), anyString(), anyString());
+    }
+
+    @Test
     @DisplayName("Publisher is called with APPLICATION_START on ApplicationReadyEvent")
-    void loadMockData_publishesApplicationStartEvent() {
+    void loadMockData_publishesApplicationStartEvent() throws Exception {
+        // seedDataLoaded must be true so the S3 path is exercised and the stubs below are used
+        when(environment.getActiveProfiles()).thenReturn(new String[]{"unittest"});
+        when(mongoTemplate.findById(any(), eq(Document.class), anyString())).thenReturn(null);
+        initialDataLoader.loadInitialData().run();
+
         when(s3Properties.getBucketName()).thenReturn("test-bucket");
         doThrow(new RuntimeException("S3 not available")).when(s3BucketProvisionService)
                 .ensureBucketCredentials(anyString());

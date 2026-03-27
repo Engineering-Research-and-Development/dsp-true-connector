@@ -26,7 +26,6 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-
 /**
  * Integration tests for {@link InitialDataLoader}.
  * <p>
@@ -75,6 +74,8 @@ public class InitialDataLoaderIT {
     private S3Properties s3Properties;
     @Autowired
     private AuditEventPublisher publisher;
+    @Autowired
+    private InitialDataLoader initialDataLoader;
 
     // -------------------------------------------------------------------------
     // Happy-path: seed data loaded on startup
@@ -133,5 +134,32 @@ public class InitialDataLoaderIT {
         // The sentinel collection must remain empty — nothing was loaded.
         assertTrue(mongoTemplate.findAll(Document.class, sentinelCollection).isEmpty(),
                 "No documents should be inserted when the seed file is absent");
+    }
+
+    // -------------------------------------------------------------------------
+    // Seed-data flag and S3 skip behaviour
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("seedDataLoaded flag is true after successful startup with initial_data.json")
+    void initialData_seedDataLoaded_flagIsTrue() {
+        // The Spring context ran loadInitialData() on startup with initial_data.json present.
+        assertTrue(initialDataLoader.isSeedDataLoaded(),
+                "seedDataLoaded must be true when documents were inserted from initial_data.json");
+    }
+
+    @Test
+    @DisplayName("Missing seed file — seedDataLoaded flag remains false")
+    void initialData_missingFile_seedDataFlagIsFalse() throws Exception {
+        Environment mockEnv = mock(Environment.class);
+        when(mockEnv.getActiveProfiles()).thenReturn(new String[]{"no-data-file"});
+
+        InitialDataLoader loader = new InitialDataLoader(
+                mongoTemplate, mockEnv, s3ClientService, s3BucketProvisionService, s3Properties, publisher);
+
+        loader.loadInitialData().run();
+
+        assertFalse(loader.isSeedDataLoaded(),
+                "seedDataLoaded must remain false when no seed file is present");
     }
 }
