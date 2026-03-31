@@ -3,6 +3,8 @@ package it.eng.connector.configuration;
 import java.util.Arrays;
 
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -15,6 +17,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtDecoders;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
@@ -46,6 +49,10 @@ public class KeycloakSecurityConfig {
     @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri:}")
     private String jwkSetUri;
 
+    @Autowired
+    @Qualifier("delegatedAuthenticationEntryPoint")
+    private AuthenticationEntryPoint authEntryPoint;
+
     @Bean
     SecurityFilterChain keycloakSecurityFilterChain(HttpSecurity http, KeycloakAuthenticationFilter keycloakAuthenticationFilter) throws Exception {
         http
@@ -70,6 +77,7 @@ public class KeycloakSecurityConfig {
                         .requestMatchers(new AntPathRequestMatcher("/api/**")).hasRole("ADMIN")
                         .anyRequest().permitAll()
                 )
+                .exceptionHandling((exHandler) -> exHandler.authenticationEntryPoint(authEntryPoint))
                 .addFilterBefore(keycloakAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
