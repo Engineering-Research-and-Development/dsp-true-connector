@@ -42,11 +42,6 @@ public class HttpPullTransferStrategyTest {
     @Mock
     private HttpURLConnection mockConnection;
 
-    /**
-     * Strategy under test. Created manually in setUp so we can inject a direct
-     * (synchronous) executor — this ensures the CompletableFuture body runs on
-     * the test thread, keeping MockedConstruction<URL> in scope.
-     */
     private HttpPullTransferStrategy strategy;
 
     private static final String TEST_BUCKET = "test-bucket";

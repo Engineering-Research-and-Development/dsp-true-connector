@@ -7,11 +7,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ApplicationEventMulticaster;
 import org.springframework.context.event.SimpleApplicationEventMulticaster;
 import org.springframework.core.task.TaskExecutor;
-import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.EnableAsync;
-import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -32,7 +29,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 @Slf4j
 @Configuration
 @EnableAsync
-@EnableScheduling
 public class AsynchronousSpringEventsConfig {
 
     /** Core thread-pool size for async event dispatch. */
@@ -46,10 +42,6 @@ public class AsynchronousSpringEventsConfig {
     /** Capacity of the task queue before new threads above core size are spawned. */
     @Value("${application.events.executor.queue-capacity:50}")
     private int queueCapacity = 50;
-
-    /** Pool size for the task scheduler used by retry scheduling. */
-    @Value("${application.events.scheduler.pool-size:5}")
-    private int schedulerPoolSize = 5;
 
     /**
      * Default executor for {@code @Async} methods and async event dispatch.
@@ -86,21 +78,6 @@ public class AsynchronousSpringEventsConfig {
         var eventMulticaster = new SimpleApplicationEventMulticaster();
         eventMulticaster.setTaskExecutor(taskExecutor());
         return eventMulticaster;
-    }
-
-    /**
-     * Creates the application-wide {@link TaskScheduler} used by {@code AutomaticNegotiationService}
-     * to schedule non-blocking retries after a failed protocol message attempt.
-     *
-     * @return configured {@link TaskScheduler}
-     */
-    @Bean
-    public TaskScheduler taskScheduler() {
-        var scheduler = new ThreadPoolTaskScheduler();
-        scheduler.setPoolSize(schedulerPoolSize);
-        scheduler.setThreadNamePrefix("negotiation-retry-");
-        scheduler.initialize();
-        return scheduler;
     }
 
     /**

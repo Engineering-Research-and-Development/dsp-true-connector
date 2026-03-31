@@ -9,6 +9,7 @@ import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.service.AuditEventPublisher;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 
@@ -36,7 +37,8 @@ public class AutomaticDataTransferService {
      * @param auditEventPublisher publisher for audit events
      */
     public AutomaticDataTransferService(DataTransferAPIService apiService, TransferProcessRepository transferProcessRepository,
-                                        DataTransferProperties transferProperties, TaskScheduler taskScheduler,
+                                        DataTransferProperties transferProperties,
+                                        @Qualifier("transferTaskScheduler") TaskScheduler taskScheduler,
                                         AuditEventPublisher auditEventPublisher) {
         this.apiService = apiService;
         this.transferProcessRepository = transferProcessRepository;

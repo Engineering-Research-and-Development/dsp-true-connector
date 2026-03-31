@@ -11,6 +11,7 @@ import it.eng.tools.s3.util.S3Utils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 
@@ -21,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Service
@@ -39,32 +39,18 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
     private static final int FALLBACK_READ_TIMEOUT = 1_800_000; // 30 minutes
     /** Assumed minimum transfer speed in bytes/sec used for dynamic timeout (1 MB/s). */
     private static final long MIN_TRANSFER_SPEED_BYTES_PER_SEC = 1024L * 1024L;
-    /**
-     * Bounded thread pool to cap concurrent HTTP-PULL transfers.
-     * Each transfer holds up to ~50 MB; 8 concurrent transfers = ~400 MB.
-     */
-    private static final Executor DEFAULT_EXECUTOR = Executors.newFixedThreadPool(8);
 
     /**
-     * Creates an instance using the default bounded thread pool.
+     * Creates an instance using the Spring-managed {@code httpPullTransferExecutor} bean.
      *
      * @param s3ClientService service for uploading data to S3
      * @param s3Properties S3 configuration properties
+     * @param transferExecutor Spring-managed executor for running async transfer tasks
      */
     @Autowired
-    public HttpPullTransferStrategy(S3ClientService s3ClientService, S3Properties s3Properties) {
-        this(s3ClientService, s3Properties, DEFAULT_EXECUTOR);
-    }
-
-    /**
-     * Creates an instance with a custom executor.
-     * Package-private to allow injection of a synchronous executor in tests.
-     *
-     * @param s3ClientService service for uploading data to S3
-     * @param s3Properties S3 configuration properties
-     * @param transferExecutor executor used to run async transfer tasks
-     */
-    HttpPullTransferStrategy(S3ClientService s3ClientService, S3Properties s3Properties, Executor transferExecutor) {
+    public HttpPullTransferStrategy(S3ClientService s3ClientService,
+                                    S3Properties s3Properties,
+                                    @Qualifier("httpPullTransferExecutor") Executor transferExecutor) {
         this.s3ClientService = s3ClientService;
         this.s3Properties = s3Properties;
         this.transferExecutor = transferExecutor;

@@ -7,7 +7,9 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Integration and unit tests for `TemporaryBucketUserService` covering bucket creation, user credential lifecycle, and policy attachment.
 - Unit tests (`InitialDataLoaderTest`) and integration tests (`InitialDataLoaderIT`) for `InitialDataLoader`, covering seed data loading, duplicate skipping, missing-file graceful skip, MongoDB/S3 failure resilience, and `seedDataLoaded` flag tracking.
-- `DataTransferConfiguration` — new Spring `@Configuration` class providing a bounded `ThreadPoolTaskExecutor` bean (`httpPushTransferExecutor`) for concurrent HTTP-PUSH transfers; core/max pool size of 8, queue capacity of 50, graceful shutdown on Spring context close.
+- `DataTransferConfiguration` — new Spring `@Configuration` class providing bounded `ThreadPoolTaskExecutor` beans for concurrent HTTP-PUSH (`httpPushTransferExecutor`) and HTTP-PULL (`httpPullTransferExecutor`) transfers; core/max pool size of 8, queue capacity of 50, graceful shutdown on Spring context close.
+- `NegotiationConfiguration` — new Spring `@Configuration` class in the negotiation module providing the `negotiationTaskScheduler` bean (`ThreadPoolTaskScheduler`, pool size 5, thread prefix `negotiation-retry-`) for non-blocking retry scheduling in `AutomaticNegotiationService`; pool size tunable via `application.negotiation.scheduler.pool-size`.
+- `DataTransferConfigurationTest` and `NegotiationConfigurationTest` — unit tests covering the new scheduler beans.
 
 ### Fixed
 - `downloadData()` endpoint now correctly returns HTTP 400 when the transfer process is not in `STARTED` state, was already downloaded, or a download is already in progress. Previously, the async refactor caused all validation failures to be silently swallowed and always return HTTP 202.
@@ -31,12 +33,21 @@ All notable changes to this project will be documented in this file.
   - `S3UploadStrategyFactory.getStrategy()` — added null-check on `uploadMode` property.
   - `S3TransferStrategy` — marked `@Deprecated` with explanatory Javadoc; removed unused `s3ClientService` field.
 - `InitialDataLoader` no longer aborts application startup when the seed data JSON file is missing from the classpath; the loader now logs an info message and returns cleanly. Any I/O or parse error during loading is also caught and logged without re-throwing.
+- `TemporaryBucketUserService.createTemporaryUser()` — added compensating `deleteUser()` call in a `catch` block to prevent orphaned IAM users when policy attachment or MongoDB persistence fails after the IAM user has already been created.
+- `TemporaryBucketUserService.deleteTemporaryUser()` — policy is now revoked before the IAM user is deleted so the user loses access immediately, not after.
 
 ### Changed
 - Using temporary user for S3 upload in HTTP-PUSH transfer strategy, with policy scoped to single object key and cleanup after transfer completion.
 - S3 multipart upload default chunk size reduced from 50 MB to 10 MB (10,485,760 bytes); updated in `S3Properties`, all `application*.properties` files (ci, connector, terraform), and upload strategy unit tests.
+- Default `s3.upload-mode` changed from `ASYNC` to `SYNC` in `application-consumer.properties` and `application-provider.properties`.
 - `InitialDataLoader.loadMockData()` now skips S3 upload entirely when no new MongoDB seed documents were inserted (missing file, all duplicates, or Mongo failure); `seedDataLoaded` flag tracks this across the `CommandLineRunner` → `ApplicationReadyEvent` lifecycle.
 - `AbstractDataTransferService` constructor extended with `DataTransferProperties`; cascaded to `DataTransferService` and `TCKDataTransferService`. Automatic transfer triggers wired in: Provider fires `AutoTransferStartEvent` after storing `REQUESTED`; Consumer fires `AutoTransferDownloadEvent` after storing `STARTED` (HTTP_PULL only). `retryCount` is now preserved across the `REQUESTED → STARTED` state transition.
+- `AbstractDataTransferService` — encrypts the `secretKey` in `DataAddress` endpoint properties before persisting the `REQUESTED` transfer process to MongoDB for HTTP_PUSH transfers; `FieldEncryptionService` injected via constructor.
+- `HttpPushTransferStrategy` — decrypts the `secretKey` from `DataAddress` endpoint properties when building the destination S3 config map; `FieldEncryptionService` injected via constructor.
+- `HttpPullTransferStrategy` — replaced static `Executors.newFixedThreadPool(8)` and two-constructor workaround with a single `@Autowired` constructor injecting the Spring-managed `httpPullTransferExecutor` bean via `@Qualifier`; ensures graceful shutdown and named threads (`http-pull-transfer-N`) consistent with `HttpPushTransferStrategy`.
+- `AsynchronousSpringEventsConfig` — removed `taskScheduler()` bean, `schedulerPoolSize` field, and `@EnableScheduling`; class is now purely event-dispatch infrastructure (`taskExecutor` + `applicationEventMulticaster`).
+- `AutomaticNegotiationService` — constructor parameter `TaskScheduler` qualified with `@Qualifier("negotiationTaskScheduler")`; now resolved from `NegotiationConfiguration` instead of `AsynchronousSpringEventsConfig`.
+- `AutomaticDataTransferService` — constructor parameter `TaskScheduler` qualified with `@Qualifier("transferTaskScheduler")`; resolved from `DataTransferConfiguration` with thread prefix `transfer-retry-`; pool size tunable via `application.transfer.scheduler.pool-size`.
 
 ## [0.6.8-SNAPSHOT] - 23.03.2026.
 
