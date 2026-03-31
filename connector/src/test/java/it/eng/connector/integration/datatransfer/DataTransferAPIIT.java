@@ -135,7 +135,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .state(TransferState.REQUESTED)
                 .build();
 
-        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/transfers/request")
+        WireMock.stubFor(WireMock.post("/transfers/request")
                 .withBasicAuth("connector@mail.com", "password")
                 .withRequestBody(WireMock.containing("TransferRequestMessage"))
                 .willReturn(
@@ -191,7 +191,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .state(TransferState.REQUESTED)
                 .build();
 
-        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/transfers/request")
+        WireMock.stubFor(WireMock.post("/transfers/request")
                 .withBasicAuth("connector@mail.com", "password")
                 .withRequestBody(WireMock.containing("TransferRequestMessage"))
                 .willReturn(
@@ -244,7 +244,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value("TEST").build()))
                 .build();
 
-        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/transfers/request")
+        WireMock.stubFor(WireMock.post("/transfers/request")
                 .withBasicAuth("connector@mail.com", "password")
                 .withRequestBody(WireMock.containing("TransferRequestMessage"))
                 .willReturn(

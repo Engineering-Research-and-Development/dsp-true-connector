@@ -6,6 +6,8 @@ import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.service.api.DataTransferStrategy;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.s3.util.S3Utils;
+import it.eng.tools.service.FieldEncryptionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -30,6 +32,7 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
     private final S3Properties s3Properties;
     private final S3ClientService s3ClientService;
     private final Executor transferExecutor;
+    private final FieldEncryptionService fieldEncryptionService;
     private static final int DEFAULT_CONNECT_TIMEOUT = 10000; // 10 seconds
     /**
      * Fallback read timeout (30 minutes) used before Content-Length is known.
@@ -45,22 +48,30 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
      * @param s3Properties S3 configuration properties
      * @param s3ClientService service for downloading and uploading data to S3
      * @param transferExecutor Spring-managed executor for running async transfer tasks
+     * @param fieldEncryptionService service for decrypting sensitive fields stored in MongoDB
      */
     @Autowired
     public HttpPushTransferStrategy(S3Properties s3Properties,
                                     S3ClientService s3ClientService,
-                                    @Qualifier("httpPushTransferExecutor") Executor transferExecutor) {
+                                    @Qualifier("httpPushTransferExecutor") Executor transferExecutor,
+                                    FieldEncryptionService fieldEncryptionService) {
         this.s3Properties = s3Properties;
         this.s3ClientService = s3ClientService;
         this.transferExecutor = transferExecutor;
+        this.fieldEncryptionService = fieldEncryptionService;
     }
 
     @Override
     public CompletableFuture<Void> transfer(TransferProcess transferProcess) {
-        // Convert endpoint properties to a map for easier access
+        // Convert endpoint properties to a map, decrypting the secretKey stored encrypted in MongoDB
         Map<String, String> destinationS3Properties = transferProcess.getDataAddress().getEndpointProperties()
                 .stream()
-                .collect(Collectors.toMap(EndpointProperty::getName, EndpointProperty::getValue));
+                .collect(Collectors.toMap(
+                        EndpointProperty::getName,
+                        prop -> S3Utils.SECRET_KEY.equals(prop.getName())
+                                ? fieldEncryptionService.decrypt(prop.getValue())
+                                : prop.getValue()
+                ));
         String presignedUrl = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), transferProcess.getDatasetId(), Duration.ofDays(1L));
         return transfer(presignedUrl, destinationS3Properties)
                 .thenAccept(key ->

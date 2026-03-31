@@ -15,10 +15,7 @@ import java.util.concurrent.CompletableFuture;
  * {@code DataTransferStrategyFactory} and must not be enabled until a full
  * implementation is provided.
  * </p>
- *
- * @deprecated Not yet implemented. Do not enable in DataTransferStrategyFactory.
  */
-@Deprecated
 @Service
 @Slf4j
 public class S3TransferStrategy implements DataTransferStrategy {

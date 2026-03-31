@@ -4,8 +4,11 @@ import it.eng.datatransfer.exceptions.TransferProcessInternalException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidFormatException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.exceptions.TransferProcessNotFoundException;
+import it.eng.datatransfer.model.DataAddress;
 import it.eng.datatransfer.model.DataTransferFormat;
+import it.eng.datatransfer.model.EndpointProperty;
 import it.eng.datatransfer.model.TransferProcess;
+import it.eng.datatransfer.model.TransferRequestMessage;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
@@ -16,7 +19,9 @@ import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
+import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.FieldEncryptionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -57,6 +62,8 @@ public class DataTransferServiceTest {
     private DataTransferProperties transferProperties;
     @Mock
     private TemporaryBucketUserService temporaryBucketUserService;
+    @Mock
+    private FieldEncryptionService fieldEncryptionService;
 
     @InjectMocks
     private DataTransferService service;
@@ -206,6 +213,53 @@ public class DataTransferServiceTest {
 
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR);
+    }
+
+    @Test
+    @DisplayName("DataTransfer requested - HTTP_PUSH - secretKey is encrypted before persisting to MongoDB")
+    public void initiateTransferProcess_httpPush_encryptsSecretKey() {
+        String plainSecretKey = "plain-secret-key";
+        String encryptedSecretKey = "encrypted-secret-key";
+
+        DataAddress httpPushDataAddress = DataAddress.Builder.newInstance()
+                .endpointProperties(List.of(
+                        EndpointProperty.Builder.newInstance().name(S3Utils.BUCKET_NAME).value("my-bucket").build(),
+                        EndpointProperty.Builder.newInstance().name(S3Utils.ACCESS_KEY).value("access-key").build(),
+                        EndpointProperty.Builder.newInstance().name(S3Utils.SECRET_KEY).value(plainSecretKey).build(),
+                        EndpointProperty.Builder.newInstance().name(S3Utils.ENDPOINT_OVERRIDE).value("http://minio:9000").build()
+                ))
+                .build();
+
+        TransferRequestMessage httpPushRequest = TransferRequestMessage.Builder.newInstance()
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .format(DataTransferFormat.HTTP_PUSH.format())
+                .dataAddress(httpPushDataAddress)
+                .build();
+
+        when(transferProcessRepository.findByAgreementId(DataTransferMockObjectUtil.AGREEMENT_ID))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
+        when(fieldEncryptionService.encrypt(plainSecretKey)).thenReturn(encryptedSecretKey);
+
+        List<String> formats = new ArrayList<>();
+        formats.add(DataTransferFormat.HTTP_PUSH.format());
+        GenericApiResponse<List<String>> resp = GenericApiResponse.success(formats, "Ok");
+        when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+                .thenReturn(TransferSerializer.serializePlain(resp));
+
+        service.initiateDataTransfer(httpPushRequest);
+
+        verify(transferProcessRepository).save(argTransferProcess.capture());
+        TransferProcess saved = argTransferProcess.getValue();
+        String storedSecretKey = saved.getDataAddress().getEndpointProperties().stream()
+                .filter(p -> S3Utils.SECRET_KEY.equals(p.getName()))
+                .findFirst()
+                .map(EndpointProperty::getValue)
+                .orElse(null);
+        assertEquals(encryptedSecretKey, storedSecretKey,
+                "secretKey stored in MongoDB must be encrypted, not plain text");
+        verify(fieldEncryptionService).encrypt(plainSecretKey);
     }
 
     // TransferStartMessage

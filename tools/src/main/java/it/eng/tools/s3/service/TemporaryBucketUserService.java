@@ -35,6 +35,9 @@ public class TemporaryBucketUserService {
      * {@code arn:aws:s3:::<bucketName>/<objectKey>}.
      * The returned entity contains the <em>plain</em> (unencrypted) secret key for immediate
      * use in the DataAddress; the value stored in MongoDB is encrypted.
+     * <p>
+     * If attaching the policy or persisting to MongoDB fails, the IAM user is deleted
+     * as a compensating action to avoid orphaned resources.
      *
      * @param transferProcessId the transfer process ID — used as the document {@code @Id}
      * @param bucketName        the bucket that holds the object
@@ -55,22 +58,35 @@ public class TemporaryBucketUserService {
                 .build();
         iamUserManagementService.createUser(adapter);
 
-        // Attach a minimal PutObject-only policy scoped to the exact object key
+        // Attach policy and persist; compensate by deleting the IAM user on any failure
+        // to avoid orphaned resources that cannot be cleaned up later
         String policyName = TEMP_POLICY_PREFIX + transferProcessId;
-        String policyJson = createTemporaryUserPolicy(bucketName, objectKey);
-        log.debug("Attaching temporary policy {} to user {}", policyName, accessKey);
-        iamUserManagementService.attachTemporaryPolicy(accessKey, policyName, policyJson);
+        try {
+            // Attach a minimal PutObject-only policy scoped to the exact object key
+            String policyJson = createTemporaryUserPolicy(bucketName, objectKey);
+            log.debug("Attaching temporary policy {} to user {}", policyName, accessKey);
+            iamUserManagementService.attachTemporaryPolicy(accessKey, policyName, policyJson);
 
-        // Persist with encrypted secret key
-        TemporaryBucketUser entity = TemporaryBucketUser.Builder.newInstance()
-                .transferProcessId(transferProcessId)
-                .accessKey(accessKey)
-                .secretKey(fieldEncryptionService.encrypt(plainSecretKey))
-                .bucketName(bucketName)
-                .objectKey(objectKey)
-                .build();
-        temporaryBucketUserRepository.save(entity);
-        log.info("Temporary bucket user {} persisted for transfer process {}", accessKey, transferProcessId);
+            // Persist with encrypted secret key
+            TemporaryBucketUser entity = TemporaryBucketUser.Builder.newInstance()
+                    .transferProcessId(transferProcessId)
+                    .accessKey(accessKey)
+                    .secretKey(fieldEncryptionService.encrypt(plainSecretKey))
+                    .bucketName(bucketName)
+                    .objectKey(objectKey)
+                    .build();
+            temporaryBucketUserRepository.save(entity);
+            log.info("Temporary bucket user {} persisted for transfer process {}", accessKey, transferProcessId);
+        } catch (Exception e) {
+            // Compensate: remove the IAM user so it does not become an orphaned resource
+            log.error("Failed to complete temporary user setup for {}; compensating by deleting IAM user {}", transferProcessId, accessKey);
+            try {
+                iamUserManagementService.deleteUser(accessKey);
+            } catch (Exception compensationEx) {
+                log.error("Compensation failed — IAM user {} may be orphaned", accessKey, compensationEx);
+            }
+            throw new S3ServerException("Failed to create temporary user for transfer process: " + transferProcessId, e);
+        }
 
         // Return entity with plain secret key for immediate use in DataAddress
         return TemporaryBucketUser.Builder.newInstance()
@@ -105,23 +121,26 @@ public class TemporaryBucketUserService {
 
     /**
      * Deletes the temporary Minio user, its associated policy, and the MongoDB document.
-     * Errors during Minio-side deletion are logged but do not propagate — the MongoDB
-     * record is always removed so stale entries do not accumulate.
+     * The policy is removed first (so the user loses access immediately), then the IAM user,
+     * and finally the MongoDB record. Errors during Minio-side deletion are logged but do not
+     * propagate — the MongoDB record is always removed so stale entries do not accumulate.
      *
      * @param transferProcessId the transfer process ID
      */
     public void deleteTemporaryUser(String transferProcessId) {
         temporaryBucketUserRepository.findById(transferProcessId).ifPresent(entity -> {
+            log.info("Cleaning up temporary bucket user {} for transfer process {}", entity.getAccessKey(), transferProcessId);
             String policyName = TEMP_POLICY_PREFIX + transferProcessId;
-            try {
-                iamUserManagementService.deleteUser(entity.getAccessKey());
-            } catch (Exception e) {
-                log.warn("Could not delete temporary Minio user {}: {}", entity.getAccessKey(), e.getMessage());
-            }
+            // Delete policy first to immediately revoke access before removing the user
             try {
                 iamUserManagementService.deletePolicy(policyName);
             } catch (Exception e) {
                 log.warn("Could not delete temporary Minio policy {}: {}", policyName, e.getMessage());
+            }
+            try {
+                iamUserManagementService.deleteUser(entity.getAccessKey());
+            } catch (Exception e) {
+                log.warn("Could not delete temporary Minio user {}: {}", entity.getAccessKey(), e.getMessage());
             }
             temporaryBucketUserRepository.deleteById(transferProcessId);
             log.info("Temporary bucket user {} cleaned up for transfer process {}", entity.getAccessKey(), transferProcessId);

@@ -7,6 +7,7 @@ import it.eng.tools.model.IConstants;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
+import it.eng.tools.service.FieldEncryptionService;
 import it.eng.tools.util.ToolsUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,6 +41,8 @@ public class HttpPushTransferStrategyTest {
     @Mock
     private S3ClientService s3ClientService;
     @Mock
+    private FieldEncryptionService fieldEncryptionService;
+    @Mock
     private HttpURLConnection mockConnection;
 
     /**
@@ -54,6 +57,7 @@ public class HttpPushTransferStrategyTest {
     private static final String TEST_OBJECT_KEY = "test-object-key";
     private static final String TEST_ACCESS_KEY = "test-access-key";
     private static final String TEST_SECRET_KEY = "test-secret-key";
+    private static final String TEST_ENCRYPTED_SECRET_KEY = "encrypted-test-secret-key";
     private static final String TEST_REGION = "test-region";
     private static final String TEST_ENDPOINT_OVERRIDE = "http://test-endpoint";
     private static final String TEST_CONTENT = "test-content";
@@ -69,7 +73,9 @@ public class HttpPushTransferStrategyTest {
     @BeforeEach
     void setUp() {
         // Runnable::run is a valid Executor that executes tasks on the calling thread
-        strategy = new HttpPushTransferStrategy(s3Properties, s3ClientService, Runnable::run);
+        strategy = new HttpPushTransferStrategy(s3Properties, s3ClientService, Runnable::run, fieldEncryptionService);
+        // Return the decrypted value for any encrypted secret key used in tests
+        lenient().when(fieldEncryptionService.decrypt(TEST_ENCRYPTED_SECRET_KEY)).thenReturn(TEST_SECRET_KEY);
     }
 
     @Test
@@ -98,7 +104,7 @@ public class HttpPushTransferStrategyTest {
                         .build(),
                 EndpointProperty.Builder.newInstance()
                         .name(S3Utils.SECRET_KEY)
-                        .value(TEST_SECRET_KEY)
+                        .value(TEST_ENCRYPTED_SECRET_KEY)
                         .build(),
                 EndpointProperty.Builder.newInstance()
                         .name(S3Utils.ENDPOINT_OVERRIDE)
@@ -106,6 +112,7 @@ public class HttpPushTransferStrategyTest {
                         .build()
         );
 
+        // uploadFile receives the decrypted secret key, not the encrypted value stored in MongoDB
         Map<String, String> endpointPropertiesMap = Map.of(
                 S3Utils.BUCKET_NAME, TEST_BUCKET,
                 S3Utils.REGION, TEST_REGION,
@@ -198,7 +205,7 @@ public class HttpPushTransferStrategyTest {
                 EndpointProperty.Builder.newInstance().name(S3Utils.REGION).value(TEST_REGION).build(),
                 EndpointProperty.Builder.newInstance().name(S3Utils.OBJECT_KEY).value(TEST_OBJECT_KEY).build(),
                 EndpointProperty.Builder.newInstance().name(S3Utils.ACCESS_KEY).value(TEST_ACCESS_KEY).build(),
-                EndpointProperty.Builder.newInstance().name(S3Utils.SECRET_KEY).value(TEST_SECRET_KEY).build(),
+                EndpointProperty.Builder.newInstance().name(S3Utils.SECRET_KEY).value(TEST_ENCRYPTED_SECRET_KEY).build(),
                 EndpointProperty.Builder.newInstance().name(S3Utils.ENDPOINT_OVERRIDE).value(TEST_ENDPOINT_OVERRIDE).build()
         );
 
@@ -252,7 +259,7 @@ public class HttpPushTransferStrategyTest {
                 EndpointProperty.Builder.newInstance().name(S3Utils.REGION).value(TEST_REGION).build(),
                 EndpointProperty.Builder.newInstance().name(S3Utils.OBJECT_KEY).value(TEST_OBJECT_KEY).build(),
                 EndpointProperty.Builder.newInstance().name(S3Utils.ACCESS_KEY).value(TEST_ACCESS_KEY).build(),
-                EndpointProperty.Builder.newInstance().name(S3Utils.SECRET_KEY).value(TEST_SECRET_KEY).build(),
+                EndpointProperty.Builder.newInstance().name(S3Utils.SECRET_KEY).value(TEST_ENCRYPTED_SECRET_KEY).build(),
                 EndpointProperty.Builder.newInstance().name(S3Utils.ENDPOINT_OVERRIDE).value(TEST_ENDPOINT_OVERRIDE).build()
         );
 
@@ -304,7 +311,7 @@ public class HttpPushTransferStrategyTest {
                 EndpointProperty.Builder.newInstance().name(S3Utils.REGION).value(TEST_REGION).build(),
                 EndpointProperty.Builder.newInstance().name(S3Utils.OBJECT_KEY).value(TEST_OBJECT_KEY).build(),
                 EndpointProperty.Builder.newInstance().name(S3Utils.ACCESS_KEY).value(TEST_ACCESS_KEY).build(),
-                EndpointProperty.Builder.newInstance().name(S3Utils.SECRET_KEY).value(TEST_SECRET_KEY).build(),
+                EndpointProperty.Builder.newInstance().name(S3Utils.SECRET_KEY).value(TEST_ENCRYPTED_SECRET_KEY).build(),
                 EndpointProperty.Builder.newInstance().name(S3Utils.ENDPOINT_OVERRIDE).value(TEST_ENDPOINT_OVERRIDE).build()
         );
 

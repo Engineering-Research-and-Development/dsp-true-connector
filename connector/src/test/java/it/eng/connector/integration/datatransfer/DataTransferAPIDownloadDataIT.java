@@ -27,6 +27,7 @@ import it.eng.tools.s3.service.BucketCredentialsService;
 import it.eng.tools.s3.service.S3BucketProvisionService;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
+import it.eng.tools.service.FieldEncryptionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -92,6 +93,9 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
 
     @Autowired
     private BucketCredentialsService bucketCredentialsService;
+
+    @Autowired
+    private FieldEncryptionService fieldEncryptionService;
 
     private Dataset mockDataset;
 
@@ -270,7 +274,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                         .build(),
                 EndpointProperty.Builder.newInstance()
                         .name(S3Utils.SECRET_KEY)
-                        .value(bucketCredentials.getSecretKey())
+                        .value(fieldEncryptionService.encrypt(bucketCredentials.getSecretKey()))
                         .build(),
                 EndpointProperty.Builder.newInstance()
                         .name(S3Utils.ENDPOINT_OVERRIDE)
