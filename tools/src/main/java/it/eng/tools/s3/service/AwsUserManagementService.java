@@ -16,6 +16,31 @@ import org.springframework.stereotype.Component;
 @ConditionalOnMissingBean(MinioAdminClient.class)
 @Slf4j
 public class AwsUserManagementService implements IamUserManagementService {
+    /**
+     * @param accessKey
+     * @param policyName
+     * @param policyJson
+     */
+    @Override
+    public void attachTemporaryPolicy(String accessKey, String policyName, String policyJson) {
+
+    }
+
+    /**
+     * @param accessKey
+     */
+    @Override
+    public void deleteUser(String accessKey) {
+
+    }
+
+    /**
+     * @param policyName
+     */
+    @Override
+    public void deletePolicy(String policyName) {
+
+    }
 
     public AwsUserManagementService() {
         log.info("AwsUserManagementService initialized - using pre-configured AWS credentials");

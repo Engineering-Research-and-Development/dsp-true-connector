@@ -148,6 +148,11 @@
             </dependency>
             <dependency>
                 <groupId>software.amazon.awssdk</groupId>
+                <artifactId>aws-crt-client</artifactId>
+                <version>${aws.sdk.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
                 <artifactId>sts</artifactId>
                 <version>${aws.sdk.version}</version>
             </dependency>
@@ -454,11 +459,41 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.5.4</version>
+                    <configuration>
+                        <!--
+                            Run test classes in parallel within a single reused JVM fork.
+                            Safe because all unit tests use @ExtendWith(MockitoExtension.class)
+                            with no shared static state and no Spring context loading.
+                            threadCount=4 per core: e.g. 4-core machine = 16 concurrent test classes.
+                            Override parallel=none in modules that need sequential execution (e2e tests).
+                        -->
+                        <forkCount>1</forkCount>
+                        <reuseForks>true</reuseForks>
+                        <parallel>classes</parallel>
+                        <useUnlimitedThreads>false</useUnlimitedThreads>
+                        <threadCount>4</threadCount>
+                        <perCoreThreadCount>true</perCoreThreadCount>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-failsafe-plugin</artifactId>
                     <version>3.5.4</version>
+                    <configuration>
+                        <!--
+                            Run integration-test classes in parallel within a single reused JVM fork.
+                            More conservative than Surefire (threadCount=2 per core) because IT tests
+                            may load Spring contexts, connect to embedded servers, or share external
+                            resources (databases, WireMock, Testcontainers).
+                            Override parallel=none in modules that require strictly sequential execution.
+                        -->
+                        <forkCount>1</forkCount>
+                        <reuseForks>true</reuseForks>
+                        <parallel>classes</parallel>
+                        <useUnlimitedThreads>false</useUnlimitedThreads>
+                        <threadCount>4</threadCount>
+                        <perCoreThreadCount>true</perCoreThreadCount>
+                    </configuration>
                     <executions>
                         <execution>
                             <goals>
@@ -487,6 +522,11 @@
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-maven-plugin</artifactId>
                     <version>${spring.boot.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>${jacoco.version}</version>
                 </plugin>
                 <plugin>
                     <groupId>org.eclipse.m2e</groupId>
@@ -549,6 +589,14 @@
                 <version>1.5.0</version>
                 <configuration>
                     <updatePomFile>true</updatePomFile>
+                    <!--
+                        resolveCiFriendliesOnly: only substitutes ${revision}, ${sha1},
+                        ${changelist} — the minimum needed for CI-friendly versioning.
+                        The default mode rewrites the entire POM and creates an implicit
+                        sequential dependency between modules, which prevents -T parallel
+                        reactor builds from actually running modules concurrently.
+                    -->
+                    <flattenMode>resolveCiFriendliesOnly</flattenMode>
                 </configuration>
                 <executions>
                     <execution>
@@ -607,16 +655,27 @@
                 <executions>
                     <execution>
                         <id>prepare-agent</id>
+                        <!-- inherited=false: root pom has pom packaging and no source.
+                             Child jar modules get their JaCoCo binding from pluginManagement
+                             (no skip set there), so coverage runs normally in all jar modules. -->
+                        <inherited>false</inherited>
                         <goals>
                             <goal>prepare-agent</goal>
                         </goals>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
                     </execution>
                     <execution>
                         <id>generate-coverage-report</id>
+                        <inherited>false</inherited>
                         <phase>test</phase>
                         <goals>
                             <goal>report</goal>
                         </goals>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

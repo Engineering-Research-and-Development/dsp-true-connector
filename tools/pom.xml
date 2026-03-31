@@ -80,10 +80,11 @@
             <artifactId>apache-client</artifactId>
             <version>${aws.sdk.version}</version>
         </dependency>
-        <!-- AWS SDK Netty HTTP Client for async operations with SSL/TLS -->
+        <!-- AWS SDK AWS CRT HTTP Client for async operations - replaces Netty to avoid
+             URI percent-encoding validation issues (Netty 4.2.x rejects %3A in paths) -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
-            <artifactId>netty-nio-client</artifactId>
+            <artifactId>aws-crt-client</artifactId>
             <version>${aws.sdk.version}</version>
         </dependency>
         <!--  AWS Security Token Service -->

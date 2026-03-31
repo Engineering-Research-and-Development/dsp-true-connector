@@ -119,6 +119,18 @@ public class DataTransferMockObjectUtil {
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_CONSUMER)
             .state(TransferState.COMPLETED)
+            .isDownloaded(true)
+            .build();
+
+    public static final TransferProcess TRANSFER_PROCESS_COMPLETED_NOT_DOWNLOADED = TransferProcess.Builder.newInstance()
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
+            .dataAddress(DATA_ADDRESS)
+            .agreementId(AGREEMENT_ID)
+            .callbackAddress(CALLBACK_ADDRESS)
+            .role(IConstants.ROLE_CONSUMER)
+            .state(TransferState.COMPLETED)
+            .isDownloaded(false)
             .build();
 
     public static final TransferProcess TRANSFER_PROCESS_SUSPENDED_PROVIDER = TransferProcess.Builder.newInstance()

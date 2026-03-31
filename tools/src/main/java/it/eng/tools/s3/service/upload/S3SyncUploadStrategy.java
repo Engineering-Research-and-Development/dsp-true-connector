@@ -2,15 +2,17 @@ package it.eng.tools.s3.service.upload;
 
 import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.S3ClientRequest;
+import it.eng.tools.s3.properties.S3Properties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
-import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -25,9 +27,11 @@ import java.util.concurrent.CompletionException;
 public class S3SyncUploadStrategy implements S3UploadStrategy {
 
     private final S3ClientProvider s3ClientProvider;
+    private final S3Properties s3Properties;
 
-    public S3SyncUploadStrategy(S3ClientProvider s3ClientProvider) {
+    public S3SyncUploadStrategy(S3ClientProvider s3ClientProvider, S3Properties s3Properties) {
         this.s3ClientProvider = s3ClientProvider;
+        this.s3Properties = s3Properties;
     }
 
     @Override
@@ -57,26 +61,20 @@ public class S3SyncUploadStrategy implements S3UploadStrategy {
 
                 List<CompletedPart> completedParts = new ArrayList<>();
                 int partNumber = 1;
-                byte[] buffer = new byte[CHUNK_SIZE];
-                int bytesRead;
-                ByteArrayOutputStream accumulator = new ByteArrayOutputStream();
+                byte[] buffer = new byte[s3Properties.getChunkSize()];
 
-                while ((bytesRead = inputStream.read(buffer)) > 0) {
-                    accumulator.write(buffer, 0, bytesRead);
+                while (true) {
+                    int totalRead = readFully(inputStream, buffer);
+                    if (totalRead == 0) break;
 
-                    if (accumulator.size() >= CHUNK_SIZE) {
-                        byte[] partData = accumulator.toByteArray();
-                        CompletedPart part = uploadPart(s3Client, bucketName, objectKey, uploadId, partNumber, partData);
-                        completedParts.add(part);
-                        partNumber++;
-                        accumulator.reset();
-                    }
-                }
+                    // Reuse the same buffer when full; copy only the final (smaller) part
+                    byte[] partData = (totalRead == buffer.length)
+                            ? buffer
+                            : Arrays.copyOf(buffer, totalRead);
 
-                if (accumulator.size() > 0) {
-                    byte[] partData = accumulator.toByteArray();
                     CompletedPart part = uploadPart(s3Client, bucketName, objectKey, uploadId, partNumber, partData);
                     completedParts.add(part);
+                    partNumber++;
                 }
 
                 log.info("All {} parts uploaded successfully (SYNC) for key: {}", completedParts.size(), objectKey);
@@ -144,7 +142,8 @@ public class S3SyncUploadStrategy implements S3UploadStrategy {
         log.debug("Uploading part {} (SYNC) for key: {} ({} bytes)", partNumber, objectKey, partData.length);
 
         UploadPartResponse response = s3Client.uploadPart(uploadPartRequest,
-                software.amazon.awssdk.core.sync.RequestBody.fromBytes(partData));
+                software.amazon.awssdk.core.sync.RequestBody.fromInputStream(
+                        new ByteArrayInputStream(partData), partData.length));
 
         log.debug("Part {} uploaded successfully (SYNC) with ETag: {}", partNumber, response.eTag());
 
@@ -152,6 +151,22 @@ public class S3SyncUploadStrategy implements S3UploadStrategy {
                 .partNumber(partNumber)
                 .eTag(response.eTag())
                 .build();
+    }
+
+    /**
+     * Reads bytes from the stream until the buffer is full or the stream is exhausted.
+     * Avoids the extra copy introduced by ByteArrayOutputStream.toByteArray().
+     *
+     * @param in  the input stream
+     * @param buf the buffer to fill
+     * @return the number of bytes actually read; 0 means the stream is exhausted
+     */
+    private int readFully(InputStream in, byte[] buf) throws IOException {
+        int offset = 0, read;
+        while (offset < buf.length && (read = in.read(buf, offset, buf.length - offset)) != -1) {
+            offset += read;
+        }
+        return offset;
     }
 }
 

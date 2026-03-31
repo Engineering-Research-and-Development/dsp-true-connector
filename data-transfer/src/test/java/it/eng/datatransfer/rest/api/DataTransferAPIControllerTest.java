@@ -37,7 +37,6 @@ import org.springframework.mock.web.MockHttpServletRequest;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -355,14 +354,11 @@ class DataTransferAPIControllerTest {
     public void downloadData_fail() throws IllegalStateException {
         DataTransferAPIException exception = new DataTransferAPIException("message");
 
-        when(apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
-                .thenReturn(CompletableFuture.failedFuture(exception));
+        doThrow(exception).when(apiService).downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
 
-        CompletionException thrown = assertThrows(CompletionException.class,
+        // Synchronous validation failures propagate directly to the HTTP layer → 400.
+        assertThrows(DataTransferAPIException.class,
                 () -> controller.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
-        assertNotNull(thrown.getCause());
-        assertTrue(thrown.getCause() instanceof DataTransferAPIException);
-        assertEquals("message", thrown.getCause().getMessage());
     }
 
     @Test

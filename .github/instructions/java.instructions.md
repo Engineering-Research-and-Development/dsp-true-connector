@@ -25,6 +25,13 @@ applyTo: '**/*.java'
   references (e.g., `stream.map(Foo::toBar)`).
 - **Null Handling**: Avoid returning or accepting `null`. Use `Optional<T>` for possibly-absent values and `Objects`
   utility methods like `equals()` and `requireNonNull()`.
+- **Exception Handling**: Use checked exceptions for recoverable conditions and unchecked exceptions for programming errors.
+  Always provide meaningful messages when throwing exceptions. Avoid catching generic `Exception` unless rethrowing or
+  logging. And pay attention to never put the stack trace in the message, as it can lead to information leaks.
+- **Logging**: Use a logging framework (SLF4J when possible) instead of `System.out.println` for better control over log levels and outputs. Include contextual information in log messages to aid debugging.
+- The order of class members should be: static fields, instance fields, constructors, public methods, protected methods,
+  package-private methods, private methods. This promotes readability and consistency across the codebase.
+- Use Java model classes where possible instead of raw strings or maps for data structures to improve readability and maintainability; use the concrete types instead of var.
 
 ### Naming Conventions
 
@@ -35,6 +42,7 @@ applyTo: '**/*.java'
     - `lowercase` for package names.
 - Use nouns for classes (`UserService`) and verbs for methods (`getUserById`).
 - Avoid abbreviations and Hungarian notation.
+- Don't use fully qualified names in code; use imports instead.
 
 ### Common Bug Patterns
 

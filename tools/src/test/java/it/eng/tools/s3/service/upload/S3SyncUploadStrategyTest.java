@@ -2,18 +2,22 @@ package it.eng.tools.s3.service.upload;
 
 import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.S3ClientRequest;
+import it.eng.tools.s3.properties.S3Properties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
@@ -38,6 +42,9 @@ public class S3SyncUploadStrategyTest {
     private S3ClientProvider s3ClientProvider;
 
     @Mock
+    private S3Properties s3Properties;
+
+    @Mock
     private S3Client s3Client;
 
     @Mock
@@ -48,6 +55,7 @@ public class S3SyncUploadStrategyTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(s3Properties.getChunkSize()).thenReturn(10 * 1024 * 1024);
         when(s3ClientProvider.s3Client(any(S3ClientRequest.class))).thenReturn(s3Client);
     }
 
@@ -91,7 +99,7 @@ public class S3SyncUploadStrategyTest {
                 inputStream, s3ClientRequest, BUCKET_NAME, OBJECT_KEY, CONTENT_TYPE, CONTENT_DISPOSITION);
 
         // Assert
-        Exception exception = assertThrows(CompletionException.class, () -> result.join());
+        Exception exception = assertThrows(CompletionException.class, result::join);
         assertTrue(exception.getMessage().contains("Failed to upload file"));
         verify(s3Client).createMultipartUpload(any(CreateMultipartUploadRequest.class));
         verify(s3Client, never()).completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
@@ -117,7 +125,7 @@ public class S3SyncUploadStrategyTest {
                 inputStream, s3ClientRequest, BUCKET_NAME, OBJECT_KEY, CONTENT_TYPE, CONTENT_DISPOSITION);
 
         // Assert
-        Exception exception = assertThrows(CompletionException.class, () -> result.join());
+        Exception exception = assertThrows(CompletionException.class, result::join);
         assertTrue(exception.getMessage().contains("Failed to upload file"));
         verify(s3Client).createMultipartUpload(any(CreateMultipartUploadRequest.class));
         verify(s3Client).completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
@@ -126,7 +134,7 @@ public class S3SyncUploadStrategyTest {
     @Test
     @DisplayName("Should handle large file with multiple parts synchronously")
     void uploadFile_LargeFileMultipleParts() {
-        // Arrange - create data larger than CHUNK_SIZE (50MB)
+        // Arrange - create data larger than CHUNK_SIZE (10MB)
         // For test purposes, we'll use smaller chunks
         byte[] largeData = new byte[100 * 1024]; // 100KB for testing
         InputStream inputStream = new ByteArrayInputStream(largeData);
@@ -148,6 +156,92 @@ public class S3SyncUploadStrategyTest {
         assertEquals(ETAG, result.join());
         verify(s3Client).createMultipartUpload(any(CreateMultipartUploadRequest.class));
         verify(s3Client).completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
+    }
+
+    @Test
+    @DisplayName("Should upload empty stream with zero parts and still complete the upload")
+    void uploadFile_EmptyStream() {
+        // Arrange
+        InputStream inputStream = new ByteArrayInputStream(new byte[0]);
+
+        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+                .thenReturn(CreateMultipartUploadResponse.builder().uploadId(UPLOAD_ID).build());
+
+        when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+                .thenReturn(CompleteMultipartUploadResponse.builder().eTag(ETAG).build());
+
+        // Act
+        CompletableFuture<String> result = syncUploadStrategy.uploadFile(
+                inputStream, s3ClientRequest, BUCKET_NAME, OBJECT_KEY, CONTENT_TYPE, CONTENT_DISPOSITION);
+
+        // Assert — no parts uploaded, but upload should complete successfully
+        assertEquals(ETAG, result.join());
+        verify(s3Client).createMultipartUpload(any(CreateMultipartUploadRequest.class));
+        verify(s3Client, never()).uploadPart(any(UploadPartRequest.class), any(RequestBody.class));
+        verify(s3Client).completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
+    }
+
+    @Test
+    @DisplayName("Should pass the correct bytes to uploadPart for a single-part upload")
+    void uploadFile_CorrectBytesPassedToUploadPart() throws Exception {
+        // Arrange - small content that fits in one part
+        byte[] expectedBytes = "part-data".getBytes();
+        InputStream inputStream = new ByteArrayInputStream(expectedBytes);
+
+        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+                .thenReturn(CreateMultipartUploadResponse.builder().uploadId(UPLOAD_ID).build());
+
+        ArgumentCaptor<RequestBody> requestBodyCaptor = ArgumentCaptor.forClass(RequestBody.class);
+        when(s3Client.uploadPart(any(UploadPartRequest.class), requestBodyCaptor.capture()))
+                .thenReturn(UploadPartResponse.builder().eTag(ETAG).build());
+
+        when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+                .thenReturn(CompleteMultipartUploadResponse.builder().eTag(ETAG).build());
+
+        // Act
+        CompletableFuture<String> result = syncUploadStrategy.uploadFile(
+                inputStream, s3ClientRequest, BUCKET_NAME, OBJECT_KEY, CONTENT_TYPE, CONTENT_DISPOSITION);
+
+        assertEquals(ETAG, result.join());
+
+        // Assert — exactly one part was uploaded and its content matches the original input bytes.
+        // This is a behavioral check: it will catch any regression that corrupts or drops data,
+        // regardless of which RequestBody factory method (fromBytes, fromInputStream, etc.) is used.
+        List<RequestBody> capturedBodies = requestBodyCaptor.getAllValues();
+        assertEquals(1, capturedBodies.size(), "Expected exactly one uploadPart call for small content");
+        byte[] actualBytes;
+        try (InputStream capturedStream = capturedBodies.get(0).contentStreamProvider().newStream()) {
+            actualBytes = capturedStream.readAllBytes();
+        }
+        assertArrayEquals(expectedBytes, actualBytes,
+                "The bytes delivered to uploadPart must exactly match the original input stream content");
+    }
+
+    @Test
+    @DisplayName("Should upload correct content-type and content-disposition in multipart upload request")
+    void uploadFile_CorrectMetadataInCreateRequest() {
+        // Arrange
+        InputStream inputStream = new ByteArrayInputStream("data".getBytes());
+
+        ArgumentCaptor<CreateMultipartUploadRequest> createCaptor =
+                ArgumentCaptor.forClass(CreateMultipartUploadRequest.class);
+
+        when(s3Client.createMultipartUpload(createCaptor.capture()))
+                .thenReturn(CreateMultipartUploadResponse.builder().uploadId(UPLOAD_ID).build());
+        lenient().when(s3Client.uploadPart(any(UploadPartRequest.class), any(RequestBody.class)))
+                .thenReturn(UploadPartResponse.builder().eTag(ETAG).build());
+        when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+                .thenReturn(CompleteMultipartUploadResponse.builder().eTag(ETAG).build());
+
+        // Act
+        syncUploadStrategy.uploadFile(inputStream, s3ClientRequest, BUCKET_NAME, OBJECT_KEY, CONTENT_TYPE, CONTENT_DISPOSITION).join();
+
+        // Assert metadata forwarded correctly
+        CreateMultipartUploadRequest captured = createCaptor.getValue();
+        assertEquals(BUCKET_NAME, captured.bucket());
+        assertEquals(OBJECT_KEY, captured.key());
+        assertEquals(CONTENT_TYPE, captured.contentType());
+        assertEquals(CONTENT_DISPOSITION, captured.contentDisposition());
     }
 }
 

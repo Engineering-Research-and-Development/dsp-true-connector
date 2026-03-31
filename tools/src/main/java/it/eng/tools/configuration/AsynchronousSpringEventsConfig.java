@@ -6,11 +6,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ApplicationEventMulticaster;
 import org.springframework.context.event.SimpleApplicationEventMulticaster;
-import org.springframework.scheduling.TaskScheduler;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.EnableAsync;
-import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -31,7 +29,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 @Slf4j
 @Configuration
 @EnableAsync
-@EnableScheduling
 public class AsynchronousSpringEventsConfig {
 
     /** Core thread-pool size for async event dispatch. */
@@ -46,9 +43,26 @@ public class AsynchronousSpringEventsConfig {
     @Value("${application.events.executor.queue-capacity:50}")
     private int queueCapacity = 50;
 
-    /** Pool size for the task scheduler used by retry scheduling. */
-    @Value("${application.events.scheduler.pool-size:5}")
-    private int schedulerPoolSize = 5;
+    /**
+     * Default executor for {@code @Async} methods and async event dispatch.
+     *
+     * <p>Named {@code taskExecutor} following the Spring convention: when multiple
+     * {@link TaskExecutor} beans are present, {@code AnnotationAsyncExecutionInterceptor}
+     * looks for this name to avoid the "More than one TaskExecutor bean found" warning.
+     *
+     * @return configured {@link ThreadPoolTaskExecutor}
+     */
+    @Bean(name = "taskExecutor")
+    public TaskExecutor taskExecutor() {
+        var executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(corePoolSize);
+        executor.setMaxPoolSize(maxPoolSize);
+        executor.setQueueCapacity(queueCapacity);
+        executor.setThreadNamePrefix("event-async-");
+        executor.setRejectedExecutionHandler(new CallerRunsOrDiscardPolicy());
+        executor.initialize();
+        return executor;
+    }
 
     /**
      * Creates the application-wide async event multicaster backed by a bounded thread pool.
@@ -61,32 +75,9 @@ public class AsynchronousSpringEventsConfig {
      */
     @Bean(name = "applicationEventMulticaster")
     public ApplicationEventMulticaster simpleApplicationEventMulticaster() {
-        var executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(corePoolSize);
-        executor.setMaxPoolSize(maxPoolSize);
-        executor.setQueueCapacity(queueCapacity);
-        executor.setThreadNamePrefix("event-async-");
-        executor.setRejectedExecutionHandler(new CallerRunsOrDiscardPolicy());
-        executor.initialize();
-
         var eventMulticaster = new SimpleApplicationEventMulticaster();
-        eventMulticaster.setTaskExecutor(executor);
+        eventMulticaster.setTaskExecutor(taskExecutor());
         return eventMulticaster;
-    }
-
-    /**
-     * Creates the application-wide {@link TaskScheduler} used by {@code AutomaticNegotiationService}
-     * to schedule non-blocking retries after a failed protocol message attempt.
-     *
-     * @return configured {@link TaskScheduler}
-     */
-    @Bean
-    public TaskScheduler taskScheduler() {
-        var scheduler = new ThreadPoolTaskScheduler();
-        scheduler.setPoolSize(schedulerPoolSize);
-        scheduler.setThreadNamePrefix("negotiation-retry-");
-        scheduler.initialize();
-        return scheduler;
     }
 
     /**
