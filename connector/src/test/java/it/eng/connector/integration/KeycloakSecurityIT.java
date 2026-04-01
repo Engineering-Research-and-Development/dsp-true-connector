@@ -65,10 +65,10 @@ class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
         cleanupState();
     }
 
-    @BeforeEach
-    void prepareCatalogData() {
-        cleanupState();
-    }
+//    @BeforeEach
+//    void prepareCatalogData() {
+//        cleanupState();
+//    }
 
     private void cleanupState() {
         datasetRepository.deleteAll();
@@ -166,8 +166,8 @@ class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
     }
 
     private void populateCatalog() {
-        catalog = CatalogMockObjectUtil.createNewCatalog();
-        dataset = catalog.getDataset().stream().findFirst()
+        Catalog catalog = CatalogMockObjectUtil.createNewCatalog();
+        Dataset dataset = catalog.getDataset().stream().findFirst()
                 .orElseThrow(() -> new IllegalStateException("Catalog test fixture does not contain a dataset."));
 
         catalogRepository.save(catalog);
@@ -183,9 +183,12 @@ class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
     }
 
     private void uploadFile() throws Exception {
-        if (dataset == null) {
-            throw new IllegalStateException("Catalog dataset fixture was not initialized before S3 upload.");
-        }
+//        if (dataset == null) {
+//            throw new IllegalStateException("Catalog dataset fixture was not initialized before S3 upload.");
+//        }
+
+        Dataset dataset = datasetRepository.findAll().stream().findFirst()
+                .orElseThrow(() -> new IllegalStateException("Catalog dataset was not persisted before S3 upload."));
 
         MockMultipartFile file = new MockMultipartFile(
                 "file",
