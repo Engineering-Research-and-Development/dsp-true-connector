@@ -191,7 +191,7 @@ class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
             throw new Exception("File storing aborted, " + exception.getLocalizedMessage(), exception);
         }
 
-        Thread.sleep(2000L);
+        Thread.sleep(3000L);
     }
 
     private void removeFiles() {
