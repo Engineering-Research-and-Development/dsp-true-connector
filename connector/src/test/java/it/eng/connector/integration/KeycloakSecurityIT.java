@@ -13,6 +13,7 @@ import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -55,8 +57,20 @@ class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
     @Autowired
     private S3Properties s3Properties;
 
+    private Catalog catalog;
+    private Dataset dataset;
+
     @AfterEach
     void cleanupCatalogData() {
+        cleanupState();
+    }
+
+    @BeforeEach
+    void prepareCatalogData() {
+        cleanupState();
+    }
+
+    private void cleanupState() {
         datasetRepository.deleteAll();
         catalogRepository.deleteAll();
         dataServiceRepository.deleteAll();
@@ -152,14 +166,15 @@ class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
     }
 
     private void populateCatalog() {
-        Catalog catalog = CatalogMockObjectUtil.createNewCatalog();
+        catalog = CatalogMockObjectUtil.createNewCatalog();
+        dataset = catalog.getDataset().stream().findFirst()
+                .orElseThrow(() -> new IllegalStateException("Catalog test fixture does not contain a dataset."));
+
         catalogRepository.save(catalog);
         datasetRepository.saveAll(catalog.getDataset());
         dataServiceRepository.saveAll(catalog.getService());
         distributionRepository.saveAll(catalog.getDistribution());
 
-        Dataset dataset = catalog.getDataset().stream().findFirst()
-                .orElseThrow(() -> new IllegalStateException("Catalog test fixture does not contain a dataset."));
         artifactRepository.save(dataset.getArtifact());
     }
 
@@ -168,8 +183,9 @@ class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
     }
 
     private void uploadFile() throws Exception {
-        Dataset dataset = datasetRepository.findAll().stream().findFirst()
-                .orElseThrow(() -> new IllegalStateException("Catalog dataset was not persisted before S3 upload."));
+        if (dataset == null) {
+            throw new IllegalStateException("Catalog dataset fixture was not initialized before S3 upload.");
+        }
 
         MockMultipartFile file = new MockMultipartFile(
                 "file",
@@ -191,7 +207,19 @@ class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
             throw new Exception("File storing aborted, " + exception.getLocalizedMessage(), exception);
         }
 
-        Thread.sleep(3000L);
+        waitUntilFileIsVisible(dataset.getId());
+    }
+
+    private void waitUntilFileIsVisible(String objectKey) throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        while (System.nanoTime() < deadline) {
+            List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
+            if (files != null && files.contains(objectKey)) {
+                return;
+            }
+            Thread.sleep(200L);
+        }
+        throw new IllegalStateException("Uploaded file '" + objectKey + "' was not visible in S3 within timeout.");
     }
 
     private void removeFiles() {
