@@ -1,10 +1,11 @@
 package it.eng.tools.auth.keycloak;
 
 import jakarta.annotation.PostConstruct;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.stereotype.Component;
 
+import it.eng.tools.auth.condition.KeycloakAuthenticationModeCondition;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 @Getter
 @Setter
 @ConfigurationProperties(prefix = "application.keycloak.backend")
-@ConditionalOnProperty(value = "application.keycloak.enable", havingValue = "true")
+@Conditional(KeycloakAuthenticationModeCondition.class)
 public class KeycloakAuthenticationProperties {
 
     /**
@@ -51,4 +52,3 @@ public class KeycloakAuthenticationProperties {
         log.info("=== End KeycloakAuthenticationProperties ===");
     }
 }
-

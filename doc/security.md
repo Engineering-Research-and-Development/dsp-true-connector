@@ -41,7 +41,22 @@ More information on how to generate keystore and truststore files can be found [
 
 ---
 
-## Keycloak Authentication (Optional, Recommended)
+## Authentication Modes
+
+The connector now supports two primary authentication modes through `application.auth.provider`:
+
+1. `KEYCLOAK` - the main and recommended mode
+2. `DISABLED` - a fully open mode intended for local/dev scenarios
+
+For backward compatibility, the legacy `application.keycloak.enable` property is still honored when
+`application.auth.provider` is not set:
+
+- `application.keycloak.enable=true` resolves to `KEYCLOAK`
+- `application.keycloak.enable=false` or a missing property resolves to the legacy non-Keycloak path
+
+---
+
+## Keycloak Authentication (Recommended)
 
 The connector can use **Keycloak** as an OAuth2/OIDC resource server for modern, token-based authentication.
 
@@ -55,19 +70,17 @@ The connector can use **Keycloak** as an OAuth2/OIDC resource server for modern,
 
 ### Enabling Keycloak
 
-Enable it by running with the `keycloak` Spring profile:
+Set in properties:
 
-```bash
-mvn -pl connector spring-boot:run -Dspring-boot.run.profiles=keycloak
+```properties
+application.auth.provider=KEYCLOAK
 ```
 
-Or set in `application.properties`:
+Legacy compatibility still works with:
 
 ```properties
 application.keycloak.enable=true
 ```
-
-This loads `connector/src/main/resources/application-keycloak.properties` and activates OAuth2 JWT authentication.
 
 ### Configuration Properties
 
@@ -75,7 +88,7 @@ Add to `application-keycloak.properties`:
 
 ```properties
 # Enable Keycloak authentication
-application.keycloak.enable=true
+application.auth.provider=KEYCLOAK
 
 # OAuth2 Resource Server (JWT validation)
 spring.security.oauth2.resourceserver.jwt.issuer-uri=http://localhost:8180/realms/dsp-connector
@@ -106,14 +119,25 @@ keycloak.credentials.secret=dsp-connector-backend-secret
 - ❌ MongoDB user authentication is **disabled**
 - ✅ Users managed in **Keycloak Admin Console** (http://localhost:8180)
 
-### What Happens When Keycloak is Disabled
+### Disabled Security Mode
 
-When `application.keycloak.enable=false` or property is missing:
+Set:
 
-- ✅ MongoDB username/password authentication active
-- ✅ `/api/v1/users` endpoints active for user CRUD
-- ✅ Traditional session-based authentication
-- ❌ Keycloak components not loaded
+```properties
+application.auth.provider=DISABLED
+```
+
+In this mode:
+
+- ✅ `/api/**` endpoints are open without authentication
+- ✅ `/connector/**`, `/catalog/**`, `/negotiations/**`, and `/transfers/**` are open without authentication
+- ✅ `/actuator/**` and `/env` are open without authentication
+- ✅ Mongo-backed `/api/v1/users` endpoints remain reachable
+- ❌ Keycloak JWT validation is not used
+- ❌ DAPS validation is not enforced
+- ❌ Role checks are not enforced
+
+This mode is intended for development and other explicitly trusted environments only.
 
 ### Getting Tokens
 
@@ -161,20 +185,19 @@ See [Multi-Realm Configuration](../KEYCLOAK_REALM_ENVIRONMENT_MAPPING.md) for de
 
 ---
 
-## MongoDB Authentication (Fallback)
+## Legacy Non-Keycloak Compatibility
 
-Traditional username/password authentication using MongoDB for user storage.
+If `application.auth.provider` is not configured, the application falls back to the older
+`application.keycloak.enable` behavior for backward compatibility.
 
-### When MongoDB Auth is Active
-- `application.keycloak.enable=false` or property not set
-- Default authentication mechanism
-- User credentials stored in MongoDB
-- Session-based authentication
+When that legacy mode is active with Keycloak disabled:
 
-### Configuration
-No special configuration needed - active by default when Keycloak is disabled.
+- MongoDB username/password authentication remains active
+- `/api/v1/users` endpoints remain available
+- the previous DAPS-backed path continues to work as before
 
-**Note**: MongoDB and Keycloak authentication are **mutually exclusive**. Only one can be active at a time.
+This compatibility path exists to avoid breaking existing setups while moving new configurations to
+`application.auth.provider`.
 
 ---
 

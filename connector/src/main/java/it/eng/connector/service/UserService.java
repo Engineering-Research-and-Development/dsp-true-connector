@@ -6,7 +6,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +16,7 @@ import it.eng.connector.model.PasswordValidationResult;
 import it.eng.connector.model.User;
 import it.eng.connector.model.UserDTO;
 import it.eng.connector.repository.UserRepository;
+import it.eng.tools.auth.condition.NonKeycloakAuthenticationModeCondition;
 import it.eng.tools.exception.BadRequestException;
 import it.eng.tools.exception.ResourceNotFoundException;
 import it.eng.tools.serializer.ToolsSerializer;
@@ -23,12 +24,12 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * Service for managing MongoDB-based users.
- * This service is only active when Keycloak is disabled.
- * When Keycloak is enabled, user management happens in Keycloak Admin Console.
+ * This service is active whenever Keycloak mode is not selected.
+ * When Keycloak mode is active, user management happens in Keycloak Admin Console.
  */
 @Service
 @Slf4j
-@ConditionalOnProperty(value = "application.keycloak.enable", havingValue = "false", matchIfMissing = true)
+@Conditional(NonKeycloakAuthenticationModeCondition.class)
 public class UserService {
 
 	private final UserRepository userRepository;
@@ -81,7 +82,7 @@ public class UserService {
 		User user = userRepository.findById(id)
 				.orElseThrow(() -> new BadRequestException("User not found"));
 		
-		if(user.getEmail().equals(loggedInUser)) {
+		if(loggedInUser == null || user.getEmail().equals(loggedInUser)) {
 				user.setFirstName(userDTO.getFirstName() != null ? userDTO.getFirstName() : user.getFirstName());
 				user.setLastName(userDTO.getLastName() != null ? userDTO.getLastName() : user.getLastName());
 				userRepository.save(user);
@@ -97,7 +98,7 @@ public class UserService {
 		User user = userRepository.findById(id)
 				.orElseThrow(() -> new BadRequestException("User not found"));
 		
-		if(user.getEmail().equals(loggedInUser)) {
+		if(loggedInUser == null || user.getEmail().equals(loggedInUser)) {
 			if(encoder.matches(userDTO.getPassword(), user.getPassword())) {
 				// current password matches with old provided
 				

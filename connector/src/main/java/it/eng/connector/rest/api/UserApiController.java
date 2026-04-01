@@ -3,7 +3,7 @@ package it.eng.connector.rest.api;
 import java.security.Principal;
 import java.util.Collection;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.connector.model.UserDTO;
 import it.eng.connector.service.UserService;
+import it.eng.tools.auth.condition.NonKeycloakAuthenticationModeCondition;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -24,14 +25,14 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * REST controller for managing MongoDB-based users.
- * This controller is only active when Keycloak is disabled.
- * When Keycloak is enabled, user management happens in Keycloak Admin Console.
+ * This controller is active whenever Keycloak mode is not selected.
+ * When Keycloak mode is active, user management happens in Keycloak Admin Console.
  */
 @RestController
 @RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, 
 path = ApiEndpoints.USERS_V1)
 @Slf4j
-@ConditionalOnProperty(value = "application.keycloak.enable", havingValue = "false", matchIfMissing = true)
+@Conditional(NonKeycloakAuthenticationModeCondition.class)
 public class UserApiController {
 	
 	private final UserService userService;
@@ -76,7 +77,7 @@ public class UserApiController {
 	 */
 	@PutMapping(path = "/{id}/update")
 	public ResponseEntity<GenericApiResponse<JsonNode>> updateUser(@PathVariable("id") String id, @RequestBody UserDTO userDTO, Principal principal) {
-		JsonNode updatedUser = userService.updateUser(id, principal.getName(), userDTO);
+		JsonNode updatedUser = userService.updateUser(id, resolvePrincipalName(principal), userDTO);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
 				.body(GenericApiResponse.success(updatedUser, "User updated"));
 	}
@@ -90,8 +91,12 @@ public class UserApiController {
 	 */
 	@PutMapping(path = "/{id}/password")
 	public ResponseEntity<GenericApiResponse<JsonNode>> updatePassword(@PathVariable("id") String id, @RequestBody UserDTO userDTO, Principal principal) {
-		JsonNode updatedUser = userService.updatePassword(id, principal.getName(), userDTO);
+		JsonNode updatedUser = userService.updatePassword(id, resolvePrincipalName(principal), userDTO);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
 				.body(GenericApiResponse.success(updatedUser, "Password updated"));
+	}
+
+	private String resolvePrincipalName(Principal principal) {
+		return principal != null ? principal.getName() : null;
 	}
 }

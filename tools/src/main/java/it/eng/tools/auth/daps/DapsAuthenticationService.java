@@ -7,7 +7,7 @@ import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.util.Date;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.stereotype.Service;
 
 import com.auth0.jwt.JWT;
@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import it.eng.tools.auth.AuthProvider;
+import it.eng.tools.auth.condition.LegacyAuthenticationModeCondition;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.FormBody;
 import okhttp3.FormBody.Builder;
@@ -33,7 +34,7 @@ import okhttp3.Response;
  */
 @Service
 @Slf4j
-@ConditionalOnProperty(value = "application.keycloak.enable", havingValue = "false", matchIfMissing = true)
+@Conditional(LegacyAuthenticationModeCondition.class)
 public class DapsAuthenticationService implements AuthProvider {
 
 	private final DapsAuthenticationProperties dapsProperties;
@@ -128,5 +129,4 @@ public class DapsAuthenticationService implements AuthProvider {
 		return valid;
 	}
 }
-
 

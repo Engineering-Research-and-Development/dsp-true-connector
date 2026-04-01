@@ -23,7 +23,7 @@ import java.util.List;
 /**
  * Base integration test for Keycloak-secured scenarios.
  */
-@TestPropertySource(properties = "application.keycloak.enable=true")
+@TestPropertySource(properties = "application.auth.provider=KEYCLOAK")
 public abstract class BaseKeycloakIntegrationTest extends BaseIntegrationTest {
 
     private static final String KEYCLOAK_REALM = "dsp-connector";
@@ -47,7 +47,7 @@ public abstract class BaseKeycloakIntegrationTest extends BaseIntegrationTest {
 
     @DynamicPropertySource
     static void keycloakProperties(DynamicPropertyRegistry registry) {
-        registry.add("application.keycloak.enable", () -> "true");
+        registry.add("application.auth.provider", () -> "KEYCLOAK");
         registry.add("server.port", () -> "0");
         registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri", BaseKeycloakIntegrationTest::realmUrl);
         registry.add("spring.security.oauth2.resourceserver.jwt.jwk-set-uri",

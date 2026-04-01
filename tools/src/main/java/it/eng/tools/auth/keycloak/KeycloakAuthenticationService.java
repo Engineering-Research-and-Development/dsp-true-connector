@@ -3,13 +3,14 @@ package it.eng.tools.auth.keycloak;
 import java.io.IOException;
 
 import jakarta.annotation.PostConstruct;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import it.eng.tools.auth.AuthProvider;
+import it.eng.tools.auth.condition.KeycloakAuthenticationModeCondition;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.FormBody;
 import okhttp3.OkHttpClient;
@@ -23,7 +24,7 @@ import okhttp3.Response;
  */
 @Service
 @Slf4j
-@ConditionalOnProperty(value = "application.keycloak.enable", havingValue = "true")
+@Conditional(KeycloakAuthenticationModeCondition.class)
 public class KeycloakAuthenticationService implements AuthProvider {
 
     private final KeycloakAuthenticationProperties keycloakProperties;
@@ -124,5 +125,4 @@ public class KeycloakAuthenticationService implements AuthProvider {
         return true;
     }
 }
-
 

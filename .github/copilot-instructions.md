@@ -30,6 +30,7 @@
   - `mvn -pl connector -Ptck verify`
 - Run the single TCK test class:
   - `mvn -pl connector -Ptck -Dit.test=TCKCompliance verify`
+- The `tck` profile is defined in the root `pom.xml`; it disables the normal Surefire flow and reconfigures Failsafe to run only `TCKCompliance.java`.
 - CI also runs dockerized end-to-end API suites with Docker Compose plus Newman:
   - start the test environment: `docker compose -f ci/docker/docker-compose.yml --env-file ci/docker/.env up -d`
   - run a collection: `newman run ci/docker/test-cases/api-tests/api-endpoints-tests.json`
@@ -116,8 +117,10 @@
   - enables MockMvc and WireMock
 - Data-transfer strategy resolution is centralized in `DataTransferStrategyFactory`. At the moment, `HTTP_PULL` and `HTTP_PUSH` are wired; there is an `S3TransferStrategy` type in the constructor, but it is not currently registered in the strategy map.
 - Packaging is not a standard Spring Boot fat-jar flow. `connector/pom.xml` builds `dsp-true-connector.jar` plus `target/dependency-jars/`, and the Docker image in `connector/Dockerfile` expects that layout. If you change packaging, startup, or resource loading, update both files together.
+- Dependency versions are centralized in the root `pom.xml` through properties and `dependencyManagement`, including explicit security/CVE override comments for several libraries. Prefer updating versions there rather than pinning them ad hoc in module POMs.
 - The packaged connector jar excludes `.properties`, `.json`, and certificate material from the jar. Be careful when changing configuration loading or assuming resources are bundled the same way they are during local development.
 - In Keycloak mode, user management behavior differs from the default Mongo-backed mode. Do not assume `/api/v1/users` is always available without checking the active auth mode first.
+- `connector` test scope depends on `tests` classifier jars from `catalog`, `negotiation`, and `data-transfer`, so changes to shared test fixtures/utilities in those modules can affect connector integration tests and TCK runs.
 
 ## Existing scoped instruction files
 
@@ -127,6 +130,24 @@
   - `model-class-guidelines.instructions.md` for the model-builder pattern
   - `junittest.instructions.md` for JUnit 5 / Mockito test conventions
 - Follow those scoped instructions when working in their matching file patterns.
+
+## Available repository skills
+
+- The scoped instruction content above is also available as repository skills under `.github/skills/`.
+- Java and workflow guidance skills:
+  - `java-development`
+  - `junit-5-tests`
+  - `model-class-guidelines`
+  - `java-11-to-java-17-upgrade`
+  - `java-17-to-java-21-upgrade`
+  - `github-actions-ci-cd-best-practices`
+- DSP protocol guidance skills:
+  - `dsp-foundations`
+  - `dsp-catalog`
+  - `dsp-transfer-process`
+  - `dsp-contract-negotiation`
+  - `dsp-compliance-review`
+- Use the matching skill when you want broader task-level guidance rather than path-scoped instruction matching alone.
 
 ## Useful project docs
 

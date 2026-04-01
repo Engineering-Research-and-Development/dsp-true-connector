@@ -1,17 +1,18 @@
 package it.eng.connector.configuration;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Component;
 
 import it.eng.tools.auth.AuthProvider;
+import it.eng.tools.auth.condition.LegacyAuthenticationModeCondition;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
-@ConditionalOnProperty(value = "application.keycloak.enable", havingValue = "false", matchIfMissing = true)
+@Conditional(LegacyAuthenticationModeCondition.class)
 public class JwtAuthenticationProvider implements org.springframework.security.authentication.AuthenticationProvider {
 
 	private final AuthProvider authProvider;

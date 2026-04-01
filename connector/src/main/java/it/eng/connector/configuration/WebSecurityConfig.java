@@ -5,11 +5,13 @@ import java.util.Arrays;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -34,6 +36,10 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import it.eng.connector.repository.UserRepository;
+import it.eng.tools.auth.AuthenticationMode;
+import it.eng.tools.auth.AuthenticationModeResolver;
+import it.eng.tools.auth.condition.LegacyAuthenticationModeCondition;
+import it.eng.tools.auth.condition.NonKeycloakAuthenticationModeCondition;
 import it.eng.tools.service.ApplicationPropertiesService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -41,7 +47,7 @@ import jakarta.servlet.http.HttpServletResponse;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@ConditionalOnProperty(value = "application.keycloak.enable", havingValue = "false", matchIfMissing = true)
+@Conditional(NonKeycloakAuthenticationModeCondition.class)
 public class WebSecurityConfig {
 
     @Value("${application.cors.allowed.origins:}")
@@ -60,48 +66,57 @@ public class WebSecurityConfig {
     @Qualifier("delegatedAuthenticationEntryPoint")
     private AuthenticationEntryPoint authEntryPoint;
 
-    private final JwtAuthenticationProvider jwtAuthenticationProvider;
     private final UserRepository userRepository;
     private final ApplicationPropertiesService applicationPropertiesService;
+    private final AuthenticationMode authenticationMode;
 
-    public WebSecurityConfig(JwtAuthenticationProvider jwtAuthenticationProvider, UserRepository userRepository,
-    		ApplicationPropertiesService applicationPropertiesService) {
-        this.jwtAuthenticationProvider = jwtAuthenticationProvider;
+    public WebSecurityConfig(UserRepository userRepository,
+            ApplicationPropertiesService applicationPropertiesService,
+            Environment environment) {
         this.userRepository = userRepository;
         this.applicationPropertiesService = applicationPropertiesService;
+        this.authenticationMode = AuthenticationModeResolver.resolve(environment);
     }
 
     @Bean
-    JwtAuthenticationFilter jwtAuthenticationFilter(HttpSecurity http) {
-        return new JwtAuthenticationFilter(authenticationManager());
+    @Conditional(LegacyAuthenticationModeCondition.class)
+    JwtAuthenticationFilter jwtAuthenticationFilter(AuthenticationManager authenticationManager) {
+        return new JwtAuthenticationFilter(authenticationManager);
     }
 
     @Bean
-    BasicAuthenticationFilter basicAuthenticationFilter() {
-        return new BasicAuthenticationFilter(authenticationManager());
+    @Conditional(LegacyAuthenticationModeCondition.class)
+    BasicAuthenticationFilter basicAuthenticationFilter(AuthenticationManager authenticationManager) {
+        return new BasicAuthenticationFilter(authenticationManager);
     }
     
     @Bean
+    @Conditional(LegacyAuthenticationModeCondition.class)
     DataspaceProtocolEndpointsAuthenticationFilter protocolEndpointsAuthenticationFilter(ApplicationPropertiesService applicationPropertiesService) {
     	return new DataspaceProtocolEndpointsAuthenticationFilter(applicationPropertiesService);
     }
 
     @Bean
-    AuthenticationManager authenticationManager() {
-        return new ProviderManager(jwtAuthenticationProvider, daoAUthenticationProvider());
+    @Conditional(LegacyAuthenticationModeCondition.class)
+    AuthenticationManager authenticationManager(JwtAuthenticationProvider jwtAuthenticationProvider,
+            DaoAuthenticationProvider daoAuthenticationProvider) {
+        return new ProviderManager(jwtAuthenticationProvider, daoAuthenticationProvider);
     }
 
     @Bean
+    @Conditional(LegacyAuthenticationModeCondition.class)
     UserDetailsService userDetailsService() {
         return username -> userRepository.findByEmail(username)
                 .orElseThrow(() -> new BadCredentialsException("Bad credentials"));
     }
 
     @Bean
-    DaoAuthenticationProvider daoAUthenticationProvider() {
+    @Conditional(LegacyAuthenticationModeCondition.class)
+    DaoAuthenticationProvider daoAUthenticationProvider(UserDetailsService userDetailsService,
+            PasswordEncoder passwordEncoder) {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService());
-        authProvider.setPasswordEncoder(passwordEncoder());
+        authProvider.setUserDetailsService(userDetailsService);
+        authProvider.setPasswordEncoder(passwordEncoder);
         return authProvider;
     }
 
@@ -129,20 +144,18 @@ public class WebSecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                .csrf(crsf -> crsf.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .headers(headers ->
-                        headers
-                                .contentTypeOptions(Customizer.withDefaults())
-                                .xssProtection(Customizer.withDefaults())
-                                .cacheControl(Customizer.withDefaults())
-                                .httpStrictTransportSecurity(Customizer.withDefaults())
-                                .frameOptions(frame -> frame.sameOrigin())
-                )
-                .sessionManagement(sm -> sm.disable())
-                .anonymous(anonymus -> anonymus.disable())
+    SecurityFilterChain securityFilterChain(HttpSecurity http,
+            ObjectProvider<DataspaceProtocolEndpointsAuthenticationFilter> protocolEndpointsAuthenticationFilterProvider,
+            ObjectProvider<JwtAuthenticationFilter> jwtAuthenticationFilterProvider,
+            ObjectProvider<BasicAuthenticationFilter> basicAuthenticationFilterProvider) throws Exception {
+        applyCommonConfiguration(http);
+
+        if (AuthenticationMode.DISABLED == authenticationMode) {
+            http.authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll());
+            return http.build();
+        }
+
+        http.anonymous(anonymus -> anonymus.disable())
                 .authorizeHttpRequests((authorize) -> {
                     authorize
                             .requestMatchers(new AntPathRequestMatcher("/env"), new AntPathRequestMatcher("/actuator/**")).hasRole("ADMIN")
@@ -155,11 +168,40 @@ public class WebSecurityConfig {
                             .requestMatchers(new AntPathRequestMatcher("/api/**")).hasRole("ADMIN")
                             .anyRequest().permitAll();
                 })
-                .addFilterBefore(protocolEndpointsAuthenticationFilter(applicationPropertiesService), UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(jwtAuthenticationFilter(http), UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(basicAuthenticationFilter(), JwtAuthenticationFilter.class)
                 .exceptionHandling((exHandler) -> exHandler.authenticationEntryPoint(authEntryPoint));
+
+        DataspaceProtocolEndpointsAuthenticationFilter protocolAuthenticationFilter
+                = protocolEndpointsAuthenticationFilterProvider.getIfAvailable();
+        if (protocolAuthenticationFilter != null) {
+            http.addFilterBefore(protocolAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        }
+
+        JwtAuthenticationFilter jwtAuthenticationFilter = jwtAuthenticationFilterProvider.getIfAvailable();
+        if (jwtAuthenticationFilter != null) {
+            http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        }
+
+        BasicAuthenticationFilter basicAuthenticationFilter = basicAuthenticationFilterProvider.getIfAvailable();
+        if (basicAuthenticationFilter != null) {
+            http.addFilterAfter(basicAuthenticationFilter, JwtAuthenticationFilter.class);
+        }
+
         return http.build();
+    }
+
+    private void applyCommonConfiguration(HttpSecurity http) throws Exception {
+        http
+                .csrf(crsf -> crsf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .headers(headers ->
+                        headers
+                                .contentTypeOptions(Customizer.withDefaults())
+                                .xssProtection(Customizer.withDefaults())
+                                .cacheControl(Customizer.withDefaults())
+                                .httpStrictTransportSecurity(Customizer.withDefaults())
+                                .frameOptions(frame -> frame.sameOrigin())
+                )
+                .sessionManagement(sm -> sm.disable());
     }
 
 

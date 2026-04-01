@@ -4,7 +4,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.stereotype.Component;
 
 import com.auth0.jwk.Jwk;
@@ -14,6 +14,7 @@ import com.auth0.jwk.UrlJwkProvider;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 
+import it.eng.tools.auth.condition.LegacyAuthenticationModeCondition;
 import it.eng.tools.exception.DapsPropertyErrorException;
 import it.eng.tools.property.ApplicationPropertyKeys;
 import it.eng.tools.service.ApplicationPropertiesService;
@@ -25,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Component
 @Slf4j
-@ConditionalOnProperty(value = "application.keycloak.enable", havingValue = "false", matchIfMissing = true)
+@Conditional(LegacyAuthenticationModeCondition.class)
 public class DapsAuthenticationProperties {
 
 	private final ApplicationPropertiesService service;
@@ -145,4 +146,3 @@ public class DapsAuthenticationProperties {
 		return algorithm;
 	}
 }
-
