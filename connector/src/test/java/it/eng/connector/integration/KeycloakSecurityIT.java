@@ -65,10 +65,10 @@ class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
         cleanupState();
     }
 
-//    @BeforeEach
-//    void prepareCatalogData() {
-//        cleanupState();
-//    }
+    @BeforeEach
+    void prepareCatalogData() {
+        cleanupState();
+    }
 
     private void cleanupState() {
         datasetRepository.deleteAll();
